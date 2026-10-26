@@ -48,18 +48,26 @@ impl AppServices {
     }
 
     /// The export queue, each entry beside its release, and each change to
-    /// it: a change to the queue, or a library change to a release it names.
-    /// The storage inspector reads it.
+    /// it: an entry coming, going, starting or failing, the queue pausing,
+    /// or a library change to a release it names. The storage inspector
+    /// reads it. The percent each export has reached is
+    /// [`watch_output_transfers`](Self::watch_output_transfers).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn subscribe_output_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
-    ) -> QueueValues<crate::library::output_snapshot::OutputRequest, u8> {
+    ) -> QueueValues<crate::library::output_snapshot::OutputRequest, ()> {
         self.subscribe_release_queue(
             runtime_handle,
             self.inner.manager.subscribe_output_queue(),
-            |contents| contents.clone(),
+            |contents| contents.phases(),
         )
+    }
+
+    /// The percent each exporting release has reached, sent as it moves.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn watch_output_transfers(&self) -> crate::library::OutputTransfersWatch {
+        crate::library::OutputTransfersWatch::of(self.inner.manager.subscribe_output_queue())
     }
 
     async fn resolve_release_queue<Extra: Clone, Progress: Clone>(

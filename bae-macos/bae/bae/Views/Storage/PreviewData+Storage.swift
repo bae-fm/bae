@@ -89,7 +89,7 @@
                     totalSize: 213_000_000
                 ),
                 createdAt: queuedAt(minutesAgo: 1),
-                state: .active(percent: 62),
+                state: .active,
                 kind: .save(presetName: "FLAC")
             ),
             BridgeOutputOp(
@@ -117,6 +117,20 @@
                 kind: .export
             ),
         ]
+
+        /// The percent the preview's active save has reached.
+        static let outputTransfers: BridgeOutputTransferChange = .reset(
+            transfers: [
+                BridgeKeyedOutputTransfer(releaseId: "rel-row-1", percent: 62)
+            ]
+        )
+
+        @MainActor
+        static func outputStore() -> OutputStore {
+            let store = OutputStore()
+            store.applyTransferChange(outputTransfers)
+            return store
+        }
 
         // MARK: - Cloud outbox
 

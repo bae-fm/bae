@@ -299,10 +299,10 @@ async fn a_release_session_keeps_its_choices_in_core() {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn output_value_until(
     values: &mut tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::library::OutputSnapshot, crate::library::LibraryError>,
+        Result<crate::library::OutputPhaseSnapshot, crate::library::LibraryError>,
     >,
-    matches: impl Fn(&crate::library::OutputRow) -> bool,
-) -> crate::library::OutputSnapshot {
+    matches: impl Fn(&crate::library::OutputPhaseRow) -> bool,
+) -> crate::library::OutputPhaseSnapshot {
     loop {
         let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
             .await

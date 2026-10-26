@@ -38,6 +38,7 @@ CAPABILITY_TYPES = {
     "MediaPaths",
     "MembershipStore",
     "OutboxStore",
+    "OutputStore",
     "Outputs",
     "PaginatedList",
     "Playback",

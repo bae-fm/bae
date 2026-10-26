@@ -164,17 +164,17 @@ impl crate::types::BridgeDownloadState {
 
 impl crate::types::BridgeDownloadTransferChange {
     pub(super) fn from_core(change: bae_core::library::DownloadTransferChange) -> Self {
-        use bae_core::library::DownloadTransferChange;
+        use bae_core::library::ReleaseTransferChange;
         match change {
-            DownloadTransferChange::Updated {
+            ReleaseTransferChange::Updated {
                 release_id,
                 progress,
             } => Self::Updated {
                 release_id,
                 progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
             },
-            DownloadTransferChange::Removed { release_id } => Self::Removed { release_id },
-            DownloadTransferChange::Reset(transfers) => Self::Reset {
+            ReleaseTransferChange::Removed { release_id } => Self::Removed { release_id },
+            ReleaseTransferChange::Reset(transfers) => Self::Reset {
                 transfers: transfers
                     .into_iter()
                     .map(
@@ -252,20 +252,48 @@ impl crate::types::BridgeDownloadProgress {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeOutputState {
-    pub(super) fn from_core(state: bae_core::library::OutputState) -> Self {
+    pub(super) fn from_core(state: bae_core::library::OutputPhase) -> Self {
         use crate::types::BridgeOutputState;
-        use bae_core::library::OutputState;
+        use bae_core::library::OutputPhase;
         match state {
-            OutputState::Queued => BridgeOutputState::Queued,
-            OutputState::Active { progress } => BridgeOutputState::Active { percent: progress },
-            OutputState::Failed { error } => BridgeOutputState::Failed { error },
+            OutputPhase::Queued => BridgeOutputState::Queued,
+            OutputPhase::Active { progress: () } => BridgeOutputState::Active,
+            OutputPhase::Failed { error } => BridgeOutputState::Failed { error },
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl crate::types::BridgeOutputTransferChange {
+    pub(super) fn from_core(change: bae_core::library::OutputTransferChange) -> Self {
+        use bae_core::library::ReleaseTransferChange;
+        match change {
+            ReleaseTransferChange::Updated {
+                release_id,
+                progress,
+            } => Self::Updated {
+                release_id,
+                percent: progress,
+            },
+            ReleaseTransferChange::Removed { release_id } => Self::Removed { release_id },
+            ReleaseTransferChange::Reset(transfers) => Self::Reset {
+                transfers: transfers
+                    .into_iter()
+                    .map(
+                        |(release_id, percent)| crate::types::BridgeKeyedOutputTransfer {
+                            release_id,
+                            percent,
+                        },
+                    )
+                    .collect(),
+            },
         }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeOutputOp {
-    pub(super) fn from_core(row: bae_core::library::OutputRow) -> Self {
+    pub(super) fn from_core(row: bae_core::library::OutputPhaseRow) -> Self {
         let bae_core::library::release_queue::ReleaseQueueRow { op, release } = row;
         let bae_core::library::release_queue::ReleaseQueueOp {
             release_id,

@@ -5,6 +5,9 @@ import SwiftUI
 /// save, a state badge, and a cancel button.
 struct OutputRow: View {
     let op: BridgeOutputOp
+    /// How far the active export has got, observed by this row alone; `nil`
+    /// while none has arrived.
+    let transfer: OutputTransferValue?
     let onCancel: () -> Void
 
     private var presetName: String? {
@@ -53,8 +56,8 @@ struct OutputRow: View {
         switch op.state {
         case .queued:
             StatusChip("Queued", symbol: "clock")
-        case .active(let percent):
-            activeBadge(percent: Int(percent))
+        case .active:
+            activeBadge(percent: Int(transfer?.percent ?? 0))
         case .failed(let error):
             StatusChip(
                 "Failed",
@@ -88,7 +91,12 @@ struct OutputRow: View {
     #Preview("Output states") {
         VStack(spacing: 0) {
             ForEach(PreviewData.outputOps, id: \.releaseId) { op in
-                OutputRow(op: op, onCancel: {})
+                OutputRow(
+                    op: op,
+                    transfer: PreviewData.outputStore()
+                        .transfer(forRelease: op.releaseId),
+                    onCancel: {}
+                )
                 Divider()
             }
         }

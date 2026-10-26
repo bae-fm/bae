@@ -1,7 +1,7 @@
 //! The Storage Manager inspector's release: its files, each beside the upload
 //! coven holds for it, and the release's entry in each transfer queue.
 
-use super::{DownloadRow, DownloadSnapshot, OutputRow, OutputSnapshot};
+use super::{DownloadRow, DownloadSnapshot, OutputPhaseRow, OutputPhaseSnapshot};
 use super::{UploadFileOp, UploadReleaseGroup};
 use crate::album_detail::FileDetail;
 
@@ -38,7 +38,7 @@ pub enum StorageInspectorTransfer {
         paused: bool,
     },
     Output {
-        operation: OutputRow,
+        operation: OutputPhaseRow,
         paused: bool,
     },
     Upload {
@@ -89,7 +89,7 @@ impl StorageInspector {
 pub(crate) fn storage_inspector_transfers(
     release_id: &str,
     downloads: &DownloadSnapshot,
-    outputs: &OutputSnapshot,
+    outputs: &OutputPhaseSnapshot,
     upload: Option<UploadReleaseGroup>,
     uploads_paused: bool,
 ) -> Vec<StorageInspectorTransfer> {

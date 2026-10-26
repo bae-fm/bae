@@ -706,6 +706,29 @@ forward! {
 // Gated on the target, not on `desktop`: bae-core gates `mod export` itself on the
 // target, so the export queue and the track exporter exist on every non-mobile
 // build whether or not this crate's `desktop` feature is on.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[uniffi::export]
+impl AppHandle {
+    /// The percent each exporting release has reached, now and then as it
+    /// moves.
+    pub fn subscribe_output_transfers(
+        &self,
+        callback: Box<dyn crate::types::OutputTransfersCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.live_subscription(move |services, _| async move {
+            let mut transfers = services.watch_output_transfers();
+            while let Some(changes) = transfers.next().await {
+                callback.on_changes(
+                    changes
+                        .into_iter()
+                        .map(crate::types::BridgeOutputTransferChange::from_core)
+                        .collect(),
+                );
+            }
+        })
+    }
+}
+
 forward! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     sync this => {

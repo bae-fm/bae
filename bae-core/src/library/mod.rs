@@ -4,7 +4,6 @@ mod bootstrap_auth;
 mod browse;
 mod detail;
 pub mod download_snapshot;
-mod download_transfers;
 mod library_status;
 mod live_read;
 mod local_lifecycle;
@@ -16,6 +15,7 @@ pub mod output_snapshot;
 mod queue_upcoming;
 pub mod queued_releases;
 pub mod release_queue;
+mod release_transfers;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
 pub mod search;
@@ -36,7 +36,6 @@ pub use download_snapshot::{
     DownloadOp, DownloadPhase, DownloadProgress, DownloadQueueContents, DownloadRow,
     DownloadSnapshot, DownloadState, DownloadTransferProgress, QueuedDownload,
 };
-pub use download_transfers::{DownloadTransferChange, DownloadTransfersWatch};
 pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };
@@ -56,12 +55,16 @@ pub use outbox_watch::{
     OutboxQueueWatch, OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfersWatch,
 };
 pub use output_snapshot::{
-    OutputKind, OutputOp, OutputProgress, OutputQueueContents, OutputRow, OutputSnapshot,
-    OutputState,
+    OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot, OutputProgress,
+    OutputQueueContents, OutputRow, OutputSnapshot, OutputState,
 };
 pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
 pub use queued_releases::QueuedReleases;
 pub use release_queue::{CountLabel, QueuedRelease, ReleaseQueue};
+pub use release_transfers::{
+    DownloadTransferChange, DownloadTransfersWatch, OutputTransferChange, OutputTransfersWatch,
+    ReleaseTransferChange, ReleaseTransfersWatch,
+};
 pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LibrarySearchSubscription,
     LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,

@@ -7,6 +7,8 @@ struct StorageTransferControls: View {
     private var downloadStore
     @Environment(OutboxStore.self)
     private var outboxStore
+    @Environment(OutputStore.self)
+    private var outputStore
     @Environment(Downloads.self)
     private var downloads
     @Environment(Outputs.self)
@@ -69,7 +71,13 @@ struct StorageTransferControls: View {
                     downloads.cancelDownload(operation.releaseId)
                 }
             case .output(let operation, _):
-                OutputRow(op: operation) {
+                // The row alone reads the percent the export reaches.
+                OutputRow(
+                    op: operation,
+                    transfer: outputStore.transfer(
+                        forRelease: operation.releaseId
+                    )
+                ) {
                     outputs.cancelOutput(operation.releaseId)
                 }
             case .upload(let group, _):

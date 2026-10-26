@@ -6,8 +6,8 @@ use crate::library::storage_inspector::{
     selected_upload_group, storage_inspector_transfers, StorageInspector, StorageInspectorTransfer,
 };
 use crate::library::{
-    DownloadSnapshot, LibraryError, LiveReadError, OutboxPauseState, OutboxState, OutputSnapshot,
-    UploadReleaseGroup,
+    DownloadSnapshot, LibraryError, LiveReadError, OutboxPauseState, OutboxState,
+    OutputPhaseSnapshot, UploadReleaseGroup,
 };
 
 type OutboxValues = tokio::sync::watch::Receiver<Option<Result<OutboxState, String>>>;
@@ -64,7 +64,7 @@ impl AppServices {
             // `Some(None)` once no such release exists.
             let mut files: Option<Option<Vec<FileDetail>>> = None;
             let mut download_queue: Option<DownloadSnapshot> = None;
-            let mut output_queue: Option<OutputSnapshot> = None;
+            let mut output_queue: Option<OutputPhaseSnapshot> = None;
             // `None` until read for the release shown, and after the upload
             // queue moves.
             let mut uploads: Option<ShownUploads> = None;

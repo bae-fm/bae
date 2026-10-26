@@ -16,6 +16,13 @@ pub type OutputProgress = ReleaseQueueProgress;
 pub type OutputQueueContents = ReleaseQueueContents<OutputRequest, u8>;
 pub type OutputRow = ReleaseQueueRow<OutputRequest, u8>;
 pub type OutputSnapshot = ReleaseQueueSnapshot<OutputRequest, u8>;
+/// An export's phase without its percent, which travels as its transfer.
+pub type OutputPhase = ReleaseQueueState<()>;
+pub type OutputPhaseRow = ReleaseQueueRow<OutputRequest, ()>;
+/// The export queue as a reader that takes each export's percent apart sees
+/// it: it changes only as entries come, go, start or fail, the queue pauses,
+/// or a release it names changes.
+pub type OutputPhaseSnapshot = ReleaseQueueSnapshot<OutputRequest, ()>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputRequest {

@@ -2407,8 +2407,8 @@ Reads come two ways:
   the upload coven holds for it, and its entry in the download, export and
   upload queues, worked out in core. The upload queue's own subscription says
   only which releases have uploads queued, how many, and whether it is paused;
-  the bytes each upload and download moves arrive apart, per file and per
-  release.
+  the bytes each upload and download moves, and the percent each export
+  reaches, arrive apart, per file and per release.
 
 What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A

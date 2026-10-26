@@ -344,12 +344,37 @@ mirror_struct! {
     fields: { key, count },
 }
 
-/// A queued export's state. Mirror of bae-core's `OutputState`.
+/// A queued export's phase. Mirrors `OutputPhase`; how far an active one
+/// has got is its transfer.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeOutputState {
     Queued,
-    Active { percent: u8 },
+    Active,
     Failed { error: String },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeKeyedOutputTransfer {
+    pub release_id: String,
+    pub percent: u8,
+}
+
+/// A change to one release's export percent, or every release's. Mirrors
+/// `OutputTransferChange`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeOutputTransferChange {
+    Updated {
+        release_id: String,
+        percent: u8,
+    },
+    /// The release is no longer exporting.
+    Removed {
+        release_id: String,
+    },
+    /// Every exporting release's percent; a release not listed has none.
+    Reset {
+        transfers: Vec<BridgeKeyedOutputTransfer>,
+    },
 }
 
 /// What a queued output produces; a save carries its preset's name as it was

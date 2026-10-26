@@ -20,6 +20,25 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     }
 }
 
+private final class OutputTransfersSink: OutputTransfersCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (BridgeOutputTransferChange) -> Void
+
+    init(
+        apply:
+            @escaping @MainActor @Sendable (BridgeOutputTransferChange) ->
+            Void
+    ) {
+        self.apply = apply
+    }
+
+    /// One batch lands in one main-actor turn, applied in order.
+    func onChanges(changes: [BridgeOutputTransferChange]) {
+        Task { @MainActor in changes.forEach(apply) }
+    }
+}
+
 private final class FolderScansSink: FolderScansCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeFolderScans) -> Void
     private let fail: @MainActor @Sendable (any Error) -> Void
@@ -208,6 +227,7 @@ final class DesktopSubscriptions {
 
     private let appHandle: AppHandle
     private let importStore: ImportStore
+    private let outputStore: OutputStore
     private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
@@ -216,10 +236,12 @@ final class DesktopSubscriptions {
     init(
         appHandle: AppHandle,
         importStore: ImportStore,
+        outputStore: OutputStore,
         uiStore: UiStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
+        self.outputStore = outputStore
         self.uiStore = uiStore
         // The list's selection sink is the observations' one owner: it lives
         // as long as the list slot that calls it.
@@ -328,6 +350,11 @@ final class DesktopSubscriptions {
     func start() {
         precondition(subscriptions.isEmpty)
         subscriptions = [
+            appHandle.subscribeOutputTransfers(
+                callback: OutputTransfersSink { [outputStore] change in
+                    outputStore.applyTransferChange(change)
+                }
+            ),
             appHandle.subscribeCandidateRuntime(
                 callback: CandidateRuntimeSink { [importStore] changes in
                     importStore.candidateRuntimeSubject.send(changes)

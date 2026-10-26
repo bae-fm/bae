@@ -176,6 +176,7 @@ struct StorageManagerView: View {
         let storageManagerStore: StorageManagerStore
         let uiStore: UiStore
         let downloadStore: DownloadStore
+        let outputStore: OutputStore
         let outboxStore: OutboxStore
 
         let initialSelection: Set<String>
@@ -209,6 +210,7 @@ struct StorageManagerView: View {
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
             downloadStore = PreviewData.downloadStore()
+            outputStore = PreviewData.outputStore()
             outboxStore = PreviewData.outboxStore(
                 PreviewData.outboxSnapshot(uploadGroups: uploadGroups)
             )
@@ -244,6 +246,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: 1_440, height: 900)
     }
@@ -269,6 +272,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: 940, height: 760)
     }
@@ -291,6 +295,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(
             width: StorageManagerView.minimumWidth,
@@ -321,6 +326,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(
             width: StorageManagerView.minimumWidth,
@@ -346,6 +352,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -370,6 +377,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -395,6 +403,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -424,6 +433,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -455,6 +465,7 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
