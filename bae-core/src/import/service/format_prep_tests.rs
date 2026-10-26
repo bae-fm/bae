@@ -882,3 +882,12 @@ fn an_mp3_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
     bae_audio::init();
     assert_track_start_is_its_frame("image.mp3", bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 192 });
 }
+
+/// An AAC (MP4) image's track start byte is the frame its first sample is
+/// in, though MP4's demuxer seeks by moving its place in the sample table and
+/// reads nothing until the next packet.
+#[test]
+fn an_aac_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
+    bae_audio::init();
+    assert_track_start_is_its_frame("image.m4a", bae_audio::EncodeFormat::Aac { bitrate_kbps: 192 });
+}

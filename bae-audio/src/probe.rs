@@ -315,12 +315,14 @@ unsafe fn stream_timestamps(
 /// The byte of the frame holding each of `samples` -- where a playback seek to
 /// that sample starts reading. Recorded at import as each track's start byte.
 ///
-/// Each target is found with the demuxer's own seek, reading the AVIO position
-/// (`avio_tell`) right after it, the way the demuxer itself positions: a FLAC's
-/// binary search over its real frames (`open_best_audio_stream` leaves
-/// `AVFMT_FLAG_FAST_SEEK` unset, so the file's seektable, which may be coarse or
-/// full of placeholder points, isn't trusted), APE's mandatory index (its packets
-/// carry no byte position), WAV's arithmetic.
+/// Each target is found with the demuxer's own seek: a FLAC's binary search
+/// over its real frames (`open_best_audio_stream` leaves `AVFMT_FLAG_FAST_SEEK`
+/// unset, so the file's seektable, which may be coarse or full of placeholder
+/// points, isn't trusted), APE's mandatory index, WAV's arithmetic, MP4's
+/// sample table. The landed frame's byte is the read cursor after the seek
+/// where the demuxer moves it there (FLAC, APE, whose packets state no byte),
+/// and the next packet's byte otherwise (MP4 moves only its place in the
+/// sample table).
 ///
 /// A FLAC's final frames are the exception: the binary search can't place a
 /// sample among them, so they are read in order once, and a start in the last
@@ -339,10 +341,19 @@ pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
             stream_timestamps(stream, samples).and_then(
                 |targets| match content_type_from_codec_id((*codecpar).codec_id) {
                     ContentType::Flac => flac_frame_landings(path, fmt_ctx, stream_index, &targets),
-                    _ => targets
-                        .iter()
-                        .map(|&target| demuxer_seek_landing(fmt_ctx, stream_index, target))
-                        .collect(),
+                    content_type => {
+                        let landing_byte = if content_type == ContentType::Ape {
+                            LandingByte::ReadCursor
+                        } else {
+                            LandingByte::NextPacket
+                        };
+                        targets
+                            .iter()
+                            .map(|&target| {
+                                demuxer_seek_landing(fmt_ctx, stream_index, target, landing_byte)
+                            })
+                            .collect()
+                    }
                 },
             );
 
@@ -432,7 +443,7 @@ unsafe fn flac_frame_landings(
                 };
                 Ok(tail[landing].1)
             } else {
-                demuxer_seek_landing(fmt_ctx, stream_index, target)
+                demuxer_seek_landing(fmt_ctx, stream_index, target, LandingByte::ReadCursor)
             }
         })
         .collect()
@@ -580,25 +591,75 @@ unsafe fn flac_frames_to_end(
     read.map(|()| frames)
 }
 
-/// Where the demuxer's own seek to `target` (a stream timestamp) leaves the read
-/// cursor.
+/// How to read where a demuxer's seek landed.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, Copy)]
+enum LandingByte {
+    /// The read cursor (`avio_tell`), for a demuxer whose seek moves it to the
+    /// frame it reads next: FLAC's search, and APE's index, whose packets carry
+    /// no byte.
+    ReadCursor,
+    /// The byte the next packet states, for a demuxer whose seek moves only
+    /// its place in an index and leaves the cursor where it was (MP4's sample
+    /// table), and every other one whose packets state their bytes.
+    NextPacket,
+}
+
+/// The byte the demuxer's own seek to `target` (a stream timestamp) lands on.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 unsafe fn demuxer_seek_landing(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     target: i64,
+    landing_byte: LandingByte,
 ) -> Result<u64, String> {
     use ffmpeg_sys_next::*;
 
     if avformat_seek_file(fmt_ctx, stream_index, i64::MIN, target, target, 0) < 0 {
         return Err(format!("seek to timestamp {target} failed"));
     }
-    // Where the demuxer left the read cursor = the frame it will read next.
-    // `avio_seek(.., 0, SEEK_CUR)` is `avio_tell`: returns the position without
-    // moving it.
-    let pos = avio_seek((*fmt_ctx).pb, 0, 1 /* SEEK_CUR */);
-    if pos < 0 {
-        return Err(format!("avio_tell after seek to timestamp {target} failed"));
+    match landing_byte {
+        LandingByte::ReadCursor => {
+            // `avio_seek(.., 0, SEEK_CUR)` is `avio_tell`: returns the position
+            // without moving it.
+            let pos = avio_seek((*fmt_ctx).pb, 0, 1 /* SEEK_CUR */);
+            if pos < 0 {
+                return Err(format!("avio_tell after seek to timestamp {target} failed"));
+            }
+            Ok(pos as u64)
+        }
+        LandingByte::NextPacket => next_packet_byte(fmt_ctx, stream_index)
+            .map_err(|reason| format!("after seek to timestamp {target}: {reason}")),
     }
-    Ok(pos as u64)
+}
+
+/// The byte the next packet of `stream_index` begins at.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+unsafe fn next_packet_byte(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    stream_index: c_int,
+) -> Result<u64, String> {
+    use ffmpeg_sys_next::*;
+
+    let mut packet = av_packet_alloc();
+    if packet.is_null() {
+        return Err("cannot allocate a packet".to_string());
+    }
+    let read = loop {
+        let result = av_read_frame(fmt_ctx, packet);
+        if result < 0 {
+            break Err(format!(
+                "reading the next frame failed ({})",
+                super::av_err_str(result)
+            ));
+        }
+        let ours = (*packet).stream_index == stream_index;
+        let pos = (*packet).pos;
+        av_packet_unref(packet);
+        if ours {
+            break u64::try_from(pos).map_err(|error| format!("the frame states no byte: {error}"));
+        }
+    };
+    av_packet_free(&mut packet);
+    read
 }
