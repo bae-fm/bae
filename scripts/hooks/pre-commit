@@ -11,21 +11,9 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 # The checks below build into the checkout's build output paths.
 "$(git rev-parse --show-toplevel)/scripts/build-layout.sh"
 
-WORKSPACE_CRATES=(
-    bae-audio
-    bae-automation
-    bae-bridge
-    bae-cast
-    bae-core
-    bae-desktop
-    bae-loc
-    bae-mcp
-    bae-subsonic
-    bae-test-support
-    bae-theme
-    bae-uniffi-bindgen
-    bae-util
-)
+# Every crate of the workspace, read from Cargo so the list can't drift from
+# the workspace's members.
+WORKSPACE_CRATES=$(workspace_crates)
 
 TMPFILE=$(mktemp)
 FORMAT_STATE=$(mktemp)
@@ -169,7 +157,7 @@ fi
 DIRECTLY_CHANGED_CRATES=()
 while IFS= read -r crate; do
     [ -n "$crate" ] && DIRECTLY_CHANGED_CRATES+=("$crate")
-done < <(changed_workspace_crates "${WORKSPACE_CRATES[@]}")
+done < <(changed_workspace_crates <<< "$WORKSPACE_CRATES")
 
 if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     CLIPPY_ARGS=(clippy --all-targets)

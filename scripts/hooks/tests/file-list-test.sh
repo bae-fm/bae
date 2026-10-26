@@ -26,11 +26,22 @@ if staged_path_under "bae"; then
     exit 1
 fi
 
-CHANGED_FILES=$'bae-core/src/lib.rs\nbae-bridge/src/lib.rs\nnotes/example.md'
-changed_crates=$(changed_workspace_crates \
-    bae-automation bae-bridge bae-cast bae-core bae-desktop \
-    bae-loc bae-mcp bae-subsonic bae-test-support)
-if [ "$changed_crates" != $'bae-bridge\nbae-core' ]; then
+# Cargo's members, every one of them, each in its own directory.
+workspace=$(workspace_crates)
+members=$(python3 -c '
+import tomllib
+print("\n".join(sorted(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["members"])))
+')
+listed=$(cut -d" " -f1 <<< "$workspace" | sort)
+if [ "$listed" != "$members" ]; then
+    echo "the hook's workspace crates differ from Cargo.toml's members:"
+    diff <(echo "$listed") <(echo "$members") || true
+    exit 1
+fi
+
+CHANGED_FILES=$'bae-core/src/lib.rs\nbae-mirror/src/lib.rs\nnotes/example.md'
+changed_crates=$(changed_workspace_crates <<< "$workspace" | sort)
+if [ "$changed_crates" != $'bae-core\nbae-mirror' ]; then
     echo "directly changed workspace crates were routed incorrectly:"
     echo "$changed_crates"
     exit 1

@@ -34,11 +34,28 @@ format_ktlint() {
     ktlint -F "$@"
 }
 
+# The workspace's crates as Cargo reads them, one "<package> <directory>" line
+# each, the directory relative to the workspace root. Fails when Cargo can't
+# read the workspace.
+workspace_crates() {
+    python3 -c '
+import json, os, subprocess
+metadata = json.loads(subprocess.check_output(
+    ["cargo", "metadata", "--no-deps", "--format-version", "1", "--offline"]))
+root = metadata["workspace_root"]
+for package in metadata["packages"]:
+    directory = os.path.relpath(os.path.dirname(package["manifest_path"]), root)
+    print(package["name"], directory)
+'
+}
+
+# The packages, of the "<package> <directory>" lines on stdin, with a staged
+# path under their directory.
 changed_workspace_crates() {
-    local crate
-    for crate in "$@"; do
-        if staged_path_under "$crate"; then
-            printf '%s\n' "$crate"
+    local package directory
+    while read -r package directory; do
+        if staged_path_under "$directory"; then
+            printf '%s\n' "$package"
         fi
     done
 }
