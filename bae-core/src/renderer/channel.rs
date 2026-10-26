@@ -4,9 +4,9 @@
 //! and is driven by transport commands — a Cast receiver or a UPnP MediaRenderer.
 //! [`RendererChannel`] is the protocol-agnostic seam the session drives: connect
 //! once, then LOAD/PLAY/PAUSE/SEEK/volume/STOP and read status. The two real
-//! implementations — Cast over CASTV2 (`crate::cast`) and UPnP over SOAP
-//! (`crate::dlna`) — differ only in their wire; the session, poll loop, and
-//! everything above them are shared. Tests supply a fake implementation.
+//! implementations — Cast over CASTV2 and UPnP over SOAP, both in bae-cast —
+//! differ only in their wire; the session, poll loop, and everything above them
+//! are shared. Tests supply a fake implementation.
 //!
 //! This trait is specifically the "the device fetches a URL and is driven by
 //! commands" shape. A push-audio renderer like AirPlay — where bae keeps

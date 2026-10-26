@@ -14,10 +14,7 @@ path = "src/lib.rs"
 bae-util = { path = "../bae-util" }
 coven = { workspace = true }
 rusqlite = { workspace = true }
-# `blocking` powers the DLNA control point (src/dlna/): its SSDP search thread
-# and the SOAP channel drive blocking HTTP off the async runtime, the same way
-# the Cast session owns its device on its own OS thread.
-reqwest = { workspace = true, features = ["blocking", "form", "json", "query", "rustls"] }
+reqwest = { workspace = true, features = ["form", "json", "query", "rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 # `raw_value`: a MusicBrainz Disc ID answer lists whole release documents,
 # each kept as the bytes MusicBrainz sent for a read to start from.
@@ -36,40 +33,7 @@ hex = "0.4"
 natord = "1.0"
 # Shared text comparison for identification and stored release marks.
 unicode-normalization = "0.1"
-# AirPlay 2 HomeKit pairing (src/airplay/pairing.rs). The password-less
-# "transient" pair-setup is SRP6a with the 3072-bit group + SHA-512. The
-# RustCrypto `srp` crate can't be used: its M1 proof is `H(A|B|K)` (its own
-# source calls this non-spec), whereas HomeKit receivers require the full
-# `H(H(N)^H(g) | H(I) | s | A | B | K)` and PAD(A)|PAD(B) for u — the semantics
-# pyatv pairs real HomePods with via `srptools`. So the SRP math is written
-# directly over `num-bigint` (bignum modexp) to those reference semantics.
-# All are RustCrypto/num crates on the same digest-0.10 stack as `sha2`; new deps
-# (coven does not pin them, correcting the plan's premise), solely for AirPlay.
-num-bigint = "0.4"
-# RAOP (AirPlay 1) audio encryption (src/airplay/crypto.rs). Legacy `et=1`
-# receivers take an AES-128 session key the sender RSA-OAEP(SHA-1)-wraps to a
-# fixed public key baked into every AirPort Express, then AES-128-CBC-encrypt
-# each audio packet's payload (per-packet IV reset, trailing `len%16` bytes left
-# in the clear — openairplay spec §7.2). rsa on num-bigint-dig, aes/cbc on the
-# cipher-0.4 stack `chacha20poly1305` already pulls in. sha1 moves to prod for
-# the OAEP hash (it was dev-only for the SRP RFC 5054 vector).
-rsa = "0.9"
-aes = "0.8"
-cbc = "0.1"
 base64 = "0.22"
-sha1 = "0.10"
-# AirPlay 2 HomeKit pair-verify + audio-packet encryption (src/airplay/airplay2.rs).
-# Pair-verify is X25519 ECDH + Ed25519 signatures with HKDF-SHA512-derived keys;
-# the audio stream is ChaCha20-Poly1305 keyed from the pair-verify shared secret.
-# All on the same digest-0.10 stack as `sha2`; ed25519-dalek/chacha20poly1305/hkdf
-# already ride in via coven, x25519-dalek is new. rand_core 0.6 is the RNG trait
-# these (and `rsa`) are built against — bae is on `rand` 0.9, so `secure_rng`
-# adapts the current OS RNG to the older trait.
-x25519-dalek = { version = "2", features = ["static_secrets"] }
-ed25519-dalek = { version = "2", features = ["rand_core"] }
-chacha20poly1305 = "0.10"
-hkdf = "0.12"
-rand_core = "0.6"
 async-trait = "0.1"
 axum = "0.7"
 regex = "1.11"
@@ -82,17 +46,6 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 # The shared remote-image cache spools downloads to a temporary file before an
 # atomic persist. Desktop extraction also stages cover files for barcode OCR.
 tempfile = "3.8"
-# Google Cast sender (src/cast/): the CASTV2 protocol over TLS to Chromecast/Nest
-# devices, and mDNS service discovery of them. `thread_safe` makes rust_cast's
-# `CastDevice` Send so the session can own it on its own OS thread. Compiled on
-# every platform (only desktop wires the UI), so the cast module builds
-# everywhere; the receiver fetches audio itself over HTTP.
-rust_cast = { version = "0.21", features = ["thread_safe"] }
-mdns-sd = "0.20"
-# UPnP/DLNA control point (src/dlna/): parses device-description and SOAP
-# response XML. Read-only DOM, pure Rust (builds on every platform). Outgoing
-# SOAP envelopes are hand-built with explicit escaping, so this is parse-only.
-roxmltree = "0.20"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
@@ -118,6 +71,9 @@ ndk = { version = "0.9", features = ["audio"] }
 lofty = "0.25"
 notify = "8.2.0"
 strsim = "0.11"
+# The MusicBrainz Disc ID is a SHA-1 of the disc's table of contents
+# (src/import/discid_hash.rs).
+sha1 = "0.10"
 # Dev-mode `.env` loading (src/config/dev.rs).
 # Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no
 # system libs. Import-only: playback derives its gain from the stored

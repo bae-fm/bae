@@ -5,7 +5,7 @@
 //! push-audio one: unlike a Cast or UPnP receiver, an AirPlay receiver does *not*
 //! fetch a URL. bae keeps decoding locally and pushes timed, encrypted audio
 //! packets, so AirPlay is deliberately its own renderer variant rather than a
-//! [`crate::renderer::RendererChannel`] (whose contract is "the device fetches a
+//! [`bae_core::renderer::RendererChannel`] (whose contract is "the device fetches a
 //! URL and is driven by transport commands").
 //!
 //! The sender speaks two dialects, chosen from a receiver's announced features,
@@ -16,7 +16,8 @@
 //!
 //! This module holds the parts common to both and the dialect-specific wire:
 //! [`discovery`] browses for receivers, [`capabilities`] parses what they
-//! announce, and [`rtsp`] is the control connection both dialects drive.
+//! announce, [`rtsp`] is the control connection both dialects drive, and
+//! [`sink`] opens either dialect's session behind bae-core's AirPlay output.
 
 pub mod airplay2;
 pub mod ap2_channel;
@@ -30,6 +31,7 @@ pub mod rtp;
 pub mod rtsp;
 mod secure_rng;
 pub mod session;
+pub mod sink;
 pub mod srp;
 pub mod stream;
 pub mod tlv8;

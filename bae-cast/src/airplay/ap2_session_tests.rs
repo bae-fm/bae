@@ -236,8 +236,8 @@ fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
 
 use crate::airplay::secure_rng::SecureRng;
 use crate::airplay::srp::SrpGroup;
-use crate::airplay::stream::PcmSource;
 use crate::airplay::tlv8::{state, tlv_type, Tlv8};
+use bae_core::playback::airplay_output::PcmSource;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use std::net::UdpSocket;

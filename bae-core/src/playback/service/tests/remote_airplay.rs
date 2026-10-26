@@ -25,19 +25,13 @@ impl crate::playback::airplay_output::AirPlayStreamControl for FakeAirPlayContro
     fn failure(&self) -> Option<String> {
         self.0.failure.get().cloned()
     }
-    fn frames_sent(&self) -> u64 {
-        0
-    }
-    fn latency_frames(&self) -> u32 {
-        88_200
-    }
 }
 
 /// Install an AirPlay renderer on `service` with a fake control published, a
 /// tagged saved local output (volume `saved_tag`), and the given latency.
 fn install_airplay(
     service: &mut PlaybackService,
-    latency_frames: u32,
+    latency: std::time::Duration,
     saved_tag: f32,
 ) -> Arc<FakeAirPlayControlState> {
     let state = Arc::new(FakeAirPlayControlState::default());
@@ -49,7 +43,7 @@ fn install_airplay(
         test_device(),
         control,
         Box::new(saved),
-        latency_frames,
+        latency,
     ));
     state
 }
@@ -59,7 +53,7 @@ async fn airplay_pause_flushes_and_resume_reanchors() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    let state = install_airplay(&mut service, 88_200, 0.5);
+    let state = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
 
     service.pause();
     assert_eq!(
@@ -85,8 +79,7 @@ async fn airplay_position_is_offset_by_receiver_latency() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    // 88_200 frames at 44.1 kHz = 2 s of latency.
-    install_airplay(&mut service, 88_200, 0.5);
+    install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
 
     // A tick at 5 s of decoded position: the audible position is 5 − 2 = 3 s.
     let mut fmt = test_track_fmt("t");
@@ -113,7 +106,7 @@ async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    install_airplay(&mut service, 88_200, 0.777);
+    install_airplay(&mut service, std::time::Duration::from_secs(2), 0.777);
 
     service.stop().await;
 
@@ -142,7 +135,7 @@ async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
         TrackPhase::Playing,
     );
     let saved_tag = 0.5;
-    install_airplay(&mut service, 88_200, saved_tag);
+    install_airplay(&mut service, std::time::Duration::from_secs(2), saved_tag);
 
     // Playback progressed on AirPlay: decode is local, so the slot's position is
     // the live one the resume reads.
@@ -183,7 +176,7 @@ async fn airplay_seek_flushes_and_reanchors() {
         ))),
         audio_rx,
     ));
-    let state = install_airplay(&mut service, 88_200, 0.5);
+    let state = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
 
     service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(20))).await;
 
@@ -215,7 +208,7 @@ async fn airplay_advance_on_local_end_stays_on_airplay() {
         test_prepared_track(TRACK_A, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
-    install_airplay(&mut service, 88_200, 0.5);
+    install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
 
     service.handle_auto_advance(TRACK_A.to_string()).await;
 
@@ -231,7 +224,7 @@ struct NoopAirPlaySink;
 impl crate::playback::airplay_output::AirPlaySink for NoopAirPlaySink {
     fn start(
         &self,
-        _source: Box<dyn crate::airplay::stream::PcmSource>,
+        _source: Box<dyn crate::playback::airplay_output::PcmSource>,
     ) -> Result<Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>, AudioError> {
         Ok(Arc::new(FakeAirPlayControl(Arc::new(
             FakeAirPlayControlState::default(),
@@ -255,7 +248,7 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
         .handle_play_on_airplay(renderer::AirPlayConnect::new(
             Box::new(NoopAirPlaySink),
             test_device(),
-            88_200,
+            std::time::Duration::from_secs(2),
         ))
         .await;
 
@@ -280,7 +273,7 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
         test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
-    let state = install_airplay(&mut service, 88_200, 0.5);
+    let state = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
     while progress_rx.try_recv().is_ok() {}
 
     // The receiver went away: the session reports the transport as failed.

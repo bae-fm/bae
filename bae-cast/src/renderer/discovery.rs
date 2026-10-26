@@ -137,7 +137,7 @@ impl ReportedDiscovery {
 
     /// Whether a browse is live right now. For tests that assert browsing is (or
     /// is not) running.
-    #[cfg(feature = "test-utils")]
+    #[cfg(test)]
     pub fn is_browsing(&self) -> bool {
         self.reported.is_some()
     }

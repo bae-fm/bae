@@ -224,7 +224,7 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         let mut source =
             source::PlaybackSource::new(stream, prepared.track_fmt(StreamPosition::START));
         service.slot = active_slot(prepared, TrackPhase::Playing);
-        install_airplay(&mut service, 88_200, 0.5);
+        install_airplay(&mut service, Duration::from_secs(2), 0.5);
         assert!(service.begin_listening().await);
         let (mut tx, _) = audio_event_channel();
         source.pull_samples(&mut vec![0.0; 4000], &mut tx);

@@ -1,33 +1,38 @@
-//! Cast ownership: device discovery, the ephemeral Subsonic server the receiver
-//! fetches audio from, and the URL providers that mint its media links.
+//! Casting: the device protocols, device discovery, the ephemeral Subsonic
+//! server the receiver fetches audio from, and the URL providers that mint its
+//! media links.
 //!
 //! The cast *session* lives in bae-core's playback service (cast is a renderer
-//! behind the one queue). This crate owns what the service can't: discovering
-//! devices, serving audio over HTTP with a per-session credential, and turning a
-//! device id into a connected channel plus the injected URL providers.
+//! behind the one queue), which drives a device only through the interfaces it
+//! defines: a Cast or UPnP device as a `RendererChannel`, an AirPlay receiver as
+//! an `AirPlaySink`. This crate owns everything behind them: the Google Cast
+//! ([`cast`]), UPnP ([`dlna`]) and AirPlay ([`airplay`]) wires, discovering
+//! devices ([`renderer`]), serving audio over HTTP with a per-session
+//! credential, and turning a device id into a connected channel or sink that it
+//! hands the service.
 //!
 //! It is its own crate because it sits between two that must not depend on each
-//! other: bae-core, which holds the renderer session and the protocols, and
-//! bae-subsonic, which serves the audio. Every host that casts — desktop and
-//! both mobile platforms — builds one [`CastController`].
+//! other: bae-core, which holds the renderer session, and bae-subsonic, which
+//! serves the audio. Every host that casts — desktop and both mobile platforms —
+//! builds one [`CastController`].
 
 #![deny(unreachable_pub, dead_code)]
 
-use std::sync::{Arc, Mutex};
+pub mod airplay;
+pub mod cast;
+pub mod dlna;
+pub mod renderer;
 
-use bae_core::airplay::airplay2::TimingProtocol;
-use bae_core::airplay::capabilities::{Dialect, RaopEncryption};
-use bae_core::airplay::{AirPlayCapabilities, UnreadableSetting};
-use bae_core::cast::RustCastChannel;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
 use bae_core::config::SubsonicCredential;
-use bae_core::dlna::DlnaChannel;
 use bae_core::library::AppServices;
-use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
+use bae_core::playback::airplay_output::{AirPlaySink, PCM_SAMPLE_RATE};
 use bae_core::playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
 use bae_core::renderer::{
-    CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererConnection, RendererDevice,
-    RendererDiscovery, RendererFlavor, RendererMediaSource, RendererServiceType,
-    RendererStreamFormat, ReportedRenderer, TRANSCODE_BITRATE_KBPS,
+    CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
+    RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
 };
 use md5::{Digest, Md5};
 use rand::RngCore;
@@ -36,10 +41,26 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
+use airplay::airplay2::TimingProtocol;
+use airplay::capabilities::{Dialect, RaopEncryption};
+use airplay::sink::{Ap2Sink, RaopSink};
+use airplay::{AirPlayCapabilities, UnreadableSetting};
+use cast::RustCastChannel;
+use dlna::DlnaChannel;
+use renderer::{
+    RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType, ReportedRenderer,
+};
+
 /// The RAOP audio latency the sender assumes when a receiver doesn't report one
 /// — ~2 s at 44.1 kHz. Used both to pace the stream ahead and to offset the
 /// position the UI shows back to what is audible.
 const AIRPLAY_LATENCY_FRAMES: u32 = 88_200;
+
+/// [`AIRPLAY_LATENCY_FRAMES`] as time, at the rate the receiver is sent PCM:
+/// the offset playback takes off the position it shows.
+fn airplay_latency() -> Duration {
+    Duration::from_secs_f64(f64::from(AIRPLAY_LATENCY_FRAMES) / f64::from(PCM_SAMPLE_RATE))
+}
 
 /// Build the push-audio sink for an AirPlay receiver, or a kind-specific error
 /// when it can't be driven: one advertising a setting bae can't read, a
@@ -377,7 +398,7 @@ impl CastController {
                     id: device.id,
                     name: device.name,
                 },
-                AIRPLAY_LATENCY_FRAMES,
+                airplay_latency(),
             );
             return Ok(());
         }

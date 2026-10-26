@@ -37,7 +37,7 @@ targets:
           if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ]; then
             NEEDS_BUILD=1
           else
-            for src in bae-bridge/src/*.rs bae-core/src/**/*.rs bae-util/src/*.rs; do
+            for src in bae-bridge/src/*.rs bae-core/src/**/*.rs bae-util/src/*.rs bae-cast/src/*.rs bae-cast/src/*/*.rs; do
               if [ "$src" -nt "$MARKER" ]; then
                 NEEDS_BUILD=1
                 break

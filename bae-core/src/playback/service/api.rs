@@ -467,10 +467,10 @@ impl PlaybackHandle {
         &self,
         sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
         device: crate::playback::RemoteDevice,
-        latency_frames: u32,
+        latency: std::time::Duration,
     ) {
         self.dispatch(PlaybackCommand::PlayOnAirPlay(Box::new(
-            renderer::AirPlayConnect::new(sink, device, latency_frames),
+            renderer::AirPlayConnect::new(sink, device, latency),
         )));
     }
     /// Stop remote or AirPlay playback and resume local playback, paused at the

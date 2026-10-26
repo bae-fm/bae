@@ -92,9 +92,7 @@ impl Renderer {
 
     pub(super) fn airplay_latency(&self) -> Option<Duration> {
         match self {
-            Self::AirPlay(airplay) => Some(Duration::from_secs_f64(
-                f64::from(airplay.latency_frames) / f64::from(crate::airplay::session::SAMPLE_RATE),
-            )),
+            Self::AirPlay(airplay) => Some(airplay.latency),
             Self::Local | Self::Remote(_) => None,
         }
     }
@@ -143,9 +141,9 @@ pub(super) struct AirPlayRenderer {
     control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
     /// The local (cpal/aaudio) output, put back when AirPlay playback ends.
     saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
-    /// The receiver's audio latency in frames — the offset between what has been
-    /// sent and what is audible, for the position the UI shows.
-    latency_frames: u32,
+    /// The receiver's audio latency — the offset between what has been sent and
+    /// what is audible, for the position the UI shows.
+    latency: Duration,
 }
 
 impl AirPlayRenderer {
@@ -153,37 +151,37 @@ impl AirPlayRenderer {
         device: RemoteDevice,
         control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
         saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
-        latency_frames: u32,
+        latency: Duration,
     ) -> Self {
         Self {
             device,
             control,
             saved_output,
-            latency_frames,
+            latency,
         }
     }
 }
 
-/// Everything a `PlayOnAirPlay` command carries: the sink that opens the RAOP
-/// session (built off the service thread by bae-desktop with the device's
+/// Everything a `PlayOnAirPlay` command carries: the sink that opens the
+/// receiver session (built off the service thread by bae-cast with the device's
 /// address, encryption, and latency), the device, and the receiver latency. A
 /// manual `Debug` keeps `PlaybackCommand`'s derive working.
 pub(crate) struct AirPlayConnect {
     sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
     device: RemoteDevice,
-    latency_frames: u32,
+    latency: Duration,
 }
 
 impl AirPlayConnect {
     pub(super) fn new(
         sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
         device: RemoteDevice,
-        latency_frames: u32,
+        latency: Duration,
     ) -> Self {
         Self {
             sink,
             device,
-            latency_frames,
+            latency,
         }
     }
 }
@@ -192,7 +190,7 @@ impl std::fmt::Debug for AirPlayConnect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AirPlayConnect")
             .field("device", &self.device)
-            .field("latency_frames", &self.latency_frames)
+            .field("latency", &self.latency)
             .finish_non_exhaustive()
     }
 }
@@ -246,7 +244,7 @@ impl RemoteRenderer {
 }
 
 /// Everything a `PlayOn` command carries to start remote playback: the connected
-/// channel (built off the service thread by bae-desktop), the device, and where
+/// channel (built off the service thread by bae-cast), the device, and where
 /// that device reaches this library's media. A manual `Debug` keeps
 /// `PlaybackCommand`'s derive working without the un-`Debug` channel/closures.
 pub(crate) struct RemoteConnect {
@@ -625,7 +623,7 @@ impl PlaybackService {
         let AirPlayConnect {
             sink,
             device,
-            latency_frames,
+            latency,
         } = connect;
 
         let current = self.current_track_position();
@@ -645,7 +643,7 @@ impl PlaybackService {
             device.clone(),
             control,
             saved_output,
-            latency_frames,
+            latency,
         ));
         self.hand_over_to_device(device, current, target).await;
     }

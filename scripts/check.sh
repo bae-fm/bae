@@ -119,13 +119,15 @@ check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
 check "clippy (bae-bridge --features oauth-providers,cloudkit,desktop)" \
   cargo clippy -p bae-bridge --features oauth-providers,cloudkit,desktop -- -D warnings
 
-# bae-core's production code alone, so an item only its tests use fails as
-# dead code. The flag goes to bae-core alone: RUSTFLAGS would recompile every
+# Each crate's production code alone, so an item only its tests use fails as
+# dead code. The flag goes to the one crate: RUSTFLAGS would recompile every
 # dependency for this one check.
 check "dead_code (bae-core lib only)" \
   cargo rustc -p bae-core --lib --profile check -- -D warnings
 check "dead_code (bae-util lib only)" \
   cargo rustc -p bae-util --lib --profile check -- -D warnings
+check "dead_code (bae-cast lib only)" \
+  cargo rustc -p bae-cast --lib --profile check -- -D warnings
 
 # New #[allow(dead_code)] is banned everywhere.
 check "no new #[allow(dead_code)]" bash -c '

@@ -1,12 +1,10 @@
 #![deny(unreachable_pub, dead_code)]
 
-pub mod airplay;
 pub mod album_detail;
 pub mod app;
 pub mod audio_codec;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod barcode;
-pub mod cast;
 pub mod collections;
 #[doc(hidden)]
 pub mod config;
@@ -19,7 +17,6 @@ pub mod dev_reset;
 pub mod diagnostics;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discogs;
-pub mod dlna;
 pub mod history;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod identify;

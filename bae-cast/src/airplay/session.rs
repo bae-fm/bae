@@ -13,19 +13,16 @@
 use std::net::{IpAddr, UdpSocket};
 use std::sync::{Arc, Mutex};
 
+use bae_core::playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::crypto::RaopCipher;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
-    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, RaopStreamControl, RtpAudio,
-    StreamEndpoints, StreamSockets, FRAMES_PER_PACKET,
+    MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio, StreamEndpoints,
+    StreamSockets, FRAMES_PER_PACKET,
 };
-
-/// RAOP streams 44.1 kHz / 16-bit / stereo — bae's pipeline resamples to it.
-pub const SAMPLE_RATE: u32 = 44_100;
-pub const CHANNELS: u32 = 2;
 
 /// The RAOP audio latency in frames when a receiver doesn't report one — the
 /// ~2 s buffer AirPort Express expects.
@@ -83,8 +80,8 @@ pub fn build_announce_sdp(
          c=IN IP4 {receiver_ip}\r\n\
          t=0 0\r\n\
          m=audio 0 RTP/AVP 96\r\n\
-         a=rtpmap:96 L16/{SAMPLE_RATE}/{CHANNELS}\r\n\
-         a=fmtp:96 {FRAMES_PER_PACKET} 0 16 40 10 14 2 255 0 0 {SAMPLE_RATE}\r\n"
+         a=rtpmap:96 L16/{PCM_SAMPLE_RATE}/{PCM_CHANNELS}\r\n\
+         a=fmtp:96 {FRAMES_PER_PACKET} 0 16 40 10 14 2 255 0 0 {PCM_SAMPLE_RATE}\r\n"
     );
     if let (Some(key), Some(iv)) = (cipher.rsaaeskey_b64(), cipher.aesiv_b64()) {
         sdp.push_str(&format!("a=rsaaeskey:{key}\r\n"));
@@ -303,8 +300,8 @@ impl RaopSession {
             endpoints,
             RtpAudio {
                 ssrc,
-                sample_rate: SAMPLE_RATE,
-                channels: CHANNELS,
+                sample_rate: PCM_SAMPLE_RATE,
+                channels: PCM_CHANNELS,
                 initial_timestamp,
             },
             StreamSockets {
@@ -339,17 +336,6 @@ impl RaopSession {
     /// receiver), when it has, so the session should be ended.
     pub fn failure(&self) -> Option<String> {
         self.control.stream.failure()
-    }
-
-    /// Frames handed to the receiver so far.
-    pub fn frames_sent(&self) -> u64 {
-        self.control.stream.frames_sent()
-    }
-
-    /// The receiver's audio latency in frames — the offset between frames sent and
-    /// what is audible, for the position the UI shows.
-    pub fn latency_frames(&self) -> u32 {
-        self.control.stream.latency_frames()
     }
 }
 

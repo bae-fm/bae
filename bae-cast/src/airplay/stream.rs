@@ -20,6 +20,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use bae_core::playback::airplay_output::PcmSource;
 use tracing::{debug, warn};
 
 use super::crypto::RaopCipher;
@@ -27,17 +28,6 @@ use super::rtp::{self, NtpTime};
 
 /// Frames of audio per RTP packet — the RAOP constant echoed in the SDP fmtp.
 pub const FRAMES_PER_PACKET: u32 = 352;
-
-/// A source of decoded PCM the stream pulls one packet at a time. In production
-/// this adapts the playback ring buffer; tests drive it with a scripted ramp.
-pub trait PcmSource: Send {
-    /// Fill `out` (interleaved i16, up to one packet's worth) with the next
-    /// frames and return how many *frames* were produced. `0` means no audio is
-    /// available right now — the stream is paused, starved, or between tracks —
-    /// and the stream sends nothing this packet rather than treating it as the
-    /// end: the session's lifetime, not the source, decides when streaming stops.
-    fn next_frames(&mut self, out: &mut [i16]) -> usize;
-}
 
 /// How a packet's PCM payload is encrypted — the one thing the two dialects
 /// differ on in the send path. RAOP encrypts the payload in place (AES-128-CBC or

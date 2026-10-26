@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use tracing::debug;
 
-use crate::renderer::{
+use bae_core::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
 };
 use bae_util::error_text::CauseChain;

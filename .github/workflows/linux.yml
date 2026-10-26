@@ -75,13 +75,14 @@ jobs:
         cargo clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
         cargo clippy -p bae-bridge -- -D warnings
 
-    - name: Dead-code (bae-core and bae-util lib only)
+    - name: Dead-code (bae-core, bae-util and bae-cast lib only)
       # Each crate's production code alone, so an item only its tests use fails
       # as dead code. The flag goes to the one crate: RUSTFLAGS would recompile
       # every dependency for this one check.
       run: |
         cargo rustc -p bae-core --lib --profile check -- -D warnings
         cargo rustc -p bae-util --lib --profile check -- -D warnings
+        cargo rustc -p bae-cast --lib --profile check -- -D warnings
 
     - name: Check for new #[allow(dead_code)]
       # New #[allow(dead_code)] is banned in every .rs file of the workspace.

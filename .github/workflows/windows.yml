@@ -134,10 +134,11 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
-      - name: Run bae-core and bae-util unit tests (Windows)
+      - name: Run bae-core, bae-util and bae-cast unit tests (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
-        # broken while CI merely compiled them; this is the regression gate.
+        # broken while CI merely compiled them; this is the regression gate. The
+        # cast protocols' socket code (AirPlay, Google Cast, UPnP) runs here too.
         #
         # The tests make their stores under the system temporary directory,
         # which on the x64 runner is on C:, its OS disk, where file creation
@@ -150,7 +151,7 @@ jobs:
         env:
           TMP: ${{ runner.temp }}
           TEMP: ${{ runner.temp }}
-        run: cargo nextest run -p bae-core -p bae-util --lib --target ${{ matrix.target }}
+        run: cargo nextest run -p bae-core -p bae-util -p bae-cast --lib --target ${{ matrix.target }}
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.
@@ -159,4 +160,4 @@ jobs:
       - name: Clippy (full edition, OAuth + desktop)
         # Dead-code warnings are feature-specific, so lint the OAuth/desktop code
         # on the Windows target too. No cloudkit on Windows.
-        run: cargo clippy -p bae-core -p bae-util -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings
+        run: cargo clippy -p bae-core -p bae-util -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings

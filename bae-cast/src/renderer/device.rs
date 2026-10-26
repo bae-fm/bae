@@ -47,7 +47,7 @@ impl RendererDevice {
 }
 
 /// How to reach a device's control channel — the flavor-specific coordinates the
-/// desktop side uses to build the right [`crate::renderer::RendererChannel`].
+/// cast controller uses to build the right [`bae_core::renderer::RendererChannel`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RendererConnection {
     /// A Cast receiver at a LAN address; the CASTV2 channel connects to it.

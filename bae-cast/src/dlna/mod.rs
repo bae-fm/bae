@@ -10,7 +10,7 @@
 //! RenderingControl volume, with position read by polling `GetPositionInfo`.
 //! [`soap`] builds each envelope and parses the poll responses as pure string
 //! work; [`channel::DlnaChannel`] carries them over blocking HTTP and presents
-//! the renderer as the shared [`crate::renderer::RendererChannel`], including the
+//! the renderer as the shared [`bae_core::renderer::RendererChannel`], including the
 //! end-of-track inference UPnP's reason-less STOPPED requires.
 
 pub mod channel;

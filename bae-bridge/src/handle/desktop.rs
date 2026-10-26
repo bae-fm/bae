@@ -65,10 +65,10 @@ forward! {
 #[uniffi::export]
 impl AppHandle {
     /// The service types a host that browses on bae's behalf must browse for,
-    /// paired with the tag to report each result under. A constant of core's,
-    /// not a call into this handle.
+    /// paired with the tag to report each result under. A constant of
+    /// bae-cast's, not a call into this handle.
     pub fn get_renderer_service_types(&self) -> Vec<crate::types::BridgeRendererService> {
-        bae_core::renderer::RENDERER_SERVICE_TYPES
+        bae_cast::renderer::RENDERER_SERVICE_TYPES
             .into_iter()
             .map(crate::types::BridgeRendererService::from_core)
             .collect()

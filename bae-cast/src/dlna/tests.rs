@@ -411,7 +411,7 @@ fn transport_state_without_element_is_other() {
 
 use std::sync::{Arc, Mutex};
 
-use crate::renderer::{RendererChannel, RendererError, RendererMedia, RendererPlayerState};
+use bae_core::renderer::{RendererChannel, RendererError, RendererMedia, RendererPlayerState};
 
 use super::channel::DlnaChannel;
 

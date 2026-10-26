@@ -2517,7 +2517,7 @@ bindings export none of their symbols.
 | bae-subsonic | the Subsonic server |
 | bae-mcp | the MCP server over bae-automation |
 | bae-automation | the automation tools and their JSON shapes |
-| bae-cast | receiver discovery, the session media server, and its URLs |
+| bae-cast | the AirPlay, Google Cast and UPnP protocols, receiver discovery, the session media server, and its URLs |
 | bae-mirror | the macros that write field-for-field conversions |
 | bae-loc | the string catalog: checks it and writes each platform's resources |
 | bae-theme | the shared theme, written as Swift and Kotlin |
@@ -2526,7 +2526,10 @@ bindings export none of their symbols.
 
 bae-cast stands between bae-core, which holds the renderer session, and
 bae-subsonic, which serves the audio, because neither may depend on the other.
-Nothing in bae-core depends on a server crate.
+Nothing in bae-core depends on a server crate. bae-core holds no device
+protocol: playback drives a fetching receiver through a command channel and an
+AirPlay receiver through a sink it hands decoded audio to, and bae-cast connects
+each device and hands playback the channel or sink.
 
 ### 11.2 Conventions
 

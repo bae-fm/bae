@@ -223,17 +223,17 @@ pub enum BridgeRendererKind {
 
 mirror_enum! {
     #[cfg(feature = "cast")]
-    BridgeRendererKind = bae_core::renderer::RendererKind,
+    BridgeRendererKind = bae_cast::renderer::RendererKind,
     from_core: fn,
     variants: { Cast, Dlna, AirPlay },
 }
 
 /// The conversion is only used by the cast-gated `get_cast_devices` handle fn.
-/// Not a `mirror_struct`: `kind` is core's own reading of the device rather
+/// Not a `mirror_struct`: `kind` is bae-cast's own reading of the device rather
 /// than a field it carries.
 #[cfg(feature = "cast")]
 impl BridgeCastDevice {
-    pub(crate) fn from_core(device: bae_core::renderer::RendererDevice) -> Self {
+    pub(crate) fn from_core(device: bae_cast::renderer::RendererDevice) -> Self {
         let kind = BridgeRendererKind::from_core(device.kind());
         Self {
             id: device.id,
@@ -263,7 +263,7 @@ pub struct BridgeRendererService {
 
 /// A renderer service a host's browser resolved, as it came off the wire. What
 /// it means — which device it is, what to call it, what its TXT bits allow — is
-/// decided in core.
+/// decided in bae-cast.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReportedRenderer {
     pub service_type: BridgeRendererServiceType,
@@ -279,7 +279,7 @@ pub struct BridgeReportedRenderer {
 
 mirror_enum! {
     #[cfg(feature = "cast")]
-    BridgeRendererServiceType = bae_core::renderer::RendererServiceType,
+    BridgeRendererServiceType = bae_cast::renderer::RendererServiceType,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { GoogleCast, AirPlay, Raop },
@@ -287,7 +287,7 @@ mirror_enum! {
 
 #[cfg(feature = "cast")]
 impl BridgeRendererService {
-    pub(crate) fn from_core(service_type: bae_core::renderer::RendererServiceType) -> Self {
+    pub(crate) fn from_core(service_type: bae_cast::renderer::RendererServiceType) -> Self {
         Self {
             service_type: BridgeRendererServiceType::from_core(service_type),
             dns_sd_type: service_type.dns_sd_type().to_string(),
@@ -297,7 +297,7 @@ impl BridgeRendererService {
 
 mirror_struct! {
     #[cfg(feature = "cast")]
-    BridgeReportedRenderer = bae_core::renderer::ReportedRenderer,
+    BridgeReportedRenderer = bae_cast::renderer::ReportedRenderer,
     into_core: pub(crate) fn,
     fields: {
         service_type: (BridgeRendererServiceType),

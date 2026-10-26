@@ -6,32 +6,47 @@
 //! installs it in place of the local device and everything upstream — the
 //! decoder, ring buffer, gapless crossing, position and completion events — runs
 //! unchanged. Its stream pulls f32 from the same [`PlaybackSource`] the DAC would,
-//! converts to the 16-bit PCM RAOP sends, and hands it to a [`RaopSession`],
-//! pacing to the receiver instead of the sound card.
+//! converts to the 16-bit PCM a receiver takes, and hands it, as a
+//! [`PcmSource`], to the [`AirPlaySink`] it was given, which paces it to the
+//! receiver instead of the sound card.
 //!
-//! The receiver connection is behind an [`AirPlaySink`] so the service tests
-//! drive the whole seam against a fake that records frames and honours
+//! The receiver connection is behind [`AirPlaySink`] and [`AirPlayStreamControl`]:
+//! bae-cast opens the RAOP or AirPlay 2 session behind them, and the service
+//! tests drive the whole seam against a fake that records frames and honours
 //! pause/resume — no sockets, no real device.
 
-use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 
 use tracing::warn;
 
-use crate::airplay::capabilities::RaopEncryption;
-use crate::airplay::crypto::{apple_public_key, RaopCipher};
-use crate::airplay::session::RaopSession;
-use crate::airplay::stream::{PcmSource, SystemClock};
 use crate::playback::audio_output::{
     AudioDrain, AudioError, AudioEventSender, AudioOutput, AudioOutputControls, AudioState,
     AudioStream, DrainStatus,
 };
 use crate::playback::source::PlaybackSource;
 
+/// The sample rate of the PCM a [`PcmSource`] yields: 44.1 kHz, the rate an
+/// AirPlay receiver takes.
+pub const PCM_SAMPLE_RATE: u32 = 44_100;
+/// The channel count of the PCM a [`PcmSource`] yields: interleaved stereo.
+pub const PCM_CHANNELS: u32 = 2;
+
+/// A source of decoded PCM the AirPlay stream pulls one packet at a time:
+/// interleaved 16-bit samples at [`PCM_SAMPLE_RATE`] and [`PCM_CHANNELS`]. The
+/// output hands one to its [`AirPlaySink`], which streams it to the receiver.
+pub trait PcmSource: Send {
+    /// Fill `out` (interleaved i16, up to one packet's worth) with the next
+    /// frames and return how many *frames* were produced. `0` means no audio is
+    /// available right now — the stream is paused, starved, or between tracks —
+    /// and the stream sends nothing this packet rather than treating it as the
+    /// end: the session's lifetime, not the source, decides when streaming stops.
+    fn next_frames(&mut self, out: &mut [i16]) -> usize;
+}
+
 /// The transport controls the playback service drives a live AirPlay stream
-/// through: pause (FLUSH), resume/seek (re-anchor), volume, and the audible
-/// position (frames sent minus the receiver latency). Implemented by the RAOP
-/// session's control handle, and by the test fake.
+/// through: pause (FLUSH), resume/seek (re-anchor), and whether the audio flow
+/// failed. Implemented by the RAOP and AirPlay 2 sessions in bae-cast, and by
+/// the test fake.
 pub trait AirPlayStreamControl: Send + Sync {
     /// Stop sending and drop the receiver's buffer (pause / pre-seek).
     fn flush(&self);
@@ -40,14 +55,10 @@ pub trait AirPlayStreamControl: Send + Sync {
     /// Why the audio flow to the receiver failed for good (a dead receiver),
     /// when it has, so the service should end AirPlay.
     fn failure(&self) -> Option<String>;
-    /// Frames handed to the receiver so far.
-    fn frames_sent(&self) -> u64;
-    /// The receiver's audio latency in frames.
-    fn latency_frames(&self) -> u32;
 }
 
-/// Starts pushing decoded PCM to an AirPlay receiver. The real implementation
-/// connects a RAOP session; tests supply a fake.
+/// Starts pushing decoded PCM to an AirPlay receiver. bae-cast implements it
+/// over a RAOP or AirPlay 2 session; tests supply a fake.
 pub trait AirPlaySink: Send {
     /// Begin streaming `source`. The returned session owns the receiver
     /// connection and is retained by the output stream.
@@ -94,16 +105,6 @@ impl AirPlayStreamControl for AirPlayControl {
     fn failure(&self) -> Option<String> {
         // No session bound has nothing to fail.
         self.with_session(|session| session.failure()).flatten()
-    }
-
-    fn frames_sent(&self) -> u64 {
-        self.with_session(|session| session.frames_sent())
-            .unwrap_or(0)
-    }
-
-    fn latency_frames(&self) -> u32 {
-        self.with_session(|session| session.latency_frames())
-            .unwrap_or(0)
     }
 }
 
@@ -176,9 +177,6 @@ impl AudioStream for AirPlayAudioStream {
     }
 }
 
-/// The fixed format an AirPlay receiver takes: 44.1 kHz stereo.
-const AIRPLAY_RATE: u32 = 44_100;
-const AIRPLAY_CHANNELS: u32 = 2;
 /// Source frames pulled from the ring per drain iteration while filling a packet.
 const PULL_FRAMES: usize = 512;
 
@@ -220,15 +218,15 @@ impl DrainSource {
         source_channels: u32,
     ) -> Result<Self, AudioError> {
         let source_channels = source_channels.max(1);
-        let resampler = if source_sample_rate == AIRPLAY_RATE && source_channels == AIRPLAY_CHANNELS
+        let resampler = if source_sample_rate == PCM_SAMPLE_RATE && source_channels == PCM_CHANNELS
         {
             None
         } else {
             let resampler = crate::audio_codec::Resampler::new(
                 source_sample_rate,
                 source_channels,
-                AIRPLAY_RATE,
-                AIRPLAY_CHANNELS,
+                PCM_SAMPLE_RATE,
+                PCM_CHANNELS,
             )
             .map_err(|error| {
                 warn!(
@@ -344,127 +342,6 @@ fn f32_to_i16(sample: f32) -> i16 {
     (sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)) as i16
 }
 
-// -- The real receiver connection: a RAOP session --
-
-/// The parameters an [`AirPlaySink`] needs to open a RAOP session to a receiver.
-pub struct RaopSink {
-    pub receiver: IpAddr,
-    pub rtsp_port: u16,
-    /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
-    /// `et=1`.
-    pub encryption: RaopEncryption,
-    /// The receiver's reported audio latency in frames, if known.
-    pub latency_frames: Option<u32>,
-    pub initial_volume: f32,
-}
-
-impl AirPlaySink for RaopSink {
-    fn start(
-        &self,
-        source: Box<dyn PcmSource>,
-    ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
-        let cipher = match self.encryption {
-            RaopEncryption::None => RaopCipher::none(),
-            RaopEncryption::RsaAes => RaopCipher::new_aes(&apple_public_key())
-                .map_err(|e| AudioError::Unexpected(format!("RAOP key wrap: {e}")))?,
-        };
-        let session = RaopSession::start(
-            self.receiver,
-            self.rtsp_port,
-            source,
-            cipher,
-            self.latency_frames,
-            self.initial_volume,
-            Arc::new(SystemClock::new()),
-        )
-        .map_err(|e| AudioError::AirPlayRefused(e.to_string()))?;
-
-        Ok(Arc::new(session))
-    }
-}
-
-impl AirPlayStreamControl for RaopSession {
-    fn flush(&self) {
-        if let Err(e) = self.flush() {
-            warn!("airplay FLUSH failed: {e}");
-        }
-    }
-
-    fn reanchor(&self) {
-        self.reanchor();
-    }
-
-    fn failure(&self) -> Option<String> {
-        self.failure()
-    }
-
-    fn frames_sent(&self) -> u64 {
-        self.frames_sent()
-    }
-
-    fn latency_frames(&self) -> u32 {
-        self.latency_frames()
-    }
-}
-
-// -- The AirPlay 2 receiver connection --
-
-/// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
-/// (transient) then push ChaCha-encrypted audio to a HomePod-class receiver.
-pub struct Ap2Sink {
-    pub receiver: IpAddr,
-    /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
-    pub airplay_port: u16,
-    pub latency_frames: Option<u32>,
-    /// The clock the receiver requires, decided from its features — PTP or NTP.
-    pub timing: crate::airplay::airplay2::TimingProtocol,
-}
-
-impl AirPlaySink for Ap2Sink {
-    fn start(
-        &self,
-        source: Box<dyn PcmSource>,
-    ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
-        let session = crate::airplay::ap2_session::Ap2Session::start(
-            self.receiver,
-            self.airplay_port,
-            source,
-            self.latency_frames,
-            self.timing,
-            Arc::new(SystemClock::new()),
-        )
-        .map_err(|e| AudioError::AirPlayRefused(e.to_string()))?;
-
-        Ok(Arc::new(session))
-    }
-}
-
-impl AirPlayStreamControl for crate::airplay::ap2_session::Ap2Session {
-    fn flush(&self) {
-        if let Err(e) = self.flush() {
-            warn!("airplay 2 pause (rate 0) failed: {e}");
-        }
-    }
-
-    fn reanchor(&self) {
-        if let Err(e) = self.reanchor() {
-            warn!("airplay 2 resume (rate 1) failed: {e}");
-        }
-    }
-
-    fn failure(&self) -> Option<String> {
-        self.failure()
-    }
-
-    fn frames_sent(&self) -> u64 {
-        self.frames_sent()
-    }
-
-    fn latency_frames(&self) -> u32 {
-        self.latency_frames()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -523,12 +400,6 @@ mod tests {
         }
         fn failure(&self) -> Option<String> {
             None
-        }
-        fn frames_sent(&self) -> u64 {
-            self.0.frames.load(Ordering::Relaxed)
-        }
-        fn latency_frames(&self) -> u32 {
-            88_200
         }
     }
 

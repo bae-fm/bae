@@ -16,6 +16,7 @@ use std::io::{BufReader, Read, Write};
 use std::net::{IpAddr, TcpStream, UdpSocket};
 use std::sync::{Arc, Mutex};
 
+use bae_core::playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::airplay2::{Ap2AudioCipher, PairVerify};
@@ -24,10 +25,9 @@ use super::bplist::{self, Plist};
 use super::pairing::{PairingError, TransientPairing};
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
-use super::session::{CHANNELS, SAMPLE_RATE};
 use super::stream::{
-    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, RaopStreamControl, RtpAudio,
-    StreamEndpoints, StreamSockets,
+    MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio, StreamEndpoints,
+    StreamSockets,
 };
 
 /// The AirPlay 2 audio latency in frames when a receiver doesn't report one.
@@ -549,8 +549,8 @@ impl Ap2Session {
             endpoints,
             RtpAudio {
                 ssrc: rand::random::<u32>(),
-                sample_rate: SAMPLE_RATE,
-                channels: CHANNELS,
+                sample_rate: PCM_SAMPLE_RATE,
+                channels: PCM_CHANNELS,
                 initial_timestamp: 0,
             },
             StreamSockets {
@@ -584,17 +584,6 @@ impl Ap2Session {
     /// receiver), when it has, so the session should be ended.
     pub fn failure(&self) -> Option<String> {
         self.control.stream.failure()
-    }
-
-    /// Frames handed to the receiver so far.
-    pub fn frames_sent(&self) -> u64 {
-        self.control.stream.frames_sent()
-    }
-
-    /// The receiver's audio latency in frames — the offset between frames sent and
-    /// what is audible, for the position the UI shows.
-    pub fn latency_frames(&self) -> u32 {
-        self.control.stream.latency_frames()
     }
 }
 
