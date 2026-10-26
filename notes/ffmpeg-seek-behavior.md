@@ -194,12 +194,14 @@ which computes the byte position directly from `block_align` and `byte_rate`:
 - **In-track scrubs seek by sample** with `AVFMT_FLAG_FAST_SEEK` set
   (`bae-core/src/audio_codec/decode.rs`), so a seektable-bearing FLAC (nearly
   every rip) and MP3 use their index: one fetch.
-- **A seektable-less FLAC can't scrub by sample** over a streaming buffer: the
-  binary search needs the file's end before it's fetched, so the seek fails,
-  the failure is logged, and the decoder decodes forward from the start of the
-  file to the target. Cheap locally; over a cloud home it fetches everything
-  before the target — for a single-file CUE album, every track before the
-  current one.
+- **A seektable-less FLAC scrubs by binary search, through the buffer.** The
+  demuxer declines (`flac_seek` returns -1) and avformat binary-searches the
+  file. The seek doesn't fail: its read of the file's end waits until the fill
+  fetches that window, and the search goes on, each step a fetch. Measured on
+  real files: scrubbing to the middle of the last track of a 1.5 GB single-file
+  album took 26 fetches one after another (77 in all, 54 MB), against 3 for a
+  seektable-bearing album; a 245 MB single-file album, 4; a per-track file, 4.
+  Track starts don't search: they jump by recorded byte.
 - **Probe read-ahead is one window.** Before the decoder has seeked to the
   track, the buffer keeps one window ahead of byte 0, not four, since the
   demuxer reads only the front metadata before it seeks away.

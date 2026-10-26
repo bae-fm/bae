@@ -68,14 +68,18 @@ the moment it seeks to the track. Now it buffers one window.
 
 ## What's left
 
-A FLAC with no seektable still can't scrub by sample over a streaming buffer:
-the binary search needs the file's end before it's been fetched, so the seek
-fails and playback decodes forward from the start of the file to the target.
-Track starts are unaffected, since they jump by recorded byte. Locally the cost
-is negligible; over the cloud, scrubbing inside a track of a single-file
-album without a seektable fetches everything before it. Such files are rare,
-and the fix doesn't need one: when that seek fails, start from the track's
-recorded first byte and decode forward from there.
+A FLAC with no seektable still binary-searches when you scrub inside a track:
+FFmpeg reads the file's end, then bisects, and over the cloud each step is a
+round trip. We'd assumed that search failed over a streaming buffer and fell
+back to decoding from the start; measuring on real files showed it doesn't
+fail, it just waits for each read. Scrubbing to the middle of the last track of
+a 1.5 GB single-file vinyl rip took 26 fetches one after another, against 3 for
+an album with a seektable. Track starts are unaffected, since they jump by
+recorded byte.
+
+Import already knows where every track starts and ends, so the next step is to
+hand those to the demuxer as index points before a scrub, which should keep the
+search inside the track. We'll measure that before we claim it.
 
 ## The lesson
 

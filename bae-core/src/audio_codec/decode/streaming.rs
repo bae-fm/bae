@@ -109,12 +109,10 @@ unsafe fn decode_audio_streaming_impl(
     // index instead.
     //
     // A sample seek costs one jump for a seektable-bearing FLAC (and for APE/MP4)
-    // now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no seektable can't seek at
-    // all here: the binary-search fallback would have to read the file's end before
-    // it is fetched. Decoding from the start and trimming to the target is then the
-    // only way to play it -- correct, but wasteful over a cloud home, which is why
-    // every CUE/FLAC should carry a seektable (issue #226). Keep the bail-out
-    // logged.
+    // now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no seektable binary-searches
+    // the file: its read of the file's end waits for the fill like any other read,
+    // so the search succeeds, one fetch per step. A seek that does fail decodes from
+    // the start and trims to the target, logged.
     if let Some(byte_pos) = seek_to_byte {
         seek_to_byte_or_warn(fmt_ctx, codec_ctx, audio.stream_index, byte_pos);
     } else if let Some(sample_pos) = seek_to_sample {
