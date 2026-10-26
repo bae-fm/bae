@@ -19,7 +19,8 @@ struct MediaControlServiceTests {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
         defer { infoCenter.nowPlayingInfo = nil }
-        let service = MediaControlService()
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
 
         service.applyMediaControlValues(
             mediaControlValues(
@@ -52,7 +53,8 @@ struct MediaControlServiceTests {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = [:]
         defer { infoCenter.nowPlayingInfo = nil }
-        let service = MediaControlService()
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
 
         service.updatePosition(positionMs: 5_000, durationMs: 60_000)
         #expect(scrubberEnabled)
@@ -74,7 +76,8 @@ struct MediaControlServiceTests {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = [:]
         defer { infoCenter.nowPlayingInfo = nil }
-        let service = MediaControlService()
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
 
         // Enable the scrubber, then clear — `clearNowPlaying` disables it. A
         // preview started afterwards, with its always-known duration, must turn
@@ -104,7 +107,8 @@ struct MediaControlServiceTests {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
         defer { infoCenter.nowPlayingInfo = nil }
-        let service = MediaControlService()
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
 
         service.applyMediaControlValues(
             mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
@@ -127,7 +131,8 @@ struct MediaControlServiceTests {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
         defer { infoCenter.nowPlayingInfo = nil }
-        let service = MediaControlService()
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
 
         service.applyMediaControlValues(
             mediaControlValues(
@@ -166,7 +171,8 @@ struct MediaControlServiceTests {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
         defer { infoCenter.nowPlayingInfo = nil }
-        let service = MediaControlService()
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
 
         service.applyMediaControlValues(
             mediaControlValues(
@@ -190,6 +196,139 @@ struct MediaControlServiceTests {
         )
         #expect(elapsedSeconds == nil)
     }
+
+    @Test("positions along the playing line are not written again")
+    func positionsAlongThePlayingLineAreNotWritten() {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
+
+        service.applyMediaControlValues(
+            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+            appHandle: fakeAppHandle
+        )
+        service.applyPositions(
+            libraryPositions(trackId: "track-1", positionMs: 10_000)
+        )
+        #expect(elapsedSeconds == 10.0)
+
+        clock.advance(ms: 200)
+        service.applyPositions(
+            libraryPositions(trackId: "track-1", positionMs: 10_200)
+        )
+        #expect(elapsedSeconds == 10.0)
+
+        clock.advance(ms: 200)
+        service.applyMediaControlValues(
+            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+            appHandle: fakeAppHandle
+        )
+        #expect(elapsedSeconds == 10.0)
+    }
+
+    @Test("a seek, or a position off the playing line, is written")
+    func aSeekOrAPositionOffTheLineIsWritten() {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
+
+        service.applyMediaControlValues(
+            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+            appHandle: fakeAppHandle
+        )
+        service.applyPositions(
+            libraryPositions(trackId: "track-1", positionMs: 10_000)
+        )
+
+        clock.advance(ms: 200)
+        service.applyPositions(
+            libraryPositions(
+                trackId: "track-1",
+                positionMs: 10_500,
+                seekRevision: 1
+            )
+        )
+        #expect(elapsedSeconds == 10.5)
+
+        // Playback stalled for the five seconds the line moved on.
+        clock.advance(ms: 5_000)
+        service.applyPositions(
+            libraryPositions(
+                trackId: "track-1",
+                positionMs: 10_700,
+                seekRevision: 1
+            )
+        )
+        #expect(elapsedSeconds == 10.7)
+    }
+
+    @Test("pausing writes the elapsed time where playback paused")
+    func pausingWritesTheElapsedTimeWherePlaybackPaused() {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let clock = TestClock()
+        let service = MediaControlService(now: clock.now)
+
+        service.applyMediaControlValues(
+            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+            appHandle: fakeAppHandle
+        )
+        service.applyPositions(
+            libraryPositions(trackId: "track-1", positionMs: 10_000)
+        )
+
+        clock.advance(ms: 2_000)
+        service.applyMediaControlValues(
+            mediaControlValues(playback: pausedPlayback(trackId: "track-1")),
+            appHandle: fakeAppHandle
+        )
+        #expect(elapsedSeconds == 12.0)
+        #expect(
+            infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate]
+                as? Double == 0.0
+        )
+    }
+}
+
+/// A clock that moves only when a test moves it, so the elapsed time Now
+/// Playing is given can be compared exactly.
+private final class TestClock: @unchecked Sendable {
+    private var instant = ContinuousClock.now
+
+    var now: @Sendable () -> ContinuousClock.Instant {
+        { [self] in instant }
+    }
+
+    func advance(ms: Int) {
+        instant += .milliseconds(ms)
+    }
+}
+
+private func pausedPlayback(trackId: String) -> BridgeMediaControlPlayback {
+    guard case .library(.playing(let track)) = libraryPlayback(trackId: trackId)
+    else {
+        preconditionFailure("libraryPlayback is a playing library track")
+    }
+    return .library(state: .paused(track: track, reason: .manual))
+}
+
+private func libraryPositions(
+    trackId: String,
+    positionMs: UInt64,
+    seekRevision: UInt64
+) -> BridgePlaybackPositions {
+    let positions = libraryPositions(trackId: trackId, positionMs: positionMs)
+    return BridgePlaybackPositions(
+        library: positions.library,
+        seekRevision: seekRevision,
+        preview: positions.preview,
+        mediaControl: positions.mediaControl
+    )
 }
 
 private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())

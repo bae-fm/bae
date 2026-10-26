@@ -14,7 +14,7 @@ private let logger = Logger.bae("MediaControlService")
 /// track: the track, and `playbackRate`, 1.0 playing and 0.0 otherwise.
 /// Internal — construction happens only inside `updateNowPlaying(state:appHandle:)`
 /// via `libraryMetadata(for:)`, both in this module.
-struct NowPlayingMetadata {
+struct NowPlayingMetadata: Equatable {
     let track: BridgeNowPlayingTrack
     let playbackRate: Double
 }
@@ -50,7 +50,7 @@ public final class MediaControlService: @unchecked Sendable {
     var currentDurationMs: UInt64?
     /// Mirrors `changePlaybackPositionCommand.isEnabled` so the scrubber is
     /// toggled (and its disable logged) only on a real change — the duration
-    /// path runs on every progress tick, so writing each time would spam.
+    /// path runs on every Now Playing write, so writing each time would spam.
     private var scrubbingEnabled = false
     private var cachedArtworkImage: BridgeImageRef?
     private var cachedArtwork: MPMediaItemArtwork?
@@ -61,6 +61,15 @@ public final class MediaControlService: @unchecked Sendable {
     /// so they can come before the values that put their track or clip on
     /// Now Playing; each values update shows the latest positions again.
     private var latestPositions: BridgePlaybackPositions?
+    /// What `setNowPlaying` last wrote for a library track, so the same
+    /// metadata is not written again; `nil` while a library track is not shown.
+    var writtenLibrary: NowPlayingMetadata?
+    /// The playback rate Now Playing shows: 1.0 playing, 0.0 otherwise.
+    var rate: Double = 0.0
+    /// The elapsed time Now Playing was last given; `nil` while it shows
+    /// nothing, or a track or clip no position has been written for yet.
+    var anchor: ElapsedAnchor?
+    let now: @Sendable () -> ContinuousClock.Instant
 
     /// Whether a preview clip currently owns Now Playing. Only the macOS
     /// preview session shows one, so shared bodies read it without a gate.
@@ -77,7 +86,15 @@ public final class MediaControlService: @unchecked Sendable {
         var activeSession: ActiveMediaSession?
     #endif
 
-    public init() {}
+    /// `now` is the clock the elapsed time is measured against, which the
+    /// system moves Now Playing's elapsed time forward by.
+    public init(
+        now: @escaping @Sendable () -> ContinuousClock.Instant = {
+            ContinuousClock.now
+        }
+    ) {
+        self.now = now
+    }
 
     // MARK: - Retained media-control values
 
@@ -131,6 +148,16 @@ public final class MediaControlService: @unchecked Sendable {
                 )
                 return
             }
+            let jumped =
+                anchor?
+                .isJump(
+                    to: position.positionMs,
+                    seekRevision: latestPositions.seekRevision,
+                    at: now()
+                ) ?? true
+            guard jumped || position.durationMs != currentDurationMs else {
+                return
+            }
             updatePosition(
                 positionMs: position.positionMs,
                 durationMs: position.durationMs
@@ -144,6 +171,16 @@ public final class MediaControlService: @unchecked Sendable {
                     logger.debug(
                         "Not showing the position of preview \(preview.target.path); Now Playing shows \(target.path)"
                     )
+                    return
+                }
+                let jumped =
+                    anchor?
+                    .isJump(
+                        to: preview.positionMs,
+                        seekRevision: nil,
+                        at: now()
+                    ) ?? true
+                guard jumped else {
                     return
                 }
                 updatePreviewPosition(positionMs: preview.positionMs)
@@ -192,15 +229,31 @@ public final class MediaControlService: @unchecked Sendable {
         }
     }
 
-    /// Push the Now Playing info for a library track. Duration is tracked
-    /// through `trackDuration`, which enables the scrubber only while a track
-    /// duration is known.
+    /// Push the Now Playing info for a library track, unless it is what was
+    /// written last. Duration is tracked through `trackDuration`, which enables
+    /// the scrubber only while a track duration is known. The same track at a
+    /// new rate keeps its elapsed time moving from where it is now; another
+    /// track waits for its first position.
     func setNowPlaying(
         _ metadata: NowPlayingMetadata,
         appHandle: AppHandle,
         on infoCenter: MPNowPlayingInfoCenter
     ) {
+        guard metadata != writtenLibrary else {
+            return
+        }
         var info = infoCenter.nowPlayingInfo ?? [:]
+        if writtenLibrary?.track.track.trackId == metadata.track.track.trackId {
+            anchor = anchor?.rebased(rate: metadata.playbackRate, at: now())
+        }
+        else {
+            anchor = nil
+            info.removeValue(
+                forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime
+            )
+        }
+        writtenLibrary = metadata
+        rate = metadata.playbackRate
         shown = .library(trackId: metadata.track.track.trackId)
         let display = metadata.track.display
         info[MPMediaItemPropertyTitle] = display.title
@@ -213,19 +266,37 @@ public final class MediaControlService: @unchecked Sendable {
             appHandle: appHandle,
             into: &info
         )
-        infoCenter.nowPlayingInfo = info
+        publish(info, on: infoCenter)
     }
 
+    /// Set Now Playing's elapsed time to `positionMs`, from which the system
+    /// moves it forward at the shown rate.
     public func updatePosition(positionMs: UInt64, durationMs: UInt64?) {
         let infoCenter = MPNowPlayingInfoCenter.default()
         guard var info = infoCenter.nowPlayingInfo else {
             return
         }
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] =
-            Double(positionMs) / 1000.0
+        anchor = ElapsedAnchor(
+            positionMs: positionMs,
+            rate: rate,
+            at: now(),
+            seekRevision: latestPositions?.seekRevision
+        )
         // Re-track here too: core may only learn the duration once decoding
         // starts, so it can arrive on progress rather than the Playing payload.
         trackDuration(durationMs, into: &info)
+        publish(info, on: infoCenter)
+    }
+
+    /// Write `info` with the elapsed time where the anchor puts it now: the
+    /// system measures the elapsed time from each write, so every write carries
+    /// it.
+    func publish(_ info: [String: Any], on infoCenter: MPNowPlayingInfoCenter) {
+        var info = info
+        if let anchor {
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] =
+                max(0, anchor.positionMs(at: now())) / 1000.0
+        }
         infoCenter.nowPlayingInfo = info
     }
 
@@ -277,6 +348,9 @@ public final class MediaControlService: @unchecked Sendable {
     /// playback stops or the library is torn down.
     public func clearNowPlaying() {
         shown = .nothing
+        writtenLibrary = nil
+        rate = 0.0
+        anchor = nil
         currentDurationMs = nil
         clearArtworkLoad()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -411,7 +485,7 @@ extension MediaControlService {
             cachedArtworkImage = image
             cachedArtwork = artwork
             info[MPMediaItemPropertyArtwork] = artwork
-            infoCenter.nowPlayingInfo = info
+            publish(info, on: infoCenter)
         }
     }
 

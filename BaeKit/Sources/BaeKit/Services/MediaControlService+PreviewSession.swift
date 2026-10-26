@@ -177,31 +177,52 @@
             )
         }
 
+        /// Set Now Playing's elapsed time to the preview's `positionMs`, from
+        /// which the system moves it forward at the shown rate.
         func updatePreviewPosition(positionMs: UInt64) {
             let infoCenter = MPNowPlayingInfoCenter.default()
-            guard var info = infoCenter.nowPlayingInfo else {
+            guard let info = infoCenter.nowPlayingInfo else {
                 return
             }
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] =
-                Double(positionMs) / 1000.0
-            infoCenter.nowPlayingInfo = info
+            anchor = ElapsedAnchor(
+                positionMs: positionMs,
+                rate: rate,
+                at: now(),
+                seekRevision: nil
+            )
+            publish(info, on: infoCenter)
         }
 
-        /// Pushes the Now Playing info for a preview clip. `playbackRate` is 1.0
-        /// playing, 0.0 paused.
+        /// Pushes the Now Playing info for a preview clip, unless it shows that
+        /// clip at that rate already. `playbackRate` is 1.0 playing, 0.0 paused.
+        /// The same clip at a new rate keeps its elapsed time moving from where
+        /// it is now; another clip waits for its first position.
         private func setPreviewNowPlaying(
             target: BridgePreviewTarget,
             durationMs: UInt64,
             playbackRate: Double
         ) {
+            if case .preview(let shownTarget) = shown, shownTarget == target {
+                guard
+                    playbackRate != rate || durationMs != currentDurationMs
+                else {
+                    return
+                }
+                anchor = anchor?.rebased(rate: playbackRate, at: now())
+            }
+            else {
+                anchor = nil
+            }
             shown = .preview(target)
+            writtenLibrary = nil
+            rate = playbackRate
             var info: [String: Any] = [:]
             info[MPMediaItemPropertyTitle] = previewTitle(from: target.path)
             // A preview clip always has a known length; track it through the
             // shared path so the scrubber is enabled, as with a library track.
             trackDuration(durationMs, into: &info)
             info[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            publish(info, on: MPNowPlayingInfoCenter.default())
         }
 
         private func previewTitle(from path: String) -> String {
