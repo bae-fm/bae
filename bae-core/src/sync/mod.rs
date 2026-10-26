@@ -407,6 +407,9 @@ mod tests {
         "import_candidate_match_link",
         "import_candidate_match_album_link",
         "import_candidate_match_medium",
+        // Where each row of the import list sits, worked out from the rows
+        // above.
+        "import_list_placement",
         // Catalog releases this device fetched; any device can fetch them.
         "source_release",
         "source_release_album_artist",

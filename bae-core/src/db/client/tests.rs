@@ -290,6 +290,9 @@ mod album_credit_tests;
 mod import_list_live_query_tests;
 
 #[cfg(test)]
+mod import_list_placement_tests;
+
+#[cfg(test)]
 mod folder_scan_live_query_tests;
 
 #[cfg(test)]

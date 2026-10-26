@@ -2841,7 +2841,13 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; the ledger it showed; a medium conflict |
 | `import_candidate_match` and its `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, with which lookup found it |
 
-### A.7 Catalog releases
+### A.7 The import list
+
+| Table | Holds |
+|---|---|
+| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person, the group listing it, the date and path it sorts by, and the text it shows. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables |
+
+### A.8 Catalog releases
 
 Device-local: any device can fetch a release. A new fetch replaces every row
 under it.
@@ -2865,7 +2871,7 @@ from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). `local_release_files`,
-`local_release_origin`, `local_history` and the import tables (A.4–A.7),
+`local_release_origin`, `local_history` and the import tables (A.4–A.8),
 `import_candidate_standing` and `import_identification_batch` among them, are
 not declared, so they never sync.
 

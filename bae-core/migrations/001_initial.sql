@@ -2845,6 +2845,754 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
     CHECK (media_kind = 'formats' OR quantity = 1)
 ) STRICT;
 
+-- ── The import list ───────────────────────────────────────────────────────────
+
+-- Where every row of the import list sits: one row per release the queue
+-- lists, and one per header of a group on Found. Its tab, Found's state and
+-- the group and dates it sorts by are worked out from a dozen tables, which no
+-- index reaches, so the triggers below write them here, indexed, in the same
+-- write that changes any of those tables. Computed from device-local rows and
+-- never synced.
+CREATE TABLE IF NOT EXISTS import_list_placement (
+    watched_folder_path TEXT NOT NULL,
+    -- 'candidate': a release; 'invalid': a folder that failed validation;
+    -- 'group': the header of a group of Found's releases.
+    item                TEXT NOT NULL CHECK (item IN ('candidate', 'invalid', 'group')),
+    -- A release's key; a group's folder, the first component of its
+    -- members' display paths.
+    key                 TEXT NOT NULL,
+    -- The watched folder's position among the watched folders.
+    root_position       INTEGER NOT NULL,
+    tab                 TEXT NOT NULL CHECK (tab IN ('pending', 'done', 'skipped')),
+    -- Where a Found release stands, what is running for it included.
+    pending_state       TEXT CHECK (pending_state IN (
+        'not_looked_up', 'identifying', 'needs_you', 'identified', 'unmatched',
+        'lookup_error', 'error', 'importing', 'import_error')),
+    -- Why a release that needs the person does.
+    needs_you_reason    TEXT CHECK (needs_you_reason IN (
+        'matches', 'no_tracklist', 'medium_mismatch', 'not_found', 'nothing_to_look_up')),
+    -- The group a Found release is listed under, and a header's own.
+    group_name          TEXT,
+    -- The release's own date: for Done the time its release was written, in
+    -- Unix epoch milliseconds; otherwise its folder's date, as
+    -- `folder_discovery` holds it. NULL when none is stored, and for a header.
+    own_date            INTEGER,
+    -- What the row sorts by first: a group's newest member's own date for its
+    -- header and members, otherwise the row's own date.
+    unit_date           INTEGER,
+    display_path        TEXT,
+    -- The text the row shows, which the list's filter matches: the draft's
+    -- album title and album artists once it has one, else the folder's
+    -- name; for a folder that failed validation, what its tags call it.
+    shown_title         TEXT,
+    shown_artists       TEXT,
+    PRIMARY KEY (watched_folder_path, item, key),
+    CHECK (item <> 'invalid' OR tab = 'skipped'),
+    CHECK ((tab = 'pending' AND item <> 'group') = (pending_state IS NOT NULL)),
+    CHECK ((pending_state IS 'needs_you') = (needs_you_reason IS NOT NULL)),
+    CHECK (group_name IS NULL OR tab = 'pending'),
+    CHECK (item <> 'group' OR group_name = key),
+    CHECK ((item = 'group') = (display_path IS NULL)),
+    CHECK ((item = 'group') = (shown_title IS NULL)),
+    CHECK (item = 'group' OR group_name IS NOT NULL OR unit_date IS own_date),
+    -- A Done release always has the time its release was written; one stored
+    -- in a form this can't read fails the write.
+    CHECK (tab <> 'done' OR own_date IS NOT NULL)
+) STRICT;
+
+-- A release by its key alone, as a standing names it.
+CREATE INDEX IF NOT EXISTS import_list_placement_by_key ON import_list_placement (key);
+
+-- A group's header and members.
+CREATE INDEX IF NOT EXISTS import_list_placement_by_group
+    ON import_list_placement (watched_folder_path, group_name);
+
+-- The release at a folder, and those nested below it.
+CREATE INDEX IF NOT EXISTS import_list_placement_by_display_path
+    ON import_list_placement (watched_folder_path, display_path);
+
+-- What the triggers look a changed row's releases up by.
+CREATE INDEX IF NOT EXISTS idx_scan_candidate_folder ON scan_candidate (folder);
+
+CREATE INDEX IF NOT EXISTS release_grouping_member_by_folder
+    ON release_grouping_member (member_folder);
+
+CREATE INDEX IF NOT EXISTS import_candidate_album_artist_by_artist
+    ON import_candidate_album_artist_assignment (artist_id);
+
+-- Every release the queue lists, placed: the rules the list's tabs, Found's
+-- states, groups and dates follow, read one release at a time by the
+-- triggers that keep `import_list_placement`. A release a grouping takes in
+-- and one found before the folder around it was known are not listed.
+CREATE VIEW IF NOT EXISTS import_list_entry AS
+SELECT watched_folder_path, item, key, root_position, tab,
+       -- What is running for a Found release decides its state over the
+       -- tables: an import, then a run, then a run's answer bae could not
+       -- store.
+       CASE WHEN tab <> 'pending' THEN NULL
+            WHEN running_import IS NOT NULL THEN 'importing'
+            WHEN identification IN ('queued', 'running', 'finalizing') THEN 'identifying'
+            WHEN identification = 'reading_pick' THEN 'identified'
+            WHEN identification IN ('not_written', 'inapplicable') THEN 'error'
+            ELSE stored_state END AS pending_state,
+       CASE WHEN tab = 'pending' AND running_import IS NULL AND identification IS NULL
+            THEN stored_reason END AS needs_you_reason,
+       -- Only Found groups: a release nested below a folder is listed under
+       -- that folder, and so is one at the folder itself when another
+       -- release is nested below it.
+       CASE WHEN tab = 'pending'
+             AND (instr(display_path, '/') > 0
+                  OR EXISTS (SELECT 1 FROM import_list_placement nested
+                             WHERE nested.watched_folder_path = judged.watched_folder_path
+                               AND nested.display_path > judged.first_component || '/'
+                               AND nested.display_path < judged.first_component || '0'
+                               AND nested.item <> 'group'))
+            THEN first_component END AS group_name,
+       CASE WHEN tab = 'done' THEN imported_at ELSE discovered_at END AS own_date,
+       display_path, shown_title, shown_artists
+FROM (
+    SELECT facts.*,
+           CASE WHEN kind = 'invalid' THEN 'skipped'
+                WHEN imported THEN 'done'
+                WHEN skipped THEN 'skipped'
+                ELSE 'pending' END AS tab,
+           -- Where the tables put a Found release.
+           CASE WHEN failed THEN 'import_error'
+                WHEN linked THEN 'identified'
+                WHEN verdict_kind IS NULL THEN 'not_looked_up'
+                WHEN kept_own_draft THEN 'unmatched'
+                WHEN verdict_kind = 'error' THEN 'error'
+                WHEN verdict_kind = 'failed' THEN 'lookup_error'
+                WHEN verdict_kind IN ('not_found', 'manual_only') THEN 'needs_you'
+                WHEN declined IS NULL THEN 'unmatched'
+                WHEN declined = 'unread_document' THEN 'lookup_error'
+                ELSE 'needs_you' END AS stored_state,
+           CASE WHEN failed OR linked OR verdict_kind IS NULL OR kept_own_draft THEN NULL
+                WHEN verdict_kind = 'not_found' THEN 'not_found'
+                WHEN verdict_kind = 'manual_only' THEN 'nothing_to_look_up'
+                WHEN verdict_kind <> 'found' THEN NULL
+                WHEN declined = 'nothing_found' THEN 'not_found'
+                WHEN declined = 'several' THEN 'matches'
+                WHEN declined = 'source_tracks_unknown' THEN 'no_tracklist'
+                WHEN declined = 'medium_disagrees' THEN 'medium_mismatch' END AS stored_reason,
+           -- The time the release was written, read off its RFC 3339 text:
+           -- whole seconds through its offset, and the milliseconds of its
+           -- fraction, truncated.
+           unixepoch(substr(imported_at_text, 1, 19) || imported_at_offset) * 1000
+               + CAST(substr(imported_at_fraction || '000', 1, 3) AS INTEGER) AS imported_at
+    FROM (
+        SELECT c.watched_folder_path, c.path AS key, c.kind, c.display_path,
+               CASE c.kind WHEN 'invalid' THEN 'invalid' ELSE 'candidate' END AS item,
+               w.position AS root_position,
+               CASE WHEN instr(c.display_path, '/') > 0
+                    THEN substr(c.display_path, 1, instr(c.display_path, '/') - 1)
+                    ELSE c.display_path END AS first_component,
+               -- A scanned release is dated by its folder; a grouping's by the
+               -- earliest of the folders it takes in.
+               CASE c.source_kind
+                   WHEN 'folder' THEN
+                       (SELECT COALESCE(d.source_date, d.first_seen_at)
+                        FROM folder_discovery AS d WHERE d.folder = c.folder)
+                   WHEN 'grouping' THEN
+                       (SELECT MIN(COALESCE(d.source_date, d.first_seen_at))
+                        FROM release_grouping_member AS m
+                        JOIN folder_discovery AS d ON d.folder = m.member_folder
+                        WHERE m.grouping_key = c.grouping_key)
+               END AS discovered_at,
+               -- Only what this device imported places a folder in Done.
+               origin.release_id IS NOT NULL AS imported,
+               released.created_at AS imported_at_text,
+               CASE WHEN substr(released.created_at, 20, 1) = '.'
+                    THEN ltrim(substr(released.created_at, 21), '0123456789')
+                    ELSE substr(released.created_at, 20) END AS imported_at_offset,
+               CASE WHEN substr(released.created_at, 20, 1) = '.'
+                    THEN substr(released.created_at, 21,
+                                length(released.created_at) - 20
+                                    - length(ltrim(substr(released.created_at, 21), '0123456789')))
+                    ELSE '' END AS imported_at_fraction,
+               CASE WHEN c.grouping_key IS NOT NULL THEN g.skipped
+                    ELSE EXISTS (SELECT 1 FROM skipped_import_candidates AS k
+                                 WHERE k.candidate_path = c.folder) END AS skipped,
+               g.blocked IS NOT NULL
+                   OR EXISTS (SELECT 1 FROM import_candidate_failure AS f
+                              WHERE f.content_hash = c.content_hash) AS failed,
+               -- The draft, the link and the verdict count only while the
+               -- state describes the folder's current files.
+               EXISTS (SELECT 1 FROM import_candidate_release_link AS l
+                       WHERE l.content_hash = s.content_hash) AS linked,
+               v.kind AS verdict_kind,
+               v.kept_own_draft,
+               -- Why a found verdict picks none of its releases unattended,
+               -- judged from what it found that agreement kept, led by the
+               -- lowest position.
+               CASE WHEN v.kind <> 'found' THEN NULL
+                    WHEN v.medium_conflict IS NOT NULL THEN 'medium_disagrees'
+                    ELSE (SELECT CASE
+                              WHEN lead.position IS NULL THEN 'nothing_found'
+                              WHEN (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
+                                    WHERE m.content_hash = v.content_hash AND m.narrowed_out = 0) <> 1
+                                  THEN 'several'
+                              WHEN EXISTS (SELECT 1 FROM import_candidate_match AS m
+                                           WHERE m.content_hash = v.content_hash
+                                             AND m.narrowed_out = 0
+                                             AND m.document_failure IS NOT NULL)
+                                  THEN 'unread_document'
+                              WHEN lead.source_tracks_kind = 'listed'
+                               AND lead.source_tracks_count = COALESCE(v.track_count, 0) THEN NULL
+                              WHEN lead.source_tracks_kind IN ('listed', 'unreadable') THEN 'nothing_found'
+                              ELSE 'source_tracks_unknown' END
+                          FROM (SELECT NULL) AS one
+                          LEFT JOIN import_candidate_match AS lead
+                              ON lead.content_hash = v.content_hash
+                             AND lead.position = (SELECT MIN(m.position) FROM import_candidate_match AS m
+                                                  WHERE m.content_hash = v.content_hash
+                                                    AND m.narrowed_out = 0))
+               END AS declined,
+               st.identification, st.import AS running_import,
+               -- A draft is what the row shows once it is not blank, or once a
+               -- source or a link answered it.
+               CASE WHEN c.kind = 'invalid' THEN COALESCE(t.album_title, c.name)
+                    WHEN e.content_hash IS NOT NULL
+                     AND (NOT e.draft_blank
+                          OR EXISTS (SELECT 1 FROM import_candidate_draft_provenance AS p
+                                     WHERE p.content_hash = e.content_hash)
+                          OR EXISTS (SELECT 1 FROM import_candidate_release_link AS l
+                                     WHERE l.content_hash = e.content_hash))
+                         THEN e.album_title
+                    ELSE c.name END AS shown_title,
+               CASE WHEN c.kind = 'invalid' THEN t.artist
+                    WHEN e.content_hash IS NOT NULL
+                     AND (NOT e.draft_blank
+                          OR EXISTS (SELECT 1 FROM import_candidate_draft_provenance AS p
+                                     WHERE p.content_hash = e.content_hash)
+                          OR EXISTS (SELECT 1 FROM import_candidate_release_link AS l
+                                     WHERE l.content_hash = e.content_hash))
+                         -- The album credits as one line: each printed name,
+                         -- after the join the credit before it states, or a
+                         -- comma.
+                         THEN COALESCE((
+                             SELECT group_concat(
+                                 COALESCE((SELECT COALESCE(before.join_phrase, ', ')
+                                           FROM import_candidate_album_artist_assignment AS before
+                                           WHERE before.content_hash = a.content_hash
+                                             AND before.position < a.position
+                                           ORDER BY before.position DESC LIMIT 1), '')
+                                 || CASE a.assignment_kind
+                                        WHEN 'picked' THEN COALESCE(credit.name, artist.name)
+                                        ELSE COALESCE(a.credited_as, a.name) END,
+                                 '' ORDER BY a.position)
+                             FROM import_candidate_album_artist_assignment AS a
+                             LEFT JOIN artists AS artist ON artist.id = a.artist_id
+                             LEFT JOIN artist_credits AS credit
+                                 ON credit.artist_id = a.artist_id AND credit.name_key = a.credit_key
+                             WHERE a.content_hash = e.content_hash), '')
+               END AS shown_artists
+        FROM scan_candidate AS c
+        JOIN watched_import_folders AS w ON w.path = c.watched_folder_path
+        LEFT JOIN release_grouping AS g ON g.key = c.grouping_key
+        LEFT JOIN import_candidate_state AS s
+            ON s.content_hash = c.content_hash AND s.edit_revision = c.file_edit_revision
+        LEFT JOIN import_candidate_edit AS e ON e.content_hash = s.content_hash
+        LEFT JOIN import_candidate_verdict AS v ON v.content_hash = s.content_hash
+        LEFT JOIN local_release_origin AS origin ON origin.content_hash = c.content_hash
+        LEFT JOIN releases AS released ON released.id = origin.release_id
+        LEFT JOIN import_candidate_standing AS st ON st.candidate_key = c.path
+        LEFT JOIN scan_skipped_tags AS t
+            ON t.watched_folder_path = c.watched_folder_path AND t.candidate_path = c.path
+        WHERE c.kind <> 'tentative'
+          AND NOT EXISTS (SELECT 1 FROM release_grouping_member AS member
+                          WHERE member.member_key = c.path)
+    ) AS facts
+) AS judged;
+
+-- Place the release at `key` again from its tables: SQLite has no procedures,
+-- so the triggers that keep `import_list_placement` name a release to place
+-- by inserting its key here, and the trigger on this view does the placing.
+-- Nothing is ever stored in it.
+CREATE VIEW IF NOT EXISTS import_list_replace AS
+SELECT path AS key FROM scan_candidate WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS import_list_replace_release INSTEAD OF INSERT ON import_list_replace
+BEGIN
+    DELETE FROM import_list_placement
+    WHERE key = NEW.key AND item <> 'group'
+      AND NOT EXISTS (SELECT 1 FROM import_list_entry AS entry
+                      WHERE entry.key = NEW.key
+                        AND entry.watched_folder_path = import_list_placement.watched_folder_path
+                        AND entry.item = import_list_placement.item);
+    INSERT INTO import_list_placement
+        (watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
+         group_name, own_date, unit_date, display_path, shown_title, shown_artists)
+    SELECT watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
+           group_name, own_date, CASE WHEN group_name IS NULL THEN own_date END,
+           display_path, shown_title, shown_artists
+    FROM import_list_entry WHERE key = NEW.key
+    ON CONFLICT (watched_folder_path, item, key) DO UPDATE SET
+        root_position = excluded.root_position,
+        tab = excluded.tab,
+        pending_state = excluded.pending_state,
+        needs_you_reason = excluded.needs_you_reason,
+        group_name = excluded.group_name,
+        own_date = excluded.own_date,
+        -- A grouped row keeps its group's date, which the group's own
+        -- triggers write.
+        unit_date = CASE WHEN excluded.group_name IS NULL THEN excluded.own_date
+                         WHEN excluded.group_name IS import_list_placement.group_name
+                             THEN import_list_placement.unit_date END,
+        display_path = excluded.display_path,
+        shown_title = excluded.shown_title,
+        shown_artists = excluded.shown_artists
+    WHERE (import_list_placement.root_position, import_list_placement.tab,
+           import_list_placement.pending_state, import_list_placement.needs_you_reason,
+           import_list_placement.group_name, import_list_placement.own_date,
+           import_list_placement.display_path, import_list_placement.shown_title,
+           import_list_placement.shown_artists)
+        IS NOT (excluded.root_position, excluded.tab, excluded.pending_state,
+                excluded.needs_you_reason, excluded.group_name, excluded.own_date,
+                excluded.display_path, excluded.shown_title, excluded.shown_artists);
+END;
+
+-- Bring the header of the group `group_name` under `watched_folder_path` in
+-- line with its members: there while it has any, dated with its members by
+-- the newest member's own date. Like `import_list_replace`, a procedure
+-- entry point that stores nothing.
+CREATE VIEW IF NOT EXISTS import_list_regroup AS
+SELECT watched_folder_path, group_name FROM import_list_placement WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS import_list_regroup_header INSTEAD OF INSERT ON import_list_regroup
+BEGIN
+    INSERT INTO import_list_placement
+        (watched_folder_path, item, key, root_position, tab, group_name)
+    SELECT NEW.watched_folder_path, 'group', NEW.group_name, w.position, 'pending', NEW.group_name
+    FROM watched_import_folders AS w
+    WHERE w.path = NEW.watched_folder_path
+      AND EXISTS (SELECT 1 FROM import_list_placement AS member
+                  WHERE member.watched_folder_path = NEW.watched_folder_path
+                    AND member.group_name = NEW.group_name AND member.item <> 'group')
+    ON CONFLICT (watched_folder_path, item, key) DO NOTHING;
+    DELETE FROM import_list_placement
+    WHERE watched_folder_path = NEW.watched_folder_path AND item = 'group' AND key = NEW.group_name
+      AND NOT EXISTS (SELECT 1 FROM import_list_placement AS member
+                      WHERE member.watched_folder_path = NEW.watched_folder_path
+                        AND member.group_name = NEW.group_name AND member.item <> 'group');
+    UPDATE import_list_placement
+    SET unit_date = (SELECT MAX(member.own_date) FROM import_list_placement AS member
+                     WHERE member.watched_folder_path = NEW.watched_folder_path
+                       AND member.group_name = NEW.group_name AND member.item <> 'group')
+    WHERE watched_folder_path = NEW.watched_folder_path AND group_name = NEW.group_name
+      AND unit_date IS NOT (SELECT MAX(member.own_date) FROM import_list_placement AS member
+                            WHERE member.watched_folder_path = NEW.watched_folder_path
+                              AND member.group_name = NEW.group_name AND member.item <> 'group');
+END;
+
+-- A release placed, moved or gone changes its group, and a release nested
+-- below a folder groups the release at that folder.
+CREATE TRIGGER IF NOT EXISTS import_list_placement_added AFTER INSERT ON import_list_placement
+WHEN NEW.item <> 'group'
+BEGIN
+    INSERT INTO import_list_regroup (watched_folder_path, group_name)
+    SELECT NEW.watched_folder_path, NEW.group_name WHERE NEW.group_name IS NOT NULL;
+    INSERT INTO import_list_replace (key)
+    SELECT key FROM import_list_placement
+    WHERE watched_folder_path = NEW.watched_folder_path AND item = 'candidate'
+      AND instr(NEW.display_path, '/') > 0
+      AND display_path = substr(NEW.display_path, 1, instr(NEW.display_path, '/') - 1);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_placement_removed AFTER DELETE ON import_list_placement
+WHEN OLD.item <> 'group'
+BEGIN
+    INSERT INTO import_list_regroup (watched_folder_path, group_name)
+    SELECT OLD.watched_folder_path, OLD.group_name WHERE OLD.group_name IS NOT NULL;
+    INSERT INTO import_list_replace (key)
+    SELECT key FROM import_list_placement
+    WHERE watched_folder_path = OLD.watched_folder_path AND item = 'candidate'
+      AND instr(OLD.display_path, '/') > 0
+      AND display_path = substr(OLD.display_path, 1, instr(OLD.display_path, '/') - 1);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_placement_moved AFTER UPDATE ON import_list_placement
+WHEN NEW.item <> 'group'
+ AND (OLD.group_name IS NOT NEW.group_name OR OLD.own_date IS NOT NEW.own_date
+      OR OLD.display_path IS NOT NEW.display_path)
+BEGIN
+    INSERT INTO import_list_regroup (watched_folder_path, group_name)
+    SELECT OLD.watched_folder_path, OLD.group_name WHERE OLD.group_name IS NOT NULL
+    UNION
+    SELECT NEW.watched_folder_path, NEW.group_name WHERE NEW.group_name IS NOT NULL;
+    INSERT INTO import_list_replace (key)
+    SELECT key FROM import_list_placement
+    WHERE OLD.display_path IS NOT NEW.display_path
+      AND watched_folder_path = NEW.watched_folder_path AND item = 'candidate'
+      AND display_path IN (
+          CASE WHEN instr(OLD.display_path, '/') > 0
+               THEN substr(OLD.display_path, 1, instr(OLD.display_path, '/') - 1) END,
+          CASE WHEN instr(NEW.display_path, '/') > 0
+               THEN substr(NEW.display_path, 1, instr(NEW.display_path, '/') - 1) END);
+END;
+
+-- Every table the rules read places again the releases a change to it can
+-- move. A change to a column the rules don't read places nothing.
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_candidate_added AFTER INSERT ON scan_candidate
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (NEW.path);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_candidate_removed AFTER DELETE ON scan_candidate
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (OLD.path);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_candidate_changed AFTER UPDATE OF
+    watched_folder_path, path, kind, name, display_path, folder, content_hash,
+    file_edit_revision, grouping_key, source_kind ON scan_candidate
+WHEN (OLD.watched_folder_path, OLD.path, OLD.kind, OLD.name, OLD.display_path, OLD.folder,
+      OLD.content_hash, OLD.file_edit_revision, OLD.grouping_key, OLD.source_kind)
+  IS NOT (NEW.watched_folder_path, NEW.path, NEW.kind, NEW.name, NEW.display_path, NEW.folder,
+          NEW.content_hash, NEW.file_edit_revision, NEW.grouping_key, NEW.source_kind)
+BEGIN
+    INSERT INTO import_list_replace (key) SELECT OLD.path UNION SELECT NEW.path;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_watched_folder_moved
+AFTER UPDATE OF position ON watched_import_folders
+WHEN OLD.position IS NOT NEW.position
+BEGIN
+    UPDATE import_list_placement SET root_position = NEW.position
+    WHERE watched_folder_path = NEW.path;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_discovery_added AFTER INSERT ON folder_discovery
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE folder = NEW.folder
+    UNION SELECT grouping_key FROM release_grouping_member WHERE member_folder = NEW.folder;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_discovery_removed AFTER DELETE ON folder_discovery
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE folder = OLD.folder
+    UNION SELECT grouping_key FROM release_grouping_member WHERE member_folder = OLD.folder;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_discovery_changed
+AFTER UPDATE OF folder, first_seen_at, source_date ON folder_discovery
+WHEN (OLD.folder, OLD.first_seen_at, OLD.source_date)
+  IS NOT (NEW.folder, NEW.first_seen_at, NEW.source_date)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE folder IN (OLD.folder, NEW.folder)
+    UNION SELECT grouping_key FROM release_grouping_member
+          WHERE member_folder IN (OLD.folder, NEW.folder);
+END;
+
+-- Removing a grouping removes its release (`remove_grouping_candidate`),
+-- which places it out of the list.
+CREATE TRIGGER IF NOT EXISTS import_list_on_grouping_added AFTER INSERT ON release_grouping
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (NEW.key);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_grouping_changed
+AFTER UPDATE OF key, skipped, blocked ON release_grouping
+WHEN (OLD.key, OLD.skipped, OLD.blocked) IS NOT (NEW.key, NEW.skipped, NEW.blocked)
+BEGIN
+    INSERT INTO import_list_replace (key) SELECT OLD.key UNION SELECT NEW.key;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_grouping_member_added
+AFTER INSERT ON release_grouping_member
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (NEW.member_key), (NEW.grouping_key);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_grouping_member_removed
+AFTER DELETE ON release_grouping_member
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (OLD.member_key), (OLD.grouping_key);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_grouping_member_changed
+AFTER UPDATE ON release_grouping_member
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT OLD.member_key UNION SELECT OLD.grouping_key
+    UNION SELECT NEW.member_key UNION SELECT NEW.grouping_key;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_skip_added AFTER INSERT ON skipped_import_candidates
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE folder = NEW.candidate_path;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_skip_removed AFTER DELETE ON skipped_import_candidates
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE folder = OLD.candidate_path;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_skip_changed AFTER UPDATE ON skipped_import_candidates
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE folder IN (OLD.candidate_path, NEW.candidate_path);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_skipped_tags_added AFTER INSERT ON scan_skipped_tags
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (NEW.candidate_path);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_skipped_tags_removed AFTER DELETE ON scan_skipped_tags
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (OLD.candidate_path);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_skipped_tags_changed AFTER UPDATE ON scan_skipped_tags
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT OLD.candidate_path UNION SELECT NEW.candidate_path;
+END;
+
+-- Storing or removing a state places nothing by itself: everything the rules
+-- read of it hangs off it by foreign key, written after it and deleted with
+-- it, and those rows' own triggers place the release. Moving the revision it
+-- describes does.
+CREATE TRIGGER IF NOT EXISTS import_list_on_state_changed
+AFTER UPDATE OF content_hash, edit_revision ON import_candidate_state
+WHEN (OLD.content_hash, OLD.edit_revision) IS NOT (NEW.content_hash, NEW.edit_revision)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_draft_added AFTER INSERT ON import_candidate_edit
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_draft_removed AFTER DELETE ON import_candidate_edit
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_draft_changed
+AFTER UPDATE OF content_hash, album_title, draft_blank ON import_candidate_edit
+WHEN (OLD.content_hash, OLD.album_title, OLD.draft_blank) IS NOT (NEW.content_hash, NEW.album_title, NEW.draft_blank)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_album_artist_added AFTER INSERT ON import_candidate_album_artist_assignment
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_album_artist_removed AFTER DELETE ON import_candidate_album_artist_assignment
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_album_artist_changed
+AFTER UPDATE OF content_hash, position, assignment_kind, artist_id, name, credit_key, credited_as, join_phrase ON import_candidate_album_artist_assignment
+WHEN (OLD.content_hash, OLD.position, OLD.assignment_kind, OLD.artist_id, OLD.name, OLD.credit_key, OLD.credited_as, OLD.join_phrase) IS NOT (NEW.content_hash, NEW.position, NEW.assignment_kind, NEW.artist_id, NEW.name, NEW.credit_key, NEW.credited_as, NEW.join_phrase)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_provenance_added AFTER INSERT ON import_candidate_draft_provenance
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_provenance_removed AFTER DELETE ON import_candidate_draft_provenance
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_provenance_changed
+AFTER UPDATE OF content_hash ON import_candidate_draft_provenance
+WHEN OLD.content_hash IS NOT NEW.content_hash
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_link_added AFTER INSERT ON import_candidate_release_link
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_link_removed AFTER DELETE ON import_candidate_release_link
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_link_changed
+AFTER UPDATE OF content_hash ON import_candidate_release_link
+WHEN OLD.content_hash IS NOT NEW.content_hash
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_verdict_added AFTER INSERT ON import_candidate_verdict
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_verdict_removed AFTER DELETE ON import_candidate_verdict
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_verdict_changed
+AFTER UPDATE OF content_hash, kind, track_count, medium_conflict, kept_own_draft ON import_candidate_verdict
+WHEN (OLD.content_hash, OLD.kind, OLD.track_count, OLD.medium_conflict, OLD.kept_own_draft) IS NOT (NEW.content_hash, NEW.kind, NEW.track_count, NEW.medium_conflict, NEW.kept_own_draft)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_match_added AFTER INSERT ON import_candidate_match
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_match_removed AFTER DELETE ON import_candidate_match
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_match_changed
+AFTER UPDATE OF content_hash, position, pressing, narrowed_out, source_tracks_kind, source_tracks_count, document_failure ON import_candidate_match
+WHEN (OLD.content_hash, OLD.position, OLD.pressing, OLD.narrowed_out, OLD.source_tracks_kind, OLD.source_tracks_count, OLD.document_failure) IS NOT (NEW.content_hash, NEW.position, NEW.pressing, NEW.narrowed_out, NEW.source_tracks_kind, NEW.source_tracks_count, NEW.document_failure)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_failure_added AFTER INSERT ON import_candidate_failure
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_failure_removed AFTER DELETE ON import_candidate_failure
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_failure_changed
+AFTER UPDATE OF content_hash ON import_candidate_failure
+WHEN OLD.content_hash IS NOT NEW.content_hash
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_origin_added AFTER INSERT ON local_release_origin
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_origin_removed AFTER DELETE ON local_release_origin
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash = OLD.content_hash;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_origin_changed
+AFTER UPDATE OF content_hash, release_id ON local_release_origin
+WHEN (OLD.content_hash, OLD.release_id) IS NOT (NEW.content_hash, NEW.release_id)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_standing_added AFTER INSERT ON import_candidate_standing
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (NEW.candidate_key);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_standing_removed AFTER DELETE ON import_candidate_standing
+BEGIN
+    INSERT INTO import_list_replace (key) VALUES (OLD.candidate_key);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_standing_changed
+AFTER UPDATE OF candidate_key, identification, import ON import_candidate_standing
+WHEN (OLD.candidate_key, OLD.identification, OLD.import)
+  IS NOT (NEW.candidate_key, NEW.identification, NEW.import)
+BEGIN
+    INSERT INTO import_list_replace (key) SELECT OLD.candidate_key UNION SELECT NEW.candidate_key;
+END;
+
+-- A picked artist's name, or the credit name the draft prints for it.
+CREATE TRIGGER IF NOT EXISTS import_list_on_artist_renamed AFTER UPDATE OF name ON artists
+WHEN OLD.name IS NOT NEW.name
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM import_candidate_album_artist_assignment AS a
+    JOIN scan_candidate AS c ON c.content_hash = a.content_hash
+    WHERE a.artist_id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_artist_credit_added AFTER INSERT ON artist_credits
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM import_candidate_album_artist_assignment AS a
+    JOIN scan_candidate AS c ON c.content_hash = a.content_hash
+    WHERE a.artist_id = NEW.artist_id AND a.credit_key = NEW.name_key;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_artist_credit_removed AFTER DELETE ON artist_credits
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM import_candidate_album_artist_assignment AS a
+    JOIN scan_candidate AS c ON c.content_hash = a.content_hash
+    WHERE a.artist_id = OLD.artist_id AND a.credit_key = OLD.name_key;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_on_artist_credit_changed
+AFTER UPDATE OF artist_id, name_key, name ON artist_credits
+WHEN (OLD.artist_id, OLD.name_key, OLD.name) IS NOT (NEW.artist_id, NEW.name_key, NEW.name)
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM import_candidate_album_artist_assignment AS a
+    JOIN scan_candidate AS c ON c.content_hash = a.content_hash
+    WHERE (a.artist_id = OLD.artist_id AND a.credit_key = OLD.name_key)
+       OR (a.artist_id = NEW.artist_id AND a.credit_key = NEW.name_key);
+END;
+
+-- The time an imported release was written orders it on Done.
+CREATE TRIGGER IF NOT EXISTS import_list_on_release_dated AFTER UPDATE OF created_at ON releases
+WHEN OLD.created_at IS NOT NEW.created_at
+BEGIN
+    INSERT INTO import_list_replace (key)
+    SELECT c.path FROM local_release_origin AS o
+    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
+    WHERE o.release_id = NEW.id;
+END;
+
 -- ── Catalog releases ──────────────────────────────────────────────────────────
 
 -- One catalog release bae fetched, with every fact the import reads from it
