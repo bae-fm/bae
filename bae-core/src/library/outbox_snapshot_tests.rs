@@ -502,7 +502,7 @@ async fn pending_reasons_belong_to_the_exact_uploading_device_and_file() {
         },
         &HashMap::new(),
     );
-    let snapshot = snapshot.with_pending(vec![wrong_device, record.clone()]);
+    let snapshot = snapshot.with_pending(&[wrong_device, record.clone()]);
     let pending = snapshot.upload_groups[0].files[0]
         .pending
         .as_ref()

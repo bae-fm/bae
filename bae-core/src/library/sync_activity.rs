@@ -181,23 +181,46 @@ impl SyncActivityStream {
         }
     }
 
-    /// The activity the sources hold now.
+    /// The activity the sources hold now, read in place.
     async fn read(&mut self) -> Result<SyncActivity, UiError> {
-        let outbox = self.outbox.borrow_and_update().clone();
-        let outbox = match outbox {
-            Some(Ok(outbox)) => outbox,
-            Some(Err(error)) => return Err(UiError::internal(error)),
+        let published = match &*self.outbox.borrow_and_update() {
+            Some(Ok(outbox)) => Some(Ok(Self::activity(
+                &mut self.status,
+                &mut self.downloads,
+                outbox,
+            ))),
+            Some(Err(error)) => Some(Err(UiError::internal(error.clone()))),
+            None => None,
+        };
+        match published {
+            Some(activity) => activity,
             // Nothing has published the queue yet; read it as the upload
             // list does.
-            None => self
-                .manager
-                .outbox_state()
-                .await
-                .map_err(|error| UiError::diagnostic(error.category(), error))?,
-        };
-        let status = self.status.borrow_and_update().clone();
-        let downloads = self.downloads.borrow_and_update().clone();
-        Ok(SyncActivity::new(&status, &outbox, &downloads))
+            None => {
+                let outbox = self
+                    .manager
+                    .outbox_state()
+                    .await
+                    .map_err(|error| UiError::diagnostic(error.category(), error))?;
+                Ok(Self::activity(
+                    &mut self.status,
+                    &mut self.downloads,
+                    &outbox,
+                ))
+            }
+        }
+    }
+
+    fn activity(
+        status: &mut tokio::sync::watch::Receiver<SyncStatusSnapshot>,
+        downloads: &mut tokio::sync::watch::Receiver<DownloadQueueContents>,
+        outbox: &OutboxState,
+    ) -> SyncActivity {
+        SyncActivity::new(
+            &status.borrow_and_update(),
+            outbox,
+            &downloads.borrow_and_update(),
+        )
     }
 }
 

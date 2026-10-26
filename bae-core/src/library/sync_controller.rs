@@ -50,8 +50,10 @@ pub(crate) struct OutboxProjection {
     durable: Option<(coven::UploadQueue, OutboxDisplayRequest)>,
     /// The display query's latest answer and the request it answered.
     names: Option<(OutboxDisplayRequest, OutboxDisplayContext)>,
-    /// The newest durable queue joined to its display names — what a live
-    /// upload change is republished over.
+    /// The records waiting to upload as the pending query last delivered
+    /// them, which each queue is published with; `None` before it first
+    /// delivers and after it fails.
+    pending: Option<Vec<coven::PendingRecord>>,
     /// Points the display query at the rows the held durable queue needs;
     /// present once the outbox subscription runs.
     display_requests: Option<coven::LiveQueryRequests<OutboxDisplayRequest>>,
@@ -141,7 +143,7 @@ impl SyncController {
             OutboxQueue::from_queue(durable, &projection.throughput.rates(self.clock.elapsed()));
         Ok(OutboxState {
             revision: projection.revision,
-            queue: queue.with_pending(self.database.pending().await?),
+            queue: queue.with_pending(&self.database.pending().await?),
             transfers,
         })
     }
@@ -158,25 +160,15 @@ impl SyncController {
         let mut display = self.database.subscribe_outbox_display(Default::default());
         let mut pending = self.database.subscribe_pending();
         self.outbox.lock().await.display_requests = Some(display.requests());
+        // Hold the records before the first queue is built, so every queue
+        // this subscription publishes carries the records it delivered.
+        self.pending_delivered(pending.next().await).await;
         // Keep this marker until the durable query delivers: cancellation of
         // next() retains its run, which may have begun before a direct read.
         let mut reads_before = self.outbox_reads.load(Ordering::Acquire);
         loop {
             tokio::select! {
-                records = pending.next() => {
-                    let mut projection=self.outbox.lock().await;
-                    match records {
-                        Ok(_) => self.publish_if_labelled(&mut projection).await,
-                        Err(error) => {
-                            self.publish_failure(
-                                &mut projection,
-                                "read the records waiting to upload",
-                                cause_text(&error),
-                            )
-                            .await;
-                        }
-                    }
-                }
+                records = pending.next() => self.pending_delivered(records).await,
                 delivered = subscription.next() => {
                     self.durable_delivered(reads_before, delivered).await;
                     reads_before = self.outbox_reads.load(Ordering::Acquire);
@@ -184,6 +176,27 @@ impl SyncController {
                 event = display.next() => {
                     self.names_answered(event.request, event.result).await;
                 }
+            }
+        }
+    }
+
+    /// Hold the records the pending query delivered, and publish the held
+    /// queue with them.
+    async fn pending_delivered(&self, records: coven::CovenResult<Vec<coven::PendingRecord>>) {
+        let mut projection = self.outbox.lock().await;
+        match records {
+            Ok(records) => {
+                projection.pending = Some(records);
+                self.publish_if_labelled(&mut projection).await;
+            }
+            Err(error) => {
+                projection.pending = None;
+                self.publish_failure(
+                    &mut projection,
+                    "read the records waiting to upload",
+                    cause_text(&error),
+                )
+                .await;
             }
         }
     }
@@ -340,27 +353,30 @@ impl SyncController {
         self.publish(projection, Err(detail)).await
     }
 
-    /// Send one outbox value, numbering it when its queue differs from the
-    /// one last published, and only when it differs from the value readers
-    /// hold. Returns the queue's revision.
+    /// Send one outbox value, its files beside the records the pending query
+    /// last delivered, numbering it when its queue differs from the one last
+    /// published, and only when it differs from the value readers hold.
+    /// Before the pending query first delivers, the records are read for it.
+    /// Returns the queue's revision.
     async fn publish(
         &self,
         projection: &mut OutboxProjection,
         value: Result<(OutboxQueue, OutboxTransfers), String>,
     ) -> u64 {
-        let value = match value {
-            Ok((queue, transfers)) => self
+        let value = match (value, &projection.pending) {
+            (Ok((queue, transfers)), Some(records)) => Ok((queue.with_pending(records), transfers)),
+            (Ok((queue, transfers)), None) => self
                 .database
                 .pending()
                 .await
-                .map(|records| (queue.with_pending(records), transfers))
+                .map(|records| (queue.with_pending(&records), transfers))
                 .map_err(|error| {
                     let detail = cause_text(&error);
                     self.diagnostics
                         .report_bug("read the records waiting to upload", &detail);
                     detail
                 }),
-            Err(error) => Err(error),
+            (Err(error), _) => Err(error),
         };
         let value = match value {
             Ok((queue, transfers)) => Ok(OutboxState {

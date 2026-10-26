@@ -239,12 +239,12 @@ impl TransferSum {
 }
 
 impl OutboxQueue {
-    pub(crate) fn with_pending(mut self, records: Vec<coven::PendingRecord>) -> Self {
+    pub(crate) fn with_pending(mut self, records: &[coven::PendingRecord]) -> Self {
         let records: HashMap<_, _> = records
-            .into_iter()
-            .filter_map(|record| match record.subject {
+            .iter()
+            .filter_map(|record| match &record.subject {
                 coven::PendingSubject::File { device, file } => {
-                    Some(((device, file), crate::library::PendingWait::of(&record)))
+                    Some(((*device, *file), crate::library::PendingWait::of(record)))
                 }
                 _ => None,
             })

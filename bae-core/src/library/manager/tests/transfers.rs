@@ -352,6 +352,35 @@ async fn an_upload_missing_its_original_is_listed_by_name() {
     assert_eq!(item.wait.action, crate::library::PendingAction::RestoreFile);
 }
 
+/// Every queue the outbox subscription publishes carries the records its
+/// pending query delivered: a queued file whose original vanished shows why it
+/// waits.
+#[tokio::test]
+async fn the_outbox_publishes_each_file_with_the_pending_records_it_was_delivered() {
+    let (manager, temp, release, _file_id) = queued_upload_fixture("waiting").await;
+    std::fs::remove_file(temp.path().join("waiting/a.flac")).unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    let waits = |value: &Option<Result<crate::library::OutboxState, String>>| {
+        matches!(value, Some(Ok(state)) if state.queue.upload_groups.iter().any(|group| {
+            group.release_id == release.id
+                && group.files.iter().any(|file| {
+                    file.pending
+                        .as_ref()
+                        .is_some_and(|wait| wait.action == crate::library::PendingAction::RestoreFile)
+                })
+        }))
+    };
+    let mut values = manager.subscribe_outbox_values();
+    // What commands published before the subscription ran was read before
+    // the file went, so a wait shown below came through the subscription.
+    assert!(!waits(&values.borrow()));
+    manager.start().unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(10), values.wait_for(waits))
+        .await
+        .expect("the queue shows why the file waits")
+        .unwrap();
+}
+
 /// A cover upload is carried by the `covers` row whose primary key is the
 /// release id, while its immutable cloud file has a distinct id. The queue must
 /// identify and size the file itself rather than mistaking the release id for
