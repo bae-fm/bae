@@ -70,6 +70,26 @@ What we learned about those dates, for anyone doing the same:
 So the order is a best guess, and a wrong guess only changes which rows show
 first, never what the scan finds.
 
+## Noticing changes on a share
+
+A local folder tells you when something changes in it; on macOS bae watches
+each folder with FSEvents and re-reads only what moved. A network mount tells
+you less. We checked, with a scratch folder on the share: creating, renaming
+and deleting files from this Mac produced the same events on the SMB mount as
+on a local disk. A change made on the server itself, or from another computer,
+produces nothing here, because the mount only reports what this machine did.
+
+So a watched folder on a share gets both: the watch, which makes this Mac's own
+edits show up at once, and a check every 15 minutes that looks for folders
+that changed and re-reads them. That check is what notices an
+album someone copied onto the server from elsewhere. The import list marks
+such a folder and says how often it's checked.
+
+Our own spec had this wrong for a week: a rewrite said a network folder "has
+no watch" and relies on the 15-minute check alone. Deleting a few broken
+albums from the share and watching them vanish from the list within a minute,
+not fifteen, is how we noticed.
+
 ## Reading from the share while it's busy
 
 Scanning wasn't the only place the share's latency showed. Opening an album
