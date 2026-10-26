@@ -141,7 +141,7 @@ pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
 /// order, so the order is core's and no surface states it again.
 #[cfg_attr(feature = "desktop", uniffi::export)]
 pub fn bridge_catalogs() -> Vec<crate::types::BridgeCatalog> {
-    bae_core::import::Catalog::ALL
+    bae_core::catalog::Catalog::ALL
         .map(crate::types::BridgeCatalog::from_core)
         .to_vec()
 }
@@ -151,7 +151,7 @@ pub fn bridge_catalogs() -> Vec<crate::types::BridgeCatalog> {
 /// asks them anything, so nothing offers them as something to switch on.
 #[cfg_attr(feature = "desktop", uniffi::export)]
 pub fn bridge_lookup_catalogs() -> Vec<crate::types::BridgeCatalog> {
-    bae_core::import::Catalog::LOOKUP
+    bae_core::catalog::Catalog::LOOKUP
         .map(crate::types::BridgeCatalog::from_core)
         .to_vec()
 }

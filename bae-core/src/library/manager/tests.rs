@@ -15,12 +15,12 @@ const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015"; // was "track
 const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4"; // was "work-a"
 
 use super::*;
+use crate::catalog::Catalog;
 use crate::config::Config;
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork,
     LibraryImageType,
 };
-use crate::import::Catalog;
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use coven::{MemoryStorage, Storage};
@@ -73,7 +73,7 @@ async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, 
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        crate::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
 

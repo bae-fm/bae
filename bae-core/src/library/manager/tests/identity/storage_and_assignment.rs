@@ -47,13 +47,13 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 /// MusicBrainz, so a release carrying both records still has one.
 fn mb_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
     crate::import::ReleaseRecord::new(
-        &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release),
+        &crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, release),
         Some(group.to_string()))
 }
 
 fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
     crate::import::ReleaseRecord::new(
-        &crate::import::MetadataRef::new(crate::import::Catalog::Discogs, release),
+        &crate::import::MetadataRef::new(crate::catalog::Catalog::Discogs, release),
         Some(group.to_string()))
 }
 
@@ -578,7 +578,8 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
 
 #[tokio::test]
 async fn album_records_merge_albums_but_never_match_pressings() {
-    use crate::import::{Catalog, MetadataRef, ReleaseRecord};
+    use crate::import::{MetadataRef, ReleaseRecord};
+    use crate::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     manager.database.insert_album(&album).await.unwrap();
@@ -661,7 +662,8 @@ async fn album_records_merge_albums_but_never_match_pressings() {
 
 #[tokio::test]
 async fn ungrouped_pressings_do_not_invent_album_matches() {
-    use crate::import::{Catalog, MetadataRef, ReleaseRecord};
+    use crate::import::{MetadataRef, ReleaseRecord};
+    use crate::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     manager.database.insert_album(&album).await.unwrap();

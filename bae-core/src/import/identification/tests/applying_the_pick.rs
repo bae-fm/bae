@@ -66,7 +66,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
         failures,
         &vec![crate::identify::IdentifyFailure::Cover(
             crate::import::search::SourceFailure {
-                source: crate::import::Catalog::MusicBrainz,
+                source: crate::catalog::Catalog::MusicBrainz,
                 failure: crate::signals::LookupFailure::Provider { status: Some(500) },
             }
         )],
@@ -134,7 +134,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-cover-1",
             ),
             partners: vec![],
@@ -149,7 +149,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     let crate::import::CoverSelection::Remote(image, source) = &cover.selection else {
         panic!("the cover is the catalog's, got {:?}", cover.selection);
     };
-    assert_eq!(*source, crate::import::Catalog::MusicBrainz);
+    assert_eq!(*source, crate::catalog::Catalog::MusicBrainz);
     assert!(
         image.url.ends_with("/release/mb-cover-1/front"),
         "{}",

@@ -5,16 +5,16 @@ use super::*;
 
 fn cover() -> RemoteCover {
     RemoteCover {
-        image: crate::import::cover_art::RemoteImageSet::with_copies(
+        image: crate::remote_image::RemoteImageSet::with_copies(
             "https://caa.example/front.jpg".to_string(),
-            vec![crate::import::cover_art::DownscaledCopy {
+            vec![crate::remote_image::DownscaledCopy {
                 url: "https://caa.example/thumb.jpg".to_string(),
                 max_edge: 250,
             }],
         ),
         label: Catalog::MusicBrainz.cover_source_label().to_string(),
         source: Catalog::MusicBrainz,
-        standing: crate::import::cover_art::CoverStanding::Stated,
+        standing: crate::remote_image::CoverStanding::Stated,
     }
 }
 
@@ -35,16 +35,16 @@ fn representative_cover_preserves_remote_cover_pair() {
 fn a_merged_card_prefers_the_musicbrainz_cover() {
     let mut discogs_covered = discogs("dg-1", Some("master-7"), Some(2001));
     discogs_covered.cover_art = Some(RemoteCover {
-        image: crate::import::cover_art::RemoteImageSet::with_copies(
+        image: crate::remote_image::RemoteImageSet::with_copies(
             "https://discogs.example/front.jpg".to_string(),
-            vec![crate::import::cover_art::DownscaledCopy {
+            vec![crate::remote_image::DownscaledCopy {
                 url: "https://discogs.example/thumb.jpg".to_string(),
                 max_edge: 150,
             }],
         ),
         label: Catalog::Discogs.cover_source_label().to_string(),
         source: Catalog::Discogs,
-        standing: crate::import::cover_art::CoverStanding::Stated,
+        standing: crate::remote_image::CoverStanding::Stated,
     });
     let mut mb_covered = linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7");
     mb_covered.cover_art = Some(cover());

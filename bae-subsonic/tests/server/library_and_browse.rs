@@ -8,9 +8,8 @@ use bae_core::config::SubsonicCredential;
 use bae_core::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
-use bae_core::import::{
-    Catalog, ImportCommand, ImportDestination, ReleaseFileScope,
-};
+use bae_core::import::{ImportCommand, ImportDestination, ReleaseFileScope};
+use bae_core::catalog::Catalog;
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
 use md5::{Digest, Md5};

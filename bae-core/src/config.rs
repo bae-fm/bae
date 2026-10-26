@@ -177,7 +177,7 @@ impl Config {
     }
 
     /// Which metadata sources this library asks, one entry per
-    /// [`Catalog`](crate::import::Catalog).
+    /// [`Catalog`](crate::catalog::Catalog).
     ///
     /// The one answer every place that asks the sources together reads — a
     /// run's provider list, a typed search's per-source parts, the switches a
@@ -191,7 +191,7 @@ impl Config {
     /// here: the bridge builds the list a surface renders out of the same
     /// value it reads every other setting off.
     pub fn metadata_sources(&self) -> Vec<crate::import::CatalogAvailability> {
-        crate::import::Catalog::LOOKUP
+        crate::catalog::Catalog::LOOKUP
             .into_iter()
             .map(|catalog| crate::import::CatalogAvailability {
                 catalog,
@@ -210,10 +210,10 @@ impl Config {
     /// MusicBrainz's API is open, so it needs none; Discogs needs a key it has
     /// not rejected. Total over the asked catalogs, so a new one has to state
     /// what it needs.
-    fn source_is_configured(&self, catalog: crate::import::Catalog) -> bool {
+    fn source_is_configured(&self, catalog: crate::catalog::Catalog) -> bool {
         match catalog {
-            crate::import::Catalog::MusicBrainz => true,
-            crate::import::Catalog::Discogs => self.discogs_token_status().is_usable(),
+            crate::catalog::Catalog::MusicBrainz => true,
+            crate::catalog::Catalog::Discogs => self.discogs_token_status().is_usable(),
             other => unreachable!("{} answers no lookups", other.as_str()),
         }
     }

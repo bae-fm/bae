@@ -12,10 +12,8 @@ use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
-use crate::import::{
-    ArtistAssignment, AudioFile, CandidateDraft, Catalog, ImportError, ReleaseDraft, ReleaseRows,
-    TrackArtistAssignments, TrackBinding, WorkGraphRows,
-};
+use crate::import::{ArtistAssignment, AudioFile, CandidateDraft, ImportError, ReleaseDraft, ReleaseRows, TrackArtistAssignments, TrackBinding, WorkGraphRows};
+use crate::catalog::Catalog;
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdSource};
 use std::collections::{HashMap, HashSet};

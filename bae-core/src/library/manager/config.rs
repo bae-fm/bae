@@ -105,7 +105,7 @@ impl LibraryManager {
     }
 
     /// Which metadata sources this library asks, one entry per
-    /// [`Catalog`](crate::import::Catalog). See
+    /// [`Catalog`](crate::catalog::Catalog). See
     /// [`Config::metadata_sources`](crate::config::Config::metadata_sources) —
     /// the answer is a fact about the stored config, read here off the current
     /// one.
@@ -127,7 +127,7 @@ impl LibraryManager {
     /// job — this layer owns config and knows nothing about what is running.
     pub async fn set_metadata_source_enabled(
         &self,
-        source: crate::import::Catalog,
+        source: crate::catalog::Catalog,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         if !enabled && crate::import::is_the_only_asked_source(&self.metadata_sources(), source) {

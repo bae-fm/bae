@@ -158,7 +158,7 @@ fn values_for(
     response: &crate::musicbrainz::MbReleaseResponse,
 ) -> crate::import::release_values::ReleaseValues {
     crate::import::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
+        crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
     )

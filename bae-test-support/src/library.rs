@@ -98,7 +98,7 @@ fn manager_for_database(
         std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(providers.http().clone()),
+        bae_core::remote_image::RemoteImageCache::for_test(providers.http().clone()),
         providers,
     );
     (library_manager, database)
@@ -165,7 +165,7 @@ pub fn setup_fresh_library(
         std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(providers.http().clone()),
+        bae_core::remote_image::RemoteImageCache::for_test(providers.http().clone()),
         providers,
     );
 

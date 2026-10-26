@@ -2,7 +2,8 @@ use super::*;
 
 #[test]
 fn catalog_links_preserve_the_known_entity_kind() {
-    use bae_core::import::{Catalog, MetadataRef, ReleaseRecord};
+    use bae_core::catalog::Catalog;
+    use bae_core::import::{MetadataRef, ReleaseRecord};
     for (catalog, key, album_url, release_url) in [
         (
             Catalog::MusicBrainz,

@@ -147,7 +147,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         .import
         .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     "mb-offline-1".to_string(),
                 ),
                 partners: vec![],
@@ -191,7 +191,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
             .collect::<Vec<_>>(),
         vec![format!(
             "{}/release-group/rg-offline-1/front",
-            crate::import::cover_art::ARCHIVE
+            crate::remote_image::ARCHIVE
         )],
         "the pressing states no front image of its own, so the album's is the \
          only option — stored with the draft when it was applied, not asked for"
@@ -228,7 +228,7 @@ async fn a_settled_lead_with_no_stored_release_fails_loud() {
         .import
         .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     "mb-missing-1".to_string(),
                 ),
                 partners: vec![],
@@ -265,7 +265,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
 
     let pick = || crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
-            crate::import::Catalog::MusicBrainz,
+            crate::catalog::Catalog::MusicBrainz,
             "mb-manual-1".to_string(),
         ),
         partners: vec![],
@@ -371,11 +371,11 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-paired-1".to_string()
             ),
             partners: vec![crate::import::MetadataRef::new(
-                crate::import::Catalog::Discogs,
+                crate::catalog::Catalog::Discogs,
                 "70000101"
             )],
         })),
@@ -477,11 +477,11 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-paired-2".to_string()
             ),
             partners: vec![crate::import::MetadataRef::new(
-                crate::import::Catalog::Discogs,
+                crate::catalog::Catalog::Discogs,
                 "70000102"
             )],
         })),
@@ -566,7 +566,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     };
     assert_eq!(
         matches[0].source,
-        crate::import::Catalog::Discogs,
+        crate::catalog::Catalog::Discogs,
         "the folder agrees with the Discogs record about more: {matches:?}"
     );
     assert!(
@@ -577,11 +577,11 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         row.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::Discogs,
+                crate::catalog::Catalog::Discogs,
                 "70000103".to_string()
             ),
             partners: vec![crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-paired-3"
             )],
         })),
@@ -681,7 +681,7 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
         .import
         .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     "mb-two-2".to_string(),
                 ),
                 partners: vec![],
@@ -789,7 +789,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
         pane.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-catalog-1".to_string()
             ),
             partners: vec![],

@@ -8,11 +8,10 @@ use super::documents::ReleaseToRead;
 use super::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
 };
+use crate::catalog::Catalog;
 use crate::import::candidate_runtime::RunSubject;
 use crate::import::search::{search_source, CatalogNumberSearch, SearchQuery, SourceLookup};
-use crate::import::{
-    CandidateRuntime, CandidateWork, Catalog, ImportEvent, ImportEventBus, LookupChoices,
-};
+use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus, LookupChoices};
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionWatch, Failure, InternalFailure, SignalsSnapshot};
 use crate::util::rate_limiter::CallPriority;

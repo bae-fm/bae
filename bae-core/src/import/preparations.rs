@@ -560,7 +560,7 @@ impl CandidatePreparations {
 /// without the other is refused when the rows are written.
 struct PreparedCover {
     selection: Option<crate::import::CoverSelection>,
-    image: Option<crate::import::cover_art::RemoteImage>,
+    image: Option<crate::remote_image::RemoteImage>,
 }
 
 /// The cover a metadata application settles the candidate on.
@@ -603,8 +603,8 @@ mod tests {
     use super::*;
     use crate::import::CoverSelection;
 
-    fn image(byte: u8) -> crate::import::cover_art::RemoteImage {
-        crate::import::cover_art::RemoteImage {
+    fn image(byte: u8) -> crate::remote_image::RemoteImage {
+        crate::remote_image::RemoteImage {
             bytes: vec![byte],
             content_type: bae_util::content_type::ContentType::Jpeg,
         }
@@ -617,10 +617,10 @@ mod tests {
     fn a_source_with_no_image_keeps_the_stored_cover_and_its_bytes() {
         let folders_own = CoverSelection::Local("cover.jpg".to_string());
         let remote = CoverSelection::Remote(
-            crate::import::cover_art::RemoteImageSet::original(
+            crate::remote_image::RemoteImageSet::original(
                 "https://example.invalid/front".to_string(),
             ),
-            crate::import::Catalog::Discogs,
+            crate::catalog::Catalog::Discogs,
         );
         let nothing = || PreparedCover {
             selection: None,

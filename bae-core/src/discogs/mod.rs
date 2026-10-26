@@ -1,7 +1,7 @@
 pub mod client;
 pub mod models;
-use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
-use crate::import::Catalog;
+use crate::catalog::Catalog;
+use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 pub use client::DiscogsClient;
 pub use models::*;
 use std::fmt::Display;

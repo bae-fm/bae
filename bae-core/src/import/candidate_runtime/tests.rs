@@ -5,9 +5,8 @@ use crate::import::candidates::{
     Admission, CandidateFiles, IdentificationRuntime, SaveFailure, SavingAnswer,
 };
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
-use crate::import::types::{
-    Catalog, CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability,
-};
+use crate::import::types::{CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability};
+use crate::catalog::Catalog;
 use crate::import::{ImportStanding, ImportStep};
 use crate::util::rate_limiter::CallPriority;
 use std::path::PathBuf;

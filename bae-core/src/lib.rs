@@ -4,6 +4,7 @@ pub mod album_detail;
 pub mod app;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod barcode;
+pub mod catalog;
 pub mod collections;
 #[doc(hidden)]
 pub mod config;
@@ -44,6 +45,7 @@ pub mod pressing;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod providers;
 pub mod queue;
+pub mod remote_image;
 pub mod renderer;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod serde_helpers;

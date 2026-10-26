@@ -25,7 +25,7 @@ fn discogs_cover_choices_keep_every_image() {
     assert_eq!(covers[1].image.url, "https://images.example/back.jpg");
     assert_eq!(
         covers[1].image.downscaled,
-        vec![crate::import::cover_art::DownscaledCopy {
+        vec![crate::remote_image::DownscaledCopy {
             url: "https://images.example/back-small.jpg".to_string(),
             max_edge: 150,
         }]
@@ -131,7 +131,7 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
         assert_eq!(covers.len(), 3, "{covers:?}");
         assert!(covers
             .iter()
-            .all(|cover| cover.standing == crate::import::cover_art::CoverStanding::Stated));
+            .all(|cover| cover.standing == crate::remote_image::CoverStanding::Stated));
         assert_eq!(
             covers
                 .iter()
@@ -205,7 +205,7 @@ fn a_picks_covers_are_the_images_its_documents_state() {
     );
     assert_eq!(
         alone[0].standing,
-        crate::import::cover_art::CoverStanding::Unstated
+        crate::remote_image::CoverStanding::Unstated
     );
 }
 

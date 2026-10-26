@@ -12,7 +12,8 @@ use crate::import::medium_coverage::{candidate_sets, Fit, MediumCoverage, Medium
 use crate::import::release_values::ReleaseValues;
 use crate::import::search::SourceTracks;
 use crate::import::source_release::{not_fetched, SourceRelease};
-use crate::import::{Catalog, ImportError};
+use crate::import::ImportError;
+use crate::catalog::Catalog;
 use crate::signals::AudioOrigin;
 use std::collections::BTreeSet;
 

@@ -371,7 +371,7 @@ where
                 diagnostics.clone(),
                 runtime.handle().clone(),
                 builder,
-                crate::import::cover_art::RemoteImageCache::new(
+                crate::remote_image::RemoteImageCache::new(
                     config_handle.config().library_path(),
                     http,
                 ),

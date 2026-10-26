@@ -399,7 +399,7 @@ mod tests {
             Arc::new(coven::UuidIds),
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+            crate::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
             crate::providers::Providers::offline(),
         );
         (manager, diagnostics, transport, home)

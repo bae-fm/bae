@@ -91,7 +91,7 @@ async fn pure_reads_use_the_read_connection() {
             pick: Some(bae_core::db::VerdictPick {
                 link: bae_core::import::PressingLink {
                     record: bae_core::import::MetadataRef::new(
-                        bae_core::import::Catalog::MusicBrainz,
+                        bae_core::catalog::Catalog::MusicBrainz,
                         "unwritten-release",
                     ),
                     partners: Vec::new(),

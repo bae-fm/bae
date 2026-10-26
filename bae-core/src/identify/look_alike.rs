@@ -21,8 +21,8 @@
 //! would compare that detail too.
 
 use super::agreements::Agreements;
+use crate::catalog::Catalog;
 use crate::import::release_group::{Judgements, Pressing};
-use crate::import::Catalog;
 use crate::pressing::{LabelLine, PressingFacts};
 use std::collections::{HashMap, HashSet};
 

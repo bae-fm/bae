@@ -296,7 +296,8 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
 /// about MusicBrainz.
 #[tokio::test]
 async fn the_last_source_being_asked_cannot_be_switched_off() {
-    use crate::import::{Catalog, SourceAvailability};
+    use crate::import::SourceAvailability;
+    use crate::catalog::Catalog;
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
@@ -334,7 +335,8 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
 /// credential arrives.
 #[tokio::test]
 async fn an_unreachable_source_keeps_the_switch_underneath_it() {
-    use crate::import::{Catalog, SourceAvailability};
+    use crate::import::SourceAvailability;
+    use crate::catalog::Catalog;
 
     let (manager, _temp_dir) = setup_test_manager().await;
 

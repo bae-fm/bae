@@ -1,7 +1,8 @@
 use super::super::*;
 use super::*;
+use crate::catalog::Catalog;
 use crate::db::{identity, DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
-use crate::import::{Catalog, ReleaseRecord};
+use crate::import::ReleaseRecord;
 use chrono::Utc;
 
 fn record(source: Catalog, release_id: &str) -> ReleaseRecord {

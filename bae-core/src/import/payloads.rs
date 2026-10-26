@@ -10,14 +10,12 @@
 
 use crate::discogs::client::DiscogsClient;
 use crate::discogs::DiscogsRelease;
-use crate::import::cover_art::RemoteCover;
+use crate::remote_image::RemoteCover;
 use crate::import::source_release::{
     not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
 };
-use crate::import::{
-    parse_catalog_url, Catalog, CatalogPage, ImportError, MetadataRef, PayloadSource,
-    ReleaseRecord, SourcePayload,
-};
+use crate::import::{ImportError, MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
+use crate::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use crate::musicbrainz::MbReleaseResponse;
 use crate::util::rate_limiter::CallPriority;
 use tracing::warn;
@@ -200,7 +198,7 @@ impl ReleasePayloads {
         let mut covers = Vec::new();
         match self.release.catalog {
             Catalog::MusicBrainz => {
-                covers.extend(crate::import::cover_art::musicbrainz_release_cover(
+                covers.extend(crate::remote_image::musicbrainz_release_cover(
                     &self.musicbrainz_anchor()?,
                 ));
                 if let Some(release) = self.discogs_xref()? {
@@ -210,7 +208,7 @@ impl ReleasePayloads {
             Catalog::Discogs => {
                 covers.extend(self.discogs_anchor()?.covers);
                 if let Some(release) = self.musicbrainz_xref()? {
-                    covers.extend(crate::import::cover_art::musicbrainz_release_cover(
+                    covers.extend(crate::remote_image::musicbrainz_release_cover(
                         &release,
                     ));
                 }
@@ -235,7 +233,7 @@ impl ReleasePayloads {
         };
         let mut covers: Vec<RemoteCover> = musicbrainz
             .as_ref()
-            .and_then(crate::import::cover_art::musicbrainz_album_cover)
+            .and_then(crate::remote_image::musicbrainz_album_cover)
             .into_iter()
             .collect();
         for (catalog, key, json) in self.album_documents()? {

@@ -244,7 +244,7 @@ async fn lead_metadata(
     {
         Ok(cover) => cover,
         Err(failure) => {
-            let Some(lookup) = crate::import::search::provider_failure(&failure.error) else {
+            let Some(lookup) = crate::import::search::remote_image_failure(&failure.error) else {
                 return Err(Settled::Unwritable {
                     error: format!(
                         "could not fetch the {} cover of {}: {}",

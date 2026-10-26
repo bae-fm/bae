@@ -6,11 +6,12 @@
 
 use bae_test_support as support;
 
+use bae_core::catalog::Catalog;
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{
-    ArtistAssignment, Catalog, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit,
-    ScanEvent, TrackArtistAssignments, TrackUserEdit,
+    ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit, ScanEvent,
+    TrackArtistAssignments, TrackUserEdit,
 };
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{

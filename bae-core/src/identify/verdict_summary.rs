@@ -13,9 +13,9 @@ use super::combine::LookupProvenance;
 use super::fit::Declined;
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
-use crate::import::cover_art::RemoteCover;
+use crate::catalog::Catalog;
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::Catalog;
+use crate::remote_image::RemoteCover;
 
 /// A check of the found release against the folder that did not pass,
 /// carrying what it takes to state the disagreement beside Import.
@@ -69,7 +69,7 @@ pub struct LeadMatch {
     pub year: Option<i32>,
     pub media: Vec<crate::pressing::MediaCount>,
     /// The lead match's cover, with the copies its catalog serves.
-    pub cover: Option<crate::import::cover_art::RemoteImageSet>,
+    pub cover: Option<crate::remote_image::RemoteImageSet>,
     pub source_tracks: Option<SourceTracks>,
     pub by_disc_id: bool,
     pub by_barcode: bool,

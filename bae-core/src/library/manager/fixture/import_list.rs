@@ -3,12 +3,12 @@
 //! as the scan and identification write their rows.
 
 use super::*;
+use crate::catalog::Catalog;
 use crate::identify::TerminalVerdict;
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
     ScannedAudio, ScannedFile,
 };
-use crate::import::Catalog;
 
 /// A watched folder of a [`LibraryFixture`] and what its last read found.
 #[derive(Debug, Clone, serde::Deserialize)]

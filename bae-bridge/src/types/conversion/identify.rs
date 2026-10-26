@@ -44,8 +44,8 @@ impl BridgeMetadataResult {
     }
 }
 impl BridgeRemoteCover {
-    pub(crate) fn from_core(c: bae_core::import::cover_art::RemoteCover) -> Self {
-        let bae_core::import::cover_art::RemoteCover {
+    pub(crate) fn from_core(c: bae_core::remote_image::RemoteCover) -> Self {
+        let bae_core::remote_image::RemoteCover {
             image,
             label,
             source,
@@ -561,12 +561,12 @@ fn status_map(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bae_core::catalog::Catalog;
     use bae_core::identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
         ProviderLookup, ValueLookup,
     };
-    use bae_core::import::Catalog;
     use bae_core::signals::{DiscIdSignal, LookupFailure, SourcedValue};
 
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {

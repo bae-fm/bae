@@ -702,7 +702,7 @@ pub enum CoverSelection {
     /// Download from a remote URL.
     RemoteCover {
         url: String,
-        source: crate::import::Catalog,
+        source: crate::catalog::Catalog,
     },
 }
 
@@ -762,7 +762,7 @@ pub struct LibraryManager {
     outputs: crate::library::Outputs,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
-    remote_images: crate::import::cover_art::RemoteImageCache,
+    remote_images: crate::remote_image::RemoteImageCache,
     /// The services releases are looked up in, built once by the app.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     providers: crate::providers::Providers,

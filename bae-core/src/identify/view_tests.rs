@@ -1,4 +1,5 @@
 use super::*;
+use crate::catalog::Catalog;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
     step, BarcodeEvidence, CatalogSearch, DiscIdEvidence, IdentifyEvent, LookupState,
@@ -7,7 +8,6 @@ use crate::identify::state::{
 use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
 use crate::import::search::MetadataResult;
-use crate::import::Catalog;
 use crate::signals::SourcedValue;
 
 pub(super) const MB: Catalog = Catalog::MusicBrainz;

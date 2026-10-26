@@ -17,12 +17,13 @@ impl ImportServiceHandle {
     /// no image, which is what it has, rather than as a failed load.
     pub async fn fetch_remote_image_bytes(
         &self,
-        image: crate::import::cover_art::RemoteImageSet,
+        image: crate::remote_image::RemoteImageSet,
         pixels: Option<u32>,
-    ) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError> {
-        self.library_manager
+    ) -> Result<Option<crate::remote_image::RemoteImage>, crate::import::ImportError> {
+        Ok(self
+            .library_manager
             .fetch_remote_image(image.url_covering(pixels))
-            .await
+            .await?)
     }
 
     /// Submit a candidate's typed search. Fire-and-forget: the run lands on
@@ -268,7 +269,7 @@ impl ImportServiceHandle {
     async fn records_gallery(
         &self,
         records: &[crate::import::ReleaseRecord],
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
         let mut covers = Vec::new();
         for record in records
             .iter()
@@ -305,7 +306,7 @@ impl ImportServiceHandle {
                 },
             };
             for cover in gallery {
-                crate::import::cover_art::push_unique_cover(&mut covers, cover);
+                crate::remote_image::push_unique_cover(&mut covers, cover);
             }
         }
         Ok(covers)

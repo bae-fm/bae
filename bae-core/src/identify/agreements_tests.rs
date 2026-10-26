@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::Catalog;
+use crate::catalog::Catalog;
 use crate::signals::TextOrigin;
 
 fn line(text: &str) -> TextLine {

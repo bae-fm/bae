@@ -868,16 +868,16 @@ impl ImportServiceHandle {
 /// The cover [`ImportServiceHandle::fetch_release_cover`] fetched, with the
 /// bytes its catalog served.
 pub(crate) type FetchedCover = (
-    crate::import::cover_art::RemoteCover,
-    crate::import::cover_art::RemoteImage,
+    crate::remote_image::RemoteCover,
+    crate::remote_image::RemoteImage,
 );
 
 /// A fetch of an external release's cover that failed, naming the catalog
 /// that offered it.
 #[derive(Debug)]
 pub(crate) struct CoverFetchFailure {
-    pub(crate) source: crate::import::Catalog,
-    pub(crate) error: crate::import::ImportError,
+    pub(crate) source: crate::catalog::Catalog,
+    pub(crate) error: crate::remote_image::RemoteImageError,
 }
 
 /// The metadata `draft`, read from an external release, makes with the

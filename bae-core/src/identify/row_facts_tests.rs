@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::Catalog;
+use crate::catalog::Catalog;
 use crate::signals::{TextLine, TextOrigin};
 
 fn text(lines: &[&str]) -> CandidateText {

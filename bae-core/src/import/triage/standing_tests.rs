@@ -1,9 +1,8 @@
 use super::*;
 use crate::identify::LeadMatch;
 use crate::import::search::SourceTracks;
-use crate::import::{
-    Catalog, ImportStanding, MetadataRef, PendingFilter, PressingLink, SaveFailure,
-};
+use crate::import::{ImportStanding, MetadataRef, PendingFilter, PressingLink, SaveFailure};
+use crate::catalog::Catalog;
 use crate::signals::InternalFailure;
 use std::collections::HashSet;
 

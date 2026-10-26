@@ -348,20 +348,20 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    AutomationCoverStanding = bae_core::import::cover_art::CoverStanding,
+    AutomationCoverStanding = bae_core::remote_image::CoverStanding,
     from_core: pub(crate) fn,
     variants: { Stated, Unstated },
 }
 
 mirror_struct! {
-    AutomationRemoteImageSet = bae_core::import::cover_art::RemoteImageSet,
+    AutomationRemoteImageSet = bae_core::remote_image::RemoteImageSet,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { url, downscaled: (each AutomationDownscaledCopy) },
 }
 
 mirror_struct! {
-    AutomationDownscaledCopy = bae_core::import::cover_art::DownscaledCopy,
+    AutomationDownscaledCopy = bae_core::remote_image::DownscaledCopy,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { url, max_edge },

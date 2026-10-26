@@ -5,7 +5,8 @@ use crate::import::source_release::{
     CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease,
     TracklistEntry,
 };
-use crate::import::{ArtistCredit, Catalog, CreditedRole, ImportError};
+use crate::import::{ArtistCredit, CreditedRole, ImportError};
+use crate::catalog::Catalog;
 use crate::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};

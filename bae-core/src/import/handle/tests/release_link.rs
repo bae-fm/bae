@@ -16,7 +16,7 @@ async fn standing(handle: &ImportServiceHandle, key: &str) -> PendingStanding {
 fn linked_to(release_id: &str) -> crate::import::ReleaseLink {
     crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
-            crate::import::Catalog::MusicBrainz,
+            crate::catalog::Catalog::MusicBrainz,
             release_id.to_string(),
         ),
         partners: vec![],

@@ -69,7 +69,7 @@ impl DiscogsSession {
         &self,
         release_id: &str,
         priority: CallPriority,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
         let Some(client) = self.client.as_ref() else {
             return Err(crate::import::ImportError::DiscogsNotConfigured);
         };
@@ -78,7 +78,7 @@ impl DiscogsSession {
         if let Some(master_id) = release.master_id {
             let (_, json) = client.get_master(&master_id, priority).await?;
             for cover in crate::discogs::client::parse_discogs_master_covers(&json)? {
-                crate::import::cover_art::push_unique_cover(&mut covers, cover);
+                crate::remote_image::push_unique_cover(&mut covers, cover);
             }
         }
         Ok(covers)
@@ -89,7 +89,7 @@ impl DiscogsSession {
         &self,
         master_id: &str,
         priority: CallPriority,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
         let client = self
             .client
             .as_ref()
@@ -321,7 +321,7 @@ impl LibraryManager {
     ) -> Result<DiscogsSession, crate::import::ImportError> {
         match self.discogs_session() {
             Ok(session) => Ok(session),
-            Err(error) if release.catalog == crate::import::Catalog::MusicBrainz => {
+            Err(error) if release.catalog == crate::catalog::Catalog::MusicBrainz => {
                 warn!(
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
@@ -354,7 +354,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         priority: CallPriority,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
         self.discogs_session()?
             .release_covers(release_id, priority)
             .await
@@ -365,7 +365,7 @@ impl LibraryManager {
         &self,
         master_id: &str,
         priority: CallPriority,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
         self.discogs_session()?
             .master_covers(master_id, priority)
             .await
@@ -452,7 +452,7 @@ impl LibraryManager {
             let row = DbLibraryImage::stored_jpeg(
                 LibraryImageType::Artist,
                 &artist.id,
-                crate::import::Catalog::Discogs.as_str(),
+                crate::catalog::Catalog::Discogs.as_str(),
                 Some(source_url.clone()),
                 jpeg,
                 self.now(),
@@ -507,11 +507,11 @@ impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn can_fetch_releases_from(
         &self,
-        catalog: crate::import::Catalog,
+        catalog: crate::catalog::Catalog,
     ) -> Result<bool, LibraryError> {
         match catalog {
-            crate::import::Catalog::MusicBrainz => Ok(true),
-            crate::import::Catalog::Discogs => Ok(self.discogs_session()?.client.is_some()),
+            crate::catalog::Catalog::MusicBrainz => Ok(true),
+            crate::catalog::Catalog::Discogs => Ok(self.discogs_session()?.client.is_some()),
             other => unreachable!("nothing fetches releases from {}", other.as_str()),
         }
     }

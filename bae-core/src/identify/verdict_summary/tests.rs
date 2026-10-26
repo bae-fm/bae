@@ -2,9 +2,9 @@
 //! sweep's tests; these are about what the queue asks of the user given one.
 
 use super::*;
+use crate::catalog::Catalog;
 use crate::identify::{Findings, LookupProvenance, NarrowedOut};
 use crate::import::search::SourceTracks;
-use crate::import::Catalog;
 
 fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResult {
     MetadataResult {

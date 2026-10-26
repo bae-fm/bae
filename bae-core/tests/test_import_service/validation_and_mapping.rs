@@ -41,7 +41,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        bae_core::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         bae_core::providers::Providers::offline(),
     );
     let handle = library_manager

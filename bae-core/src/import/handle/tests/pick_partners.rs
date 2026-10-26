@@ -19,7 +19,7 @@ async fn linked_cover_gallery_can_be_empty() {
     handle
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::Discogs,
+                    crate::catalog::Catalog::Discogs,
                     release_id.to_string(),
                 ),
                 partners: vec![],
@@ -64,14 +64,14 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     let mb_release_id = "partner-mb-rel-1";
     seed_mb_release(handle.library_manager.providers(), mb_release_id, "partner-mb-group-1");
     let partner = crate::import::MetadataRef::new(
-        crate::import::Catalog::MusicBrainz,
+        crate::catalog::Catalog::MusicBrainz,
         mb_release_id.to_string(),
     );
 
     handle
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::Discogs,
+                    crate::catalog::Catalog::Discogs,
                     discogs_release_id.to_string(),
                 ),
                 partners: vec![partner.clone()],
@@ -90,7 +90,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         stored.release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::Discogs,
+                crate::catalog::Catalog::Discogs,
                 discogs_release_id.to_string()
             ),
             partners: vec![partner.clone()],
@@ -143,11 +143,11 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
     handle
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     mb_release_id.to_string(),
                 ),
                 partners: vec![crate::import::MetadataRef::new(
-                    crate::import::Catalog::Discogs,
+                    crate::catalog::Catalog::Discogs,
                     "70000002",
                 )],
             },
@@ -190,11 +190,11 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
     handle
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     mb_release_id.to_string(),
                 ),
                 partners: vec![crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     "repeat-mb-rel-2",
                 )],
             },
@@ -221,7 +221,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 fn seed_linked_discogs_release(providers: &crate::providers::Providers) -> crate::import::MetadataRef {
     seed_discogs_release_in(providers, "70000007", Some("70000008"), Some("linked-mb-rel-1"));
     seed_mb_release(providers, "linked-mb-rel-1", "linked-mb-group-1");
-    crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000007")
+    crate::import::MetadataRef::new(crate::catalog::Catalog::Discogs, "70000007")
 }
 
 /// An identify run reads a release only as far as ranking it needs. Picking
@@ -253,7 +253,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         !read_by_the_run
             .records()
             .iter()
-            .any(|record| record.catalog() == crate::import::Catalog::MusicBrainz),
+            .any(|record| record.catalog() == crate::catalog::Catalog::MusicBrainz),
         "the run's read asks MusicBrainz nothing: {:?}",
         read_by_the_run.records()
     );
@@ -298,7 +298,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .iter()
         .any(|record| record.release_ref()
             == Some(&crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "linked-mb-rel-1"
             ))));
     assert_eq!(picked, complete);
@@ -446,7 +446,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     handle
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     release_id,
                 ),
                 partners: vec![],
@@ -522,9 +522,9 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .seed_release_group_json_cache(group, group_json("mw111"));
     handle
         .select_candidate_release(key.clone(), crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, primary),
+                record: crate::import::MetadataRef::new(crate::catalog::Catalog::Discogs, primary),
                 partners: vec![crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     partner,
                 )],
             },
@@ -538,7 +538,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .library_manager
         .save_source_release(
             &crate::import::payloads::ReleasePayloads::for_test(
-                crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, partner),
+                crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, partner),
                 mb_release_json(partner, group),
                 vec![crate::import::SourcePayload::new(
                     crate::import::PayloadSource::MusicBrainzReleaseGroup,
@@ -563,7 +563,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     assert_eq!(
         records
             .iter()
-            .find(|record| record.catalog() == crate::import::Catalog::AllMusic)
+            .find(|record| record.catalog() == crate::catalog::Catalog::AllMusic)
             .map(|record| record.key()),
         Some("mw222")
     );
@@ -599,11 +599,11 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .keep_album_links(vec![(
             group.to_string(),
             vec![AlbumLink {
-                album: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "909"),
+                album: crate::import::MetadataRef::new(crate::catalog::Catalog::Discogs, "909"),
                 stated: AlbumStatement::Release {
                     musicbrainz_release: "chain-mb-release".to_string(),
                     twin: crate::import::MetadataRef::new(
-                        crate::import::Catalog::Discogs,
+                        crate::catalog::Catalog::Discogs,
                         "70000011",
                     ),
                 },
@@ -611,7 +611,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         )])
         .await;
 
-    let picked = crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012");
+    let picked = crate::import::MetadataRef::new(crate::catalog::Catalog::Discogs, "70000012");
     handle
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: picked.clone(),
@@ -629,6 +629,6 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .records();
     shut_down(handle).await;
     assert!(records.contains(&crate::import::ReleaseRecord::album(
-        &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, group)
+        &crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, group)
     )));
 }

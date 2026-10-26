@@ -8,19 +8,20 @@ use bae_core::album_detail::{
     ReleaseStorageAction, ReleaseStorageState, SearchResults, TrackDetail, TrackPosition,
     TrackSide,
 };
+use bae_core::catalog::Catalog;
 use bae_core::config::McpConfig;
 use bae_core::db::LibraryStatus;
-use bae_core::import::cover_art::RemoteCover;
 use bae_core::import::folder_scanner::InvalidCandidate;
 use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::search::MetadataResult;
 use bae_core::import::{
-    CandidateEditField, CandidateImportStatus, CandidateRuntimeSnapshot, Catalog, CoverSelection,
+    CandidateEditField, CandidateImportStatus, CandidateRuntimeSnapshot, CoverSelection,
     GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight, ImportListItem,
     ImportListView, ImportPhase, ImportStep, MetadataRef, PrepareStep, PressingLink, SearchQuery,
     TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
+use bae_core::remote_image::RemoteCover;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};

@@ -3,8 +3,8 @@
 //! disambiguation and annotation.
 
 use super::*;
+use crate::catalog::Catalog;
 use crate::import::search::musicbrainz_release_notes;
-use crate::import::Catalog;
 use crate::signals::{TextLine, TextOrigin};
 
 fn folder(line: &str) -> CandidateText {

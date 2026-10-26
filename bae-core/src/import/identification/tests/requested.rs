@@ -143,7 +143,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     fixture
         .manager
-        .set_metadata_source_enabled(crate::import::Catalog::Discogs, false)
+        .set_metadata_source_enabled(crate::catalog::Catalog::Discogs, false)
         .await
         .expect("MusicBrainz is still asked, so Discogs can be switched off");
     fixture.identification().rerun_identify(key.clone());
@@ -164,7 +164,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
             .iter()
             .map(|result| result.source)
             .collect::<Vec<_>>(),
-        vec![crate::import::Catalog::MusicBrainz],
+        vec![crate::catalog::Catalog::MusicBrainz],
         "the run that stored the answer asked only the source still switched on"
     );
     assert_eq!(

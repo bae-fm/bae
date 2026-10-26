@@ -7,7 +7,7 @@
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::Catalog;
+use crate::catalog::Catalog;
 
 /// Two exact provider identities that currently belong to different library
 /// artists. Import stops until the person chooses how this credit is used.
@@ -135,22 +135,9 @@ pub enum ImportError {
     #[error("cover art failed: {detail}")]
     CoverArt { detail: String },
 
-    /// An artwork request got no answer: the connection, DNS, TLS, a timeout
-    /// or a dropped body failed — or bae could not make the request at all (a
-    /// URL reqwest would not build, a redirect loop), which `ui_error` and
-    /// `provider_failure` tell apart by reading the error. `context` names
-    /// what was being fetched.
-    #[error("{context}: {}", bae_util::error_text::CauseChain(error))]
-    CoverArtTransport {
-        context: &'static str,
-        #[source]
-        error: reqwest::Error,
-    },
-
-    /// An artwork host answered with a status that is not an image: a server
-    /// error, a refusal, or no image at an address that must have one.
-    #[error("cover art request failed: {detail}")]
-    CoverArtStatus { status: u16, detail: String },
+    /// A catalog's image or an archive gallery could not be read.
+    #[error(transparent)]
+    RemoteImage(#[from] crate::remote_image::RemoteImageError),
 
     /// The selected local cover disappeared or could not be read.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -316,6 +303,7 @@ impl ImportError {
         use crate::discogs::client::DiscogsError;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         use crate::musicbrainz::MusicBrainzError;
+        use crate::remote_image::RemoteImageError;
         use crate::ui::UiErrorCategory as C;
         match self {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -364,10 +352,16 @@ impl ImportError {
                 | DiscogsError::InvalidApiKey
                 | DiscogsError::NotFound => C::Import,
             },
-            Self::CoverArtTransport { error, .. } if error.is_builder() || error.is_redirect() => {
-                C::Internal
-            }
-            Self::CoverArtTransport { .. } | Self::CoverArtStatus { .. } => C::Import,
+            Self::RemoteImage(error) => match error {
+                RemoteImageError::Unusable { .. } => C::ImportData,
+                RemoteImageError::Transport { error, .. }
+                    if error.is_builder() || error.is_redirect() =>
+                {
+                    C::Internal
+                }
+                RemoteImageError::Transport { .. } | RemoteImageError::Status { .. } => C::Import,
+                RemoteImageError::CacheTask { .. } => C::Internal,
+            },
             Self::Internal { .. } => C::Internal,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::Config { .. } => C::Config,

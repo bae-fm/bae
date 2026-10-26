@@ -12,7 +12,7 @@
 //! is what the bridge and event payloads carry. (`crate::queue::QueueItem` is
 //! built directly by the queue catalog read — it has no raw counterpart here.)
 
-use crate::import::Catalog;
+use crate::catalog::Catalog;
 use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use std::num::NonZeroU32;

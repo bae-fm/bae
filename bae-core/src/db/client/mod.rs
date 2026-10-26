@@ -3,7 +3,7 @@ use crate::db::models::*;
 // The catalogs a record names belong to the import path, which the mobile
 // builds do not carry; the modules that read one are gated with it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::Catalog;
+use crate::catalog::Catalog;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use bae_util::content_type::ContentType;

@@ -18,7 +18,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
         cover: &crate::import::CoverSelection,
-        remote_image: Option<&crate::import::cover_art::RemoteImage>,
+        remote_image: Option<&crate::remote_image::RemoteImage>,
     ) -> Result<u64, LibraryError> {
         let cover = cover.clone();
         let remote_image = remote_image.cloned();
@@ -36,7 +36,7 @@ impl CandidatePreparations {
         candidate_path: &str,
         read: &CandidateAsRead,
         cover: &crate::import::CoverSelection,
-        remote_image: Option<&crate::import::cover_art::RemoteImage>,
+        remote_image: Option<&crate::remote_image::RemoteImage>,
     ) -> Result<u64, LibraryError> {
         let cover = cover.clone();
         let remote_image = remote_image.cloned();

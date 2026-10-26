@@ -330,7 +330,7 @@ async fn download_rejects_short_non_image_response() {
         .await
         .unwrap_err();
     assert!(
-        matches!(&error, ImportError::CoverArt { detail } if detail.contains("valid image")),
+        matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("valid image")),
         "got: {error}"
     );
 }
@@ -343,7 +343,7 @@ async fn download_rejects_bytes_that_are_not_an_image() {
         .await
         .unwrap_err();
     assert!(
-        matches!(&error, ImportError::CoverArt { detail } if detail.contains("valid image")),
+        matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("valid image")),
         "got: {error}"
     );
 }
@@ -360,7 +360,7 @@ async fn download_rejects_declared_over_cap_response() {
     .expect("oversized response should fail before reading the body");
     let error = result.unwrap_err();
     assert!(
-        matches!(&error, ImportError::CoverArt { detail } if detail.contains("too large")),
+        matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("too large")),
         "got: {error}"
     );
 }
@@ -397,7 +397,7 @@ async fn artwork_http_failures_keep_provider_classification_after_retries() {
             .unwrap_err();
         assert_eq!(host.hits(), attempts, "status {status}");
         assert_eq!(
-            crate::import::search::provider_failure(&error),
+            crate::import::search::remote_image_failure(&error),
             Some(crate::signals::LookupFailure::Provider {
                 status: Some(status)
             }),
@@ -414,7 +414,7 @@ async fn required_missing_artwork_keeps_not_found_classification() {
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);
     assert_eq!(
-        crate::import::search::provider_failure(&error),
+        crate::import::search::remote_image_failure(&error),
         Some(crate::signals::LookupFailure::Provider { status: Some(404) })
     );
 }
@@ -451,7 +451,7 @@ async fn artwork_interrupted_body_is_a_network_failure() {
         .await
         .unwrap_err();
     assert_eq!(
-        crate::import::search::provider_failure(&error),
+        crate::import::search::remote_image_failure(&error),
         Some(crate::signals::LookupFailure::Network)
     );
 }
@@ -469,7 +469,7 @@ async fn artwork_stalled_body_keeps_timeout_classification() {
         Ok(_) => panic!("stalled body should time out"),
     };
     assert_eq!(
-        crate::import::search::provider_failure(&error),
+        crate::import::search::remote_image_failure(&error),
         Some(crate::signals::LookupFailure::Timeout)
     );
 }
@@ -480,8 +480,9 @@ async fn artwork_invalid_request_is_an_internal_failure() {
         .fetch_required("not a URL")
         .await
         .unwrap_err();
-    assert_eq!(crate::import::search::provider_failure(&error), None);
-    let crate::ui::UiError::Diagnostic { category, detail } = error.ui_error();
+    assert_eq!(crate::import::search::remote_image_failure(&error), None);
+    let crate::ui::UiError::Diagnostic { category, detail } =
+        crate::import::ImportError::from(error).ui_error();
     assert_eq!(category, crate::ui::UiErrorCategory::Internal);
     assert!(detail.contains("relative URL without a base"), "{detail}");
 }
@@ -496,33 +497,34 @@ async fn artwork_unresolvable_host_names_its_dns_failure() {
         .await
         .unwrap_err();
     assert_eq!(
-        crate::import::search::provider_failure(&error),
+        crate::import::search::remote_image_failure(&error),
         Some(crate::signals::LookupFailure::Network)
     );
-    let crate::ui::UiError::Diagnostic { category, detail } = error.ui_error();
+    let crate::ui::UiError::Diagnostic { category, detail } =
+        crate::import::ImportError::from(error).ui_error();
     assert_eq!(category, crate::ui::UiErrorCategory::Import);
     assert!(detail.contains("dns error"), "{detail}");
 }
 
 #[tokio::test]
 async fn supported_cover_formats_keep_original_remote_bytes_and_type() {
-    assert!(include_bytes!("../../test-fixtures/cover-art/solid.gif").len() < 100);
-    assert!(include_bytes!("../../test-fixtures/cover-art/solid.webp").len() < 100);
+    assert!(include_bytes!("../test-fixtures/cover-art/solid.gif").len() < 100);
+    assert!(include_bytes!("../test-fixtures/cover-art/solid.webp").len() < 100);
     for (bytes, content_type) in [
         (
-            include_bytes!("../../test-fixtures/cover-art/solid.gif").as_slice(),
+            include_bytes!("../test-fixtures/cover-art/solid.gif").as_slice(),
             ContentType::Gif,
         ),
         (
-            include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
+            include_bytes!("../test-fixtures/cover-art/solid.webp").as_slice(),
             ContentType::Webp,
         ),
         (
-            include_bytes!("../../test-fixtures/cover-art/animated.gif").as_slice(),
+            include_bytes!("../test-fixtures/cover-art/animated.gif").as_slice(),
             ContentType::Gif,
         ),
         (
-            include_bytes!("../../test-fixtures/cover-art/animated.webp").as_slice(),
+            include_bytes!("../test-fixtures/cover-art/animated.webp").as_slice(),
             ContentType::Webp,
         ),
     ] {
@@ -549,14 +551,14 @@ async fn remote_cover_dimensions_are_bounded() {
         .await
         .unwrap_err();
     assert!(
-        matches!(&error, ImportError::CoverArt { detail } if detail.contains("limit")),
+        matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("limit")),
         "{error}"
     );
 }
 
 #[tokio::test]
 async fn remote_cover_decode_allocation_is_bounded() {
-    let mut bytes = include_bytes!("../../test-fixtures/cover-art/solid.gif").to_vec();
+    let mut bytes = include_bytes!("../test-fixtures/cover-art/solid.gif").to_vec();
     bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
     bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
     let url = start_mock(vec![(200, bytes)]).await;
@@ -565,7 +567,7 @@ async fn remote_cover_decode_allocation_is_bounded() {
         .await
         .unwrap_err();
     assert!(
-        matches!(&error, ImportError::CoverArt { detail } if detail.contains("Memory limit")),
+        matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("Memory limit")),
         "{error}"
     );
 }
@@ -573,8 +575,8 @@ async fn remote_cover_decode_allocation_is_bounded() {
 #[tokio::test]
 async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
     for bytes in [
-        include_bytes!("../../test-fixtures/cover-art/solid.gif").as_slice(),
-        include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
+        include_bytes!("../test-fixtures/cover-art/solid.gif").as_slice(),
+        include_bytes!("../test-fixtures/cover-art/solid.webp").as_slice(),
     ] {
         let truncated = &bytes[..20];
         assert!(bae_util::stored_image::stored_jpeg(truncated).is_err());
@@ -583,6 +585,6 @@ async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
             .fetch_required(&url)
             .await
             .unwrap_err();
-        assert!(matches!(error, ImportError::CoverArt { .. }));
+        assert!(matches!(error, RemoteImageError::Unusable { .. }));
     }
 }

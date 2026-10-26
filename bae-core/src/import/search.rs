@@ -5,10 +5,11 @@
 use crate::text_match::catalog_key;
 use crate::barcode::{comparison_key, written_digits, Barcode, Unusable};
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
-use crate::import::cover_art::RemoteCover;
+use crate::remote_image::{RemoteCover, RemoteImageError};
 use crate::import::parse_year;
 use crate::import::album_links::AlbumLinks;
-use crate::import::types::{parse_catalog_url, Catalog, CatalogPage, MetadataRef};
+use crate::import::types::MetadataRef;
+use crate::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::pressing::{
@@ -404,7 +405,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     let notes = musicbrainz_release_notes(&r);
     let (pressing, media) = crate::import::musicbrainz_mapper::pressing(&r);
     let links = release_links_of(&r.relations);
-    let cover_art = crate::import::cover_art::musicbrainz_release_cover(&r);
+    let cover_art = crate::remote_image::musicbrainz_release_cover(&r);
     Some(MetadataResult {
         source: Catalog::MusicBrainz,
         release_id: r.id,
@@ -506,7 +507,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
 /// unstated: the search endpoint takes no `inc` and returns no
 /// `cover-art-archive` block, so the result says nothing about whether the
 /// archive holds one. A stated cover from another record is preferred over it
-/// wherever covers are picked ([`crate::import::cover_art::offered_covers`]),
+/// wherever covers are picked ([`crate::remote_image::offered_covers`]),
 /// and the release's own document states it once a pick fetches it.
 pub(crate) async fn search_mb(
     musicbrainz: &musicbrainz::MusicBrainz,
@@ -605,10 +606,7 @@ fn lookup_or_internal(
 pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
     match error {
         ImportError::MusicBrainz(error) => mb_provider_failure(error),
-        ImportError::CoverArtTransport { error, .. } => transport_failure(error),
-        ImportError::CoverArtStatus { status, .. } => Some(LookupFailure::Provider {
-            status: Some(*status),
-        }),
+        ImportError::RemoteImage(error) => remote_image_failure(error),
         ImportError::Discogs(error) => match error {
             DiscogsError::Transport(error) => transport_failure(error),
             DiscogsError::Provider { status, .. } => Some(LookupFailure::Provider {
@@ -619,6 +617,19 @@ pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
             DiscogsError::Serialization(_) => None,
         },
         _ => None,
+    }
+}
+
+/// The failure an artwork host answered with, or `None` for one bae met on
+/// its own side: a request it could not build, bytes that are not an image,
+/// a cache task that did not finish.
+pub(crate) fn remote_image_failure(error: &RemoteImageError) -> Option<LookupFailure> {
+    match error {
+        RemoteImageError::Transport { error, .. } => transport_failure(error),
+        RemoteImageError::Status { status, .. } => Some(LookupFailure::Provider {
+            status: Some(*status),
+        }),
+        RemoteImageError::Unusable { .. } | RemoteImageError::CacheTask { .. } => None,
     }
 }
 

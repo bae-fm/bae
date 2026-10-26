@@ -35,7 +35,7 @@ impl Default for IdentificationPreferences {
 }
 
 /// Which catalogs this library asks. One flag per
-/// [`Catalog::LOOKUP`](crate::import::Catalog::LOOKUP) member, all on by
+/// [`Catalog::LOOKUP`](crate::catalog::Catalog::LOOKUP) member, all on by
 /// default.
 ///
 /// The TOML table needs a name per catalog, so the fields are named — but
@@ -54,18 +54,18 @@ pub struct LookupCatalogPreferences {
 }
 
 impl LookupCatalogPreferences {
-    pub fn enabled(&self, catalog: crate::import::Catalog) -> bool {
+    pub fn enabled(&self, catalog: crate::catalog::Catalog) -> bool {
         match catalog {
-            crate::import::Catalog::MusicBrainz => self.musicbrainz,
-            crate::import::Catalog::Discogs => self.discogs,
+            crate::catalog::Catalog::MusicBrainz => self.musicbrainz,
+            crate::catalog::Catalog::Discogs => self.discogs,
             other => unreachable!("{} answers no lookups", other.as_str()),
         }
     }
 
-    pub fn set(&mut self, catalog: crate::import::Catalog, enabled: bool) {
+    pub fn set(&mut self, catalog: crate::catalog::Catalog, enabled: bool) {
         match catalog {
-            crate::import::Catalog::MusicBrainz => self.musicbrainz = enabled,
-            crate::import::Catalog::Discogs => self.discogs = enabled,
+            crate::catalog::Catalog::MusicBrainz => self.musicbrainz = enabled,
+            crate::catalog::Catalog::Discogs => self.discogs = enabled,
             other => unreachable!("{} answers no lookups", other.as_str()),
         }
     }

@@ -12,10 +12,10 @@
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use super::row_facts::{Fact, FolderFacts};
+use crate::catalog::Catalog;
 use crate::db::LibraryStatus;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
-use crate::import::Catalog;
 use std::collections::{HashMap, HashSet};
 
 /// Which of a run's keys returned one result. Stored with the [`Findings`].

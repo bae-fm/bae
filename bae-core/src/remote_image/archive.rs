@@ -1,8 +1,8 @@
 //! Complete Cover Art Archive galleries, fetched only when a picker opens.
 
 use super::{
-    push_unique_cover, send_artwork_request, Catalog, CoverStanding, DownscaledCopy, ImportError,
-    RemoteCover, RemoteImageSet, ARCHIVE,
+    push_unique_cover, send_artwork_request, Catalog, CoverStanding, DownscaledCopy, RemoteCover,
+    RemoteImageError, RemoteImageSet, ARCHIVE,
 };
 use bae_util::http::Http;
 use serde::Deserialize;
@@ -28,7 +28,7 @@ pub async fn musicbrainz_gallery(
     http: &Http,
     release_id: &str,
     group_id: Option<&str>,
-) -> Result<Vec<RemoteCover>, ImportError> {
+) -> Result<Vec<RemoteCover>, RemoteImageError> {
     let mut covers = fetch_gallery(http, &format!("{ARCHIVE}/release/{release_id}/")).await?;
     if let Some(group_id) = group_id {
         for cover in musicbrainz_group_gallery(http, group_id).await? {
@@ -42,11 +42,11 @@ pub async fn musicbrainz_gallery(
 pub async fn musicbrainz_group_gallery(
     http: &Http,
     group_id: &str,
-) -> Result<Vec<RemoteCover>, ImportError> {
+) -> Result<Vec<RemoteCover>, RemoteImageError> {
     fetch_gallery(http, &format!("{ARCHIVE}/release-group/{group_id}/")).await
 }
 
-async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, ImportError> {
+async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, RemoteImageError> {
     let Some(response) = send_artwork_request(http, url, "Cover Art Archive gallery").await? else {
         return Ok(Vec::new());
     };
@@ -58,9 +58,9 @@ async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, Impor
     parse_gallery(&bytes)
 }
 
-fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, ImportError> {
+fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, RemoteImageError> {
     let mut gallery: ArchiveGallery =
-        serde_json::from_slice(bytes).map_err(|error| ImportError::CoverArt {
+        serde_json::from_slice(bytes).map_err(|error| RemoteImageError::Unusable {
             detail: format!("Invalid Cover Art Archive gallery: {error}"),
         })?;
     gallery.images.sort_by_key(|image| !image.front);
@@ -259,7 +259,7 @@ mod tests {
         let http = Http::new().expect("the test HTTP client builds");
         let error = fetch_gallery(&http, &url).await.unwrap_err();
         assert_eq!(
-            crate::import::search::provider_failure(&error),
+            crate::import::search::remote_image_failure(&error),
             Some(crate::signals::LookupFailure::Network)
         );
     }

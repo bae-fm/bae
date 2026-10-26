@@ -4,9 +4,10 @@
 //! apply.
 
 use super::test_devices::{run_two_device_test, TestDevice, TwoDevices};
+use crate::catalog::Catalog;
 use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 use crate::import::{
-    ArtistAssignment, Catalog, ExistingArtist, MetadataRef, ReleaseRecord, ReleaseUserEdit,
+    ArtistAssignment, ExistingArtist, MetadataRef, ReleaseRecord, ReleaseUserEdit,
 };
 
 const MB_ARTIST: &str = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";

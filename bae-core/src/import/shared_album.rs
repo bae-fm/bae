@@ -18,10 +18,8 @@
 //! as many as the folder has.
 
 use crate::import::release_group::ReleaseGroup;
-use crate::import::{
-    AlbumLink, Credited, CandidateDraft, Catalog, MetadataRef, RawLabelEdit,
-    RawReleaseEdit, TrackArtistAssignments,
-};
+use crate::import::{AlbumLink, Credited, CandidateDraft, MetadataRef, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments};
+use crate::catalog::Catalog;
 use crate::text_match;
 
 /// The offered rows of a list that are several pressings of one album.

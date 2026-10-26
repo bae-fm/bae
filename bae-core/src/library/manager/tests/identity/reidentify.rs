@@ -652,7 +652,8 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
 
 #[tokio::test]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
-    use crate::import::{Catalog, MetadataRef};
+    use crate::import::MetadataRef;
+    use crate::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
         .set_discogs_key(

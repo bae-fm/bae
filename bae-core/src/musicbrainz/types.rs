@@ -371,8 +371,8 @@ impl DiscogsPage {
     /// The address MusicBrainz files the page's links under.
     pub(super) fn resource(&self) -> String {
         match self {
-            Self::Release(id) => crate::import::Catalog::Discogs.release_url(id),
-            Self::Master(id) => crate::import::Catalog::Discogs.album_url(id),
+            Self::Release(id) => crate::catalog::Catalog::Discogs.release_url(id),
+            Self::Master(id) => crate::catalog::Catalog::Discogs.album_url(id),
         }
     }
 

@@ -121,7 +121,7 @@ pub struct DbCandidatePaneRows {
     pub cover: Option<crate::import::CoverSelection>,
     /// The cover images the applied catalog release offers the picker, in
     /// the order it shows them.
-    pub cover_options: Vec<crate::import::cover_art::RemoteCover>,
+    pub cover_options: Vec<crate::remote_image::RemoteCover>,
     /// The candidate's one stored draft: album fields and one row per audio
     /// slot, each carrying its physical decision.
     pub draft: crate::import::CandidateDraft,

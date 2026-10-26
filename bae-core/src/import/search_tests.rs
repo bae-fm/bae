@@ -399,16 +399,16 @@ fn discogs_search_result_carries_remote_cover_pair() {
     assert_eq!(
         metadata.cover_art,
         Some(RemoteCover {
-            image: crate::import::cover_art::RemoteImageSet::with_copies(
+            image: crate::remote_image::RemoteImageSet::with_copies(
                 "https://discogs.example/full.jpg".to_string(),
-                vec![crate::import::cover_art::DownscaledCopy {
+                vec![crate::remote_image::DownscaledCopy {
                     url: "https://discogs.example/thumb.jpg".to_string(),
                     max_edge: 150,
                 }],
             ),
             label: Catalog::Discogs.cover_source_label().to_string(),
             source: Catalog::Discogs,
-            standing: crate::import::cover_art::CoverStanding::Stated,
+            standing: crate::remote_image::CoverStanding::Stated,
         })
     );
 }
@@ -522,7 +522,7 @@ fn mb_detail_offers_the_stated_archive_front_alone() {
     assert_eq!(
         detail.cover_art,
         vec![RemoteCover {
-            standing: crate::import::cover_art::CoverStanding::Stated,
+            standing: crate::remote_image::CoverStanding::Stated,
             ..RemoteCover::musicbrainz_release("mb-release-1")
         }]
     );

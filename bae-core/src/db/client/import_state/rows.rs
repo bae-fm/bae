@@ -10,7 +10,8 @@ use super::verdict_rows::{
     StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
-use crate::import::{AlbumLink, Catalog, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
+use crate::import::{AlbumLink, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
+use crate::catalog::Catalog;
 use std::str::FromStr;
 
 type CandidateProvenances = HashMap<String, MetadataProvenance>;
@@ -451,7 +452,7 @@ pub(crate) fn load_matches_rows_on(
                 .entry((content_hash, position))
                 .or_default()
                 .cover_copies
-                .push(crate::import::cover_art::DownscaledCopy { url, max_edge });
+                .push(crate::remote_image::DownscaledCopy { url, max_edge });
         }
         for (content_hash, position, medium) in media {
             entries

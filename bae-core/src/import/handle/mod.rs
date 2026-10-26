@@ -1,7 +1,8 @@
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
-use crate::import::types::{Catalog, ImportCommand, ImportProgress};
+use crate::import::types::{ImportCommand, ImportProgress};
+use crate::catalog::Catalog;
 use crate::import::watched_folder::WatchedFolder;
 use crate::library::manager::DiscogsCheck;
 use crate::library::LibraryManager;

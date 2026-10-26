@@ -17,7 +17,7 @@ use serde::Deserialize;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-use crate::import::{Catalog, CatalogPage};
+use crate::catalog::{Catalog, CatalogPage};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http};

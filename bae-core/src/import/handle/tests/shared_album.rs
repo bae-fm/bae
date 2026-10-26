@@ -9,7 +9,7 @@ const ALBUM: &str = "album-group-1";
 /// One MusicBrainz pressing of the album, as the lookup offered it.
 fn offered(release_id: &str, year: i32) -> crate::import::search::MetadataResult {
     crate::import::search::MetadataResult {
-        source: crate::import::Catalog::MusicBrainz,
+        source: crate::catalog::Catalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
@@ -92,7 +92,7 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
 }
 
 fn album() -> AlbumLink {
-    AlbumLink::new([MetadataRef::new(crate::import::Catalog::MusicBrainz, ALBUM)])
+    AlbumLink::new([MetadataRef::new(crate::catalog::Catalog::MusicBrainz, ALBUM)])
         .expect("one album")
 }
 
@@ -208,7 +208,7 @@ async fn a_pick_replaces_the_album_link() {
     assert_eq!(
         link(&handle, &hash).await,
         Some(ReleaseLink::Pressing(crate::import::PressingLink {
-            record: MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-pressing-2"),
+            record: MetadataRef::new(crate::catalog::Catalog::MusicBrainz, "mb-pressing-2"),
             partners: Vec::new(),
         }))
     );

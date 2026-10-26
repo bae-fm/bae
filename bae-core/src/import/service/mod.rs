@@ -13,8 +13,9 @@ use {
     },
     crate::import::folder_scanner::ScanItem,
     crate::import::audio_layout::resolve_track_files,
+    crate::catalog::Catalog,
     crate::import::types::{
-        Catalog, CoverSelection, ImportPhase, PrepareStep, TrackFile,
+        CoverSelection, ImportPhase, PrepareStep, TrackFile,
     },
     crate::import::WorkGraphRows,
     std::collections::{HashMap, HashSet},
@@ -212,11 +213,11 @@ pub struct ImportService {
 /// checked and dropped: the resize re-encodes the bytes, so it does not
 /// describe what is stored.
 fn downloaded_cover(
-    image: crate::import::cover_art::RemoteImage,
+    image: crate::remote_image::RemoteImage,
     url: &str,
     source: Catalog,
 ) -> Result<cover_image::CoverCandidate, crate::import::ImportError> {
-    let crate::import::cover_art::RemoteImage {
+    let crate::remote_image::RemoteImage {
         bytes,
         content_type,
     } = image;
@@ -657,7 +658,7 @@ async fn prepare(
 ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_source_release(release_ref).await? {
         let discogs_configured =
-            library_manager.can_fetch_releases_from(crate::import::Catalog::Discogs)?;
+            library_manager.can_fetch_releases_from(crate::catalog::Catalog::Discogs)?;
         if !stored.fetch_could_add(depth, discogs_configured) {
             return Ok(stored);
         }

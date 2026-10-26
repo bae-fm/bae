@@ -32,7 +32,7 @@ fn an_identified_row_is_pending_and_offers_import() {
     assert!(offers_import(row));
     assert_eq!(
         flat.summary.pending_covers,
-        vec![crate::import::cover_art::RemoteImageSet::original(
+        vec![crate::remote_image::RemoteImageSet::original(
             "https://example.test/front.jpg".to_string(),
         )]
     );

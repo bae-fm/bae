@@ -30,10 +30,11 @@
 //! within one.
 
 use crate::identify::agreements::Agreements;
-use crate::import::cover_art::RemoteCover;
+use crate::remote_image::RemoteCover;
 use crate::import::pressing_evidence::{ComparedPressing, PressingEvidence, Support};
 use crate::import::search::MetadataResult;
-use crate::import::types::{Catalog, MetadataRef};
+use crate::import::types::MetadataRef;
+use crate::catalog::Catalog;
 
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it.
@@ -777,7 +778,7 @@ fn build_group(
         .unwrap_or_else(|| lead.release_id.clone());
     let title = lead.title.clone();
     let artist = members.iter().find_map(|&at| read(at).artist.clone());
-    let cover_art = crate::import::cover_art::preferred_cover(
+    let cover_art = crate::remote_image::preferred_cover(
         members.iter().filter_map(|&at| read(at).cover_art.clone()),
     );
     let years: Vec<i32> = members.iter().filter_map(|&at| read(at).year).collect();

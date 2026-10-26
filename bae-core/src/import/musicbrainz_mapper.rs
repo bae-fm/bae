@@ -16,7 +16,8 @@ use crate::import::source_release::{
     DisplayCredit, EntryKind, PartDirection, PerformedWork, RoleCredit, SourceMedium,
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
 };
-use crate::import::{ArtistCredit, Catalog, CreditedRole, ImportError, SourceCredit};
+use crate::import::{ArtistCredit, CreditedRole, ImportError, SourceCredit};
+use crate::catalog::Catalog;
 use crate::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
 use crate::pressing::{Medium, Pressing, StatedMedia};
 use std::collections::HashSet;

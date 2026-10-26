@@ -29,7 +29,7 @@ pub(crate) struct FolderFacts {
     /// The year each album first came out, by its catalog and group, as any
     /// record of it whose full document was read states it: every pressing of
     /// one album shares it, read or not.
-    album_years: Vec<((crate::import::Catalog, String), i32)>,
+    album_years: Vec<((crate::catalog::Catalog, String), i32)>,
     /// Where the folder says the copy was released: the one area its
     /// highest-standing text naming any names (see
     /// [`CandidateText::highest_stating`]). None where that text names two:
@@ -83,7 +83,7 @@ impl FolderFacts {
             }
             stated
         });
-        let mut album_years: Vec<((crate::import::Catalog, String), i32)> = Vec::new();
+        let mut album_years: Vec<((crate::catalog::Catalog, String), i32)> = Vec::new();
         for result in results {
             if let (Some(group), Some(year)) = (&result.source_group_id, result.album_first_year) {
                 let album = (result.source, group.clone());

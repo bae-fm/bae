@@ -35,7 +35,7 @@ async fn setup_test_manager_with(http: bae_util::http::Http) -> (LibraryManager,
         std::sync::Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(http.clone()),
+        crate::remote_image::RemoteImageCache::for_test(http.clone()),
         crate::providers::Providers::for_test(http),
     );
     (manager, temp_dir)

@@ -1,6 +1,6 @@
 use super::*;
-use crate::import::cover_art::{DownscaledCopy, RemoteImageSet};
-use crate::import::Catalog;
+use crate::catalog::Catalog;
+use crate::remote_image::{DownscaledCopy, RemoteImageSet};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -251,7 +251,7 @@ fn release_barcodes_reach_pressing_metadata() {
     assert_eq!(release.barcodes, ["0 12345 67890 5", "5 012345 678900"]);
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "123"),
+            crate::import::MetadataRef::new(crate::catalog::Catalog::Discogs, "123"),
             json.to_string(),
             Vec::new(),
         );

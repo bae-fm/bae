@@ -269,7 +269,7 @@ pub(super) async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &s
     handle
         .select_candidate_release(key.to_string(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     release_id.to_string(),
                 ),
                 partners: vec![],

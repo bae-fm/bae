@@ -10,12 +10,13 @@
 //! against the audio (see `import::catalog_reading`).
 
 use crate::pressing::Pressing;
-use crate::import::cover_art::RemoteCover;
+use crate::remote_image::RemoteCover;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_metadata::ReleaseMetadata;
 use crate::import::search::ImportSearchReleaseDetail;
 use crate::pressing::{Medium, StatedMedia};
-use crate::import::{ArtistCredit, Catalog, ImportError, MetadataRef, ReleaseRecord};
+use crate::import::{ArtistCredit, ImportError, MetadataRef, ReleaseRecord};
+use crate::catalog::Catalog;
 
 /// The catalogs bae fetches releases from are exactly the ones it asks, so a
 /// source release cannot exist for any other.
@@ -332,7 +333,7 @@ impl SourceRelease {
 
     /// Every cover option this one release offers, its pressing's images
     /// before its album's, each offered once, by
-    /// [`crate::import::cover_art::offered_covers`].
+    /// [`crate::remote_image::offered_covers`].
     pub(crate) fn covers(&self) -> Vec<RemoteCover> {
         let mut unique = Vec::new();
         for cover in self
@@ -342,9 +343,9 @@ impl SourceRelease {
             .chain(&self.covers.album)
             .cloned()
         {
-            crate::import::cover_art::push_unique_cover(&mut unique, cover);
+            crate::remote_image::push_unique_cover(&mut unique, cover);
         }
-        crate::import::cover_art::offered_covers(unique)
+        crate::remote_image::offered_covers(unique)
     }
 
     /// On-demand picker artwork: the Discogs images the release stored, and
@@ -357,7 +358,7 @@ impl SourceRelease {
         let mut covers = self.covers();
         covers.retain(|cover| cover.source != Catalog::MusicBrainz);
         if let Some(archive) = &self.archive_release {
-            let mut gallery = crate::import::cover_art::musicbrainz_gallery(
+            let mut gallery = crate::remote_image::musicbrainz_gallery(
                 http,
                 &archive.release_id,
                 archive.group_id.as_deref(),
@@ -380,8 +381,8 @@ impl SourceRelease {
             if covered_group == Some(group.as_str()) {
                 continue;
             }
-            for cover in crate::import::cover_art::musicbrainz_group_gallery(http, group).await? {
-                crate::import::cover_art::push_unique_cover(&mut covers, cover);
+            for cover in crate::remote_image::musicbrainz_group_gallery(http, group).await? {
+                crate::remote_image::push_unique_cover(&mut covers, cover);
             }
         }
         Ok(covers)
@@ -487,15 +488,15 @@ pub fn pick_covers(primary: &SourceRelease, partners: &[SourceRelease]) -> Vec<R
     let mut covers = Vec::new();
     for release in claimed() {
         for cover in &release.covers.release {
-            crate::import::cover_art::push_unique_cover(&mut covers, cover.clone());
+            crate::remote_image::push_unique_cover(&mut covers, cover.clone());
         }
     }
     for release in claimed() {
         for cover in &release.covers.album {
-            crate::import::cover_art::push_unique_cover(&mut covers, cover.clone());
+            crate::remote_image::push_unique_cover(&mut covers, cover.clone());
         }
     }
-    crate::import::cover_art::offered_covers(covers)
+    crate::remote_image::offered_covers(covers)
 }
 
 /// The complete galleries behind [`pick_covers`], for the picker: the same
@@ -508,7 +509,7 @@ pub(crate) async fn pick_gallery_covers(
     let mut covers = Vec::new();
     for release in std::iter::once(primary).chain(partners) {
         for cover in release.gallery_covers(http).await? {
-            crate::import::cover_art::push_unique_cover(&mut covers, cover);
+            crate::remote_image::push_unique_cover(&mut covers, cover);
         }
     }
     Ok(covers)

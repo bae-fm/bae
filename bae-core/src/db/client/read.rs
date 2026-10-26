@@ -401,7 +401,7 @@ pub(super) fn get_release_records_on(
         },
     )?;
     records.sort_by_key(|record| {
-        crate::import::Catalog::ALL
+        crate::catalog::Catalog::ALL
             .iter()
             .position(|catalog| *catalog == record.catalog())
             .expect("every stored catalog is one of the catalogs")

@@ -2,7 +2,7 @@ use crate::discogs::models::{
     DiscogsArtist, DiscogsMaster, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack,
 };
 use crate::discogs::remote_cover_from_urls;
-use crate::import::cover_art::RemoteCover;
+use crate::remote_image::RemoteCover;
 use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http};
@@ -453,7 +453,7 @@ fn image_covers(images: Option<Vec<Image>>, entity: &str, id: u64) -> Vec<Remote
             remote_cover_from_urls(image.uri.as_deref(), image.uri150.as_deref(), entity, id)
         {
             cover.label = format!("Discogs · [{entity}{id}] · {}", index + 1);
-            crate::import::cover_art::push_unique_cover(&mut covers, cover);
+            crate::remote_image::push_unique_cover(&mut covers, cover);
         }
     }
     covers

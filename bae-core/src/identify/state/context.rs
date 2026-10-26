@@ -8,14 +8,15 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LibraryStatus, MetadataResult,
     SearchProgress, SourceFailure,
 };
+use crate::catalog::Catalog;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, AlbumLink, GroupLinks};
 use crate::import::payloads::DiscIdRelease;
+use crate::import::LookupChoices;
 use crate::import::MetadataRef;
-use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
     ArtworkScan, AudioFacts, AudioOrigin, BarcodeSignal, DiscIdSignal, LookupFailure, Signals,
     SourcedValue, TextSignal,

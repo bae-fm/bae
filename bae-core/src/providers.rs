@@ -10,11 +10,11 @@
 use std::sync::Arc;
 
 use crate::discogs::client::{Discogs, DiscogsClient, DiscogsValidationObserver};
-use crate::import::cover_art::RemoteCover;
 use crate::import::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
 use crate::import::search::MetadataResult;
 use crate::import::{ImportError, MetadataRef};
 use crate::musicbrainz::{MusicBrainz, ReleaseSearchParams};
+use crate::remote_image::{RemoteCover, RemoteImageError};
 use crate::signals::failure::Failure;
 use crate::util::rate_limiter::CallPriority;
 use crate::wikidata::Wikidata;
@@ -141,15 +141,15 @@ impl Providers {
         &self,
         release_id: &str,
         group_id: Option<&str>,
-    ) -> Result<Vec<RemoteCover>, ImportError> {
-        crate::import::cover_art::musicbrainz_gallery(&self.http, release_id, group_id).await
+    ) -> Result<Vec<RemoteCover>, RemoteImageError> {
+        crate::remote_image::musicbrainz_gallery(&self.http, release_id, group_id).await
     }
 
     pub(crate) async fn musicbrainz_group_gallery(
         &self,
         group_id: &str,
-    ) -> Result<Vec<RemoteCover>, ImportError> {
-        crate::import::cover_art::musicbrainz_group_gallery(&self.http, group_id).await
+    ) -> Result<Vec<RemoteCover>, RemoteImageError> {
+        crate::remote_image::musicbrainz_group_gallery(&self.http, group_id).await
     }
 
     /// Every image one pick's releases offer, the primary's first.

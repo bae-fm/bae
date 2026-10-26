@@ -53,7 +53,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         picked,
         crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-answer-1".to_string()
             ),
             partners: vec![],
@@ -146,7 +146,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
             import
                 .select_candidate_release(key, crate::import::PressingLink {
                         record: crate::import::MetadataRef::new(
-                            crate::import::Catalog::MusicBrainz,
+                            crate::catalog::Catalog::MusicBrainz,
                             "mb-picked-1".to_string(),
                         ),
                         partners: vec![],
@@ -229,7 +229,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
 
     let pick = crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
-            crate::import::Catalog::MusicBrainz,
+            crate::catalog::Catalog::MusicBrainz,
             "mb-answer-1".to_string(),
         ),
         partners: vec![],
@@ -555,11 +555,11 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .import
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     "mb-stated-1".to_string(),
                 ),
                 partners: vec![crate::import::MetadataRef::new(
-                    crate::import::Catalog::Discogs,
+                    crate::catalog::Catalog::Discogs,
                     "70000301",
                 )],
             },
@@ -578,12 +578,12 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
             .collect::<Vec<_>>(),
         vec![
             (
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-stated-1",
                 "https://musicbrainz.org/release/mb-stated-1".to_string(),
             ),
             (
-                crate::import::Catalog::Discogs,
+                crate::catalog::Catalog::Discogs,
                 "70000301",
                 "https://www.discogs.com/release/70000301".to_string(),
             ),
@@ -592,7 +592,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
     );
     assert_eq!(
         records[0].catalog(),
-        crate::import::Catalog::MusicBrainz,
+        crate::catalog::Catalog::MusicBrainz,
         "the release the draft was read from is the list's first"
     );
 }

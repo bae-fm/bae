@@ -10,7 +10,8 @@
 //! shows it. These tables are declared `RowIdentity::SharedKey` in
 //! `sync::synced_tables`.
 
-use crate::import::{Catalog, ReleaseRecord};
+use crate::catalog::Catalog;
+use crate::import::ReleaseRecord;
 
 /// bae's namespace for its name-based row ids.
 const NAMESPACE: uuid::Uuid = uuid::Uuid::from_u128(0x6d1f_42c8_9a0b_4e57_b3c1_58f0_2a7d_91e4);

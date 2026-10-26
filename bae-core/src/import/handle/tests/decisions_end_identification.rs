@@ -153,7 +153,7 @@ async fn a_pick_ends_identification_in_its_write() {
                     decided_key,
                     crate::import::PressingLink {
                         record: crate::import::MetadataRef::new(
-                            crate::import::Catalog::Discogs,
+                            crate::catalog::Catalog::Discogs,
                             release_id.to_string(),
                         ),
                         partners: vec![],

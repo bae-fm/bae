@@ -1,4 +1,5 @@
-use super::{Catalog, ImportError, SourceCredit};
+use super::{ImportError, SourceCredit};
+use crate::catalog::Catalog;
 use crate::pressing::Pressing;
 
 /// Album facts can come from a release or its parent without claiming a

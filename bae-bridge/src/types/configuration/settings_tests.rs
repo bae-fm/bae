@@ -1,5 +1,6 @@
 use super::*;
-use bae_core::import::{Catalog, ImportError};
+use bae_core::catalog::Catalog;
+use bae_core::import::ImportError;
 
 #[test]
 fn unexpected_import_data_is_distinct_from_domain_refusals() {
@@ -180,10 +181,10 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
 #[test]
 fn artwork_request_conditions_remain_expected_at_the_bridge() {
     for status in [404, 500] {
-        let error = ImportError::CoverArtStatus {
+        let error = ImportError::from(bae_core::remote_image::RemoteImageError::Status {
             status,
             detail: "artwork request failed".into(),
-        };
+        });
         assert!(matches!(
             BridgeError::from(error),
             BridgeError::Diagnostic {
@@ -215,12 +216,14 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
         stream.write_all(response.as_bytes()).await.unwrap();
         stream.shutdown().await.unwrap();
     });
-    let error = bae_core::import::cover_art::RemoteImageCache::for_test(
-        bae_util::http::Http::for_test().serve("images.example", &origin),
-    )
-    .fetch("https://images.example/cover")
-    .await
-    .unwrap_err();
+    let error = ImportError::from(
+        bae_core::remote_image::RemoteImageCache::for_test(
+            bae_util::http::Http::for_test().serve("images.example", &origin),
+        )
+        .fetch("https://images.example/cover")
+        .await
+        .unwrap_err(),
+    );
     let detail = error.to_string();
     assert!(detail.contains("not a valid image"), "{detail}");
     assert_eq!(

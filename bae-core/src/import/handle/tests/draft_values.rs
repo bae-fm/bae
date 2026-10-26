@@ -67,7 +67,7 @@ async fn pick_mb(handle: &ImportServiceHandle, key: &str, release_id: &str) {
             key.to_string(),
             crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::import::Catalog::MusicBrainz,
+                    crate::catalog::Catalog::MusicBrainz,
                     release_id,
                 ),
                 partners: vec![],
@@ -244,7 +244,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     let payloads = handle
         .library_manager
         .fetch_release_payloads(
-            &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "edited-release"),
+            &crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, "edited-release"),
             crate::import::payloads::ReadDepth::Complete,
             crate::util::rate_limiter::CallPriority::Interactive,
         )

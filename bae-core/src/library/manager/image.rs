@@ -77,7 +77,11 @@ impl LibraryManager {
                 (bytes, "local".to_string(), Some(source_url))
             }
             CoverSelection::RemoteCover { url, source } => {
-                let image = self.remote_images.fetch_required(&url).await?;
+                let image = self
+                    .remote_images
+                    .fetch_required(&url)
+                    .await
+                    .map_err(crate::import::ImportError::from)?;
 
                 (image.bytes, source.as_str().to_string(), Some(url))
             }

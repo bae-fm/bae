@@ -15,12 +15,12 @@ use super::state::{
     LookupResults, LookupState, SearchProgress, SignalsContext, ValueLookup,
 };
 use super::NotAskedReason;
+use crate::catalog::Catalog;
 use crate::db::LibraryStatus;
 use crate::import::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
 use crate::import::shared_album::SharedAlbum;
-use crate::import::Catalog;
 use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
 
 /// One provider's lookup of one value: a cell of the ledger. The ledger's

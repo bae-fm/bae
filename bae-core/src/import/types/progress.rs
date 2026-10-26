@@ -1,5 +1,5 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use super::Catalog;
+use crate::catalog::Catalog;
 
 /// Whether an import attaches its files for background upload. Every release's
 /// rows sync; a local import keeps its file paths only on this device.
@@ -22,7 +22,7 @@ pub enum CoverSelection {
     /// A catalog's image, and the catalog for attribution. The import
     /// commits the original; the downscaled copies are what smaller slots
     /// showing the selection draw.
-    Remote(crate::import::cover_art::RemoteImageSet, Catalog),
+    Remote(crate::remote_image::RemoteImageSet, Catalog),
     /// Local file in the album folder (relative path from album root)
     Local(String),
     /// Artwork embedded in one audio file, identified by that file's relative

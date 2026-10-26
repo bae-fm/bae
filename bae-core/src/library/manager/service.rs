@@ -51,7 +51,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         opening: impl Into<LibraryOpening>,
-        remote_images: crate::import::cover_art::RemoteImageCache,
+        remote_images: crate::remote_image::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
@@ -105,7 +105,7 @@ impl LibraryManager {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        remote_images: crate::import::cover_art::RemoteImageCache,
+        remote_images: crate::remote_image::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
     ) -> Self {
@@ -133,7 +133,7 @@ impl LibraryManager {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        remote_images: crate::import::cover_art::RemoteImageCache,
+        remote_images: crate::remote_image::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
     ) -> Self {
@@ -343,7 +343,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         group_id: Option<&str>,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::remote_image::RemoteImageError> {
         self.providers
             .musicbrainz_gallery(release_id, group_id)
             .await
@@ -353,7 +353,7 @@ impl LibraryManager {
     pub(crate) async fn musicbrainz_group_gallery(
         &self,
         group_id: &str,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::remote_image::RemoteImageError> {
         self.providers.musicbrainz_group_gallery(group_id).await
     }
 
@@ -363,7 +363,7 @@ impl LibraryManager {
         &self,
         primary: &crate::import::source_release::SourceRelease,
         partners: &[crate::import::source_release::SourceRelease],
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
         self.providers.pick_gallery_covers(primary, partners).await
     }
 
@@ -371,7 +371,8 @@ impl LibraryManager {
     pub(crate) async fn fetch_remote_image(
         &self,
         url: &str,
-    ) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError> {
+    ) -> Result<Option<crate::remote_image::RemoteImage>, crate::remote_image::RemoteImageError>
+    {
         self.remote_images.fetch(url).await
     }
 
@@ -379,7 +380,7 @@ impl LibraryManager {
     pub(crate) async fn fetch_required_remote_image(
         &self,
         url: &str,
-    ) -> Result<crate::import::cover_art::RemoteImage, crate::import::ImportError> {
+    ) -> Result<crate::remote_image::RemoteImage, crate::remote_image::RemoteImageError> {
         self.remote_images.fetch_required(url).await
     }
 

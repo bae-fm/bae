@@ -15,7 +15,8 @@
 
 use super::{names_other_album, AlbumLink, AlbumStatement, Found};
 use crate::import::search::MetadataResult;
-use crate::import::types::{Catalog, MetadataRef};
+use crate::import::types::MetadataRef;
+use crate::catalog::Catalog;
 use crate::text_match::{album_title_words, catalog_key, LabelName};
 
 /// What a release prints that can say which album it is, read into the form

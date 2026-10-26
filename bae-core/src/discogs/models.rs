@@ -1,4 +1,4 @@
-use crate::import::cover_art::RemoteCover;
+use crate::remote_image::RemoteCover;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsArtist {

@@ -122,7 +122,7 @@ impl DraftSource {
 pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
     DraftSource::Pick(bae_core::import::PressingLink {
         record: bae_core::import::MetadataRef::new(
-            bae_core::import::Catalog::Discogs,
+            bae_core::catalog::Catalog::Discogs,
             release_id.into(),
         ),
         partners: vec![],

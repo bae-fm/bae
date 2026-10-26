@@ -8,7 +8,7 @@ use super::*;
 use crate::db::{CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::search::SourceTracks;
-use crate::import::types::Catalog;
+use crate::catalog::Catalog;
 use crate::import::watched_folder::host_root;
 use crate::import::ImportedRelease;
 use crate::import::{TriageImportStatus, TriagePlacement};
@@ -86,7 +86,7 @@ fn lead(release_id: &str) -> LeadMatch {
         artist: Some("Artist Name".to_string()),
         year: Some(1999),
         media: crate::pressing::made_of(crate::pressing::Medium::Cd, 1).media,
-        cover: Some(crate::import::cover_art::RemoteImageSet::original(
+        cover: Some(crate::remote_image::RemoteImageSet::original(
             "https://example.test/front.jpg".to_string(),
         )),
         source_tracks: Some(SourceTracks::Listed { count: 11 }),

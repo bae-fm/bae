@@ -550,7 +550,7 @@ fn the_summary_filters_pending_covers_and_keeps_the_counts_whole() {
         "hash-Group/Other".to_string(),
         with_verdict(auto_importable_state("mb-2"), |verdict| {
             verdict.lead = Some(LeadMatch {
-                cover: Some(crate::import::cover_art::RemoteImageSet::original(
+                cover: Some(crate::remote_image::RemoteImageSet::original(
                     "https://example.test/other.jpg".to_string(),
                 )),
                 ..lead("mb-2")
@@ -569,7 +569,7 @@ fn the_summary_filters_pending_covers_and_keeps_the_counts_whole() {
     assert_eq!(flat.summary.counts.pending, 2);
     assert_eq!(
         flat.summary.pending_covers,
-        vec![crate::import::cover_art::RemoteImageSet::original(
+        vec![crate::remote_image::RemoteImageSet::original(
             "https://example.test/front.jpg".to_string(),
         )]
     );

@@ -29,7 +29,8 @@
 //! was found.
 
 use crate::import::search::MetadataResult;
-use crate::import::types::{Catalog, MetadataRef};
+use crate::import::types::MetadataRef;
+use crate::catalog::Catalog;
 
 /// What a record's catalog says its album is on the other lookup catalog.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

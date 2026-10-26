@@ -12,7 +12,8 @@
 
 use crate::barcode::comparison_key;
 use crate::import::search::MetadataResult;
-use crate::import::types::{Catalog, MetadataRef};
+use crate::import::types::MetadataRef;
+use crate::catalog::Catalog;
 use crate::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
 use crate::text_match::{catalog_key, LabelName};
 use tracing::debug;

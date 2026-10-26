@@ -64,7 +64,7 @@ async fn manager_signing_in_with(
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        crate::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
     (manager, storage, temp_dir)

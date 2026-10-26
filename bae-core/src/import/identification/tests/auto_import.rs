@@ -337,7 +337,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
                 .and_then(|runtime| runtime.search)
                 .is_some_and(|search| {
                     matches!(
-                        search.source(crate::import::Catalog::MusicBrainz),
+                        search.source(crate::catalog::Catalog::MusicBrainz),
                         Some(crate::import::SourceSearch::Done { .. })
                     )
                 });
@@ -353,7 +353,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         .import
         .select_candidate_release(key.clone(), crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
                 "mb-typed".to_string(),
             ),
             partners: vec![],
@@ -386,12 +386,12 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
         .set_cover(
             &hash,
             &crate::import::CoverSelection::Remote(
-                crate::import::cover_art::RemoteImageSet::original(
+                crate::remote_image::RemoteImageSet::original(
                     "https://example.invalid/cover".to_string(),
                 ),
-                crate::import::Catalog::MusicBrainz,
+                crate::catalog::Catalog::MusicBrainz,
             ),
-            Some(&crate::import::cover_art::RemoteImage {
+            Some(&crate::remote_image::RemoteImage {
                 bytes: vec![1, 2, 3],
                 content_type: bae_util::content_type::ContentType::Jpeg,
             }),
