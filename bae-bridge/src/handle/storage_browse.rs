@@ -10,9 +10,9 @@ pub struct BridgeStorageBrowseWindow {
 
 /// Every requested window of the Storage Manager list under the sort and
 /// filter it was read for — a UI that has since moved to another drops it —
-/// with the filtered set's row count and total size, and the row of each
+/// with the filtered set's row count and total size, the row of each
 /// selected release the filtered set holds, in a window or not, by release
-/// id.
+/// id, and the storage actions every one of those allows.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageBrowseSnapshot {
     pub sort: BridgeStorageSort,
@@ -21,6 +21,7 @@ pub struct BridgeStorageBrowseSnapshot {
     pub total_count: u64,
     pub total_size: u64,
     pub selected: Vec<BridgeStorageRow>,
+    pub selection_actions: Vec<crate::types::BridgeReleaseStorageAction>,
 }
 
 /// The Storage Manager list read live: one query for as long as the manager
@@ -108,6 +109,11 @@ impl StorageBrowseSubscription {
                         .selected
                         .into_iter()
                         .map(BridgeStorageRow::from_core)
+                        .collect(),
+                    selection_actions: snapshot
+                        .selection_actions
+                        .into_iter()
+                        .map(crate::types::BridgeReleaseStorageAction::from_core)
                         .collect(),
                 })
                 .map_err(live_read_error)

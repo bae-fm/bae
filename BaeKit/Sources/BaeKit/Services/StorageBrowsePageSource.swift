@@ -22,11 +22,13 @@ public struct StorageBrowseView: Equatable, Sendable {
 }
 
 /// What one value of the Storage Manager list says of the whole filtered
-/// list rather than of a window: its total size, and the row of each selected
-/// release it holds, wherever it sits in the list.
+/// list rather than of a window: its total size, the row of each selected
+/// release it holds, wherever it sits in the list, and the storage actions
+/// every one of those allows.
 public struct StorageListValue: Sendable {
     public let totalSize: UInt64
     public let selected: [BridgeStorageRow]
+    public let selectionActions: [BridgeReleaseStorageAction]
 }
 
 /// The Storage Manager list read live through one query: its sort, filter,
@@ -74,6 +76,7 @@ extension StorageBrowseQuery {
             setView: { requests.request($0) },
             next: {
                 let view = try await requests.next()
+                let selected = rows.filter { view.selected.contains($0.id) }
                 return BridgeStorageBrowseSnapshot(
                     sort: view.sort,
                     filter: view.filter,
@@ -89,7 +92,16 @@ extension StorageBrowseQuery {
                     totalSize: UInt64(
                         rows.reduce(Int64(0)) { $0 + $1.release.totalSize }
                     ),
-                    selected: rows.filter { view.selected.contains($0.id) }
+                    selected: selected,
+                    // The fixture's stand-in for core's answer: the actions
+                    // every selected row lists.
+                    selectionActions: selected.first.map { first in
+                        first.release.storageActions.filter { action in
+                            selected.allSatisfy {
+                                $0.release.storageActions.contains(action)
+                            }
+                        }
+                    } ?? []
                 )
             },
             cancel: { requests.close() }
@@ -288,7 +300,8 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
                     onListValue(
                         StorageListValue(
                             totalSize: snapshot.totalSize,
-                            selected: snapshot.selected
+                            selected: snapshot.selected,
+                            selectionActions: snapshot.selectionActions
                         )
                     )
                     for window in snapshot.windows {

@@ -66,7 +66,8 @@ private let bySize = BridgeStorageSort(
 private func snapshot(
     sort: BridgeStorageSort,
     rows: [BridgeStorageRow],
-    selected: [BridgeStorageRow] = []
+    selected: [BridgeStorageRow] = [],
+    selectionActions: [BridgeReleaseStorageAction] = []
 ) -> BridgeStorageBrowseSnapshot {
     BridgeStorageBrowseSnapshot(
         sort: sort,
@@ -79,7 +80,8 @@ private func snapshot(
         ],
         totalCount: UInt64(rows.count),
         totalSize: 7,
-        selected: selected
+        selected: selected,
+        selectionActions: selectionActions
     )
 }
 
@@ -177,6 +179,43 @@ struct StorageBrowsePageSourceTests {
         try await Wait.until { !answers.values.isEmpty }
         #expect(answers.values == [[rows[0].id]])
         _ = page
+    }
+}
+
+@Suite("StorageManagerStore selection")
+struct StorageManagerStoreSelectionTests {
+    @MainActor
+    @Test(
+        "the selection is offered the actions core answered for it, and none while core has yet to answer"
+    )
+    func selectionActionsAreCoresAnswer() async throws {
+        let feed = StorageFeed()
+        let rows = Array(PreviewData.storageRows.prefix(3))
+        let store = StorageManagerStore(
+            library: Library(storageBrowse: { _, _ in feed.query() }),
+            onError: { _ in }
+        )
+        let selected: Set<String> = [rows[0].id, rows[1].id]
+        store.select(selected)
+        store.update(filter: .all, sort: byTitle)
+        try await Wait.until { !feed.requested.isEmpty }
+
+        feed.deliver(
+            snapshot(
+                sort: byTitle,
+                rows: rows,
+                selected: [rows[0], rows[1]],
+                selectionActions: [.detachAudio]
+            )
+        )
+        try await Wait.until { store.list != nil }
+
+        #expect(store.selectionActions(for: selected) == [.detachAudio])
+        #expect(
+            store.selectionActions(for: selected.union([rows[2].id])) == nil,
+            "a release core has not answered for leaves the answer unknown"
+        )
+        store.cancel()
     }
 }
 

@@ -63,12 +63,31 @@ impl ReleaseStorageSummary {
     }
 }
 
-/// One row on the Storage Manager view: a release with its parent album. The UI
-/// splits it into two slices at ingest and re-joins at render time.
+/// One row on the Storage Manager view: a release with its parent album.
 #[derive(Debug, Clone)]
 pub struct StorageRow {
     pub release: ReleaseSummary,
     pub album: AlbumSummary,
+}
+
+/// The storage actions every one of `rows` allows, in the order
+/// [`available_storage_actions`] lists them; none for no rows. What the
+/// Storage Manager offers a selection: an action some selected release
+/// refuses is not offered for the rest.
+pub fn common_storage_actions(rows: &[StorageRow]) -> Vec<ReleaseStorageAction> {
+    let Some((first, rest)) = rows.split_first() else {
+        return Vec::new();
+    };
+    first
+        .release
+        .storage_actions
+        .iter()
+        .copied()
+        .filter(|action| {
+            rest.iter()
+                .all(|row| row.release.storage_actions.contains(action))
+        })
+        .collect()
 }
 
 impl StorageRow {

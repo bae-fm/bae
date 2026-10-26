@@ -538,7 +538,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
 
         // Right-click acts on the selection when the clicked row is part of it,
         // otherwise on just that row (and selects it).
-        let targets = menuTargets(forClickedRelease: clickedId)
+        let (targets, actions) = menuTargets(forClickedRelease: clickedId)
         guard !targets.isEmpty else { return }
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
@@ -570,7 +570,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             }
             return
         }
-        for action in intersectedActions(of: targets) {
+        for action in actions {
             addMenuItem(
                 to: menu,
                 title: action.label,
@@ -632,25 +632,35 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
     }
 
     /// If the clicked release is already selected, act on the selected
-    /// releases the list holds; otherwise act on and select that release.
-    /// Each target is the row the list's query returned for it.
+    /// releases the list holds, with the storage actions core says they all
+    /// allow; otherwise act on and select that release, with its own. Each
+    /// target is the row the list's query returned for it.
     private func menuTargets(
         forClickedRelease clickedId: String
-    ) -> [BridgeStorageRow] {
+    ) -> (rows: [BridgeStorageRow], actions: [BridgeReleaseStorageAction]) {
         let shown = storageManagerStore.shown(selection.wrappedValue)
-        let targets = shown.contains(clickedId) ? shown : [clickedId]
-        if !shown.contains(clickedId) {
+        guard shown.contains(clickedId) else {
             selection.wrappedValue = [clickedId]
             applySelection([clickedId], to: tableView)
+            let row = targetRow(clickedId)
+            return ([row], row.release.storageActions)
         }
-        return targets.map { id in
-            // `shown` keeps only releases the list answers a row for, and
-            // the clicked row is loaded.
-            guard let row = storageManagerStore.row(of: id) else {
-                preconditionFailure("Release \(id) is shown but has no row")
-            }
-            return row
+        let actions = storageManagerStore.selectionActions(for: shown)
+        if actions == nil {
+            logger.debug(
+                "No storage actions offered: core has not answered for the selection of \(shown.count) yet"
+            )
         }
+        return (shown.map(targetRow), actions ?? [])
+    }
+
+    /// The row of a release `shown` keeps, or of the clicked one, which is
+    /// loaded.
+    private func targetRow(_ id: String) -> BridgeStorageRow {
+        guard let row = storageManagerStore.row(of: id) else {
+            preconditionFailure("Release \(id) is shown but has no row")
+        }
+        return row
     }
 
     @objc
@@ -710,23 +720,6 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         runner.saveAs(releaseIds: releaseIds)
     }
 
-    /// Storage actions every targeted release allows, preserving the order the
-    /// core emits them in. Single target → that release's actions; multi-select
-    /// → the intersection so the menu only offers transitions applicable to
-    /// all. Callers handle the uploading case before reaching here (an uploading
-    /// release offers only "Cancel Upload").
-    private func intersectedActions(
-        of targets: [BridgeStorageRow]
-    ) -> [BridgeReleaseStorageAction] {
-        let perRelease = targets.map { Set($0.release.storageActions) }
-        guard let common = perRelease.reduce(nil, intersectActions) else {
-            return []
-        }
-        // Order off the first target's release; every action in `common` is by
-        // construction present in it.
-        let order = targets.first?.release.storageActions ?? []
-        return order.filter(common.contains)
-    }
 }
 
 /// A pending menu action: which storage transition to run against which
@@ -738,16 +731,6 @@ private final class StorageActionInvocation {
         self.action = action
         self.releaseIds = releaseIds
     }
-}
-
-/// Fold helper for `reduce`: the running intersection, seeded with the first
-/// set (so the result is the intersection of all, not the empty set).
-private func intersectActions(
-    _ acc: Set<BridgeReleaseStorageAction>?,
-    _ next: Set<BridgeReleaseStorageAction>
-) -> Set<BridgeReleaseStorageAction> {
-    guard let acc else { return next }
-    return acc.intersection(next)
 }
 
 /// One cell of the storage table, drawn from the row the list's query

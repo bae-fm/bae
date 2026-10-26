@@ -288,13 +288,14 @@ impl LibraryManager {
                 rows: window.rows.into_iter().map(&mut resolve).collect(),
             })
             .collect();
-        let selected = projection.selected.into_iter().map(&mut resolve).collect();
+        let selected: Vec<StorageRow> = projection.selected.into_iter().map(&mut resolve).collect();
         crate::library::StorageBrowseSnapshot {
             sort: projection.sort,
             filter: projection.filter,
             windows,
             total_count: projection.total_count,
             total_size: projection.total_size,
+            selection_actions: crate::album_detail::common_storage_actions(&selected),
             selected,
         }
     }

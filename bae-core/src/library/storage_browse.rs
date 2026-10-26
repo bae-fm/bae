@@ -15,10 +15,11 @@ pub struct StorageBrowseView {
 
 /// Every window of the list read under one sort and filter — the ones named
 /// here, which a UI that has since moved on drops — with the filtered set's
-/// row count and total size, and the row of each selected release the
-/// filtered set holds, in a window or not, by release id: a selected release
-/// it no longer holds is absent, so the inspector never shows, and the
-/// storage actions never act on, a release the list doesn't.
+/// row count and total size, the row of each selected release the filtered
+/// set holds, in a window or not, by release id, and the storage actions every
+/// one of those allows: a selected release the list no longer holds is
+/// absent, so the inspector never shows, and the storage actions never act
+/// on, a release the list doesn't.
 #[derive(Debug, Clone)]
 pub struct StorageBrowseSnapshot {
     pub sort: crate::db::StorageSortCriterion,
@@ -27,6 +28,7 @@ pub struct StorageBrowseSnapshot {
     pub total_count: u64,
     pub total_size: u64,
     pub selected: Vec<crate::album_detail::StorageRow>,
+    pub selection_actions: Vec<crate::album_detail::ReleaseStorageAction>,
 }
 
 /// A live read of the Storage Manager list. The view changes in place

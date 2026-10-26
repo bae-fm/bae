@@ -9,6 +9,9 @@ public final class StorageManagerStore {
     /// The row of each selected release the list holds, by core's answer,
     /// wherever in the list it sits — loaded or not — by release id.
     private var selectedRows: [String: BridgeStorageRow] = [:]
+    /// The storage actions every release of `selectedRows` allows, by core's
+    /// answer.
+    private var selectedActions: [BridgeReleaseStorageAction] = []
 
     @ObservationIgnored
     private let library: Library
@@ -45,6 +48,7 @@ public final class StorageManagerStore {
         totalSize = nil
         // The answer belongs to the view it was read under.
         selectedRows = [:]
+        selectedActions = []
         let pageSource: StorageBrowsePageSource
         if let existing = self.pageSource {
             existing.setView(sort: sort, filter: filter)
@@ -61,6 +65,7 @@ public final class StorageManagerStore {
                     self?.selectedRows = Dictionary(
                         uniqueKeysWithValues: value.selected.map { ($0.id, $0) }
                     )
+                    self?.selectedActions = value.selectionActions
                 }
             )
             self.pageSource = pageSource
@@ -101,10 +106,21 @@ public final class StorageManagerStore {
         selectedRows[releaseId] ?? list?.row(of: releaseId)
     }
 
+    /// The storage actions every release of `shown` allows, as core answered
+    /// for the selection, or `nil` while core's answer is for other releases:
+    /// `shown` holds one just selected that core has not answered for yet.
+    public func selectionActions(
+        for shown: Set<String>
+    ) -> [BridgeReleaseStorageAction]? {
+        guard shown == Set(selectedRows.keys) else { return nil }
+        return selectedActions
+    }
+
     public func cancel() {
         generation += 1
         selection = []
         selectedRows = [:]
+        selectedActions = []
         rebuildTask?.cancel()
         rebuildTask = nil
         list?.cancel()

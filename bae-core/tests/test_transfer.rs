@@ -602,3 +602,71 @@ async fn selected_releases_leave_the_uploading_list_with_their_upload() {
         }
     }
 }
+
+/// The Storage Manager offers a selection only the storage actions every
+/// selected release allows, and the list's value says which those are,
+/// whether or not each selected release sits in a window.
+#[tokio::test]
+async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
+    tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let pinned =
+        create_remote_release(&mgr, &tmp.path().join("pinned"), &[("a.flac", b"pinned")]).await;
+    let unpinned = create_remote_release(
+        &mgr,
+        &tmp.path().join("unpinned"),
+        &[("b.flac", b"unpinned")],
+    )
+    .await;
+    TransferService::new(mgr.clone())
+        .pin_release(pinned.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
+
+    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let view = |selected: &[&String]| StorageBrowseView {
+        sort: StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
+        },
+        filter: StorageFilter::All,
+        // One row on screen, so one selected release sits outside it.
+        windows: [bae_core::library::LibraryPageWindow {
+            offset: 0,
+            limit: 1,
+        }]
+        .into_iter()
+        .collect(),
+        selected: selected.iter().map(|id| (*id).clone()).collect(),
+    };
+    let values = services.subscribe_storage_browse(
+        &tokio::runtime::Handle::current(),
+        view(&[&pinned, &unpinned]),
+    );
+    let next = || async {
+        tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+            .await
+            .expect("storage subscription delivers a value")
+            .expect("storage projection resolves")
+    };
+
+    use bae_core::album_detail::ReleaseStorageAction::{DetachAudio, Pin};
+    assert_eq!(
+        next().await.selection_actions,
+        [DetachAudio],
+        "a pinned and an unpinned release share only detaching their audio"
+    );
+
+    values.set(view(&[&unpinned])).unwrap();
+    loop {
+        let value = next().await;
+        if value.selected.len() == 1 {
+            assert_eq!(value.selection_actions, [Pin, DetachAudio]);
+            break;
+        }
+    }
+}
