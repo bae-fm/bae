@@ -33,19 +33,41 @@ targets:
           MARKER="BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework/Info.plist"
           BINDINGS_SOURCE="bae-bridge/swift-bindings-ios/bae_bridge.swift"
           BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_ios.swift"
+          # Every file the last device build of the bridge read, as cargo
+          # recorded it, plus the lockfile and the crates' manifests, which
+          # decide what it reads.
+          DEP_INFO="target-ios/aarch64-apple-ios/debug/libbae_bridge.d"
           NEEDS_BUILD=0
-          if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ]; then
+          if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ] || [ ! -f "$DEP_INFO" ]; then
             NEEDS_BUILD=1
           else
-            for src in bae-bridge/src/*.rs bae-core/src/**/*.rs bae-util/src/*.rs bae-audio/src/*.rs bae-audio/src/*/*.rs bae-cast/src/*.rs bae-cast/src/*/*.rs; do
-              if [ "$src" -nt "$MARKER" ]; then
-                NEEDS_BUILD=1
-                break
-              fi
-            done
+            # A dep-info line is "<output>: <input> <input> ...", with a space
+            # inside a path written as "\ ".
+            CHANGED=$(
+              {
+                awk '{
+                  sub(/^[^:]*: /, "")
+                  gsub(/\\ /, "\001")
+                  n = split($0, inputs, " ")
+                  for (i = 1; i <= n; i++) {
+                    gsub("\001", " ", inputs[i])
+                    print inputs[i]
+                  }
+                }' "$DEP_INFO"
+                for manifest in Cargo.lock Cargo.toml */Cargo.toml; do
+                  echo "$manifest"
+                done
+              } | while IFS= read -r input; do
+                if [ "$input" -nt "$MARKER" ]; then
+                  echo "$input"
+                  break
+                fi
+              done
+            )
+            [ -n "$CHANGED" ] && NEEDS_BUILD=1
           fi
           if [ "$NEEDS_BUILD" -eq 1 ]; then
-            echo "Bridge sources changed, rebuilding..."
+            echo "Bridge inputs changed (${CHANGED:-no recorded build}), rebuilding..."
             ./bae-bridge/build-ios.sh
           fi
           # A fresh worktree can have the xcframework cached but no bindings file.
