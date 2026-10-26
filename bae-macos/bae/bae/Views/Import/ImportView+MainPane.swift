@@ -35,29 +35,25 @@ extension ImportView {
     // MARK: - Main pane
 
     /// The mapping pane for the selected candidate: metadata source, mapping
-    /// table, and commit bar.
+    /// table, and commit bar. What is in flight for it is read by the leaves
+    /// that draw it, so a progress step redraws those alone.
     func mainPane(for candidate: Candidate) -> some View {
-        CandidateRuntimeReader(key: candidate.key) { runtime in
-            VStack(spacing: 0) {
-                if !candidate.parts.isEmpty {
-                    ImportCombinedSourceView(
-                        parts: candidate.parts,
-                        canSeparate: candidate.live?.actions
-                            .contains(.separate) == true,
-                        onSeparate: { separateSelectedCandidate() }
-                    )
-                }
-                mappingPane(for: candidate, runtime: runtime)
+        VStack(spacing: 0) {
+            if !candidate.parts.isEmpty {
+                ImportCombinedSourceView(
+                    parts: candidate.parts,
+                    canSeparate: candidate.live?.actions
+                        .contains(.separate) == true,
+                    onSeparate: { separateSelectedCandidate() }
+                )
             }
+            mappingPane(for: candidate)
         }
         .id(candidate.key)
     }
 
     @ViewBuilder
-    private func mappingPane(
-        for candidate: Candidate,
-        runtime: BridgeCandidateRuntimeSnapshot?
-    ) -> some View {
+    private func mappingPane(for candidate: Candidate) -> some View {
         switch candidate.importStatus {
         case .complete(let release):
             let releaseEditor = releaseEditor
@@ -88,7 +84,6 @@ extension ImportView {
             ImportingCandidatePane(
                 candidate: candidate,
                 standing: standing,
-                runtime: runtime,
                 coverContent: candidate.cover?.imageContent,
                 onOpenImages: mappingActions.openImages,
                 onOpenDocument: mappingActions.openDocument,
@@ -97,17 +92,13 @@ extension ImportView {
                 previewingTarget: importStore.previewState.active?.target
             )
         case .error, nil:
-            preparingMappingPane(for: candidate, runtime: runtime)
+            preparingMappingPane(for: candidate)
         }
     }
 
-    private func preparingMappingPane(
-        for candidate: Candidate,
-        runtime: BridgeCandidateRuntimeSnapshot?
-    ) -> some View {
+    private func preparingMappingPane(for candidate: Candidate) -> some View {
         ImportMappingPane(
             candidate: candidate,
-            runtime: runtime,
             previewingTarget: importStore.previewState.active?.target,
             isApplyingMetadata: importStore.isApplyingMetadata(
                 forKey: candidate.key

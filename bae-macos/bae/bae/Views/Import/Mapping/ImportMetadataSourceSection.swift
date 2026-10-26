@@ -8,7 +8,6 @@ struct ImportMetadataSourceSection: View {
     /// Whether the candidate can be edited and identified now; its catalog
     /// links stay live either way.
     let actionable: Bool
-    let runtime: BridgeCandidateRuntimeSnapshot?
     let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
@@ -36,7 +35,6 @@ struct ImportMetadataSourceSection: View {
             case .findOnline:
                 ImportOnlineMetadataBrowser(
                     candidateKey: candidate.key,
-                    runtime: runtime,
                     endEditing: endEditing,
                     onMovePane: onMovePane
                 )
@@ -83,10 +81,10 @@ struct ImportMetadataSourceSection: View {
 }
 
 /// Find online for the candidate, read from the store that its form and picks
-/// write.
+/// write, with what is in flight for it: the run whose state it shows while
+/// one is live, and the search's answers.
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
-    let runtime: BridgeCandidateRuntimeSnapshot?
     let endEditing: @MainActor () async -> Void
     let onMovePane: (BridgePaneMove) -> Void
 
@@ -101,44 +99,46 @@ private struct ImportOnlineMetadataBrowser: View {
 
     var body: some View {
         if let candidate = importStore.candidate(forKey: candidateKey) {
-            CandidateSignalsReader(key: candidateKey) { signals in
-                ImportSearchFlow.buildSearchPane(
-                    services: ImportSearchFlow.ImportServices(
-                        importer: importer,
-                        importStore: importStore
-                    ),
-                    input: ImportSearchFlow.SearchPaneInput(
-                        candidate: candidate,
-                        key: candidateKey,
-                        selectedReleaseId: candidate.releaseLink?.pressing?
-                            .record.key,
-                        runtime: runtime,
-                        openSection: candidate.session.findOnlineSection,
-                        onOpenSection: {
-                            onMovePane(.openSection(section: $0))
-                        },
-                        onKeepOwnDraft: keepOwnDraft,
-                        onLinkSharedAlbum: linkSharedAlbum,
-                        onCancelIdentification: cancelIdentification,
-                        liveSignals: signals
-                    ),
-                    openSettings: {
-                        settingsNavigation.open(
-                            .importing,
-                            present: { openSettings() }
-                        )
-                    },
-                    onBack: { onMovePane(.back) },
-                    onSelect: { pressing in
-                        ImportSearchFlow.applyMetadata(
+            CandidateRuntimeReader(key: candidateKey) { runtime in
+                CandidateSignalsReader(key: candidateKey) { signals in
+                    ImportSearchFlow.buildSearchPane(
+                        services: ImportSearchFlow.ImportServices(
                             importer: importer,
-                            importStore: importStore,
-                            endEditing: endEditing,
+                            importStore: importStore
+                        ),
+                        input: ImportSearchFlow.SearchPaneInput(
+                            candidate: candidate,
                             key: candidateKey,
-                            application: .pick(pressing.link)
-                        )
-                    }
-                )
+                            selectedReleaseId: candidate.releaseLink?.pressing?
+                                .record.key,
+                            runtime: runtime,
+                            openSection: candidate.session.findOnlineSection,
+                            onOpenSection: {
+                                onMovePane(.openSection(section: $0))
+                            },
+                            onKeepOwnDraft: keepOwnDraft,
+                            onLinkSharedAlbum: linkSharedAlbum,
+                            onCancelIdentification: cancelIdentification,
+                            liveSignals: signals
+                        ),
+                        openSettings: {
+                            settingsNavigation.open(
+                                .importing,
+                                present: { openSettings() }
+                            )
+                        },
+                        onBack: { onMovePane(.back) },
+                        onSelect: { pressing in
+                            ImportSearchFlow.applyMetadata(
+                                importer: importer,
+                                importStore: importStore,
+                                endEditing: endEditing,
+                                key: candidateKey,
+                                application: .pick(pressing.link)
+                            )
+                        }
+                    )
+                }
             }
             .frame(maxWidth: .infinity)
             .card()

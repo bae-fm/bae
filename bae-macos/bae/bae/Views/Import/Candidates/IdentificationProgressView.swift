@@ -99,6 +99,45 @@ struct IdentificationProgressIndicator: View {
     }
 }
 
+/// The filter row's place for the identification indicator, shown while a
+/// batch is identifying. It reads the batch's progress itself, so each
+/// identification that ends redraws this alone, not the list beside it.
+struct IdentificationProgressSlot: View {
+    let importStore: ImportStore
+    let onGoToUnidentified: () -> Void
+    let onCancelAll: () -> Void
+
+    var body: some View {
+        if let progress = importStore.identificationProgress,
+            progress.total > 0
+        {
+            IdentificationProgressIndicator(
+                identified: progress.identified,
+                total: progress.total,
+                onGoToUnidentified: onGoToUnidentified,
+                onCancelAll: onCancelAll
+            )
+        }
+    }
+}
+
+/// The filter row's place for the import indicator, shown while imports
+/// run. It reads their count itself, so an import that starts or ends
+/// redraws this alone.
+struct ImportActivitySlot: View {
+    let importStore: ImportStore
+    let onCancelAll: () -> Void
+
+    var body: some View {
+        if importStore.importsInFlight > 0 {
+            ImportActivityIndicator(
+                count: importStore.importsInFlight,
+                onCancelAll: onCancelAll
+            )
+        }
+    }
+}
+
 /// The filter row's place for the scan indicator, shown while a root is
 /// scanning. It reads the folder scans itself, so a scan's step redraws this
 /// alone and nothing around it.

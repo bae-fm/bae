@@ -190,22 +190,15 @@ struct ImportCandidateListContent: View {
                             under: shownNarrowing
                         )
                     )
-                    if let progress = importStore.identificationProgress,
-                        progress.total > 0
-                    {
-                        IdentificationProgressIndicator(
-                            identified: progress.identified,
-                            total: progress.total,
-                            onGoToUnidentified: goToFirstUnidentified,
-                            onCancelAll: onCancelAllIdentification
-                        )
-                    }
-                    if importStore.importsInFlight > 0 {
-                        ImportActivityIndicator(
-                            count: importStore.importsInFlight,
-                            onCancelAll: onCancelAllImports
-                        )
-                    }
+                    IdentificationProgressSlot(
+                        importStore: importStore,
+                        onGoToUnidentified: goToFirstUnidentified,
+                        onCancelAll: onCancelAllIdentification
+                    )
+                    ImportActivitySlot(
+                        importStore: importStore,
+                        onCancelAll: onCancelAllImports
+                    )
                     FolderScanActivitySlot(importStore: importStore)
                     CandidateListMenu(
                         watchedFolders: importStore.watchedFolders,

@@ -11,10 +11,6 @@ import SwiftUI
 /// column in place.
 struct ImportMappingPane: View {
     let candidate: Candidate
-    /// What is in flight for this candidate: the run whose state the pane
-    /// shows while one is live, and how far a running import has got. `nil`
-    /// when nothing is running for it.
-    let runtime: BridgeCandidateRuntimeSnapshot?
     /// The exact source window currently auditioning, if any.
     let previewingTarget: BridgePreviewTarget?
     /// Whether a metadata source is being read into this candidate's draft.
@@ -127,7 +123,6 @@ struct ImportMappingPane: View {
         ImportMetadataSourceSection(
             candidate: candidate,
             actionable: candidate.detail?.actionable == true,
-            runtime: runtime,
             isReading: isApplyingMetadata,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,

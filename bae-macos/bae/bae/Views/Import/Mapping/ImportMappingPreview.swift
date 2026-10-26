@@ -43,7 +43,6 @@
             store.selectedCandidates[candidate.key] = candidate
             return ImportMappingPane(
                 candidate: candidate,
-                runtime: runtime,
                 previewingTarget: previewingTarget,
                 isApplyingMetadata: false,
                 libraryStatus: nil,
@@ -76,7 +75,12 @@
                 onNavigateToPlacement: { _ in },
             )
             .environment(store)
-            .environment(PreviewData.importTabImporter())
+            // The pane's leaves read what is in flight from the importer.
+            .environment(
+                runtime.map { shown in
+                    Importer(candidateRuntime: { _ in shown })
+                } ?? PreviewData.importTabImporter()
+            )
         }
     }
 

@@ -181,7 +181,6 @@ extension ImportedReleasePane {
 struct ImportingCandidatePane: View {
     let candidate: Candidate
     let standing: BridgeImportStanding
-    let runtime: BridgeCandidateRuntimeSnapshot?
     let coverContent: ImageContent?
     let onOpenImages: ([BridgeMappingImage], String) -> Void
     let onOpenDocument: (String, String) -> Void
@@ -208,14 +207,9 @@ struct ImportingCandidatePane: View {
                     )
                     .foregroundStyle(.secondary)
                 case .running, .writing:
-                    ProgressLine(
-                        runtime?.import?.step.localizedText
-                            ?? String(localized: "Importing\u{2026}"),
-                        progress: runtime?.import?.progressPercent
-                            .map {
-                                Double($0) / 100
-                            }
-                    )
+                    // Reads the run itself, so a progress step redraws the
+                    // line and not the pane.
+                    ImportProgressLine(key: candidate.key)
                 }
                 HStack(alignment: .top, spacing: ThemeSpace.section) {
                     ImageView(content: coverContent, pointSize: Self.coverSize)

@@ -126,7 +126,6 @@ struct ImportStandingRowTests {
             ImportingCandidatePane(
                 candidate: PreviewData.folderCandidates[0],
                 standing: standing,
-                runtime: nil,
                 coverContent: nil,
                 onOpenImages: { _, _ in },
                 onOpenDocument: { _, _ in },

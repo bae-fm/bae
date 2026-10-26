@@ -27,7 +27,6 @@ struct ImportOnlineBrowserTests {
         let view = ImportMetadataSourceSection(
             candidate: candidate,
             actionable: true,
-            runtime: nil,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: false,
