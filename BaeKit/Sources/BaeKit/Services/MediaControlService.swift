@@ -99,7 +99,11 @@ public final class MediaControlService: @unchecked Sendable {
     // MARK: - Retained media-control values
 
     /// Translate core's resolved media-control presentation onto the platform's
-    /// single Now Playing surface, with the latest position of what it shows.
+    /// single Now Playing surface. A track or clip no elapsed time has been
+    /// written for yet takes the latest position, which can arrive before the
+    /// values that show it. One already moving keeps its line, rebased at a
+    /// new rate: the latest position was read when it arrived, and the next
+    /// one is measured against the line.
     public func applyMediaControlValues(
         _ values: BridgeMediaControlValues,
         appHandle: AppHandle
@@ -121,7 +125,9 @@ public final class MediaControlService: @unchecked Sendable {
             #endif
             updateNowPlaying(state: state, appHandle: appHandle)
         }
-        showLatestPositions()
+        if anchor == nil {
+            showLatestPositions()
+        }
     }
 
     /// Write core's latest positions onto Now Playing: the elapsed time of the
