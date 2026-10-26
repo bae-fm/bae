@@ -3,6 +3,7 @@
 //! table names last published, how far its import has got, its search — and
 //! a library release's re-identify run, which only the runtime holds.
 
+use super::change_log::ChangeLog;
 use super::{CandidateRuntime, CandidateRuntimeState, IdentificationStage, StoredStanding};
 use crate::import::candidates::{
     CandidateRuntimeSnapshot, IdentificationRuntime, ImportInFlight, SavingAnswer,
@@ -10,7 +11,6 @@ use crate::import::candidates::{
 use crate::import::triage::ImportStanding;
 use crate::library::LibraryError;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 /// `key`'s snapshot from its stored standing and what the runtime holds for
 /// it; `None` when neither has anything.
@@ -153,37 +153,46 @@ impl CandidateRuntime {
         Ok(self.compose_all(&stored))
     }
 
-    /// Every key's snapshot and the identification count as the live read last
-    /// read them, for a reader that cannot wait for a read of its own.
-    pub(crate) fn latest_view(&self) -> Arc<RuntimeView> {
-        self.view.borrow().clone()
+    /// What is in flight for `key` as the live read last read the table, with
+    /// what the runtime holds now, for a reader that cannot wait for a read of
+    /// its own.
+    pub(crate) fn latest_snapshot(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
+        self.view.borrow().snapshots.get(key).cloned()
     }
 
     /// Every key's snapshot and the identification count as the live read
-    /// reads them, now and as they change.
-    pub(crate) fn watch_view(&self) -> tokio::sync::watch::Receiver<Arc<RuntimeView>> {
+    /// reads them, now and as they change; [`RuntimeView::changes`] names
+    /// the keys each change moved.
+    pub(crate) fn watch_view(&self) -> tokio::sync::watch::Receiver<RuntimeView> {
         self.view.subscribe()
     }
 
-    /// Keep [`Self::latest_view`] current: the standings table read live,
-    /// composed with what the runtime holds, again whenever either changes.
-    /// Runs for the library's lifetime.
+    /// Compose `key` again from its standing as the table was last read and
+    /// what the runtime holds for it now, and tell the view's readers if that
+    /// changed it.
+    pub(super) fn recompose(&self, key: &str) {
+        self.view.send_if_modified(|view| {
+            let inner = self.inner.lock().unwrap();
+            let next = compose(key, view.stored.get(key), inner.runtime.get(key));
+            view.show(key, next)
+        });
+    }
+
+    /// Keep the view current: the standings table read live, each key whose
+    /// standing a read moved composed again with what the runtime holds. A
+    /// change to what the runtime holds composes its own key
+    /// ([`Self::recompose`]). Runs for the library's lifetime.
     pub(crate) async fn keep_view_current(self) {
-        let runtime = self.clone();
-        let mut query = self
-            .database
-            .subscribe_candidate_standings()
-            .process(move |read| {
-                Ok(RuntimeView {
-                    snapshots: runtime.compose_all(&read.standings),
-                    identification_progress: read.identification_progress,
-                })
-            })
-            .rerun_on(self.held_changed.subscribe());
+        let mut query = self.database.subscribe_candidate_standings();
         loop {
             match query.next().await {
-                Ok(view) => {
-                    self.view.send_replace(Arc::new(view));
+                Ok(read) => {
+                    self.view.send_if_modified(|view| {
+                        let inner = self.inner.lock().unwrap();
+                        view.take_read(read, |key, stored| {
+                            compose(key, stored, inner.runtime.get(key))
+                        })
+                    });
                 }
                 // The stream has no reader to hand the failure to: a bug,
                 // reported as one. The next read that succeeds is delivered.
@@ -195,13 +204,77 @@ impl CandidateRuntime {
     }
 }
 
-/// Every key's snapshot, and the identification count, as one read gives them.
-#[derive(Debug, Clone, PartialEq, Default)]
+/// Every key's snapshot, and the identification count, as the table was last
+/// read with what the runtime holds beside it, kept key by key.
+#[derive(Debug, Default)]
 pub(crate) struct RuntimeView {
     pub(crate) snapshots: HashMap<String, CandidateRuntimeSnapshot>,
     /// How far the batch of identifications in flight has got: ended of
     /// admitted; `(0, 0)` is none.
     pub(crate) identification_progress: (u32, u32),
+    /// How many keys an import owns.
+    pub(crate) importing: u32,
+    /// Which keys' snapshots changed, so a reader reads only those.
+    pub(crate) changes: ChangeLog,
+    /// Each key's standing as the table was last read.
+    stored: HashMap<String, StoredStanding>,
+}
+
+impl RuntimeView {
+    /// Take a read of the table: its count, and each key whose standing it
+    /// moved composed again by `compose`. Whether anything a reader draws
+    /// changed.
+    fn take_read(
+        &mut self,
+        read: crate::db::StandingsRead,
+        compose: impl Fn(&str, Option<&StoredStanding>) -> Option<CandidateRuntimeSnapshot>,
+    ) -> bool {
+        let mut changed = read.identification_progress != self.identification_progress;
+        self.identification_progress = read.identification_progress;
+        let moved: Vec<String> = self
+            .stored
+            .keys()
+            .filter(|key| !read.standings.contains_key(*key))
+            .chain(
+                read.standings
+                    .iter()
+                    .filter(|(key, standing)| self.stored.get(*key) != Some(*standing))
+                    .map(|(key, _)| key),
+            )
+            .cloned()
+            .collect();
+        self.stored = read.standings;
+        for key in moved {
+            let next = compose(&key, self.stored.get(&key));
+            changed |= self.show(&key, next);
+        }
+        changed
+    }
+
+    /// Show `next` as `key`'s snapshot; whether that changed it.
+    fn show(&mut self, key: &str, next: Option<CandidateRuntimeSnapshot>) -> bool {
+        let previous = self.snapshots.get(key);
+        if previous == next.as_ref() {
+            return false;
+        }
+        let was_importing = previous.is_some_and(|snapshot| snapshot.import.is_some());
+        let importing = next.as_ref().is_some_and(|snapshot| snapshot.import.is_some());
+        match next {
+            Some(next) => {
+                self.snapshots.insert(key.to_string(), next);
+            }
+            None => {
+                self.snapshots.remove(key);
+            }
+        }
+        match (was_importing, importing) {
+            (false, true) => self.importing += 1,
+            (true, false) => self.importing -= 1,
+            (true, true) | (false, false) => {}
+        }
+        self.changes.record(key);
+        true
+    }
 }
 
 impl ImportStanding {
@@ -228,5 +301,62 @@ impl ImportStanding {
             Self::Running => ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
             Self::Writing => ImportStep::Running(ImportPhase::Finalizing),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::import::candidate_runtime::StoredImport;
+    use std::cell::RefCell;
+
+    fn importing(import_id: &str) -> StoredStanding {
+        StoredStanding {
+            identification: None,
+            import: Some(StoredImport {
+                import_id: import_id.to_string(),
+                standing: ImportStanding::Running,
+            }),
+        }
+    }
+
+    fn read(standings: Vec<(&str, StoredStanding)>) -> crate::db::StandingsRead {
+        crate::db::StandingsRead {
+            standings: standings
+                .into_iter()
+                .map(|(key, standing)| (key.to_string(), standing))
+                .collect(),
+            identification_progress: (0, 0),
+        }
+    }
+
+    /// A read of the table composes only the keys whose standing it moved,
+    /// names only those as changed, and keeps the import count by them.
+    #[test]
+    fn a_read_composes_only_the_keys_it_moved() {
+        let composed = RefCell::new(Vec::new());
+        let compose_one = |key: &str, stored: Option<&StoredStanding>| {
+            composed.borrow_mut().push(key.to_string());
+            compose(key, stored, None)
+        };
+        let mut view = RuntimeView::default();
+
+        assert!(view.take_read(
+            read(vec![("a", importing("imp-a")), ("b", importing("imp-b"))]),
+            compose_one
+        ));
+        assert_eq!(view.importing, 2);
+        let seen = view.changes.sequence();
+        composed.borrow_mut().clear();
+
+        assert!(view.take_read(read(vec![("a", importing("imp-a"))]), compose_one));
+        assert_eq!(*composed.borrow(), ["b"], "only the key the read moved");
+        assert_eq!(view.changes.since(seen).collect::<Vec<_>>(), ["b"]);
+        assert!(!view.snapshots.contains_key("b"));
+        assert_eq!(view.importing, 1);
+
+        composed.borrow_mut().clear();
+        assert!(!view.take_read(read(vec![("a", importing("imp-a"))]), compose_one));
+        assert!(composed.borrow().is_empty(), "a read that moves nothing composes nothing");
     }
 }

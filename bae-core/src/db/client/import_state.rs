@@ -34,7 +34,7 @@ pub(super) use rows::{
     load_states_on,
 };
 use session_rows::load_session_on;
-pub(crate) use standing_rows::ImportClaim;
+pub(crate) use standing_rows::{ImportClaim, StandingsRead};
 pub(super) use standing_rows::{
     change_identification_on, end_identification_unless_of_on, load_standing_facts_on,
     load_standing_on, move_import_on,

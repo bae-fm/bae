@@ -638,7 +638,7 @@ impl ImportServiceHandle {
     /// read a view does once when it appears, after it has subscribed to the
     /// stream, so the two agree.
     pub fn latest_candidate_runtime(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
-        self.runtime.latest_view().snapshots.get(key).cloned()
+        self.runtime.latest_snapshot(key)
     }
 
     /// Every key with something in flight, and each key that changes after.

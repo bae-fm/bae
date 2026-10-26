@@ -20,8 +20,10 @@
 //! beside it.
 //!
 //! A key has an entry only while something is held for it. Readers of the
-//! snapshots and the count wake on the live read of the table and what is
-//! held ([`RuntimeView`]); readers of the signals wake on [`Revisions`].
+//! snapshots and the count wake on [`RuntimeView`], which a read of the table
+//! and a change to what is held each move key by key, naming the keys they
+//! moved; readers of the signals wake on [`Revisions`], which names the keys
+//! whose signals moved.
 
 use super::candidate_search::CandidateSearch;
 use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
@@ -39,6 +41,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 use tracing::debug;
 
+mod change_log;
 mod snapshots;
 mod snapshots_watch;
 mod standing_writes;
@@ -74,7 +77,8 @@ pub enum CandidateRuntimeChange {
 }
 
 /// How many times the signals the runtime holds have changed. A reader wakes
-/// on it moving and reads them.
+/// on it moving and reads the keys whose signals moved since it last looked
+/// ([`CandidateRuntime::signals_since`]).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Revisions {
     pub(crate) signals: u64,
@@ -151,6 +155,8 @@ struct Inner {
     shapes: HashMap<String, CandidateShape>,
     /// The latest signals extraction reported for each key, and their run.
     signals: HashMap<String, (IdentifyRunId, Signals)>,
+    /// Which keys' signals moved, so a reader reads only those.
+    signal_changes: change_log::ChangeLog,
     /// The next search run number, one counter across every key so no old
     /// run is mistaken for a current one.
     next_search_run: u64,
@@ -171,16 +177,13 @@ pub struct CandidateRuntime {
     /// bus records into `inner`.
     work: Arc<Mutex<work::WorkInFlight>>,
     revisions: Arc<watch::Sender<Revisions>>,
-    /// Bumped with every change to what `inner` holds for a key, which the
-    /// live runtime snapshots read beside the standings table.
-    held_changed: Arc<watch::Sender<()>>,
     /// The library the standings table is in.
     database: Database,
     /// Where a bug the runtime finds with no caller to fail is reported.
     diagnostics: crate::diagnostics::Diagnostics,
-    /// Every key's snapshot and the identification count as the live read
-    /// last read them.
-    view: Arc<watch::Sender<Arc<snapshots::RuntimeView>>>,
+    /// Every key's snapshot and the identification count, kept key by key
+    /// from the live read of the table and what `inner` holds.
+    view: Arc<watch::Sender<snapshots::RuntimeView>>,
     /// Test readers that hear every move of the identification count, and
     /// every key's runtime as each write of its standing leaves it.
     #[cfg(any(test, feature = "test-utils"))]
@@ -207,12 +210,11 @@ impl CandidateRuntime {
             inner: Arc::default(),
             work: Arc::default(),
             revisions: Arc::new(watch::Sender::new(Revisions::default())),
-            held_changed: Arc::new(watch::Sender::new(())),
             database,
             diagnostics,
             // The library opens with the table empty and nothing held, so
             // nothing is in flight until the first change.
-            view: Arc::new(watch::Sender::new(Arc::default())),
+            view: Arc::new(watch::Sender::new(snapshots::RuntimeView::default())),
             #[cfg(any(test, feature = "test-utils"))]
             every_count: Arc::default(),
             #[cfg(any(test, feature = "test-utils"))]
@@ -298,15 +300,22 @@ impl CandidateRuntime {
         self.revisions.subscribe()
     }
 
-    /// The latest signals extraction reported for every key.
-    pub(crate) fn all_signals(&self) -> HashMap<String, Signals> {
-        self.inner
-            .lock()
-            .unwrap()
-            .signals
-            .iter()
-            .map(|(key, (_, signals))| (key.clone(), signals.clone()))
-            .collect()
+    /// The signals of each key whose signals moved after `seen`, and where
+    /// that leaves a reader who has read them. A key whose signals went with
+    /// its files is left out.
+    pub(crate) fn signals_since(&self, seen: u64) -> (u64, Vec<(String, Signals)>) {
+        let inner = self.inner.lock().unwrap();
+        let moved = inner
+            .signal_changes
+            .since(seen)
+            .filter_map(|key| {
+                inner
+                    .signals
+                    .get(key)
+                    .map(|(_, signals)| (key.to_string(), signals.clone()))
+            })
+            .collect();
+        (inner.signal_changes.sequence(), moved)
     }
 
     /// Every move of the identification count from now on, for a test.
@@ -328,14 +337,9 @@ impl CandidateRuntime {
         changes
     }
 
-    /// Say what this runtime holds for a key changed.
-    fn held_changed(&self) {
-        self.held_changed.send_replace(());
-    }
-
     /// Apply `mutate` to the key's entry under the map's lock, creating one if
-    /// needed, and say so if it changed. An entry left idle is removed.
-    /// Returns what `mutate` returned.
+    /// needed, and compose the key's snapshot again if it changed. An entry
+    /// left idle is removed. Returns what `mutate` returned.
     fn set<R>(
         &self,
         key: &str,
@@ -355,7 +359,7 @@ impl CandidateRuntime {
             (result, changed)
         };
         if changed {
-            self.held_changed();
+            self.recompose(key);
         }
         result
     }
@@ -503,7 +507,14 @@ impl CandidateRuntime {
     /// import's ending clears it.
     fn end_candidate(&self, key: &str) {
         self.end_work(key);
-        let signals_removed = self.inner.lock().unwrap().signals.remove(key).is_some();
+        let signals_removed = {
+            let mut inner = self.inner.lock().unwrap();
+            let removed = inner.signals.remove(key).is_some();
+            if removed {
+                inner.signal_changes.record(key);
+            }
+            removed
+        };
         self.set(key, |_, runtime| runtime.search = None);
         if signals_removed {
             self.revisions.send_modify(|revisions| revisions.signals += 1);
@@ -614,13 +625,18 @@ impl CandidateRuntime {
                 artwork: _,
                 priority: _,
             } => {
-                let previous = self
-                    .inner
-                    .lock()
-                    .unwrap()
-                    .signals
-                    .insert(candidate_key.clone(), (*run, signals.clone()));
-                if previous.is_none_or(|(_, previous)| previous != *signals) {
+                let moved = {
+                    let mut inner = self.inner.lock().unwrap();
+                    let previous = inner
+                        .signals
+                        .insert(candidate_key.clone(), (*run, signals.clone()));
+                    let moved = previous.is_none_or(|(_, previous)| previous != *signals);
+                    if moved {
+                        inner.signal_changes.record(candidate_key);
+                    }
+                    moved
+                };
+                if moved {
                     self.revisions.send_modify(|revisions| revisions.signals += 1);
                 }
             }

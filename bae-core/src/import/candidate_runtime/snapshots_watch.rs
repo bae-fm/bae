@@ -2,52 +2,51 @@
 //! first, then each key that changed since it last read.
 
 use super::{CandidateRuntime, CandidateRuntimeChange, RuntimeView};
-use std::sync::Arc;
 use tokio::sync::watch;
 
 pub struct RuntimeSnapshotsWatch {
-    /// What the reader was last told; `None` before the first read.
-    told: Option<Arc<RuntimeView>>,
-    view: watch::Receiver<Arc<RuntimeView>>,
+    /// How far through the view's changes the reader has been told; `None`
+    /// before the first read.
+    seen: Option<u64>,
+    view: watch::Receiver<RuntimeView>,
 }
 
 impl RuntimeSnapshotsWatch {
     pub(crate) fn of(runtime: &CandidateRuntime) -> Self {
         Self {
-            told: None,
+            seen: None,
             view: runtime.watch_view(),
         }
     }
 
     /// Every key's runtime as one `Reset` on the first call; after that, wait
-    /// for keys to change and name each one. `None` once the runtime is gone.
+    /// for keys to change and name each one, read from the keys the view
+    /// says moved. `None` once the runtime is gone.
     pub async fn next(&mut self) -> Option<Vec<CandidateRuntimeChange>> {
-        let Some(told) = &mut self.told else {
-            let view = self.view.borrow_and_update().clone();
-            self.told = Some(view.clone());
+        let Some(seen) = &mut self.seen else {
+            let view = self.view.borrow_and_update();
+            self.seen = Some(view.changes.sequence());
             return Some(vec![CandidateRuntimeChange::Reset {
                 runtimes: view.snapshots.clone(),
             }]);
         };
         loop {
             self.view.changed().await.ok()?;
-            let next = self.view.borrow_and_update().clone();
-            let mut changes: Vec<CandidateRuntimeChange> = told
-                .snapshots
-                .keys()
-                .filter(|key| !next.snapshots.contains_key(*key))
-                .map(|key| CandidateRuntimeChange::Removed { key: key.clone() })
-                .collect();
-            changes.extend(
-                next.snapshots
-                    .iter()
-                    .filter(|(key, runtime)| told.snapshots.get(*key) != Some(*runtime))
-                    .map(|(key, runtime)| CandidateRuntimeChange::Updated {
-                        key: key.clone(),
+            let view = self.view.borrow_and_update();
+            let changes: Vec<CandidateRuntimeChange> = view
+                .changes
+                .since(*seen)
+                .map(|key| match view.snapshots.get(key) {
+                    Some(runtime) => CandidateRuntimeChange::Updated {
+                        key: key.to_string(),
                         runtime: runtime.clone(),
-                    }),
-            );
-            *told = next;
+                    },
+                    None => CandidateRuntimeChange::Removed {
+                        key: key.to_string(),
+                    },
+                })
+                .collect();
+            *seen = view.changes.sequence();
             if !changes.is_empty() {
                 return Some(changes);
             }

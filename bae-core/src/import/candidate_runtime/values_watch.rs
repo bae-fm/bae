@@ -4,8 +4,6 @@
 
 use super::{CandidateRuntime, Revisions, RuntimeView};
 use crate::signals::Signals;
-use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::watch;
 
 /// One value that changed.
@@ -21,12 +19,12 @@ pub(crate) enum RuntimeValue {
 
 pub(crate) struct RuntimeValuesWatch {
     revisions: watch::Receiver<Revisions>,
-    /// Every key's snapshot, which says which of them an import owns, and the
-    /// identification count.
-    view: watch::Receiver<Arc<RuntimeView>>,
+    /// How many keys an import owns, and the identification count.
+    view: watch::Receiver<RuntimeView>,
     progress: (u32, u32),
     importing: u32,
-    signals: HashMap<String, Signals>,
+    /// How far through the signals' changes the reader has been told.
+    signals_seen: u64,
     runtime: CandidateRuntime,
 }
 
@@ -42,7 +40,7 @@ impl RuntimeValuesWatch {
             view,
             progress: (0, 0),
             importing: 0,
-            signals: HashMap::new(),
+            signals_seen: 0,
             runtime: runtime.clone(),
         }
     }
@@ -56,33 +54,27 @@ impl RuntimeValuesWatch {
                 read = self.revisions.changed() => {
                     read.ok()?;
                     self.revisions.borrow_and_update();
-                    let signals = self.runtime.all_signals();
+                    let (seen, moved) = self.runtime.signals_since(self.signals_seen);
+                    self.signals_seen = seen;
                     changed.extend(
-                        signals
-                            .iter()
-                            .filter(|(key, signals)| self.signals.get(*key) != Some(*signals))
-                            .map(|(key, signals)| RuntimeValue::Signals {
-                                key: key.clone(),
-                                signals: signals.clone(),
-                            }),
+                        moved
+                            .into_iter()
+                            .map(|(key, signals)| RuntimeValue::Signals { key, signals }),
                     );
-                    self.signals = signals;
                 }
                 read = self.view.changed() => {
                     read.ok()?;
-                    let view = self.view.borrow_and_update().clone();
-                    if view.identification_progress != self.progress {
-                        self.progress = view.identification_progress;
+                    let (progress, importing) = {
+                        let view = self.view.borrow_and_update();
+                        (view.identification_progress, view.importing)
+                    };
+                    if progress != self.progress {
+                        self.progress = progress;
                         changed.push(RuntimeValue::IdentificationProgress {
                             identified: self.progress.0,
                             total: self.progress.1,
                         });
                     }
-                    let importing = view
-                        .snapshots
-                        .values()
-                        .filter(|snapshot| snapshot.import.is_some())
-                        .count() as u32;
                     if importing != self.importing {
                         self.importing = importing;
                         changed.push(RuntimeValue::ImportsInFlight { count: importing });

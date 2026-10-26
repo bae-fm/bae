@@ -89,9 +89,7 @@ async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
     runtime.record_run_state(key, run(1), true, &triangulating());
     assert_eq!(
         runtime
-            .latest_view()
-            .snapshots
-            .get(key)
+            .latest_snapshot(key)
             .and_then(|snapshot| snapshot.identification_in_flight()),
         Some(crate::import::IdentificationInFlight::Queued)
     );
@@ -147,5 +145,68 @@ async fn a_values_reader_reads_the_counts_and_signals_as_they_stand() {
     {
         changed.extend(watch.next().await.expect("the runtime is there"));
     }
+    live.abort();
+}
+
+/// A signals change names only the key whose signals moved, not every key
+/// the runtime holds signals for.
+#[tokio::test]
+async fn a_values_reader_is_told_only_the_key_whose_signals_moved() {
+    let runtime = CandidateRuntime::for_test().await;
+    let live = keep_current(&runtime);
+    let mut watch = RuntimeValuesWatch::of(&runtime);
+    runtime.record_event(&signals_event("/watch/a/rel1", "first"));
+    runtime.record_event(&signals_event("/watch/a/rel2", "first"));
+    let mut told = Vec::new();
+    while told.len() < 2 {
+        told.extend(
+            watch
+                .next()
+                .await
+                .expect("the runtime is there")
+                .into_iter()
+                .filter(|value| matches!(value, RuntimeValue::Signals { .. })),
+        );
+    }
+
+    runtime.record_event(&signals_event("/watch/a/rel2", "second"));
+    let next = watch.next().await.expect("the runtime is there");
+    assert!(
+        matches!(
+            next.as_slice(),
+            [RuntimeValue::Signals { key, signals }]
+                if key == "/watch/a/rel2" && signals.track_titles == ["second"]
+        ),
+        "{next:?}"
+    );
+    live.abort();
+}
+
+/// A change to one key's runtime names that key alone.
+#[tokio::test]
+async fn a_snapshots_reader_is_told_only_the_key_that_moved() {
+    let runtime = CandidateRuntime::for_test().await;
+    let live = keep_current(&runtime);
+    claim(&runtime, "/watch/a/rel1").await;
+    claim(&runtime, "/watch/a/rel2").await;
+    runtime
+        .watch_view()
+        .wait_for(|view| view.snapshots.len() == 2)
+        .await
+        .unwrap();
+    let mut watch = RuntimeSnapshotsWatch::of(&runtime);
+    watch.next().await.expect("the runtime is there");
+
+    runtime.record_event(&progress("/watch/a/rel1", 40));
+    let next = watch.next().await.expect("the runtime is there");
+    assert!(
+        matches!(
+            next.as_slice(),
+            [CandidateRuntimeChange::Updated { key, runtime }]
+                if key == "/watch/a/rel1"
+                    && runtime.import.as_ref().and_then(|import| import.progress_percent) == Some(40)
+        ),
+        "{next:?}"
+    );
     live.abort();
 }

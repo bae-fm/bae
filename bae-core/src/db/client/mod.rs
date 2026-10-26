@@ -85,7 +85,7 @@ desktop_only! {
     };
     pub(crate) use import_state::{
         CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-        ImportClaim, RunVerdictSaved, ScannedCandidateKey,
+        ImportClaim, RunVerdictSaved, ScannedCandidateKey, StandingsRead,
     };
     mod source_releases;
     mod album_link_rows;

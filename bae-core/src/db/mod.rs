@@ -32,7 +32,7 @@ pub(crate) use client::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, GroupingFacts, ImportClaim,
     ImportRows, NewArtistImages, RunVerdictSaved, ScanItemSeed, ScanItemToWrite,
-    ScannedCandidateKey,
+    ScannedCandidateKey, StandingsRead,
 };
 pub(crate) use client::{
     OutboxDisplayContext, OutboxDisplayRequest, QueueCatalogProjection, QueueCatalogRequest,
