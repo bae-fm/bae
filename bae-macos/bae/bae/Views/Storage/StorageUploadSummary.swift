@@ -4,12 +4,12 @@ import SwiftUI
 /// Release-wide upload progress and controls above the shared file list.
 struct StorageUploadSummary: View {
     let group: BridgeUploadReleaseGroup
+    /// How far the release's uploading files have gone together, and how
+    /// fast; `nil` while none has arrived for it.
+    let transfer: BridgeUploadTransfer?
     let onCancel: () -> Void
-    @Environment(OutboxStore.self)
-    private var outboxStore
 
     var body: some View {
-        let transfer = outboxStore.transfer(forRelease: group.releaseId)
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             HStack {
                 UploadActivityLabel(fileCountOf: group.progress)

@@ -79,7 +79,10 @@ struct StorageTransferControls: View {
                     outputs.cancelOutput(operation.releaseId)
                 }
             case .upload(let group, _):
-                StorageUploadSummary(group: group) {
+                StorageUploadSummary(
+                    group: group,
+                    transfer: outboxStore.transfer(forRelease: group.releaseId)
+                ) {
                     cancelTransition(group.releaseId)
                 }
             }
