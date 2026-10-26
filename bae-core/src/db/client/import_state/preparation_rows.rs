@@ -60,6 +60,10 @@ pub(crate) struct CandidateSaveExtras {
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
     pub pane: CandidatePaneWrite,
+    /// The save is a person's decision about what the candidate is, which
+    /// ends its identification in the same write: no read sees the decision
+    /// beside the identification it answers.
+    pub ends_identification: bool,
 }
 
 /// What this save does to where the candidate's pane stands.
@@ -79,6 +83,7 @@ impl Default for CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
+            ends_identification: false,
         }
     }
 }
@@ -299,6 +304,13 @@ pub(super) fn save_preparation_on(
                 scanned.candidate_path,
             )));
         }
+    }
+    if extras.ends_identification {
+        super::change_identification_on(
+            sql,
+            &prep.folder_path,
+            &crate::import::candidate_runtime::IdentificationChange::Ended,
+        )?;
     }
     Ok(CandidateSaved::Landed(reshaped))
 }

@@ -13,13 +13,15 @@
 //! This runtime holds what is not a standing: the state each run last
 //! published, which a pane draws while the table names that run; how far an
 //! import has got; a person's typed search; extraction's
-//! [`Signals`](crate::signals::Signals); the count of identifications in
-//! flight; and the whole of a library release's re-identify run, which is no
-//! list row's and has no standing. [`CandidateRuntimeSnapshot`] is the table's
-//! standing with these beside it.
+//! [`Signals`](crate::signals::Signals); and the whole of a library release's
+//! re-identify run, which is no list row's and has no standing. The count of
+//! identifications in flight is the table's too, moved by each change in its
+//! own write. [`CandidateRuntimeSnapshot`] is the table's standing with these
+//! beside it.
 //!
-//! A key has an entry only while something is held for it. Readers wake on
-//! [`Revisions`] and read what they draw.
+//! A key has an entry only while something is held for it. Readers of the
+//! snapshots and the count wake on the live read of the table and what is
+//! held ([`RuntimeView`]); readers of the signals wake on [`Revisions`].
 
 use super::candidate_search::CandidateSearch;
 use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
@@ -36,7 +38,6 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 use tracing::debug;
 
-mod batch;
 mod snapshots;
 mod snapshots_watch;
 mod standing_writes;
@@ -46,16 +47,15 @@ mod work;
 pub use snapshots_watch::RuntimeSnapshotsWatch;
 pub(crate) use standing_writes::RunSubject;
 pub(crate) use stored_standing::{
-    IdentificationChange, IdentificationMove, IdentificationStage, StoredIdentification,
-    StoredImport, StoredStanding,
+    IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
+    StoredIdentification, StoredImport, StoredStanding,
 };
+pub(crate) use snapshots::RuntimeView;
 pub(crate) use values_watch::{RuntimeValue, RuntimeValuesWatch};
 pub(crate) use work::CandidateWork;
 
 #[cfg(test)]
 pub(crate) mod tests;
-
-use batch::IdentificationBatch;
 
 /// One key's runtime after a change, or its removal.
 #[derive(Debug, Clone, PartialEq)]
@@ -72,12 +72,10 @@ pub enum CandidateRuntimeChange {
     },
 }
 
-/// How many times each part of the runtime has changed. A reader wakes on
-/// either moving and reads the part it draws.
+/// How many times the signals the runtime holds have changed. A reader wakes
+/// on it moving and reads them.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Revisions {
-    /// What this runtime holds for each key, and the identification count.
-    pub(crate) runtime: u64,
     pub(crate) signals: u64,
 }
 
@@ -155,8 +153,6 @@ struct Inner {
     /// The next search run number, one counter across every key so no old
     /// run is mistaken for a current one.
     next_search_run: u64,
-    /// The identifications in flight.
-    batch: IdentificationBatch,
 }
 
 impl Inner {
@@ -179,15 +175,18 @@ pub struct CandidateRuntime {
     held_changed: Arc<watch::Sender<()>>,
     /// The library the standings table is in.
     database: Database,
-    /// Taken across each write of a standing and the count it moves, so the
-    /// count follows the writes in the order they landed.
-    standing_writes: Arc<tokio::sync::Mutex<()>>,
-    /// Every key's snapshot as the live read last composed it.
-    snapshots: Arc<watch::Sender<Arc<HashMap<String, CandidateRuntimeSnapshot>>>>,
+    /// Where a bug the runtime finds with no caller to fail is reported.
+    diagnostics: crate::diagnostics::Diagnostics,
+    /// Every key's snapshot and the identification count as the live read
+    /// last read them.
+    view: Arc<watch::Sender<Arc<snapshots::RuntimeView>>>,
     /// Test readers that hear every move of the identification count, and
     /// every key's runtime as each write of its standing leaves it.
     #[cfg(any(test, feature = "test-utils"))]
     every_count: TestReaders<(u32, u32)>,
+    /// The count the test readers of every count were last told.
+    #[cfg(any(test, feature = "test-utils"))]
+    told_count: Arc<Mutex<(u32, u32)>>,
     #[cfg(any(test, feature = "test-utils"))]
     every_change: TestReaders<CandidateRuntimeChange>,
     /// The directory a test runtime's database is in, kept as long as the
@@ -201,20 +200,22 @@ type TestReaders<T> = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<T>>>>;
 
 impl CandidateRuntime {
     /// A runtime over the standings table of `database`, which the library
-    /// emptied as it opened.
-    pub(crate) fn new(database: Database) -> Self {
+    /// emptied as it opened, reporting its bugs to `diagnostics`.
+    pub(crate) fn new(database: Database, diagnostics: crate::diagnostics::Diagnostics) -> Self {
         Self {
             inner: Arc::default(),
             work: Arc::default(),
             revisions: Arc::new(watch::Sender::new(Revisions::default())),
             held_changed: Arc::new(watch::Sender::new(())),
             database,
-            standing_writes: Arc::default(),
+            diagnostics,
             // The library opens with the table empty and nothing held, so
             // nothing is in flight until the first change.
-            snapshots: Arc::new(watch::Sender::new(Arc::default())),
+            view: Arc::new(watch::Sender::new(Arc::default())),
             #[cfg(any(test, feature = "test-utils"))]
             every_count: Arc::default(),
+            #[cfg(any(test, feature = "test-utils"))]
+            told_count: Arc::default(),
             #[cfg(any(test, feature = "test-utils"))]
             every_change: Arc::default(),
             #[cfg(any(test, feature = "test-utils"))]
@@ -237,7 +238,7 @@ impl CandidateRuntime {
         .expect("a test runtime's database opens");
         Self {
             _test_directory: Some(Arc::new(directory)),
-            ..Self::new(database)
+            ..Self::new(database, crate::diagnostics::Diagnostics::noop())
         }
     }
 
@@ -264,7 +265,7 @@ impl CandidateRuntime {
     /// one holds, for a test of what the table alone decides.
     #[cfg(test)]
     pub(crate) fn over_the_same_library_for_test(&self) -> Self {
-        Self::new(self.database.clone())
+        Self::new(self.database.clone(), self.diagnostics.clone())
     }
 
     /// The signals extraction has found for a key so far, or `None` before it
@@ -294,11 +295,6 @@ impl CandidateRuntime {
     /// its first read, so no change lands between the two.
     pub(crate) fn watch_revisions(&self) -> watch::Receiver<Revisions> {
         self.revisions.subscribe()
-    }
-
-    /// How far the identifications in flight have got: ended of admitted.
-    pub(crate) fn identification_progress(&self) -> (u32, u32) {
-        self.inner.lock().unwrap().batch.progress()
     }
 
     /// The latest signals extraction reported for every key.
@@ -331,20 +327,9 @@ impl CandidateRuntime {
         changes
     }
 
-    /// Say what this runtime holds changed; `count` is the identification
-    /// count when it moved.
-    fn held_changed(&self, count: Option<(u32, u32)>) {
-        #[cfg(any(test, feature = "test-utils"))]
-        if let Some(count) = count {
-            self.every_count
-                .lock()
-                .unwrap()
-                .retain(|reader| reader.send(count).is_ok());
-        }
-        #[cfg(not(any(test, feature = "test-utils")))]
-        let _ = count;
+    /// Say what this runtime holds for a key changed.
+    fn held_changed(&self) {
         self.held_changed.send_replace(());
-        self.revisions.send_modify(|revisions| revisions.runtime += 1);
     }
 
     /// Apply `mutate` to the key's entry under the map's lock, creating one if
@@ -369,7 +354,7 @@ impl CandidateRuntime {
             (result, changed)
         };
         if changed {
-            self.held_changed(None);
+            self.held_changed();
         }
         result
     }

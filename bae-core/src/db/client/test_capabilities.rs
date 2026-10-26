@@ -159,7 +159,7 @@ impl Database {
     /// carries — the way the import pane's own writers would leave them.
     pub async fn execute_local_sql_for_test(&self, statements: &str) -> Result<(), DbError> {
         let statements = statements.to_string();
-        self.call_sql(move |sql| {
+        self.call(move |sql| {
             sql.execute_batch(&statements)?;
             Ok(())
         })

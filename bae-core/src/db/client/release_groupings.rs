@@ -555,10 +555,20 @@ impl Database {
     ) -> Result<bool, DbError> {
         let key = key.to_string();
         self.call(move |sql| {
-            Ok(sql.execute(
+            let changed = sql.execute(
                 "UPDATE release_grouping SET skipped = ? WHERE key = ? AND skipped != ?",
                 params![skipped, key, skipped],
-            )? == 1)
+            )? == 1;
+            // Set aside, the release is not identification's to answer: its
+            // identification ends with the skip.
+            if changed && skipped {
+                super::import_state::change_identification_on(
+                    sql,
+                    &key,
+                    &crate::import::candidate_runtime::IdentificationChange::Ended,
+                )?;
+            }
+            Ok(changed)
         })
         .await
     }
@@ -755,6 +765,13 @@ impl Database {
                         member.key(),
                         member.path.to_string_lossy()
                     ],
+                )?;
+                // A folder read into the combined release leaves the queue, and
+                // its identification ends with it.
+                super::import_state::change_identification_on(
+                    sql,
+                    &member.key(),
+                    &crate::import::candidate_runtime::IdentificationChange::Ended,
                 )?;
             }
             let mut changes = rebuild_grouping(sql, &key)?;

@@ -1,18 +1,13 @@
 //! The writes that change where a folder candidate stands, each awaited by
-//! the owner of what it changes, and the count of identifications in flight
-//! they move.
+//! the owner of what it changes.
 //!
 //! A change is decided from the row as stored inside its own write (see
 //! [`IdentificationChange::applied`]), so a run that lost its standing — it
 //! was cancelled, or its candidate admitted again — reports into nothing
-//! rather than over a newer one. Each write, and the count it moves, happens
-//! under [`StandingWrites`], so the count follows the writes in the order they
-//! landed.
+//! rather than over a newer one. The identification count moves in the same
+//! write as the change that moves it.
 
-use super::{
-    CandidateRuntime, IdentificationChange, IdentificationMove, IdentificationStage,
-    StoredIdentification,
-};
+use super::{CandidateRuntime, IdentificationChange, IdentificationMove, IdentificationStage};
 use crate::db::{DbError, ImportClaim};
 use crate::identify::IdentifyRunId;
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
@@ -26,78 +21,12 @@ pub(crate) enum RunSubject {
     Release,
 }
 
-/// The hold on standing writes a write that moves the identification count
-/// keeps until the count is moved.
-pub(crate) struct StandingWrites {
-    _held: tokio::sync::OwnedMutexGuard<()>,
-}
-
-/// Where a key stands in identification, as the count reads it.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-struct Identifying {
-    /// Admitted and its run not started, which is what joins the batch.
-    queued: bool,
-    /// Waiting, running, or having its answer written; a failed write is
-    /// over.
-    in_flight: bool,
-}
-
-impl Identifying {
-    fn of(stored: Option<&StoredIdentification>) -> Self {
-        match stored.map(|stored| &stored.stage) {
-            Some(IdentificationStage::Queued { .. }) => Self {
-                queued: true,
-                in_flight: true,
-            },
-            Some(
-                IdentificationStage::Running { .. }
-                | IdentificationStage::Finalizing { .. }
-                | IdentificationStage::ReadingPick { .. },
-            ) => Self {
-                queued: false,
-                in_flight: true,
-            },
-            Some(IdentificationStage::Failed { .. }) | None => Self::default(),
-        }
-    }
-}
-
 impl CandidateRuntime {
-    pub(crate) async fn hold_standing_writes(&self) -> StandingWrites {
-        StandingWrites {
-            _held: self.standing_writes.clone().lock_owned().await,
-        }
-    }
-
-    /// Move the identification count by what `moves` did, under the hold the
-    /// writes that made them kept.
-    pub(crate) fn count_moves(&self, _held: &StandingWrites, moves: &[(String, IdentificationMove)]) {
-        let counted = {
-            let mut inner = self.inner.lock().unwrap();
-            let mut counted = false;
-            for (key, moved) in moves {
-                let was = Identifying::of(moved.before.as_ref());
-                let is = Identifying::of(moved.after.as_ref());
-                if !was.queued && is.queued {
-                    counted |= inner.batch.admit(key);
-                } else if was.in_flight && !is.in_flight {
-                    counted |= inner.batch.end(key);
-                }
-            }
-            counted.then(|| inner.batch.progress())
-        };
-        if counted.is_some() {
-            self.held_changed(counted);
-        }
-    }
-
     async fn change_identifications(
         &self,
         changes: Vec<(String, IdentificationChange)>,
     ) -> Result<Vec<(String, IdentificationMove)>, DbError> {
-        let held = self.hold_standing_writes().await;
         let moved = self.database.change_candidate_identifications(changes).await?;
-        self.count_moves(&held, &moved);
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(moved.iter().map(|(key, _)| key.as_str()))
             .await;
@@ -105,9 +34,25 @@ impl CandidateRuntime {
     }
 
     /// Tell the test readers of every change what each of `keys` reads as
-    /// now, under the hold the write that changed them keeps.
+    /// now, and of every count what the count reads as when it moved.
     #[cfg(any(test, feature = "test-utils"))]
-    async fn tell_every_change(&self, keys: impl Iterator<Item = &str>) {
+    pub(crate) async fn tell_every_change(&self, keys: impl Iterator<Item = &str>) {
+        let count = self
+            .identification_progress()
+            .await
+            .expect("a test reads back the count it just moved");
+        let moved = {
+            let mut told = self.told_count.lock().unwrap();
+            let moved = *told != count;
+            *told = count;
+            moved
+        };
+        if moved {
+            self.every_count
+                .lock()
+                .unwrap()
+                .retain(|reader| reader.send(count).is_ok());
+        }
         if self.every_change.lock().unwrap().is_empty() {
             return;
         }
@@ -244,20 +189,35 @@ impl CandidateRuntime {
         Ok(moved.ended_with_import_asked())
     }
 
-    /// A verdict's save ended `run`'s answer inside it, which `moved` says;
-    /// count it under the hold the save kept, and return whether a person had
-    /// asked for the candidate to be imported once the answer stored its pick.
-    pub(crate) fn answer_ended_by_verdict(
+    /// A verdict's save ended `run`'s answer inside it, which `moved` says:
+    /// what the run published goes. Returns whether a person had asked for
+    /// the candidate to be imported once the answer stored its pick.
+    pub(crate) async fn answer_ended_by_verdict(
         &self,
-        held: &StandingWrites,
         key: &str,
         run: IdentifyRunId,
         moved: IdentificationMove,
     ) -> bool {
-        let import_asked = moved.ended_with_import_asked();
-        self.count_moves(held, &[(key.to_string(), moved)]);
+        #[cfg(any(test, feature = "test-utils"))]
+        self.tell_every_change(std::iter::once(key)).await;
         self.forget_run(key, run);
-        import_asked
+        moved.ended_with_import_asked()
+    }
+
+    /// A person's decision about `key`, or an import taking it, ended its
+    /// identification inside the decision's own write: its work stops being
+    /// drawn.
+    pub(crate) async fn identification_ended(&self, key: &str) {
+        #[cfg(any(test, feature = "test-utils"))]
+        self.tell_every_change(std::iter::once(key)).await;
+        self.forget_runs(key);
+    }
+
+    /// How far the batch of identifications in flight has got: ended of
+    /// admitted, for a test; the live view carries it to everyone else.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) async fn identification_progress(&self) -> Result<(u32, u32), DbError> {
+        self.database.load_identification_progress().await
     }
 
     /// `run`'s answer for `files` could not be written; the standing says why.
@@ -304,35 +264,32 @@ impl CandidateRuntime {
     /// command is queued rather than when the worker first reports, since
     /// whether identification may still answer the candidate reads it.
     /// Refused when an import already owns it. With `ending_identification`
-    /// the claim ends whatever run or answer the candidate's identification
-    /// holds, in the same write: once claimed, it is not identification's to
-    /// answer.
+    /// the claim ends the candidate's identification, whatever it was, in the
+    /// same write: once claimed, it is not identification's to answer.
     pub(crate) async fn claim_for_import(
         &self,
         key: &str,
         import_id: &str,
         ending_identification: bool,
     ) -> Result<(), crate::import::ImportError> {
-        let held = self.hold_standing_writes().await;
         let claim = self
             .database
             .claim_candidate_import(
                 key,
                 import_id,
-                ending_identification.then_some(IdentificationChange::Cancelled),
+                ending_identification.then_some(IdentificationChange::Ended),
             )
             .await
             .map_err(crate::library::LibraryError::from)?;
         match claim {
             ImportClaim::Refused => Err(crate::import::ImportError::CandidateImportInProgress),
-            ImportClaim::Claimed { identification } => {
-                if let Some(moved) = identification {
-                    self.count_moves(&held, &[(key.to_string(), moved)]);
-                    self.forget_runs(key);
+            ImportClaim::Claimed { .. } => {
+                if ending_identification {
+                    self.identification_ended(key).await;
+                } else {
+                    #[cfg(any(test, feature = "test-utils"))]
+                    self.tell_every_change(std::iter::once(key)).await;
                 }
-                #[cfg(any(test, feature = "test-utils"))]
-                self.tell_every_change(std::iter::once(key)).await;
-                drop(held);
                 Ok(())
             }
         }
@@ -347,13 +304,11 @@ impl CandidateRuntime {
         import_id: &str,
         next: Option<ImportStanding>,
     ) -> Result<(), DbError> {
-        let held = self.hold_standing_writes().await;
         self.database
             .move_candidate_import(key, import_id, next)
             .await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;
-        drop(held);
         Ok(())
     }
 

@@ -2,7 +2,7 @@
 //! extracted signals and the two counts, told as they stand and then as they
 //! change.
 
-use super::{CandidateRuntime, CandidateRuntimeSnapshot, Revisions};
+use super::{CandidateRuntime, Revisions, RuntimeView};
 use crate::signals::Signals;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -21,10 +21,9 @@ pub(crate) enum RuntimeValue {
 
 pub(crate) struct RuntimeValuesWatch {
     revisions: watch::Receiver<Revisions>,
-    /// Every key's snapshot, which says which of them an import owns.
-    snapshots: watch::Receiver<Arc<HashMap<String, CandidateRuntimeSnapshot>>>,
-    /// `None` until the first read, which reads every part.
-    read_at: Option<Revisions>,
+    /// Every key's snapshot, which says which of them an import owns, and the
+    /// identification count.
+    view: watch::Receiver<Arc<RuntimeView>>,
     progress: (u32, u32),
     importing: u32,
     signals: HashMap<String, Signals>,
@@ -36,12 +35,11 @@ impl RuntimeValuesWatch {
     pub(crate) fn of(runtime: &CandidateRuntime) -> Self {
         let mut revisions = runtime.watch_revisions();
         revisions.mark_changed();
-        let mut snapshots = runtime.watch_snapshots();
-        snapshots.mark_changed();
+        let mut view = runtime.watch_view();
+        view.mark_changed();
         Self {
             revisions,
-            snapshots,
-            read_at: None,
+            view,
             progress: (0, 0),
             importing: 0,
             signals: HashMap::new(),
@@ -57,37 +55,31 @@ impl RuntimeValuesWatch {
             tokio::select! {
                 read = self.revisions.changed() => {
                     read.ok()?;
-                    let revisions = *self.revisions.borrow_and_update();
-                    if self.read_at.is_none_or(|read_at| revisions.runtime != read_at.runtime) {
-                        let progress = self.runtime.identification_progress();
-                        if progress != self.progress {
-                            self.progress = progress;
-                            changed.push(RuntimeValue::IdentificationProgress {
-                                identified: progress.0,
-                                total: progress.1,
-                            });
-                        }
-                    }
-                    if self.read_at.is_none_or(|read_at| revisions.signals != read_at.signals) {
-                        let signals = self.runtime.all_signals();
-                        changed.extend(
-                            signals
-                                .iter()
-                                .filter(|(key, signals)| self.signals.get(*key) != Some(*signals))
-                                .map(|(key, signals)| RuntimeValue::Signals {
-                                    key: key.clone(),
-                                    signals: signals.clone(),
-                                }),
-                        );
-                        self.signals = signals;
-                    }
-                    self.read_at = Some(revisions);
+                    self.revisions.borrow_and_update();
+                    let signals = self.runtime.all_signals();
+                    changed.extend(
+                        signals
+                            .iter()
+                            .filter(|(key, signals)| self.signals.get(*key) != Some(*signals))
+                            .map(|(key, signals)| RuntimeValue::Signals {
+                                key: key.clone(),
+                                signals: signals.clone(),
+                            }),
+                    );
+                    self.signals = signals;
                 }
-                read = self.snapshots.changed() => {
+                read = self.view.changed() => {
                     read.ok()?;
-                    let importing = self
+                    let view = self.view.borrow_and_update().clone();
+                    if view.identification_progress != self.progress {
+                        self.progress = view.identification_progress;
+                        changed.push(RuntimeValue::IdentificationProgress {
+                            identified: self.progress.0,
+                            total: self.progress.1,
+                        });
+                    }
+                    let importing = view
                         .snapshots
-                        .borrow_and_update()
                         .values()
                         .filter(|snapshot| snapshot.import.is_some())
                         .count() as u32;

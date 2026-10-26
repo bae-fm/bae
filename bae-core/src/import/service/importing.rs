@@ -11,6 +11,7 @@ impl ImportService {
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
         database: crate::db::Database,
+        diagnostics: crate::diagnostics::Diagnostics,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
@@ -18,7 +19,7 @@ impl ImportService {
         // No run or import outlives the process that held it, so the library
         // opens with no candidate standing, before anything reads the list.
         library_manager.clear_candidate_standings().await?;
-        let runtime = CandidateRuntime::new(database);
+        let runtime = CandidateRuntime::new(database, diagnostics);
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
@@ -37,12 +38,13 @@ impl ImportService {
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
         database: crate::db::Database,
+        diagnostics: crate::diagnostics::Diagnostics,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
-        let runtime = CandidateRuntime::new(database);
+        let runtime = CandidateRuntime::new(database, diagnostics);
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
@@ -138,12 +140,16 @@ impl ImportService {
             // and its claim ends.
             ImportRunEnd::CancelledRunning => {
                 info!("Import of {candidate_key} was cancelled");
+                // No caller waits on the worker to hear it: a bug.
                 if let Err(error) = self
                     .runtime
                     .move_import(&candidate_key, &import_id, None)
                     .await
                 {
-                    error!("could not end the cancelled import of {candidate_key}: {error}");
+                    self.library_manager.report_bug(
+                        &format!("end the cancelled import of {candidate_key}"),
+                        &error,
+                    );
                 }
                 self.event_tx
                     .send(crate::import::handle::ImportEvent::ImportProgress {
@@ -167,10 +173,10 @@ impl ImportService {
             // The row goes first and the event second: the event is what the
             // pane showing this import redraws from, and the row is what a
             // relaunched pane reads instead. The same write ends the import's
-            // claim, so no read sees the import ended without its failure. A
-            // row that will not write is logged rather than swallowing the
-            // failure the user is waiting to see; the candidate then still
-            // reads as importing, which the log says why.
+            // claim: the two commit or roll back together, so no read sees
+            // the import ended without its failure. No caller waits on the
+            // worker, so a write that will not land is a bug, reported with
+            // the import's own failure, the one the person was waiting to see.
             if let Err(write) = self
                 .library_manager
                 .fail_candidate_import(
@@ -182,7 +188,10 @@ impl ImportService {
                 )
                 .await
             {
-                error!("could not record the failed import of {candidate_key}: {write}");
+                self.library_manager.report_bug(
+                    &format!("record the failed import of {candidate_key}"),
+                    &format!("the import failed: {error}; recording that failed: {write}"),
+                );
             }
 
             self.event_tx

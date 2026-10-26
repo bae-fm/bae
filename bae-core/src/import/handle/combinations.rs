@@ -75,7 +75,7 @@ impl ImportServiceHandle {
             .await?
             .map_err(|reason| ImportError::GroupingBlocked { reason })?;
         for candidate_key in keys {
-            self.cancel_identification(&candidate_key).await?;
+            self.identification_ended(&candidate_key).await;
             self.event_tx
                 .send(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
         }
@@ -181,7 +181,7 @@ impl ImportServiceHandle {
                 let (returned, regrouped) =
                     self.library_manager.separate_picked_grouping(key).await?;
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
-                self.cancel_identification(key).await?;
+                self.identification_ended(key).await;
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.into(),
                 }));

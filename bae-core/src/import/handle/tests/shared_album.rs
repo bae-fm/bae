@@ -36,7 +36,7 @@ fn offered(release_id: &str, year: i32) -> crate::import::search::MetadataResult
 /// Store a verdict offering two pressings of one album for the fixture's
 /// candidate, each seeded where a read of it finds it, under its own
 /// catalog number.
-async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str) {
+pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str) {
     let providers = handle.library_manager.providers();
     super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-1", "CAT-100");
     super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-2", "CAT-200");

@@ -477,8 +477,8 @@ impl ImportServiceHandle {
             import_cancels,
         } = services;
         library_manager.spawn_supervised_task(
-            "candidate runtime snapshots",
-            runtime.clone().keep_snapshots_current(),
+            "candidate runtime view",
+            runtime.clone().keep_view_current(),
         )?;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
@@ -637,7 +637,7 @@ impl ImportServiceHandle {
     /// read a view does once when it appears, after it has subscribed to the
     /// stream, so the two agree.
     pub fn latest_candidate_runtime(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
-        self.runtime.latest_snapshots().get(key).cloned()
+        self.runtime.latest_view().snapshots.get(key).cloned()
     }
 
     /// Every key with something in flight, and each key that changes after.

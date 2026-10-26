@@ -722,6 +722,19 @@ impl ImportServiceHandle {
         failed
     }
 
+    /// [`Self::cancel_all_imports`] for a caller that cannot wait for it — a
+    /// person's command that returns at once. An ending that cannot be
+    /// written has no one to fail to, so it is a bug, reported as one.
+    pub fn cancel_all_imports_in_background(&self) {
+        let this = self.clone();
+        self.runtime_handle.spawn(async move {
+            if let Err(error) = this.cancel_all_imports().await {
+                this.library_manager
+                    .report_bug("cancel every waiting import", &error);
+            }
+        });
+    }
+
     /// End an import cancelled while it waited, and announce it: the worker
     /// skips it, so it never will.
     async fn end_cancelled_import(

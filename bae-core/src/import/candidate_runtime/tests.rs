@@ -105,7 +105,7 @@ pub(crate) fn triangulating() -> crate::identify::IdentifyState {
     }
 }
 
-fn manual_only() -> crate::identify::IdentifyState {
+pub(crate) fn manual_only() -> crate::identify::IdentifyState {
     crate::identify::IdentifyState::ManualOnly {
         ledger: None,
         track_count: 9,
@@ -433,11 +433,11 @@ async fn a_claim_survives_the_scan_reporting_the_key() {
         .is_some_and(|runtime| runtime.import.is_some()));
 }
 
-/// A candidate's identification reads as its own only while the scan holds
-/// it with the files it names: files changed since, or the candidate gone
-/// from the scan, and the identification describes nothing it shows.
+/// A candidate's identification ends in the write that leaves the scan
+/// holding it with other files, or not at all, and the count with it; a
+/// candidate found again with the files it had starts with none.
 #[tokio::test]
-async fn an_identification_reads_only_while_the_candidate_has_its_files() {
+async fn an_identification_ends_in_the_write_that_changes_its_candidate_s_files() {
     let runtime = CandidateRuntime::for_test().await;
     let key = "/watch/a/rel1";
     let files = scanned_key(&runtime, key).await;
@@ -453,21 +453,28 @@ async fn an_identification_reads_only_while_the_candidate_has_its_files() {
 
     scanned_at(&runtime, key, 1).await;
     assert_eq!(
-        identification(&runtime, key).await,
-        None,
-        "a reshaped candidate's run is not its"
+        runtime.stored_standing_for_test(key).await,
+        StoredStanding::default(),
+        "the write that read the candidate with other files ended its run"
     );
+    assert_eq!(runtime.identification_progress().await.unwrap(), (0, 0));
     assert!(runtime.snapshot(key).await.unwrap().is_none());
 
-    scanned_at(&runtime, key, 0).await;
+    let files = scanned_key(&runtime, key).await;
+    runtime
+        .fail_identification(key, run(2), &files, not_written("database write failed"))
+        .await
+        .unwrap();
     runtime
         .execute_local_sql_for_test(&format!("DELETE FROM scan_candidate WHERE path = '{key}';"))
         .await;
     assert_eq!(
-        identification(&runtime, key).await,
-        None,
-        "nor is a candidate's that left the scan"
+        runtime.stored_standing_for_test(key).await,
+        StoredStanding::default(),
+        "nor does the failure outlive the candidate leaving the scan"
     );
+    scanned_key(&runtime, key).await;
+    assert_eq!(identification(&runtime, key).await, None);
 
     runtime.run_ended(key, run(1)).await.unwrap();
     assert!(runtime.inner.lock().unwrap().runtime.is_empty());

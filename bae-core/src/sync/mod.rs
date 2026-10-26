@@ -359,6 +359,7 @@ mod tests {
         "import_candidate_session",
         "import_candidate_failure",
         "import_candidate_standing",
+        "import_identification_batch",
         "import_candidate_artist_identity_conflict",
         "import_candidate_artist_identity_choice",
         "import_candidate_signals",

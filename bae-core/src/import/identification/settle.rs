@@ -110,6 +110,7 @@ pub(super) async fn settle_answer(
         }
     };
     super::queue::record(
+        &context,
         &format!("end {representative_key}'s answer, which no verdict write ended"),
         ended,
     );

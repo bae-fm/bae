@@ -36,7 +36,8 @@ pub(super) use rows::{
 use session_rows::load_session_on;
 pub(crate) use standing_rows::ImportClaim;
 pub(super) use standing_rows::{
-    change_identification_on, load_standing_facts_on, load_standing_on, move_import_on,
+    change_identification_on, end_identifications_of_files_not_held_on, load_standing_facts_on,
+    load_standing_on, move_import_on,
 };
 use signal_rows::{delete_signals, insert_signals};
 
@@ -265,7 +266,8 @@ impl Database {
     }
 
     /// Set the candidate whose folder on disk is `candidate_path` aside, or
-    /// back; `false` when it already was.
+    /// back; `false` when it already was. Setting it aside ends its
+    /// identification in the same write.
     pub async fn set_import_candidate_skipped(
         &self,
         candidate_path: &str,
@@ -294,6 +296,13 @@ impl Database {
         self.call(move |sql| {
             let changed = if skipped {
                 require_watched(sql, &candidate_path)?;
+                // Set aside, the candidate is not identification's to answer:
+                // its identification ends with the skip.
+                change_identification_on(
+                    sql,
+                    &candidate_path,
+                    &crate::import::candidate_runtime::IdentificationChange::Ended,
+                )?;
                 sql.execute(
                     "INSERT INTO skipped_import_candidates (candidate_path) VALUES (?) \
                      ON CONFLICT DO NOTHING",

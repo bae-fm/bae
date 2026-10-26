@@ -236,6 +236,7 @@ pub(super) async fn finish(
         Settled::WriteFailed { error } | Settled::Unwritable { error } => {
             for (key, files) in &marks {
                 super::record(
+                    context,
                     &format!("record that {key}'s answer was not written"),
                     context
                         .import
@@ -254,6 +255,7 @@ pub(super) async fn finish(
         Settled::Inapplicable { error } => {
             for (key, files) in &marks {
                 super::record(
+                    context,
                     &format!("record that {key}'s answer could not be read into its draft"),
                     context
                         .import

@@ -1412,11 +1412,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
 -- happen next read it in the write they guard.
 --
 -- Its identification is of the files it names (`content_hash`,
--- `file_edit_revision`, as `scan_candidate` holds them), and reads as the
--- candidate's only while those are its files: queued by an admission,
--- running as `identify_run`, having that run's answer written (the release
--- it picked unattended read first, and whether an Import was asked of that
--- answer), or the answer's write failed. Its import is the one `import_id`
+-- `file_edit_revision`, as `scan_candidate` holds them), and ends in the write
+-- that leaves the scan holding no candidate with those files, or in the write
+-- of a decision about the candidate: queued by an admission, running as
+-- `identify_run`, having that run's answer written (the release it picked
+-- unattended read first, and whether an Import was asked of that answer), or
+-- the answer's write failed. Its import is the one `import_id`
 -- names, queued, running or writing its release; a second import is refused
 -- while one stands. A row exists only while one of the two is set. No run or
 -- import outlives the process, so the table is emptied as the library opens.
@@ -1444,6 +1445,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_standing (
     CHECK ((identification IN ('not_written', 'inapplicable') IS 1)
         = (save_failure_error IS NOT NULL)),
     CHECK ((import IS NOT NULL) = (import_id IS NOT NULL))
+) STRICT;
+
+-- The identifications counted as one batch, for the count the import list
+-- draws: each candidate admitted since the batch opened, and whether its
+-- identification has ended. Every change to a candidate's identification
+-- moves it in that change's own write; the batch is over, and its rows go,
+-- once every one has ended. Emptied as the library opens, with the standings.
+CREATE TABLE IF NOT EXISTS import_identification_batch (
+    candidate_key TEXT PRIMARY KEY,
+    ended         INTEGER NOT NULL CHECK (ended IN (0, 1))
 ) STRICT;
 
 -- Why a candidate's import failed.

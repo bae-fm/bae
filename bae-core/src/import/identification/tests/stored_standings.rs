@@ -195,3 +195,52 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         .await
         .expect("the reopened import service stops");
 }
+
+/// A candidate's standing ends with it: a folder whose answer failed to
+/// save, removed and found again with the same files, starts with no
+/// standing — no failure on its row.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_folder_removed_and_found_again_starts_with_no_standing() {
+    let fixture = Fixture::new("standing-ends-with-its-candidate").await;
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.scan(1).await;
+    let files = crate::import::CandidateFiles {
+        content_hash: fixture.content_hash(&dir),
+        file_edit_revision: 0,
+    };
+    let failure = crate::import::SaveFailure::NotWritten {
+        error: "the disk is full".to_string(),
+    };
+    fixture
+        .import
+        .fail_identification(&key, IdentifyRunId::for_test(1), &files, failure.clone())
+        .await
+        .unwrap();
+    assert_eq!(
+        fixture.identification_status(&key).await,
+        Some(crate::import::IdentificationStatus::FinalizationFailed { failure })
+    );
+
+    let away = fixture.root.with_file_name("away-from-the-watched-folder");
+    std::fs::rename(&dir, &away).unwrap();
+    fixture.rescan(&fixture.import, 0).await;
+    assert_eq!(
+        fixture.identification_status(&key).await,
+        None,
+        "the scan that dropped the folder ended its standing"
+    );
+    std::fs::rename(&away, &dir).unwrap();
+    fixture.rescan(&fixture.import, 1).await;
+    assert_eq!(fixture.content_hash(&dir), files.content_hash, "the same files");
+
+    assert_eq!(fixture.identification_status(&key).await, None);
+    let list = list_subscription(&fixture, page_window(0, 50));
+    let (_, live) = &page_rows(&next_page(&list).await)[&key];
+    assert_eq!(live.facts.identification, None, "the row shows no failure");
+}

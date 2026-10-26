@@ -125,6 +125,10 @@ pub(crate) enum IdentificationChange {
     /// The candidate's identification was cancelled: whatever run or answer
     /// it held is over, and nothing will write what it found.
     Cancelled,
+    /// The candidate's identification ends whatever it was, with the files it
+    /// was of: the scan no longer holds the candidate with them, a person
+    /// decided what the candidate is, or an import took it.
+    Ended,
 }
 
 impl IdentificationChange {
@@ -231,6 +235,37 @@ impl IdentificationChange {
                 Some(stage) if stage.run().is_some() => None,
                 _ => unchanged(),
             },
+            Self::Ended => None,
+        }
+    }
+}
+
+/// Where a candidate stands in identification, as the batch counts it.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Identifying {
+    /// Admitted and its run not started, which is what joins the batch.
+    pub(crate) queued: bool,
+    /// Waiting, running, or having its answer written; a failed write is
+    /// over.
+    pub(crate) in_flight: bool,
+}
+
+impl Identifying {
+    pub(crate) fn of(stored: Option<&StoredIdentification>) -> Self {
+        match stored.map(|stored| &stored.stage) {
+            Some(IdentificationStage::Queued { .. }) => Self {
+                queued: true,
+                in_flight: true,
+            },
+            Some(
+                IdentificationStage::Running { .. }
+                | IdentificationStage::Finalizing { .. }
+                | IdentificationStage::ReadingPick { .. },
+            ) => Self {
+                queued: false,
+                in_flight: true,
+            },
+            Some(IdentificationStage::Failed { .. }) | None => Self::default(),
         }
     }
 }

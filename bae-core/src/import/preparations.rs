@@ -199,6 +199,7 @@ impl CandidatePreparations {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
             pane: CandidatePaneWrite::Keep,
+            ends_identification: false,
         };
         match self
             .database
@@ -387,9 +388,15 @@ impl CandidatePreparations {
         prep.metadata.cover_options = Vec::new();
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
+        // Linking the album is the person's answer: the candidate's
+        // identification ends in the same write.
+        let extras = CandidateSaveExtras {
+            ends_identification: true,
+            ..CandidateSaveExtras::default()
+        };
         match self
             .database
-            .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+            .save_candidate_preparation(prep, expected, extras)
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
@@ -527,10 +534,13 @@ impl CandidatePreparations {
         prep.metadata = metadata;
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
+        // The person's source is their answer: the candidate's
+        // identification ends in the same write.
         let extras = CandidateSaveExtras {
             file_tag_snapshot,
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
+            ends_identification: true,
         };
         match self
             .database

@@ -218,6 +218,12 @@ impl Database {
     }
 
     /// Run a write with a borrowed transaction context.
+    ///
+    /// A write that leaves the scan holding no candidate with the files an
+    /// import candidate's identification is of — it removed the candidate,
+    /// read it with other files, combined it into another release — ends that
+    /// identification inside itself, whichever write it is, so the standing
+    /// ends with the candidate (see `import_state::standing_rows`).
     async fn call<R>(
         &self,
         f: impl for<'ctx, 'conn> FnOnce(&SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
@@ -225,7 +231,13 @@ impl Database {
     where
         R: Send + 'static,
     {
-        self.call_sql(move |sql| f(&sql)).await
+        self.call_sql(move |sql| {
+            let written = f(&sql)?;
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            import_state::end_identifications_of_files_not_held_on(&sql)?;
+            Ok(written)
+        })
+        .await
     }
 
     /// Run an atomic write through coven.

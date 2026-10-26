@@ -102,15 +102,18 @@ impl ImportServiceHandle {
         {
             return Ok(None);
         }
-        let held = self.runtime.hold_standing_writes().await;
-        Ok(self
+        match self
             .preparations
             .store_run_verdict(row, candidate_key, run)
             .await?
-            .map(|ended| {
+        {
+            Some(ended) => Ok(Some(
                 self.runtime
-                    .answer_ended_by_verdict(&held, candidate_key, run, ended)
-            }))
+                    .answer_ended_by_verdict(candidate_key, run, ended)
+                    .await,
+            )),
+            None => Ok(None),
+        }
     }
 
     /// The candidate at `key` as an identification can still answer it: a

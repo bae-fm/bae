@@ -17,7 +17,7 @@ fn signals_event(key: &str, text: &str) -> ImportEvent {
 
 /// The live read of every key, kept current for as long as the test runs.
 fn keep_current(runtime: &CandidateRuntime) -> tokio::task::JoinHandle<()> {
-    tokio::spawn(runtime.clone().keep_snapshots_current())
+    tokio::spawn(runtime.clone().keep_view_current())
 }
 
 #[tokio::test]
@@ -26,9 +26,8 @@ async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
     let live = keep_current(&runtime);
     claim(&runtime, "/watch/a/rel1").await;
     claim(&runtime, "/watch/a/rel2").await;
-    let mut snapshots = runtime.watch_snapshots();
-    snapshots
-        .wait_for(|snapshots| snapshots.len() == 2)
+    let mut view = runtime.watch_view();
+    view.wait_for(|view| view.snapshots.len() == 2)
         .await
         .unwrap();
     let mut watch = RuntimeSnapshotsWatch::of(&runtime);
@@ -90,7 +89,8 @@ async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
     runtime.record_run_state(key, run(1), true, &triangulating());
     assert_eq!(
         runtime
-            .latest_snapshots()
+            .latest_view()
+            .snapshots
             .get(key)
             .and_then(|snapshot| snapshot.identification_in_flight()),
         Some(crate::import::IdentificationInFlight::Queued)

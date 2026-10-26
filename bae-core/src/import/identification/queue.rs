@@ -104,6 +104,7 @@ impl Job {
     /// representative's mark off.
     async fn mark_waiting(&self, context: &Context) {
         record(
+            context,
             "mark a job's candidates waiting",
             context
                 .import
@@ -242,6 +243,7 @@ impl Queue {
             marked.push(mark);
         }
         record(
+            context,
             "mark the admitted candidates waiting",
             context.import.admit_identification(marked, admission).await,
         );
@@ -412,11 +414,17 @@ impl Queue {
 }
 
 /// What became of a standing write the queue made. The queue runs on its
-/// own, so nobody waits on it to hear a failure: it is logged, and the
-/// candidate reads as the table last held it.
-pub(super) fn record(doing: &str, written: Result<(), crate::library::LibraryError>) {
+/// own, so no caller waits on it to hear a failure: one is a bug, reported as
+/// one, and the candidate reads as the table last held it.
+pub(super) fn record(
+    context: &Context,
+    doing: &str,
+    written: Result<(), crate::library::LibraryError>,
+) {
     if let Err(error) = written {
-        tracing::error!("identification: could not {doing}: {error}");
+        context
+            .library_manager
+            .report_bug(&format!("identification: {doing}"), &error);
     }
 }
 
@@ -433,6 +441,7 @@ fn first_failure(
 /// End `key`'s identification: its run stops, and its standing says so.
 async fn cancel(context: &Context, key: &str) {
     record(
+        context,
         &format!("end {key}'s identification"),
         context.import.cancel_identification(key).await,
     );
@@ -441,6 +450,7 @@ async fn cancel(context: &Context, key: &str) {
 /// Take `key` off its waiting mark.
 pub(super) async fn withdraw(context: &Context, key: &str) {
     record(
+        context,
         &format!("take {key} off the identification queue"),
         context.import.withdraw_identification(key).await,
     );

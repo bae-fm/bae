@@ -40,7 +40,10 @@ async fn setup_import_service() -> TestService {
     let preparations = crate::import::CandidatePreparations::new(database.clone());
     // The runtime writes its standings into the library the import commits
     // into.
-    let runtime = crate::import::CandidateRuntime::new(database.clone());
+    let runtime = crate::import::CandidateRuntime::new(
+        database.clone(),
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),

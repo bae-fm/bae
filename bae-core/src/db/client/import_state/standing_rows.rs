@@ -4,16 +4,21 @@
 //! each change decided from the row inside the write that stores it. No row
 //! outlives the process, so the table is emptied as the library opens.
 //!
-//! A row's identification is of the files it names, and reads as the
-//! candidate's only while the scan holds the candidate with those files: one
-//! recorded before the candidate's files changed, or before it left the scan,
-//! describes nothing it shows.
+//! A row's identification is of the files it names. Every write that leaves
+//! the scan holding no candidate with those files — the candidate removed,
+//! read with other files, combined into another release — ends it inside
+//! itself ([`end_identifications_of_files_not_held_on`]), so no read sees a
+//! candidate with an identification of files it does not have, and a
+//! candidate removed and found again starts with none.
+//!
+//! The identification count is held beside it (`import_identification_batch`)
+//! and moved by each change to an identification in that change's own write.
 
 use super::*;
 use crate::identify::IdentifyRunId;
 use crate::import::candidate_runtime::{
-    IdentificationChange, IdentificationMove, IdentificationStage, StoredIdentification,
-    StoredImport, StoredStanding,
+    IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
+    StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::import::triage::{ImportStanding, TriageRuntimeFacts};
@@ -25,7 +30,7 @@ const COLUMNS: &str = "identification, content_hash, file_edit_revision, admissi
 
 /// Whether the scan holds the row's candidate with the files its
 /// identification names.
-const CURRENT: &str = "EXISTS (SELECT 1 FROM scan_candidate candidate \
+const HELD: &str = "EXISTS (SELECT 1 FROM scan_candidate candidate \
      WHERE candidate.path = standing.candidate_key \
        AND candidate.content_hash = standing.content_hash \
        AND candidate.file_edit_revision = standing.file_edit_revision)";
@@ -141,42 +146,22 @@ impl StandingColumns {
     }
 }
 
-/// The standing as its readers read it: its identification only while the
-/// scan holds the candidate with the files it names.
-fn current(mut standing: StoredStanding, current: bool) -> StoredStanding {
-    if !current {
-        standing.identification = None;
-    }
-    standing
-}
-
 /// Where every candidate something is running for stands, by key. A key with
 /// no entry has nothing running.
 pub(crate) fn load_standings_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<HashMap<String, StoredStanding>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT standing.candidate_key, {CURRENT}, {COLUMNS} \
-             FROM import_candidate_standing standing"
-        ),
+    sql.query(
+        &format!("SELECT candidate_key, {COLUMNS} FROM import_candidate_standing"),
         [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, bool>(1)?,
-                StandingColumns::read(row, 2)?,
-            ))
-        },
-    )?;
-    let mut standings = HashMap::with_capacity(rows.len());
-    for (key, is_current, columns) in rows {
-        let standing = current(columns.standing(&key)?, is_current);
-        if standing != StoredStanding::default() {
-            standings.insert(key, standing);
-        }
-    }
-    Ok(standings)
+        |row| Ok((row.get::<_, String>(0)?, StandingColumns::read(row, 1)?)),
+    )?
+    .into_iter()
+    .map(|(key, columns)| {
+        let standing = columns.standing(&key)?;
+        Ok((key, standing))
+    })
+    .collect()
 }
 
 /// Where `candidate_key` stands; nothing running when it has no row.
@@ -184,20 +169,17 @@ pub(crate) fn load_standing_on(
     sql: &SqlReadContext<'_>,
     candidate_key: &str,
 ) -> Result<StoredStanding, DbError> {
-    let row = sql
+    let columns = sql
         .query_row(
-            &format!(
-                "SELECT {CURRENT}, {COLUMNS} FROM import_candidate_standing standing \
-                 WHERE standing.candidate_key = ?"
-            ),
+            &format!("SELECT {COLUMNS} FROM import_candidate_standing WHERE candidate_key = ?"),
             [candidate_key],
-            |row| Ok((row.get::<_, bool>(0)?, StandingColumns::read(row, 1)?)),
+            |row| StandingColumns::read(row, 0),
         )
         .optional()?;
-    match row {
+    match columns {
         // No row is the stored shape of a candidate nothing is running for.
         None => Ok(StoredStanding::default()),
-        Some((is_current, columns)) => Ok(current(columns.standing(candidate_key)?, is_current)),
+        Some(columns) => columns.standing(candidate_key),
     }
 }
 
@@ -210,6 +192,80 @@ pub(crate) fn load_standing_facts_on(
         .into_iter()
         .map(|(key, standing)| (key, standing.facts()))
         .collect())
+}
+
+/// How far the batch of identifications in flight has got: ended of
+/// admitted. `(0, 0)` is no batch.
+fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32), DbError> {
+    Ok(sql.query_row(
+        "SELECT COALESCE(SUM(ended), 0), COUNT(*) FROM import_identification_batch",
+        [],
+        |row| Ok((row.get::<_, u32>(0)?, row.get::<_, u32>(1)?)),
+    )?)
+}
+
+/// Every candidate's standing and the identification count, read together.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct StandingsRead {
+    pub(crate) standings: HashMap<String, StoredStanding>,
+    pub(crate) identification_progress: (u32, u32),
+}
+
+fn load_standings_read_on(sql: &SqlReadContext<'_>) -> Result<StandingsRead, DbError> {
+    Ok(StandingsRead {
+        standings: load_standings_on(sql)?,
+        identification_progress: load_identification_progress_on(sql)?,
+    })
+}
+
+/// End, inside the caller's write, every candidate's identification of files
+/// the scan no longer holds the candidate with: what each write that changes
+/// the scan's candidates leaves behind it.
+pub(crate) fn end_identifications_of_files_not_held_on(
+    sql: &SqlContext<'_, '_>,
+) -> Result<(), DbError> {
+    let keys: Vec<String> = sql.query(
+        &format!(
+            "SELECT standing.candidate_key FROM import_candidate_standing standing \
+             WHERE standing.identification IS NOT NULL AND NOT {HELD}"
+        ),
+        [],
+        |row| row.get(0),
+    )?;
+    for key in keys {
+        change_identification_on(sql, &key, &IdentificationChange::Ended)?;
+    }
+    Ok(())
+}
+
+/// Move the identification count by what one change did to `candidate_key`:
+/// an admission joins the batch, an ending counts as ended, and the batch is
+/// over once every identification it admitted has ended.
+fn count_on(
+    sql: &SqlContext<'_, '_>,
+    candidate_key: &str,
+    moved: &IdentificationMove,
+) -> Result<(), DbError> {
+    let was = Identifying::of(moved.before.as_ref());
+    let is = Identifying::of(moved.after.as_ref());
+    if !was.queued && is.queued {
+        sql.execute(
+            "INSERT INTO import_identification_batch (candidate_key, ended) VALUES (?, 0) \
+             ON CONFLICT (candidate_key) DO UPDATE SET ended = 0",
+            [candidate_key],
+        )?;
+    } else if was.in_flight && !is.in_flight {
+        sql.execute(
+            "UPDATE import_identification_batch SET ended = 1 WHERE candidate_key = ?",
+            [candidate_key],
+        )?;
+        sql.execute(
+            "DELETE FROM import_identification_batch \
+             WHERE NOT EXISTS (SELECT 1 FROM import_identification_batch WHERE ended = 0)",
+            [],
+        )?;
+    }
+    Ok(())
 }
 
 /// The row as stored, whatever files the scan holds now: what a change is
@@ -344,11 +400,13 @@ pub(crate) fn change_identification_on(
     let mut standing = stored_on(sql, candidate_key)?;
     let before = standing.identification.take();
     let after = change.applied(before.as_ref());
-    if after != before {
-        standing.identification = after.clone();
+    let moved = IdentificationMove { before, after };
+    if moved.after != moved.before {
+        standing.identification = moved.after.clone();
         write_on(sql, candidate_key, &standing)?;
+        count_on(sql, candidate_key, &moved)?;
     }
-    Ok(IdentificationMove { before, after })
+    Ok(moved)
 }
 
 /// Claim `candidate_key` for `import_id`, queued. `false`, changing nothing,
@@ -414,6 +472,7 @@ impl Database {
     pub(crate) async fn clear_candidate_standings(&self) -> Result<(), DbError> {
         self.call(|sql| {
             sql.execute("DELETE FROM import_candidate_standing", [])?;
+            sql.execute("DELETE FROM import_identification_batch", [])?;
             Ok(())
         })
         .await
@@ -444,13 +503,18 @@ impl Database {
         self.read(|sql| load_standing_facts_on(&sql)).await
     }
 
-    /// Where every candidate something is running for stands, live.
-    pub(crate) fn subscribe_candidate_standings(
-        &self,
-    ) -> coven::LiveQuery<HashMap<String, StoredStanding>> {
+    /// How far the batch of identifications in flight has got, for a test;
+    /// the live read carries it to everyone else.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) async fn load_identification_progress(&self) -> Result<(u32, u32), DbError> {
+        self.read(|sql| load_identification_progress_on(&sql)).await
+    }
+
+    /// Every candidate's standing and the identification count, live.
+    pub(crate) fn subscribe_candidate_standings(&self) -> coven::LiveQuery<StandingsRead> {
         self.inner
             .handle
-            .subscribe(|sql| load_standings_on(&sql).map_err(CovenError::from))
+            .subscribe(|sql| load_standings_read_on(&sql).map_err(CovenError::from))
     }
 
     /// Apply each change to its candidate's identification, in one write.

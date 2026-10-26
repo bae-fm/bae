@@ -36,7 +36,7 @@ async fn a_start_that_cannot_be_written_fails_and_leaves_the_table_as_it_was() {
         runtime.stored_standing_for_test(key).await,
         before
     );
-    assert_eq!(runtime.identification_progress(), (0, 1));
+    assert_eq!(runtime.identification_progress().await.unwrap(), (0, 1));
     assert_eq!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::Queued(Admission::Requested))
@@ -60,5 +60,5 @@ async fn an_admission_that_cannot_be_written_marks_nothing() {
     assert!(error.to_string().contains("the disk is full"), "{error}");
 
     assert!(runtime.snapshots().await.unwrap().is_empty());
-    assert_eq!(runtime.identification_progress(), (0, 0));
+    assert_eq!(runtime.identification_progress().await.unwrap(), (0, 0));
 }

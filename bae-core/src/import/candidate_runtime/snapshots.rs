@@ -153,43 +153,55 @@ impl CandidateRuntime {
         Ok(self.compose_all(&stored))
     }
 
-    /// Every key's snapshot as the live read last composed it, for a reader
-    /// that cannot wait for a read of its own.
-    pub(crate) fn latest_snapshots(&self) -> Arc<HashMap<String, CandidateRuntimeSnapshot>> {
-        self.snapshots.borrow().clone()
+    /// Every key's snapshot and the identification count as the live read last
+    /// read them, for a reader that cannot wait for a read of its own.
+    pub(crate) fn latest_view(&self) -> Arc<RuntimeView> {
+        self.view.borrow().clone()
     }
 
-    /// Every key's snapshot as the live read composes it, now and as it
-    /// changes.
-    pub(crate) fn watch_snapshots(
-        &self,
-    ) -> tokio::sync::watch::Receiver<Arc<HashMap<String, CandidateRuntimeSnapshot>>> {
-        self.snapshots.subscribe()
+    /// Every key's snapshot and the identification count as the live read
+    /// reads them, now and as they change.
+    pub(crate) fn watch_view(&self) -> tokio::sync::watch::Receiver<Arc<RuntimeView>> {
+        self.view.subscribe()
     }
 
-    /// Keep [`Self::latest_snapshots`] current: the standings table read
-    /// live, composed with what the runtime holds, again whenever either
-    /// changes. Runs for the library's lifetime.
-    pub(crate) async fn keep_snapshots_current(self) {
+    /// Keep [`Self::latest_view`] current: the standings table read live,
+    /// composed with what the runtime holds, again whenever either changes.
+    /// Runs for the library's lifetime.
+    pub(crate) async fn keep_view_current(self) {
         let runtime = self.clone();
         let mut query = self
             .database
             .subscribe_candidate_standings()
-            .process(move |stored| Ok(runtime.compose_all(&stored)))
+            .process(move |read| {
+                Ok(RuntimeView {
+                    snapshots: runtime.compose_all(&read.standings),
+                    identification_progress: read.identification_progress,
+                })
+            })
             .rerun_on(self.held_changed.subscribe());
         loop {
             match query.next().await {
-                Ok(snapshots) => {
-                    self.snapshots.send_replace(Arc::new(snapshots));
+                Ok(view) => {
+                    self.view.send_replace(Arc::new(view));
                 }
-                // The stream has no reader to hand the failure to; the next
-                // read that succeeds is delivered.
-                Err(error) => {
-                    tracing::error!("candidate runtime: reading the standings failed: {error}")
-                }
+                // The stream has no reader to hand the failure to: a bug,
+                // reported as one. The next read that succeeds is delivered.
+                Err(error) => self
+                    .diagnostics
+                    .report_bug("read where every import candidate stands", &error),
             }
         }
     }
+}
+
+/// Every key's snapshot, and the identification count, as one read gives them.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct RuntimeView {
+    pub(crate) snapshots: HashMap<String, CandidateRuntimeSnapshot>,
+    /// How far the batch of identifications in flight has got: ended of
+    /// admitted; `(0, 0)` is none.
+    pub(crate) identification_progress: (u32, u32),
 }
 
 impl ImportStanding {

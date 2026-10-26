@@ -65,10 +65,10 @@ impl ImportServiceHandle {
 
     /// Stop identifying this candidate: the run and the extraction feeding it.
     ///
-    /// A decision about a candidate ends its identification, and ends it at
-    /// the command that decides — inside that command's own write, so an
-    /// answer the superseded run was about to reach cannot land after the
-    /// decision it was superseded by. A candidate with nothing running is
+    /// A decision about a candidate ends its identification inside the
+    /// decision's own write and then calls [`Self::identification_ended`];
+    /// this is the cancel a person asks for, or the queue makes, with no
+    /// other write to end it in. A candidate with nothing running is
     /// unchanged by this.
     ///
     /// The one cancellation that is not a command is a reshaped or vanished
@@ -89,6 +89,15 @@ impl ImportServiceHandle {
         // only ending a library release re-identified in its own sheet gets —
         // its run stores no verdict, so no write would end it.
         Ok(self.runtime.cancel_identification(candidate_key).await?)
+    }
+
+    /// A decision about this candidate ended its identification inside the
+    /// decision's own write: the run and the extraction feeding it stop, and
+    /// what they published goes.
+    pub(crate) async fn identification_ended(&self, candidate_key: &str) {
+        self.identify.cancel(candidate_key);
+        self.extraction.cancel(candidate_key);
+        self.runtime.identification_ended(candidate_key).await;
     }
 
     /// Stop only the extraction behind `key`, for a run that reached its

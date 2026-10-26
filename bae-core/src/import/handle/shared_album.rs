@@ -20,7 +20,7 @@ impl ImportServiceHandle {
             let revision = this
                 .link_candidate_shared_album_write(candidate_key.clone())
                 .await?;
-            this.cancel_identification(&candidate_key).await?;
+            this.identification_ended(&candidate_key).await;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })

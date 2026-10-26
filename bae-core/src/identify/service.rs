@@ -446,11 +446,11 @@ impl Driver {
             (RunStanding::Unheld, _) | (RunStanding::NotStarted, IdentifyState::Idle) => {}
             (RunStanding::Held, IdentifyState::Idle) => {
                 // The table still names the run, so what it published stays
-                // beside it.
+                // beside it. No caller waits on the driver to hear it: a bug.
                 if let Err(error) = candidates.run_ended(key, run).await {
-                    tracing::error!(
-                        "identify: {key}'s run {run:?} ended, and recording that failed: {error}"
-                    );
+                    self.inner
+                        .library_manager
+                        .report_bug(&format!("record that {key}'s run {run:?} ended"), &error);
                 }
             }
             (RunStanding::NotStarted, _) => {
@@ -470,8 +470,12 @@ impl Driver {
                         *standing = RunStanding::Unheld;
                     }
                     // The run cannot say where it stands, so it breaks: its
-                    // answer says why.
+                    // answer says why, and the bug is reported.
                     Err(error) => {
+                        self.inner.library_manager.report_bug(
+                            &format!("record that {key}'s run {run:?} started"),
+                            &error,
+                        );
                         candidates.forget_run(key, run);
                         *standing = RunStanding::Unheld;
                         emit_step(
@@ -511,9 +515,11 @@ impl Driver {
             }
             // The table still names the run as running; the write of its
             // answer ends it either way, so what it published stays beside it.
-            Err(error) => tracing::error!(
-                "identify: {key}'s run {run:?} answered, and recording that failed: {error}"
-            ),
+            // No caller waits on the driver to hear it: a bug.
+            Err(error) => self
+                .inner
+                .library_manager
+                .report_bug(&format!("record that {key}'s run {run:?} answered"), &error),
         }
     }
 }

@@ -242,10 +242,10 @@ async fn a_claim_while_another_stands_is_refused_whole() {
     assert_eq!(db.load_candidate_standing(key).await.unwrap(), claimed);
 }
 
-/// An identification of other files than the scan holds the candidate with
-/// reads as nothing; the import half is the candidate's whatever its files.
+/// The write that reads a candidate with other files ends its
+/// identification; the import half is the candidate's whatever its files.
 #[tokio::test]
-async fn an_identification_of_other_files_reads_as_nothing() {
+async fn reading_a_candidate_with_other_files_ends_its_identification() {
     let (db, _tmp) = empty_db().await;
     let key = "/music/Album";
     scanned(&db, key, &files_of(key)).await;

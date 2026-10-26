@@ -1,5 +1,6 @@
 mod candidate_mutation_race;
 mod commit_lock_waits;
+mod decisions_end_identification;
 mod failing_standing_writes;
 mod album_detail_during_import;
 mod artist_pictures;

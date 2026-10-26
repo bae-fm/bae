@@ -163,5 +163,5 @@ async fn a_claim_that_ends_identification_ends_it_in_its_own_write() {
     let facts = runtime.standing_facts(key).await.unwrap();
     assert_eq!(facts.identification, None);
     assert_eq!(facts.import, Some(ImportStanding::Queued));
-    assert_eq!(runtime.identification_progress(), (0, 0));
+    assert_eq!(runtime.identification_progress().await.unwrap(), (0, 0));
 }

@@ -4,7 +4,7 @@ use super::*;
 use crate::import::CandidateEditField;
 
 /// A Discogs release with pressing metadata and no barcode.
-fn seed_discogs_pressing(providers: &crate::providers::Providers, release_id: &str, label: &str, catalog_number: &str) {
+pub(super) fn seed_discogs_pressing(providers: &crate::providers::Providers, release_id: &str, label: &str, catalog_number: &str) {
     seed_discogs_release(providers, release_id, label, catalog_number, &[]);
 }
 
