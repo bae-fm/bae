@@ -45,7 +45,7 @@ final class ImportListFixtureTests: XCTestCase {
         let importSection = window.buttons["Import"]
         XCTAssertTrue(importSection.waitForExistence(timeout: 20))
         importSection.click()
-        let list = app.outlines.firstMatch
+        let list = app.tables["import-list"]
         for (folder, _) in states {
             XCTAssertTrue(
                 list.staticTexts[folder].waitForExistence(timeout: 20),

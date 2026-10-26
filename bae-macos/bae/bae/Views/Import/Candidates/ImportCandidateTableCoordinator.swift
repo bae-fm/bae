@@ -244,8 +244,12 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         row: Int
     ) -> NSView? {
         guard let item = item(at: row) else {
-            // The row's hold on its page is loading it; the page's delivery
-            // reloads the table.
+            // A row drawn before its page lands asks for the page, and the
+            // page's delivery reloads the table. The rows in view hold their
+            // pages already; this is for a row off screen that accessibility
+            // reads, which the table draws for it.
+            let list = list
+            Task { await list.withPage(containing: row) {} }
             return reused(tableView, Self.placeholder) { _ in
                 NSTableCellView()
             }

@@ -33,7 +33,7 @@ final class EditMenuSelectAllTests: XCTestCase {
         let importSection = app.windows.firstMatch.buttons["Import"]
         XCTAssertTrue(importSection.waitForExistence(timeout: 20))
         importSection.click()
-        let list = app.outlines.firstMatch
+        let list = app.tables["import-list"]
         // The first and the last of the folder's candidates: then every one is
         // in the list, whichever order it lists them in.
         for album in ["Album 000", "Album \(Self.albumCount - 1)"] {

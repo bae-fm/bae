@@ -73,6 +73,7 @@ struct ImportCandidateTable: NSViewRepresentable {
         tableView.allowsEmptySelection = true
         tableView.allowsTypeSelect = true
         tableView.focusRingType = .none
+        tableView.setAccessibilityIdentifier("import-list")
         tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
         let column = NSTableColumn(
             identifier: NSUserInterfaceItemIdentifier("entry")

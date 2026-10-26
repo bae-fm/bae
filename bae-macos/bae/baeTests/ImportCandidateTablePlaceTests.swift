@@ -129,6 +129,31 @@ struct ImportCandidateTablePlaceTests {
         }
     }
 
+    /// Accessibility reads rows off screen, and the table draws them for it:
+    /// a row drawn before its page lands asks for the page, so what it reads
+    /// is the row and not a blank.
+    @MainActor
+    @Test("a row drawn off screen loads its page")
+    func rowDrawnOffScreenLoadsItsPage() async throws {
+        let source = MutableImportListPageSource(
+            items: (0..<200).map(Self.candidateItem)
+        )
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = try await Self.loadedSlot(source, store, uiStore)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore,
+            size: Self.size
+        ) { table in
+            _ = table.view(atColumn: 0, row: 150, makeIfNecessary: true)
+            try await Wait.until { slot.list?.idAt(150) != nil }
+            #expect(slot.list?.idAt(150) == Self.stableKey(150))
+            #expect(Self.topRow(of: table) == 0)
+        }
+    }
+
     // MARK: Where a delivery scrolls
 
     @Test("a delivery under the same narrowing keeps the place")

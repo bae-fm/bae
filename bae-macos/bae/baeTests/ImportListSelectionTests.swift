@@ -200,7 +200,6 @@ struct ImportListSelectionTests {
                 })
             )
         )
-        store.applySelectionRevision(1)
         try await ImportListHosting.withList(
             store: store,
             slot: slot,
