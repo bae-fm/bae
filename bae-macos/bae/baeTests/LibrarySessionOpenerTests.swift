@@ -110,8 +110,8 @@ struct LibrarySessionOpenerTests {
         }
     }
 
-    @Test("a failed outbox seed shuts the handle down and reports .failed")
-    func outboxSeedFailureShutsDown() async {
+    @Test("a failed outbox seed closes the library and reports .failed")
+    func outboxSeedFailureClosesTheLibrary() async {
         struct SeedError: Error {}
         let handle = FakeHandle(
             config: makeConfig(),
@@ -138,11 +138,11 @@ struct LibrarySessionOpenerTests {
             return
         }
         #expect(error is SeedError)
-        #expect(handle.didShutdown)
+        #expect(handle.didClose)
     }
 
-    @Test("a failed name read shuts the handle down and reports .failed")
-    func nameSeedFailureShutsDown() async {
+    @Test("a failed name read closes the library and reports .failed")
+    func nameSeedFailureClosesTheLibrary() async {
         struct NameError: Error {}
         let handle = FakeHandle(
             config: makeConfig(),
@@ -167,7 +167,7 @@ struct LibrarySessionOpenerTests {
             return
         }
         #expect(error is NameError)
-        #expect(handle.didShutdown)
+        #expect(handle.didClose)
     }
 
     @Test("a bootstrapped store opens its own handle, not one by id")
@@ -197,7 +197,7 @@ struct LibrarySessionOpenerTests {
             Issue.record("the retained handle's failed seed should fail")
             return
         }
-        #expect(retained.didShutdown)
+        #expect(retained.didClose)
     }
 }
 
@@ -277,13 +277,13 @@ extension LibrarySessionOpenerTests {
 }
 
 /// A hand-built `LibrarySessionHandle` for the opener tests: it answers the
-/// reads the opener makes off a real `AppHandle` and records whether it was shut
-/// down, so a test can assert the seed-failure teardown ran.
+/// reads the opener makes off a real `AppHandle` and records whether its library
+/// was closed, so a test can assert the seed-failure teardown ran.
 private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     let config: BridgeConfig
     let name: Result<String, any Error>
     let outbox: Result<BridgeOutboxSnapshot, any Error>
-    private let shutdownFlag = Flag()
+    private let closeFlag = Flag()
 
     init(
         config: BridgeConfig,
@@ -297,7 +297,7 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
         self.outbox = outbox
     }
 
-    var didShutdown: Bool { shutdownFlag.isSet }
+    var didClose: Bool { closeFlag.isSet }
 
     func getConfig() -> BridgeConfig { config }
     func libraryName() async throws -> String { try name.get() }
@@ -305,11 +305,12 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot {
         try outbox.get()
     }
-    func shutdown() async throws { shutdownFlag.set() }
+    func closeLibrary() throws { closeFlag.set() }
 }
 
-/// A one-way flag settable from any thread — the opener awaits `shutdown()` off
-/// the fake, so the write and the test's later read cross threads.
+/// A one-way flag settable from any thread — the opener calls `closeLibrary()`
+/// on the fake off the main actor, so the write and the test's later read cross
+/// threads.
 private final class Flag: @unchecked Sendable {
     private let lock = NSLock()
     private var value = false

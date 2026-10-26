@@ -173,6 +173,7 @@ impl BridgeHost {
             self.clone(),
             "restore library over this device",
             move || async move {
+                self.closed(store).await?;
                 match bae_core::library::restore_replacing_device(
                     self.builder(),
                     store,
@@ -358,6 +359,7 @@ impl BridgeDeviceReset {
             self.clone(),
             "reset device",
             move || async move {
+                self.host.closed(self.store).await?;
                 match bae_core::library::reset_device(
                     self.host.builder(),
                     self.store,

@@ -23,15 +23,16 @@ use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
 #[derive(uniffi::Object)]
 pub struct AppHandle {
     services: AppServices,
+    /// Shared with the work that closes the library, which can outlive the
+    /// handle when the handle is released on its own runtime.
     #[cfg(feature = "desktop")]
-    desktop: bae_desktop::DesktopServices,
+    desktop: std::sync::Arc<bae_desktop::DesktopServices>,
     #[cfg(feature = "cast")]
     cast: std::sync::Arc<bae_cast::CastController>,
     runtime: tokio::runtime::Handle,
     /// Retains the runtime that prepared coven and its session custody.
     _host: Option<std::sync::Arc<crate::BridgeHost>>,
-    /// Last so every retained service is dropped while its tasks can still run.
-    owned_runtime: OwnedRuntime,
+    session: Session,
 }
 
 /// The exported methods that are one call into the services behind the handle.
@@ -136,29 +137,102 @@ mod storage_inspector;
 mod sync_status;
 mod ui_events;
 
-/// Owns the runtime every task of an open library runs on.
-/// [`AppHandle::close_library`] runs its last work on it and then drops it,
-/// waiting for every task on it to end; otherwise it shuts down in the
-/// background when the handle drops.
-struct OwnedRuntime(std::sync::Mutex<Option<tokio::runtime::Runtime>>);
+/// The runtime every task of an open library runs on, and whether the library
+/// is still open on it. A library ends before its runtime does: closing the
+/// handle, or releasing it, closes an open library on the runtime and only then
+/// shuts the runtime down, so nothing of the library is left running for the
+/// shutdown to cancel under it.
+struct Session(std::sync::Mutex<SessionState>);
 
-impl OwnedRuntime {
-    /// Run `last` to completion, then shut the runtime down and wait for every
-    /// task on it to end. `None` when the runtime was already closed.
-    fn close<F: std::future::Future>(&self, last: F) -> Option<F::Output> {
-        let runtime = self.0.lock().expect("app runtime lock").take()?;
-        let output = runtime.block_on(last);
-        drop(runtime);
-        Some(output)
+enum SessionState {
+    /// The library is open on the runtime.
+    Open(tokio::runtime::Runtime),
+    /// Removing the library deleted its store; only the runtime is left to end.
+    Removed(tokio::runtime::Runtime),
+    /// The runtime has ended.
+    Ended,
+}
+
+type Closing = Result<(), bae_core::library::LibraryError>;
+
+impl Session {
+    /// Close the open library with `closing` on its runtime, then shut the
+    /// runtime down, waiting for every task on it to end. After a removal
+    /// deleted the store only the runtime is left to end. `None` when the
+    /// session already ended.
+    fn end(&self, closing: impl std::future::Future<Output = Closing>) -> Option<Closing> {
+        let state = std::mem::replace(
+            &mut *self.0.lock().expect("library session lock"),
+            SessionState::Ended,
+        );
+        end(state, closing)
+    }
+
+    /// [`Self::end`] for a released handle, with no caller to hear a failure,
+    /// which `failed` is told of. Released on a thread of a runtime — the last
+    /// call on the handle ending on the app runtime — it can't wait there for
+    /// work only a runtime can do, so a thread of its own ends the session,
+    /// and `ending_on` is handed the thread to wait on.
+    fn end_released(
+        &self,
+        closing: impl std::future::Future<Output = Closing> + Send + 'static,
+        failed: impl FnOnce(bae_core::library::LibraryError) + Send + 'static,
+        ending_on: impl FnOnce(std::thread::JoinHandle<()>),
+    ) {
+        let state = std::mem::replace(
+            &mut *self.0.lock().expect("library session lock"),
+            SessionState::Ended,
+        );
+        if matches!(state, SessionState::Ended) {
+            return;
+        }
+        let ending = move || {
+            if let Some(Err(error)) = end(state, closing) {
+                failed(error);
+            }
+        };
+        if tokio::runtime::Handle::try_current().is_ok() {
+            ending_on(
+                std::thread::Builder::new()
+                    .name("bae-library-close".to_string())
+                    .spawn(ending)
+                    .expect("spawn the thread that closes a released library"),
+            );
+        } else {
+            ending();
+        }
+    }
+
+    /// Record that removing the open library deleted its store.
+    fn removed(&self) {
+        let mut state = self.0.lock().expect("library session lock");
+        *state = match std::mem::replace(&mut *state, SessionState::Ended) {
+            SessionState::Open(runtime) => SessionState::Removed(runtime),
+            ended @ (SessionState::Removed(_) | SessionState::Ended) => ended,
+        };
     }
 }
 
-impl Drop for OwnedRuntime {
-    fn drop(&mut self) {
-        if let Some(runtime) = self.0.lock().expect("app runtime lock").take() {
-            runtime.shutdown_background();
+/// See [`Session::end`]. After a removal, `closing` is dropped unrun once the
+/// runtime has ended, so what it holds outlives the runtime's tasks.
+fn end(
+    state: SessionState,
+    closing: impl std::future::Future<Output = Closing>,
+) -> Option<Closing> {
+    let (runtime, closed) = match state {
+        SessionState::Open(runtime) => {
+            let closed = runtime.block_on(closing);
+            (runtime, closed)
         }
-    }
+        SessionState::Removed(runtime) => {
+            drop(runtime);
+            drop(closing);
+            return Some(Ok(()));
+        }
+        SessionState::Ended => return None,
+    };
+    drop(runtime);
+    Some(closed)
 }
 
 #[cfg(feature = "desktop")]
@@ -172,17 +246,24 @@ impl AppHandle {
         #[cfg(feature = "desktop")]
         let desktop = {
             let runtime_handle = runtime.handle().clone();
-            let services = services.clone();
-            runtime
-                .block_on(crate::operation_runtime::spawn(
-                    runtime_handle.clone(),
-                    move || bae_desktop::DesktopServices::start(services, runtime_handle),
-                ))
-                .map_err(|error| {
-                    bae_core::app::BootstrapError::Internal(format!(
+            let starting = services.clone();
+            let started = runtime.block_on(crate::operation_runtime::spawn(
+                runtime_handle.clone(),
+                move || bae_desktop::DesktopServices::start(starting, runtime_handle),
+            ));
+            match started {
+                Ok(desktop) => std::sync::Arc::new(desktop),
+                // The library is open on the runtime, so it closes before the
+                // runtime ends.
+                Err(error) => {
+                    if let Err(closing) = runtime.block_on(services.close()) {
+                        services.report_bug("close the library a failed open left open", &closing);
+                    }
+                    return Err(bae_core::app::BootstrapError::Internal(format!(
                         "desktop services failed to start: {error}"
-                    ))
-                })?
+                    )));
+                }
+            }
         };
         #[cfg(feature = "cast")]
         let cast = bae_cast::CastController::start(
@@ -198,7 +279,7 @@ impl AppHandle {
             #[cfg(feature = "cast")]
             cast,
             runtime: runtime.handle().clone(),
-            owned_runtime: OwnedRuntime(std::sync::Mutex::new(Some(runtime))),
+            session: Session(std::sync::Mutex::new(SessionState::Open(runtime))),
             _host: None,
         })
     }
@@ -225,30 +306,63 @@ impl AppHandle {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || build(self)).await
     }
+
+    /// Closing the library, as its runtime runs it: the desktop services, then
+    /// playback, identification, import, sync, the manager's tasks and the
+    /// store. It holds the host, whose runtime prepared the library's store,
+    /// until the library has closed.
+    fn closing(&self) -> impl std::future::Future<Output = Closing> + Send + 'static {
+        let services = self.services.clone();
+        #[cfg(feature = "desktop")]
+        let desktop = self.desktop.clone();
+        let host = self._host.clone();
+        async move {
+            #[cfg(feature = "desktop")]
+            desktop.shutdown().await;
+            let closed = services.close().await;
+            drop(host);
+            closed
+        }
+    }
+}
+
+/// A handle released without [`AppHandle::close_library`] closes its library
+/// the same way, and a failure, which no caller hears, is reported as a bug.
+/// A library that closes on a thread of its own is handed to the host, which
+/// waits for it before opening or removing the library again.
+impl Drop for AppHandle {
+    fn drop(&mut self) {
+        let services = self.services.clone();
+        self.session.end_released(
+            self.closing(),
+            move |error| services.report_bug("close the library its handle released", &error),
+            |thread| {
+                if let Some(host) = &self._host {
+                    host.library_closing(self.services.get_config().store_id, thread);
+                }
+            },
+        );
+    }
 }
 
 #[uniffi::export]
 impl AppHandle {
     /// Close the library so nothing of this process holds its files: stop the
-    /// desktop services, playback, identification and import, close the
-    /// store, then shut the app runtime down, waiting for every task on it to
-    /// end. Removing a library instead uses `AppHandle::remove_library` on
-    /// the open handle so it can leave the store before deleting local data.
+    /// desktop services, playback, identification and import, save where
+    /// playback was, stop sync, close the store, then shut the app runtime
+    /// down, waiting for every task on it to end. After a removal deleted the
+    /// store only the runtime is left to end. Releasing the handle does the
+    /// same; closing it first is how a caller waits for it and hears a
+    /// failure.
     ///
     /// Blocks until done, so it is called off the UI thread and never from the
     /// app runtime. Every later call on this handle fails.
     pub fn close_library(&self) -> Result<(), BridgeError> {
-        self.owned_runtime
-            .close(async {
-                #[cfg(feature = "desktop")]
-                self.desktop.shutdown().await;
-                self.services.close().await
-            })
-            .ok_or_else(|| {
-                BridgeError::from(bae_core::library::LibraryError::Internal(
-                    "the library is already closed".to_string(),
-                ))
-            })??;
+        self.session.end(self.closing()).ok_or_else(|| {
+            BridgeError::from(bae_core::library::LibraryError::Internal(
+                "the library is already closed".to_string(),
+            ))
+        })??;
         info!("Closed library");
         Ok(())
     }

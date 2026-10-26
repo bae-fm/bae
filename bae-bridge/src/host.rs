@@ -15,6 +15,7 @@ pub struct BridgeHost {
     presenter: Mutex<Option<Arc<dyn coven::OAuthPresenter>>>,
     /// How this platform shares the speaker, for every library's playback.
     audio_focus: bae_core::playback::AudioFocus,
+    closing_libraries: closing_libraries::ClosingLibraries,
 }
 
 impl Drop for BridgeHost {
@@ -45,6 +46,35 @@ impl BridgeHost {
     /// playback asks before every start.
     pub(crate) fn audio_focus(&self) -> bae_core::playback::AudioFocus {
         self.audio_focus.clone()
+    }
+
+    /// Record `closing`, the thread closing `store`'s library after its handle
+    /// was released on the library's own runtime.
+    pub(crate) fn library_closing(
+        &self,
+        store: coven::StoreId,
+        closing: std::thread::JoinHandle<()>,
+    ) {
+        self.closing_libraries.add(store, closing);
+    }
+
+    /// Wait until `store`'s library has closed, if its handle was released
+    /// on its runtime and it is still closing, before a call opens or removes
+    /// the store. Blocks, so it runs off any async runtime.
+    pub(crate) fn wait_for_closing(&self, store: coven::StoreId) {
+        self.closing_libraries.wait(store);
+    }
+
+    /// [`Self::wait_for_closing`] from an async call on the host's runtime.
+    pub(crate) async fn closed(self: &Arc<Self>, store: coven::StoreId) -> Result<(), BridgeError> {
+        let host = Arc::clone(self);
+        match tokio::task::spawn_blocking(move || host.wait_for_closing(store)).await {
+            Ok(()) => Ok(()),
+            Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
+            Err(error) => Err(BridgeError::internal(format!(
+                "waiting for a library to close was cancelled: {error}"
+            ))),
+        }
     }
 
     fn builder(&self) -> coven::CovenBuilder {
@@ -90,6 +120,7 @@ impl BridgeHost {
             #[cfg(any(target_os = "ios", target_os = "android"))]
             presenter: Mutex::new(None),
             audio_focus,
+            closing_libraries: Default::default(),
         }))
     }
 }
@@ -230,6 +261,7 @@ impl BridgeHost {
                 .handle()
                 .clone(),
             move || async move {
+                self.closed(store).await?;
                 Ok(crate::BridgeUnsentWork::from_core(
                     bae_core::library::unsent_before_removal(builder, store).await?,
                 ))
@@ -254,6 +286,7 @@ impl BridgeHost {
             self.clone(),
             "remove a library that can't open",
             move || async move {
+                self.closed(store).await?;
                 crate::BridgeLibraryRemoval::from_core(
                     bae_core::library::remove_unopenable_library(
                         &self.app_dir,
@@ -350,6 +383,9 @@ pub fn init_app(
     restore_playback: bool,
     host: Arc<BridgeHost>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
+    host.wait_for_closing(coven::StoreId(
+        library_id.parse().map_err(BridgeError::config)?,
+    ));
     host.diagnostics.open_app(
         host.app_dir.clone(),
         library_id,
@@ -369,6 +405,9 @@ pub fn init_app_on_fixture(
     fixture_path: String,
     host: Arc<BridgeHost>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
+    host.wait_for_closing(coven::StoreId(
+        library_id.parse().map_err(BridgeError::config)?,
+    ));
     host.diagnostics.open_app_on_fixture(
         fixture_path.into(),
         host.app_dir.clone(),
@@ -382,6 +421,7 @@ pub fn init_app_on_fixture(
 
 mod bootstrap;
 pub use bootstrap::*;
+mod closing_libraries;
 
 #[cfg(test)]
 mod tests {

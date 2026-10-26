@@ -29,6 +29,7 @@ import fm.bae.app.widget.WidgetSnapshotStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeConfig
@@ -365,16 +367,19 @@ class OpenLibrary internal constructor(
     }
 
     /**
-     * Stop the session service and close the Rust [appHandle] (which tears down
-     * the runtime, sync, and playback engine). Called when a different library
-     * is opened so the old session doesn't leak its handle.
+     * Stop the session service, close the library — saving where playback was,
+     * then stopping sync and closing its store before the core's runtime ends —
+     * and release the [appHandle]. Called when a different library is opened so
+     * the old session doesn't leak its handle. The close blocks until it's done,
+     * so it runs off the main thread, and the library is closed when this
+     * returns.
      */
     suspend fun dispose() {
         stopSessionServices()
         try {
-            appHandle.shutdown()
+            withContext(Dispatchers.IO) { appHandle.closeLibrary() }
         } finally {
-            appHandle.close()
+            release()
         }
     }
 
@@ -391,9 +396,16 @@ class OpenLibrary internal constructor(
         try {
             return appHandle.removeLibrary()
         } finally {
-            appHandle.close()
+            release()
         }
     }
+
+    /**
+     * Release the [appHandle] off the main thread, even when the caller is
+     * cancelled: releasing it closes a library still open, and after a removal
+     * waits for the core's runtime to end, both blocking until done.
+     */
+    private suspend fun release() = withContext(NonCancellable + Dispatchers.IO) { appHandle.close() }
 
     /**
      * Detach everything that reaches the handle, then redraw the widget, which

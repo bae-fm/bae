@@ -33,23 +33,24 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryRemoval
 
 /**
- * The switch path relies on [OpenLibrary.dispose] running the bridge's graceful
- * shutdown — which saves the queue, current track, and position to the old
- * library's DB — before closing the handle that frees the DB, so switching back
- * later restores the queue. Removal takes the opposite route: core leaves the
- * store and deletes the library, so the handle closes without a shutdown —
- * there is nothing left to save into — and it closes even when leaving fails.
+ * The switch path relies on [OpenLibrary.dispose] closing the library — which
+ * saves the queue, current track, and position to the old library's DB and
+ * closes the DB — before releasing the handle, so switching back later restores
+ * the queue. Removal takes the opposite route: core leaves the store and
+ * deletes the library, so the handle is released without closing the library —
+ * there is nothing left to save into — and it is released even when leaving
+ * fails.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class OpenLibraryDisposeTest {
     @Test
-    fun disposeShutsDownBeforeClosing() {
+    fun disposeClosesTheLibraryBeforeReleasingTheHandle() {
         val (session, handle) = openLibrary()
 
         runBlocking { session.dispose() }
 
-        assertEquals(listOf("shutdown", "close"), handle.calls)
+        assertEquals(listOf("closeLibrary", "close"), handle.calls)
     }
 
     /** A screen still composed could take a tap, so the handle stays open until the last of them is gone. */
@@ -63,22 +64,22 @@ class OpenLibraryDisposeTest {
 
         session.screenGone()
         runBlocking { disposing.join() }
-        assertEquals(listOf("shutdown", "close"), handle.calls)
+        assertEquals(listOf("closeLibrary", "close"), handle.calls)
     }
 
     @Test
-    fun disposeClosesWhenGracefulShutdownFails() {
-        val (session, handle) = openLibrary(failShutdown = true)
+    fun disposeReleasesTheHandleWhenClosingTheLibraryFails() {
+        val (session, handle) = openLibrary(failClose = true)
 
         assertThrows(IllegalStateException::class.java) {
             runBlocking { session.dispose() }
         }
 
-        assertEquals(listOf("shutdown", "close"), handle.calls)
+        assertEquals(listOf("closeLibrary", "close"), handle.calls)
     }
 
     @Test
-    fun removalDiscardsUnsentWorkThenClosesWithoutShuttingDown() {
+    fun removalDiscardsUnsentWorkThenReleasesTheHandle() {
         val (session, handle) = openLibrary()
 
         val removal = runBlocking { session.removeFromDevice() }
@@ -99,11 +100,11 @@ class OpenLibraryDisposeTest {
     }
 
     private fun openLibrary(
-        failShutdown: Boolean = false,
+        failClose: Boolean = false,
         failRemoval: Boolean = false,
     ): Pair<OpenLibrary, RecordingHandle> {
         val context = RuntimeEnvironment.getApplication()
-        val handle = RecordingHandle(failShutdown, failRemoval)
+        val handle = RecordingHandle(failClose, failRemoval)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val session =
             OpenLibrary(
@@ -142,15 +143,15 @@ class OpenLibraryDisposeTest {
     }
 
     private class RecordingHandle(
-        private val failShutdown: Boolean,
+        private val failClose: Boolean,
         private val failRemoval: Boolean,
     ) : FakeAppHandle() {
         val calls = mutableListOf<String>()
 
-        override suspend fun shutdown() {
-            calls.add("shutdown")
-            if (failShutdown) {
-                throw IllegalStateException("shutdown failed")
+        override fun closeLibrary() {
+            calls.add("closeLibrary")
+            if (failClose) {
+                throw IllegalStateException("closing the library failed")
             }
         }
 

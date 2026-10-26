@@ -19,6 +19,7 @@ import fm.bae.app.playback.PlaybackSystem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -565,7 +566,9 @@ object AppSessionHolder {
                 handle.unlockStoreKey()
             }
         } catch (e: Exception) {
-            handle.close()
+            // Releasing the handle closes its library, blocking until done, so
+            // it runs off the main thread, even when the open was cancelled.
+            withContext(NonCancellable + Dispatchers.IO) { handle.close() }
             throw e
         }
         val config: BridgeConfig = handle.getConfig()

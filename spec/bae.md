@@ -2512,6 +2512,16 @@ to compile in the bridge until it is carried across.
   controller.
 - **Async calls** run on the library's own runtime. A Swift task cancelled
   mid-call cancels the Rust work it started.
+- **Closing a library** ends it before its runtime: playback saves where it
+  was and stops, the desktop servers, identification, import and sync stop,
+  the library's tasks end and its store closes, and only then does the runtime
+  shut down. Releasing the handle closes it the same way; the app closes it
+  first, off the main thread, to wait for it and hear a failure, which a
+  release reports as a bug. A handle released on the library's own runtime
+  closes it on a thread of its own, and opening, resetting, restoring or
+  removing that library waits for the close first. After a removal deleted
+  the store, only the runtime is left to end. An open that fails after the
+  library started closes it the same way before its runtime ends.
 - **Subscriptions** take a callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery.
 - **Callbacks the app provides**: UI events, the artwork reader, and on phones

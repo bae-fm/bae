@@ -141,6 +141,13 @@ impl AppServices {
         self.inner.manager.close().await
     }
 
+    /// Report a bug found in work on these services that has no caller to
+    /// fail, such as closing a library whose handle was released, to the log
+    /// and the platform's crash reporter.
+    pub fn report_bug(&self, operation: &str, error: &dyn std::fmt::Display) {
+        self.inner.manager.report_bug(operation, error);
+    }
+
     async fn stop_workers(&self) {
         self.inner.playback.shutdown().await;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -498,7 +505,6 @@ impl AppServices {
     delegate_sync!(playback, playback_clear_up_next => clear_up_next() -> ());
     delegate_sync!(playback, playback_clear_playing_from => clear_playing_from() -> ());
     delegate_sync!(playback, playback_skip_to_entry => skip_to_entry(entry_id: crate::playback::QueueEntryId) -> ());
-    delegate_async!(playback, playback_shutdown => shutdown() -> ());
     delegate_async!(playback, playback_save_state => save_state() -> ());
 
     pub fn open_release_file_stream(

@@ -857,3 +857,99 @@ mod candidate_runtime {
         );
     }
 }
+
+/// Dropping a handle with its library syncing closes the library before the
+/// runtime ends: sync stops, the manager's tasks end and the store closes, so
+/// nothing of the library is left running for the runtime's shutdown to cancel
+/// under it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[test]
+fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .thread_stack_size(16 * 1024 * 1024)
+        .enable_all()
+        .build()
+        .expect("test runtime");
+    let directory = tempfile::TempDir::new().expect("library directory");
+    let (manager, database, storage) = runtime.block_on(bae_test_support::storage_library(
+        directory.path(),
+        bae_core::providers::Providers::offline(),
+    ));
+    runtime.block_on(async {
+        bae_test_support::connect_storage(&manager, &storage).await;
+        manager.set_sync_paused(false).await.expect("resume sync");
+        manager.attach_and_start_sync_at_startup().await;
+        let mut status = manager.subscribe_sync_status_values();
+        tokio::time::timeout(
+            std::time::Duration::from_secs(20),
+            status.wait_for(|value| matches!(value.status, coven::SyncStatus::Synced { .. })),
+        )
+        .await
+        .expect("the library syncs")
+        .expect("sync status stays published");
+    });
+    let services = runtime
+        .block_on(bae_core::library::AppServices::for_test(manager))
+        .expect("start test app services");
+    let app = super::AppHandle::start(services, runtime).expect("the bridge handle starts");
+
+    drop(app);
+
+    let read = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("a runtime to read the library from")
+        .block_on(database.unsent_writes_for_test());
+    assert!(
+        matches!(
+            read,
+            Err(bae_core::db::DbError::Coven(coven::CovenError::Database(
+                coven::DbError::StoreClosed
+            )))
+        ),
+        "the library's store is closed: {read:?}"
+    );
+}
+
+/// A handle whose last call ends on the library's own runtime is released
+/// there, and its library closes on a thread of its own. Opening the
+/// library again waits for that close, so it never finds the store still
+/// held, and the store the handle had open ends closed.
+#[test]
+fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::BridgeHost::with_test_keyring(
+        crate::BridgeDiagnostics::noop(),
+        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
+    )
+    .unwrap();
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = caller
+        .block_on(host.clone().create_library(Some("Released Library".into())))
+        .unwrap();
+    let app = opened.open(50, false).unwrap();
+    let id = opened.library_id();
+    drop(opened);
+    let services = app.services.clone();
+
+    let runtime = app.runtime.clone();
+    caller
+        .block_on(runtime.spawn(async move { drop(app) }))
+        .expect("the handle is released on its runtime");
+    let reopened = crate::init_app(id, 50, false, host).expect("the library opens again");
+
+    let read = caller.block_on(services.library_name());
+    assert!(
+        matches!(
+            read,
+            Err(bae_core::library::LibraryError::Database(
+                bae_core::db::DbError::Coven(coven::CovenError::Database(
+                    coven::DbError::StoreClosed
+                ))
+            ))
+        ),
+        "the released handle's store is closed: {read:?}"
+    );
+    reopened.close_library().unwrap();
+}

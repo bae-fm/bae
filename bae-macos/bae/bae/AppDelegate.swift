@@ -352,9 +352,7 @@ extension AppDelegate {
         resetSlot.replace {
             do {
                 if let open {
-                    try await open.shutdown()
-                    try await DetachedWork.run { try open.closeLibrary() }
-                    self.releaseLibrarySession(open)
+                    try await self.close(open)
                 }
                 self.screen = .restoreRequired(libraryId: libraryId)
             }
@@ -400,9 +398,7 @@ extension AppDelegate {
         resetSlot.replace {
             do {
                 if let open {
-                    try await open.shutdown()
-                    try await DetachedWork.run { try open.closeLibrary() }
-                    self.releaseLibrarySession(open)
+                    try await self.close(open)
                     self.screen = .loading
                 }
                 let reset = try await host.resetDevice(
@@ -422,6 +418,9 @@ extension AppDelegate {
     }
 
     private func landOpenedService(_ service: AppService) {
+        if let replaced = appService, replaced !== service {
+            closeReplaced(replaced)
+        }
         appService = service
         screen = .library
         service.reportScreen(.library)
@@ -464,7 +463,7 @@ extension AppDelegate {
         -> Task<LibraryShutdownResult, Never>
     {
         let attempt = shutdownCoordinator.begin(for: service) {
-            try await service.shutdown()
+            try await service.close()
         }
         if attempt.started {
             Task { [weak self, service, task = attempt.task] in
@@ -487,11 +486,13 @@ extension AppDelegate {
         case .completed:
             releaseLibrarySession(service)
         case .failed(let failure):
+            // The library is closed whether or not closing it failed, so the
+            // session ends either way, showing why.
             baeAppLogger.error(
-                "Failed to shut down library: \(failure.diagnostic)"
+                "Failed to close library: \(failure.diagnostic)"
             )
+            releaseLibrarySession(service)
             loadError = failure.displayedError.map { LoadError(.shutdown, $0) }
-            screen = .library
         }
     }
 
@@ -500,6 +501,29 @@ extension AppDelegate {
         opener.cancel()
         renameSlot.cancel()
         forgetSlot.cancel()
+    }
+
+    /// Close the library another one replaced, off the main actor: releasing
+    /// its handle here would close it on the main thread. Nothing waits on it,
+    /// so a failure is logged.
+    private func closeReplaced(_ replaced: AppService) {
+        Task {
+            do {
+                try await replaced.close()
+            }
+            catch {
+                baeAppLogger.error(
+                    "Failed to close the library another replaced: \(error.localizedDescription)"
+                )
+            }
+        }
+    }
+
+    /// Close `service`'s library and end its session. The library is closed
+    /// whether or not closing it fails, so the session ends either way.
+    private func close(_ service: AppService) async throws {
+        defer { releaseLibrarySession(service) }
+        try await service.close()
     }
 
     private func releaseLibrarySession(_ service: AppService) {
@@ -603,7 +627,7 @@ extension AppDelegate {
     private func reopen(_ service: AppService, error: DisplayError?) async {
         let libraryId = service.libraryId
         do {
-            try await DetachedWork.run { try service.closeLibrary() }
+            try await service.close()
         }
         catch let closeError {
             baeAppLogger.error(

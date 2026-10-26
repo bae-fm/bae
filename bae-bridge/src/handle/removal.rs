@@ -97,7 +97,14 @@ impl AppHandle {
             move || async move {
                 #[cfg(feature = "desktop")]
                 self.desktop.shutdown().await;
-                BridgeLibraryRemoval::from_core(self.services.remove_library().await)
+                let removal = self.services.remove_library().await;
+                if matches!(
+                    removal,
+                    Ok(()) | Err(bae_core::library::LibraryRemovalError::Unfinished(_))
+                ) {
+                    self.session.removed();
+                }
+                BridgeLibraryRemoval::from_core(removal)
             },
         )
         .await

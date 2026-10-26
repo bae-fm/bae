@@ -216,20 +216,16 @@ open class AppService: @unchecked Sendable, Observable {
         playbackStore.playbackPositionPublisher
     }
 
-    /// Close the library so nothing of this process holds its store: stops
-    /// sync, ends every background task, and shuts the core's runtime down.
-    /// Blocks until it finishes, so it runs off the main actor. Removing a
-    /// library instead calls `removeLibrary` while this service owns the store.
-    public nonisolated func closeLibrary() throws {
-        try appHandle.closeLibrary()
-    }
-
-    /// Save playback and stop the library's services. The network reports
-    /// stop once it has; a failed shutdown leaves the library open and
-    /// reporting.
-    public func shutdown() async throws {
-        try await appHandle.shutdown()
-        networkPathReports.stop()
+    /// Close the library so nothing of this process holds its store: save
+    /// where playback was, stop its services and sync, close the store, and
+    /// shut the core's runtime down, off the main actor. The network reports
+    /// stop with it. The library is closed whether or not this throws: a
+    /// failure says what went wrong while closing it. Removing a library
+    /// instead calls `removeLibrary` while this service owns the store.
+    public func close() async throws {
+        defer { networkPathReports.stop() }
+        try await DetachedWork.run { [appHandle] in try appHandle.closeLibrary()
+        }
     }
 
     public func triggerSync() {
@@ -264,7 +260,12 @@ open class AppService: @unchecked Sendable, Observable {
         // Whatever the outcome this session ends: a failed removal closes
         // the library and opens it again in a new session.
         defer { networkPathReports.stop() }
-        return try await appHandle.removeLibrary()
+        let removal = try await appHandle.removeLibrary()
+        // The store is gone. Ending the session ends the core's runtime off
+        // the main actor, so releasing the handle has nothing left to wait for.
+        try await DetachedWork.run { [appHandle] in try appHandle.closeLibrary()
+        }
+        return removal
     }
 
     #if os(macOS)

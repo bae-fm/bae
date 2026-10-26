@@ -687,10 +687,6 @@ internal open class FakeAppHandle(
 
     override fun subscribeRatings(callback: RatingsCallback): LiveSubscription = unfaked("subscribeRatings")
 
-    override suspend fun shutdown() {
-        unfaked("shutdown")
-    }
-
     override fun subscribeQueueUpcoming(): QueueUpcomingSubscription = unfaked("subscribeQueueUpcoming")
 
     override suspend fun removeLibrary(): BridgeLibraryRemoval = unfaked("removeLibrary")

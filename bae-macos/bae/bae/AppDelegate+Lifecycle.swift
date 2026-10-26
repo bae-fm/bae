@@ -136,14 +136,15 @@ extension AppDelegate {
     /// returned immediately, so the process could exit before the shutdown
     /// task's `persist_playback_state` write landed — losing the resume
     /// position on every quit that raced it. Returning `.terminateLater` here
-    /// and replying only after `shutdown()` succeeds makes Quit wait for the
-    /// save. A failure cancels termination and leaves the library open.
+    /// and replying only after closing the library succeeds makes Quit wait
+    /// for the save and for the store to close. A failure cancels termination
+    /// and shows why on the welcome screen.
     func applicationShouldTerminate(_ sender: NSApplication)
         -> NSApplication.TerminateReply
     {
         guard let appService else {
-            // No open library: closeLibrary() already shut its handle down
-            // (or none was ever opened), so there's nothing left to save.
+            // No open library: closing it already ended its handle (or none
+            // was ever opened), so there's nothing left to save.
             return .terminateNow
         }
         prepareForLibraryShutdown()

@@ -1,32 +1,15 @@
 use super::*;
 
-/// Playback-state persistence, deliberately **not** `cancellable`.
-///
-/// Both writes must run to completion: dropping the future partway leaves the
-/// queue, current track, and position unwritten, so the next cold launch restores
-/// stale state. The application termination delegate waits for this operation
-/// and cancels termination if it fails.
+/// Playback-state persistence, deliberately **not** `cancellable`: dropping
+/// the future partway leaves the queue, current track, and position unwritten,
+/// so the next cold launch restores stale state. Closing the library saves it
+/// and stops playback.
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
-    /// Graceful shutdown: saves playback state to disk, then stops playback.
-    pub async fn shutdown(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
-            #[cfg(feature = "desktop")]
-            {
-                this.desktop.shutdown().await;
-                this.services.playback_shutdown().await;
-            }
-            #[cfg(not(feature = "desktop"))]
-            this.services.playback_shutdown().await;
-            Ok(())
-        })
-        .await
-    }
-
     /// Persist the current playback state without stopping playback. Mobile
     /// calls this when the app is backgrounded so the queue, current track, and
-    /// position survive a later cold launch — it can't call `shutdown`, which
-    /// would stop the background audio.
+    /// position survive a later cold launch — closing the library would stop
+    /// the background audio.
     pub async fn save_playback_state(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         self.run_exported(move |this| async move {
             this.services.playback_save_state().await;

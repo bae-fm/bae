@@ -136,6 +136,10 @@ fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
 /// Opening by registered id records the library as this device's active library
 /// only once the open fully completes and the library is unlocked on this device;
 /// a locked or failed open leaves the pointer unchanged.
+///
+/// A step that fails before `compose` closes the library before the runtime
+/// ends. One that fails after drops the owner `compose` built, whose drop
+/// closes the library first, as the bridge's `AppHandle` does.
 pub fn bootstrap<T, F>(
     app_dir: crate::config::AppDir,
     library_id: String,
@@ -381,101 +385,119 @@ where
         })
         .map_err(classify_open_error)?;
 
-    let provider_configured = runtime
-        .block_on(library_manager.is_sync_configured())
-        .map_err(|error| BootstrapError::Config(error.to_string()))?;
-    let key_state = library_manager
-        .store_key_state()
-        .map_err(classify_key_state_error)?;
-    let locked = provider_configured && key_state == coven::StoreKeyState::Locked;
-    let advance_active_pointer = !locked;
-    if locked {
-        warn!("store key unavailable at startup; opening library locked");
-        diagnostics.event(TelemetryEvent::Anomaly {
-            kind: AnomalyKind::EncryptionKeyMissing,
-        });
-    }
+    // From here the library is open on `runtime`. A step that fails closes it
+    // before the runtime ends, so nothing of it is left running for the
+    // runtime's shutdown to cancel under it.
+    let opened = library_manager.clone();
+    let started = (|| {
+        let provider_configured = runtime
+            .block_on(library_manager.is_sync_configured())
+            .map_err(|error| BootstrapError::Config(error.to_string()))?;
+        let key_state = library_manager
+            .store_key_state()
+            .map_err(classify_key_state_error)?;
+        let locked = provider_configured && key_state == coven::StoreKeyState::Locked;
+        let advance_active_pointer = !locked;
+        if locked {
+            warn!("store key unavailable at startup; opening library locked");
+            diagnostics.event(TelemetryEvent::Anomaly {
+                kind: AnomalyKind::EncryptionKeyMissing,
+            });
+        }
 
-    // Configure coven's per-namespace cache budgets (device-local, idempotent):
-    // the bulk for audio, a small reserved slice each for covers / artist images.
-    timing
-        .stage(&library_id, "configure cache budgets", || {
-            runtime.block_on(library_manager.configure_cache_budgets())
-        })
-        .map_err(|e| BootstrapError::Database(e.to_string()))?;
-
-    // Install the sync-status and outbox subscriptions before connection starts.
-    // coven's status receiver may be subscribed before a provider connects, so the
-    // attachment's first events cannot race the library/UI observers.
-    timing
-        .stage(&library_id, "start library observation", || {
-            library_manager.start()
-        })
-        .map_err(|e| BootstrapError::Internal(e.to_string()))?;
-
-    let startup_sync_manager = if provider_configured && !locked {
-        Some(library_manager.clone())
-    } else {
-        None
-    };
-
-    // A fixture states what its watched folders hold, and nothing on disk
-    // backs it, so reading them would replace it with what is there.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    let reads_watched_folders = matches!(opening, Opening::Stored);
-    match opening {
-        Opening::Stored => {}
-        #[cfg(all(
-            any(test, feature = "test-utils", debug_assertions),
-            not(any(target_os = "ios", target_os = "android"))
-        ))]
-        Opening::Fixture(path) => timing
-            .stage(&library_id, "write the fixture", || {
-                let fixture = crate::library::LibraryFixture::read(&path)?;
-                runtime.block_on(library_manager.write_fixture(&fixture))
-            })
-            .map_err(|error| BootstrapError::Internal(error.to_string()))?,
-    }
-
-    // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
-    // iOS, AAudio on Android.
-    let playback_handle = timing.stage(&library_id, "start playback service", || {
-        library_manager.start_playback_service(
-            runtime.handle().clone(),
-            position_update_interval_ms,
-            restore_playback,
-            audio_focus,
-        )
-    });
-
-    // The import pipeline (scanning, transcoding, identify) is desktop-only.
-    // Mobile is a sync/playback client, so its `AppServices` carries just the
-    // library manager and the in-core player.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    let app_services = {
-        let import_handle = timing
-            .stage(&library_id, "start import service", || {
-                runtime.block_on(library_manager.start_import_service(runtime.handle().clone()))
-            })
-            .map_err(|error| BootstrapError::Database(error.to_string()))?;
-
-        AppServices::new(library_manager, playback_handle, import_handle)
-    };
-
-    #[cfg(any(target_os = "ios", target_os = "android"))]
-    let app_services = AppServices::new(library_manager, playback_handle);
-
-    info!("Application services initialized for library '{library_id}'");
-    diagnostics.event(TelemetryEvent::AppStarted {});
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    if reads_watched_folders {
+        // Configure coven's per-namespace cache budgets (device-local, idempotent):
+        // the bulk for audio, a small reserved slice each for covers / artist images.
         timing
-            .stage(&library_id, "request watched-folder scan", || {
-                app_services.import_scan_watched_folders()
+            .stage(&library_id, "configure cache budgets", || {
+                runtime.block_on(library_manager.configure_cache_budgets())
             })
-            .map_err(|error| BootstrapError::Database(error.to_string()))?;
-    }
+            .map_err(|e| BootstrapError::Database(e.to_string()))?;
+
+        // Install the sync-status and outbox subscriptions before connection starts.
+        // coven's status receiver may be subscribed before a provider connects, so the
+        // attachment's first events cannot race the library/UI observers.
+        timing
+            .stage(&library_id, "start library observation", || {
+                library_manager.start()
+            })
+            .map_err(|e| BootstrapError::Internal(e.to_string()))?;
+
+        let startup_sync_manager = if provider_configured && !locked {
+            Some(library_manager.clone())
+        } else {
+            None
+        };
+
+        // A fixture states what its watched folders hold, and nothing on disk
+        // backs it, so reading them would replace it with what is there.
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let reads_watched_folders = matches!(opening, Opening::Stored);
+        match opening {
+            Opening::Stored => {}
+            #[cfg(all(
+                any(test, feature = "test-utils", debug_assertions),
+                not(any(target_os = "ios", target_os = "android"))
+            ))]
+            Opening::Fixture(path) => timing
+                .stage(&library_id, "write the fixture", || {
+                    let fixture = crate::library::LibraryFixture::read(&path)?;
+                    runtime.block_on(library_manager.write_fixture(&fixture))
+                })
+                .map_err(|error| BootstrapError::Internal(error.to_string()))?,
+        }
+
+        // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
+        // iOS, AAudio on Android.
+        let playback_handle = timing.stage(&library_id, "start playback service", || {
+            library_manager.start_playback_service(
+                runtime.handle().clone(),
+                position_update_interval_ms,
+                restore_playback,
+                audio_focus,
+            )
+        });
+
+        // The import pipeline (scanning, transcoding, identify) is desktop-only.
+        // Mobile is a sync/playback client, so its `AppServices` carries just the
+        // library manager and the in-core player.
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let app_services = {
+            let import_handle = timing
+                .stage(&library_id, "start import service", || {
+                    runtime.block_on(library_manager.start_import_service(runtime.handle().clone()))
+                })
+                .map_err(|error| BootstrapError::Database(error.to_string()))?;
+
+            AppServices::new(library_manager, playback_handle, import_handle)
+        };
+
+        #[cfg(any(target_os = "ios", target_os = "android"))]
+        let app_services = AppServices::new(library_manager, playback_handle);
+
+        info!("Application services initialized for library '{library_id}'");
+        diagnostics.event(TelemetryEvent::AppStarted {});
+
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        if reads_watched_folders {
+            timing
+                .stage(&library_id, "request watched-folder scan", || {
+                    app_services.import_scan_watched_folders()
+                })
+                .map_err(|error| BootstrapError::Database(error.to_string()))?;
+        }
+
+        Ok((app_services, advance_active_pointer, startup_sync_manager))
+    })();
+    let (app_services, advance_active_pointer, startup_sync_manager) = match started {
+        Ok(started) => started,
+        Err(error) => {
+            if let Err(closing) = runtime.block_on(opened.close()) {
+                diagnostics.report_bug("close the library a failed open left open", &closing);
+            }
+            return Err(error);
+        }
+    };
+    drop(opened);
 
     let owner = timing.stage(&library_id, "compose frontend owner", || {
         compose(app_services, runtime)
@@ -590,6 +612,56 @@ mod tests {
             ))),
             BootstrapError::KeychainEntitlementMissing(_)
         ));
+    }
+
+    /// A step that fails once the library manager has started closes the
+    /// library before the bootstrap's runtime ends: nothing of it is left
+    /// running for the runtime's shutdown to cancel under it.
+    #[test]
+    fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .thread_stack_size(16 * 1024 * 1024)
+            .enable_all()
+            .build()
+            .unwrap();
+        let temp = tempfile::tempdir().unwrap();
+        let app_dir = crate::config::AppDir::at(temp.path()).unwrap();
+        let installation = coven::TestCoven::new();
+        let handle = runtime
+            .block_on(
+                crate::library::configure_store(installation.builder(app_dir.store_layout()))
+                    .create_store("Failing Bootstrap"),
+            )
+            .unwrap();
+        let library_id = handle.store_id().to_string();
+
+        let failed = super::bootstrap_opening(
+            super::Opening::Fixture(temp.path().join("no-such-fixture.json")),
+            app_dir,
+            library_id,
+            50,
+            false,
+            crate::playback::AudioFocus::Unshared,
+            crate::diagnostics::Diagnostics::noop(),
+            crate::library::manager::LibraryOpening::Open(handle.clone()),
+            |_services, _runtime| -> Result<(), BootstrapError> {
+                unreachable!("the bootstrap fails before it composes an owner")
+            },
+        );
+
+        assert!(
+            matches!(failed, Err(BootstrapError::Internal(_))),
+            "the fixture step fails: {failed:?}"
+        );
+        let read = runtime.block_on(handle.pending());
+        assert!(
+            matches!(
+                read,
+                Err(coven::CovenError::Database(coven::DbError::StoreClosed))
+            ),
+            "the library's store is closed: {read:?}"
+        );
     }
 
     #[test]
