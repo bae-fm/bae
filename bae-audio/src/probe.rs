@@ -70,31 +70,35 @@ pub(super) fn content_type_from_codec_id(id: ffmpeg_sys_next::AVCodecID) -> Cont
 
 /// Open `path` and find its best audio stream. Returns the format context --
 /// which the caller must `avformat_close_input` when done -- and the stream
-/// index, or `None` (already logged with `ctx` as the prefix) if the file can't
-/// be opened, its stream info can't be read, or it has no audio stream.
+/// index, or why not: the file can't be opened, its stream info can't be
+/// read, or it has no audio stream.
 unsafe fn open_best_audio_stream(
     path: &str,
-    ctx: &str,
-) -> Option<(*mut ffmpeg_sys_next::AVFormatContext, c_int)> {
+) -> Result<(*mut ffmpeg_sys_next::AVFormatContext, c_int), String> {
     use ffmpeg_sys_next::*;
 
     let c_path =
         std::ffi::CString::new(path).expect("filesystem path must not contain interior NUL bytes");
     let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
-    if avformat_open_input(
+    let opened = avformat_open_input(
         &mut fmt_ctx,
         c_path.as_ptr(),
         ptr::null_mut(),
         ptr::null_mut(),
-    ) < 0
-    {
-        warn!("{ctx}: failed to open input {path}");
-        return None;
+    );
+    if opened < 0 {
+        return Err(format!(
+            "failed to open input ({})",
+            super::av_err_str(opened)
+        ));
     }
-    if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
-        warn!("{ctx}: failed to read stream info for {path}");
+    let found = avformat_find_stream_info(fmt_ctx, ptr::null_mut());
+    if found < 0 {
         avformat_close_input(&mut fmt_ctx);
-        return None;
+        return Err(format!(
+            "failed to read stream info ({})",
+            super::av_err_str(found)
+        ));
     }
     let stream_index = av_find_best_stream(
         fmt_ctx,
@@ -105,11 +109,10 @@ unsafe fn open_best_audio_stream(
         0,
     );
     if stream_index < 0 {
-        warn!("{ctx}: no audio stream in {path}");
         avformat_close_input(&mut fmt_ctx);
-        return None;
+        return Err("no audio stream".to_string());
     }
-    Some((fmt_ctx, stream_index))
+    Ok((fmt_ctx, stream_index))
 }
 
 fn duration_from_time_base(
@@ -241,7 +244,13 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
     unsafe {
         use ffmpeg_sys_next::*;
 
-        let (mut fmt_ctx, stream_index) = open_best_audio_stream(path, "probe_audio_from_path")?;
+        let (mut fmt_ctx, stream_index) = match open_best_audio_stream(path) {
+            Ok(opened) => opened,
+            Err(reason) => {
+                warn!("probe_audio_from_path: {reason} for {path}");
+                return None;
+            }
+        };
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let duration = probed_duration(path, fmt_ctx, stream);
         let codecpar = (*stream).codecpar;
@@ -329,12 +338,12 @@ unsafe fn stream_timestamps(
 /// frame is recorded as the frame before it, which a decode can date.
 ///
 /// Playback never searches for a track: it byte-seeks straight to the recorded
-/// byte (FLAC) or sample-seeks and prefetches it (APE). `None` only if the file
-/// can't be opened or its frames can't be read or seeked.
+/// byte (FLAC) or sample-seeks and prefetches it (APE). An error, saying why,
+/// only if the file can't be opened or its frames can't be read or seeked.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
+pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Result<Vec<u64>, String> {
     unsafe {
-        let (mut fmt_ctx, stream_index) = open_best_audio_stream(path, "seek_landing_bytes")?;
+        let (mut fmt_ctx, stream_index) = open_best_audio_stream(path)?;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let codecpar = (*stream).codecpar;
         let landings =
@@ -363,13 +372,7 @@ pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
             (*(*fmt_ctx).pb).bytes_read as u64,
         );
         ffmpeg_sys_next::avformat_close_input(&mut fmt_ctx);
-        match landings {
-            Ok(landings) => Some(landings),
-            Err(reason) => {
-                warn!("seek_landing_bytes: {reason} in {path}");
-                None
-            }
-        }
+        landings
     }
 }
 
@@ -462,8 +465,8 @@ unsafe fn flac_frame_landings(
 unsafe fn flac_final_frames(path: &str) -> Result<Vec<(i64, u64)>, String> {
     use ffmpeg_sys_next::*;
 
-    let (mut fmt_ctx, stream_index) = open_best_audio_stream(path, "seek_landing_bytes")
-        .ok_or_else(|| "cannot open it to read its final frames".to_string())?;
+    let (mut fmt_ctx, stream_index) = open_best_audio_stream(path)
+        .map_err(|reason| format!("cannot open it to read its final frames: {reason}"))?;
     let frames = flac_final_frames_in(fmt_ctx, stream_index);
     #[cfg(test)]
     crate::test_reads::record_landing_search(

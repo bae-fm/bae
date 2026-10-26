@@ -57,6 +57,7 @@ pub(crate) fn cue_image(
         &HashMap::from([(path, "image".to_string())]),
         &coven::FixedClock::new(std::time::SystemTime::UNIX_EPOCH),
         &coven::SequentialIds::new(),
+        &crate::diagnostics::Diagnostics::noop(),
     )
     .expect("build audio formats");
     (bytes, built.audio_segments)

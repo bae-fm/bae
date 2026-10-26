@@ -8,8 +8,6 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
-use tracing::warn;
-
 use bae_audio::ProbeResult;
 use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use crate::import::types::{CueFlacAnalysis, TrackAudio, TrackFile};
@@ -278,36 +276,28 @@ fn standalone_audio_format(
 /// byte. The last track has no next start and runs to EOF, and the first starts
 /// at byte 0 with nothing to prefetch, so the caller stores `None` for both.
 ///
-/// A `None` return means the offsets couldn't be read at all (non-UTF-8 path, a
-/// failed read or seek); the caller then stores no byte window for that file's
-/// tracks and they keep the whole-file read-ahead span.
+/// The scan opened and probed every image a sheet names, from a UTF-8 path, and
+/// admitted only audio of a usable format, so these offsets can always be read.
+/// An error saying why they couldn't is a bug, which the caller reports.
 fn cue_file_landing_bytes(
-    file_path: &Path,
-    cue_pair: &CueFlacAnalysis,
-) -> Option<HashMap<u64, u64>> {
-    let file = cue_pair
-        .audio_files
-        .iter()
-        .find(|file| file.path == file_path)?;
-    if let Err(error) = ensure_probe_audio_format(file_path, &file.probe) {
-        warn!("Skipping CUE byte landing for unusable audio format: {error}");
-        return None;
-    }
+    file: &crate::import::types::CueAnalyzedAudioFile,
+    cue_sheet: &crate::cue_flac::CueSheet,
+) -> Result<HashMap<u64, u64>, String> {
+    ensure_probe_audio_format(&file.path, &file.probe).map_err(|error| error.to_string())?;
     let sample_rate = file.probe.sample_rate;
-    let start_samples: Vec<u64> = cue_pair
-        .cue_sheet
+    let start_samples: Vec<u64> = cue_sheet
         .playable_tracks()
         .flat_map(|track| track.indexes.iter())
         .filter(|index| index.file_reference == file.file_reference)
         .filter(|index| matches!(index.number, 0 | 1))
         .map(|index| crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate as u64))
         .collect();
-    let Some(path) = file_path.to_str() else {
-        warn!("cue_track_start_bytes: non-UTF-8 path, cannot seek byte offsets: {file_path:?}");
-        return None;
-    };
+    let path = file
+        .path
+        .to_str()
+        .ok_or_else(|| "the path is not UTF-8".to_string())?;
     let landings = bae_audio::seek_landing_bytes(path, &start_samples)?;
-    Some(start_samples.into_iter().zip(landings).collect())
+    Ok(start_samples.into_iter().zip(landings).collect())
 }
 
 impl ImportService {
@@ -434,12 +424,14 @@ impl ImportService {
         Ok(segments)
     }
 
-    /// Build audio format records for all tracks from the scan's stored facts.
+    /// Build audio format records for all tracks from the scan's stored facts,
+    /// reporting to `bugs` a CUE image whose track starts can't be read.
     pub(crate) fn build_audio_formats(
         tracks_to_files: &[TrackFile],
         file_ids: &HashMap<PathBuf, String>,
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdSource,
+        bugs: &crate::diagnostics::Diagnostics,
     ) -> Result<BuiltAudioFormats, ImportError> {
         let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
         let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
@@ -464,7 +456,20 @@ impl ImportService {
                     for audio_file in &cue_pair.audio_files {
                         cue_landings_by_file
                             .entry(audio_file.path.clone())
-                            .or_insert_with(|| cue_file_landing_bytes(&audio_file.path, cue_pair));
+                            .or_insert_with(|| {
+                                match cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet) {
+                                    Ok(landings) => Some(landings),
+                                    // The image's tracks hold no byte window and
+                                    // keep the whole-file read-ahead span.
+                                    Err(reason) => {
+                                        bugs.report_bug(
+                                            "read where each track of a CUE image starts",
+                                            &format!("{}: {reason}", audio_file.path.display()),
+                                        );
+                                        None
+                                    }
+                                }
+                            });
                     }
                     let segments = Self::cue_segments(
                         &af.id,

@@ -207,6 +207,9 @@ pub struct ImportService {
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
     import_cancels: crate::import::import_cancel::ImportCancels,
+    /// Where every bug the import worker finds is reported: a write no
+    /// caller waits on, and an image the blocking format prep can't read.
+    diagnostics: crate::diagnostics::Diagnostics,
 }
 
 /// One downloaded cover as an import cover candidate. Its content type is

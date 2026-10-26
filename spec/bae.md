@@ -2189,6 +2189,9 @@ that plays from it, so the eleven tracks of a disc image share one.
 A track start in a FLAC, WavPack, Opus or Vorbis file jumps to the byte
 import recorded for it, since those files' frames state their own position;
 in any other it seeks to its first sample, the recorded byte fetched ahead.
+The scan read every disc image, so import can always read where each of its
+tracks starts; an image where it can't is reported as a bug, and its tracks
+seek to their first sample with the whole file read ahead.
 A seek inside a track
 is left to FFmpeg, which seeks through the file's own index where it has one:
 a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points

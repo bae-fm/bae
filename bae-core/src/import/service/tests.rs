@@ -66,6 +66,7 @@ async fn setup_import_service() -> TestService {
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidIds),
             import_cancels: Default::default(),
+            diagnostics: crate::diagnostics::Diagnostics::noop(),
         },
         preparations,
         temp: temp_dir,

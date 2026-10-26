@@ -19,7 +19,7 @@ impl ImportService {
         // No run or import outlives the process that held it, so the library
         // opens with no candidate standing, before anything reads the list.
         library_manager.clear_candidate_standings().await?;
-        let runtime = CandidateRuntime::new(database, diagnostics);
+        let runtime = CandidateRuntime::new(database, diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
@@ -28,7 +28,7 @@ impl ImportService {
             clock.clone(),
             ids.clone(),
         );
-        Ok(Self::start_with(runtime_handle, services, runtime)?)
+        Ok(Self::start_with(runtime_handle, services, runtime, diagnostics)?)
     }
 
     /// [`Self::start`] reading folders' tags through `file_tags`, for a test
@@ -44,7 +44,7 @@ impl ImportService {
         ids: coven::IdSourceRef,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
-        let runtime = CandidateRuntime::new(database, diagnostics);
+        let runtime = CandidateRuntime::new(database, diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
@@ -54,7 +54,7 @@ impl ImportService {
             ids,
         );
         services.file_tags = file_tags;
-        Self::start_with(runtime_handle, services, runtime)
+        Self::start_with(runtime_handle, services, runtime, diagnostics)
             .expect("a test's library is open while its import service starts")
     }
 
@@ -62,6 +62,7 @@ impl ImportService {
         runtime_handle: tokio::runtime::Handle,
         services: crate::import::ImportServices,
         runtime: CandidateRuntime,
+        diagnostics: crate::diagnostics::Diagnostics,
     ) -> Result<ImportServiceHandle, crate::library::LibraryError> {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();
@@ -95,6 +96,7 @@ impl ImportService {
                         clock,
                         ids,
                         import_cancels,
+                        diagnostics,
                     };
 
                     while let Some(message) = service.commands_rx.recv().await {
@@ -146,7 +148,7 @@ impl ImportService {
                     .move_import(&candidate_key, &import_id, None)
                     .await
                 {
-                    self.library_manager.report_bug(
+                    self.diagnostics.report_bug(
                         &format!("end the cancelled import of {candidate_key}"),
                         &error,
                     );
@@ -188,7 +190,7 @@ impl ImportService {
                 )
                 .await
             {
-                self.library_manager.report_bug(
+                self.diagnostics.report_bug(
                     &format!("record the failed import of {candidate_key}"),
                     &format!("the import failed: {error}; recording that failed: {write}"),
                 );
@@ -701,8 +703,15 @@ impl ImportService {
             let file_ids = file_ids.clone();
             let clock = self.clock.clone();
             let ids = self.ids.clone();
+            let diagnostics = self.diagnostics.clone();
             tokio::task::spawn_blocking(move || {
-                Self::build_audio_formats(&tracks, &file_ids, clock.as_ref(), ids.as_ref())
+                Self::build_audio_formats(
+                    &tracks,
+                    &file_ids,
+                    clock.as_ref(),
+                    ids.as_ref(),
+                    &diagnostics,
+                )
             })
             .await
             .map_err(|e| crate::import::ImportError::Internal {

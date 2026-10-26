@@ -241,9 +241,14 @@ INDEX 01 01:00:00
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built =
-        ImportService::build_audio_formats(&tracks_to_files, &file_ids, &test_clock(), &ids)
-            .expect("build audio formats");
+    let built = ImportService::build_audio_formats(
+        &tracks_to_files,
+        &file_ids,
+        &test_clock(),
+        &ids,
+        &crate::diagnostics::Diagnostics::noop(),
+    )
+    .expect("build audio formats");
 
     // Exactly one track (track 2) has a real audio pregap.
     let pregaps: Vec<_> = built
@@ -331,7 +336,13 @@ fn build_audio_formats_uses_stored_standalone_facts() {
     let file_ids = HashMap::from([(path, "file-0".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built = ImportService::build_audio_formats(&[track], &file_ids, &test_clock(), &ids)
+    let built = ImportService::build_audio_formats(
+        &[track],
+        &file_ids,
+        &test_clock(),
+        &ids,
+        &crate::diagnostics::Diagnostics::noop(),
+    )
         .expect("build audio formats");
 
     assert_eq!(built.audio_formats.len(), 1);
@@ -471,16 +482,37 @@ INDEX 01 00:00:00
     ));
 }
 
+/// INDEX 00 lines that fall before the previous track's INDEX 01 are dropped
+/// by the parse, so each track's slice runs to the next track's INDEX 01. The
+/// image is a real one at 75 Hz, a sample per CUE frame, so its track starts
+/// read like any image's and no bug is reported.
 #[test]
 fn cue_backed_segments_ignore_rejected_index00_boundaries() {
+    bae_audio::init();
     let temp = tempfile::tempdir().expect("tempdir");
     let cue_path = temp.path().join("Album.cue");
-    let audio_path = temp.path().join("test.ape");
+    let audio_path = temp.path().join("test.wav");
+    let samples: Vec<i32> = (0..12 * 60 * 75 * 2)
+        .map(|i| (((i / 2) as f64 * 0.3).sin() * 0.3 * i32::MAX as f64) as i32)
+        .collect();
+    std::fs::write(
+        &audio_path,
+        bae_audio::encode_i32(
+            bae_audio::EncodeFormat::PcmWav {
+                bits_per_sample: 16,
+            },
+            &samples,
+            75,
+            2,
+        )
+        .expect("encode the image"),
+    )
+    .expect("write the image");
     std::fs::write(
         &cue_path,
         r#"PERFORMER "Artist Name"
 TITLE "Album Title"
-FILE "test.ape" WAVE
+FILE "test.wav" WAVE
   TRACK 01 AUDIO
 TITLE "Track One"
 INDEX 00 00:00:00
@@ -504,16 +536,12 @@ INDEX 01 11:01:30
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
-            file_reference: "test.ape".to_string(),
+            file_reference: "test.wav".to_string(),
             path: audio_path.clone(),
-            probe: ProbeResult {
-                content_type: ContentType::Ape,
-                duration: std::time::Duration::from_secs(12 * 60),
-                sample_rate: 75,
-                bits_per_sample: Some(16),
-                bitrate_kbps: None,
-                channels: 2,
-            },
+            probe: bae_audio::probe_audio_from_path(
+                audio_path.to_str().expect("a temporary path is UTF-8"),
+            )
+            .expect("probe the image"),
         }],
     });
 
@@ -539,9 +567,18 @@ INDEX 01 11:01:30
             .unwrap()
             .with_timezone(&chrono::Utc)).into());
     let ids = coven::SequentialIds::new();
+    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
 
-    let built = ImportService::build_audio_formats(&tracks_to_files, &file_ids, &clock, &ids)
-        .expect("build audio formats");
+    let built = ImportService::build_audio_formats(
+        &tracks_to_files,
+        &file_ids,
+        &clock,
+        &ids,
+        &crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+    )
+    .expect("build audio formats");
+    let reports = bugs.reports();
+    assert!(reports.is_empty(), "the image's track starts read: {reports:?}");
     let main_segments: Vec<_> = built
         .audio_segments
         .iter()
@@ -718,6 +755,7 @@ FILE "second.flac" WAVE
         &file_ids,
         &test_clock(),
         &coven::SequentialIds::new(),
+        &crate::diagnostics::Diagnostics::noop(),
     )
     .expect("build audio formats");
 
@@ -832,4 +870,73 @@ fn an_mp3_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
 fn an_aac_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
     bae_audio::init();
     assert_track_start_is_its_frame("image.m4a", bae_audio::EncodeFormat::Aac { bitrate_kbps: 192 });
+}
+
+/// The scan probed every image a sheet names, so where its tracks start can
+/// always be read; an image where it can't is a bug. It reaches the crash
+/// reporter naming the image and why, and the import goes on with the
+/// image's tracks holding no byte window.
+#[test]
+fn an_image_whose_track_starts_cannot_be_read_is_reported_as_a_bug() {
+    bae_audio::init();
+    let temp = tempfile::tempdir().expect("tempdir");
+    let cue_path = temp.path().join("album.cue");
+    std::fs::write(
+        &cue_path,
+        "FILE \"image.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
+         TRACK 02 AUDIO\n    INDEX 01 00:05:00\n",
+    )
+    .expect("write cue");
+    let path = temp.path().join("image.flac");
+    std::fs::write(&path, b"bytes FFmpeg reads as no audio").expect("write image");
+    let cue_pair = Arc::new(CueFlacAnalysis {
+        cue_sheet: crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue"),
+        audio_files: vec![CueAnalyzedAudioFile {
+            file_reference: "image.flac".to_string(),
+            path: path.clone(),
+            probe: probe_result(44_100, 2),
+        }],
+    });
+    let tracks_to_files: Vec<_> = (0..2u32)
+        .map(|index| TrackFile {
+            db_track: crate::db::DbTrack::new_test(
+                "release-id",
+                &format!("track-{index}"),
+                "Track Title",
+                index + 1,
+            ),
+            audio: crate::import::TrackAudio::CueBacked {
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index as usize,
+            },
+        })
+        .collect();
+    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+
+    let built = ImportService::build_audio_formats(
+        &tracks_to_files,
+        &HashMap::from([(path.clone(), "image".to_string())]),
+        &test_clock(),
+        &coven::SequentialIds::new(),
+        &crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+    )
+    .expect("the import goes on");
+
+    let reports = bugs.reports();
+    let [(operation, detail)] = reports.as_slice() else {
+        panic!("one bug reported, got {reports:?}");
+    };
+    assert_eq!(operation, "read where each track of a CUE image starts");
+    assert!(
+        detail.contains(&path.display().to_string()),
+        "the report names the image: {detail}"
+    );
+    assert!(
+        built
+            .audio_segments
+            .iter()
+            .all(|segment| segment.start_byte.is_none() && segment.end_byte.is_none()),
+        "the image's tracks hold no byte window: {:?}",
+        built.audio_segments
+    );
 }

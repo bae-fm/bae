@@ -161,6 +161,7 @@ impl LibraryManager {
         let built = {
             let clock = self.clock.clone();
             let ids = self.ids.clone();
+            let diagnostics = self.diagnostics.clone();
             let tracks = tracks_to_files.clone();
             tokio::task::spawn_blocking(move || {
                 crate::import::ImportService::build_audio_formats(
@@ -168,6 +169,7 @@ impl LibraryManager {
                     &file_ids,
                     clock.as_ref(),
                     ids.as_ref(),
+                    &diagnostics,
                 )
             })
             .await
