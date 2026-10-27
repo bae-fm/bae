@@ -92,6 +92,25 @@ where
     (task, done)
 }
 
+/// Wait until the worker has reported `count` outcomes. It reports an
+/// entry's outcome after the entry has left the table, so the table emptying
+/// does not yet say the outcome is in.
+async fn reported(done: &Outcomes, count: usize) -> Vec<(String, Result<(), String>)> {
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            {
+                let done = done.lock().unwrap();
+                if done.len() >= count {
+                    return done.clone();
+                }
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("the worker reports the outcomes")
+}
+
 /// A spawned task's abort handle and the outcome it yields, mapping a
 /// panic to a failure that names it.
 fn spawned(
@@ -124,15 +143,16 @@ async fn a_finished_entry_leaves_and_the_next_starts() {
         Ok((0, spawned(tokio::spawn(async {}))))
     });
 
-    until(&queue, |rows| rows.is_empty()).await;
+    let outcomes = reported(&done, 2).await;
     task.abort();
     assert_eq!(
-        *done.lock().unwrap(),
+        outcomes,
         vec![
             (RELEASE_A.to_string(), Ok(())),
             (RELEASE_B.to_string(), Ok(()))
         ]
     );
+    assert!(phases(&queue).await.is_empty());
 }
 
 /// A queued operation whose task panics leaves the release failed with the
@@ -288,7 +308,7 @@ async fn a_paused_queue_starts_nothing_until_it_resumes() {
     );
 
     queue.set_paused(false).await.unwrap();
-    until(&queue, |rows| rows.is_empty()).await;
+    assert_eq!(reported(&done, 1).await.len(), 1);
     task.abort();
-    assert_eq!(done.lock().unwrap().len(), 1);
+    assert!(phases(&queue).await.is_empty());
 }
