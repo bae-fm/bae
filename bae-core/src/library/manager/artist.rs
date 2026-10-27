@@ -3,6 +3,7 @@
 use super::*;
 
 impl LibraryManager {
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), LibraryError> {
         self.database.insert_artist(artist).await?;
         Ok(())

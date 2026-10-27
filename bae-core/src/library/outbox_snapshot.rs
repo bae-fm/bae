@@ -37,17 +37,6 @@ pub enum UploadSubject {
 }
 
 impl UploadSubject {
-    /// The release this upload moves to the cloud: the release of one of its
-    /// own files, and nothing else.
-    pub fn uploading_release(&self) -> Option<&str> {
-        match self {
-            Self::ReleaseFile { release_id, .. } => Some(release_id),
-            Self::Cover { .. } | Self::ArtistImage | Self::Avatar | Self::DeletedReleaseFile => {
-                None
-            }
-        }
-    }
-
     /// The release the uploaded file belongs to, which names it.
     pub fn release(&self) -> Option<&str> {
         match self {

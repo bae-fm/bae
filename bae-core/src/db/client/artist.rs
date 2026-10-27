@@ -1,6 +1,7 @@
 use super::*;
 
 impl Database {
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), DbError> {
         let artist = artist.clone();
         self.call_sql(move |sql| insert_artist_row(&sql, &artist))
@@ -11,6 +12,7 @@ impl Database {
         self.call_sql(move |sql| insert_album_artist_row(&sql, &album_artist))
             .await
     }
+    #[cfg(test)]
     pub async fn insert_track_artist(&self, track_artist: &DbTrackArtist) -> Result<(), DbError> {
         let track_artist = track_artist.clone();
         self.call_sql(move |sql| insert_track_artist_row(&sql, &track_artist))
@@ -120,6 +122,7 @@ impl Database {
         .await
     }
 
+    #[cfg(test)]
     pub async fn get_composer_page(
         &self,
         sort: &[ComposerSortCriterion],
@@ -308,6 +311,7 @@ impl Database {
             })
     }
 
+    #[cfg(test)]
     pub async fn find_composer_detail(
         &self,
         artist_id: &str,
@@ -383,6 +387,7 @@ impl Database {
         .await
     }
 
+    #[cfg(test)]
     pub async fn find_work_detail(&self, work_id: &str) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
         self.read(move |sql| find_work_detail_on(&sql, &work_id))

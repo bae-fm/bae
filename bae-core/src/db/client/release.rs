@@ -164,6 +164,7 @@ pub(super) fn write_release_metadata_on(
 }
 
 impl Database {
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
         self.call_sql(move |sql| insert_release_row(&sql, &release))

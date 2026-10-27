@@ -226,6 +226,7 @@ impl Database {
     }
 
     /// Whether an attached file is still waiting for upload.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
         Ok(self
             .inner

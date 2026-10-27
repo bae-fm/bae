@@ -30,6 +30,7 @@ impl OutboxState {
 }
 
 impl OutboxQueue {
+    #[cfg(test)]
     pub fn transitioning_release_ids(&self) -> Vec<String> {
         self.upload_groups
             .iter()
