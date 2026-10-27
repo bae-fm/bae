@@ -7,11 +7,10 @@
 //! derived from. This is the flow pyatv's `hap_transient` (MIT, `master` @ 2024)
 //! runs against real HomePods:
 //!
-//! 1. `POST /pair-pin-start` (empty) — the session sends this to open the flow.
-//! 2. `POST /pair-setup` with `{Method=0, State=M1, Flags=Transient}`.
-//! 3. Receiver replies `{State=M2, Salt, PublicKey=B}`.
-//! 4. `POST /pair-setup` with `{State=M3, PublicKey=A, Proof=M1}`.
-//! 5. Receiver replies `{State=M4, Proof=M2}`; the shared secret is the SRP
+//! 1. `POST /pair-setup` with `{Method=0, State=M1, Flags=Transient}`.
+//! 2. Receiver replies `{State=M2, Salt, PublicKey=B}`.
+//! 3. `POST /pair-setup` with `{State=M3, PublicKey=A, Proof=M1}`.
+//! 4. Receiver replies `{State=M4, Proof=M2}`; the shared secret is the SRP
 //!    session key.
 //!
 //! This module is the transport-agnostic state machine: it produces each request
