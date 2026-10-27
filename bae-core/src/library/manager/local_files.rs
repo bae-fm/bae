@@ -229,7 +229,7 @@ impl LibraryManager {
     }
 }
 
-/// Run filesystem work on a blocking thread.
+/// Run blocking IO (files, the keychain, the config file) on a blocking thread.
 pub(super) async fn blocking_io<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, LibraryError> + Send + 'static,
 ) -> Result<T, LibraryError> {

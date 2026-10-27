@@ -223,7 +223,7 @@ impl LibraryManager {
         #[cfg(desktop)]
         let discogs_client = Arc::clone(&self.discogs_client);
         let token = token.to_string();
-        blocking(move || {
+        super::local_files::blocking_io(move || {
             // Held across the writes, so no call builds a client from a key
             // halfway through being replaced.
             #[cfg(desktop)]
@@ -247,7 +247,7 @@ impl LibraryManager {
         let config_handle = Arc::clone(&self.config_handle);
         #[cfg(desktop)]
         let discogs_client = Arc::clone(&self.discogs_client);
-        blocking(move || {
+        super::local_files::blocking_io(move || {
             #[cfg(desktop)]
             let mut client = discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
             config_handle.update_preferences_now(|prefs| prefs.discogs = None)?;
@@ -491,7 +491,7 @@ impl LibraryManager {
     #[cfg(all(test, desktop))]
     pub(super) async fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
         let config_handle = Arc::clone(&self.config_handle);
-        blocking(move || {
+        super::local_files::blocking_io(move || {
             record_discogs_validation_signal(&config_handle, signal);
             Ok(())
         })
@@ -565,15 +565,5 @@ impl LibraryManager {
             .discogs_client(key.to_string(), None)
             .validate_token(priority)
             .await
-    }
-}
-
-/// Run keychain and config writes on a blocking thread.
-async fn blocking(
-    work: impl FnOnce() -> Result<(), LibraryError> + Send + 'static,
-) -> Result<(), LibraryError> {
-    match tokio::task::spawn_blocking(work).await {
-        Ok(result) => result,
-        Err(error) => std::panic::resume_unwind(error.into_panic()),
     }
 }
