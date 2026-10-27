@@ -158,3 +158,70 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
     assert_eq!(release_count(&handle).await, 1);
     shut_down(handle).await;
 }
+
+/// The disc a candidate's `Disc.cue` is read as, and the file decision
+/// revision it stands at.
+async fn sheet_disc_of(
+    handle: &ImportServiceHandle,
+    key: &str,
+) -> (crate::import::folder_scanner::SheetDisc, u64) {
+    let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
+    let disc = candidate
+        .files
+        .track_sheets()
+        .find(|sheet| sheet.file.relative_path == "Disc.cue")
+        .expect("the candidate holds its sheet")
+        .disc;
+    (disc, candidate.file_edit_revision)
+}
+
+/// A file decision about one folder is about its files, so it settles every
+/// folder holding the same files, and no folder holding others.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_file_decision_settles_every_folder_holding_the_same_files() {
+    let (manager, tmp) = setup_test_manager().await;
+    let (mut original, original_key, _) = picked_candidate(&manager, &tmp, "Album").await;
+    std::fs::write(original.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
+    original.files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &original.path,
+        original.scope,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let copy = twin_of(&original, "Copy");
+    let copy_key = copy.path.to_string_lossy().into_owned();
+    let mut other = twin_of(&original, "Other");
+    let other_key = other.path.to_string_lossy().into_owned();
+    std::fs::write(other.path.join("Notes.txt"), "a file the others lack").unwrap();
+    other.files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &other.path,
+        other.scope,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    rescan_all_into(&manager, &[original, copy, other]).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let (unsettled, _) = sheet_disc_of(&handle, &other_key).await;
+
+    handle
+        .set_sheet_disc(
+            original_key.clone(),
+            "Disc.cue".to_string(),
+            crate::import::folder_scanner::SheetDisc::Ignored,
+        )
+        .await
+        .unwrap();
+
+    for key in [&original_key, &copy_key] {
+        assert_eq!(
+            sheet_disc_of(&handle, key).await,
+            (crate::import::folder_scanner::SheetDisc::Ignored, 1),
+            "{key}"
+        );
+    }
+    assert_eq!(sheet_disc_of(&handle, &other_key).await, (unsettled, 0));
+    shut_down(handle).await;
+}

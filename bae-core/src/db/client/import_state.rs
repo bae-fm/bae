@@ -434,6 +434,58 @@ impl Database {
             .await
     }
 
+    /// Every release a scan stored reading the files `content_hash` names at
+    /// file decision revision `file_edit_revision`, under whichever root, with
+    /// those files in key order: what a file decision settles together.
+    pub async fn load_releases_reading(
+        &self,
+        content_hash: &str,
+        file_edit_revision: u64,
+    ) -> Result<Vec<(String, crate::import::folder_scanner::CategorizedFiles)>, DbError> {
+        let content_hash = content_hash.to_string();
+        let file_edit_revision = to_i64(file_edit_revision, "a file decision revision")?;
+        self.read(move |sql| {
+            let keys = sql.query(
+                "SELECT path FROM scan_candidate \
+                 WHERE content_hash = ? AND file_edit_revision = ? \
+                   AND kind IN ('tentative', 'valid') \
+                 ORDER BY watched_folder_path, path",
+                params![content_hash, file_edit_revision],
+                |row| row.get::<_, String>(0),
+            )?;
+            keys.into_iter()
+                .map(|key| {
+                    folder_scans::read::load_item_by_key_rows(
+                        &sql,
+                        &key,
+                        folder_scans::RowSources::Any,
+                    )?
+                    .ok_or_else(|| {
+                        DbError::Message(format!("{key} vanished between its two reads"))
+                    })
+                })
+                .collect::<Result<Vec<_>, DbError>>()
+        })
+        .process(|releases| {
+            releases
+                .into_iter()
+                .map(|release| match release()?.1 {
+                    folder_scans::read::StoredScanItem {
+                        key,
+                        item:
+                            crate::import::folder_scanner::ScanItem::Discovered(candidate)
+                            | crate::import::folder_scanner::ScanItem::Valid(candidate),
+                        ..
+                    } => Ok((key, candidate.files)),
+                    folder_scans::read::StoredScanItem { key, .. } => Err(DbError::Message(
+                        format!("{key} is stored as a release with files but reads as none"),
+                    )),
+                })
+                .collect()
+        })
+        .await
+    }
+
     /// One candidate's file decisions, by one indexed lookup, for a scan that
     /// has just computed the content hash.
     pub async fn load_candidate_file_edits(

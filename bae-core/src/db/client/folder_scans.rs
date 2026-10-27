@@ -448,30 +448,6 @@ impl Database {
         .await
     }
 
-    /// Every stored entry under every watched root.
-    pub async fn load_all_folder_scan_items(&self) -> Result<Vec<ScanItem>, DbError> {
-        self.read(move |sql| {
-            let roots = sql.query(
-                "SELECT watched_folder_path FROM folder_scan_roots ORDER BY watched_folder_path",
-                [],
-                |row| row.get::<_, String>(0),
-            )?;
-            let mut items = Vec::new();
-            for root in roots {
-                items.push(load_folder_scan_items_on(&sql, &root, RowSources::Any)?);
-            }
-            Ok(items)
-        })
-        .process(|roots| {
-            let mut items = Vec::new();
-            for root in roots {
-                items.extend(root()?);
-            }
-            Ok(items)
-        })
-        .await
-    }
-
     /// The stored entry at `entry_key`, whichever root it is under.
     pub async fn load_folder_scan_item(
         &self,

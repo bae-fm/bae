@@ -545,10 +545,15 @@ impl LibraryManager {
             .await?)
     }
 
-    pub async fn load_all_folder_scan_items(
+    pub async fn load_releases_reading(
         &self,
-    ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, LibraryError> {
-        Ok(self.database.load_all_folder_scan_items().await?)
+        content_hash: &str,
+        file_edit_revision: u64,
+    ) -> Result<Vec<(String, crate::import::folder_scanner::CategorizedFiles)>, LibraryError> {
+        Ok(self
+            .database
+            .load_releases_reading(content_hash, file_edit_revision)
+            .await?)
     }
 
     pub async fn load_folder_scan_item(

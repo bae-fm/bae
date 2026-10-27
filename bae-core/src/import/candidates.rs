@@ -14,8 +14,7 @@
 //! a run published, how far an import has got — delivered per key.
 
 use super::folder_scanner::{
-    CategorizedFiles, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
-    InvalidCandidate, ScanItem,
+    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate, ScanItem,
 };
 use super::types::ImportStep;
 use crate::identify::IdentifyState;
@@ -278,25 +277,4 @@ pub(crate) fn offers_folder_reading(
             .into_iter()
             .any(|(path, grouped)| grouped && *path == folder),
     }
-}
-
-/// Every stored folder candidate that shares one file-decision identity, with
-/// its files — the set a file decision settles together.
-pub(crate) fn files_for_identity(
-    items: &[ScanItem],
-    content_hash: &str,
-    edit_revision: u64,
-) -> Vec<(String, CategorizedFiles)> {
-    items
-        .iter()
-        .filter_map(|item| match item {
-            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)
-                if candidate.files.content_hash() == content_hash
-                    && candidate.file_edit_revision == edit_revision =>
-            {
-                Some((candidate.key(), candidate.files.clone()))
-            }
-            _ => None,
-        })
-        .collect()
 }

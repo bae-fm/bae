@@ -728,11 +728,10 @@ impl ImportServiceHandle {
         decide(&mut edits);
 
         loop {
-            let matching_files = crate::import::candidates::files_for_identity(
-                &self.library_manager.load_all_folder_scan_items().await?,
-                &content_hash,
-                expected_revision,
-            );
+            let matching_files = self
+                .library_manager
+                .load_releases_reading(&content_hash, expected_revision)
+                .await?;
             let matching_keys = matching_files
                 .iter()
                 .map(|(key, _)| key.clone())
@@ -804,14 +803,13 @@ impl ImportServiceHandle {
                 .await?;
             // A scan may have added or dropped a folder with these files while
             // this was prepared; if so, prepare again.
-            let matching_now = crate::import::candidates::files_for_identity(
-                &self.library_manager.load_all_folder_scan_items().await?,
-                &content_hash,
-                expected_revision,
-            )
-            .into_iter()
-            .map(|(key, _)| key)
-            .collect::<std::collections::BTreeSet<_>>();
+            let matching_now = self
+                .library_manager
+                .load_releases_reading(&content_hash, expected_revision)
+                .await?
+                .into_iter()
+                .map(|(key, _)| key)
+                .collect::<std::collections::BTreeSet<_>>();
             if matching_now != matching_keys {
                 drop(commit);
                 continue;

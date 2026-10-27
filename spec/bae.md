@@ -995,7 +995,8 @@ editor show a track's position and edit only its title and artists.
 A file decision that gains a track, or moves a CUE sheet to another disc,
 places that audio as the folder lays it out, adding a medium of unstated
 carrier where the draft holds fewer; a medium no track sits on any more is
-dropped.
+dropped. A file decision is kept under the files' hash, so it settles every
+folder holding the same files in one write, each found by that hash.
 
 **What the files' tags say.** The tags are read whole: a tag stating a value
 more than once (two `ARTIST` comments, an ID3v2.4 frame of two values) states
