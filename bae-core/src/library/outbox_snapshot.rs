@@ -86,9 +86,6 @@ pub struct UploadProgress {
     pub uploading: u32,
 }
 impl UploadProgress {
-    pub fn has_transition(&self) -> bool {
-        self.queued > 0 || self.uploading > 0
-    }
     pub fn activity(&self) -> Option<UploadActivity> {
         if self.uploading > 0 {
             Some(UploadActivity::Uploading)

@@ -653,11 +653,6 @@ pub struct PathInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct FolderInput {
-    pub folder: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CandidateKeyInput {
     pub candidate_key: String,
 }

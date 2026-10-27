@@ -92,14 +92,6 @@ impl ContentTypeHint {
         )
     }
 
-    /// Whether `path`'s extension classifies as audio. Returns `false` for
-    /// paths with no extension or non-UTF-8 extensions.
-    pub fn path_is_audio(path: &Path) -> bool {
-        path.extension()
-            .and_then(|e| e.to_str())
-            .is_some_and(|e| Self::from_extension(e).is_audio())
-    }
-
     pub fn is_image(&self) -> bool {
         matches!(
             self,

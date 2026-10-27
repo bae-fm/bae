@@ -48,20 +48,6 @@ impl SourceDurations {
             .find(|unit| &unit.audio == audio)
             .map(|unit| unit.duration_ms)
     }
-
-    /// One file playing for `duration_ms` — for a test that needs some
-    /// durations and has no folder behind them.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn totalling(duration_ms: u64) -> Self {
-        Self {
-            units: vec![SourceDuration {
-                audio: AudioFile::Standalone {
-                    file_id: "audio".to_string(),
-                },
-                duration_ms,
-            }],
-        }
-    }
 }
 /// Project every audio unit from the scan's authoritative per-file facts.
 pub fn source_durations(files: &CategorizedFiles) -> Result<SourceDurations, ImportError> {

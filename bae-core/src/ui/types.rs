@@ -126,17 +126,6 @@ pub enum UiError {
 }
 
 impl UiError {
-    /// Reconnecting can retry a failed cycle, but cannot teach this app a newer schema.
-    pub fn can_reconnect_sync(&self) -> bool {
-        !matches!(
-            self,
-            Self::Diagnostic {
-                category: UiErrorCategory::SyncUpdateRequired,
-                ..
-            }
-        )
-    }
-
     /// A diagnostic error in the given category, with the underlying error's
     /// `Display` text as the opaque, log-only detail. bae's and coven's errors
     /// each print their cause in their own message, so that text is the whole
