@@ -416,7 +416,6 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
 @MainActor
 final class ImportMetadataCardLayoutTests: XCTestCase {
     func testSourceActionsLeadTheCardAboveCoverAndFields() async throws {
-        NSApplication.shared.finishLaunching()
         let provenances: [BridgeMetadataProvenance?] = [
             nil,
             .fileMetadata,
@@ -433,7 +432,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     func testIdentityFieldsSitBesideTheCoverAndReleaseFieldsUnderIt()
         async throws
     {
-        NSApplication.shared.finishLaunching()
         let recorder = MetadataCardActionRecorder()
         try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
@@ -486,7 +484,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     /// The pressing fields are part of the card in every state — there is no
     /// fold to open before the year, label and catalog number can be checked.
     func testReleaseFieldsStayInViewWithTheAlbumIdentity() async throws {
-        NSApplication.shared.finishLaunching()
         let recorder = MetadataCardActionRecorder()
         try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
@@ -695,7 +692,6 @@ extension ImportMetadataCardLayoutTests {
     }
 
     func testSourceAudioSummaryHasNoDisclosureControl() async throws {
-        NSApplication.shared.finishLaunching()
         let sourceAudio = try XCTUnwrap(
             PreviewData.mappingCandidate.files.sourceAudio
         )
@@ -714,7 +710,6 @@ extension ImportMetadataCardLayoutTests {
     }
 
     func testAlbumIdentityTitleOutsizesItsYear() async throws {
-        NSApplication.shared.finishLaunching()
         let recorder = MetadataCardActionRecorder()
         try await SnapshotTestSupport.withHostedWindow(
             metadataHeader(
