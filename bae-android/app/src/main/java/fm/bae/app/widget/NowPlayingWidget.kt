@@ -1,7 +1,7 @@
 package fm.bae.app.widget
 
 import android.content.Context
-import android.graphics.drawable.Icon
+import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
@@ -34,10 +34,13 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeApp
+import fm.bae.app.BaeLogger
+import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.DecodeSize
+import fm.bae.app.data.ImageContent
 import fm.bae.app.mainActivityIntent
-import fm.bae.app.playback.ArtworkContentProvider
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -49,9 +52,13 @@ import fm.bae.app.ui.appearance.appearanceColorScheme
 import fm.bae.app.ui.appearance.appearanceFile
 import fm.bae.app.ui.appearance.readAppearancePreferences
 import fm.bae.app.ui.appearance.surfaces
+import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeImageRef
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight as ComposeFontWeight
 import androidx.glance.color.ColorProvider as DayNightColorProvider
+
+private val logger = BaeLogger("bae.NowPlayingWidget")
 
 /**
  * Home-screen now-playing widget, drawn from the file-backed [WidgetSnapshot],
@@ -67,11 +74,49 @@ class NowPlayingWidget : GlanceAppWidget() {
         if (read is WidgetRead.Damaged) {
             (context.applicationContext as BaeApp).bugs.reportShownInPlace("read the widget's saved track", read.error)
         }
-        val content = widgetContent(read, AppSessionHolder.currentSession()?.playback)
+        val session = AppSessionHolder.currentSession()
+        val content = widgetContent(read, session?.playback)
+        val cover = widgetCover(context, (content as? WidgetContent.Track)?.track?.coverImage, session)
         val preferences = readAppearancePreferences(appearanceFile(context))
         provideContent {
             GlanceTheme(colors = widgetColors(preferences)) {
-                NowPlayingWidgetContent(content, placeholder = placeholderColor(preferences))
+                NowPlayingWidgetContent(content, cover, placeholder = placeholderColor(preferences))
+            }
+        }
+    }
+}
+
+/**
+ * The now-playing cover decoded at the widget's cover size, or null for the
+ * placeholder: no cover, no open library to read it from, or a read that failed
+ * (logged). The launcher draws the widget in its own process, so the cover
+ * crosses to it as pixels; a `content://` URI of this app's unexported artwork
+ * provider is one the launcher cannot read.
+ */
+private suspend fun widgetCover(
+    context: Context,
+    image: BridgeImageRef?,
+    session: OpenLibrary?,
+): Bitmap? {
+    val pixels = (ThemeSize.barArtwork.value * context.resources.displayMetrics.density).roundToInt()
+    return when {
+        image == null -> {
+            null
+        }
+
+        session == null -> {
+            logger.debug("widget cover ${image.id} with no open library to read it from")
+            null
+        }
+
+        else -> {
+            try {
+                session.imageStore.image(ImageContent.LibraryImage(image), DecodeSize.FitTo(pixels))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.error("failed to load the widget's cover ${image.id}", e)
+                null
             }
         }
     }
@@ -80,6 +125,7 @@ class NowPlayingWidget : GlanceAppWidget() {
 @Composable
 private fun NowPlayingWidgetContent(
     content: WidgetContent,
+    cover: Bitmap?,
     placeholder: ColorProvider,
 ) {
     val context = LocalContext.current
@@ -94,7 +140,7 @@ private fun NowPlayingWidgetContent(
                 .clickable(actionStartActivity(mainActivityIntent(context))),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Cover(track?.coverImage, placeholder)
+        Cover(cover, placeholder)
         Spacer(GlanceModifier.width(ThemeSpace.group))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
@@ -134,12 +180,11 @@ private fun NowPlayingWidgetContent(
 
 @Composable
 private fun Cover(
-    coverImage: BridgeImageRef?,
+    cover: Bitmap?,
     placeholder: ColorProvider,
 ) {
-    val context = LocalContext.current
     val coverSize = ThemeSize.barArtwork
-    if (coverImage == null) {
+    if (cover == null) {
         Spacer(
             modifier =
                 GlanceModifier
@@ -148,10 +193,8 @@ private fun Cover(
                     .background(placeholder),
         )
     } else {
-        // Glance has no Uri ImageProvider, so an Icon carries the artwork URI for ArtworkContentProvider.
-        val coverIcon = Icon.createWithContentUri(ArtworkContentProvider.uriFor(context, coverImage))
         Image(
-            provider = ImageProvider(coverIcon),
+            provider = ImageProvider(cover),
             contentDescription = null,
             modifier = GlanceModifier.size(coverSize).cornerRadius(ThemeRadius.artwork),
             contentScale = ContentScale.Crop,

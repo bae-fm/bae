@@ -85,8 +85,8 @@ internal fun widgetContent(
 
 /**
  * The track fields the widget shows. [coverImage] is the reference the widget
- * resolves to cover bytes through the same `content://` artwork path the media
- * browse clients use ([fm.bae.app.playback.ArtworkContentProvider]).
+ * reads the cover by from the open library's image store, decoding it at the
+ * widget's cover size.
  */
 data class WidgetTrack(
     val title: String,
