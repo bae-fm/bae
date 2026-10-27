@@ -2,7 +2,6 @@ use super::{
     IdentificationStatus, ImportStanding, PendingStanding, TriagePlacement, TriageRuntimeFacts,
     TriageSkipAction,
 };
-use crate::identify::{Declined, VerdictKind, VerdictSummary};
 
 /// Commands offered for a candidate at its current lifecycle position —
 /// every one a candidate can take, so every surface that acts on candidates
@@ -52,12 +51,12 @@ impl CandidateAction {
 /// What the tables say a candidate's commands are decided from: whether it can
 /// be acted on at all, where it is placed, whether its draft would import, and
 /// what its stored lookup came to — none offers identifying it, and a failed
-/// one offers a retry whatever the draft over it says — and where they put the
-/// row among Found's states.
+/// one offers a retry whatever the draft over it says. The list's placement
+/// holds each of them per row (`import_list_placement`).
 ///
-/// The commands a row offers and the state it is in are these facts and what
-/// is running for it right now, its standing: the read that places the row
-/// composes the two into the row's [`CandidateLiveState`].
+/// The commands a row offers are these facts and what is running for it right
+/// now, its standing: the read that places the row composes the two into the
+/// row's [`CandidateLiveState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateActionBasis {
     pub actionable: bool,
@@ -70,8 +69,6 @@ pub struct CandidateActionBasis {
     /// Whether this release is folders a grouping reads as one, which the
     /// candidate offers to read as releases of their own.
     pub separable: bool,
-    /// Where the tables put the row among Found's states; `None` off Found.
-    pub standing: Option<PendingStanding>,
 }
 
 /// What a candidate's stored lookup came to.
@@ -84,28 +81,16 @@ pub enum StoredLookup {
     Failed,
 }
 
-impl StoredLookup {
-    pub(crate) fn of(verdict: &VerdictSummary) -> Self {
-        match verdict.kind {
-            VerdictKind::Failed | VerdictKind::Error { .. } => Self::Failed,
-            VerdictKind::Found if verdict.declined() == Some(Declined::UnreadDocument) => {
-                Self::Failed
-            }
-            VerdictKind::Found | VerdictKind::NotFound | VerdictKind::ManualOnly => Self::Answered,
-        }
-    }
-}
-
 impl CandidateActionBasis {
     /// `lookup` is what the candidate's stored lookup came to, or `None` with
     /// none stored.
+    #[cfg(test)]
     pub(crate) fn of(
         actionable: bool,
         placement: &TriagePlacement,
         draft_valid: bool,
         lookup: Option<StoredLookup>,
         separable: bool,
-        standing: Option<PendingStanding>,
     ) -> Self {
         Self {
             actionable,
@@ -113,7 +98,6 @@ impl CandidateActionBasis {
             draft_valid,
             lookup,
             separable,
-            standing,
         }
     }
 
@@ -226,7 +210,8 @@ impl CandidateActionBasis {
 
 /// What is running for one candidate right now, and the commands its row
 /// offers and the state it is in with it: the part of a row its standing
-/// decides, read with the row from the standings table.
+/// decides, read with the row from the standings table and the list's
+/// placement, which counts the standing in the row's state.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CandidateLiveState {
     pub facts: TriageRuntimeFacts,
@@ -236,13 +221,16 @@ pub struct CandidateLiveState {
 }
 
 impl CandidateLiveState {
-    pub fn of(basis: &CandidateActionBasis, facts: TriageRuntimeFacts) -> Self {
+    /// The row's live state from its basis, what is running for it, and the
+    /// state the placement puts it in with that.
+    pub fn of(
+        basis: &CandidateActionBasis,
+        facts: TriageRuntimeFacts,
+        standing: Option<PendingStanding>,
+    ) -> Self {
         Self {
             actions: basis.actions(&facts),
-            standing: basis
-                .standing
-                .clone()
-                .map(|standing| standing.with_live(&facts)),
+            standing,
             facts,
         }
     }
@@ -254,7 +242,7 @@ mod tests {
     use super::*;
 
     fn basis(placement: TriagePlacement, lookup: Option<StoredLookup>) -> CandidateActionBasis {
-        CandidateActionBasis::of(true, &placement, true, lookup, false, None)
+        CandidateActionBasis::of(true, &placement, true, lookup, false)
     }
 
     fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
@@ -284,12 +272,12 @@ mod tests {
                 "{placement:?}"
             );
             assert!(
-                !CandidateActionBasis::of(true, &placement, false, None, false, None)
+                !CandidateActionBasis::of(true, &placement, false, None, false)
                     .actions(&rest)
                     .contains(&CandidateAction::Import)
             );
             assert_eq!(
-                CandidateActionBasis::of(false, &placement, true, None, false, None)
+                CandidateActionBasis::of(false, &placement, true, None, false)
                     .actions(&TriageRuntimeFacts::default()),
                 vec![CandidateAction::RevealFolder],
                 "a candidate that cannot be acted on still shows where it is"
@@ -368,14 +356,8 @@ mod tests {
     #[test]
     fn a_pick_being_read_offers_import_until_it_is_asked() {
         for draft_valid in [true, false] {
-            let basis = CandidateActionBasis::of(
-                true,
-                &TriagePlacement::Pending,
-                draft_valid,
-                None,
-                false,
-                None,
-            );
+            let basis =
+                CandidateActionBasis::of(true, &TriagePlacement::Pending, draft_valid, None, false);
             assert_eq!(
                 basis.actions(&identifying(IdentificationStatus::ReadingPick {
                     import_asked: false
@@ -430,19 +412,17 @@ mod tests {
     #[test]
     fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
         let rest = TriageRuntimeFacts::default();
-        let grouped =
-            CandidateActionBasis::of(true, &TriagePlacement::Pending, true, None, true, None);
+        let grouped = CandidateActionBasis::of(true, &TriagePlacement::Pending, true, None, true);
         assert!(grouped.actions(&rest).contains(&CandidateAction::Separate));
         assert!(!grouped.actions(&rest).contains(&CandidateAction::Combine));
-        let blocked =
-            CandidateActionBasis::of(false, &TriagePlacement::Failed, true, None, true, None);
+        let blocked = CandidateActionBasis::of(false, &TriagePlacement::Failed, true, None, true);
         assert_eq!(
             blocked.actions(&rest),
             vec![CandidateAction::Separate, CandidateAction::RevealFolder]
         );
         let lone = basis(TriagePlacement::Pending, Some(StoredLookup::Answered));
         assert!(lone.actions(&rest).contains(&CandidateAction::Combine));
-        let done = CandidateActionBasis::of(true, &TriagePlacement::Done, true, None, true, None);
+        let done = CandidateActionBasis::of(true, &TriagePlacement::Done, true, None, true);
         assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
         let importing = TriageRuntimeFacts {
             identification: None,

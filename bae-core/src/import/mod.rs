@@ -292,10 +292,10 @@ pub use import_failure::{ImportFailure, ImportFailureReason};
 pub use list::{
     ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement, FolderScanActivity,
     FolderScanProgress, ImportCandidateDetail, ImportCandidateDetailProjection,
-    ImportCandidateListLocation, ImportListItem, ImportListNarrowing, ImportListOrder,
-    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListSubscription,
-    ImportListSubscriptionError, ImportListView, ImportListWindow, ImportQueueSummary,
-    NarrowedCount, PendingFilter, PendingFilterEntry, UploadStatus, UploadStatusKnown,
+    ImportCandidateListLocation, ImportListId, ImportListItem, ImportListNarrowing,
+    ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
+    ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
+    ImportQueueSummary, ListedRelease, NarrowedCount, PendingFilter, PendingFilterEntry,
 };
 pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
 #[cfg(desktop)]
@@ -319,10 +319,10 @@ pub use session::{
 #[cfg(desktop)]
 pub use triage::{
     BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
-    ImportStanding, LiveStanding, MatchEvidence, MatchedPressing, MatchedRelease, MatchedSignal,
-    NeedsYouReason, PendingBadge, PendingStanding, PendingState, StoredLookup, TriageGroup,
-    TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow, TriageRuntimeFacts,
-    TriageSkipAction, TriageTab, TriageTabCounts,
+    ImportStanding, MatchEvidence, MatchedPressing, MatchedRelease, MatchedSignal, NeedsYouReason,
+    PendingBadge, PendingStanding, PendingState, StoredLookup, TriageGroup, TriageImportStatus,
+    TriageMetadataSummary, TriagePlacement, TriageRow, TriageRuntimeFacts, TriageSkipAction,
+    TriageTab, TriageTabCounts,
 };
 #[cfg(desktop)]
 pub use types::ImportCommand;

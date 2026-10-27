@@ -30,7 +30,7 @@ async fn decision_never_beside_identifying(
     decide: impl std::future::Future<Output = ()> + Send + 'static,
     decided: impl Fn(&[(TriageRow, bool)]) -> bool,
 ) {
-    let list = handle.subscribe_whole_list(view);
+    let list = handle.subscribe_whole_list(view).await;
     tokio::time::timeout(HANG_GUARD, list.next())
         .await
         .expect("the list delivers")

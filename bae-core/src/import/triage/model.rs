@@ -11,6 +11,13 @@ pub enum TriageTab {
 
 /// Which tab a row belongs to, and whether its last import failed, read from
 /// the tables alone; what is running for it is its [`CandidateLiveState`].
+///
+/// The list's placement decides it (`import_list_entry`, in the schema), in
+/// one order: **Done first**, a folder whose files this device imported, in
+/// this session or an earlier one, wherever the folder sits now and whether or
+/// not it was ever skipped; **then Skipped**, a decision the person already
+/// made; **then a failed attempt**, Pending work with its failure stated;
+/// **otherwise Pending**.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriagePlacement {
     /// Not imported here and not skipped.
@@ -152,33 +159,14 @@ impl TriageMetadataSummary {
             album_artists: crate::import::credited_line(&draft.album_artist_assignments),
         })
     }
-
-    /// The same summary from the stored draft's columns.
-    pub(crate) fn of_columns(
-        album_title: String,
-        album_artist_assignments: Vec<crate::import::Credited>,
-        blank: bool,
-        answered: bool,
-    ) -> Option<Self> {
-        if blank && !answered {
-            return None;
-        }
-        Some(Self {
-            album_title,
-            album_artists: crate::import::credited_line(&album_artist_assignments),
-        })
-    }
 }
 
 impl MatchedRelease {
-    /// The release a stored verdict leads with; its pressing only when the
-    /// verdict found exactly one.
-    pub fn of_summary(summary: &VerdictSummary) -> Option<Self> {
-        let lead = summary.lead.as_ref()?;
-        // A failed lookup may have named other pressings.
-        let settled =
-            summary.kind == crate::identify::VerdictKind::Found && summary.pressing_count == 1;
-        Some(Self {
+    /// The release a stored verdict leads with, `lead`; its pressing only when
+    /// the verdict is `settled`, having found exactly one. A failed lookup may
+    /// have named other pressings, so it never is.
+    pub fn of_lead(lead: &LeadMatch, settled: bool) -> Self {
+        Self {
             release_id: lead.release_id.clone(),
             title: lead.title.clone(),
             artist: lead.artist.clone(),
@@ -192,7 +180,7 @@ impl MatchedRelease {
                 source: lead.source,
                 signal: MatchedSignal::of(lead),
             },
-        })
+        }
     }
 
     /// The release the person picked, as its documents describe it, its
@@ -306,16 +294,6 @@ pub struct TriageRow {
     pub selected: bool,
 }
 
-impl TriageRow {
-    /// The text the row shows, which the list's filter matches against.
-    pub(crate) fn shown_text(&self) -> Vec<&str> {
-        match &self.metadata_summary {
-            None => vec![self.folder_name.as_str()],
-            Some(summary) => vec![summary.album_title.as_str(), summary.album_artists.as_str()],
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageGroup {
     pub key: FolderReleaseDecisionKey,
@@ -325,7 +303,7 @@ pub struct TriageGroup {
     pub combinable: bool,
 }
 
-/// How many rows each tab holds, counted in the pass that places them.
+/// How many rows each tab holds.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TriageTabCounts {
     pub pending: u32,
@@ -343,11 +321,12 @@ impl TriageTabCounts {
         }
     }
 
-    pub(crate) fn bump(&mut self, tab: TriageTab) {
+    /// Count `count` more entries on `tab`.
+    pub(crate) fn add(&mut self, tab: TriageTab, count: u32) {
         match tab {
-            TriageTab::Pending => self.pending += 1,
-            TriageTab::Done => self.done += 1,
-            TriageTab::Skipped => self.skipped += 1,
+            TriageTab::Pending => self.pending += count,
+            TriageTab::Done => self.done += count,
+            TriageTab::Skipped => self.skipped += count,
         }
     }
 }

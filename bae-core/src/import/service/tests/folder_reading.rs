@@ -120,18 +120,20 @@ impl DecisionFixture {
         let mut live = self
             .manager()
             .subscribe_import_list(crate::import::ImportListRequest {
-                view: crate::import::ImportListView {
+                list: self
+                    .manager()
+                    .open_import_list(crate::import::ImportListView {
                     order: crate::import::ImportListOrder::PathAscending,
                     ..crate::import::ImportListView::default()
-                },
+                })
+                    .await
+                    .unwrap(),
                 windows: [crate::library::LibraryPageWindow {
                     offset: 0,
                     limit: 50,
                 }]
                 .into_iter()
                 .collect(),
-                upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-                selected: Default::default(),
             });
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {

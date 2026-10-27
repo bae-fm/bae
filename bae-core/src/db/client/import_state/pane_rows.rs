@@ -188,7 +188,8 @@ pub(crate) fn load_pane_rows_on(
             ))
         })?;
     Ok(DbCandidatePaneRows {
-        cover: load_covers_on(sql, Some(content_hash))?.remove(content_hash),
+        cover: load_covers_on(sql, super::super::query::CandidateRows::Of(&[content_hash]))?
+            .remove(content_hash),
         cover_options: load_cover_options_on(sql, content_hash)?,
         draft: metadata_draft,
         failure: load_failure_on(sql, content_hash)?,
@@ -196,17 +197,18 @@ pub(crate) fn load_pane_rows_on(
     })
 }
 
-/// Every candidate's cover choice, or the one `only` names.
+/// The cover choice of every candidate `only` names.
 pub(crate) fn load_covers_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+    only: super::super::query::CandidateRows<'_>,
 ) -> Result<HashMap<String, CoverSelection>, DbError> {
+    let only = only.filter("content_hash");
     let rows = sql.query(
         &format!(
-            "SELECT {COVER_COLUMNS} FROM import_candidate_cover \
-             WHERE :only IS NULL OR content_hash = :only"
+            "SELECT {COVER_COLUMNS} FROM import_candidate_cover {}",
+            only.clause
         ),
-        named_params! { ":only": only },
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>("content_hash")?,
@@ -219,9 +221,11 @@ pub(crate) fn load_covers_on(
     )?;
     let mut copies: HashMap<String, Vec<DownscaledCopy>> = HashMap::new();
     for (content_hash, max_edge, url) in sql.query(
-        "SELECT content_hash, max_edge, url FROM import_candidate_cover_copy \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, max_edge, url FROM import_candidate_cover_copy {}",
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,

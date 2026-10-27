@@ -7,22 +7,34 @@ use super::live_query_tests::{live_db, next_run_is_only_the_request, ALBUM_ID, R
 use std::time::Duration;
 /// The import list's request carries the view and the windows, so every test
 /// below states both.
-pub(super) fn list_request(
+/// A list opened on `tab` in path order, read through `windows`.
+pub(super) async fn list_request(
+    db: &Database,
     tab: crate::import::TriageTab,
     windows: impl IntoIterator<Item = (u64, u64)>,
 ) -> crate::import::ImportListRequest {
-    crate::import::ImportListRequest {
-        view: crate::import::ImportListView {
+    let list = db
+        .open_import_list(crate::import::ImportListView {
             tab,
             order: crate::import::ImportListOrder::PathAscending,
             ..crate::import::ImportListView::default()
-        },
+        })
+        .await
+        .unwrap();
+    through(list, windows)
+}
+
+/// The list `list` read through `windows`.
+pub(super) fn through(
+    list: crate::import::ImportListId,
+    windows: impl IntoIterator<Item = (u64, u64)>,
+) -> crate::import::ImportListRequest {
+    crate::import::ImportListRequest {
+        list,
         windows: windows
             .into_iter()
             .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
             .collect(),
-        upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-        selected: Default::default(),
     }
 }
 
@@ -96,8 +108,9 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     db.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
 
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
+    let mut live = db.subscribe_import_list(
+        list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await,
+    );
     let initial = live
         .next()
         .await
@@ -130,7 +143,7 @@ async fn a_done_row_is_the_row_it_was_in_found() {
     db.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
     let found = rows(
-        &db.load_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]))
+        &db.load_import_list(list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await)
             .await
             .unwrap(),
     );
@@ -138,7 +151,7 @@ async fn a_done_row_is_the_row_it_was_in_found() {
 
     record_import(&db, &candidate.files.content_hash()).await;
     let done = rows(
-        &db.load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
+        &db.load_import_list(list_request(&db, crate::import::TriageTab::Done, [(0, 50)]).await)
             .await
             .unwrap(),
     );
@@ -178,7 +191,7 @@ async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
     assert!(db.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
 
     let projection = db
-        .load_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]))
+        .load_import_list(list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await)
         .await
         .unwrap();
     assert_eq!(projection.summary.counts.pending, 1);
@@ -205,7 +218,7 @@ async fn a_moved_folder_stays_done() {
     let moved = scanned(&db, root, "renamed").await;
     assert_eq!(moved.files.content_hash(), imported.files.content_hash());
     let projection = db
-        .load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
+        .load_import_list(list_request(&db, crate::import::TriageTab::Done, [(0, 50)]).await)
         .await
         .unwrap();
     assert_eq!(candidate_names(&projection), vec!["renamed".to_string()]);
@@ -222,8 +235,8 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
     let candidate = scanned(&db, root, "release").await;
     record_import(&db, &candidate.files.content_hash()).await;
 
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]));
+    let mut live = db
+        .subscribe_import_list(list_request(&db, crate::import::TriageTab::Done, [(0, 50)]).await);
     assert_eq!(
         live.next()
             .await
@@ -331,7 +344,9 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
-    let live = db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
+    let request = list_request(&db, crate::import::TriageTab::Pending, [(0, 1)]).await;
+    let list = request.list;
+    let live = db.subscribe_import_list(request);
     let requests = live.requests();
     let mut live = live;
     let initial = live.next().await.expect("the query stays open");
@@ -341,9 +356,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
         vec!["first".to_string()]
     );
 
-    requests
-        .set(list_request(crate::import::TriageTab::Pending, [(1, 1)]))
-        .unwrap();
+    requests.set(through(list, [(1, 1)])).unwrap();
     let moved = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the window change reruns the query")
@@ -373,8 +386,9 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
+    let request = list_request(&db, crate::import::TriageTab::Pending, [(0, 1)]).await;
+    let list = request.list;
+    let mut live = db.subscribe_import_list(request);
     let initial = live
         .next()
         .await
@@ -393,13 +407,10 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     )
     .await;
 
-    let moved = next_run_is_only_the_request(
-        &mut live,
-        list_request(crate::import::TriageTab::Pending, [(0, 1), (1, 1)]),
-    )
-    .await
-    .result
-    .unwrap();
+    let moved = next_run_is_only_the_request(&mut live, through(list, [(0, 1), (1, 1)]))
+        .await
+        .result
+        .unwrap();
     assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
 

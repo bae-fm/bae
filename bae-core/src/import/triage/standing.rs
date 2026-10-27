@@ -7,8 +7,9 @@
 //! states it covers. Every row its Needs You entry holds wears one badge
 //! saying why ([`PendingStanding::badge`]), and no other row wears any.
 //!
-//! The tables decide most of it and what is running for the candidate the
-//! rest. Where more than one could apply, the first of these wins:
+//! The list's placement decides each row's state (`import_list_entry`, in the
+//! schema), from the tables and what is running for the candidate. Where more
+//! than one could apply, the first of these wins:
 //!
 //! 1. **Importing** — an import is queued or running.
 //! 2. **Identifying** — a run is queued, running, or writing an answer that
@@ -32,9 +33,7 @@
 //! A lookup error is a catalog's; an error is bae's own, which the row states
 //! with its text.
 
-use super::{IdentificationStatus, TriagePlacement, TriageRuntimeFacts};
-use crate::identify::{Declined, FolderCheck, MediumConflict, VerdictKind, VerdictSummary};
-use crate::import::ReleaseLink;
+use crate::identify::MediumConflict;
 use crate::signals::InternalFailure;
 
 /// One state a Found row is in.
@@ -49,64 +48,6 @@ pub enum PendingState {
     Error,
     Importing,
     ImportError,
-}
-
-/// The state what is running for a candidate puts it in, over whatever the
-/// tables say.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LiveStanding {
-    Identifying,
-    /// The run picked its release unattended, which is being read in full
-    /// before the answer is written.
-    ReadingPick,
-    /// bae could not store a run's answer.
-    Error {
-        failure: InternalFailure,
-    },
-    Importing,
-}
-
-impl LiveStanding {
-    /// `None` while nothing running decides the candidate's state.
-    pub fn of(facts: &TriageRuntimeFacts) -> Option<Self> {
-        if facts.importing() {
-            return Some(Self::Importing);
-        }
-        match &facts.identification {
-            Some(
-                IdentificationStatus::Queued
-                | IdentificationStatus::Running
-                | IdentificationStatus::Finalizing,
-            ) => Some(Self::Identifying),
-            Some(IdentificationStatus::ReadingPick { .. }) => Some(Self::ReadingPick),
-            Some(IdentificationStatus::FinalizationFailed { failure }) => Some(Self::Error {
-                failure: InternalFailure {
-                    detail: failure.error().to_string(),
-                },
-            }),
-            None => None,
-        }
-    }
-
-    pub fn state(&self) -> PendingState {
-        match self {
-            Self::Identifying => PendingState::Identifying,
-            Self::ReadingPick => PendingState::Identified,
-            Self::Error { .. } => PendingState::Error,
-            Self::Importing => PendingState::Importing,
-        }
-    }
-}
-
-impl From<LiveStanding> for PendingStanding {
-    fn from(live: LiveStanding) -> Self {
-        match live {
-            LiveStanding::Identifying => Self::Identifying,
-            LiveStanding::ReadingPick => Self::Identified,
-            LiveStanding::Error { failure } => Self::Error { failure },
-            LiveStanding::Importing => Self::Importing,
-        }
-    }
 }
 
 /// Where one Found row stands: its [`PendingState`], why a row that needs
@@ -156,63 +97,6 @@ impl PendingStanding {
             Self::Error { .. } => PendingState::Error,
             Self::Importing => PendingState::Importing,
             Self::ImportError => PendingState::ImportError,
-        }
-    }
-
-    /// Where the tables put a row placed at `placement`, linked to `link`
-    /// and whose stored lookup came to `verdict`; `None` for a row off Found.
-    pub(crate) fn stored(
-        placement: TriagePlacement,
-        link: Option<&ReleaseLink>,
-        verdict: Option<&VerdictSummary>,
-    ) -> Option<Self> {
-        match placement {
-            TriagePlacement::Done | TriagePlacement::Skipped => return None,
-            TriagePlacement::Failed => return Some(Self::ImportError),
-            TriagePlacement::Pending => {}
-        }
-        if link.is_some() {
-            return Some(Self::Identified);
-        }
-        let Some(verdict) = verdict else {
-            return Some(Self::NotLookedUp);
-        };
-        if verdict.kept_own_draft {
-            return Some(Self::Unmatched);
-        }
-        let reason = match &verdict.kind {
-            VerdictKind::Error { failure } => {
-                return Some(Self::Error {
-                    failure: failure.clone(),
-                })
-            }
-            VerdictKind::Failed => return Some(Self::LookupError),
-            VerdictKind::NotFound => NeedsYouReason::NotFound,
-            VerdictKind::ManualOnly => NeedsYouReason::NothingToLookUp,
-            VerdictKind::Found => match verdict.declined() {
-                None => return Some(Self::Unmatched),
-                Some(Declined::UnreadDocument) => return Some(Self::LookupError),
-                Some(Declined::NothingFound) => NeedsYouReason::NotFound,
-                Some(Declined::Several) => NeedsYouReason::Matches {
-                    count: verdict.pressing_count,
-                },
-                Some(Declined::FolderCheck(check)) => match check {
-                    FolderCheck::SourceTracksUnknown => NeedsYouReason::NoTracklist,
-                    FolderCheck::MediumDisagrees { folder } => NeedsYouReason::MediumMismatch {
-                        folder,
-                        releases: verdict.pressing_count,
-                    },
-                },
-            },
-        };
-        Some(Self::NeedsYou { reason })
-    }
-
-    /// Where the row stands with `facts` running for its candidate.
-    pub fn with_live(self, facts: &TriageRuntimeFacts) -> Self {
-        match LiveStanding::of(facts) {
-            Some(live) => live.into(),
-            None => self,
         }
     }
 

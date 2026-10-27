@@ -704,7 +704,7 @@ impl ImportServiceHandle {
     /// The import list for `view` as one window over every item, for a test
     /// that watches it change.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_whole_list(
+    pub async fn subscribe_whole_list(
         &self,
         view: crate::import::ImportListView,
     ) -> crate::import::ImportListSubscription {
@@ -715,23 +715,24 @@ impl ImportServiceHandle {
                 limit: u64::MAX,
             },
         )
+        .await
     }
 
     /// The import list for `view` through one window, for a test that
     /// watches what changes off the page.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_list_window(
+    pub async fn subscribe_list_window(
         &self,
         view: crate::import::ImportListView,
         window: crate::library::LibraryPageWindow,
     ) -> crate::import::ImportListSubscription {
-        crate::import::ImportListSubscription::start(
-            |request| self.library_manager.subscribe_import_list(request),
+        crate::import::ImportListSubscription::open(
+            self.library_manager.clone(),
             view,
             std::iter::once(window).collect(),
-            self.library_manager.subscribe_outbox_values(),
-            &self.runtime_handle,
         )
+        .await
+        .expect("the import list opens")
     }
 
     /// The first folder scans `accept` admits, waiting through the query's
@@ -763,7 +764,7 @@ impl ImportServiceHandle {
         view: crate::import::ImportListView,
         mut accept: impl FnMut(&crate::import::ImportListSnapshot) -> bool,
     ) -> crate::import::ImportListSnapshot {
-        let subscription = self.subscribe_whole_list(view);
+        let subscription = self.subscribe_whole_list(view).await;
         loop {
             let snapshot = subscription
                 .next()

@@ -87,9 +87,9 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
         "a failed run is never imported unattended"
     );
 
-    let listed = queue_row(&fixture, &key).await;
+    let (listed, live) = queue_item(&fixture, &key).await;
     assert_eq!(
-        listed.action_basis.standing,
+        live.standing,
         Some(crate::import::PendingStanding::LookupError)
     );
     assert!(

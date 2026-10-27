@@ -86,13 +86,15 @@ fn separating_the_selection_selects_the_releases_it_returns() {
             .await
             .unwrap();
     });
-    let list = handle.subscribe_import_list(BridgeImportListView {
-        tab: BridgeTriageTab::Pending,
-        filter_text: String::new(),
-        pending_filter: BridgePendingFilter::All,
-        collapsed_groups: Vec::new(),
-        order: BridgeImportListOrder::PathAscending,
-    });
+    let list = handle
+        .runtime
+        .block_on(handle.subscribe_import_list(BridgeImportListView {
+            tab: BridgeTriageTab::Pending,
+            filter_text: String::new(),
+            pending_filter: BridgePendingFilter::All,
+            order: BridgeImportListOrder::PathAscending,
+        }))
+        .expect("the list opens");
     list.set_windows(vec![BridgeLibraryPageWindow {
         offset: 0,
         limit: 50,
@@ -100,10 +102,14 @@ fn separating_the_selection_selects_the_releases_it_returns() {
     .unwrap();
     until(&handle, &list, |snapshot| rows(snapshot).0 == parts);
 
-    let revision = list
-        .change_selection(BridgeSelectionChange::Replace {
-            keys: parts.clone(),
-        })
+    let revision = handle
+        .runtime
+        .block_on(
+            list.clone()
+                .change_selection(BridgeSelectionChange::Replace {
+                    keys: parts.clone(),
+                }),
+        )
         .unwrap();
     until(&handle, &list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 2

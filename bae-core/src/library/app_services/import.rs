@@ -2,10 +2,7 @@
 //! event bus, and the list and per-candidate subscriptions.
 
 use super::*;
-use crate::import::{
-    ImportCandidateDetail, ImportListProjection, ImportListRequest, ImportListSubscription,
-    ImportListView,
-};
+use crate::import::{ImportCandidateDetail, ImportListSubscription, ImportListView};
 
 impl AppServices {
     delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &str) -> Result<Vec<String>, crate::import::ImportError>);
@@ -257,23 +254,18 @@ impl AppServices {
         self.inner.import.every_runtime_change_for_test()
     }
 
-    /// The import list, reconfigurable by view and by window.
-    ///
-    /// The list reads the tables — where each candidate stands among them —
-    /// and the upload standing the Done tab is ordered by, which the
-    /// subscription keeps current on its own.
-    pub fn subscribe_import_list(
+    /// Open an import list showing `view`, reconfigurable by view and by
+    /// window, with nothing folded and nothing selected.
+    pub async fn subscribe_import_list(
         &self,
         view: ImportListView,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> ImportListSubscription {
-        ImportListSubscription::start(
-            |request| self.inner.manager.subscribe_import_list(request),
+    ) -> Result<ImportListSubscription, crate::library::LibraryError> {
+        ImportListSubscription::open(
+            self.inner.manager.clone(),
             view,
             crate::library::LibraryPageWindows::new(),
-            self.subscribe_outbox_values(),
-            runtime_handle,
         )
+        .await
     }
 
     /// Where each watched folder's scan stands: the first value at once, then
@@ -283,66 +275,16 @@ impl AppServices {
         self.inner.manager.subscribe_folder_scan_progress()
     }
 
-    /// The list request for one read of `view`: the upload standing as it
-    /// stands now.
-    pub(super) fn import_list_request(
-        &self,
-        view: ImportListView,
-        windows: crate::library::LibraryPageWindows,
-    ) -> ImportListRequest {
-        ImportListRequest {
-            view,
-            windows,
-            upload_status: crate::import::list::UploadStatus::of(
-                &self.subscribe_outbox_values().borrow(),
-            ),
-            // A read no list owns has no selection.
-            selected: Default::default(),
-        }
-    }
-
-    /// One read of the list, for a caller with no subscription.
+    /// One read of a list showing `view` through `windows`, for a caller
+    /// with no subscription: a list opened for the read and closed after it.
     pub async fn load_import_list(
         &self,
         view: ImportListView,
         windows: crate::library::LibraryPageWindows,
-    ) -> Result<ImportListProjection, crate::library::LibraryError> {
+    ) -> Result<crate::import::ImportListProjection, crate::library::LibraryError> {
         self.inner
             .manager
-            .load_import_list(self.import_list_request(view, windows))
-            .await
-    }
-
-    /// The tab, disclosure state and position that reveal one candidate at its
-    /// current placement.
-    pub async fn locate_import_candidate(
-        &self,
-        view: ImportListView,
-        candidate_key: &str,
-    ) -> Result<Option<crate::import::ImportCandidateListLocation>, crate::library::LibraryError>
-    {
-        self.inner
-            .manager
-            .locate_import_candidate(
-                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
-                candidate_key,
-            )
-            .await
-    }
-
-    /// The first candidate the identification count is still waiting on — one
-    /// queued, running or having its answer written — in the queue's order
-    /// under `view`. `None` when nothing is being identified, or nothing that
-    /// is has a row.
-    pub async fn first_identifying_candidate(
-        &self,
-        view: ImportListView,
-    ) -> Result<Option<String>, crate::library::LibraryError> {
-        self.inner
-            .manager
-            .first_identifying_import_candidate(
-                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
-            )
+            .load_import_list_once(view, windows)
             .await
     }
 

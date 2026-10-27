@@ -365,7 +365,8 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
         Some(1),
         "the failure is recorded"
     );
-    // The list places the release by its failure, and no other row moves.
+    // The list places the release by its failure — Found's import error,
+    // under Needs You, with its last import failed — and no other row moves.
     let placement = |state: &mut StoreState| state.rows.remove("import_list_placement").unwrap();
     let failed_row = format!("| candidate | {key} |");
     assert_eq!(
@@ -373,7 +374,12 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
         placement(&mut before)
             .into_iter()
             .map(|row| match row.contains(&failed_row) {
-                true => row.replace("| not_looked_up |", "| import_error |"),
+                true => row
+                    .replace("| not_looked_up | not_looked_up |", "| import_error | needs_you |")
+                    .replace(
+                        "| Integer(1) | Integer(0) | Integer(1) | Null | Integer(0)",
+                        "| Integer(1) | Integer(1) | Integer(1) | Null | Integer(0)",
+                    ),
                 false => row,
             })
             .collect::<Vec<_>>(),

@@ -13,6 +13,8 @@ pub(crate) use client::ArtistCredits;
 pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseFileStream;
 pub(crate) use client::ReleaseMetadataRows;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use client::SelectionWrite;
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, ArtistBrowseProjection, ArtistDetailProjection,
     ComposerBrowseProjection, ComposerDetailProjection, LibrarySearchProjection,
@@ -21,11 +23,6 @@ pub use client::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{AlbumFields, ReleaseEditWrite};
 pub use client::{ArtistWriteError, Database, ReleaseDeletion};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use client::{
-    CandidateListGrouping, CandidateStateListRow, FinishedScan, GroupingChanges, ImportQueueRows,
-    ScanCandidateKind, ScanCandidateListRow, ScanItemWrite,
-};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
@@ -36,6 +33,8 @@ pub(crate) use client::{
 pub use client::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
 };
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use client::{FinishedScan, GroupingChanges, ScanItemWrite};
 pub(crate) use client::{OutboxDisplayContext, OutboxDisplayRequest, QueueUpcomingRead};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),

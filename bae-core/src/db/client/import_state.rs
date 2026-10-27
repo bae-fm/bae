@@ -22,9 +22,7 @@ use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use import_commit::{
     end_import_attempt_of_commit, record_import_origin_on, require_import_commit_guard,
 };
-pub(super) use pane_rows::{
-    author_of, insert_draft, load_album_artist_assignments_on, load_covers_on, load_pane_rows_on,
-};
+pub(super) use pane_rows::{insert_draft, load_covers_on, load_pane_rows_on};
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     RunVerdictSaved, ScannedCandidateKey,
@@ -36,8 +34,8 @@ pub(super) use rows::{
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, insert_signals};
 pub(super) use standing_rows::{
-    change_identification_on, end_identification_unless_of_on, load_standing_facts_on,
-    load_standing_on, move_import_on,
+    change_identification_on, end_identification_unless_of_on, load_standing_on, move_import_on,
+    RuntimeFactColumns, RUNTIME_FACT_COLUMNS,
 };
 pub(crate) use standing_rows::{ImportClaim, StandingsRead};
 

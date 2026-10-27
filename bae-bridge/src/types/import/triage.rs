@@ -449,18 +449,18 @@ pub struct BridgeSelectionActionFailure {
 pub fn bridge_candidate_selection_offers(
     members: Vec<BridgeSelectionMember>,
 ) -> Vec<BridgeSelectionOffer> {
-    let members: Vec<bae_core::import::triage::SelectionMember> = members
+    let parts: Vec<bae_core::import::triage::SelectionPart> = members
         .into_iter()
-        .map(|member| bae_core::import::triage::SelectionMember {
-            candidate_key: member.candidate_key,
+        .map(|member| bae_core::import::triage::SelectionPart {
             actions: member
                 .actions
                 .into_iter()
                 .map(BridgeCandidateAction::into_core)
                 .collect(),
+            count: 1,
         })
         .collect();
-    bae_core::import::triage::selection_offers(&members)
+    bae_core::import::triage::selection_offers(&parts)
         .into_iter()
         .map(BridgeSelectionOffer::from_core)
         .collect()

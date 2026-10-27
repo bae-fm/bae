@@ -507,7 +507,6 @@ mirror_struct! {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
         pending_filter: (crate::types::BridgePendingFilter),
-        collapsed_groups: (each crate::types::BridgeFolderReleaseDecisionKey),
         order: (crate::types::BridgeImportListOrder),
     },
 }
@@ -596,12 +595,10 @@ impl crate::types::BridgeImportQueueSummary {
         let bae_core::import::ImportQueueSummary {
             counts,
             watched_folders,
-            group_keys,
-            pending_covers,
+            has_groups,
             narrowed,
             narrowing,
             first_selected_position,
-            done_upload_status,
         } = summary;
         Self {
             counts: crate::types::BridgeTriageTabCounts::from_core(counts),
@@ -609,27 +606,12 @@ impl crate::types::BridgeImportQueueSummary {
                 .into_iter()
                 .map(crate::types::BridgeWatchedFolder::from_core)
                 .collect(),
-            group_keys: group_keys
-                .into_iter()
-                .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
-                .collect(),
-            pending_covers: pending_covers
-                .into_iter()
-                .map(crate::types::BridgeRemoteImageSet::from_core)
-                .collect(),
+            has_groups,
             narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
             narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
             first_selected_position,
-            done_upload_status: done_upload_status
-                .map(crate::types::BridgeUploadStatusKnown::from_core),
         }
     }
-}
-
-mirror_enum! {
-    crate::types::BridgeUploadStatusKnown = bae_core::import::UploadStatusKnown,
-    from_core: pub(super) fn,
-    variants: { Waiting, Read, Unreadable },
 }
 
 mirror_struct! {
@@ -681,7 +663,7 @@ impl crate::types::BridgeImportListSnapshot {
             pending_filter_entries,
             selection_revision,
             selection,
-            request_revision,
+            view_revision,
             cause,
         } = snapshot;
         Self {
@@ -697,7 +679,7 @@ impl crate::types::BridgeImportListSnapshot {
                 .collect(),
             selection_revision,
             selection: crate::types::BridgeSelectionSummary::from_core(selection),
-            request_revision,
+            view_revision,
             cause: crate::types::BridgeLiveQueryCause::from_core(cause),
         }
     }

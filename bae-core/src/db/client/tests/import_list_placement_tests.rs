@@ -5,10 +5,10 @@
 use super::{empty_db, exec_batch, folder_below};
 use std::collections::BTreeMap;
 
-mod agreement;
 mod candidates;
 mod groupings;
 mod groups;
+mod list_reads;
 mod scans;
 mod verdicts;
 

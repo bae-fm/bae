@@ -316,6 +316,15 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
 /// own reading — which of them it lands in is not what these tests are about.
 /// Done presents the library release instead.
 async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
+    queue_item(fixture, key).await.0
+}
+
+/// The list's row for one candidate and its live state, as [`queue_row`]
+/// finds it.
+async fn queue_item(
+    fixture: &Fixture,
+    key: &str,
+) -> (crate::import::TriageRow, crate::import::CandidateLiveState) {
     for tab in [
         crate::import::TriageTab::Pending,
         crate::import::TriageTab::Skipped,
@@ -330,10 +339,10 @@ async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
             .iter()
             .flat_map(|window| &window.items)
             .find_map(|item| match item {
-                crate::import::ImportListItem::Candidate { row, .. }
+                crate::import::ImportListItem::Candidate { row, live, .. }
                     if row.candidate_key == key =>
                 {
-                    Some(row.clone())
+                    Some((row.clone(), live.clone()))
                 }
                 _ => None,
             });

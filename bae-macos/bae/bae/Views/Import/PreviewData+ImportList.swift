@@ -17,6 +17,46 @@
                 items: itemsByTab[uiStore.importCandidateTab] ?? []
             )
         }
+
+        /// This fixture with Found's first group folded shut, as core
+        /// delivers a folded group: its header closed and its members gone.
+        func foldingFirstGroup() -> ImportPreviewFixture {
+            var pending: [BridgeImportListItem] = []
+            var folding = false
+            var folded = false
+            for item in itemsByTab[.pending] ?? [] {
+                switch item {
+                case .groupHeader(
+                    let stableKey,
+                    let group,
+                    let watchedFolderPath,
+                    _,
+                    let entryCount
+                ) where !folded:
+                    folded = true
+                    folding = true
+                    pending.append(
+                        .groupHeader(
+                            stableKey: stableKey,
+                            group: group,
+                            watchedFolderPath: watchedFolderPath,
+                            expanded: false,
+                            entryCount: entryCount
+                        )
+                    )
+                    continue
+                case .candidate(_, _, true) where folding,
+                    .invalid(_, _, _, true) where folding:
+                    continue
+                default:
+                    folding = false
+                    pending.append(item)
+                }
+            }
+            var itemsByTab = self.itemsByTab
+            itemsByTab[.pending] = pending
+            return ImportPreviewFixture(store: store, itemsByTab: itemsByTab)
+        }
     }
 
     /// The list items and summaries the import previews are built from. Core
@@ -73,15 +113,6 @@
             )
         }
 
-        /// The lead-match covers of a fixture's Pending rows, in the order the
-        /// list holds them.
-        static func pendingCovers(
-            _ rows: [BridgeTriageRow]
-        ) -> [BridgeRemoteImageSet] {
-            rows.filter { $0.placement == .pending || $0.placement == .failed }
-                .compactMap { $0.matched?.cover }
-        }
-
         /// Found's filter entries as core lists them, with made-up counts;
         /// In Progress holds nothing, so it cannot be chosen.
         static func pendingFilterEntries() -> [BridgePendingFilterEntry] {
@@ -107,8 +138,7 @@
             done: UInt32,
             skipped: UInt32,
             watchedFolders: [BridgeWatchedFolder],
-            groupKeys: [BridgeFolderReleaseDecisionKey] = [],
-            pendingCovers: [BridgeRemoteImageSet] = [],
+            hasGroups: Bool = false,
             narrowed: BridgeNarrowedCount? = nil,
             filterText: String = ""
         ) -> BridgeImportQueueSummary {
@@ -119,16 +149,14 @@
                     skipped: skipped
                 ),
                 watchedFolders: watchedFolders,
-                groupKeys: groupKeys,
-                pendingCovers: pendingCovers,
+                hasGroups: hasGroups,
                 narrowed: narrowed,
                 narrowing: BridgeImportListNarrowing(
                     tab: .pending,
                     filterText: filterText,
                     pendingFilter: .all
                 ),
-                firstSelectedPosition: nil,
-                doneUploadStatus: nil
+                firstSelectedPosition: nil
             )
         }
 

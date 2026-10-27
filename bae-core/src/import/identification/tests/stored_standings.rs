@@ -38,7 +38,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     fixture.route_disc_id_match(&dir, "mb-standing", "rg-standing", 2);
     fixture.scan(1).await;
 
-    let list = list_subscription(&fixture, page_window(0, 50));
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
     let (_, at_rest) = &page_rows(&initial)[&key];
     assert_eq!(at_rest.facts.identification, None);
@@ -83,7 +83,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
         .identify_ready(&dir, "mb-standing-import", "rg-standing-import")
         .await;
 
-    let list = list_subscription(&fixture, page_window(0, 50));
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
     assert!(!page_rows(&initial)[&key].1.facts.importing());
     assert_eq!(initial.summary.counts.done, 0);
@@ -240,7 +240,7 @@ async fn a_folder_removed_and_found_again_starts_with_no_standing() {
     assert_eq!(fixture.content_hash(&dir), files.content_hash, "the same files");
 
     assert_eq!(fixture.identification_status(&key).await, None);
-    let list = list_subscription(&fixture, page_window(0, 50));
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
     let (_, live) = &page_rows(&next_page(&list).await)[&key];
     assert_eq!(live.facts.identification, None, "the row shows no failure");
 }

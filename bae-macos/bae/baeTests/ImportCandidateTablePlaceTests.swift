@@ -231,9 +231,7 @@ extension ImportCandidateTablePlaceTests {
             importStore: store,
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { _ in source.pages },
-            locateCandidate: { _, _ in nil },
-            firstIdentifyingCandidate: { _ in nil }
+            makeSource: { _ in source.pages }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(30) != nil }
@@ -302,16 +300,14 @@ extension ImportCandidateTablePlaceTests {
         BridgeImportQueueSummary(
             counts: BridgeTriageTabCounts(pending: 80, done: 0, skipped: 0),
             watchedFolders: [],
-            groupKeys: [],
-            pendingCovers: [],
+            hasGroups: false,
             narrowed: nil,
             narrowing: BridgeImportListNarrowing(
                 tab: .pending,
                 filterText: filterText,
                 pendingFilter: .all
             ),
-            firstSelectedPosition: nil,
-            doneUploadStatus: nil
+            firstSelectedPosition: nil
         )
     }
 
@@ -363,11 +359,7 @@ private final class MutableImportListPageSource: PageSource,
     }
 
     var pages: ImportListPages {
-        ImportListPages(
-            source: self,
-            setView: { _ in },
-            waitForView: { _ in }
-        )
+        .stub(source: self)
     }
 
     func subscribe(

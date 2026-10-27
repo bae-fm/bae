@@ -8,14 +8,17 @@ use super::{candidate, exec, fixed_now, watched_root};
 use crate::import::folder_scanner::{
     CandidateFile, FileRole, FileVersion, FolderCandidate, ScanItem, ScannedFile,
 };
-use crate::import::list::{ImportListItem, ImportListRequest, ImportListView};
+use crate::import::list::ImportListItem;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{MetadataProvenance, PayloadSource, TriageTab};
 use std::path::PathBuf;
 
 mod dates;
 mod identity;
+mod list_read;
 mod skipped;
+
+use list_read::request;
 
 /// One scanned candidate under a fresh watched root.
 async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
@@ -152,22 +155,6 @@ fn release_group_linked_out() -> serde_json::Value {
     })
 }
 
-async fn request(tab: TriageTab) -> ImportListRequest {
-    ImportListRequest {
-        view: ImportListView {
-            tab,
-            ..ImportListView::default()
-        },
-        windows: std::iter::once(crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        })
-        .collect(),
-        upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-        selected: Default::default(),
-    }
-}
-
 fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::TriageRow> {
     projection
         .windows
@@ -175,6 +162,23 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Each candidate row of one read, by key, with where it stands on Found.
+fn standings(
+    projection: &crate::import::ImportListProjection,
+) -> Vec<(String, Option<crate::import::PendingStanding>)> {
+    projection
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            ImportListItem::Candidate { row, live, .. } => {
+                Some((row.candidate_key.clone(), live.standing.clone()))
+            }
             _ => None,
         })
         .collect()
@@ -233,7 +237,7 @@ async fn a_picked_row_leads_with_the_stored_release() {
         .unwrap();
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     let matched = rows(&projection)[0]
@@ -272,7 +276,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
         .expect_err("a pick of a release nothing stored is refused");
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     assert_eq!(
@@ -290,7 +294,7 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     let matched = rows(&projection)[0]
@@ -317,14 +321,11 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     store_verdict(&db, &candidate, unread).await;
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     assert_eq!(
-        rows(&projection)
-            .iter()
-            .map(|row| (row.candidate_key.clone(), row.action_basis.standing.clone()))
-            .collect::<Vec<_>>(),
+        standings(&projection),
         vec![(
             candidate.path.to_string_lossy().into_owned(),
             Some(crate::import::PendingStanding::LookupError)
@@ -351,16 +352,15 @@ async fn an_error_verdict_reads_back_as_an_error_with_its_text() {
     .await;
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
-    let standings: Vec<_> = rows(&projection)
-        .iter()
-        .map(|row| row.action_basis.standing.clone())
-        .collect();
     assert_eq!(
-        standings,
-        vec![Some(crate::import::PendingStanding::Error { failure })]
+        standings(&projection),
+        vec![(
+            candidate.path.to_string_lossy().into_owned(),
+            Some(crate::import::PendingStanding::Error { failure })
+        )]
     );
 }
 
@@ -474,12 +474,12 @@ async fn the_list_places_a_row_without_reading_its_files() {
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     let before = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     exec(&db, "DELETE FROM scan_candidate_file", &[]).await;
     let after = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
 
@@ -674,7 +674,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .unwrap();
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     let row = rows(&projection).remove(0);
@@ -714,7 +714,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .unwrap();
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     assert_eq!(
@@ -750,7 +750,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .unwrap();
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     assert_eq!(
@@ -814,7 +814,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         ))
     );
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     let row = rows(&projection).remove(0);
@@ -841,7 +841,7 @@ async fn the_scan_stores_the_folders_own_cover() {
     )
     .await;
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     assert_eq!(
@@ -906,7 +906,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         .unwrap();
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     let row = rows(&projection).remove(0);
@@ -952,7 +952,7 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     let hash = candidate.files.content_hash();
 
     async fn tab(db: &Database, tab: TriageTab) -> Vec<crate::import::TriageRow> {
-        rows(&db.load_import_list(request(tab).await).await.unwrap())
+        rows(&db.load_import_list_read(request(tab).await).await.unwrap())
     }
 
     let pending = tab(&db, TriageTab::Pending).await;
@@ -968,7 +968,7 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     .unwrap();
 
     assert_eq!(
-        db.load_import_list(request(TriageTab::Done).await)
+        db.load_import_list_read(request(TriageTab::Done).await)
             .await
             .unwrap()
             .total_count,

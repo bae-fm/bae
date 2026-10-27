@@ -1,6 +1,8 @@
-//! Writing one scan item as rows. The caller deletes the item's
-//! `scan_candidate` row first, and every table below it goes with it by
-//! cascade, so these inserts always write into empty space.
+//! Writing one scan item as rows. An item written again keeps its
+//! `scan_candidate` row, which the write updates in place, and clears every
+//! table below it first ([`clear_entry_rows`]), so these inserts always write
+//! into empty space while what the import list holds against the row (its
+//! place, whether it is selected, its group's fold) stays with it.
 
 use super::columns::*;
 use super::*;
@@ -28,9 +30,7 @@ pub(crate) fn delete_entry(
     super::super::import_state::end_identification_unless_of_on(sql, key, None)
 }
 
-/// Delete the entry's row, for a write that stores the entry again and says
-/// itself what that does to its candidate's identification.
-pub(super) fn delete_entry_row(
+fn delete_entry_row(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
     key: &str,
@@ -41,6 +41,42 @@ pub(super) fn delete_entry_row(
     )?;
     Ok(())
 }
+
+/// Every table that hangs off a `scan_candidate` row by foreign key: what an
+/// entry written again clears before its rows are written anew.
+pub(super) const ENTRY_ROW_TABLES: [&str; 5] = [
+    "scan_candidate_tag_snapshot",
+    "scan_candidate_part",
+    "scan_candidate_file",
+    "scan_skipped_file",
+    "scan_skipped_tags",
+];
+
+/// Clear every row below the entry's `scan_candidate` row, for a write that
+/// stores the entry again over that row and says itself what that does to
+/// its candidate's identification.
+pub(super) fn clear_entry_rows(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    key: &str,
+) -> Result<(), DbError> {
+    for table in ENTRY_ROW_TABLES {
+        sql.execute(
+            &format!("DELETE FROM {table} WHERE watched_folder_path = ? AND candidate_path = ?"),
+            params![watched_folder_path, key],
+        )?;
+    }
+    Ok(())
+}
+
+/// The clause that makes a `scan_candidate` insert write over a row already
+/// stored under the same key, column for column.
+const OVER_STORED_ROW: &str = "ON CONFLICT (watched_folder_path, path) DO UPDATE SET \
+     generation = excluded.generation, kind = excluded.kind, name = excluded.name, \
+     display_path = excluded.display_path, folder = excluded.folder, \
+     file_root = excluded.file_root, scope = excluded.scope, \
+     content_hash = excluded.content_hash, file_edit_revision = excluded.file_edit_revision, \
+     grouping_key = excluded.grouping_key, source_kind = excluded.source_kind";
 
 /// Replace one candidate's stored file-tag reading, inside the caller's
 /// transaction.
@@ -252,8 +288,9 @@ fn insert_candidate(
     Ok(())
 }
 
-/// Insert one candidate's `scan_candidate` row and its parts. `source_kind` is
-/// `folder` for a scan's row, `grouping` for a grouping's.
+/// Write one candidate's `scan_candidate` row, over the one stored under its
+/// key, and its parts. `source_kind` is `folder` for a scan's row, `grouping`
+/// for a grouping's.
 pub(crate) fn insert_candidate_row(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -264,10 +301,13 @@ pub(crate) fn insert_candidate_row(
 ) -> Result<(), DbError> {
     let path = candidate.key();
     sql.execute(
-        "INSERT INTO scan_candidate \
-             (watched_folder_path, path, generation, kind, name, display_path, folder, \
-              file_root, scope, content_hash, file_edit_revision, grouping_key, source_kind) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        &format!(
+            "INSERT INTO scan_candidate \
+                 (watched_folder_path, path, generation, kind, name, display_path, folder, \
+                  file_root, scope, content_hash, file_edit_revision, grouping_key, \
+                  source_kind) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) {OVER_STORED_ROW}"
+        ),
         params![
             watched_folder_path,
             path,
@@ -401,11 +441,13 @@ fn insert_invalid(
     let folder = candidate.path.to_string_lossy();
     let key = candidate.key();
     sql.execute(
-        "INSERT INTO scan_candidate \
-             (watched_folder_path, path, generation, kind, name, display_path, folder, \
-              file_root, scope, content_hash, file_edit_revision, grouping_key, \
-              source_kind) \
-         VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?)",
+        &format!(
+            "INSERT INTO scan_candidate \
+                 (watched_folder_path, path, generation, kind, name, display_path, folder, \
+                  file_root, scope, content_hash, file_edit_revision, grouping_key, \
+                  source_kind) \
+             VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?) {OVER_STORED_ROW}"
+        ),
         params![
             watched_folder_path,
             key,
@@ -638,4 +680,31 @@ fn insert_cue_sheet(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    /// An entry written again clears every table that hangs off its row: the
+    /// tables naming `scan_candidate` in a foreign key are exactly those.
+    #[test]
+    fn an_entry_written_again_clears_every_table_below_its_row() {
+        let conn = crate::library::bare_library_connection();
+        let mut referencing: Vec<String> = conn
+            .prepare(
+                "SELECT DISTINCT m.name FROM sqlite_schema AS m, pragma_foreign_key_list(m.name) AS f \
+                 WHERE m.type = 'table' AND f.\"table\" = 'scan_candidate'",
+            )
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        referencing.sort();
+        let mut cleared: Vec<String> = super::ENTRY_ROW_TABLES
+            .iter()
+            .map(|table| table.to_string())
+            .collect();
+        cleared.sort();
+        assert_eq!(cleared, referencing);
+    }
 }

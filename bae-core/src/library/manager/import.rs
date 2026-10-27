@@ -90,25 +90,114 @@ impl LibraryManager {
         Ok(self.database.load_import_list(request).await?)
     }
 
+    /// One read of a list showing `view` through `windows`, for a caller
+    /// with no list open: a list opened for the read and closed after it.
+    pub(crate) async fn load_import_list_once(
+        &self,
+        view: crate::import::ImportListView,
+        windows: crate::library::LibraryPageWindows,
+    ) -> Result<crate::import::ImportListProjection, LibraryError> {
+        let list = self.open_import_list(view).await?;
+        let projection = self
+            .load_import_list(crate::import::ImportListRequest { list, windows })
+            .await;
+        self.close_import_list(list).await?;
+        projection
+    }
+
     pub(crate) async fn locate_import_candidate(
         &self,
-        request: crate::import::ImportListRequest,
+        list: crate::import::ImportListId,
         candidate_key: &str,
     ) -> Result<Option<crate::import::ImportCandidateListLocation>, LibraryError> {
         Ok(self
             .database
-            .locate_import_candidate(request, candidate_key)
+            .locate_import_candidate(list, candidate_key)
             .await?)
     }
 
     pub(crate) async fn first_identifying_import_candidate(
         &self,
-        request: crate::import::ImportListRequest,
+        list: crate::import::ImportListId,
     ) -> Result<Option<String>, LibraryError> {
         Ok(self
             .database
-            .first_identifying_import_candidate(request)
+            .first_identifying_import_candidate(list)
             .await?)
+    }
+
+    pub(crate) async fn open_import_list(
+        &self,
+        view: crate::import::ImportListView,
+    ) -> Result<crate::import::ImportListId, LibraryError> {
+        Ok(self.database.open_import_list(view).await?)
+    }
+
+    pub(crate) async fn close_import_list(
+        &self,
+        list: crate::import::ImportListId,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.close_import_list(list).await?)
+    }
+
+    pub(crate) async fn close_import_lists(&self) -> Result<(), LibraryError> {
+        Ok(self.database.close_import_lists().await?)
+    }
+
+    pub(crate) async fn set_import_list_view(
+        &self,
+        list: crate::import::ImportListId,
+        view: crate::import::ImportListView,
+    ) -> Result<u64, LibraryError> {
+        Ok(self.database.set_import_list_view(list, view).await?)
+    }
+
+    pub(crate) async fn set_import_list_group_folded(
+        &self,
+        list: crate::import::ImportListId,
+        group: crate::import::FolderReleaseDecisionKey,
+        folded: bool,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .set_import_list_group_folded(list, group, folded)
+            .await?)
+    }
+
+    pub(crate) async fn set_import_list_groups_folded(
+        &self,
+        list: crate::import::ImportListId,
+        folded: bool,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .set_import_list_groups_folded(list, folded)
+            .await?)
+    }
+
+    pub(crate) async fn change_import_list_selection(
+        &self,
+        list: crate::import::ImportListId,
+        change: crate::import::selection::SelectionChange,
+    ) -> Result<crate::db::SelectionWrite, LibraryError> {
+        Ok(self
+            .database
+            .change_import_list_selection(list, change)
+            .await?)
+    }
+
+    pub(crate) async fn select_all_in_import_list(
+        &self,
+        list: crate::import::ImportListId,
+    ) -> Result<u64, LibraryError> {
+        Ok(self.database.select_all_in_import_list(list).await?)
+    }
+
+    pub(crate) async fn load_import_list_selected(
+        &self,
+        list: crate::import::ImportListId,
+    ) -> Result<crate::import::selection::SelectedRows, LibraryError> {
+        Ok(self.database.load_import_list_selected(list).await?)
     }
 
     pub(crate) fn subscribe_invalid_candidate(

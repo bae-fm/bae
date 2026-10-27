@@ -2,20 +2,18 @@
 /// whether it can separate.
 async fn offers(manager: &LibraryManager) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
     let projection = manager
-        .load_import_list(crate::import::ImportListRequest {
-            view: crate::import::ImportListView {
+        .load_import_list_once(
+            crate::import::ImportListView {
                 order: crate::import::ImportListOrder::PathAscending,
                 ..crate::import::ImportListView::default()
             },
-            windows: [crate::library::LibraryPageWindow {
+            [crate::library::LibraryPageWindow {
                 offset: 0,
                 limit: 50,
             }]
             .into_iter()
             .collect(),
-            upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-            selected: Default::default(),
-        })
+        )
         .await
         .unwrap();
     let mut headers = Vec::new();

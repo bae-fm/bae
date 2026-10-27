@@ -16,12 +16,14 @@ struct LiveList {
 }
 
 impl LiveList {
-    fn new(handle: &ImportServiceHandle, filter: PendingFilter) -> Self {
+    async fn new(handle: &ImportServiceHandle, filter: PendingFilter) -> Self {
         Self {
-            list: handle.subscribe_whole_list(ImportListView {
-                pending_filter: filter,
-                ..ImportListView::default()
-            }),
+            list: handle
+                .subscribe_whole_list(ImportListView {
+                    pending_filter: filter,
+                    ..ImportListView::default()
+                })
+                .await,
             shown: None,
             entries: Vec::new(),
         }
@@ -90,7 +92,7 @@ impl LiveList {
 #[tokio::test(flavor = "multi_thread")]
 async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let mut list = LiveList::new(&handle, PendingFilter::InProgress);
+    let mut list = LiveList::new(&handle, PendingFilter::InProgress).await;
     list.shows(&[]).await;
 
     handle.claim_candidate_for_import(&key, "import-1").await;
@@ -113,7 +115,7 @@ async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
 #[tokio::test(flavor = "multi_thread")]
 async fn identifying_shows_a_queued_and_a_running_run_until_it_ends() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let mut list = LiveList::new(&handle, PendingFilter::InProgress);
+    let mut list = LiveList::new(&handle, PendingFilter::InProgress).await;
     list.shows(&[]).await;
 
     admit(&handle, &key).await;
@@ -142,12 +144,21 @@ async fn a_row_leaves_its_stored_entry_while_an_import_owns_it() {
         .standing
         .expect("the candidate is on Found")
         .state();
-    let entry = PendingFilter::ENTRIES
-        .into_iter()
-        .find(|&entry| entry != PendingFilter::All && entry.holds(stored))
-        .expect("every state is under an entry past All");
+    // The entry past All Found's menu holds the state under.
+    let entry = match stored {
+        crate::import::PendingState::NeedsYou
+        | crate::import::PendingState::LookupError
+        | crate::import::PendingState::Error
+        | crate::import::PendingState::ImportError => PendingFilter::NeedsYou,
+        crate::import::PendingState::Identifying | crate::import::PendingState::Importing => {
+            PendingFilter::InProgress
+        }
+        crate::import::PendingState::Identified => PendingFilter::Identified,
+        crate::import::PendingState::Unmatched => PendingFilter::Unmatched,
+        crate::import::PendingState::NotLookedUp => PendingFilter::NotLookedUp,
+    };
     assert_ne!(entry, PendingFilter::InProgress);
-    let mut list = LiveList::new(&handle, entry);
+    let mut list = LiveList::new(&handle, entry).await;
     list.shows(&[&key]).await;
 
     handle.claim_candidate_for_import(&key, "import-1").await;
@@ -165,7 +176,7 @@ async fn a_row_leaves_its_stored_entry_while_an_import_owns_it() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_entry_counts_follow_what_is_running() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let mut list = LiveList::new(&handle, PendingFilter::All);
+    let mut list = LiveList::new(&handle, PendingFilter::All).await;
     list.shows(&[&key]).await;
     list.counts(PendingFilter::All, 1).await;
     list.counts(PendingFilter::InProgress, 0).await;
@@ -211,13 +222,15 @@ async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubsc
     for key in [&first_key, &second_key] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
-    let list = handle.subscribe_list_window(
-        ImportListView::default(),
-        crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 1,
-        },
-    );
+    let list = handle
+        .subscribe_list_window(
+            ImportListView::default(),
+            crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: 1,
+            },
+        )
+        .await;
     let snapshot = delivered(&list).await;
     let on_page: Vec<String> = snapshot
         .windows

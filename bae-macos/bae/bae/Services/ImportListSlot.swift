@@ -8,15 +8,16 @@ private let importListLogger = Logger.bae("ImportListSlot")
 /// The import sidebar's list machinery: the warm `PaginatedList`, the page
 /// source behind it, and the view that source is showing.
 ///
-/// The view — which tab, which filter text, which groups are folded shut —
-/// decides which items sit at which offsets, so it travels with the request
-/// rather than being applied to a page after it arrives. Changing it therefore
-/// reconfigures the one source instead of building a new list: the list
-/// re-reads the pages it holds when the reconfigured value arrives.
+/// The view — which tab, which filter text, which order — and the groups
+/// folded shut decide which items sit at which offsets, so they are core's
+/// list's rather than applied to a page after it arrives. Changing them
+/// therefore changes the one source instead of building a new list: the list
+/// re-reads the pages it holds when the changed value arrives. Which groups
+/// are folded is core's alone; each header says whether it is open.
 ///
-/// `UiStore` keeps the tab, the filter text and the disclosure state as
-/// session state, so every setter here writes both: the store the sidebar
-/// renders from, and the request core answers.
+/// `UiStore` keeps the tab and the filter text as session state, so every
+/// setter of them here writes both: the store the sidebar renders from, and
+/// the view core answers.
 @MainActor
 @Observable
 final class ImportListSlot {
@@ -35,14 +36,8 @@ final class ImportListSlot {
     @ObservationIgnored
     private(set) var view: BridgeImportListView
     @ObservationIgnored
-    private let makeSource: (BridgeImportListView) -> ImportListPages
-    @ObservationIgnored
-    private let locateCandidate:
-        @Sendable (BridgeImportListView, String) async throws
-            -> BridgeImportCandidateListLocation?
-    @ObservationIgnored
-    private let firstIdentifyingCandidate:
-        @Sendable (BridgeImportListView) async throws -> String?
+    private let makeSource:
+        (BridgeImportListView) async throws -> ImportListPages
     @ObservationIgnored
     private var pages: ImportListPages?
     @ObservationIgnored
@@ -56,6 +51,9 @@ final class ImportListSlot {
     /// The last selection write asked for, which the next one waits on.
     @ObservationIgnored
     private var selectionTask: Task<Void, Never>?
+    /// The last fold asked for, which the next one waits on.
+    @ObservationIgnored
+    private var foldTask: Task<Void, Never>?
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
     /// Set when a page read failed. The subscription behind a failed read is
@@ -78,19 +76,13 @@ final class ImportListSlot {
         uiStore: UiStore,
         selection: ImportSelection,
         defaults: UserDefaults = .standard,
-        makeSource: @escaping (BridgeImportListView) -> ImportListPages,
-        locateCandidate:
-            @escaping @Sendable (BridgeImportListView, String) async throws
-            -> BridgeImportCandidateListLocation?,
-        firstIdentifyingCandidate:
-            @escaping @Sendable (BridgeImportListView) async throws -> String?
+        makeSource:
+            @escaping (BridgeImportListView) async throws -> ImportListPages
     ) {
         self.importStore = importStore
         self.uiStore = uiStore
         self.selection = selection
         self.makeSource = makeSource
-        self.locateCandidate = locateCandidate
-        self.firstIdentifyingCandidate = firstIdentifyingCandidate
         self.defaults = defaults
         let initialOrder: BridgeImportListOrder
         if let saved = defaults.string(forKey: Self.sortPreferenceKey) {
@@ -112,7 +104,6 @@ final class ImportListSlot {
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
             pendingFilter: uiStore.importCandidatePendingFilter,
-            collapsedGroups: uiStore.collapsedReleaseGroupKeys,
             order: initialOrder
         )
     }
@@ -154,7 +145,8 @@ final class ImportListSlot {
     func revealFirstIdentifying() async throws
         -> (candidateKey: String, position: Int)?
     {
-        guard let candidateKey = try await firstIdentifyingCandidate(view),
+        guard let pages,
+            let candidateKey = try await pages.firstIdentifyingCandidate(),
             let position = try await revealCandidate(candidateKey)
         else { return nil }
         return (candidateKey, position)
@@ -164,7 +156,8 @@ final class ImportListSlot {
     /// that placement has moved it out of the list presently on screen, and
     /// select it alone.
     func revealCandidate(_ candidateKey: String) async throws -> Int? {
-        guard let location = try await locateCandidate(view, candidateKey)
+        guard let pages,
+            let location = try await pages.locateCandidate(candidateKey)
         else {
             return nil
         }
@@ -172,56 +165,23 @@ final class ImportListSlot {
         uiStore.setImportCandidateFilterText("")
         uiStore.setImportCandidatePendingFilter(.all)
         if let groupKey = location.groupKey {
-            uiStore.setReleaseGroupExpanded(
-                releaseGroupDisclosureID(groupKey),
-                true
-            )
+            try await pages.setGroupFolded(groupKey, false)
         }
         var next = view
         next.tab = location.tab
         next.filterText = ""
         next.pendingFilter = .all
-        next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
         view = next
         // The list keeps only the rows its view shows selected, so it is
         // asked for the view that shows the candidate before it selects it.
-        pages?.setView(next)
+        pages.setView(next)
         try await selectOnly(candidateKey)
-        guard let pages, let list else { return nil }
+        guard let list else { return nil }
         try await pages.waitForView(next)
         let position = Int(location.visiblePosition)
         let placed = await list.holds(location.stableKey, at: position)
         guard !Task.isCancelled, placed else { return nil }
         return position
-    }
-
-    /// Fold one group open or shut. Its entries leave the list when it folds,
-    /// so this changes what every later offset holds.
-    func setGroupExpanded(_ id: ReleaseGroupDisclosureID, _ expanded: Bool) {
-        uiStore.setReleaseGroupExpanded(id, expanded)
-        updateView { $0.collapsedGroups = uiStore.collapsedReleaseGroupKeys }
-    }
-
-    /// Fold every group in `keys` open or shut as one change to the request.
-    func setGroupsExpanded(
-        _ keys: [BridgeFolderReleaseDecisionKey],
-        _ expanded: Bool
-    ) {
-        uiStore.setReleaseGroupsExpanded(
-            keys.map(ReleaseGroupDisclosureID.init(key:)),
-            expanded
-        )
-        updateView { $0.collapsedGroups = uiStore.collapsedReleaseGroupKeys }
-    }
-
-    /// Keep disclosure state only for the groups the queue still has. A group
-    /// that is gone takes its folded state with it, which can change the
-    /// request.
-    func retainGroups(_ keys: [BridgeFolderReleaseDecisionKey]) {
-        uiStore.retainReleaseGroupDisclosureIDs(
-            Set(keys.map(ReleaseGroupDisclosureID.init(key:)))
-        )
-        updateView { $0.collapsedGroups = uiStore.collapsedReleaseGroupKeys }
     }
 
     private func updateView(_ change: (inout BridgeImportListView) -> Void) {
@@ -242,7 +202,19 @@ final class ImportListSlot {
     private func reload() async {
         sourceFailed = false
         loadFailure = nil
-        let pages = makeSource(view)
+        let pages: ImportListPages
+        do {
+            pages = try await makeSource(view)
+        }
+        catch {
+            sourceFailed = true
+            // A cancellation has no line and is not a failed read.
+            guard let displayed = DisplayError(error) else { return }
+            loadFailure = displayed
+            uiStore.showError(displayed)
+            return
+        }
+        guard !Task.isCancelled else { return }
         let importStore = importStore
         let newList = PaginatedList<BridgeImportListItem>(
             pageSource: pages.source,
@@ -288,25 +260,31 @@ final class ImportListSlot {
             items: [BridgeImportListItem],
             selection: ImportSelection = ImportSelection()
         ) -> ImportListSlot {
-            let slot = ImportListSlot(
-                importStore: importStore,
-                uiStore: uiStore,
-                selection: selection,
-                makeSource: { _ in
-                    ImportListPreviewPageSource(items: items).pages
-                },
-                locateCandidate: { _, key in
+            let tab = uiStore.importCandidateTab
+            let pages = ImportListPages(
+                source: ImportListPreviewPageSource(items: items),
+                setView: { _ in },
+                waitForView: { _ in },
+                setGroupFolded: { _, _ in },
+                setAllGroupsFolded: { _ in },
+                locateCandidate: { key in
                     items.firstIndex { $0.id == "candidate:\(key)" }
                         .map {
                             BridgeImportCandidateListLocation(
                                 stableKey: "candidate:\(key)",
-                                tab: uiStore.importCandidateTab,
+                                tab: tab,
                                 groupKey: nil,
                                 visiblePosition: UInt64($0)
                             )
                         }
                 },
-                firstIdentifyingCandidate: { _ in nil }
+                firstIdentifyingCandidate: { nil }
+            )
+            let slot = ImportListSlot(
+                importStore: importStore,
+                uiStore: uiStore,
+                selection: selection,
+                makeSource: { _ in pages }
             )
             importStore.ingest(items)
             importStore.applyPendingFilterEntries(
@@ -318,9 +296,52 @@ final class ImportListSlot {
             )
             list.preloadForPreview(rows: items)
             slot.list = list
+            slot.pages = pages
             return slot
         }
     #endif
+}
+
+// MARK: - Folds
+
+extension ImportListSlot {
+    /// Fold one group open or shut. Its entries leave the list when it folds,
+    /// so this changes what every later offset holds.
+    func setGroupExpanded(
+        _ group: BridgeFolderReleaseDecisionKey,
+        _ expanded: Bool
+    ) {
+        foldGroups { try await $0.setGroupFolded(group, !expanded) }
+    }
+
+    /// Fold every group open or shut as one change.
+    func setAllGroupsExpanded(_ expanded: Bool) {
+        foldGroups { try await $0.setAllGroupsFolded(!expanded) }
+    }
+
+    /// Send a fold to core's list once the folds asked for before it have
+    /// landed, so they land in the order the person made them; a failure is
+    /// reported. A list whose read failed is rebuilt instead, and the rebuilt
+    /// list starts with no group folded.
+    private func foldGroups(
+        _ fold: @escaping @MainActor (ImportListPages) async throws -> Void
+    ) {
+        if sourceFailed {
+            startLoad()
+            return
+        }
+        guard let pages else { return }
+        let previous = foldTask
+        foldTask = Task { [uiStore] in
+            await previous?.value
+            do {
+                try await fold(pages)
+            }
+            catch {
+                uiStore.showError(error)
+            }
+        }
+    }
 }
 
 // MARK: - Place
@@ -332,10 +353,11 @@ extension ImportListSlot {
     /// another tab, or where the view's filters would put it elsewhere. A
     /// failed read is reported, and answers `nil`.
     func position(ofPlace place: ImportListPlace) async -> Int? {
-        guard case .candidate(let stableKey, let candidateKey) = place.row
+        guard case .candidate(let stableKey, let candidateKey) = place.row,
+            let pages
         else { return nil }
         do {
-            guard let location = try await locateCandidate(view, candidateKey),
+            guard let location = try await pages.locateCandidate(candidateKey),
                 let list
             else { return nil }
             let position = Int(location.visiblePosition)

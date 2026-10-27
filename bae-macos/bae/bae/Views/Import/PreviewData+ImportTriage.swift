@@ -666,10 +666,7 @@
             done: 1,
             skipped: 1 + UInt32(invalidCandidates.count),
             watchedFolders: [importWatchedFolder],
-            groupKeys: [importTabGroupKey],
-            pendingCovers: pendingCovers(
-                importTabPendingRows + triageGroupedRows
-            )
+            hasGroups: true
         )
 
         /// A preview row's live state offering `actions`.

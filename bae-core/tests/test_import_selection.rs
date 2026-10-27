@@ -39,10 +39,10 @@ async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
         .import_add_watched_folder(collection.to_string_lossy().into_owned())
         .await
         .unwrap();
-    let list = services.subscribe_import_list(
-        ImportListView::default(),
-        &tokio::runtime::Handle::current(),
-    );
+    let list = services
+        .subscribe_import_list(ImportListView::default())
+        .await
+        .unwrap();
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             let snapshot = list.next().await.expect("the list answers");
@@ -79,7 +79,7 @@ async fn list_showing(
     view: ImportListView,
     count: u64,
 ) -> (ImportListSubscription, ImportListSnapshot) {
-    let list = services.subscribe_import_list(view, &tokio::runtime::Handle::current());
+    let list = services.subscribe_import_list(view).await.unwrap();
     list.set_windows(
         std::iter::once(LibraryPageWindow {
             offset: 0,
@@ -139,14 +139,18 @@ async fn a_bulk_action_runs_over_every_selected_row() {
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
     let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
 
-    let revision = list.select_all().unwrap();
+    let revision = list.select_all().await.unwrap();
     until(&list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 3
     })
     .await;
 
     let failures = services
-        .run_import_selection_action(&list.selected(), CandidateAction::Skip, |_, _| {})
+        .run_import_selection_action(
+            &list.selected().await.unwrap(),
+            CandidateAction::Skip,
+            |_, _| {},
+        )
         .await
         .unwrap();
 
@@ -154,7 +158,7 @@ async fn a_bulk_action_runs_over_every_selected_row() {
     let settled = until(&list, |snapshot| snapshot.summary.counts.pending == 0).await;
     assert_eq!(settled.summary.counts.skipped, 3);
     assert_eq!(settled.selection, SelectionSummary::default());
-    assert!(list.selected().candidates.is_empty());
+    assert!(list.selected().await.unwrap().candidates.is_empty());
     services.close().await.unwrap();
 }
 
@@ -178,6 +182,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
         .change_selection(SelectionChange::Replace {
             keys: picked.clone(),
         })
+        .await
         .unwrap();
     let selected = until(&list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 2
@@ -191,7 +196,11 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
         .any(|offer| offer.action == CandidateAction::Identify));
 
     let failures = services
-        .run_import_selection_action(&list.selected(), CandidateAction::Identify, |_, _| {})
+        .run_import_selection_action(
+            &list.selected().await.unwrap(),
+            CandidateAction::Identify,
+            |_, _| {},
+        )
         .await
         .unwrap();
     assert!(failures.is_empty(), "{failures:?}");
@@ -199,9 +208,9 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
     let left = until(&list, |snapshot| snapshot.total_count == 1).await;
     assert_eq!(left.selection, SelectionSummary::default());
     assert!(selected_on_page(&left).is_empty());
-    assert!(list.selected().candidates.is_empty());
+    assert!(list.selected().await.unwrap().candidates.is_empty());
 
-    list.set_view(ImportListView::default()).unwrap();
+    list.set_view(ImportListView::default()).await.unwrap();
     let all = until(&list, |snapshot| on_page(snapshot).len() == 3).await;
     assert!(
         selected_on_page(&all).is_empty(),
@@ -221,7 +230,7 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
     let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
-    let revision = list.select_all().unwrap();
+    let revision = list.select_all().await.unwrap();
     until(&list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 3
     })
@@ -231,13 +240,14 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
         filter_text: "Album 1".to_string(),
         ..ImportListView::default()
     })
+    .await
     .unwrap();
     let narrowed = until(&list, |snapshot| snapshot.total_count == 1).await;
     assert_eq!(narrowed.selection.count, 1);
     assert_eq!(selected_on_page(&narrowed).len(), 1);
-    assert_eq!(list.selected().candidates.len(), 1);
+    assert_eq!(list.selected().await.unwrap().candidates.len(), 1);
 
-    list.set_view(ImportListView::default()).unwrap();
+    list.set_view(ImportListView::default()).await.unwrap();
     let cleared = until(&list, |snapshot| on_page(snapshot).len() == 3).await;
     assert_eq!(cleared.selection.count, 1);
     assert_eq!(selected_on_page(&cleared), selected_on_page(&narrowed));
@@ -290,6 +300,7 @@ async fn select_out_of_order(
             add: picks.iter().map(|&pick| shown[pick].clone()).collect(),
             remove: Vec::new(),
         })
+        .await
         .unwrap();
     until(list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == picks.len() as u64
@@ -351,7 +362,11 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
 
     let mut changes = services.every_candidate_runtime_change_for_test();
     let failures = services
-        .run_import_selection_action(&list.selected(), CandidateAction::Identify, |_, _| {})
+        .run_import_selection_action(
+            &list.selected().await.unwrap(),
+            CandidateAction::Identify,
+            |_, _| {},
+        )
         .await
         .unwrap();
     assert!(failures.is_empty(), "{failures:?}");
@@ -395,7 +410,11 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
 
     let mut changes = services.every_candidate_runtime_change_for_test();
     let failures = services
-        .run_import_selection_action(&list.selected(), CandidateAction::Import, |_, _| {})
+        .run_import_selection_action(
+            &list.selected().await.unwrap(),
+            CandidateAction::Import,
+            |_, _| {},
+        )
         .await
         .unwrap();
     assert!(failures.is_empty(), "{failures:?}");
@@ -441,6 +460,7 @@ async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
         .change_selection(SelectionChange::Replace {
             keys: vec![key.clone()],
         })
+        .await
         .unwrap();
     let selected = until(&list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 1
@@ -451,6 +471,6 @@ async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
         Some(SingleSelection::InvalidCandidate { key: key.clone() })
     );
     assert!(selected.selection.offers.is_empty());
-    assert_eq!(list.selected().invalid, [key]);
+    assert_eq!(list.selected().await.unwrap().invalid, [key]);
     services.close().await.unwrap();
 }

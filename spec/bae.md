@@ -592,13 +592,25 @@ The import list shows every candidate in one of three tabs:
 | Tab | Holds |
 |---|---|
 | Pending | this device imported no release from the folder's files, and not skipped; including a failed import |
-| Done | this device imported a release from the folder's files (§2.7); ordered by upload, what is moving first |
+| Done | this device imported a release from the folder's files (§2.7); what is still uploading first |
 | Skipped | dismissed by the person, or broken |
 
-Done is ordered by where each row's release's upload stands, then newest
-import first. Until the upload queue first answers, Done shows no rows and says it is
-waiting. If the queue can't be read, Done says so and orders its rows by import
-time alone; the failed read is reported as a bug.
+Done runs the releases coven still has files of in its upload queue first,
+the first queued first, and then the rest in the list's order. Only a
+release's own files count, as the Storage Manager's Uploading filter counts
+them (§4.2); the list reads the queue as coven's state view `coven_uploads`
+holds it, so it is never waiting on it and never out of step with it.
+
+Each tab sorts newest first, oldest first, or by path either way. A date order
+sorts by each row's date — its folder's for Pending and Skipped, its release's
+import for Done — with undated rows last; a path order sorts by watched folder
+and then by path, in natural order ("Disc 2" before "Disc 10", case aside).
+On Pending a release nested below a folder is listed under that folder's
+group, and so is one at that folder while another is nested below it: the
+group sorts by its newest member's date and its folder, its header leads its
+members, and folding the group shut keeps the header, still counting its
+members, and leaves the members out of the list. Each list keeps its folds,
+and folding or opening every group is one change.
 
 Each Pending row is in exactly one state. The first that applies wins:
 
@@ -622,7 +634,11 @@ Each Pending row is in exactly one state. The first that applies wins:
 11. **Needs you**: the lookup left the answer to the person.
 
 A filter narrows Pending to one group of these states: needs you, in progress,
-identified, unmatched, or not looked up.
+identified, unmatched, or not looked up. Each entry counts the Pending rows it
+holds, whatever the list shows. Text typed into the search keeps the rows
+whose shown title or artists contain it, case folded as library search folds
+it (§2.3), and a group's header while any of its members is kept; the list
+says how many of the tab's rows it keeps of how many it has.
 
 **Done.** A folder is Done when this device imported a release from its files.
 This device's record of the import is keyed by the folder's hash (§2.7), not
@@ -649,17 +665,27 @@ opens, read-only: its images, then every other file with each damaged one
 marked and why. Where a release's Import would be, the pane states the reason.
 A playable track in it can still be auditioned.
 
-The person can select any number of rows. The import list in core owns the
-selection, not a surface, and it only ever holds rows the list shows: the read
-that stops showing a selected row — another tab, filter or search, or a row
-whose state moves it out of the filter, such as one that starts importing
-under Identified — takes it out of the selection before the list is
-delivered, and a row shown again comes back unselected. The pane a selection
-opens reads only that selection, so with nothing shown selected it shows
-nothing selected. A bulk action runs in core over the selected rows that offer
-it, in the order the list shows them. A broken folder offers no action, so
-selected among others it counts toward the selection but holds back combining
-it.
+The person can select any number of rows. Each list a surface opens holds
+its own selection beside its view and its folds, in core, not in the surface,
+and it only ever holds rows the list shows: the write that stops showing a
+selected row — another tab, filter or search, a fold, or a change that moves
+the row out of the filter, such as one that starts importing under Identified
+— takes it out of the selection in that same write, and a row shown again
+comes back unselected. A release the scan reads again with changed files is
+the same row: it stays selected, under a group as folded as it was. The pane a selection opens reads only that selection,
+so with nothing shown selected it shows nothing selected. A bulk action runs
+in core over the selected rows that offer it, in the order the list shows
+them. A broken folder offers no action, so selected among others it counts
+toward the selection but holds back combining it.
+
+Revealing a candidate — the first one still being identified, or one the
+person asks for — shows it on the tab its placement puts it on, with the
+filters cleared and its group opened, the list's other folds kept.
+
+Everything the list shows is read from tables, one read for its rows, its
+counts and its selection: each release's tab, state, group, dates, shown text
+and what its commands are decided from are kept beside it as it changes
+(Appendix A.7), so the list reads the rows it shows and not the whole queue.
 
 ### 3.3 Clues in the files
 
@@ -2851,7 +2877,14 @@ Beside them, keyed by the candidate's key as the import list names it:
 
 | Table | Holds |
 |---|---|
-| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person, the group listing it, the date and path it sorts by, and the text it shows. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables |
+| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order serves each tab's windows; another counts the tabs and the filter entries |
+| `import_list` | each import list a surface has open: its tab, filter entry, search text and order, and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
+| `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
+| `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
+
+No list outlives the process that opened it: the import service empties
+`import_list` and the tables hanging off it as the library opens, with the
+standings.
 
 ### A.8 Catalog releases
 

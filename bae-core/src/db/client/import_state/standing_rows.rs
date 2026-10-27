@@ -122,12 +122,7 @@ impl StandingColumns {
             (None, None) => None,
             (Some(standing), Some(import_id)) => Some(StoredImport {
                 import_id,
-                standing: match standing {
-                    "queued" => ImportStanding::Queued,
-                    "running" => ImportStanding::Running,
-                    "writing" => ImportStanding::Writing,
-                    other => return Err(broken(&format!("names an unknown import {other}"))),
-                },
+                standing: import_standing(standing).map_err(|unknown| broken(&unknown))?,
             }),
             (Some(_), None) | (None, Some(_)) => {
                 return Err(broken(
@@ -138,6 +133,83 @@ impl StandingColumns {
         Ok(StoredStanding {
             identification,
             import,
+        })
+    }
+}
+
+/// Where an import stands, as the `import` column holds it; what is wrong
+/// with the column otherwise.
+fn import_standing(column: &str) -> Result<ImportStanding, String> {
+    match column {
+        "queued" => Ok(ImportStanding::Queued),
+        "running" => Ok(ImportStanding::Running),
+        "writing" => Ok(ImportStanding::Writing),
+        other => Err(format!("names an unknown import {other}")),
+    }
+}
+
+/// The columns of a standing that say what is running for its candidate, over
+/// the alias `st`, in the order [`RuntimeFactColumns::read`] reads them: what
+/// the list reads of a row's standing, and groups selected rows by.
+pub(crate) const RUNTIME_FACT_COLUMNS: &str =
+    "st.identification, st.import_asked, st.save_failure_error, st.import";
+
+/// [`RUNTIME_FACT_COLUMNS`] as SQLite holds them: all `NULL` for a candidate
+/// with no standing.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct RuntimeFactColumns {
+    identification: Option<String>,
+    import_asked: Option<bool>,
+    save_failure_error: Option<String>,
+    import: Option<String>,
+}
+
+impl RuntimeFactColumns {
+    pub(crate) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
+        Ok(Self {
+            identification: row.get(first)?,
+            import_asked: row.get(first + 1)?,
+            save_failure_error: row.get(first + 2)?,
+            import: row.get(first + 3)?,
+        })
+    }
+
+    /// What these columns say is running for `key`'s candidate.
+    pub(crate) fn facts(&self, key: &str) -> Result<TriageRuntimeFacts, DbError> {
+        use crate::import::IdentificationStatus as S;
+        let broken = |what: &str| DbError::Message(format!("the standing of {key} {what}"));
+        let error = || {
+            self.save_failure_error
+                .clone()
+                .ok_or_else(|| broken("names no failure"))
+        };
+        Ok(TriageRuntimeFacts {
+            identification: match self.identification.as_deref() {
+                None => None,
+                Some("queued") => Some(S::Queued),
+                Some("running") => Some(S::Running),
+                Some("finalizing") => Some(S::Finalizing),
+                Some("reading_pick") => Some(S::ReadingPick {
+                    import_asked: self
+                        .import_asked
+                        .ok_or_else(|| broken("names no import ask"))?,
+                }),
+                Some("not_written") => Some(S::FinalizationFailed {
+                    failure: SaveFailure::NotWritten { error: error()? },
+                }),
+                Some("inapplicable") => Some(S::FinalizationFailed {
+                    failure: SaveFailure::Inapplicable { error: error()? },
+                }),
+                Some(other) => {
+                    return Err(broken(&format!("names an unknown identification {other}")))
+                }
+            },
+            import: self
+                .import
+                .as_deref()
+                .map(import_standing)
+                .transpose()
+                .map_err(|unknown| broken(&unknown))?,
         })
     }
 }

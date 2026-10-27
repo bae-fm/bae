@@ -17,16 +17,14 @@ pub enum BridgeImportListOrder {
 }
 
 /// What the list is showing. A change to any of it changes which items sit at
-/// which offsets, so it travels as one value.
+/// which offsets, so it travels as one value. Which groups are folded shut is
+/// the list's too, written by `set_group_folded`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
     /// Which of Found's rows the list shows.
     pub pending_filter: BridgePendingFilter,
-    /// The groups folded shut. Their entries are not in the list at all, which
-    /// is why this is part of the request rather than a rendering decision.
-    pub collapsed_groups: Vec<BridgeFolderReleaseDecisionKey>,
     pub order: BridgeImportListOrder,
 }
 
@@ -104,20 +102,16 @@ pub struct BridgeImportCandidateListLocation {
     pub visible_position: u64,
 }
 
-/// Everything the chrome around the list shows, computed in the same pass as
-/// the items, so none of it can drift from them. Where the folder scans stand
+/// Everything the chrome around the list shows, read with the items, so none
+/// of it can drift from them. Where the folder scans stand
 /// is [`BridgeFolderScans`], sent on its own: a scan's progress moves no row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportQueueSummary {
     /// `skipped` counts the Skipped rows **plus** the invalid folders.
     pub counts: BridgeTriageTabCounts,
     pub watched_folders: Vec<BridgeWatchedFolder>,
-    /// Every group header the whole queue has, across all tabs — what
-    /// disclosure state is retained against.
-    pub group_keys: Vec<BridgeFolderReleaseDecisionKey>,
-    /// The lead-match covers of the Pending rows the view's filters keep, in
-    /// queue order, to decode before Pending opens.
-    pub pending_covers: Vec<BridgeRemoteImageSet>,
+    /// Whether Found has any group, which folding every group acts on.
+    pub has_groups: bool,
     /// How many of the tab's entries the list shows, of how many it has,
     /// while the text filter or the filter entry narrows it; absent while
     /// nothing does.
@@ -128,21 +122,6 @@ pub struct BridgeImportQueueSummary {
     /// Where the first selected row sits in this read's list; `None` with no
     /// selected row in it.
     pub first_selected_position: Option<u64>,
-    /// How much the Done tab knows of where its uploads stand, when this
-    /// read shows Done; absent on the other tabs.
-    pub done_upload_status: Option<BridgeUploadStatusKnown>,
-}
-
-/// How much the Done tab knows of where uploads stand. `Waiting`: the upload
-/// queue hasn't answered yet, and Done shows no rows until it does. `Read`:
-/// Done is ordered by upload standing. `Unreadable`: the queue couldn't be
-/// read, and Done is ordered by import time alone. Mirrors
-/// `bae_core::import::UploadStatusKnown`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeUploadStatusKnown {
-    Waiting,
-    Read,
-    Unreadable,
 }
 
 /// What a view narrows its rows by. Mirrors
@@ -194,12 +173,14 @@ pub struct BridgeImportListSnapshot {
     /// Every entry of Found's filter, in the menu's order, with how many of
     /// Found's rows it holds.
     pub pending_filter_entries: Vec<BridgePendingFilterEntry>,
-    /// The person's changes to the selection the rows' `selected` reflects.
+    /// The changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
     /// What the selection holds and can be told to do: only ever rows this
     /// list shows.
     pub selection: BridgeSelectionSummary,
-    pub request_revision: u64,
+    /// The changes to the view, its folds included, the rows reflect: what
+    /// `set_view` and the folds answer with.
+    pub view_revision: u64,
     pub cause: BridgeLiveQueryCause,
 }
 

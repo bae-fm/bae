@@ -155,7 +155,6 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
         outbox.queue.upload_groups
     );
     assert!(outbox.queue.per_release_progress().is_empty());
-    assert!(bae_core::import::list::UploadStanding::of_outbox(&outbox.queue).is_empty());
     assert_eq!(
         outbox
             .queue.other_files

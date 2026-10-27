@@ -719,9 +719,9 @@ pub(super) fn write_entry(
         }
         EntrySource::Grouping => Vec::new(),
     };
-    // An item replaces its own stored row whole; the entries it supersedes
-    // leave the scan.
-    write::delete_entry_row(sql, watched_folder_path, &entry_key)?;
+    // An item is written over its own stored row, everything below that row
+    // written anew; the entries it supersedes leave the scan.
+    write::clear_entry_rows(sql, watched_folder_path, &entry_key)?;
     for key in &removed_keys {
         delete_entry(sql, watched_folder_path, key)?;
     }

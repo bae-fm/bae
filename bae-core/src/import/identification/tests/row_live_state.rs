@@ -1,21 +1,21 @@
 // ── What is running for a row, read with the page ──────────────────────────
 //
 // Where each candidate stands is written to the standings table and read with
-// the rows, so a change to it delivers the page again at the same request
+// the rows, so a change to it delivers the page again at the same view
 // revision, its rows carrying it. The filter's counts are read the same way.
 
 /// A list subscription over the Pending tab, asking for `windows`.
-fn list_subscription(
+async fn list_subscription(
     fixture: &Fixture,
     windows: crate::library::LibraryPageWindows,
 ) -> crate::import::ImportListSubscription {
-    crate::import::ImportListSubscription::start(
-        |request| fixture.manager.subscribe_import_list(request),
+    crate::import::ImportListSubscription::open(
+        fixture.manager.clone(),
         crate::import::ImportListView::default(),
         windows,
-        fixture.manager.subscribe_outbox_values(),
-        &tokio::runtime::Handle::current(),
     )
+    .await
+    .expect("the list opens")
 }
 
 fn page_window(offset: u64, limit: u64) -> crate::library::LibraryPageWindows {
@@ -97,7 +97,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     let key = dir.to_string_lossy().into_owned();
     fixture.scan(1).await;
 
-    let list = list_subscription(&fixture, page_window(0, 50));
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
     let idle = page_live(&initial)
         .remove(&key)
@@ -110,7 +110,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
     let claimed = next_page(&list).await;
     assert_eq!(
-        claimed.request_revision, initial.request_revision,
+        claimed.view_revision, initial.view_revision,
         "a claimed import changed the list's request"
     );
     assert_eq!(
@@ -183,7 +183,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     // reads carry where each stands.
     list.set_windows(page_window(0, 49)).unwrap();
     let moved = next_page(&list).await;
-    assert_eq!(moved.request_revision, initial.request_revision + 1);
+    assert_eq!(moved.view_revision, initial.view_revision);
     assert_eq!(
         moved.cause,
         coven::LiveQueryCause::Request
@@ -206,7 +206,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
     fixture.scan(2).await;
 
-    let list = list_subscription(&fixture, page_window(0, 1));
+    let list = list_subscription(&fixture, page_window(0, 1)).await;
     let initial = next_page(&list).await;
     let on_page = page_live(&initial);
     assert_eq!(on_page.len(), 1, "the window holds one row");
@@ -222,7 +222,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         .claim_candidate_for_import(&off_key, "import-off")
         .await;
     let counted_off = next_page(&list).await;
-    assert_eq!(counted_off.request_revision, initial.request_revision);
+    assert_eq!(counted_off.view_revision, initial.view_revision);
     assert_eq!(
         counted_off.windows, initial.windows,
         "the claim off the page reached no row on it"
@@ -237,7 +237,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         .claim_candidate_for_import(&on_key, "import-on")
         .await;
     let claimed = next_page(&list).await;
-    assert_eq!(claimed.request_revision, initial.request_revision);
+    assert_eq!(claimed.view_revision, initial.view_revision);
     assert_eq!(
         page_live(&claimed)[&on_key].facts.import,
         Some(crate::import::ImportStanding::Queued)
@@ -247,9 +247,9 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     list.set_windows(page_window(0, 2)).unwrap();
     let widened = next_page(&list).await;
     assert_eq!(
-        widened.request_revision,
-        initial.request_revision + 1,
-        "one more request to the same query"
+        widened.view_revision,
+        initial.view_revision,
+        "a window is the query's request, not the list's view"
     );
     assert_eq!(
         widened.cause,
@@ -273,7 +273,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         .import
         .emit_event_for_test(reported(&off_key, preparing("import-off")));
     let taken_up = next_page(&list).await;
-    assert_eq!(taken_up.request_revision, widened.request_revision);
+    assert_eq!(taken_up.view_revision, widened.view_revision);
     let live = page_live(&taken_up);
     assert_eq!(
         live[&off_key].facts.import,
@@ -312,7 +312,7 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
         .unwrap();
     fixture.scan(2).await;
 
-    let list = list_subscription(&fixture, page_window(0, 50));
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
     let keys = [&first, &second].map(|dir| dir.to_string_lossy().into_owned());
     for key in &keys {
@@ -334,7 +334,7 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
     while !ran(&seen) {
         let snapshot = next_page(&list).await;
         assert_eq!(
-            snapshot.request_revision, initial.request_revision,
+            snapshot.view_revision, initial.view_revision,
             "identifying changed the list's request"
         );
         for (key, live) in page_live(&snapshot) {
@@ -376,7 +376,7 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
         .unwrap();
     fixture.scan(2).await;
 
-    let list = list_subscription(&fixture, page_window(0, 1));
+    let list = list_subscription(&fixture, page_window(0, 1)).await;
     let initial = next_page(&list).await;
     let on_key = page_live(&initial)
         .into_keys()

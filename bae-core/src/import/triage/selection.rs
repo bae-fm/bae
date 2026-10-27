@@ -22,6 +22,23 @@ pub struct SelectionOffer {
     pub enabled: bool,
 }
 
+/// Some number of selected rows that offer the same actions: the selection's
+/// offers are counted over such parts, one per set of actions, rather than
+/// over each row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SelectionPart {
+    pub actions: Vec<CandidateAction>,
+    pub count: u64,
+}
+
+impl SelectionPart {
+    /// Whether this part's rows take part in `action`: those that offer it,
+    /// or every row for combining, which acts on the whole selection.
+    fn takes(&self, action: CandidateAction) -> bool {
+        action == CandidateAction::Combine || self.actions.contains(&action)
+    }
+}
+
 /// The keys `action` runs on over `members`: those that offer it, or every
 /// member for combining, which acts on the whole selection.
 pub fn keys_for(members: &[SelectionMember], action: CandidateAction) -> Vec<String> {
@@ -32,26 +49,32 @@ pub fn keys_for(members: &[SelectionMember], action: CandidateAction) -> Vec<Str
         .collect()
 }
 
-/// The actions `members` offer, in the order every surface lists them.
+/// The actions a selection made of `parts` offers, in the order every surface
+/// lists them.
 ///
-/// Each action runs member by member over the members that offer it, so it is
-/// offered when any does. Combining is one action over the whole selection: it
-/// is offered once there are two members or more, and can run only when every
-/// one of them could be combined — a surface shows it standing but unusable
-/// otherwise, so the reason it cannot is on the member that holds it back
-/// rather than a missing item.
-pub fn selection_offers(members: &[SelectionMember]) -> Vec<SelectionOffer> {
+/// Each action runs row by row over the rows that offer it, so it is offered
+/// when any does. Combining is one action over the whole selection: it is
+/// offered once there are two rows or more, and can run only when every one of
+/// them could be combined — a surface shows it standing but unusable
+/// otherwise, so the reason it cannot is on the row that holds it back rather
+/// than a missing item.
+pub fn selection_offers(parts: &[SelectionPart]) -> Vec<SelectionOffer> {
+    let rows: u64 = parts.iter().map(|part| part.count).sum();
     CandidateAction::ALL
         .into_iter()
         .filter_map(|action| {
-            let count = keys_for(members, action).len() as u64;
+            let count = parts
+                .iter()
+                .filter(|part| part.takes(action))
+                .map(|part| part.count)
+                .sum();
             match action {
-                CandidateAction::Combine => (members.len() >= 2).then(|| SelectionOffer {
+                CandidateAction::Combine => (rows >= 2).then(|| SelectionOffer {
                     action,
                     count,
-                    enabled: members
+                    enabled: parts
                         .iter()
-                        .all(|member| member.actions.contains(&CandidateAction::Combine)),
+                        .all(|part| part.actions.contains(&CandidateAction::Combine)),
                 }),
                 _ => (count > 0).then_some(SelectionOffer {
                     action,
@@ -75,6 +98,14 @@ mod tests {
         }
     }
 
+    /// One row offering `actions`.
+    fn one(actions: &[CandidateAction]) -> SelectionPart {
+        SelectionPart {
+            actions: actions.to_vec(),
+            count: 1,
+        }
+    }
+
     fn actions(offers: &[SelectionOffer]) -> Vec<CandidateAction> {
         offers.iter().map(|offer| offer.action).collect()
     }
@@ -83,10 +114,13 @@ mod tests {
     /// offers no Combine: one folder is not a selection to combine.
     #[test]
     fn one_member_offers_its_own_actions_in_order() {
-        let offers = selection_offers(&[member(
-            "Album",
-            &[A::RevealFolder, A::Skip, A::Combine, A::Identify, A::Import],
-        )]);
+        let offers = selection_offers(&[one(&[
+            A::RevealFolder,
+            A::Skip,
+            A::Combine,
+            A::Identify,
+            A::Import,
+        ])]);
         assert_eq!(
             actions(&offers),
             vec![A::Import, A::Identify, A::Skip, A::RevealFolder]
@@ -101,7 +135,10 @@ mod tests {
             member("Album", &[A::Import, A::Identify, A::RevealFolder]),
             member("Other Album", &[A::Identify, A::RevealFolder]),
         ];
-        let offers = selection_offers(&members);
+        let offers = selection_offers(&[
+            one(&[A::Import, A::Identify, A::RevealFolder]),
+            one(&[A::Identify, A::RevealFolder]),
+        ]);
         let count = |action| {
             offers
                 .iter()
@@ -114,14 +151,43 @@ mod tests {
         assert_eq!(keys_for(&members, A::Import), vec!["Album".to_string()]);
     }
 
+    /// A part counts each of its rows: an action is offered for as many rows
+    /// as the parts offering it hold, and two rows alike make a selection to
+    /// combine.
+    #[test]
+    fn each_part_counts_every_row_it_holds() {
+        let offers = selection_offers(&[
+            SelectionPart {
+                actions: vec![A::Import, A::Combine],
+                count: 3,
+            },
+            one(&[A::Combine]),
+        ]);
+        assert_eq!(
+            offers,
+            vec![
+                SelectionOffer {
+                    action: A::Import,
+                    count: 3,
+                    enabled: true,
+                },
+                SelectionOffer {
+                    action: A::Combine,
+                    count: 4,
+                    enabled: true,
+                },
+            ]
+        );
+    }
+
     /// Combining is the whole selection's: offered for two or more, runnable
     /// only when every member can be combined.
     #[test]
     fn combining_is_offered_over_the_whole_selection() {
-        let both = selection_offers(&[
-            member("Disc 1", &[A::Combine]),
-            member("Disc 2", &[A::Combine]),
-        ]);
+        let both = selection_offers(&[SelectionPart {
+            actions: vec![A::Combine],
+            count: 2,
+        }]);
         assert_eq!(
             both,
             vec![SelectionOffer {
@@ -130,10 +196,7 @@ mod tests {
                 enabled: true,
             }]
         );
-        let held_back = selection_offers(&[
-            member("Disc 1", &[A::Combine]),
-            member("Importing", &[A::CancelImport]),
-        ]);
+        let held_back = selection_offers(&[one(&[A::Combine]), one(&[A::CancelImport])]);
         let combine = held_back
             .iter()
             .find(|offer| offer.action == A::Combine)

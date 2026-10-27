@@ -432,8 +432,7 @@
             done: 0,
             skipped: 0,
             watchedFolders: [releaseQueueWatchedFolder],
-            groupKeys: [releaseQueueGroupKey],
-            pendingCovers: pendingCovers(releaseQueueRows)
+            hasGroups: true
         )
 
         private static let releaseQueueResolvedRow = releaseQueueRow(
@@ -475,8 +474,7 @@
                     done: 0,
                     skipped: 0,
                     watchedFolders: [releaseQueueWatchedFolder],
-                    groupKeys: [releaseQueueGroupKey],
-                    pendingCovers: pendingCovers(releaseQueueRows)
+                    hasGroups: true
                 )
             )
             scene.store.applyFolderScans(
@@ -514,8 +512,7 @@
                     pending: 1,
                     done: 0,
                     skipped: 0,
-                    watchedFolders: [releaseQueueWatchedFolder],
-                    pendingCovers: pendingCovers([releaseQueueResolvedRow])
+                    watchedFolders: [releaseQueueWatchedFolder]
                 )
             )
         }
@@ -533,8 +530,7 @@
                     skipped: base.counts.skipped,
                     watchedFolders: base.watchedFolders
                         + [releaseQueueWatchedFolder],
-                    groupKeys: base.groupKeys,
-                    pendingCovers: base.pendingCovers
+                    hasGroups: base.hasGroups
                 )
             )
             // Counted off the scene's rows, with the one still identifying

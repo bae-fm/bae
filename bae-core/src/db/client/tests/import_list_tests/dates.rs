@@ -66,7 +66,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     };
     assert_eq!(
         names(
-            db.load_import_list(request(TriageTab::Pending).await)
+            db.load_import_list_read(request(TriageTab::Pending).await)
                 .await
                 .unwrap()
         ),
@@ -105,7 +105,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     assert_eq!(
         names(
             later
-                .load_import_list(request(TriageTab::Pending).await)
+                .load_import_list_read(request(TriageTab::Pending).await)
                 .await
                 .unwrap()
         ),
@@ -114,7 +114,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     let mut ascending = request(TriageTab::Pending).await;
     ascending.view.order = ImportListOrder::OldestFirst;
     assert_eq!(
-        names(later.load_import_list(ascending).await.unwrap()),
+        names(later.load_import_list_read(ascending).await.unwrap()),
         ["A", "B", "C"]
     );
 }
@@ -187,7 +187,7 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
     let listed = |db: Database, order: ImportListOrder| async move {
         let mut request = request(TriageTab::Pending).await;
         request.view.order = order;
-        rows(&db.load_import_list(request).await.unwrap())
+        rows(&db.load_import_list_read(request).await.unwrap())
             .into_iter()
             .map(|row| (row.candidate_key, row.folder_name))
             .collect::<Vec<_>>()

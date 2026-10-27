@@ -119,14 +119,28 @@ struct ImportListPageSourceFailureTests {
         }
 
         func setWindows(windows _: [BridgeLibraryPageWindow]) throws {}
-        func setView(view _: BridgeImportListView) throws -> UInt64 { 0 }
-        func cancel() async throws {}
-
-        // The selection is not what these tests drive.
-        func changeSelection(change _: BridgeSelectionChange) throws -> UInt64 {
+        func setView(view _: BridgeImportListView) async throws -> UInt64 {
             0
         }
-        func selectAll() throws -> UInt64 { 0 }
+        func cancel() async throws {}
+
+        // The folds, the reads of where a candidate sits and the selection
+        // are not what these tests drive.
+        func setGroupFolded(
+            group _: BridgeFolderReleaseDecisionKey,
+            folded _: Bool
+        ) async throws -> UInt64 { 0 }
+        func setAllGroupsFolded(folded _: Bool) async throws -> UInt64 { 0 }
+        func locateCandidate(
+            candidateKey _: String
+        ) async throws -> BridgeImportCandidateListLocation? { nil }
+        func firstIdentifyingCandidate() async throws -> String? { nil }
+        func changeSelection(
+            change _: BridgeSelectionChange
+        ) async throws -> UInt64 {
+            0
+        }
+        func selectAll() async throws -> UInt64 { 0 }
         func selectionSourceFolders() async throws -> [String] { [] }
         func combineSelection() async throws -> String {
             throw StubError.notImplemented

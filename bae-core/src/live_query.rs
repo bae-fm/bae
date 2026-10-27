@@ -70,13 +70,6 @@ where
 }
 
 impl<Request, Projection> CancellableLiveQuery<Request, Projection> {
-    /// Resolves once the subscription is cancelled, for a task that keeps the
-    /// request current and should stop when it can no longer be delivered.
-    #[cfg(desktop)]
-    pub(crate) async fn cancelled(&self) {
-        self.cancellation.cancelled().await;
-    }
-
     /// Refuse every later request and settle a waiting read. The query itself
     /// lives until [`Self::close`] takes it, or until this is dropped.
     pub(crate) fn cancel(&self) {

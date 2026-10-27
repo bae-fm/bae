@@ -83,10 +83,7 @@ mod import_list;
 #[cfg(desktop)]
 mod import_state;
 #[cfg(desktop)]
-pub use import_list::{
-    CandidateListGrouping, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
-    ScanCandidateListRow,
-};
+pub(crate) use import_list::SelectionWrite;
 #[cfg(desktop)]
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportClaim,

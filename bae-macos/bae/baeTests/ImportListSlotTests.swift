@@ -7,6 +7,34 @@ import XCTest
 
 private struct ReadFailed: Error {}
 
+extension ImportListPages {
+    /// Pages over `source` whose view changes, folds and reads are the given
+    /// stand-ins, and change nothing otherwise.
+    static func stub(
+        source: any PageSource<BridgeImportListItem>,
+        setView: @escaping @Sendable (BridgeImportListView) -> Void = { _ in },
+        waitForView:
+            @escaping @Sendable (BridgeImportListView) async throws -> Void = {
+                _ in
+            },
+        locateCandidate:
+            @escaping @Sendable (String) async throws
+            -> BridgeImportCandidateListLocation? = { _ in nil },
+        firstIdentifyingCandidate:
+            @escaping @Sendable () async throws -> String? = { nil }
+    ) -> ImportListPages {
+        ImportListPages(
+            source: source,
+            setView: setView,
+            waitForView: waitForView,
+            setGroupFolded: { _, _ in },
+            setAllGroupsFolded: { _ in },
+            locateCandidate: locateCandidate,
+            firstIdentifyingCandidate: firstIdentifyingCandidate
+        )
+    }
+}
+
 private final class RecordedImportView: @unchecked Sendable {
     private let lock = NSLock()
     private var view: BridgeImportListView?
@@ -35,11 +63,7 @@ private struct FailingPageSource: PageSource {
     }
 
     var pages: ImportListPages {
-        ImportListPages(
-            source: self,
-            setView: { _ in },
-            waitForView: { _ in }
-        )
+        .stub(source: self)
     }
 }
 
@@ -135,14 +159,11 @@ struct ImportListSlotTests {
                 defaults: defaults,
                 makeSource: { view in
                     requests.set(view)
-                    return ImportListPages(
+                    return .stub(
                         source: source,
-                        setView: { requests.set($0) },
-                        waitForView: { _ in }
+                        setView: { requests.set($0) }
                     )
-                },
-                locateCandidate: { _, _ in nil },
-                firstIdentifyingCandidate: { _ in nil }
+                }
             )
         }
         let slot = makeSlot()
@@ -172,9 +193,7 @@ struct ImportListSlotTests {
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { _ in FailingPageSource().pages },
-            locateCandidate: { _, _ in nil },
-            firstIdentifyingCandidate: { _ in nil }
+            makeSource: { _ in FailingPageSource().pages }
         )
 
         #expect(slot.loadFailure == nil)
@@ -203,21 +222,19 @@ struct ImportListSlotTests {
             uiStore: uiStore,
             selection: ImportSelection(),
             makeSource: { _ in
-                ImportListPages(
+                .stub(
                     source: pageSource,
-                    setView: { _ in },
-                    waitForView: { _ in }
+                    locateCandidate: { key in
+                        BridgeImportCandidateListLocation(
+                            stableKey: "candidate:\(key)",
+                            tab: .pending,
+                            groupKey: nil,
+                            visiblePosition: 61
+                        )
+                    },
+                    firstIdentifyingCandidate: { target }
                 )
-            },
-            locateCandidate: { _, key in
-                BridgeImportCandidateListLocation(
-                    stableKey: "candidate:\(key)",
-                    tab: .pending,
-                    groupKey: nil,
-                    visiblePosition: 61
-                )
-            },
-            firstIdentifyingCandidate: { _ in target }
+            }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(0) != nil }
@@ -239,16 +256,16 @@ struct ImportListSlotTests {
             uiStore: uiStore,
             selection: ImportSelection(),
             makeSource: { _ in
-                ImportListPreviewPageSource(
-                    items: (0..<80).map(candidateItem)
+                .stub(
+                    source: ImportListPreviewPageSource(
+                        items: (0..<80).map(candidateItem)
+                    ),
+                    locateCandidate: { _ in
+                        Issue.record("nothing to locate")
+                        return nil
+                    }
                 )
-                .pages
-            },
-            locateCandidate: { _, _ in
-                Issue.record("nothing to locate")
-                return nil
-            },
-            firstIdentifyingCandidate: { _ in nil }
+            }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(0) != nil }
@@ -284,9 +301,7 @@ struct ImportListSlotTests {
                     items: (0..<80).map(candidateItem)
                 )
                 .pages
-            },
-            locateCandidate: { _, _ in nil },
-            firstIdentifyingCandidate: { _ in nil }
+            }
         )
 
         slot.changeSelection(
@@ -303,6 +318,49 @@ struct ImportListSlotTests {
         #expect(writes.all == ["toggle", "select all"])
     }
 
+    /// Folding is core's list's: the slot tells it which group to fold or
+    /// open, and folds every group in one call.
+    @Test("folding a group asks core's list to fold it")
+    func foldingAsksCoresList() async throws {
+        let folds = CallLog<String>()
+        let group = BridgeFolderReleaseDecisionKey(
+            watchedFolderPath: "/library",
+            relativeFolderPath: "Box"
+        )
+        let source = ImportListPreviewPageSource(items: [])
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: ImportSelection(),
+            makeSource: { _ in
+                ImportListPages(
+                    source: source,
+                    setView: { _ in },
+                    waitForView: { _ in },
+                    setGroupFolded: { group, folded in
+                        folds.record("\(group.relativeFolderPath) \(folded)")
+                    },
+                    setAllGroupsFolded: { folded in
+                        folds.record("all \(folded)")
+                    },
+                    locateCandidate: { _ in nil },
+                    firstIdentifyingCandidate: { nil }
+                )
+            }
+        )
+        slot.startLoad()
+        try await Wait.until { slot.list != nil }
+
+        slot.setGroupExpanded(group, false)
+        try await Wait.until { folds.all.count == 1 }
+        slot.setGroupExpanded(group, true)
+        try await Wait.until { folds.all.count == 2 }
+        slot.setAllGroupsExpanded(false)
+        try await Wait.until { folds.all.count == 3 }
+
+        #expect(folds.all == ["Box true", "Box false", "all true"])
+    }
+
     /// The slot asks core for the list under the entry the person chose, and
     /// keeps it as the sidebar's own.
     @Test("a chosen entry narrows the view")
@@ -316,14 +374,11 @@ struct ImportListSlotTests {
             selection: ImportSelection(),
             makeSource: { view in
                 requests.set(view)
-                return ImportListPages(
+                return .stub(
                     source: source,
-                    setView: { requests.set($0) },
-                    waitForView: { _ in }
+                    setView: { requests.set($0) }
                 )
-            },
-            locateCandidate: { _, _ in nil },
-            firstIdentifyingCandidate: { _ in nil }
+            }
         )
         slot.startLoad()
         try await Wait.until { slot.list != nil }
@@ -354,23 +409,21 @@ final class CandidatePlacementNavigationTests: XCTestCase {
             uiStore: uiStore,
             selection: ImportSelection(),
             makeSource: { _ in
-                ImportListPages(
+                .stub(
                     source: pageSource,
-                    setView: { _ in },
                     waitForView: { view in
                         await delivery.wait(for: view)
+                    },
+                    locateCandidate: { key in
+                        BridgeImportCandidateListLocation(
+                            stableKey: "candidate:\(key)",
+                            tab: .done,
+                            groupKey: nil,
+                            visiblePosition: 61
+                        )
                     }
                 )
-            },
-            locateCandidate: { _, key in
-                BridgeImportCandidateListLocation(
-                    stableKey: "candidate:\(key)",
-                    tab: .done,
-                    groupKey: nil,
-                    visiblePosition: 61
-                )
-            },
-            firstIdentifyingCandidate: { _ in nil }
+            }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(0) != nil }

@@ -155,20 +155,18 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
 async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
     let projection = handle
         .library_manager
-        .load_import_list(crate::import::ImportListRequest {
-            view: crate::import::ImportListView {
+        .load_import_list_once(
+            crate::import::ImportListView {
                 order: crate::import::ImportListOrder::PathAscending,
                 ..crate::import::ImportListView::default()
             },
-            windows: [crate::library::LibraryPageWindow {
+            [crate::library::LibraryPageWindow {
                 offset: 0,
                 limit: 50,
             }]
             .into_iter()
             .collect(),
-            upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-            selected: Default::default(),
-        })
+        )
         .await
         .unwrap();
     projection

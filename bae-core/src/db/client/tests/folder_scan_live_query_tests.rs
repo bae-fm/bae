@@ -1,4 +1,4 @@
-use super::import_list_live_query_tests::{candidate_names, list_request, scan_candidate};
+use super::import_list_live_query_tests::{candidate_names, list_request, scan_candidate, through};
 use super::live_query_tests::{live_db, next_run_is_only_the_request};
 use std::time::Duration;
 
@@ -19,8 +19,9 @@ async fn import_list_wakes_on_a_scan_item() {
         .await
         .unwrap();
 
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
+    let mut live = db.subscribe_import_list(
+        list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await,
+    );
     let initial = live
         .next()
         .await
@@ -191,8 +192,9 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
         .await
         .unwrap();
 
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
+    let request = list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await;
+    let list = request.list;
+    let mut live = db.subscribe_import_list(request);
     let initial = live
         .next()
         .await
@@ -209,13 +211,10 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
             .await
             .unwrap();
     }
-    let moved = next_run_is_only_the_request(
-        &mut live,
-        list_request(crate::import::TriageTab::Pending, [(0, 49)]),
-    )
-    .await
-    .result
-    .unwrap();
+    let moved = next_run_is_only_the_request(&mut live, through(list, [(0, 49)]))
+        .await
+        .result
+        .unwrap();
     assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
 
@@ -242,17 +241,12 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
         .await
         .unwrap();
 
-    let request = list_request(crate::import::TriageTab::Pending, [(0, 50)]);
-    let (_outbox, outbox) = tokio::sync::watch::channel(None);
-    let subscription = crate::import::ImportListSubscription::start(
-        |request| db.subscribe_import_list(request),
-        request.view,
-        request.windows,
-        outbox,
-        &tokio::runtime::Handle::current(),
-    );
+    let request = list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await;
+    let list = request.list;
+    let mut subscription = db.subscribe_import_list(request);
+    let requests = subscription.requests();
     let mut scans = db.subscribe_folder_scan_progress();
-    let initial = subscription.next().await.unwrap();
+    let initial = subscription.next().await.expect("the query stays open");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     let found = |progress: crate::import::FolderScanProgress| {
         progress
@@ -275,23 +269,18 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
         .unwrap();
     assert_eq!(found(progressed), 1);
 
-    subscription
-        .set_windows(
-            std::iter::once(crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: 49,
-            })
-            .collect(),
-        )
-        .unwrap();
+    requests.set(through(list, [(0, 49)])).unwrap();
     let next = tokio::time::timeout(Duration::from_secs(2), subscription.next())
         .await
         .expect("a new request reruns the list")
-        .unwrap();
+        .expect("the query stays open");
     assert_eq!(
         next.cause,
         coven::LiveQueryCause::Request,
         "the scan's progress sent the list nothing"
     );
-    assert_eq!(next.windows[0].items, initial.windows[0].items);
+    assert_eq!(
+        next.result.unwrap().windows[0].items,
+        initial.result.unwrap().windows[0].items
+    );
 }

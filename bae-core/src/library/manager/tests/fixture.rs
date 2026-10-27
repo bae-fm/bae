@@ -191,14 +191,18 @@ fn fixture_candidate(
 
 /// Found's rows the import list reads, by display path, newest first.
 async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjection {
+    let list = manager
+        .open_import_list(crate::import::ImportListView::default())
+        .await
+        .unwrap();
     manager
         .load_import_list(crate::import::ImportListRequest {
+            list,
             windows: std::iter::once(crate::library::LibraryPageWindow {
                 offset: 0,
                 limit: 50,
             })
             .collect(),
-            ..crate::import::ImportListRequest::default()
         })
         .await
         .unwrap()
@@ -242,8 +246,8 @@ async fn fixture_candidates_land_on_found_in_their_states() {
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, .. } => {
-                Some((row.display_path.clone(), row.action_basis.standing.clone()))
+            crate::import::ImportListItem::Candidate { row, live, .. } => {
+                Some((row.display_path.clone(), live.standing.clone()))
             }
             _ => None,
         })

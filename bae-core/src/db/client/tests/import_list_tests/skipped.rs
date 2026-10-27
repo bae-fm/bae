@@ -63,9 +63,9 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         .await
         .unwrap();
     let mut selecting = request(TriageTab::Skipped).await;
-    selecting.selected.insert(key.clone());
+    selecting.selected.push(key.clone());
 
-    let list = db.load_import_list(selecting).await.unwrap();
+    let list = db.load_import_list_read(selecting).await.unwrap();
     let listed: Vec<_> = list
         .windows
         .iter()

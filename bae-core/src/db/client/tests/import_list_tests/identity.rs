@@ -62,7 +62,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
         .unwrap();
 
     let projection = db
-        .load_import_list(request(TriageTab::Pending).await)
+        .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
     let row = rows(&projection).remove(0);

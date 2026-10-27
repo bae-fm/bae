@@ -102,14 +102,7 @@
                     true
                 )
             }
-            if collapsePendingGroup,
-                let group = scene.store.summary.groupKeys.first
-            {
-                uiStore.setReleaseGroupExpanded(
-                    releaseGroupDisclosureID(group),
-                    false
-                )
-            }
+            let scene = collapsePendingGroup ? scene.foldingFirstGroup() : scene
             return ImportCandidateListContent(
                 importStore: scene.store,
                 listSlot: scene.slot(uiStore: uiStore),

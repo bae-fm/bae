@@ -32,8 +32,8 @@ struct ImportSelectionOperations: Sendable {
         -> ImportSelectionOperations
     {
         ImportSelectionOperations(
-            change: { try list.current().changeSelection(change: $0) },
-            selectAll: { _ = try list.current().selectAll() },
+            change: { try await list.current().changeSelection(change: $0) },
+            selectAll: { _ = try await list.current().selectAll() },
             sourceFolders: {
                 try await list.current().selectionSourceFolders()
             },

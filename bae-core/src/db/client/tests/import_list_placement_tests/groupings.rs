@@ -147,15 +147,16 @@ async fn undoing_a_grouping_gives_its_folders_back() {
     );
 }
 
-/// A grouping stored after the release it builds places that release by it.
+/// A grouping stored after the release it builds, in the same write, places
+/// that release by it.
 #[tokio::test]
 async fn a_grouping_stored_after_its_release_places_it() {
     let lib = Library::new().await;
-    lib.run(&lib.grouping_release("Discs", "Disc 1")).await;
     assert_eq!(
         lib.moved(&format!(
-            "INSERT INTO release_grouping (key, anchor_folder, combined, author, skipped)
+            "{}INSERT INTO release_grouping (key, anchor_folder, combined, author, skipped)
              VALUES ('{}', NULL, 1, 'user', 1);",
+            lib.grouping_release("Discs", "Disc 1"),
             lib.path("Discs")
         ))
         .await,

@@ -1,6 +1,7 @@
 //! Reading a candidate back: its row, its verdict with the matches that hang
 //! off it, its draft's provenance, its release link, and its file decisions.
 
+use super::super::query::CandidateRows;
 use super::edit_rows::{apply_sheet_disc_row, read_sheet_disc_row};
 use super::lookup_choice_rows::load_lookup_choices_on;
 use super::signal_rows::load_signals_on;
@@ -63,23 +64,26 @@ pub(super) fn insert_provenance(
     Ok(())
 }
 
-/// Every candidate's draft provenance, or the one `only` names.
+/// The draft provenance of every candidate `only` names.
 pub(crate) fn load_provenance_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    sql: &impl super::super::query::QueryRows,
+    only: CandidateRows<'_>,
 ) -> Result<CandidateProvenances, DbError> {
     load_provenance_rows_on(sql, only)?()
 }
 
 pub(crate) fn load_provenance_rows_on(
     sql: &impl super::super::query::QueryRows,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<Box<dyn FnOnce() -> Result<CandidateProvenances, DbError> + Send + 'static>, DbError> {
+    let only = only.filter("content_hash");
     let rows = sql.query(
-        "SELECT content_hash, kind, source, release_id \
-         FROM import_candidate_draft_provenance \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, kind, source, release_id \
+             FROM import_candidate_draft_provenance {}",
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -169,19 +173,20 @@ pub(super) fn replace_release_link(
     Ok(())
 }
 
-/// Every candidate's release link, or the one `only` names, each with its
-/// partners or its albums.
+/// The release link of every candidate `only` names, each with its partners
+/// or its albums.
 pub(crate) fn load_release_links_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    sql: &impl super::super::query::QueryRows,
+    only: CandidateRows<'_>,
 ) -> Result<CandidateLinks, DbError> {
     load_release_link_rows_on(sql, only)?()
 }
 
 pub(crate) fn load_release_link_rows_on(
     sql: &impl super::super::query::QueryRows,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<Box<dyn FnOnce() -> Result<CandidateLinks, DbError> + Send + 'static>, DbError> {
+    let only = only.filter("content_hash");
     let read = |row: &Row<'_>| {
         Ok((
             row.get::<_, String>(0)?,
@@ -190,22 +195,28 @@ pub(crate) fn load_release_link_rows_on(
         ))
     };
     let partner_rows = sql.query(
-        "SELECT content_hash, source, release_id FROM import_candidate_release_link_partner \
-         WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, source",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, source, release_id FROM import_candidate_release_link_partner \
+             {} ORDER BY content_hash, source",
+            only.clause
+        ),
+        only.params().as_slice(),
         read,
     )?;
     let album_rows = sql.query(
-        "SELECT content_hash, catalog, album_id FROM import_candidate_release_link_album \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, catalog, album_id FROM import_candidate_release_link_album {}",
+            only.clause
+        ),
+        only.params().as_slice(),
         read,
     )?;
     let rows = sql.query(
-        "SELECT content_hash, kind, source, release_id FROM import_candidate_release_link \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, kind, source, release_id FROM import_candidate_release_link {}",
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -271,7 +282,7 @@ pub(crate) fn load_verdicts_on(
     impl FnOnce() -> Result<HashMap<String, DbCandidateIdentifyResult>, DbError> + Send + 'static,
     DbError,
 > {
-    let matches = load_matches_rows_on(sql, only)?;
+    let matches = load_matches_rows_on(sql, CandidateRows::of_one(&only))?;
     let rows = sql.query(
         &format!(
             "SELECT {VERDICT_COLUMNS} FROM import_candidate_verdict \
@@ -322,8 +333,12 @@ const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_i
 
 const SHEET_DISC_COLUMNS: &str = "content_hash, sheet_id, disc, disc_number";
 
-/// Every candidate's stored matches, keyed by content hash, or just the one
-/// `only` names.
+/// Every match a read fetched, still to be assembled.
+type FinishMatches =
+    Box<dyn FnOnce() -> Result<HashMap<String, StoredMatches>, DbError> + Send + 'static>;
+
+/// The stored matches of every candidate `only` names, keyed by content
+/// hash.
 ///
 /// The whole row per match rather than a count and a lead, and the barcode,
 /// medium and link rows that hang off it: how many *pressings* a verdict named
@@ -331,33 +346,34 @@ const SHEET_DISC_COLUMNS: &str = "content_hash, sheet_id, disc, disc_number";
 /// one reader of these columns, for the pane's whole verdict and for the
 /// queue list's summary alike.
 pub(crate) fn load_matches_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+    only: CandidateRows<'_>,
 ) -> Result<HashMap<String, StoredMatches>, DbError> {
     load_matches_rows_on(sql, only)?()
 }
 
 pub(crate) fn load_matches_rows_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
-) -> Result<
-    impl FnOnce() -> Result<HashMap<String, StoredMatches>, DbError> + Send + 'static,
-    DbError,
-> {
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+    only: CandidateRows<'_>,
+) -> Result<FinishMatches, DbError> {
+    let only = only.filter("content_hash");
     let rows = sql.query(
         &format!(
             "SELECT {MATCH_COLUMNS} FROM import_candidate_match \
-             WHERE :only IS NULL OR content_hash = :only \
-             ORDER BY content_hash, position"
+             {} ORDER BY content_hash, position",
+            only.clause
         ),
-        named_params! { ":only": only },
+        only.params().as_slice(),
         |row| Ok(read_match_row(row)),
     )?;
     let barcodes = sql.query(
-        "SELECT content_hash, position, barcode FROM import_candidate_match_barcode \
-         WHERE :only IS NULL OR content_hash = :only \
+        &format!(
+            "SELECT content_hash, position, barcode FROM import_candidate_match_barcode \
+         {} \
          ORDER BY content_hash, position, ordinal",
-        named_params! { ":only": only },
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -367,9 +383,12 @@ pub(crate) fn load_matches_rows_on(
         },
     )?;
     let cover_copies = sql.query(
-        "SELECT content_hash, position, max_edge, url FROM import_candidate_match_cover_copy \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, position, max_edge, url FROM import_candidate_match_cover_copy \
+         {}",
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -380,11 +399,14 @@ pub(crate) fn load_matches_rows_on(
         },
     )?;
     let media = sql.query(
-        "SELECT content_hash, position, media_kind, medium, quantity \
+        &format!(
+            "SELECT content_hash, position, media_kind, medium, quantity \
          FROM import_candidate_match_medium \
-         WHERE :only IS NULL OR content_hash = :only \
+         {} \
          ORDER BY content_hash, position, ordinal",
-        named_params! { ":only": only },
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -402,10 +424,13 @@ pub(crate) fn load_matches_rows_on(
         },
     )?;
     let links = sql.query(
-        "SELECT content_hash, position, catalog, key FROM import_candidate_match_link \
-         WHERE :only IS NULL OR content_hash = :only \
+        &format!(
+            "SELECT content_hash, position, catalog, key FROM import_candidate_match_link \
+         {} \
          ORDER BY content_hash, position, ordinal",
-        named_params! { ":only": only },
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -416,12 +441,15 @@ pub(crate) fn load_matches_rows_on(
         },
     )?;
     let album_links = sql.query(
-        "SELECT content_hash, position, catalog, key, stated, wikidata_item, \
+        &format!(
+            "SELECT content_hash, position, catalog, key, stated, wikidata_item, \
                 musicbrainz_release, release_catalog, release_key \
          FROM import_candidate_match_album_link \
-         WHERE :only IS NULL OR content_hash = :only \
+         {} \
          ORDER BY content_hash, position, ordinal",
-        named_params! { ":only": only },
+            only.clause
+        ),
+        only.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -438,7 +466,7 @@ pub(crate) fn load_matches_rows_on(
             ))
         },
     )?;
-    Ok(move || {
+    Ok(Box::new(move || {
         let mut entries: HashMap<(String, i64), MatchEntries> = HashMap::new();
         for (content_hash, position, barcode) in barcodes {
             entries
@@ -492,7 +520,7 @@ pub(crate) fn load_matches_rows_on(
             list.push(row.stored);
         }
         Ok(matches)
-    })
+    }))
 }
 
 /// Every stored candidate row, or the one `only` names, assembled with the
@@ -522,8 +550,8 @@ pub(crate) fn load_states_rows_on(
     let verdicts = load_verdicts_on(sql, only)?;
     let edits = load_edits_on(sql, only)?;
     let signals = load_signals_on(sql, only)?;
-    let provenances = load_provenance_rows_on(sql, only)?;
-    let links = load_release_link_rows_on(sql, only)?;
+    let provenances = load_provenance_rows_on(sql, CandidateRows::of_one(&only))?;
+    let links = load_release_link_rows_on(sql, CandidateRows::of_one(&only))?;
     let authors = super::pane_rows::load_authors_on(sql, only)?;
     let lookup_choices = load_lookup_choices_on(sql, only)?;
 

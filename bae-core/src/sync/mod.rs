@@ -410,6 +410,11 @@ mod tests {
         // Where each row of the import list sits, worked out from the rows
         // above.
         "import_list_placement",
+        // The import lists open on this device: each one's view, its folded
+        // groups and its selection.
+        "import_list",
+        "import_list_collapsed",
+        "import_list_selection",
         // Catalog releases this device fetched; any device can fetch them.
         "source_release",
         "source_release_album_artist",

@@ -34,7 +34,7 @@ class ImportStore {
     private var clickCount: UInt64 = 0
 
     /// Everything the chrome around the list shows: the tab counts, the
-    /// watched folders, the group keys and Pending's covers. Defaults to an
+    /// watched folders, and whether Found has groups to fold. Defaults to an
     /// empty summary rather than `nil`: "not loaded yet" and "the queue is
     /// genuinely empty" render identically, so no surface needs to tell them
     /// apart.
@@ -46,16 +46,14 @@ class ImportStore {
     private(set) var summary = BridgeImportQueueSummary(
         counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
         watchedFolders: [],
-        groupKeys: [],
-        pendingCovers: [],
+        hasGroups: false,
         narrowed: nil,
         narrowing: BridgeImportListNarrowing(
             tab: .pending,
             filterText: "",
             pendingFilter: .all
         ),
-        firstSelectedPosition: nil,
-        doneUploadStatus: nil
+        firstSelectedPosition: nil
     )
 
     /// Where each watched folder's scan stands, from the folder scans' own
@@ -302,6 +300,16 @@ class ImportStore {
         }
         items = items.filter { loaded.contains($0.key) }
         updateSelectedLoadedKeys()
+    }
+
+    /// The covers the loaded rows draw, to decode before they are on screen.
+    var loadedCovers: Set<ImageContent> {
+        Set(
+            items.values.compactMap { item -> ImageContent? in
+                guard case .candidate(_, let row, _) = item else { return nil }
+                return sidebarCover(for: row)
+            }
+        )
     }
 
     /// The effective cover resolved by core for this row.

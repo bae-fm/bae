@@ -1,35 +1,26 @@
-//! The list's live query, with what the process holds in memory folded into
-//! its request.
+//! One list a surface has open: its row in the tables, and the live query
+//! that reads it.
 //!
-//! Upload standing orders the Done tab — what is moving now, then what is
-//! waiting, then what is settled — and the upload pipeline holds it, so the
-//! request carries it. Where each candidate stands is the standings table's,
-//! read with the rows, so every read carries it composed: what each row offers,
-//! the state it is in, Found's filter counts, and what the selection offers.
-//! Scrolling moves the windows, which is one more request to the same query.
+//! Opening the list writes its row (`import_list`); its view, the groups it
+//! folds and its selection are rows too, so changing any of them is a write,
+//! and the live query, which reads them with the placement, reruns on it. The
+//! windows a surface has loaded are the query's request, the one thing held
+//! here. A write answers with the revision the read that reflects it carries,
+//! so a surface can wait for that read.
 //!
 //! Where the folder scans stand is not here: a scan moves its found count
 //! with every folder it walks, and that count moves no row, so the scans are
 //! their own subscription and never resend the list.
-//!
-//! The subscription owns the list's selection, and the selection only ever
-//! holds rows the list shows. It travels in the request, so the read marks
-//! the rows it selects; the read that answers the current request takes every
-//! selected row it does not show out of the selection before its snapshot is
-//! delivered — a view that hides a row, or a row whose state moves it out of
-//! the filter — and hands the query the request without it, so a row that
-//! comes back later comes back unselected. What the selection offers rides on
-//! every snapshot.
 
 use super::{
-    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView, UploadStatus,
+    ImportCandidateListLocation, ImportListId, ImportListProjection, ImportListRequest,
+    ImportListSnapshot, ImportListView,
 };
+use crate::db::SelectionWrite;
 use crate::import::selection::{SelectedRows, SelectionChange};
-use crate::library::{LibraryPageWindows, OutboxState};
+use crate::import::FolderReleaseDecisionKey;
+use crate::library::{LibraryError, LibraryManager, LibraryPageWindows};
 use crate::live_query::CancellableLiveQuery;
-use std::collections::{BTreeSet, HashSet};
-use std::sync::{Arc, Mutex};
-use tokio::sync::watch;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ImportListSubscriptionError {
@@ -39,6 +30,8 @@ pub enum ImportListSubscriptionError {
     RunNotShown,
     #[error(transparent)]
     Query(#[from] coven::CovenError),
+    #[error(transparent)]
+    Library(#[from] LibraryError),
 }
 
 /// The live query ending is this subscription's cancellation.
@@ -48,218 +41,133 @@ impl From<crate::live_query::LiveQueryCancelled> for ImportListSubscriptionError
     }
 }
 
-/// The request as it stands, and the query it reconfigures.
-struct StandingRequest {
-    standing: Mutex<Standing>,
+/// One open list. Dropped without [`Self::cancel`], its live query ends and
+/// its row stays until the library next opens, when every list closes.
+pub struct ImportListSubscription {
+    list: ImportListId,
+    manager: LibraryManager,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
-/// The request, the revision the query was last handed it at, and what the
-/// read answering it showed.
-struct Standing {
-    request: ImportListRequest,
-    revision: u64,
-    /// The person's changes to the selection, and the reads that took rows
-    /// they hide out of it.
-    selection_revision: u64,
-    /// What the read that answered the current request showed: every row's
-    /// key in its order, and the selected rows among them.
-    shown_keys: Vec<String>,
-    selected_rows: SelectedRows,
-}
-
-impl StandingRequest {
-    /// Replace part of the standing and hand the whole request to the query.
-    ///
-    /// Handed over under the lock, so two changes reach the query in the order
-    /// they were made to the request. Repeating the request the query already
-    /// has keeps its revision and reruns nothing.
-    fn update(
-        &self,
-        change: impl FnOnce(&mut Standing),
-    ) -> Result<u64, ImportListSubscriptionError> {
-        let mut standing = self
-            .standing
-            .lock()
-            .expect("import list request mutex poisoned");
-        change(&mut standing);
-        let Standing {
-            request, revision, ..
-        } = &mut *standing;
-        *revision = self
-            .query
-            .set(request.clone())
-            .map_err(ImportListSubscriptionError::from)?;
-        Ok(*revision)
-    }
-
-    /// Make the selection what `next` says from the standing, and hand the
-    /// query the request carrying it. Answers with the selection revision.
-    fn select(
-        &self,
-        next: impl FnOnce(&Standing) -> Result<BTreeSet<String>, ImportListSubscriptionError>,
-    ) -> Result<u64, ImportListSubscriptionError> {
-        let mut refused = None;
-        self.update(|standing| match next(standing) {
-            Ok(next) => {
-                if next != standing.request.selected {
-                    standing.request.selected = next;
-                    standing.selection_revision += 1;
-                }
-            }
-            Err(error) => refused = Some(error),
-        })?;
-        match refused {
-            Some(error) => Err(error),
-            None => Ok(self.read(|standing| standing.selection_revision)),
-        }
-    }
-
-    /// Take what the read answering `revision` showed as what the list
-    /// shows, and, when it answers the current request, take every selected
-    /// row it does not show out of the selection, handing the query the
-    /// request without them.
-    fn settle_selection(
-        &self,
-        revision: u64,
-        projection: &super::ImportListProjection,
-    ) -> Result<(), ImportListSubscriptionError> {
-        let mut hid_selected = false;
-        {
-            let mut standing = self
-                .standing
-                .lock()
-                .expect("import list request mutex poisoned");
-            if standing.revision != revision {
-                return Ok(());
-            }
-            let shown: HashSet<&str> = projection.shown_keys.iter().map(String::as_str).collect();
-            let before = standing.request.selected.len();
-            standing
-                .request
-                .selected
-                .retain(|key| shown.contains(key.as_str()));
-            if standing.request.selected.len() != before {
-                standing.selection_revision += 1;
-                hid_selected = true;
-            }
-            standing.shown_keys = projection.shown_keys.clone();
-            standing.selected_rows = projection.selected.clone();
-        }
-        if hid_selected {
-            self.update(|_| {})?;
-        }
-        Ok(())
-    }
-
-    fn read<R>(&self, read: impl FnOnce(&Standing) -> R) -> R {
-        read(
-            &self
-                .standing
-                .lock()
-                .expect("import list request mutex poisoned"),
-        )
-    }
-}
-
-pub struct ImportListSubscription {
-    request: Arc<StandingRequest>,
-    merge: tokio::task::AbortHandle,
-}
-
 impl ImportListSubscription {
-    /// Open the list for `view` through `windows` and start the merge that
-    /// keeps its request current.
-    ///
-    /// The request's upload status is read here, from the same outbox watch
-    /// the merge then follows, and `open` opens the query with that request:
-    /// the query starts agreeing with what the merge would hand it, so the
-    /// merge's first change to the request is a real change to the queue. A
-    /// new list opens with nothing selected.
-    pub(crate) fn start(
-        open: impl FnOnce(
-            ImportListRequest,
-        )
-            -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
+    /// Open a list showing `view` through `windows`, with nothing folded and
+    /// nothing selected, and the live query that reads it.
+    pub(crate) async fn open(
+        manager: LibraryManager,
         view: ImportListView,
         windows: LibraryPageWindows,
-        mut outbox: watch::Receiver<Option<Result<OutboxState, String>>>,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> Self {
-        let initial = ImportListRequest {
-            view,
-            windows,
-            upload_status: UploadStatus::of(&outbox.borrow_and_update()),
-            selected: BTreeSet::new(),
-        };
-        let query = open(initial.clone());
-        let request = Arc::new(StandingRequest {
-            standing: Mutex::new(Standing {
-                request: initial,
-                // A query starts at revision zero.
-                revision: 0,
-                selection_revision: 0,
-                shown_keys: Vec::new(),
-                selected_rows: SelectedRows::default(),
-            }),
+    ) -> Result<Self, LibraryError> {
+        let list = manager.open_import_list(view).await?;
+        let query = manager.subscribe_import_list(ImportListRequest { list, windows });
+        Ok(Self {
+            list,
+            manager,
             query: CancellableLiveQuery::new(query),
-        });
-        let merge = runtime_handle
-            .spawn(merge(request.clone(), outbox))
-            .abort_handle();
-        Self { request, merge }
+        })
     }
 
-    /// Show a different tab, filter, order, or set of folded groups. The
-    /// windows are kept: the query reruns and the list re-ingests them.
-    pub fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
-        self.request.update(|standing| standing.request.view = view)
+    /// Show a different tab, filter or order. The windows are kept: the query
+    /// reruns and the surface re-reads them. Answers with the view revision.
+    pub async fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
+        Ok(self.manager.set_import_list_view(self.list, view).await?)
     }
 
     pub fn set_windows(
         &self,
         windows: LibraryPageWindows,
     ) -> Result<(), ImportListSubscriptionError> {
-        self.request
-            .update(|standing| standing.request.windows = windows)
-            .map(|_| ())
+        self.query.set(ImportListRequest {
+            list: self.list,
+            windows,
+        })?;
+        Ok(())
+    }
+
+    /// Fold one group shut or open it. Its entries leave the list when it
+    /// folds, so this changes what every later offset holds; answers with the
+    /// view revision.
+    pub async fn set_group_folded(
+        &self,
+        group: FolderReleaseDecisionKey,
+        folded: bool,
+    ) -> Result<u64, ImportListSubscriptionError> {
+        Ok(self
+            .manager
+            .set_import_list_group_folded(self.list, group, folded)
+            .await?)
+    }
+
+    /// Fold every group shut, or open them all, as one change.
+    pub async fn set_all_groups_folded(
+        &self,
+        folded: bool,
+    ) -> Result<u64, ImportListSubscriptionError> {
+        Ok(self
+            .manager
+            .set_import_list_groups_folded(self.list, folded)
+            .await?)
     }
 
     /// Apply a change a person made by pointing at rows of the list, and
     /// answer with the selection revision of the snapshot that reflects it.
-    pub fn change_selection(
+    pub async fn change_selection(
         &self,
         change: SelectionChange,
     ) -> Result<u64, ImportListSubscriptionError> {
-        self.request.select(|standing| {
-            change
-                .applied(&standing.request.selected, &standing.shown_keys)
-                .ok_or(ImportListSubscriptionError::RunNotShown)
-        })
+        match self
+            .manager
+            .change_import_list_selection(self.list, change)
+            .await?
+        {
+            SelectionWrite::Changed { revision } => Ok(revision),
+            SelectionWrite::RunNotShown => Err(ImportListSubscriptionError::RunNotShown),
+        }
     }
 
     /// Select every row the list shows, whether or not a surface loaded it.
-    pub fn select_all(&self) -> Result<u64, ImportListSubscriptionError> {
-        self.request
-            .select(|standing| Ok(standing.shown_keys.iter().cloned().collect()))
+    pub async fn select_all(&self) -> Result<u64, ImportListSubscriptionError> {
+        Ok(self.manager.select_all_in_import_list(self.list).await?)
     }
 
-    /// The selected rows, in the order the list shows them, as the read that
-    /// answered the current request placed them: what a bulk action runs
-    /// over.
-    pub fn selected(&self) -> SelectedRows {
-        self.request.read(|standing| standing.selected_rows.clone())
+    /// The selected rows, in the order the list shows them: what a bulk
+    /// action runs over.
+    pub async fn selected(&self) -> Result<SelectedRows, ImportListSubscriptionError> {
+        Ok(self.manager.load_import_list_selected(self.list).await?)
+    }
+
+    /// The view and position that reveal the candidate at `candidate_key`
+    /// at its current placement: its tab, with the filters cleared and its
+    /// group opened. `None` when the list lists no such candidate.
+    pub async fn locate_candidate(
+        &self,
+        candidate_key: &str,
+    ) -> Result<Option<ImportCandidateListLocation>, ImportListSubscriptionError> {
+        Ok(self
+            .manager
+            .locate_import_candidate(self.list, candidate_key)
+            .await?)
+    }
+
+    /// The first candidate the identification count is still waiting on —
+    /// one queued, running or having its answer written — in the list's
+    /// order. `None` when nothing is being identified, or nothing that is has
+    /// a row.
+    pub async fn first_identifying_candidate(
+        &self,
+    ) -> Result<Option<String>, ImportListSubscriptionError> {
+        Ok(self
+            .manager
+            .first_identifying_import_candidate(self.list)
+            .await?)
     }
 
     /// The list's next value.
     pub async fn next(&self) -> Result<ImportListSnapshot, ImportListSubscriptionError> {
         let event = self
-            .request
             .query
             .next()
             .await
             .map_err(ImportListSubscriptionError::from)?;
-        let request_revision = event.revision.0;
         let cause = event.cause;
         // A list read that fails takes the whole import tab with it — no
         // rows, no watched folders — so the reason is worth a line whether or
@@ -267,78 +175,35 @@ impl ImportListSubscription {
         let projection = match event.result {
             Ok(projection) => projection,
             Err(error) => {
-                tracing::error!(
-                    "import list query failed at revision {request_revision} ({cause:?}): {error}"
-                );
+                tracing::error!("import list query failed ({cause:?}): {error}");
                 return Err(error.into());
             }
         };
-        self.request
-            .settle_selection(request_revision, &projection)?;
         let ImportListProjection {
             windows,
             total_count,
             summary,
             pending_filter_entries,
             selection,
-            ..
+            view_revision,
+            selection_revision,
         } = projection;
         Ok(ImportListSnapshot {
             windows,
             total_count,
             summary,
             pending_filter_entries,
-            selection_revision: self.request.read(|standing| standing.selection_revision),
+            selection_revision,
             selection,
-            request_revision,
+            view_revision,
             cause,
         })
     }
 
-    pub async fn cancel(&self) {
-        self.stop();
-        self.request.query.close().await;
-    }
-
-    fn stop(&self) {
-        self.request.query.cancel();
-        self.merge.abort();
-    }
-}
-
-impl Drop for ImportListSubscription {
-    fn drop(&mut self) {
-        self.stop();
-    }
-}
-
-/// Keep the request's upload standing current with the cloud outbox.
-///
-/// Byte progress republishes the whole outbox snapshot several times a second;
-/// one that moves no release between working, queued and settled hands the
-/// query the request it already has, which reruns nothing.
-///
-/// The upload status comes from [`UploadStatus::of`], the same reading the
-/// request opened with: a failed outbox read makes it unreadable, which the
-/// Done tab says and orders by import time. The request opened with it as it
-/// stood, so the merge first waits for it to change.
-async fn merge(
-    request: Arc<StandingRequest>,
-    mut outbox: watch::Receiver<Option<Result<OutboxState, String>>>,
-) {
-    loop {
-        tokio::select! {
-            () = request.query.cancelled() => return,
-            changed = outbox.changed() => if changed.is_err() {
-                return;
-            },
-        }
-        let next = UploadStatus::of(&outbox.borrow_and_update());
-        if request
-            .update(|standing| standing.request.upload_status = next)
-            .is_err()
-        {
-            return;
-        }
+    /// End the live query and close the list: its row, folds and selection
+    /// go.
+    pub async fn cancel(&self) -> Result<(), ImportListSubscriptionError> {
+        self.query.close().await;
+        Ok(self.manager.close_import_list(self.list).await?)
     }
 }

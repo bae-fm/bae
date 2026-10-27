@@ -276,7 +276,7 @@ final class DesktopSubscriptions {
             uiStore: uiStore,
             selection: importSelection,
             makeSource: { view in
-                let list = appHandle.subscribeImportList(view: view)
+                let list = try await appHandle.subscribeImportList(view: view)
                 selectionOwner.own(list)
                 return ImportListPageSource(
                     subscription: list,
@@ -289,15 +289,6 @@ final class DesktopSubscriptions {
                     onSelection: applySelection
                 )
                 .pages
-            },
-            locateCandidate: { view, key in
-                try await appHandle.locateImportCandidate(
-                    view: view,
-                    candidateKey: key
-                )
-            },
-            firstIdentifyingCandidate: { view in
-                try await appHandle.firstIdentifyingCandidate(view: view)
             }
         )
     }

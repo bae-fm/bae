@@ -16,9 +16,11 @@ impl ImportService {
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
-        // No run or import outlives the process that held it, so the library
-        // opens with no candidate standing, before anything reads the list.
+        // No run, import or open list outlives the process that held it, so
+        // the library opens with no candidate standing and no list, before
+        // anything reads the list.
         library_manager.clear_candidate_standings().await?;
+        library_manager.close_import_lists().await?;
         let runtime = CandidateRuntime::new(database, diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(

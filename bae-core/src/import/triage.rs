@@ -33,47 +33,8 @@ mod standing;
 
 pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState, StoredLookup};
 pub use model::*;
-pub use selection::{keys_for, selection_offers, SelectionMember, SelectionOffer};
-pub use standing::{
-    BadgeTone, LiveStanding, NeedsYouReason, PendingBadge, PendingStanding, PendingState,
-};
-
-/// Which tab a candidate belongs to, checked in one order:
-///
-/// 1. **Done first**, which is a folder whose files this device imported, in
-///    this session or an earlier one, wherever the folder sits now and whether
-///    or not it was ever skipped.
-/// 2. **Then Skipped**, which is a decision the person already made.
-/// 3. **Then a failed attempt**, which is Pending work with its failure
-///    stated.
-/// 4. **Otherwise Pending.**
-///
-/// Nothing running is one of these facts: a run and an import are true of a
-/// candidate wherever it is placed, and are the row's [`CandidateLiveState`].
-pub fn place(
-    skipped: bool,
-    is_added: bool,
-    import_status: Option<&TriageImportStatus>,
-) -> TriagePlacement {
-    // Spelled out rather than `is_some()`: each variant places the row
-    // somewhere different, and a new one should have to be placed here on
-    // purpose rather than inherited by an `_`.
-    let failed = match import_status {
-        Some(TriageImportStatus::Complete { .. }) => return TriagePlacement::Done,
-        Some(TriageImportStatus::Error { .. } | TriageImportStatus::Blocked { .. }) => true,
-        None => false,
-    };
-    if is_added {
-        return TriagePlacement::Done;
-    }
-    if skipped {
-        return TriagePlacement::Skipped;
-    }
-    if failed {
-        return TriagePlacement::Failed;
-    }
-    TriagePlacement::Pending
-}
+pub use selection::{keys_for, selection_offers, SelectionMember, SelectionOffer, SelectionPart};
+pub use standing::{BadgeTone, NeedsYouReason, PendingBadge, PendingStanding, PendingState};
 
 /// The failed check against the folder the pane states beside Import: the
 /// found release's, unless a person or the tags wrote a valid draft, which is
@@ -177,14 +138,6 @@ impl TriageRuntimeFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A candidate nobody has imported or skipped is Pending whatever
-    /// identification found or is doing for it: the run is the row's, not the
-    /// placement's.
-    #[test]
-    fn an_unimported_candidate_is_pending() {
-        assert_eq!(place(false, false, None), TriagePlacement::Pending);
-    }
 
     /// The pane states the found release's failed check while identification's
     /// pick or nobody's draft stands; a person's or the tags' valid draft is

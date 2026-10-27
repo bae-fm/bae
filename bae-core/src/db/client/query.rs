@@ -17,6 +17,59 @@ pub(super) fn in_clause_placeholders(count: usize) -> String {
     (0..count).map(|_| "?").collect::<Vec<_>>().join(",")
 }
 
+/// Which candidates a loader reads the rows of, by content hash: every one's,
+/// or only those named, which a keyed statement reaches by its index.
+#[cfg(desktop)]
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum CandidateRows<'a> {
+    All,
+    Of(&'a [&'a str]),
+}
+
+#[cfg(desktop)]
+impl<'a> CandidateRows<'a> {
+    /// Every candidate's rows for `None`, the one candidate's for `Some`.
+    pub(crate) fn of_one(only: &'a Option<&'a str>) -> Self {
+        match only {
+            None => Self::All,
+            Some(one) => Self::Of(std::slice::from_ref(one)),
+        }
+    }
+
+    /// The clause keeping the named candidates' rows by `column`, and what it
+    /// binds; no clause for every candidate.
+    pub(crate) fn filter(self, column: &str) -> CandidateFilter {
+        match self {
+            Self::All => CandidateFilter {
+                clause: String::new(),
+                keys: None,
+            },
+            Self::Of(keys) => CandidateFilter {
+                clause: format!("WHERE {column} IN (SELECT value FROM json_each(:candidates))"),
+                keys: Some(serde_json::Value::from(keys.to_vec()).to_string()),
+            },
+        }
+    }
+}
+
+/// A [`CandidateRows`]' clause, and the parameter it binds.
+#[cfg(desktop)]
+pub(crate) struct CandidateFilter {
+    pub(crate) clause: String,
+    keys: Option<String>,
+}
+
+#[cfg(desktop)]
+impl CandidateFilter {
+    /// What the clause binds, as a statement's parameters.
+    pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
+        match &self.keys {
+            None => Vec::new(),
+            Some(keys) => vec![(":candidates", keys as &dyn rusqlite::ToSql)],
+        }
+    }
+}
+
 /// One-row SELECT shared by coven's write [`SqlContext`] and its read
 /// [`SqlReadContext`], used when artist resolution runs inside either context.
 pub(super) trait QueryOne {

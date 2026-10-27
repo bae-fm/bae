@@ -16,25 +16,47 @@ import Foundation
         }
     }
 
-    /// A page source over the import list, with the way to change the view it is
-    /// showing. The view (tab, filter, folded groups, order) decides which items
-    /// sit at which offsets, so changing it belongs to the source rather than to
-    /// one page.
+    /// A page source over the import list, with the way to change what it is
+    /// showing. The view (tab, filter, order) and the groups folded shut
+    /// decide which items sit at which offsets, so changing them belongs to
+    /// the source rather than to one page; so do the reads that ask where a
+    /// candidate sits in the list.
     public struct ImportListPages: Sendable {
         public let source: any PageSource<BridgeImportListItem>
         private let applyView: @Sendable (BridgeImportListView) -> Void
         private let awaitAppliedView:
             @Sendable (BridgeImportListView) async throws -> Void
+        private let fold:
+            @Sendable (BridgeFolderReleaseDecisionKey, Bool) async throws ->
+                Void
+        private let foldAll: @Sendable (Bool) async throws -> Void
+        private let locate:
+            @Sendable (String) async throws ->
+                BridgeImportCandidateListLocation?
+        private let firstIdentifying: @Sendable () async throws -> String?
 
         public init(
             source: any PageSource<BridgeImportListItem>,
             setView: @escaping @Sendable (BridgeImportListView) -> Void,
             waitForView:
-                @escaping @Sendable (BridgeImportListView) async throws -> Void
+                @escaping @Sendable (BridgeImportListView) async throws -> Void,
+            setGroupFolded:
+                @escaping @Sendable (BridgeFolderReleaseDecisionKey, Bool)
+                async throws -> Void,
+            setAllGroupsFolded: @escaping @Sendable (Bool) async throws -> Void,
+            locateCandidate:
+                @escaping @Sendable (String) async throws
+                -> BridgeImportCandidateListLocation?,
+            firstIdentifyingCandidate:
+                @escaping @Sendable () async throws -> String?
         ) {
             self.source = source
             applyView = setView
             awaitAppliedView = waitForView
+            fold = setGroupFolded
+            foldAll = setAllGroupsFolded
+            locate = locateCandidate
+            firstIdentifying = firstIdentifyingCandidate
         }
 
         public func setView(_ view: BridgeImportListView) {
@@ -46,6 +68,34 @@ import Foundation
         public func waitForView(_ view: BridgeImportListView) async throws {
             try await awaitAppliedView(view)
         }
+
+        /// Fold one group shut, or open it, once the view changes asked for
+        /// before it have landed.
+        public func setGroupFolded(
+            _ group: BridgeFolderReleaseDecisionKey,
+            _ folded: Bool
+        ) async throws {
+            try await fold(group, folded)
+        }
+
+        /// Fold every group shut, or open them all, as one change.
+        public func setAllGroupsFolded(_ folded: Bool) async throws {
+            try await foldAll(folded)
+        }
+
+        /// Where the candidate sits once revealed at its current placement:
+        /// its tab, with the filters cleared and its group opened. `nil` when
+        /// the list lists no such candidate.
+        public func locateCandidate(_ candidateKey: String) async throws
+            -> BridgeImportCandidateListLocation?
+        {
+            try await locate(candidateKey)
+        }
+
+        /// The first candidate still being identified, in the list's order.
+        public func firstIdentifyingCandidate() async throws -> String? {
+            try await firstIdentifying()
+        }
     }
 
     /// The import list's pages, all served by one bridge subscription.
@@ -53,8 +103,8 @@ import Foundation
     /// The bridge object takes a set of windows and answers with one value holding
     /// every one of them, so the pages a `PaginatedList` asks for are registered
     /// here and handed the window that matches them. The chrome around the list —
-    /// the tab counts, Pending's covers, the group keys — rides on the same value and
-    /// goes to `onSummary`, Found's filter entries with their counts go to
+    /// the tab counts, the watched folders — rides on the same value and goes to
+    /// `onSummary`, Found's filter entries with their counts go to
     /// `onPendingFilterEntries`, and the selection — what it holds and can be
     /// told to do, and the revision the rows reflect — goes to `onSelection`
     /// once the rows have been handed out.
@@ -102,6 +152,9 @@ import Foundation
         private var viewWaiters: [UUID: ViewWaiterState] = [:]
         private var latestSummary: DeliveredSummary?
         private var deliveries: Task<Void, Never>?
+        /// The last view change asked for — a view, a fold — which the next
+        /// one waits on, so they reach core in the order they were made.
+        private var viewWrite: Task<Void, Never>?
         /// The read failure this source died of, kept so a page registered
         /// after it hears about it.
         ///
@@ -143,21 +196,65 @@ import Foundation
 
         /// This source's pages, with the view control the list drives it by.
         public var pages: ImportListPages {
-            ImportListPages(
+            let subscription = self.subscription
+            return ImportListPages(
                 source: self,
                 setView: { [self] view in
-                    do {
-                        let revision = try subscription.setView(view: view)
-                        cancelViewWaiters(before: revision)
+                    let write = changeView {
+                        try await subscription.setView(view: view)
                     }
-                    catch {
-                        failEveryPage(with: error)
+                    Task { [weak self] in
+                        if case .failure(let error) = await write.result {
+                            self?.failEveryPage(with: error)
+                        }
                     }
                 },
                 waitForView: { [self] view in
                     _ = try await deliveredSummary(afterApplying: view)
+                },
+                setGroupFolded: { [self] group, folded in
+                    _ = try await changeView {
+                        try await subscription.setGroupFolded(
+                            group: group,
+                            folded: folded
+                        )
+                    }
+                    .value
+                },
+                setAllGroupsFolded: { [self] folded in
+                    _ = try await changeView {
+                        try await subscription.setAllGroupsFolded(
+                            folded: folded
+                        )
+                    }
+                    .value
+                },
+                locateCandidate: { key in
+                    try await subscription.locateCandidate(candidateKey: key)
+                },
+                firstIdentifyingCandidate: {
+                    try await subscription.firstIdentifyingCandidate()
                 }
             )
+        }
+
+        /// Run `write`, a change to what the list shows answering with its
+        /// view revision, once every change asked for before it has landed;
+        /// a wait for a view it supersedes ends.
+        private func changeView(
+            _ write: @escaping @Sendable () async throws -> UInt64
+        ) -> Task<UInt64, any Error> {
+            lock.withLock {
+                let previous = viewWrite
+                let task = Task { [weak self] in
+                    await previous?.value
+                    let revision = try await write()
+                    self?.cancelViewWaiters(before: revision)
+                    return revision
+                }
+                viewWrite = Task { _ = await task.result }
+                return task
+            }
         }
 
         public func subscribe(
@@ -254,7 +351,7 @@ import Foundation
                         )
                     }
                     fulfillViewWaiters(
-                        revision: snapshot.requestRevision,
+                        revision: snapshot.viewRevision,
                         summary: summary
                     )
                 }
@@ -307,7 +404,11 @@ import Foundation
         private func deliveredSummary(
             afterApplying view: BridgeImportListView
         ) async throws -> BridgeImportQueueSummary {
-            let revision = try subscription.setView(view: view)
+            let subscription = self.subscription
+            let revision = try await changeView {
+                try await subscription.setView(view: view)
+            }
+            .value
             let id = UUID()
             let failure = lock.withLock {
                 let failure = self.failure
@@ -485,12 +586,16 @@ import Foundation
         }
 
         /// This source's pages. A fixed list shows one view, so changing the view
-        /// changes nothing.
+        /// or the folds changes nothing, and it finds no candidate.
         public var pages: ImportListPages {
             ImportListPages(
                 source: self,
                 setView: { _ in },
-                waitForView: { _ in }
+                waitForView: { _ in },
+                setGroupFolded: { _, _ in },
+                setAllGroupsFolded: { _ in },
+                locateCandidate: { _ in nil },
+                firstIdentifyingCandidate: { nil }
             )
         }
 

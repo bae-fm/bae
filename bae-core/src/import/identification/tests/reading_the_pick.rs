@@ -140,7 +140,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     fixture.route_disc_id_match(&dir, "mb-row", "rg-row", 2);
     fixture.provider.hold("/release/mb-row?");
     fixture.scan(1).await;
-    let list = list_subscription(&fixture, page_window(0, 50));
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
     assert_eq!(counted(&initial, crate::import::PendingFilter::Identified), 0);
 

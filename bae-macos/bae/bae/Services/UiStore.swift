@@ -78,20 +78,6 @@ struct PendingImportCandidateReveal {
     let seq: Int
 }
 
-struct ReleaseGroupDisclosureID: Hashable {
-    let key: BridgeFolderReleaseDecisionKey
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.key.watchedFolderPath == rhs.key.watchedFolderPath
-            && lhs.key.relativeFolderPath == rhs.key.relativeFolderPath
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(key.watchedFolderPath)
-        hasher.combine(key.relativeFolderPath)
-    }
-}
-
 // MARK: - UiStore
 
 /// Shared UI-originated state. Views read properties, call methods to mutate.
@@ -141,9 +127,6 @@ class UiStore: @unchecked Sendable {
     var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
     var importCandidatePendingFilter: BridgePendingFilter = .all
-
-    private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
-        [:]
 
     private(set) var refreshingWatchedFolders: Set<String> = []
 
@@ -328,44 +311,6 @@ class UiStore: @unchecked Sendable {
 
     func setImportCandidatePendingFilter(_ filter: BridgePendingFilter) {
         importCandidatePendingFilter = filter
-    }
-
-    /// The groups folded shut, as the list request names them. A group with no
-    /// recorded state is open, so only the recorded `false` entries are here.
-    var collapsedReleaseGroupKeys: [BridgeFolderReleaseDecisionKey] {
-        releaseGroupDisclosureState
-            .filter { !$0.value }
-            .keys
-            .map(\.key)
-            .sorted {
-                ($0.watchedFolderPath, $0.relativeFolderPath)
-                    < ($1.watchedFolderPath, $1.relativeFolderPath)
-            }
-    }
-
-    func setReleaseGroupExpanded(
-        _ id: ReleaseGroupDisclosureID,
-        _ expanded: Bool
-    ) {
-        releaseGroupDisclosureState[id] = expanded
-    }
-
-    /// Fold every one of `ids` the same way at once.
-    func setReleaseGroupsExpanded(
-        _ ids: some Sequence<ReleaseGroupDisclosureID>,
-        _ expanded: Bool
-    ) {
-        for id in ids {
-            releaseGroupDisclosureState[id] = expanded
-        }
-    }
-
-    func retainReleaseGroupDisclosureIDs(
-        _ ids: Set<ReleaseGroupDisclosureID>
-    ) {
-        releaseGroupDisclosureState = releaseGroupDisclosureState.filter {
-            ids.contains($0.key)
-        }
     }
 
     func setWatchedFolderRefreshing(_ path: String, _ refreshing: Bool) {

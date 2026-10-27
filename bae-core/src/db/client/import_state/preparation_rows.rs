@@ -189,10 +189,16 @@ pub(super) fn save_preparation_on(
         .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
         .transpose()?;
 
-    let previous_link =
-        super::rows::load_release_link_rows_on(sql, Some(content_hash))?()?.remove(content_hash);
-    let previous_provenance =
-        super::rows::load_provenance_rows_on(sql, Some(content_hash))?()?.remove(content_hash);
+    let previous_link = super::rows::load_release_link_rows_on(
+        sql,
+        super::super::query::CandidateRows::Of(&[content_hash]),
+    )?()?
+    .remove(content_hash);
+    let previous_provenance = super::rows::load_provenance_rows_on(
+        sql,
+        super::super::query::CandidateRows::Of(&[content_hash]),
+    )?()?
+    .remove(content_hash);
     if previous_link != prep.link
         || previous_provenance != prep.metadata.provenance
         || prep.metadata.draft.release_edit().is_blank()

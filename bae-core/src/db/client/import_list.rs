@@ -1,480 +1,113 @@
-//! The import tab's list, read as columns.
+//! The import tab's list, read from its placement.
 //!
-//! Every rerun reads the whole queue as a few short columns per folder, draft
-//! and verdict (never files, cue sheets, fetched releases, draft tracks or
-//! covers), places it with [`crate::import::list::flatten`], and loads whole
-//! only the entries inside the requested windows.
+//! Each list a surface has open is a row of `import_list`, beside the groups
+//! it folds (`import_list_collapsed`) and the rows it selects
+//! (`import_list_selection`); every release's tab, Found state, group, dates,
+//! shown text and command basis are in `import_list_placement`, which triggers
+//! keep in the write that changes any table they come from. A read of the list
+//! is then a handful of indexed statements: the requested windows in the
+//! list's order (`order`), each window's rows by key (`window`), and the
+//! counts and the selection's offers beside them (`summary`). Nothing is
+//! placed, filtered, sorted or counted outside SQLite.
 
+mod listed;
+mod order;
+mod pane;
+mod summary;
 mod window;
+mod writes;
 
-use super::import_state::{
-    load_matches_on, load_provenance_on, load_release_links_on, load_standing_facts_on,
-};
 use super::*;
-use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
-use crate::import::folder_scanner::SkippedTags;
 use crate::import::list::{
-    flatten, ImportCandidateDetailProjection, ImportListProjection, ImportListRequest,
-    ImportListWindow,
+    ImportCandidateDetailProjection, ImportListId, ImportListNarrowing, ImportListProjection,
+    ImportListRequest, ImportListView, ImportListWindow, ImportQueueSummary,
 };
 use crate::import::watched_folder::WatchedFolder;
-use crate::import::{ImportedRelease, MetadataProvenance};
+use crate::import::{ImportedRelease, PendingFilter};
 use folder_scans::columns::{to_u32, to_u64, unreadable};
+use order::{Items, Shown};
 
-/// What the scan made of one folder.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScanCandidateKind {
-    /// A release found before the folder around it was known.
-    Tentative,
-    Valid,
-    Invalid,
-}
+pub(crate) use writes::SelectionWrite;
 
-/// One stored release, as the list places it.
+/// One list's row as its reads take it: its view, its revisions, and whether
+/// its view narrows its tab or keeps every row of it.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ScanCandidateListRow {
-    /// The grouping this release reads several folders as, when it is one.
-    pub grouping: Option<CandidateListGrouping>,
-    pub watched_folder_path: String,
-    /// The release's key: its folder's path, or its grouping's key.
-    pub path: String,
-    /// The folder the release is shown as.
-    pub folder: String,
-    pub kind: ScanCandidateKind,
-    pub name: String,
-    pub display_path: String,
-    /// Filesystem date, or first observation when the filesystem has none;
-    /// for a release built from folders picked together, the earliest of
-    /// those folders' dates. `None` when none is stored.
-    pub discovered_at: Option<i64>,
-    /// `None` only for an invalid folder, which is never imported.
-    pub content_hash: Option<String>,
-    pub file_edit_revision: u64,
-    /// What an invalid folder's tags call it, when they name an album: what
-    /// its row shows, so what the filter tests.
-    pub skipped_tags: Option<SkippedTags>,
+struct ListRow {
+    id: ImportListId,
+    view: ImportListView,
+    view_revision: u64,
+    selection_revision: u64,
+    /// Whether the text filter or Found's filter entry narrows the tab.
+    narrows: bool,
 }
 
-/// What a release read from several folders carries on its grouping.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CandidateListGrouping {
-    pub skipped: bool,
-    /// Why a grouping of releases picked together cannot be worked on as it
-    /// stands.
-    pub error: Option<crate::import::GroupingBlock>,
-}
-
-impl ScanCandidateListRow {
-    /// Why this release cannot be worked on as it stands, if anything says so.
-    pub(crate) fn error(&self) -> Option<&crate::import::GroupingBlock> {
-        self.grouping
-            .as_ref()
-            .and_then(|grouping| grouping.error.as_ref())
+impl ListRow {
+    fn items<'a>(&'a self, shown: Shown<'a>) -> Items<'a> {
+        Items::new(self.id, self.view.tab, self.view.order, shown)
     }
 }
 
-/// One candidate, as the list reads it: the revision it describes, what
-/// identification concluded, and what was decided.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CandidateStateListRow {
-    pub edit_revision: u64,
-    /// `None` when nothing has identified this candidate.
-    pub verdict: Option<VerdictSummary>,
-    pub metadata_provenance: Option<MetadataProvenance>,
-    pub release_link: Option<crate::import::ReleaseLink>,
-    /// Who wrote the draft, which decides whether a valid one is the answer.
-    pub metadata_author: crate::import::MetadataAuthor,
-    pub metadata_draft_valid: bool,
-    pub metadata_summary: Option<crate::import::TriageMetadataSummary>,
-}
-
-/// Every column the queue is placed from, in one read.
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct ImportQueueRows {
-    /// In stored order, which is the list's outer order.
-    pub watched_folders: Vec<WatchedFolder>,
-    pub candidates: Vec<ScanCandidateListRow>,
-    /// Every skipped candidate as the list addresses it: the watched folder
-    /// covering it, and its path below that.
-    pub skipped: HashSet<(String, String)>,
-    /// The release this device imported from each folder hash it recorded.
-    pub imported: HashMap<String, ImportedRelease>,
-    /// When each of those releases was written, by folder hash, in Unix epoch
-    /// milliseconds; orders rows within a Done section.
-    pub imported_at: HashMap<String, i64>,
-    /// Why the last import attempt failed, by content hash, so a failed
-    /// import still places as failed after a relaunch.
-    pub failures: HashMap<String, crate::import::ImportFailureReason>,
-    pub states: HashMap<String, CandidateStateListRow>,
-    /// Each grouping's anchor folder as (watched folder, path below it):
-    /// `true` when its releases are read as one, `false` when kept apart.
-    pub folder_readings: HashMap<(String, String), bool>,
-    /// Where each candidate something is running for stands, by key.
-    pub standings: HashMap<String, crate::import::TriageRuntimeFacts>,
-}
-
-impl ImportQueueRows {
-    /// Where the candidate at `key` stands: nothing running when it has no
-    /// standing.
-    pub(crate) fn standing_of(&self, key: &str) -> crate::import::TriageRuntimeFacts {
-        self.standings.get(key).cloned().unwrap_or_default()
+fn pending_filter_column(filter: PendingFilter) -> &'static str {
+    match filter {
+        PendingFilter::All => "all",
+        PendingFilter::NeedsYou => "needs_you",
+        PendingFilter::InProgress => "in_progress",
+        PendingFilter::Identified => "identified",
+        PendingFilter::Unmatched => "unmatched",
+        PendingFilter::NotLookedUp => "not_looked_up",
     }
 }
 
-pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQueueRows, DbError> {
-    let watched_folders: Vec<WatchedFolder> = sql
-        .query(
-            "SELECT path FROM watched_import_folders ORDER BY position",
-            [],
-            |row| row.get::<_, String>(0),
-        )?
-        .into_iter()
-        .map(WatchedFolder::from_path)
-        .collect();
-
-    let candidates = candidate_rows(sql)?;
-
-    let roots: Vec<String> = watched_folders
-        .iter()
-        .map(|folder| folder.path.clone())
-        .collect();
-    let skipped: HashSet<(String, String)> = sql
-        .query(
-            "SELECT candidate_path FROM skipped_import_candidates",
-            [],
-            |row| row.get::<_, String>(0),
-        )?
-        .iter()
-        .map(|path| listed_below(&roots, path))
-        .collect::<Result<_, _>>()?;
-
-    // Only what this device imported places a folder in Done: a release
-    // another device imported from the same files is no import of this one.
-    let mut imported: HashMap<String, ImportedRelease> = HashMap::new();
-    let mut imported_at: HashMap<String, i64> = HashMap::new();
-    for (content_hash, release, created_at) in sql.query(
-        "SELECT o.content_hash, r.id, r.album_id, r.created_at \
-         FROM local_release_origin o JOIN releases r ON r.id = o.release_id",
-        [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                ImportedRelease {
-                    release_id: row.get(1)?,
-                    album_id: row.get(2)?,
-                },
-                super::read::rfc3339_column(row, "created_at")?,
-            ))
-        },
-    )? {
-        imported_at.insert(content_hash.clone(), created_at.timestamp_millis());
-        imported.insert(content_hash, release);
+fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
+    match column {
+        "all" => Ok(PendingFilter::All),
+        "needs_you" => Ok(PendingFilter::NeedsYou),
+        "in_progress" => Ok(PendingFilter::InProgress),
+        "identified" => Ok(PendingFilter::Identified),
+        "unmatched" => Ok(PendingFilter::Unmatched),
+        "not_looked_up" => Ok(PendingFilter::NotLookedUp),
+        other => Err(unreadable("a Found filter entry", other)),
     }
+}
 
-    let folder_readings: HashMap<(String, String), bool> = sql
-        .query(
-            "SELECT anchor_folder, combined FROM release_grouping WHERE anchor_folder IS NOT NULL",
-            [],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?)),
-        )?
-        .into_iter()
-        .map(|(folder, combined)| Ok((listed_below(&roots, &folder)?, combined)))
-        .collect::<Result<_, DbError>>()?;
-
-    let failures: HashMap<String, crate::import::ImportFailureReason> = {
-        use super::import_state::failure_rows::{failure_reason_from_row, FAILURE_REASON_COLUMNS};
-        sql.query(
-            &format!(
-                "SELECT failure.content_hash AS content_hash, {FAILURE_REASON_COLUMNS} \
-                 FROM import_candidate_failure failure"
-            ),
-            [],
+/// The list `id`'s row. A list is read only while it is open, so a missing
+/// row is a list closed under its own read.
+fn list_row(
+    sql: &(impl super::query::QueryOne + super::query::QueryRows),
+    id: ImportListId,
+) -> Result<ListRow, DbError> {
+    let (tab, pending_filter, filter_text, order, view_revision, selection_revision, narrows) = sql
+        .query_row(
+            "SELECT tab, pending_filter, filter_text, list_order, view_revision, \
+                    selection_revision, narrows \
+             FROM import_list_view WHERE id = ?",
+            [id.0],
             |row| {
                 Ok((
-                    row.get::<_, String>("content_hash")?,
-                    failure_reason_from_row(row)?,
-                ))
-            },
-        )?
-        .into_iter()
-        .collect()
-    };
-
-    let states = state_rows(sql)?;
-    let standings = load_standing_facts_on(sql)?;
-    Ok(ImportQueueRows {
-        watched_folders,
-        candidates,
-        skipped,
-        imported,
-        imported_at,
-        failures,
-        states,
-        folder_readings,
-        standings,
-    })
-}
-
-/// A stored folder as the list addresses it: the watched folder covering it
-/// and its path below that. A stored folder outside every watched folder is an
-/// error.
-fn listed_below(roots: &[String], folder: &str) -> Result<(String, String), DbError> {
-    crate::import::watched_folder::validate_stored_folder(folder)?;
-    let root = crate::import::watched_folder::covering_root(roots, folder)
-        .ok_or_else(|| DbError::Message(format!("{folder} is under no watched folder")))?;
-    Ok((
-        root.to_string(),
-        super::import_state::relative_below(root, folder)?,
-    ))
-}
-
-fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>, DbError> {
-    // A release a grouping takes in stays stored but is left out of the queue.
-    // A scanned release is dated by its folder; a grouping's release by the
-    // earliest of the folders it takes in, since joining them finds nothing.
-    sql.query(
-        "SELECT c.watched_folder_path, c.path, c.folder, c.kind, c.name, c.display_path, \
-                c.content_hash, c.file_edit_revision, t.album_title, t.artist, \
-                CASE c.source_kind \
-                    WHEN 'folder' THEN \
-                        (SELECT COALESCE(d.source_date, d.first_seen_at) \
-                         FROM folder_discovery AS d WHERE d.folder = c.folder) \
-                    WHEN 'grouping' THEN \
-                        (SELECT MIN(COALESCE(d.source_date, d.first_seen_at)) \
-                         FROM release_grouping_member AS m \
-                         JOIN folder_discovery AS d ON d.folder = m.member_folder \
-                         WHERE m.grouping_key = c.grouping_key) \
-                END, \
-                c.grouping_key, g.skipped, g.blocked, g.blocked_subject, g.blocked_holder \
-         FROM scan_candidate AS c \
-         LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
-         LEFT JOIN scan_skipped_tags AS t \
-             ON t.watched_folder_path = c.watched_folder_path AND t.candidate_path = c.path \
-         WHERE NOT EXISTS \
-             (SELECT 1 FROM release_grouping_member WHERE member_key = c.path)",
-        [],
-        |row| {
-            Ok((
-                (
                     row.get::<_, String>(0)?,
                     row.get::<_, String>(1)?,
                     row.get::<_, String>(2)?,
                     row.get::<_, String>(3)?,
-                    row.get::<_, String>(4)?,
-                    row.get::<_, String>(5)?,
-                ),
-                (
-                    row.get::<_, Option<String>>(6)?,
-                    row.get::<_, i64>(7)?,
-                    row.get::<_, Option<String>>(8)?,
-                    row.get::<_, Option<String>>(9)?,
-                    row.get::<_, Option<i64>>(10)?,
-                    row.get::<_, Option<String>>(11)?,
-                    row.get::<_, Option<bool>>(12)?,
-                    (
-                        row.get::<_, Option<String>>(13)?,
-                        row.get::<_, Option<String>>(14)?,
-                        row.get::<_, Option<String>>(15)?,
-                    ),
-                ),
-            ))
-        },
-    )?
-    .into_iter()
-    .map(
-        |(
-            (watched_folder_path, path, folder, kind, name, display_path),
-            (
-                content_hash,
-                file_edit_revision,
-                skipped_album_title,
-                skipped_artist,
-                discovered_at,
-                grouping_key,
-                grouping_skipped,
-                (blocked, blocked_subject, blocked_holder),
-            ),
-        )| {
-            let kind = match kind.as_str() {
-                "tentative" => ScanCandidateKind::Tentative,
-                "valid" => ScanCandidateKind::Valid,
-                "invalid" => ScanCandidateKind::Invalid,
-                other => return Err(unreadable("kind", other)),
-            };
-            let grouping = match grouping_key {
-                Some(grouping_key) => Some(CandidateListGrouping {
-                    skipped: grouping_skipped.ok_or_else(|| {
-                        DbError::Message(format!(
-                            "release {path} names no stored grouping {grouping_key}"
-                        ))
-                    })?,
-                    error: super::release_groupings::block_of(
-                        blocked,
-                        blocked_subject,
-                        blocked_holder,
-                    )?,
-                }),
-                None => None,
-            };
-            Ok(ScanCandidateListRow {
-                grouping,
-                watched_folder_path,
-                path,
-                folder,
-                kind,
-                name,
-                display_path,
-                discovered_at,
-                content_hash,
-                file_edit_revision: to_u64(
-                    file_edit_revision,
-                    "a scan candidate's file edit revision",
-                )?,
-                skipped_tags: skipped_album_title.map(|album_title| SkippedTags {
-                    album_title,
-                    artist: skipped_artist,
-                }),
-            })
-        },
-    )
-    .collect()
-}
-
-fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {
-    // Only the draft's list columns; its tracks are the pane's to read.
-    let mut drafts: HashMap<String, (String, bool, bool, crate::import::MetadataAuthor)> = sql
-        .query(
-            "SELECT content_hash, album_title, draft_blank, draft_valid, author \
-             FROM import_candidate_edit",
-            [],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, bool>(2)?,
-                    row.get::<_, bool>(3)?,
-                    row.get::<_, String>(4)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, bool>(6)?,
                 ))
             },
-        )?
-        .into_iter()
-        .map(|(content_hash, album_title, blank, valid, author)| {
-            Ok((
-                content_hash,
-                (
-                    album_title,
-                    blank,
-                    valid,
-                    super::import_state::author_of(&author)?,
-                ),
-            ))
-        })
-        .collect::<Result<_, DbError>>()?;
-    let mut album_artists = super::import_state::load_album_artist_assignments_on(sql, None)?;
-    // Every match row, not a count: pressings are counted by the row each
-    // match's run stored for it.
-    let mut matches = load_matches_on(sql, None)?;
-    let mut provenances = load_provenance_on(sql, None)?;
-    let mut links = load_release_links_on(sql, None)?;
-    let mut verdicts: HashMap<String, VerdictSummary> = HashMap::new();
-    for row in sql.query(
-        "SELECT content_hash, kind, track_count, medium_conflict, error_detail, kept_own_draft \
-         FROM import_candidate_verdict",
-        [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<i64>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, bool>(5)?,
-            ))
+        )
+        .optional()?
+        .ok_or_else(|| DbError::Message(format!("import list {} is not open", id.0)))?;
+    Ok(ListRow {
+        id,
+        view: ImportListView {
+            tab: order::tab_of(&tab)?,
+            filter_text,
+            pending_filter: pending_filter_of(&pending_filter)?,
+            order: order::order_of(&order)?,
         },
-    )? {
-        let (content_hash, kind, track_count, medium_conflict, error_detail, kept_own_draft) = row;
-        // The releases agreement narrowed out are not what the verdict settled
-        // on, so the lead and the count come from `found` alone.
-        let found = matches.remove(&content_hash).unwrap_or_default().found;
-        let lead = found
-            .first()
-            .map(|stored| LeadMatch::of(&stored.result, Some(&stored.provenance)));
-        let pressing_count = crate::import::release_group::row_count(
-            &found
-                .iter()
-                .map(|stored| stored.pressing)
-                .collect::<Vec<_>>(),
-        ) as u32;
-        let summary = VerdictSummary {
-            kind: match kind.as_str() {
-                "found" => VerdictKind::Found,
-                "not_found" => VerdictKind::NotFound,
-                "manual_only" => VerdictKind::ManualOnly,
-                "failed" => VerdictKind::Failed,
-                "error" => VerdictKind::Error {
-                    failure: crate::signals::InternalFailure {
-                        detail: error_detail.ok_or_else(|| {
-                            DbError::Message(format!(
-                                "error verdict for {content_hash} states no error"
-                            ))
-                        })?,
-                    },
-                },
-                other => return Err(unreadable("verdict kind", other)),
-            },
-            track_count: track_count
-                .map(|count| to_u32(count, "a verdict's track count"))
-                .transpose()?,
-            pressing_count,
-            lead,
-            medium_conflict: super::import_state::medium_conflict_of(medium_conflict)?,
-            unread_document: found
-                .iter()
-                .any(|stored| stored.result.document_failure.is_some()),
-            kept_own_draft,
-        };
-        verdicts.insert(content_hash, summary);
-    }
-
-    let mut states = HashMap::new();
-    for (content_hash, edit_revision) in sql.query(
-        "SELECT content_hash, edit_revision FROM import_candidate_state",
-        [],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-    )? {
-        let verdict = verdicts.remove(&content_hash);
-        let metadata_provenance = provenances.remove(&content_hash);
-        let release_link = links.remove(&content_hash);
-        let (album_title, draft_blank, metadata_draft_valid, metadata_author) =
-            drafts.remove(&content_hash).ok_or_else(|| {
-                DbError::Message(format!(
-                    "candidate {content_hash} has no editable metadata draft"
-                ))
-            })?;
-        metadata_author
-            .check_provenance(metadata_provenance.as_ref())
-            .map_err(|error| DbError::Message(format!("candidate {content_hash}: {error}")))?;
-        let album_artist_assignments = album_artists.remove(&content_hash).unwrap_or_default();
-        let metadata_summary = crate::import::TriageMetadataSummary::of_columns(
-            album_title,
-            album_artist_assignments,
-            draft_blank,
-            metadata_provenance.is_some() || release_link.is_some(),
-        );
-        states.insert(
-            content_hash,
-            CandidateStateListRow {
-                edit_revision: to_u64(edit_revision, "a candidate's edit revision")?,
-                verdict,
-                metadata_provenance,
-                release_link,
-                metadata_author,
-                metadata_draft_valid,
-                metadata_summary,
-            },
-        );
-    }
-    Ok(states)
+        view_revision: to_u64(view_revision, "a list's view revision")?,
+        selection_revision: to_u64(selection_revision, "a list's selection revision")?,
+        narrows,
+    })
 }
 
 #[derive(Clone, PartialEq)]
@@ -484,11 +117,11 @@ struct ImportListRows {
         Vec<window::WindowItemRows>,
     )>,
     total_count: u64,
-    summary: crate::import::ImportQueueSummary,
-    shown_keys: Vec<String>,
-    selected: crate::import::selection::SelectedRows,
+    summary: ImportQueueSummary,
     pending_filter_entries: Vec<crate::import::PendingFilterEntry>,
     selection: crate::import::selection::SelectionSummary,
+    view_revision: u64,
+    selection_revision: u64,
 }
 
 /// One read of the list for `request`.
@@ -496,26 +129,52 @@ fn load_import_list_on(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
 ) -> Result<ImportListRows, DbError> {
-    let rows = load_import_queue_on(sql)?;
-    let flat = flatten(&rows, request).map_err(|error| DbError::Message(error.to_string()))?;
+    let list = list_row(sql, request.list)?;
+    let items = list.items(Shown::View);
     let windows = request
         .windows
         .iter()
         .map(|window| {
-            Ok((
-                window.clone(),
-                window::materialise(sql, window, &flat, &rows, &request.selected)?,
-            ))
+            let keys = items.window(sql, window)?;
+            Ok((window.clone(), window::materialise(sql, list.id, &keys)?))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
+    let counts = summary::counts(sql)?;
+    let total_count = summary::total_count(sql, &list)?;
+    let narrowed = match list.narrows {
+        true => Some(summary::narrowed(sql, &list, &counts)?),
+        false => None,
+    };
+    let watched_folders = sql
+        .query(
+            "SELECT path FROM watched_import_folders ORDER BY position",
+            [],
+            |row| row.get::<_, String>(0),
+        )?
+        .into_iter()
+        .map(WatchedFolder::from_path)
+        .collect();
+    let first_selected_position = summary::first_selected_position(sql, &list)?;
+    let selection = summary::selection(sql, list.id)?;
     Ok(ImportListRows {
         windows,
-        total_count: flat.items.len() as u64,
-        summary: flat.summary,
-        shown_keys: flat.shown_keys,
-        selected: flat.selected,
-        pending_filter_entries: flat.pending_filter_entries,
-        selection: flat.selection,
+        total_count,
+        summary: ImportQueueSummary {
+            counts: counts.tabs,
+            watched_folders,
+            has_groups: counts.has_groups,
+            narrowed,
+            narrowing: ImportListNarrowing {
+                tab: list.view.tab,
+                filter_text: list.view.filter_text.clone(),
+                pending_filter: list.view.pending_filter,
+            },
+            first_selected_position,
+        },
+        pending_filter_entries: counts.entries,
+        selection,
+        view_revision: list.view_revision,
+        selection_revision: list.selection_revision,
     })
 }
 
@@ -538,17 +197,19 @@ impl ImportListRows {
             total_count: self.total_count,
             windows,
             summary: self.summary,
-            shown_keys: self.shown_keys,
-            selected: self.selected,
             pending_filter_entries: self.pending_filter_entries,
             selection: self.selection,
+            view_revision: self.view_revision,
+            selection_revision: self.selection_revision,
         })
     }
 }
 
 impl Database {
-    /// The import tab as a live query whose request carries the view and the
-    /// windows, so changing either reruns the read on the same subscription.
+    /// The list a request names as a live query whose request carries the
+    /// windows, so changing them reruns the read on the same subscription.
+    /// Everything else the read shows is in the tables, so a write to the
+    /// list's view, folds or selection reruns it too.
     pub(crate) fn subscribe_import_list(
         &self,
         initial: ImportListRequest,
@@ -561,6 +222,20 @@ impl Database {
             .process(|rows| rows.process().map_err(CovenError::from))
     }
 
+    /// The plan each part of `list`'s windows is read by, for a test that
+    /// holds every order to its index.
+    #[cfg(test)]
+    pub(crate) async fn import_list_window_plans(
+        &self,
+        list: ImportListId,
+    ) -> Result<Vec<Vec<String>>, DbError> {
+        self.read(move |sql| {
+            let row = list_row(&sql, list)?;
+            row.items(Shown::View).window_plans(&sql)
+        })
+        .await
+    }
+
     /// One read of the list, for a caller with no subscription.
     pub(crate) async fn load_import_list(
         &self,
@@ -571,37 +246,43 @@ impl Database {
             .await
     }
 
+    /// Where the candidate at `candidate_key` sits in the list `list` once
+    /// revealed: on the tab its placement puts it on, with the filters
+    /// cleared and its group opened, the list's other folds kept. `None` when
+    /// the list lists no such candidate.
     pub(crate) async fn locate_import_candidate(
         &self,
-        request: ImportListRequest,
+        list: ImportListId,
         candidate_key: &str,
     ) -> Result<Option<crate::import::ImportCandidateListLocation>, DbError> {
         let candidate_key = candidate_key.to_string();
-        self.read(move |sql| load_import_queue_on(&sql))
-            .process(move |rows| {
-                crate::import::list::locate_candidate(&rows, &request, &candidate_key)
-                    .map_err(|error| DbError::Message(error.to_string()))
-            })
+        self.read(move |sql| summary::locate(&sql, list, &candidate_key))
             .await
     }
 
-    /// The first candidate in the queue's order under `request`'s view whose
-    /// identification is queued, running or having its answer written; `None`
-    /// when none is.
+    /// The first candidate in the list's order, every tab's rows unfiltered,
+    /// whose identification is queued, running or having its answer written;
+    /// `None` when none is.
     pub(crate) async fn first_identifying_import_candidate(
         &self,
-        request: ImportListRequest,
+        list: ImportListId,
     ) -> Result<Option<String>, DbError> {
-        self.read(move |sql| load_import_queue_on(&sql))
-            .process(move |rows| {
-                crate::import::list::first_identifying_candidate(&rows, &request)
-                    .map_err(|error| DbError::Message(error.to_string()))
-            })
+        self.read(move |sql| summary::first_identifying(&sql, list))
             .await
+    }
+
+    /// The rows the list `list` has selected, in the order it shows them:
+    /// what a bulk action runs over.
+    pub(crate) async fn load_import_list_selected(
+        &self,
+        list: ImportListId,
+    ) -> Result<crate::import::selection::SelectedRows, DbError> {
+        self.read(move |sql| summary::selected(&sql, list)).await
     }
 
     /// The candidate the request names, as the pane reads it, live; `None` for
-    /// no key or a key naming no scanned folder, which clears a selection.
+    /// no key or a key naming no release the list lists, which clears a
+    /// selection.
     pub(crate) fn subscribe_import_candidate(
         &self,
         initial: Option<String>,
@@ -611,11 +292,11 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |key, sql| match key {
                 None => Ok(None),
-                Some(key) => window::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
+                Some(key) => pane::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
             })
             .process(|process| {
                 process
-                    .map(window::CandidateDetailRows::process)
+                    .map(pane::CandidateDetailRows::process)
                     .transpose()
                     .map_err(CovenError::from)
             })
@@ -653,12 +334,8 @@ impl Database {
         key: &str,
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
-        self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
-            .process(|process| {
-                process
-                    .map(window::CandidateDetailRows::process)
-                    .transpose()
-            })
+        self.read(move |sql| pane::load_candidate_detail_on(&sql, &key))
+            .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
             .await
     }
 }

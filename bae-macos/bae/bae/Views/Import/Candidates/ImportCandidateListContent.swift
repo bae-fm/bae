@@ -2,12 +2,6 @@ import BaeKit
 import Combine
 import SwiftUI
 
-func releaseGroupDisclosureID(
-    _ key: BridgeFolderReleaseDecisionKey
-) -> ReleaseGroupDisclosureID {
-    ReleaseGroupDisclosureID(key: key)
-}
-
 /// A group member's place under its folder header: the child inset and the
 /// rail that runs down the members.
 enum ImportListHierarchyLayout {
@@ -161,10 +155,6 @@ struct ImportCandidateListContent: View {
         )
     }
 
-    private var pendingCovers: [ImageContent] {
-        summary.pendingCovers.map { .remote($0) }
-    }
-
     /// Whether the active tab has nothing to show.
     private var activeTabIsEmpty: Bool {
         (listSlot.list?.totalCount ?? 0) == 0
@@ -203,7 +193,7 @@ struct ImportCandidateListContent: View {
                     CandidateListMenu(
                         watchedFolders: importStore.watchedFolders,
                         refreshingFolders: uiStore.refreshingWatchedFolders,
-                        hasGroups: !summary.groupKeys.isEmpty,
+                        hasGroups: summary.hasGroups,
                         sortOrder: listSlot.sortOrder,
                         pendingFilter: uiStore
                             .importCandidatePendingFilter,
@@ -222,10 +212,7 @@ struct ImportCandidateListContent: View {
                             onAddFolder: onAddFolder,
                             onSetAllGroupsExpanded: { expanded in
                                 cancelReveal()
-                                listSlot.setGroupsExpanded(
-                                    summary.groupKeys,
-                                    expanded
-                                )
+                                listSlot.setAllGroupsExpanded(expanded)
                             },
                             onRefreshFolder: onRefreshFolder,
                             onRemoveFolder: onRemoveFolder
@@ -240,31 +227,18 @@ struct ImportCandidateListContent: View {
                 .onTapGesture { filterFocused = true }
             }
         } content: {
-            switch summary.doneUploadStatus {
-            case .waiting:
-                UploadQueueWaiting()
-            case .read, .unreadable, nil:
-                if activeTabIsEmpty {
-                    emptyState
-                }
-                else {
-                    VStack(spacing: 0) {
-                        if summary.doneUploadStatus == .unreadable {
-                            UploadStatusUnreadableNotice()
-                        }
-                        tabList
-                    }
-                }
+            if activeTabIsEmpty {
+                emptyState
+            }
+            else {
+                tabList
             }
         }
-        .task(id: summary.groupKeys) {
-            listSlot.retainGroups(summary.groupKeys)
-        }
-        // Decode Pending's covers as the queue lands, so its first frame
-        // is not a grid of spinners.
-        .task(id: pendingCovers) {
+        // Decode the covers of the rows the list has loaded as they land, so
+        // a page scrolled to is not a column of spinners.
+        .task(id: importStore.loadedCovers) {
             await imageStore.warm(
-                pendingCovers,
+                Array(importStore.loadedCovers),
                 pointSize: TriageRowView.coverPointSize,
                 displayScale: displayScale
             )
@@ -322,10 +296,7 @@ extension ImportCandidateListContent {
         ImportListEntryActions(
             onSetGroupExpanded: { group, expanded in
                 cancelReveal()
-                listSlot.setGroupExpanded(
-                    releaseGroupDisclosureID(group.key),
-                    expanded
-                )
+                listSlot.setGroupExpanded(group.key, expanded)
             },
             onCombineFolder: onCombineFolder,
             onSeparate: onSeparate,
@@ -454,29 +425,3 @@ extension ImportCandidateListContent {
     }
 
 #endif
-
-/// Done before the upload queue first answers: its rows are ordered by where
-/// their uploads stand, so it shows none until then.
-private struct UploadQueueWaiting: View {
-    var body: some View {
-        ProgressView("Waiting for the upload queue")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.surface)
-    }
-}
-
-/// Above Done's rows when the upload queue couldn't be read: they are in import
-/// order instead of upload order.
-private struct UploadStatusUnreadableNotice: View {
-    var body: some View {
-        Label(
-            "Upload status couldn't be read. Releases are in the order they were imported.",
-            systemImage: "exclamationmark.triangle"
-        )
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, ThemeSpace.group)
-        .padding(.vertical, ThemeSpace.compact)
-    }
-}

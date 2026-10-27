@@ -91,13 +91,12 @@ struct ImportListPageSourceTests {
             lock.unlock()
         }
 
-        func setView(view: BridgeImportListView) throws -> UInt64 {
-            lock.lock()
-            viewRevision += 1
-            views.append(view)
-            let revision = viewRevision
-            let hook = setViewHook
-            lock.unlock()
+        func setView(view: BridgeImportListView) async throws -> UInt64 {
+            let (revision, hook) = lock.withLock {
+                viewRevision += 1
+                views.append(view)
+                return (viewRevision, setViewHook)
+            }
             hook?()
             return revision
         }
@@ -108,11 +107,23 @@ struct ImportListPageSourceTests {
 
         func cancel() async throws {}
 
-        // The selection is not what these tests drive.
-        func changeSelection(change _: BridgeSelectionChange) throws -> UInt64 {
+        // The folds, the reads of where a candidate sits and the selection
+        // are not what these tests drive.
+        func setGroupFolded(
+            group _: BridgeFolderReleaseDecisionKey,
+            folded _: Bool
+        ) async throws -> UInt64 { 0 }
+        func setAllGroupsFolded(folded _: Bool) async throws -> UInt64 { 0 }
+        func locateCandidate(
+            candidateKey _: String
+        ) async throws -> BridgeImportCandidateListLocation? { nil }
+        func firstIdentifyingCandidate() async throws -> String? { nil }
+        func changeSelection(
+            change _: BridgeSelectionChange
+        ) async throws -> UInt64 {
             0
         }
-        func selectAll() throws -> UInt64 { 0 }
+        func selectAll() async throws -> UInt64 { 0 }
         func selectionSourceFolders() async throws -> [String] { [] }
         func combineSelection() async throws -> String {
             throw StubError.notImplemented
@@ -171,7 +182,7 @@ struct ImportListPageSourceTests {
     private func snapshot(
         _ windows: [SnapshotWindow],
         totalCount: UInt64,
-        requestRevision: UInt64 = 0,
+        viewRevision: UInt64 = 0,
         pendingFilterEntries: [BridgePendingFilterEntry] = []
     ) -> BridgeImportListSnapshot {
         BridgeImportListSnapshot(
@@ -189,16 +200,14 @@ struct ImportListPageSourceTests {
                     skipped: 0
                 ),
                 watchedFolders: [BridgeWatchedFolder(path: "/w", name: "w")],
-                groupKeys: [],
-                pendingCovers: [],
+                hasGroups: false,
                 narrowed: nil,
                 narrowing: BridgeImportListNarrowing(
                     tab: .pending,
                     filterText: "",
                     pendingFilter: .all
                 ),
-                firstSelectedPosition: nil,
-                doneUploadStatus: nil
+                firstSelectedPosition: nil
             ),
             pendingFilterEntries: pendingFilterEntries,
             selectionRevision: 0,
@@ -207,7 +216,7 @@ struct ImportListPageSourceTests {
                 single: nil,
                 offers: []
             ),
-            requestRevision: requestRevision,
+            viewRevision: viewRevision,
             cause: .request
         )
     }
@@ -278,7 +287,6 @@ extension ImportListPageSourceTests {
             tab: .pending,
             filterText: "",
             pendingFilter: .all,
-            collapsedGroups: [],
             order: .pathAscending
         )
         let outcome = ViewDeliveryOutcome()
@@ -296,14 +304,14 @@ extension ImportListPageSourceTests {
         // The source's second ask comes after it handled revision 0, and the yield
         // runs this test after any waiter revision 0 wrongly released.
         subscription.deliver(
-            snapshot([], totalCount: 70, requestRevision: 0)
+            snapshot([], totalCount: 70, viewRevision: 0)
         )
         try await Wait.until { subscription.asks >= 2 }
         await Task.yield()
         #expect(outcome.state == .waiting)
 
         subscription.deliver(
-            snapshot([], totalCount: 70, requestRevision: 1)
+            snapshot([], totalCount: 70, viewRevision: 1)
         )
         try await Wait.until({ outcome.state != .waiting })
         #expect(outcome.state == .delivered)
@@ -325,7 +333,6 @@ extension ImportListPageSourceTests {
                     tab: .pending,
                     filterText: "",
                     pendingFilter: .all,
-                    collapsedGroups: [],
                     order: .pathAscending
                 )
             )
@@ -359,7 +366,6 @@ extension ImportListPageSourceTests {
                     tab: .pending,
                     filterText: "",
                     pendingFilter: .all,
-                    collapsedGroups: [],
                     order: .pathAscending
                 )
             )
@@ -405,7 +411,6 @@ extension ImportListPageSourceTests {
                     tab: .pending,
                     filterText: "",
                     pendingFilter: .all,
-                    collapsedGroups: [],
                     order: .pathAscending
                 )
             )
