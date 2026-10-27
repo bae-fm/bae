@@ -123,7 +123,6 @@ pub(crate) use release::AlbumFields;
 pub(crate) use release_edit_save::ReleaseEditWrite;
 mod release_file;
 mod release_locality;
-mod release_pins;
 pub(crate) use release_file::ReleaseFileStream;
 mod release_deletion;
 pub use release_deletion::ReleaseDeletion;

@@ -350,14 +350,12 @@ impl LibraryManager {
             return Ok(None);
         };
         let has_cloud_home = self.has_cloud_home();
-        let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(&raw.unstored_audio))
             .await?;
         Ok(Some(ReleaseStorageSummary::from_raw(
             raw,
             has_cloud_home,
-            pinned,
             &originals,
         )))
     }
@@ -367,18 +365,6 @@ impl LibraryManager {
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::db::ReleaseDetailProjection> {
         self.database.subscribe_release_detail(initial)
-    }
-
-    /// The release's representative file id: what its pin marker is watched
-    /// by. Empty when the release is gone.
-    pub(crate) fn release_detail_pin_files(
-        projection: &crate::db::ReleaseDetailProjection,
-    ) -> Vec<Option<String>> {
-        projection
-            .context
-            .as_ref()
-            .map(|context| vec![context.detail.files.first().map(|file| file.id.clone())])
-            .unwrap_or_default()
     }
 
     /// The originals the library records this device holding for the release
@@ -393,14 +379,12 @@ impl LibraryManager {
             .unwrap_or_default()
     }
 
-    /// Resolve a release-detail delivery with its pin marker (see
-    /// [`Self::release_detail_pin_files`]) and what the disk has said of its
+    /// Resolve a release-detail delivery with what the disk has said of its
     /// originals (see [`Self::release_detail_originals`]).
     pub(crate) fn resolve_release_detail_projection(
         &self,
         release_id: &str,
         projection: crate::db::ReleaseDetailProjection,
-        pinned: bool,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<Option<ReleaseDetail>, LibraryError> {
         let Some(crate::db::ReleaseDetailContext {
@@ -427,7 +411,6 @@ impl LibraryManager {
             release_index,
             is_compilation,
             cover,
-            pinned,
             originals,
         )))
     }
@@ -440,13 +423,11 @@ impl LibraryManager {
         release_index: usize,
         is_compilation: bool,
         cover: Option<ImageRef>,
-        pinned: bool,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> ReleaseDetail {
         let has_cloud_home = self.has_cloud_home();
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
-            pinned,
             originals,
             cover,
             transfer_action: self.current_transfer_action(release_id),
@@ -484,9 +465,6 @@ impl LibraryManager {
             return Ok(None);
         };
         let cover = self.cover_ref(release_id).await?;
-        let pinned = self
-            .release_pinned(raw.files.first().map(|file| file.id.as_str()))
-            .await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(&raw.unstored_audio))
             .await?;
@@ -497,7 +475,6 @@ impl LibraryManager {
             release_index,
             is_compilation,
             cover,
-            pinned,
             &originals,
         )))
     }

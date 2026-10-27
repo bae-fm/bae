@@ -139,9 +139,8 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     assert_eq!(actions[&local.id], vec![Upload]);
 }
 
-/// Each release of an album carries its own pin state. The detail resolves the
-/// whole album's pin markers in one read, so every answer has to land back on
-/// the release it was asked about.
+/// Each release of an album carries its own pin state, read from that
+/// release's own listing row.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn album_detail_releases_carry_their_own_pin_state() {

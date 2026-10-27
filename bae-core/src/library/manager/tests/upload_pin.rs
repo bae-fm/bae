@@ -32,10 +32,19 @@ async fn upload_pins_as_the_stored_choice_says() {
         .unwrap();
 
     manager.drain_uploads_expecting_work().await.unwrap();
-    let kept_file = release_files(&manager, &kept.id).await[0].id.clone();
-    let evictable_file = release_files(&manager, &evictable.id).await[0].id.clone();
-    assert!(manager.release_pinned(Some(&kept_file)).await.unwrap());
-    assert!(!manager.release_pinned(Some(&evictable_file)).await.unwrap());
+    let pinned = |release_id: String| {
+        let manager = manager.library.clone();
+        async move {
+            manager
+                .find_release_storage_summary(&release_id)
+                .await
+                .unwrap()
+                .expect("the library holds the release")
+                .pinned
+        }
+    };
+    assert!(pinned(kept.id.clone()).await);
+    assert!(!pinned(evictable.id.clone()).await);
 }
 
 /// What disconnecting would cost counts the uploaded releases this device

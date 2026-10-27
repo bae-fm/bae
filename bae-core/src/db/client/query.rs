@@ -525,7 +525,7 @@ pub(super) fn row_to_release_summary(
         album_id: row.get("album_id")?,
         media: super::pressing_columns::read_media(row, "release_media")?,
         remote: row.get("remote")?,
-        any_file_id: row.get("any_file_id")?,
+        pinned: row.get("pinned")?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,
     })
@@ -684,6 +684,12 @@ pub(super) const CLOUD_ONLY_RELEASE_COUNT: &str =
     "SELECT COUNT(*) FROM release_listing AS listing \
      WHERE listing.stored = 1 AND listing.pinned_count < listing.file_count";
 
+/// Whether this device keeps every file of the release `listing` lists
+/// pinned: its pinned count, which local triggers keep from coven's
+/// `coven_pins`, has reached its file count.
+pub(super) const RELEASE_LISTING_PINNED: &str =
+    "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
+
 /// What a Storage Manager filter keeps of `release_listing listing`: the
 /// joins and the WHERE clause that follow its FROM.
 pub(super) fn storage_filter(filter: StorageFilter) -> (String, &'static str) {
@@ -710,10 +716,9 @@ fn storage_row_select(filter: StorageFilter) -> String {
             r.album_id, \
             r.media AS release_media, \
             listing.stored AS remote, \
-            (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             listing.file_count, \
             listing.total_size, \
-            listing.file_count > 0 AND listing.pinned_count = listing.file_count AS pinned, \
+            {RELEASE_LISTING_PINNED} AS pinned, \
             {album_columns} \
         FROM release_listing listing \
         JOIN releases r ON r.id = listing.release_id \

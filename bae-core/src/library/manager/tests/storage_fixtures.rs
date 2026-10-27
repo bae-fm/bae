@@ -318,8 +318,8 @@ async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u
 }
 
 /// Whether coven keeps a row's file in the pinned cache. Asked of that row's
-/// own file rather than through `release_pinned`, which checks the release's
-/// files and deliberately excludes covers.
+/// own file rather than through a release's pin marker, which counts the
+/// release's files and never its cover.
 #[cfg(feature = "test-utils")]
 async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
     manager

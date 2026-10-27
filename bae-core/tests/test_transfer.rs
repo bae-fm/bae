@@ -411,6 +411,72 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     );
 }
 
+/// The release and album detail views show a release pinned once its files
+/// are, and unpinned again once they aren't, each from its own live read.
+#[tokio::test]
+async fn the_detail_views_follow_a_releases_pin() {
+    tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let release_id = create_remote_release(
+        &mgr,
+        &tmp.path().join("src"),
+        &[("a.flac", b"follow-bytes")],
+    )
+    .await;
+    let album_id = mgr
+        .get_release_by_id(&release_id)
+        .await
+        .unwrap()
+        .expect("the library holds the release")
+        .album_id;
+    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let release = services.subscribe_release_detail();
+    release.set(Some(release_id.clone())).unwrap();
+    let album = services.subscribe_album_detail();
+    album.set(Some(album_id)).unwrap();
+    let shown = |pinned: bool| {
+        let (release, album) = (&release, &album);
+        async move {
+            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                loop {
+                    let value = release.next().await.expect("the release detail resolves");
+                    if value
+                        .value
+                        .is_some_and(|detail| detail.summary.pinned == pinned)
+                    {
+                        break;
+                    }
+                }
+                loop {
+                    let value = album.next().await.expect("the album detail resolves");
+                    if value
+                        .value
+                        .is_some_and(|detail| detail.releases[0].summary.pinned == pinned)
+                    {
+                        break;
+                    }
+                }
+            })
+            .await
+            .unwrap_or_else(|_| panic!("the detail views never showed pinned = {pinned}"));
+        }
+    };
+    shown(false).await;
+
+    TransferService::new(mgr.clone())
+        .pin_release(release_id.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
+        .finish()
+        .await
+        .expect("pin task completes");
+    shown(true).await;
+
+    mgr.unpin_release(&release_id).await.unwrap();
+    shown(false).await;
+}
+
 /// Unpin a Remote pinned release: coven moves its files out of the pinned cache
 /// into the evictable cache, so it reads as (Remote, not pinned).
 #[tokio::test]

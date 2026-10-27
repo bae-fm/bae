@@ -6,8 +6,8 @@ use super::*;
 
 impl AppServices {
     /// The detail view's album as it changes, read for the id the
-    /// subscription is set to: its rows, the releases' pin markers coven
-    /// watches, whether a cloud home is connected, and the transfers and
+    /// subscription is set to: its rows, with each release's pin marker,
+    /// whether a cloud home is connected, and the transfers and
     /// download-queue entries of its releases — the state it is resolved
     /// against. Another album is a new id
     /// on the same read.
@@ -18,7 +18,6 @@ impl AppServices {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
-        let mut pins = manager.watch_release_pins();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut downloads = ShownDownloads::new(manager.subscribe_download_queue());
@@ -30,37 +29,24 @@ impl AppServices {
                 &manager,
                 manager.subscribe_album_detail(id.clone()),
             );
-            let mut last: Option<(crate::db::AlbumDetailProjection, Vec<bool>)> = None;
+            let mut last: Option<crate::db::AlbumDetailProjection> = None;
             loop {
                 let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            match pins.watch(LibraryManager::album_detail_pin_files(&projection)).await {
-                                Ok(pinned) => {
-                                    let release_ids = LibraryManager::album_detail_release_ids(&projection);
-                                    downloads.show(release_ids.clone());
-                                    transfers.show(release_ids);
-                                    originals.show(LibraryManager::album_detail_originals(&projection));
-                                    last = Some((projection.clone(), pinned.clone()));
-                                    manager.resolve_album_detail_projection(projection, pinned, originals.seen())
-                                }
-                                Err(error) => Err(error),
-                            }
+                            let release_ids = LibraryManager::album_detail_release_ids(&projection);
+                            downloads.show(release_ids.clone());
+                            transfers.show(release_ids);
+                            originals.show(LibraryManager::album_detail_originals(&projection));
+                            last = Some(projection.clone());
+                            manager.resolve_album_detail_projection(projection, originals.seen())
                         }
                         Some(Err(error)) => Err(error),
                     },
-                    answer = pins.changed() => match (answer, last.as_mut()) {
-                        (Ok(pinned), Some((projection, last_pinned))) => {
-                            *last_pinned = pinned.clone();
-                            manager.resolve_album_detail_projection(projection.clone(), pinned, originals.seen())
-                        }
-                        (Ok(_), None) => continue,
-                        (Err(error), _) => Err(error),
-                    },
                     answer = originals.answered() => match (answer, last.clone()) {
-                        (Ok(true), Some((projection, pinned))) => {
-                            manager.resolve_album_detail_projection(projection, pinned, originals.seen())
+                        (Ok(true), Some(projection)) => {
+                            manager.resolve_album_detail_projection(projection, originals.seen())
                         }
                         (Ok(_), _) => continue,
                         (Err(error), _) => Err(error),
@@ -79,8 +65,8 @@ impl AppServices {
                     }} => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();
-                        let Some((projection, pinned)) = last.clone() else { continue };
-                        manager.resolve_album_detail_projection(projection, pinned, originals.seen())
+                        let Some(projection) = last.clone() else { continue };
+                        manager.resolve_album_detail_projection(projection, originals.seen())
                     }
                 };
                 let value = value.map(|value| crate::library::DetailSnapshot {
@@ -94,7 +80,7 @@ impl AppServices {
     }
 
     /// The detail view's release as it changes, read for the id the
-    /// subscription is set to: its rows, its pin marker coven watches, whether
+    /// subscription is set to: its rows, with its pin marker, whether
     /// a cloud home is connected, and its transfer and download-queue entry —
     /// the state it is resolved against. Another release is a new id on the same read.
     pub fn subscribe_release_detail(
@@ -104,7 +90,6 @@ impl AppServices {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
-        let mut pins = manager.watch_release_pins();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut downloads = ShownDownloads::new(manager.subscribe_download_queue());
@@ -116,13 +101,12 @@ impl AppServices {
                 &manager,
                 manager.subscribe_release_detail(id.clone()),
             );
-            let mut last: Option<(crate::db::ReleaseDetailProjection, bool)> = None;
+            let mut last: Option<crate::db::ReleaseDetailProjection> = None;
             let resolve = |id: &Option<String>,
                            projection,
-                           pinned,
                            seen: &crate::album_detail::OriginalsSeen| match id {
                 Some(release_id) => {
-                    manager.resolve_release_detail_projection(release_id, projection, pinned, seen)
+                    manager.resolve_release_detail_projection(release_id, projection, seen)
                 }
                 None => Ok(None),
             };
@@ -131,31 +115,17 @@ impl AppServices {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            match pins.watch(LibraryManager::release_detail_pin_files(&projection)).await {
-                                Ok(pinned) => {
-                                    let pinned = pinned.first().copied().unwrap_or(false);
-                                    downloads.show(id.iter().cloned().collect());
-                                    transfers.show(id.iter().cloned().collect());
-                                    originals.show(LibraryManager::release_detail_originals(&projection));
-                                    last = Some((projection.clone(), pinned));
-                                    resolve(&id, projection, pinned, originals.seen())
-                                }
-                                Err(error) => Err(error),
-                            }
+                            downloads.show(id.iter().cloned().collect());
+                            transfers.show(id.iter().cloned().collect());
+                            originals.show(LibraryManager::release_detail_originals(&projection));
+                            last = Some(projection.clone());
+                            resolve(&id, projection, originals.seen())
                         }
                         Some(Err(error)) => Err(error),
                     },
-                    answer = pins.changed() => match (answer, last.as_mut()) {
-                        (Ok(pinned), Some((projection, last_pinned))) => {
-                            *last_pinned = pinned.first().copied().unwrap_or(false);
-                            resolve(&id, projection.clone(), *last_pinned, originals.seen())
-                        }
-                        (Ok(_), None) => continue,
-                        (Err(error), _) => Err(error),
-                    },
                     answer = originals.answered() => match (answer, last.clone()) {
-                        (Ok(true), Some((projection, pinned))) => {
-                            resolve(&id, projection, pinned, originals.seen())
+                        (Ok(true), Some(projection)) => {
+                            resolve(&id, projection, originals.seen())
                         }
                         (Ok(_), _) => continue,
                         (Err(error), _) => Err(error),
@@ -174,8 +144,8 @@ impl AppServices {
                     }} => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();
-                        let Some((projection, pinned)) = last.clone() else { continue };
-                        resolve(&id, projection, pinned, originals.seen())
+                        let Some(projection) = last.clone() else { continue };
+                        resolve(&id, projection, originals.seen())
                     }
                 };
                 let value = value.map(|value| crate::library::DetailSnapshot {

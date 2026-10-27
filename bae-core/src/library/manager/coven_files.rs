@@ -1,7 +1,7 @@
 //! Coven file surface for [`LibraryManager`]: file reference construction, byte reads
 //! for release files and library images, library-image stores, cover-ref
-//! lookups, pin state, and the per-namespace cache budgets. Moves bytes /
-//! file references / pin state through the [`CovenHandle`] and [`Database`], distinct
+//! lookups, pins, and the per-namespace cache budgets. Moves bytes /
+//! file references / pins through the [`CovenHandle`] and [`Database`], distinct
 //! from the sync-provider control in `sync.rs`.
 
 use super::release::cover_ref_for;
@@ -184,61 +184,6 @@ impl LibraryManager {
             .await?)
     }
 
-    /// A release is pinned only when every one of its files is pinned.
-    pub(crate) async fn release_pinned(
-        &self,
-        any_file_id: Option<&str>,
-    ) -> Result<bool, LibraryError> {
-        Ok(self.releases_pinned(&[any_file_id]).await?[0])
-    }
-
-    /// The same answer for a list of releases, in the order given, in one read.
-    /// Every list that shows a pin marker per row asks here once for the page
-    /// rather than once per row: a page of releases costs one round trip to
-    /// coven, not one per release.
-    ///
-    /// Each entry is a release's representative file id, or `None` for a release
-    /// with no files.
-    pub(crate) async fn releases_pinned(
-        &self,
-        any_file_ids: &[Option<&str>],
-    ) -> Result<Vec<bool>, LibraryError> {
-        Ok(self.pin_markers(release_file_pin_states(&self.database, any_file_ids).await?))
-    }
-
-    /// Watch whether each release of a view is pinned: a subscription whose
-    /// rows are pointed at a view's releases with [`ReleasePinWatch::watch`] and
-    /// that answers again whenever a pin, an unpin, an upload keeping its copy,
-    /// or a release going Remote or Local changes the answer.
-    pub(crate) fn watch_release_pins(&self) -> ReleasePinWatch {
-        ReleasePinWatch {
-            manager: self.clone(),
-            query: None,
-            file_query: None,
-            watched: Vec::new(),
-            groups: Vec::new(),
-            answers: None,
-        }
-    }
-
-    /// The pin marker each release shows. A file id that names no release file
-    /// is counted as an anomaly and shows as not pinned.
-    fn pin_markers(&self, states: Vec<ReleasePinState>) -> Vec<bool> {
-        states
-            .into_iter()
-            .map(|state| match state {
-                ReleasePinState::Pinned => true,
-                ReleasePinState::NotPinned => false,
-                ReleasePinState::RejectedBadId => {
-                    self.diagnostics.event(TelemetryEvent::Anomaly {
-                        kind: crate::diagnostics::AnomalyKind::FileIdInvalid,
-                    });
-                    false
-                }
-            })
-            .collect()
-    }
-
     /// Audio and companion files stay pinned together. Covers use their own
     /// cache budget and are never pinned.
     pub(super) async fn release_pinnable_files(
@@ -320,102 +265,4 @@ fn total_bytes(release_id: &str, pinnable: &[PinnableFile]) -> Result<u64, Libra
             LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))
         })
     })
-}
-
-type ReleaseFileGroups = Vec<Option<Vec<String>>>;
-
-/// Follows both release file membership and coven's per-file pin answers.
-pub(crate) struct ReleasePinWatch {
-    manager: LibraryManager,
-    query: Option<coven::LiveQuery<Vec<Option<bool>>>>,
-    file_query: Option<coven::ReconfigurableLiveQuery<Vec<Option<String>>, ReleaseFileGroups>>,
-    watched: Vec<Option<String>>,
-    groups: ReleaseFileGroups,
-    answers: Option<Vec<Option<bool>>>,
-}
-
-impl ReleasePinWatch {
-    pub(crate) async fn watch(
-        &mut self,
-        files: Vec<Option<String>>,
-    ) -> Result<Vec<bool>, LibraryError> {
-        if self.file_query.is_none() || self.watched != files {
-            self.watched = files.clone();
-            self.file_query = Some(self.manager.database.subscribe_release_pin_files(files));
-            self.query = None;
-            self.answers = None;
-        }
-        if self.answers.is_some() {
-            return Ok(self.markers());
-        }
-        self.changed().await
-    }
-
-    /// The pin markers once they next change. A query that has ended, after
-    /// the error that ended it was returned, reads nothing more, so nothing
-    /// changes again.
-    pub(crate) async fn changed(&mut self) -> Result<Vec<bool>, LibraryError> {
-        if self.file_query.is_none() {
-            return std::future::pending().await;
-        }
-        if self.query.is_none() {
-            let Some(event) = self
-                .file_query
-                .as_mut()
-                .expect("file query installed")
-                .next()
-                .await
-            else {
-                return std::future::pending().await;
-            };
-            self.install_groups(event.result?);
-        }
-        if self.answers.is_none() {
-            return self.read_answers().await;
-        }
-        let file_query = self.file_query.as_mut().expect("file query installed");
-        let query = self.query.as_mut().expect("pin query installed");
-        tokio::select! {
-            Some(event) = file_query.next() => {
-                self.install_groups(event.result?);
-                self.read_answers().await
-            }
-            Some(answers) = query.next() => {
-                self.answers = Some(answers?);
-                Ok(self.markers())
-            }
-            else => std::future::pending().await,
-        }
-    }
-
-    fn install_groups(&mut self, groups: ReleaseFileGroups) {
-        self.query = Some(
-            self.manager
-                .database
-                .subscribe_rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, pin_file_ids(&groups)),
-        );
-        self.groups = groups;
-        self.answers = None;
-    }
-
-    async fn read_answers(&mut self) -> Result<Vec<bool>, LibraryError> {
-        let Some(answers) = self
-            .query
-            .as_mut()
-            .expect("pin query installed")
-            .next()
-            .await
-        else {
-            return std::future::pending().await;
-        };
-        self.answers = Some(answers?);
-        Ok(self.markers())
-    }
-
-    fn markers(&self) -> Vec<bool> {
-        self.manager.pin_markers(release_pin_states_from_answers(
-            &self.groups,
-            self.answers.as_ref().expect("pin answers read"),
-        ))
-    }
 }

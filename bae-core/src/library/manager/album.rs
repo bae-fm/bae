@@ -115,22 +115,6 @@ impl LibraryManager {
         self.database.subscribe_album_detail(initial)
     }
 
-    /// Each release's representative file id, in release order: what the
-    /// album's pin markers are watched by.
-    pub(crate) fn album_detail_pin_files(
-        projection: &crate::db::AlbumDetailProjection,
-    ) -> Vec<Option<String>> {
-        projection
-            .detail
-            .as_ref()
-            .map(|raw| {
-                album_pin_files(raw)
-                    .map(|id| id.map(str::to_string))
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
     /// The originals the library records this device holding for the
     /// releases an album-detail delivery shows: what the disk is asked about.
     pub(crate) fn album_detail_originals(
@@ -165,20 +149,18 @@ impl LibraryManager {
             .unwrap_or_default()
     }
 
-    /// Resolve an album-detail delivery with its releases' pin markers, one per
-    /// release in order (see [`Self::album_detail_pin_files`]), and what the
-    /// disk has said of its originals (see [`Self::album_detail_originals`]).
+    /// Resolve an album-detail delivery with what the disk has said of its
+    /// originals (see [`Self::album_detail_originals`]).
     pub(crate) fn resolve_album_detail_projection(
         &self,
         projection: crate::db::AlbumDetailProjection,
-        pinned: Vec<bool>,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<Option<AlbumDetail>, LibraryError> {
         let Some(raw) = projection.detail else {
             return Ok(None);
         };
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        self.resolve_album_detail_with_covers(raw, covers, pinned, originals)
+        self.resolve_album_detail_with_covers(raw, covers, originals)
             .map(Some)
     }
 
@@ -285,14 +267,6 @@ impl LibraryManager {
     }
 }
 
-/// Each release's representative file — the one its pin marker is asked by —
-/// in release order.
-fn album_pin_files(raw: &crate::db::DbAlbumDetail) -> impl Iterator<Item = Option<&str>> {
-    raw.releases
-        .iter()
-        .map(|release| release.files.first().map(|file| file.id.as_str()))
-}
-
 fn resolve_album_rows(
     rows: Vec<crate::db::DbAlbumSummary>,
     covers: &HashMap<String, ImageRef>,
@@ -312,9 +286,6 @@ impl LibraryManager {
     ) -> Result<AlbumDetail, LibraryError> {
         let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release.id.clone()).collect();
         let covers = self.cover_refs(&release_ids).await?;
-        let pinned = self
-            .releases_pinned(&album_pin_files(&raw).collect::<Vec<_>>())
-            .await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(
                 raw.releases
@@ -322,14 +293,13 @@ impl LibraryManager {
                     .flat_map(|release| &release.unstored_audio),
             ))
             .await?;
-        self.resolve_album_detail_with_covers(raw, covers, pinned, &originals)
+        self.resolve_album_detail_with_covers(raw, covers, &originals)
     }
 
     fn resolve_album_detail_with_covers(
         &self,
         raw: crate::db::DbAlbumDetail,
         covers: HashMap<String, ImageRef>,
-        pin_states: Vec<bool>,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<AlbumDetail, LibraryError> {
         let artist_names = crate::credits::library_line(&raw.artists);
@@ -339,11 +309,10 @@ impl LibraryManager {
         let cover = covers.get(&primary_release_id).cloned();
         let downloads = self.download_queue().phases().ops;
         let mut releases = Vec::with_capacity(raw.releases.len());
-        for (i, (r, pinned)) in raw.releases.into_iter().zip(pin_states).enumerate() {
+        for (i, r) in raw.releases.into_iter().enumerate() {
             let release_cover = covers.get(&r.release.id).cloned();
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,
-                pinned,
                 originals,
                 cover: release_cover,
                 transfer_action: self.current_transfer_action(&r.release.id),

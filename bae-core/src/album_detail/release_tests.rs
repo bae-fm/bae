@@ -31,11 +31,11 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         audio_segments: Vec::new(),
         records: Vec::new(),
         unstored_audio: Vec::new(),
+        pinned: false,
     };
     let originals = OriginalsSeen::default();
     let ctx = ReleaseResolveCtx {
         has_cloud_home: false,
-        pinned: false,
         originals: &originals,
         cover: None,
         transfer_action: None,

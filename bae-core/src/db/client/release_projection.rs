@@ -1,13 +1,11 @@
 use super::*;
 
-/// One Storage Manager row as read: the release's half, whether it is
-/// pinned, and the album's half.
-pub(super) type StorageRowParts = (DbReleaseSummary, bool, AlbumSummaryRow);
+/// One Storage Manager row as read: the release's half and the album's half.
+pub(super) type StorageRowParts = (DbReleaseSummary, AlbumSummaryRow);
 
 fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
     Ok((
         row_to_release_summary(sql, row)?,
-        row.get("pinned")?,
         AlbumSummaryRow::read(row)?,
     ))
 }
@@ -69,10 +67,9 @@ pub(super) fn process_storage_rows(
     rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter()
-        .map(|(release, pinned, album)| {
+        .map(|(release, album)| {
             Ok(DbStorageRow {
                 release,
-                pinned,
                 album: album.process()?,
             })
         })

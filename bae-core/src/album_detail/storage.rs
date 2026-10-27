@@ -31,26 +31,24 @@ pub struct ReleaseStorageSummary {
 }
 
 impl ReleaseStorageSummary {
-    /// `storage_state` derives from `remote` alone; `pinned` is the orthogonal
-    /// coven-cache property the caller reads separately, and `originals` what
-    /// the disk has said of the originals the library records this device
-    /// holding.
+    /// `storage_state` derives from `remote` alone, and `pinned` is the
+    /// orthogonal pin state the row reads beside it; `originals` is what the
+    /// disk has said of the originals the library records this device holding.
     pub(crate) fn from_raw(
         raw: DbReleaseStorageSummary,
         has_cloud_home: bool,
-        pinned: bool,
         originals: &OriginalsSeen,
     ) -> ReleaseStorageSummary {
         let storage_state = storage_state(raw.remote);
         let storage_actions = available_storage_actions(
             storage_state,
             release_playability(&raw.unstored_audio, originals),
-            pinned,
+            raw.pinned,
             has_cloud_home,
         );
         ReleaseStorageSummary {
             storage_state,
-            pinned,
+            pinned: raw.pinned,
             storage_actions,
             release_id: raw.release_id,
             album_id: raw.album_id,
@@ -91,8 +89,8 @@ pub fn common_storage_actions(rows: &[StorageRow]) -> Vec<ReleaseStorageAction> 
 }
 
 impl StorageRow {
-    /// The release and its album arrive pre-joined from SQL, with whether the
-    /// release is pinned; each half maps to its own summary projection.
+    /// The release and its album arrive pre-joined from SQL; each half maps
+    /// to its own summary projection.
     /// `resolve_cover` serves both, so the release row carries its own art and
     /// the album carries its primary release's.
     pub(crate) fn from_raw(
@@ -104,7 +102,6 @@ impl StorageRow {
     ) -> StorageRow {
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
-            pinned: raw.pinned,
             originals,
             cover: resolve_cover(&raw.release.id),
             transfer_action,

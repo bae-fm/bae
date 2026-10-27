@@ -164,6 +164,14 @@ pub(super) fn build_release_detail_on(
     let records = get_release_records_on(sql, &release.id)?;
     let unstored_audio = unstored_audio_on(sql, &release.id)?;
     let mediums = release_mediums_on(sql, &release.id)?;
+    let pinned = sql.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM release_listing listing \
+             WHERE listing.release_id = ? AND {RELEASE_LISTING_PINNED})"
+        ),
+        params![release.id],
+        |row| row.get(0),
+    )?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -174,6 +182,7 @@ pub(super) fn build_release_detail_on(
         audio_segments,
         records,
         unstored_audio,
+        pinned,
     })
 }
 
@@ -231,6 +240,7 @@ pub(super) struct ReleaseDetailRows {
     audio_segments: Vec<DbAudioSegment>,
     records: Vec<crate::import::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
+    pinned: bool,
 }
 
 impl ReleaseDetailRows {
@@ -244,6 +254,7 @@ impl ReleaseDetailRows {
             audio_segments: self.audio_segments,
             records: self.records,
             unstored_audio: self.unstored_audio,
+            pinned: self.pinned,
         }
     }
 }
@@ -741,7 +752,7 @@ pub(super) fn row_to_release_storage_summary(
         artist_names: credit_line_column(row, "artist_names")?,
         media: super::pressing_columns::read_media(row, "media")?,
         remote: row.get("remote")?,
-        any_file_id: row.get("any_file_id")?,
+        pinned: row.get("pinned")?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,
     })

@@ -96,7 +96,7 @@ async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::B
         .await
         .unwrap()
         .into_iter()
-        .filter(|row| row.pinned)
+        .filter(|row| row.release.pinned)
         .map(|row| row.release.id)
         .collect()
 }

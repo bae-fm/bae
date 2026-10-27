@@ -248,20 +248,6 @@ impl Database {
         self.inner.handle.unpin(files).await
     }
 
-    pub(crate) fn subscribe_rows_pinned(
-        &self,
-        table: &str,
-        row_ids: Vec<String>,
-    ) -> coven::LiveQuery<Vec<Option<bool>>> {
-        self.inner.handle.subscribe_rows_pinned(
-            table,
-            row_ids
-                .iter()
-                .map(|id| coven::RowKey::from(id.as_str()))
-                .collect(),
-        )
-    }
-
     pub(crate) async fn rows_pinned(
         &self,
         table: &str,

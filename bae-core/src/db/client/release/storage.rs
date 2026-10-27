@@ -18,7 +18,7 @@ impl Database {
             a.title AS album_title, \
             r.media, \
             listing.stored AS remote, \
-            (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
+            {RELEASE_LISTING_PINNED} AS pinned, \
             {artist_names} AS artist_names, \
             listing.file_count, \
             listing.total_size \
@@ -154,10 +154,10 @@ impl Database {
                         .chain(selected.iter())
                 };
                 let album_ids = rows()
-                    .map(|(_, _, album)| album.id.clone())
+                    .map(|(_, album)| album.id.clone())
                     .collect::<Vec<_>>();
                 let release_ids = rows()
-                    .map(|(release, _, _)| release.id.clone())
+                    .map(|(release, _)| release.id.clone())
                     .collect::<Vec<_>>();
                 let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 cover_versions.extend(super::files::image_versions_on(

@@ -4,8 +4,9 @@ use super::*;
 
 impl AppServices {
     /// The Storage Manager list as it changes, read in the view the
-    /// subscription is asked for: its rows, whose pin markers and Uploading
-    /// filter the query reads from coven's state, whether a cloud home is
+    /// subscription is asked for: its rows, whose pin markers the query reads
+    /// from the listing's pinned counts and whose Uploading filter from
+    /// coven's upload queue, whether a cloud home is
     /// connected, and the transfers of the releases shown — the state the
     /// rows are resolved against. One query serves every window: a new view
     /// points it at what that reads.

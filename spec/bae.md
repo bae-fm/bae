@@ -1376,8 +1376,10 @@ last), file count or size, either way, ties going by album title, then when
 the release was added, then id; the upload filter lists its releases in the
 order their first files wait in the queue. The upload queue and the pins are
 coven's, which the list's query reads beside the library's rows. Whether a
-release is pinned is read from how many of its files coven's `coven_pins`
-lists, a count bae keeps per release in the transaction that changes a pin.
+release is pinned, here and in the album and release details, is read from
+how many of its files coven's `coven_pins` lists, a count bae keeps per
+release in the transaction that changes a pin, so each view's own query
+follows a pin as it lands.
 
 ### 4.3 Pinning and the cache
 

@@ -199,7 +199,6 @@ telemetry_value_enum! {
         PreloadStateMissing => "preload_state_missing",
         QueueEntryUnknown => "queue_entry_unknown",
         AudioFormatOrphaned => "audio_format_orphaned",
-        FileIdInvalid => "file_id_invalid",
         EncryptionKeyMissing => "encryption_key_missing",
     }
 }

@@ -6,14 +6,12 @@ use crate::db::{DbReleaseDetail, DbReleaseSummary};
 
 /// The per-release inputs `LibraryManager` reads from the DB, coven's cache and
 /// this device's disk and threads into the release projections: whether a cloud
-/// home exists at all (which gates `storage_actions`), whether this release's
-/// files are pinned on this device, what the disk has said of the originals the
+/// home exists at all (which gates `storage_actions`), what the disk has said of the originals the
 /// library records this device holding, and the release's own cover reference.
 /// Bundled so the constructors take one context rather than a pile of parameters.
 #[derive(Debug, Clone)]
 pub(crate) struct ReleaseResolveCtx<'a> {
     pub(crate) has_cloud_home: bool,
-    pub(crate) pinned: bool,
     pub(crate) originals: &'a OriginalsSeen,
     pub(crate) cover: Option<ImageRef>,
     pub(crate) transfer_action: Option<ReleaseStorageAction>,
@@ -68,11 +66,11 @@ impl ReleaseSummary {
             album_id: raw.album_id,
             media: raw.media,
             storage_state,
-            pinned: ctx.pinned,
+            pinned: raw.pinned,
             storage_actions: available_storage_actions(
                 storage_state,
                 release_playability(&raw.unstored_audio, ctx.originals),
-                ctx.pinned,
+                raw.pinned,
                 ctx.has_cloud_home,
             ),
             transfer_action: ctx.transfer_action,
@@ -515,7 +513,7 @@ impl ReleaseDetail {
                 album_id: release.album_id.clone(),
                 media: release.pressing.facts.media.clone(),
                 remote,
-                any_file_id: files.first().map(|f| f.id.clone()),
+                pinned: raw.pinned,
                 file_count,
                 total_size,
                 unstored_audio: raw.unstored_audio,
@@ -730,6 +728,7 @@ mod release_edit_display_tests {
             }],
             records: Vec::new(),
             unstored_audio: Vec::new(),
+            pinned: false,
         };
 
         assert!(matches!(

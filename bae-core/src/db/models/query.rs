@@ -144,10 +144,9 @@ pub struct DbReleaseStorageSummary {
     /// Whether all audio files are attached for sharing. Pending uploads are
     /// reported independently by the upload queue.
     pub remote: bool,
-    /// The id of one of the release's files, or `None` when it has none. Used to
-    /// ask coven's cache whether the release is pinned — pin/unpin act on all a
-    /// release's files together, so any one file stands for the release.
-    pub any_file_id: Option<String>,
+    /// Whether this device keeps every file of the release pinned, as the
+    /// release's listing counts its pinned files.
+    pub pinned: bool,
     pub file_count: i64,
     pub total_size: i64,
     /// What the library records this device holding for each audio file whose
@@ -243,6 +242,9 @@ pub struct DbReleaseDetail {
     /// What the library records this device holding for each audio file whose
     /// row names no stored file.
     pub unstored_audio: Vec<DbUnstoredAudio>,
+    /// Whether this device keeps every file of the release pinned, as the
+    /// release's listing counts its pinned files.
+    pub pinned: bool,
 }
 
 /// What the library records this device holding for one of a release's audio
@@ -287,10 +289,9 @@ pub struct DbReleaseSummary {
     /// Whether all audio files are attached for sharing. Pending uploads are
     /// reported independently by the upload queue.
     pub remote: bool,
-    /// The id of one of the release's files, or `None` when it has none. Used to
-    /// ask coven's cache whether the release is pinned — pin/unpin act on all a
-    /// release's files together, so any one file stands for the release.
-    pub any_file_id: Option<String>,
+    /// Whether this device keeps every file of the release pinned, as the
+    /// release's listing counts its pinned files.
+    pub pinned: bool,
     pub file_count: i64,
     pub total_size: i64,
     /// What the library records this device holding for each audio file whose
@@ -304,8 +305,6 @@ pub struct DbReleaseSummary {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
-    /// Whether this device keeps every file of the release pinned.
-    pub pinned: bool,
     pub album: DbAlbumSummary,
 }
 
