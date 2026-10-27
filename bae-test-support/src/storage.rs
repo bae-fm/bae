@@ -18,18 +18,17 @@ pub async fn storage_library(
             .build()
             .unwrap(),
     );
-    let handle = installation
-        .builder(
+    let handle = bae_core::library::configure_store(
+        installation.builder(
             bae_core::config::AppDir::under_home(directory)
                 .unwrap()
                 .store_layout(),
-        )
-        .synced_tables(bae_core::sync::synced_tables())
-        .migrations(bae_core::migrations::all())
-        .storage_connector(storage.clone())
-        .create_store("Test Library")
-        .await
-        .unwrap();
+        ),
+    )
+    .storage_connector(storage.clone())
+    .create_store("Test Library")
+    .await
+    .unwrap();
     let (manager, database) = crate::test_library_from_handle(handle, directory, providers);
     manager.start().unwrap();
     (manager, database, storage)

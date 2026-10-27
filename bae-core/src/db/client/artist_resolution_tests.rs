@@ -3,10 +3,7 @@ use super::*;
 const NOW: &str = "2026-01-01T00:00:00Z";
 
 fn library() -> Connection {
-    let conn = Connection::open_in_memory().unwrap();
-    conn.execute_batch(include_str!("../../../migrations/001_initial.sql"))
-        .unwrap();
-    conn
+    crate::library::bare_library_connection()
 }
 
 fn add_artist(

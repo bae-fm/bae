@@ -143,10 +143,7 @@ pub fn setup_fresh_library(
     let installation = coven::TestCoven::new();
     let handle = runtime
         .block_on(
-            installation
-                .builder(app_dir.store_layout())
-                .synced_tables(bae_core::sync::synced_tables())
-                .migrations(bae_core::migrations::all())
+            bae_core::library::configure_store(installation.builder(app_dir.store_layout()))
                 .create_store("Test Library"),
         )
         .expect("create fresh test store");

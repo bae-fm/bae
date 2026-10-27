@@ -5,17 +5,16 @@
 async fn real_schema_opens_with_the_declarations_and_unattached_files() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
-    let handle = installation
-        .builder(
+    let handle = bae_core::library::configure_store(
+        installation.builder(
             bae_core::config::AppDir::at(directory.path())
                 .unwrap()
                 .store_layout(),
-        )
-        .synced_tables(bae_core::sync::synced_tables())
-        .migrations(bae_core::migrations::all())
-        .create_store("Schema Test")
-        .await
-        .unwrap();
+        ),
+    )
+    .create_store("Schema Test")
+    .await
+    .unwrap();
     let database = bae_core::db::Database::from_handle(
         handle.clone(),
         std::sync::Arc::new(coven::SystemClock),
@@ -73,17 +72,16 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
 async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
-    let handle = installation
-        .builder(
+    let handle = bae_core::library::configure_store(
+        installation.builder(
             bae_core::config::AppDir::at(directory.path())
                 .unwrap()
                 .store_layout(),
-        )
-        .synced_tables(bae_core::sync::synced_tables())
-        .migrations(bae_core::migrations::all())
-        .create_store("Upload Test")
-        .await
-        .unwrap();
+        ),
+    )
+    .create_store("Upload Test")
+    .await
+    .unwrap();
     let (manager, database) = bae_test_support::test_library_from_handle(
         handle.clone(),
         directory.path(),

@@ -259,7 +259,10 @@ one artist twice keeps both credits. Every reader takes the whole list:
 
 - An album's line names every credit in order (see "Credit lines" below).
 - Library search finds an album by its title or by any of its credits' names
-  (an artist's own name or the other name the credit prints). A track's search
+  (an artist's own name or the other name the credit prints). A query matches
+  anywhere inside a title or a name, ignoring case by Unicode's lowercase
+  (accents still count: `ecrin` doesn't find `Écrin`), and each kind of result
+  comes in title or name order, ties going by id. A track's search
   row names the track's own credits, else its album's.
 - Sorting albums by artist compares every credit's sort name (else its name)
   in list order, so an album by A comes before one by A and B, which comes
@@ -2711,8 +2714,10 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
+| `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
+| `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
-Local triggers write the last eight in the same write as the library rows they
+Local triggers write every table here after the first two in the same write as the library rows they
 come from, on this device or applied from another, so they always match those
 rows. A write applied from another device can hold a row before a row it
 references; the triggers count a row once what it references is there.

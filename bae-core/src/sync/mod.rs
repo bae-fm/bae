@@ -324,6 +324,17 @@ mod tests {
         "album_listing",
         "album_artist_link",
         "artist_listing",
+        // Library search's folded titles and names.
+        "album_search",
+        "track_search",
+        "work_search",
+        "artist_search",
+        "artist_credit_search",
+        "album_search_entry",
+        "track_search_entry",
+        "work_search_entry",
+        "artist_search_entry",
+        "artist_credit_search_entry",
         // Import: the folders this device watches, what scanning found in
         // them, and each candidate's state while it is imported.
         "watched_import_folders",
@@ -416,7 +427,9 @@ mod tests {
 
     #[test]
     fn every_schema_table_is_synced_or_declared_device_local() {
-        let create = regex::Regex::new(r"(?m)^\s*CREATE TABLE (?:IF NOT EXISTS )?(\w+)").unwrap();
+        let create =
+            regex::Regex::new(r"(?m)^\s*CREATE (?:VIRTUAL )?TABLE (?:IF NOT EXISTS )?(\w+)")
+                .unwrap();
         let schema: BTreeSet<&str> = create
             .captures_iter(include_str!("../../migrations/001_initial.sql"))
             .map(|captures| captures.get(1).unwrap().as_str())

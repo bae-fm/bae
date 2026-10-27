@@ -6,7 +6,7 @@
 /// A non-blank library search query. [`parse`](Self::parse) is the single
 /// definition of "what counts as a searchable query": it trims surrounding
 /// whitespace and rejects an empty or all-whitespace string. A blank query is
-/// therefore never turned into a `LIKE '%%'` that matches — and returns — every
+/// therefore never turned into a pattern that matches — and returns — every
 /// row; it is simply not a search.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LibrarySearchQuery(String);
@@ -24,7 +24,7 @@ impl LibrarySearchQuery {
         }
     }
 
-    /// The trimmed, non-blank query text, for the `LIKE` pattern the DB builds.
+    /// The trimmed, non-blank query text, for the pattern the DB builds.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -113,6 +113,13 @@ impl LibrarySearchSubscription {
     pub async fn cancel(&self) {
         self.query.close().await;
     }
+}
+
+/// A text as library search compares it: lowercased by Unicode's rules. The
+/// schema's `bae_fold_case` folds each searched title and name this way, and
+/// a query is folded the same way before it is matched against them.
+pub(crate) fn fold_case(text: &str) -> String {
+    text.to_lowercase()
 }
 
 /// How many results a library search returns. The one place this is decided —

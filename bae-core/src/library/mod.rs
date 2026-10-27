@@ -150,15 +150,16 @@ impl Keychain {
         Self::InMemory(std::sync::Arc::new(coven::TestCoven::new()))
     }
 
-    /// Configure coven with the declarations owned by bae, keeping keys in
-    /// this keychain.
+    /// A coven builder keeping keys in this keychain, for the functions here
+    /// that create, open, restore or join a library: each configures it as
+    /// bae's store (`configure_store`).
     pub fn store_builder(&self, app_dir: &AppDir) -> coven::CovenBuilder {
         let layout = app_dir.store_layout();
-        configure_store(match self {
+        match self {
             Self::System => coven::Coven::builder(layout),
             #[cfg(any(test, feature = "test-utils"))]
             Self::InMemory(installation) => installation.builder(layout),
-        })
+        }
     }
 
     /// Delete a closed store without opening it: this keychain's entries for
@@ -210,10 +211,44 @@ impl Keychain {
     }
 }
 
-pub(crate) fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
+/// bae's store as every handle opens it: its synced tables, its schema, and
+/// the SQL functions the schema's triggers call.
+pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
     builder
         .synced_tables(crate::sync::synced_tables())
         .migrations(crate::migrations::all())
+        .function(
+            "bae_fold_case",
+            1,
+            coven::Determinism::Deterministic,
+            |arguments| Ok(fold_case_value(arguments.get(0)?)),
+        )
+}
+
+/// `bae_fold_case`: a text folded as library search folds it; NULL stays NULL.
+fn fold_case_value(text: Option<String>) -> Option<String> {
+    text.map(|text| search::fold_case(&text))
+}
+
+/// An in-memory database on bae's schema outside coven, with the SQL
+/// functions the schema's triggers call: for unit tests of SQL that runs on a
+/// bare connection.
+#[cfg(test)]
+pub(crate) fn bare_library_connection() -> rusqlite::Connection {
+    use rusqlite::functions::FunctionFlags;
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    conn.create_scalar_function(
+        "bae_fold_case",
+        1,
+        FunctionFlags::SQLITE_UTF8
+            | FunctionFlags::SQLITE_DETERMINISTIC
+            | FunctionFlags::SQLITE_INNOCUOUS,
+        |context| Ok(fold_case_value(context.get(0)?)),
+    )
+    .expect("bae_fold_case registers");
+    conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
+        .expect("the schema applies");
+    conn
 }
 
 /// Create a store and retain its open handle, including its identity custody.

@@ -1,10 +1,21 @@
 use super::*;
 
-fn escape_like_pattern(value: &str) -> String {
-    value
-        .replace('\\', r"\\")
-        .replace('%', r"\%")
-        .replace('_', r"\_")
+/// The `GLOB` pattern matching `query` anywhere inside a text folded as the
+/// search tables fold theirs: the folded query with `*`, `?` and `[`, which
+/// `GLOB` reads as wildcards, each written as the one-character class that
+/// matches only itself.
+fn search_pattern(query: &str) -> String {
+    let mut pattern = String::from("*");
+    for character in crate::library::search::fold_case(query).chars() {
+        match character {
+            '*' => pattern.push_str("[*]"),
+            '?' => pattern.push_str("[?]"),
+            '[' => pattern.push_str("[[]"),
+            other => pattern.push(other),
+        }
+    }
+    pattern.push('*');
+    pattern
 }
 
 impl Database {
@@ -43,7 +54,7 @@ impl Database {
         query: &str,
         limit: usize,
     ) -> Result<DbLibrarySearchResults, DbError> {
-        let pattern = format!("%{}%", escape_like_pattern(query));
+        let pattern = search_pattern(query);
         let limit_i64 = limit as i64;
         self.read(move |sql| search_library_on(&sql, &pattern, limit_i64))
             .process(LibrarySearchRows::process)
@@ -69,7 +80,7 @@ impl Database {
                 let Some(query) = request else {
                     return Ok(None);
                 };
-                let pattern = format!("%{}%", escape_like_pattern(query.as_str()));
+                let pattern = search_pattern(query.as_str());
                 let results =
                     search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?;
                 let album_ids = results
@@ -507,35 +518,51 @@ impl Database {
     }
 }
 
+/// The ids of the artists whose name or sort name holds the search pattern
+/// `?1` (`artist_search`).
+const SEARCH_MATCHED_ARTISTS: &str = "SELECT artist_id FROM artist_search WHERE name GLOB ?1 \
+     UNION SELECT artist_id FROM artist_search WHERE sort_name GLOB ?1";
+
+/// The library rows holding the search `pattern` (see [`search_pattern`]),
+/// each kind's first `limit` in its order, ties going by id. Each kind finds
+/// its rows through its search table, then reads what it shows for those
+/// rows alone.
 fn search_library_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     limit: i64,
 ) -> Result<LibrarySearchRows, DbError> {
+    // An album holds the pattern in its title, or in a credit's name: the
+    // name of the artist the credit shows, or the other name it prints.
     let album_query = format!(
         r#"
             SELECT a.id, a.title, a.year,
                    {primary_release} AS primary_release_id,
                    {artist_names} AS artist_name
-            FROM albums a
-            WHERE {ALBUM_A_IS_SHOWN}
-              AND (a.title LIKE ?1 ESCAPE '\'
-               OR EXISTS (
-                   SELECT 1 FROM album_artists search_credit
-                   JOIN artists search_artist ON search_artist.id = {shown}
-                   LEFT JOIN artist_credits search_name
-                       ON search_name.artist_id = search_credit.artist_id
-                      AND search_name.name_key = search_credit.credit_key
-                   WHERE search_credit.album_id = a.id
-                     AND (search_artist.name LIKE ?1 ESCAPE '\'
-                       OR search_name.name LIKE ?1 ESCAPE '\')
-               ))
-            ORDER BY a.title
-            LIMIT ?2
+            FROM (
+                SELECT a.id, a.title, a.year FROM albums a
+                WHERE a.id IN (
+                    SELECT album_id FROM album_search WHERE title GLOB ?1
+                    UNION
+                    SELECT credit.album_id FROM artist_search found
+                    JOIN artist_shown_as shown ON shown.shown_artist_id = found.artist_id
+                    JOIN album_artists credit ON credit.artist_id = shown.artist_id
+                    WHERE found.name GLOB ?1
+                    UNION
+                    SELECT credit.album_id FROM artist_credit_search found
+                    JOIN album_artists credit
+                        ON credit.artist_id = found.artist_id
+                       AND credit.credit_key = found.name_key
+                    WHERE found.name GLOB ?1
+                )
+                  AND {ALBUM_A_IS_SHOWN}
+                ORDER BY a.title, a.id
+                LIMIT ?2
+            ) a
+            ORDER BY a.title, a.id
             "#,
         primary_release = album_primary_release_sql(),
         artist_names = album_credits_json_sql(),
-        shown = shown_artist_id("search_credit.artist_id"),
     );
     let albums = sql.query(&album_query, params![pattern, limit], |row| {
         Ok(AlbumSearchRow {
@@ -554,9 +581,12 @@ fn search_library_on(
             FROM tracks t
             JOIN releases r ON t.release_id = r.id
             JOIN albums a ON r.album_id = a.id
-            WHERE t.title LIKE ? ESCAPE '\'
-            ORDER BY t.title
-            LIMIT ?
+            WHERE t.id IN (
+                SELECT track_id FROM track_search WHERE title GLOB ?1
+                ORDER BY sort_title, track_id
+                LIMIT ?2
+            )
+            ORDER BY t.title, t.id
             "#,
             track_credits_json_sql("t")
         ),
@@ -575,27 +605,30 @@ fn search_library_on(
     )?;
     let artists = sql.query(
         &artist_listing_query(
-            Some("WHERE ar.name LIKE ? ESCAPE '\\' OR ar.sort_name LIKE ? ESCAPE '\\'"),
-            Some("ORDER BY listing.name LIMIT ?"),
+            Some(&format!("WHERE ar.id IN ({SEARCH_MATCHED_ARTISTS})")),
+            Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
         ),
-        params![pattern, pattern, limit],
+        params![pattern, limit],
         row_to_artist_summary,
     )?;
     let composers = sql.query(
         &composer_listing_query(
-            Some(
-                "WHERE composer.name LIKE ? ESCAPE '\\' \
-                 OR composer.sort_name LIKE ? ESCAPE '\\'",
-            ),
-            Some("ORDER BY listing.name LIMIT ?"),
+            Some(&format!("WHERE composer.id IN ({SEARCH_MATCHED_ARTISTS})")),
+            Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
         ),
-        params![pattern, pattern, limit],
+        params![pattern, limit],
         row_to_composer_summary,
     )?;
     let works = sql.query(
         &work_summary_query(
-            Some("WHERE w.title LIKE ? ESCAPE '\\'"),
-            Some("ORDER BY w.title LIMIT ?"),
+            Some(
+                "WHERE w.id IN (
+                    SELECT work_id FROM work_search WHERE title GLOB ?1
+                    ORDER BY sort_title, work_id
+                    LIMIT ?2
+                )",
+            ),
+            Some("ORDER BY w.title, w.id"),
         ),
         params![pattern, limit],
         row_to_work_summary,

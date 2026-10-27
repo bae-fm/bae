@@ -838,5 +838,64 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
     });
 }
 
+/// B's search tables are local, written by B's triggers as it applies A's
+/// writes: an album A writes, then renames, is found on B by each title in
+/// turn.
+#[test]
+fn library_search_finds_rows_applied_from_another_device() {
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        let writer = devices.a().database();
+        let reader = devices.b().database();
+        exec_batch(writer, &format!(
+            "INSERT INTO artists (id, name, name_key, created_at)
+             VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
+             INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Écrin Album Title', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('b416679d-8454-4a3b-abc6-db8b32a35731', '{ALBUM_ID}', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
+        )).await;
+        devices
+            .settle("the remote album", |_, db| async move {
+                db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
+            })
+            .await;
+        let found = reader.search_library("écrin", 10).await.unwrap();
+        assert_eq!(
+            found
+                .albums
+                .iter()
+                .map(|album| album.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![ALBUM_ID]
+        );
+
+        exec(
+            writer,
+            "UPDATE albums SET title = 'Renamed Album Title' WHERE id = ?1",
+            &[ALBUM_ID],
+        )
+        .await;
+        devices
+            .settle("the remote rename", |_, db| async move {
+                db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap().title == "Renamed Album Title"
+            })
+            .await;
+        assert!(reader
+            .search_library("écrin", 10)
+            .await
+            .unwrap()
+            .albums
+            .is_empty());
+        assert_eq!(
+            reader
+                .search_library("renamed album", 10)
+                .await
+                .unwrap()
+                .albums
+                .len(),
+            1
+        );
+    });
+}
+
 #[path = "live_query_tests/id_sets.rs"]
 mod id_sets;

@@ -172,7 +172,7 @@ async fn keys_replaced_elsewhere(
 
 /// The library opens on this device as `device`, named Household.
 async fn opens_as(builder: coven::CovenBuilder, store: coven::StoreId, device: coven::DeviceId) {
-    let handle = builder.open(store).await.unwrap();
+    let handle = configure_store(builder).open(store).await.unwrap();
     assert_eq!(handle.device_id(), device);
     assert_eq!(handle.store_name().await.unwrap(), "Household");
     handle.close().await.unwrap();
@@ -194,7 +194,8 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
         connected_library(&installation, &app_dir, &other_storage, "Elsewhere").await;
     let laptop = std::sync::Arc::new(storage.for_device());
     let builder = || {
-        configure_store(installation.builder(app_dir.store_layout()))
+        installation
+            .builder(app_dir.store_layout())
             .storage_connector(laptop.clone())
     };
     let (_sender, cancel) = watch::channel(false);
@@ -263,7 +264,8 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
     let builder = || {
-        configure_store(installation.builder(app_dir.store_layout()))
+        installation
+            .builder(app_dir.store_layout())
             .storage_connector(std::sync::Arc::new(storage.for_device()))
     };
     let (_sender, cancel) = watch::channel(false);
@@ -347,7 +349,8 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
     let builder = || {
-        configure_store(installation.builder(app_dir.store_layout()))
+        installation
+            .builder(app_dir.store_layout())
             .storage_connector(std::sync::Arc::new(storage.for_device()))
     };
     let (_sender, cancel) = watch::channel(false);
@@ -450,7 +453,8 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
     let builder = || {
-        configure_store(installation.builder(app_dir.store_layout()))
+        installation
+            .builder(app_dir.store_layout())
             .storage_connector(std::sync::Arc::new(storage.for_device()))
     };
     let store = replaced.store;

@@ -132,10 +132,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
     let app_dir = bae_core::config::AppDir::under_home(&root).unwrap();
     let handle = runtime
         .block_on(
-            installation
-                .builder(app_dir.store_layout())
-                .synced_tables(bae_core::sync::synced_tables())
-                .migrations(bae_core::migrations::all())
+            bae_core::library::configure_store(installation.builder(app_dir.store_layout()))
                 .create_store("Test Library"),
         )
         .expect("test store");
