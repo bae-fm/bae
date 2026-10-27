@@ -170,6 +170,16 @@ its tracks show their own artists. The flag is decided from the album's
 credits at every write of them, an import's or an edit's, so it never outlives
 an edit of the artists.
 
+**The album grid** shows every album holding a release, newest first unless
+the person sorts it by title (ignoring ASCII case), artist (§2.3), year or date
+added, either way; an album of unknown year sorts after every year ascending
+and before them descending, and albums the sort ties go by id. Grouped by
+artist, the grid lists an album under each artist its credits show, once per
+artist, the artists in order of sort name (else name) and then id, each
+artist's albums in the grid's sort. The artist list shows every artist an
+album's credits show, sorted by name or album count, ties going by name and
+then id.
+
 A release has tracks, a cover, and the files its tracks play from. Its pressing
 facts are typed values in bae's own vocabulary (Appendix H), read from what the
 catalogs state, so a surface shows one shape whichever catalog stated them.
@@ -2698,8 +2708,11 @@ Beside them, device-local tables:
 | `composer_release` | release and artist shown credited on a work one of its tracks performs |
 | `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
 | `composer_listing` | artist the composer list shows (§2.4): its name and its counts of works, releases and unlinked credits, with an index for each of the list's sorts |
+| `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
+| `album_artist_link` | album the grid shows and artist its credits show |
+| `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 
-Local triggers write the last five in the same write as the library rows they
+Local triggers write the last eight in the same write as the library rows they
 come from, on this device or applied from another, so they always match those
 rows. A write applied from another device can hold a row before a row it
 references; the triggers count a row once what it references is there.

@@ -71,12 +71,12 @@ pub(super) fn credit_names_of_on(
     let mut names: HashMap<String, Vec<ArtistCreditName>> = HashMap::new();
     for chunk in artist_ids.chunks(SQL_MAX_IN_VARS) {
         let query = format!(
-            "SELECT {shown} AS shown_id, credit_name.artist_id, credit_name.name_key, \
-                    credit_name.name \
-             FROM artist_credits credit_name \
-             WHERE {shown} IN ({placeholders}) \
+            "SELECT shown.shown_artist_id AS shown_id, credit_name.artist_id, \
+                    credit_name.name_key, credit_name.name \
+             FROM artist_shown_as shown \
+             JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
+             WHERE shown.shown_artist_id IN ({placeholders}) \
              ORDER BY shown_id, credit_name.name COLLATE NOCASE, credit_name.name_key",
-            shown = shown_artist_id("credit_name.artist_id"),
             placeholders = in_clause_placeholders(chunk.len()),
         );
         for (shown_id, name) in

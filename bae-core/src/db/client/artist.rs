@@ -196,7 +196,7 @@ impl Database {
     ) -> Result<Vec<DbArtistSummary>, DbError> {
         let order_by = artist_order_by(sort);
         let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let query = artist_summary_query(None, Some(&tail));
+        let query = artist_listing_query(None, Some(&tail));
         self.read(move |sql| {
             sql.query(
                 &query,
@@ -216,7 +216,7 @@ impl Database {
     {
         let order_by = artist_order_by(sort);
         let page_tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let page_query = artist_summary_query(None, Some(&page_tail));
+        let page_query = artist_listing_query(None, Some(&page_tail));
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
@@ -508,7 +508,7 @@ fn find_artist_detail_on(
 ) -> Result<Option<ArtistDetailRows>, DbError> {
     let artist = sql
         .query_row(
-            &artist_summary_query(Some("WHERE ar.id = ?"), None),
+            &artist_listing_query(Some("WHERE listing.artist_id = ?"), None),
             params![artist_id],
             row_to_artist_summary,
         )
@@ -518,17 +518,12 @@ fn find_artist_detail_on(
     };
     let albums_query = format!(
         "{select} \
-         FROM albums a \
-         WHERE {album_shown} \
-           AND EXISTS ( \
-                SELECT 1 FROM album_artists aa \
-                WHERE aa.album_id = a.id AND {credited} = ?1 \
-            ) \
+         FROM album_artist_link link \
+         JOIN albums a ON a.id = link.album_id \
+         WHERE link.artist_id = ?1 \
          ORDER BY CASE WHEN a.year IS NULL THEN 1 ELSE 0 END, \
                   a.year, a.title COLLATE NOCASE, a.id",
         select = album_summary_select(),
-        album_shown = ALBUM_A_IS_SHOWN,
-        credited = shown_artist_id("aa.artist_id"),
     );
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
     let credit_names = super::artist_credit_names::credit_names_of_on(
@@ -581,10 +576,9 @@ fn find_composer_detail_on(
     };
     let works = sql.query(
         &work_summary_query(
-            Some(&format!(
-                "JOIN work_artists wa_filter ON wa_filter.work_id = w.id AND {} = ?",
-                shown_artist_id("wa_filter.artist_id")
-            )),
+            Some(
+                "JOIN composer_work credited ON credited.work_id = w.id AND credited.artist_id = ?",
+            ),
             Some("ORDER BY w.title"),
         ),
         params![composer.artist.id],
@@ -764,13 +758,11 @@ fn composer_rows_on<P: Params>(
 }
 
 fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    let query = format!(
-        "SELECT COUNT(*) FROM ({})",
-        artist_summary_query(None, None)
-    );
-    sql.query_row(&query, [], |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)
-        .map_err(DbError::from)
+    sql.query_row("SELECT COUNT(*) FROM artist_listing", [], |row| {
+        row.get::<_, i64>(0)
+    })
+    .map(|count| count as u64)
+    .map_err(DbError::from)
 }
 
 #[derive(Debug, Clone, PartialEq)]

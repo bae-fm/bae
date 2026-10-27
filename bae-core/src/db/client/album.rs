@@ -132,15 +132,14 @@ impl Database {
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
     /// `sort` is empty.
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {
-        let order_by = build_order_by(sort, "a.created_at DESC", ArtistOrder::CreditList);
+        let (relation, order_by) = album_browse_order(sort, false);
 
         let query = format!(
             "SELECT \
                 a.id, a.title, a.year, \
                 a.is_compilation, \
                 a.created_at \
-            FROM albums a \
-            WHERE {ALBUM_A_IS_SHOWN} \
+            {relation} \
             ORDER BY {order_by}"
         );
 
@@ -155,13 +154,12 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbAlbumSummary>, DbError> {
-        let order_by = build_order_by(sort, "a.created_at DESC", ArtistOrder::CreditList);
+        let (relation, order_by) = album_browse_order(sort, false);
         let select = album_summary_select();
 
         let query = format!(
             "{select} \
-            FROM albums a \
-            WHERE {ALBUM_A_IS_SHOWN} \
+            {relation} \
             ORDER BY {order_by} \
             LIMIT ? OFFSET ?",
         );
@@ -191,12 +189,10 @@ impl Database {
             album_summary_select(),
         );
         let section_query = group_by_artist.then(|| {
-            format!(
-                "SELECT artist_id, artist_name, MIN(position), COUNT(*) FROM ( \
-                 SELECT art_sort.id AS artist_id, art_sort.name AS artist_name, \
-                 ROW_NUMBER() OVER (ORDER BY {order_by}) - 1 AS position \
-                 {relation}) \
-                 GROUP BY artist_id ORDER BY MIN(position)"
+            album_browse_sections_query(
+                sort.iter()
+                    .find(|c| c.field == AlbumSortField::Artist)
+                    .map_or(SortDirection::Ascending, |c| c.direction),
             )
         });
         self.inner
@@ -578,9 +574,9 @@ fn search_library_on(
         },
     )?;
     let artists = sql.query(
-        &artist_summary_query(
+        &artist_listing_query(
             Some("WHERE ar.name LIKE ? ESCAPE '\\' OR ar.sort_name LIKE ? ESCAPE '\\'"),
-            Some("ORDER BY ar.name LIMIT ?"),
+            Some("ORDER BY listing.name LIMIT ?"),
         ),
         params![pattern, pattern, limit],
         row_to_artist_summary,
@@ -712,11 +708,9 @@ impl AlbumDetailRows {
 }
 
 fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row(
-        &format!("SELECT COUNT(*) FROM albums a WHERE {ALBUM_A_IS_SHOWN}"),
-        [],
-        |row| row.get::<_, i64>(0),
-    )
+    sql.query_row("SELECT COUNT(*) FROM album_listing", [], |row| {
+        row.get::<_, i64>(0)
+    })
     .map(|count| count as u64)
     .map_err(DbError::from)
 }

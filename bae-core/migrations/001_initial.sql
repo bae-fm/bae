@@ -549,6 +549,8 @@ CREATE TABLE IF NOT EXISTS artist_shown_as (
     shown_artist_id TEXT NOT NULL
 ) STRICT;
 
+CREATE INDEX IF NOT EXISTS idx_artist_shown_as_shown ON artist_shown_as (shown_artist_id);
+
 -- Each artist a merge names, and every artist joined to it through merges in
 -- either direction: the artists a change to one of those merges can show as
 -- another artist.
@@ -916,6 +918,213 @@ END;
 CREATE TRIGGER IF NOT EXISTS track_role_removed AFTER DELETE ON track_artist_roles
 BEGIN
     DELETE FROM composer_unlinked_credit WHERE credit_id = OLD.id;
+END;
+
+-- The album grid (§2.1) lists each album holding a release, and grouped by
+-- artist lists it once under each artist its credits show; the artist list
+-- counts each artist's albums (§2.3). These three tables hold what those lists
+-- sort and count by, kept by the triggers below.
+
+-- Each album the library shows, with the values its sorts compare. The credit
+-- keys sort it by artist: every credit's shown artist's sort name (else name),
+-- then their ids, each in credit order and joined by a separator below every
+-- printable character, so "A" sorts before "A & B" and "A & B" before
+-- "A & C"; NULL for an album with no credits.
+CREATE TABLE IF NOT EXISTS album_listing (
+    album_id TEXT PRIMARY KEY REFERENCES albums (id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    year INTEGER,
+    created_at TEXT NOT NULL,
+    credit_sort_names TEXT,
+    credit_artist_ids TEXT
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_title ON album_listing (title COLLATE NOCASE, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_title_desc ON album_listing (title COLLATE NOCASE DESC, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_added ON album_listing (created_at, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_added_desc ON album_listing (created_at DESC, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_year ON album_listing (year IS NULL, year, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_year_desc ON album_listing (year IS NULL DESC, year DESC, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_credits ON album_listing (credit_sort_names COLLATE NOCASE, credit_artist_ids, album_id);
+
+CREATE INDEX IF NOT EXISTS idx_album_listing_credits_desc ON album_listing (credit_sort_names COLLATE NOCASE DESC, credit_artist_ids DESC, album_id);
+
+-- Each album the library shows and each artist one of its credits shows,
+-- once however many credits name that artist.
+CREATE TABLE IF NOT EXISTS album_artist_link (
+    artist_id TEXT NOT NULL,
+    album_id TEXT NOT NULL REFERENCES albums (id) ON DELETE CASCADE,
+    PRIMARY KEY (artist_id, album_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_album ON album_artist_link (album_id);
+
+-- Each artist the artist list shows: one an album the library shows credits,
+-- with its name for the list's order, its sort name (else name) for the grid
+-- grouped by artist, and how many of those albums credit it.
+CREATE TABLE IF NOT EXISTS artist_listing (
+    artist_id TEXT PRIMARY KEY REFERENCES artists (id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sort_key TEXT NOT NULL,
+    album_count INTEGER NOT NULL CHECK (album_count > 0)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_artist_listing_name ON artist_listing (name, artist_id);
+
+CREATE INDEX IF NOT EXISTS idx_artist_listing_name_desc ON artist_listing (name DESC, artist_id);
+
+CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count ON artist_listing (album_count, name, artist_id);
+
+CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count_desc ON artist_listing (album_count DESC, name, artist_id);
+
+-- Both columns run one way, so the index serves the grid grouped by artist in
+-- either direction.
+CREATE INDEX IF NOT EXISTS idx_artist_listing_sort_key ON artist_listing (sort_key COLLATE NOCASE DESC, artist_id DESC);
+
+-- Each link added to or removed from `album_artist_link` counts in or out of
+-- its artist's listing row. An artist whose own row has not arrived yet gets
+-- its listing row when it does (`artist_listing_added`).
+CREATE TRIGGER IF NOT EXISTS album_artist_link_added AFTER INSERT ON album_artist_link
+BEGIN
+    INSERT INTO artist_listing (artist_id, name, sort_key, album_count)
+    SELECT id, name, COALESCE(sort_name, name), 1 FROM artists WHERE id = NEW.artist_id
+    ON CONFLICT (artist_id) DO UPDATE SET album_count = album_count + 1;
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_artist_link_removed AFTER DELETE ON album_artist_link
+BEGIN
+    DELETE FROM artist_listing WHERE artist_id = OLD.artist_id AND album_count = 1;
+    UPDATE artist_listing SET album_count = album_count - 1 WHERE artist_id = OLD.artist_id;
+END;
+
+-- Inserting an album id into `album_listing_refresh` rewrites that album's
+-- row of `album_listing` and its links from the album, its releases and its
+-- credits, adding and removing only the links that differ.
+CREATE VIEW IF NOT EXISTS album_listing_refresh AS SELECT NULL AS album_id WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS album_listing_refresh INSTEAD OF INSERT ON album_listing_refresh
+BEGIN
+    DELETE FROM album_listing WHERE album_id = NEW.album_id
+        AND NOT EXISTS (SELECT 1 FROM releases WHERE album_id = NEW.album_id);
+    INSERT INTO album_listing (album_id, title, year, created_at, credit_sort_names, credit_artist_ids)
+    SELECT a.id, a.title, a.year, a.created_at,
+           (SELECT GROUP_CONCAT(COALESCE(credited.sort_name, credited.name), char(31) ORDER BY credit.position)
+            FROM album_artists credit
+            JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
+            JOIN artists credited ON credited.id = shown.shown_artist_id
+            WHERE credit.album_id = a.id),
+           (SELECT GROUP_CONCAT(credited.id, char(31) ORDER BY credit.position)
+            FROM album_artists credit
+            JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
+            JOIN artists credited ON credited.id = shown.shown_artist_id
+            WHERE credit.album_id = a.id)
+    FROM albums a
+    WHERE a.id = NEW.album_id AND EXISTS (SELECT 1 FROM releases WHERE album_id = a.id)
+    ON CONFLICT (album_id) DO UPDATE SET
+        title = excluded.title,
+        year = excluded.year,
+        created_at = excluded.created_at,
+        credit_sort_names = excluded.credit_sort_names,
+        credit_artist_ids = excluded.credit_artist_ids;
+    DELETE FROM album_artist_link WHERE album_id = NEW.album_id
+        AND artist_id NOT IN (
+            SELECT shown.shown_artist_id FROM album_artists credit
+            JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
+            WHERE credit.album_id = NEW.album_id
+              AND EXISTS (SELECT 1 FROM releases WHERE album_id = NEW.album_id));
+    INSERT OR IGNORE INTO album_artist_link (artist_id, album_id)
+    SELECT DISTINCT shown.shown_artist_id, credit.album_id FROM album_artists credit
+    JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id
+    WHERE credit.album_id = NEW.album_id
+      AND EXISTS (SELECT 1 FROM releases WHERE album_id = NEW.album_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_listing_added AFTER INSERT ON albums
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_listing_changed AFTER UPDATE OF title, year, created_at ON albums
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_release_added AFTER INSERT ON releases
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_release_moved AFTER UPDATE OF album_id ON releases
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (OLD.album_id);
+    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_release_removed AFTER DELETE ON releases
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (OLD.album_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_credit_added AFTER INSERT ON album_artists
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_credit_changed AFTER UPDATE OF album_id, artist_id, position ON album_artists
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (OLD.album_id);
+    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_credit_removed AFTER DELETE ON album_artists
+BEGIN
+    INSERT INTO album_listing_refresh (album_id) VALUES (OLD.album_id);
+END;
+
+-- An artist arriving moves every album it is credited on, and every album
+-- crediting an artist that shows as it, which waited for its name. An
+-- artist's shown artist changing moves every album it is credited on.
+CREATE TRIGGER IF NOT EXISTS album_credit_shown_added AFTER INSERT ON artist_shown_as
+BEGIN
+    INSERT INTO album_listing_refresh (album_id)
+    SELECT DISTINCT credit.album_id FROM album_artists credit
+    WHERE credit.artist_id = NEW.artist_id
+       OR credit.artist_id IN (SELECT artist_id FROM artist_shown_as WHERE shown_artist_id = NEW.artist_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_credit_shown_changed AFTER UPDATE OF shown_artist_id ON artist_shown_as
+BEGIN
+    INSERT INTO album_listing_refresh (album_id)
+    SELECT DISTINCT album_id FROM album_artists WHERE artist_id = NEW.artist_id;
+END;
+
+-- An artist arriving takes a listing row for the links already counted under
+-- it, however many of its own links have counted in by then.
+CREATE TRIGGER IF NOT EXISTS artist_listing_added AFTER INSERT ON artists
+WHEN EXISTS (SELECT 1 FROM album_artist_link WHERE artist_id = NEW.id)
+BEGIN
+    INSERT INTO artist_listing (artist_id, name, sort_key, album_count)
+    VALUES (NEW.id, NEW.name, COALESCE(NEW.sort_name, NEW.name),
+            (SELECT COUNT(*) FROM album_artist_link WHERE artist_id = NEW.id))
+    ON CONFLICT (artist_id) DO UPDATE SET album_count = excluded.album_count;
+END;
+
+-- A renamed artist moves in the artist list, and so do the albums whose
+-- credits show it.
+CREATE TRIGGER IF NOT EXISTS artist_listing_renamed AFTER UPDATE OF name, sort_name ON artists
+BEGIN
+    UPDATE artist_listing SET name = NEW.name, sort_key = COALESCE(NEW.sort_name, NEW.name)
+    WHERE artist_id = NEW.id;
+    INSERT INTO album_listing_refresh (album_id)
+    SELECT DISTINCT credit.album_id FROM artist_shown_as shown
+    JOIN album_artists credit ON credit.artist_id = shown.artist_id
+    WHERE shown.shown_artist_id = NEW.id;
 END;
 
 -- ── Playback ──────────────────────────────────────────────────────────────────

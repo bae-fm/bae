@@ -321,6 +321,9 @@ mod tests {
         "composer_release",
         "composer_unlinked_credit",
         "composer_listing",
+        "album_listing",
+        "album_artist_link",
+        "artist_listing",
         // Import: the folders this device watches, what scanning found in
         // them, and each candidate's state while it is imported.
         "watched_import_folders",
