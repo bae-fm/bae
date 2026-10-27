@@ -109,7 +109,6 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert_eq!(playlists[0].audience, BridgeAudience::Store);
         app.clone().delete_playlist(playlist.id).await.unwrap();
         assert!(app.clone().playlists().await.unwrap().is_empty());
-        assert!(app.clone().history().await.unwrap().is_empty());
         let members = app.clone().get_members().await.unwrap();
         assert!(members.self_is_admin);
         let device = &members.members[0].active_devices[0];

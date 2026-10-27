@@ -139,54 +139,6 @@ impl BridgePlaylistEntry {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeHistoryAudience {
-    DevicePrivate,
-    Person {
-        person: String,
-        audience: BridgeAudience,
-    },
-}
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeHistoryEntry {
-    pub id: String,
-    pub track_id: String,
-    pub release_id: String,
-    pub started_at: std::time::SystemTime,
-    pub played: std::time::Duration,
-    pub audience: BridgeHistoryAudience,
-}
-impl BridgeHistoryEntry {
-    pub(crate) fn from_core(value: bae_core::history::HistoryEntry) -> Self {
-        let bae_core::history::HistoryEntry {
-            id,
-            track_id,
-            release_id,
-            started_at,
-            played,
-            audience,
-        } = value;
-        Self {
-            id: id.to_string(),
-            track_id,
-            release_id,
-            started_at: started_at.into(),
-            played,
-            audience: match audience {
-                bae_core::history::HistoryAudience::DevicePrivate => {
-                    BridgeHistoryAudience::DevicePrivate
-                }
-                bae_core::history::HistoryAudience::Person { person, audience } => {
-                    BridgeHistoryAudience::Person {
-                        person: person.0.to_string(),
-                        audience: BridgeAudience::from_core(audience),
-                    }
-                }
-            },
-        }
-    }
-}
-
 impl From<bae_core::people::ProfileError> for BridgeError {
     fn from(error: bae_core::people::ProfileError) -> Self {
         Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)

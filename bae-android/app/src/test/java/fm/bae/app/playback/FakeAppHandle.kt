@@ -22,7 +22,6 @@ import uniffi.bae_bridge.BridgeCoverSelection
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGallerySource
-import uniffi.bae_bridge.BridgeHistoryEntry
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteAccess
@@ -71,7 +70,6 @@ import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.DownloadTransfersCallback
-import uniffi.bae_bridge.HistoryCallback
 import uniffi.bae_bridge.InvitesCallback
 import uniffi.bae_bridge.LibraryNameCallback
 import uniffi.bae_bridge.LibrarySearchSubscription
@@ -615,8 +613,6 @@ internal open class FakeAppHandle(
         unfaked("deletePlaylist")
     }
 
-    override suspend fun history(): List<BridgeHistoryEntry> = unfaked("history")
-
     override suspend fun libraryName(): String = unfaked("libraryName")
 
     override suspend fun playlistEntries(id: String): List<BridgePlaylistEntry> = unfaked("playlistEntries")
@@ -671,8 +667,6 @@ internal open class FakeAppHandle(
     ) {
         unfaked("setRating")
     }
-
-    override fun subscribeHistory(callback: HistoryCallback): LiveSubscription = unfaked("subscribeHistory")
 
     override fun subscribeLibraryName(callback: LibraryNameCallback): LiveSubscription = unfaked("subscribeLibraryName")
 

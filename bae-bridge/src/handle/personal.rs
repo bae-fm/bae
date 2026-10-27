@@ -18,7 +18,6 @@ forward! { async this => {
     fn append_playlist_entry(playlist: String, track: String) -> String { Ok(this.services.append_playlist_entry(playlist.parse().map_err(BridgeError::config)?,track).await?.to_string()) }
     fn remove_playlist_entry(playlist: String, position: String) -> () { Ok(this.services.remove_playlist_entry(playlist.parse().map_err(BridgeError::config)?,position.parse().map_err(BridgeError::config)?).await?) }
     fn reorder_playlist(playlist: String, order: Vec<String>) -> () { Ok(this.services.reorder_playlist(playlist.parse().map_err(BridgeError::config)?,order.into_iter().map(|id| id.parse().map_err(BridgeError::config)).collect::<Result<_,_>>()?).await?) }
-    fn history() -> Vec<BridgeHistoryEntry> { Ok(this.services.history().await?.into_iter().map(BridgeHistoryEntry::from_core).collect()) }
     fn library_name() -> String { Ok(this.services.library_name().await?) }
 } }
 
@@ -86,31 +85,6 @@ impl AppHandle {
                 Ok(value) => {
                     callback.on_value(value.into_iter().map(BridgePlaylist::from_core).collect())
                 }
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
-}
-#[uniffi::export(callback_interface)]
-pub trait HistoryCallback: Send + Sync {
-    fn on_value(&self, value: Vec<BridgeHistoryEntry>);
-    fn on_error(&self, error: BridgeError);
-}
-#[uniffi::export]
-impl AppHandle {
-    pub fn subscribe_history(
-        &self,
-        callback: Box<dyn HistoryCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_query(
-            move |services| services.subscribe_history(),
-            move |result| match result {
-                Ok(value) => callback.on_value(
-                    value
-                        .into_iter()
-                        .map(BridgeHistoryEntry::from_core)
-                        .collect(),
-                ),
                 Err(error) => callback.on_error(BridgeError::database_query(error)),
             },
         )

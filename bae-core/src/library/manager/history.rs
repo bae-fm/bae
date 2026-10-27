@@ -1,5 +1,5 @@
 use super::*;
-use crate::history::{HistoryEntry, HistoryPlay};
+use crate::history::HistoryPlay;
 
 impl LibraryManager {
     pub(crate) async fn begin_play(
@@ -24,11 +24,10 @@ impl LibraryManager {
         self.database.record_play(play).await
     }
 
-    pub async fn history(&self) -> Result<Vec<HistoryEntry>, crate::db::DbError> {
+    /// Every play the library holds, newest first: what the tests of
+    /// recording a play read back. No surface lists plays.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn history(&self) -> Result<Vec<crate::history::HistoryEntry>, crate::db::DbError> {
         self.database.history().await
-    }
-
-    pub fn subscribe_history(&self) -> coven::LiveQuery<Vec<HistoryEntry>> {
-        self.database.subscribe_history()
     }
 }

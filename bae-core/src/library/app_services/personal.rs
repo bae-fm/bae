@@ -1,6 +1,5 @@
 use super::*;
 use crate::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
-use crate::history::HistoryEntry;
 use crate::library::LibraryError;
 use crate::people::Sharing;
 
@@ -26,6 +25,4 @@ impl AppServices {
     delegate_async!(manager, append_playlist_entry => append_playlist_entry(playlist: uuid::Uuid, track: String) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(manager, remove_playlist_entry => remove_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid) -> Result<(), CollectionError>);
     delegate_async!(manager, reorder_playlist => reorder_playlist(playlist: uuid::Uuid, order: Vec<uuid::Uuid>) -> Result<(), CollectionError>);
-    delegate_async!(manager, history => history() -> Result<Vec<HistoryEntry>, crate::db::DbError>);
-    delegate_sync!(manager, subscribe_history => subscribe_history() -> coven::LiveQuery<Vec<HistoryEntry>>);
 }

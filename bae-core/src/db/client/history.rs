@@ -80,15 +80,15 @@ impl Database {
         }).await
     }
 
+    /// Every play the library holds, newest first: what the tests of
+    /// recording a play read back. No surface lists plays.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn history(&self) -> Result<Vec<HistoryEntry>, DbError> {
         self.read(|sql| Ok(history_rows(&sql)?)).await
     }
-
-    pub fn subscribe_history(&self) -> coven::LiveQuery<Vec<HistoryEntry>> {
-        self.inner.handle.subscribe(|sql| Ok(history_rows(&sql)?))
-    }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>> {
     sql.query("SELECT id, track_id, release_id, started_at, played_ms, person_id, audience FROM history UNION ALL SELECT id, track_id, release_id, started_at, played_ms, NULL, NULL FROM local_history ORDER BY started_at DESC, id", [], |row| {
         let audience = if row.get::<_, Option<String>>(5)?.is_some() {
