@@ -2566,8 +2566,10 @@ Reads come two ways:
   subscription goes on, but one that fails because the store closed, or
   because the library can no longer read or write it, is delivered once and
   ends the subscription. A subscription that shows a window of a long list is
-  pointed at a new window in place as the person scrolls; one that has ended
-  takes the new window and reads nothing more. The downloads list on the phones is such a list: it
+  pointed at a new window in place as the person scrolls, and a window that
+  leaves the screen before its first value is let go of then, so the
+  windows a fast scroll stops on are not read behind every one it passed;
+  one that has ended takes the new window and reads nothing more. The downloads list on the phones is such a list: it
   reads how many releases the queue holds and the windows on screen, and its
   pause and retry controls and summary line read how many are in each phase.
   The Storage Manager's list is also told

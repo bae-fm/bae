@@ -168,55 +168,6 @@ where Row.ID: Sendable {
         self.onSnapshot = onSnapshot
     }
 
-    // MARK: - Queries
-
-    /// Returns the ID at `position`.
-    public func idAt(_ position: Int) -> Row.ID? {
-        segments.row(at: position)?.id
-    }
-
-    /// The row the list's query returned at `position`, or nil if its page
-    /// is not loaded.
-    public func row(at position: Int) -> Row? {
-        segments.row(at: position)
-    }
-
-    /// Returns the position of `id` in the loaded segments, or nil if not loaded.
-    public func position(of id: Row.ID) -> Int? {
-        segments.position(of: id)
-    }
-
-    /// The row of `id` the list's query returned, or nil if no loaded page
-    /// holds it. A row shown more than once is the same row at each place.
-    public func row(of id: Row.ID) -> Row? {
-        segments.position(of: id).flatMap(segments.row(at:))
-    }
-
-    public func section(at position: Int) -> BridgeLibraryBrowseSection? {
-        sections.first {
-            position >= Int($0.window.offset)
-                && position < Int($0.window.offset + $0.window.limit)
-        }
-    }
-
-    public func position(of id: Row.ID, in sectionId: String?) -> Int? {
-        guard let sectionId else { return position(of: id) }
-        return loadedEntries.first {
-            $0.id == id && section(at: $0.position)?.id == sectionId
-        }?
-        .position
-    }
-
-    /// All IDs currently held in loaded segments, in order.
-    public var allLoadedIds: [Row.ID] {
-        segments.allIds
-    }
-
-    /// Every loaded position with the id held there, in position order.
-    public var loadedEntries: [(position: Int, id: Row.ID)] {
-        segments.entries
-    }
-
     // MARK: - Loading
 
     /// Read the first page, and with it the total count. Called when the list
@@ -240,6 +191,12 @@ where Row.ID: Sendable {
     /// the page has answered, so the rows it holds are there to read, and they
     /// stay there until `body` returns.
     ///
+    /// A calling task cancelled before the page answers lets it go at once:
+    /// one cancelled before it asks never asks for the page, and one waiting
+    /// on the page's first answer stops waiting, so `body` runs without the
+    /// page. A row a fast scroll carries past holds its page for a frame, and
+    /// a page wanted for a frame is not read.
+    ///
     /// The page is the aligned one, never a window centred on `position`: a
     /// centred window is a different page for every row, so rows a row apart
     /// would each open a page of their own, where aligned pages let a
@@ -252,7 +209,9 @@ where Row.ID: Sendable {
         let page = Self.page(containing: position)
         holds[page, default: 0] += 1
         defer { release(page) }
-        await load(page, initial: false)
+        if !Task.isCancelled {
+            await load(page, initial: false)
+        }
         return try await body()
     }
 
@@ -272,33 +231,59 @@ where Row.ID: Sendable {
     /// Make `page` live, unless it is already, and wait for its first answer.
     /// A page past the end has nothing to load; neither does one a preview
     /// seeded. Every caller asking for a page already on its way waits on that
-    /// one subscription rather than opening its own.
+    /// one subscription rather than opening its own. The first read waits
+    /// for its answer whatever happens to its task; a page held by a row
+    /// stops being waited for when the row's task is cancelled.
     private func load(_ page: Range<Int>, initial: Bool) async {
         lastAsked = page
-        if let live = pages[page] {
-            guard !live.answered else { return }
+        if pages[page] == nil {
+            if !initial {
+                let end = min(page.upperBound, totalCount)
+                guard page.lowerBound < end,
+                    !segments.cover(page.lowerBound..<end)
+                else { return }
+            }
+            subscribe(page, initial: initial)
+        }
+        await waitForAnswer(page, cancellable: !initial)
+    }
+
+    /// Wait for `page`'s first answer, unless it has answered or the list no
+    /// longer keeps it; a `cancellable` wait also ends when its task is
+    /// cancelled.
+    private func waitForAnswer(_ page: Range<Int>, cancellable: Bool) async {
+        guard pages[page]?.answered == false else { return }
+        let waiter = UUID()
+        guard cancellable else {
             await withCheckedContinuation { continuation in
-                pages[page]?.waiters?.append(continuation)
+                pages[page]?.waiters?[waiter] = continuation
             }
             return
         }
-        if !initial {
-            let end = min(page.upperBound, totalCount)
-            guard page.lowerBound < end, !segments.cover(page.lowerBound..<end)
-            else { return }
-        }
-        await withCheckedContinuation { continuation in
-            subscribe(page, initial: initial, waiter: continuation)
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled, pages[page]?.waiters != nil else {
+                    continuation.resume()
+                    return
+                }
+                pages[page]?.waiters?[waiter] = continuation
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.stopWaiting(waiter, on: page)
+            }
         }
     }
 
-    private func subscribe(
-        _ page: Range<Int>,
-        initial: Bool,
-        waiter: CheckedContinuation<Void, Never>
-    ) {
+    /// The task waiting as `waiter` on `page` was cancelled: it goes on
+    /// without the page, unless the page answered or was dropped first.
+    private func stopWaiting(_ waiter: UUID, on page: Range<Int>) {
+        pages[page]?.waiters?.removeValue(forKey: waiter)?.resume()
+    }
+
+    private func subscribe(_ page: Range<Int>, initial: Bool) {
         let identity = UUID()
-        pages[page] = LivePage(identity: identity, waiters: [waiter])
+        pages[page] = LivePage(identity: identity)
         let subscription = pageSource.subscribe(
             offset: page.lowerBound,
             limit: page.count,
@@ -446,6 +431,57 @@ where Row.ID: Sendable {
     }
 }
 
+// MARK: - Queries
+
+extension PaginatedList {
+    /// Returns the ID at `position`.
+    public func idAt(_ position: Int) -> Row.ID? {
+        segments.row(at: position)?.id
+    }
+
+    /// The row the list's query returned at `position`, or nil if its page
+    /// is not loaded.
+    public func row(at position: Int) -> Row? {
+        segments.row(at: position)
+    }
+
+    /// Returns the position of `id` in the loaded segments, or nil if not loaded.
+    public func position(of id: Row.ID) -> Int? {
+        segments.position(of: id)
+    }
+
+    /// The row of `id` the list's query returned, or nil if no loaded page
+    /// holds it. A row shown more than once is the same row at each place.
+    public func row(of id: Row.ID) -> Row? {
+        segments.position(of: id).flatMap(segments.row(at:))
+    }
+
+    public func section(at position: Int) -> BridgeLibraryBrowseSection? {
+        sections.first {
+            position >= Int($0.window.offset)
+                && position < Int($0.window.offset + $0.window.limit)
+        }
+    }
+
+    public func position(of id: Row.ID, in sectionId: String?) -> Int? {
+        guard let sectionId else { return position(of: id) }
+        return loadedEntries.first {
+            $0.id == id && section(at: $0.position)?.id == sectionId
+        }?
+        .position
+    }
+
+    /// All IDs currently held in loaded segments, in order.
+    public var allLoadedIds: [Row.ID] {
+        segments.allIds
+    }
+
+    /// Every loaded position with the id held there, in position order.
+    public var loadedEntries: [(position: Int, id: Row.ID)] {
+        segments.entries
+    }
+}
+
 // MARK: - LivePage
 
 /// One page's subscription, what it last delivered, and who is waiting for its
@@ -456,32 +492,31 @@ private struct LivePage<Row: Equatable> {
     let identity: UUID
     /// Nil only while the source has not handed it back yet.
     var subscription: (any PageSubscription)?
-    /// The loads waiting for the page's first value or failure; nil once it
-    /// has answered.
-    var waiters: [CheckedContinuation<Void, Never>]?
+    /// The loads waiting for the page's first value or failure, each by the
+    /// id its wait took; nil once it has answered.
+    var waiters: [UUID: CheckedContinuation<Void, Never>]? = [:]
     /// The rows its last value delivered, so a value that repeats them is not
     /// handed on again.
     var rows: [Row]?
 
-    init(identity: UUID, waiters: [CheckedContinuation<Void, Never>]) {
+    init(identity: UUID) {
         self.identity = identity
-        self.waiters = waiters
     }
 
     var answered: Bool { waiters == nil }
 
     /// The page answered: everyone waiting goes on.
     mutating func answer() {
-        let waiting = waiters ?? []
+        let waiting = waiters ?? [:]
         waiters = nil
-        for waiter in waiting {
+        for waiter in waiting.values {
             waiter.resume()
         }
     }
 
     /// Let everyone waiting go on, for a page the list no longer keeps.
     func abandon() {
-        for waiter in waiters ?? [] {
+        for waiter in (waiters ?? [:]).values {
             waiter.resume()
         }
     }

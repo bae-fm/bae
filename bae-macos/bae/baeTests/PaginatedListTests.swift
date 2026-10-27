@@ -492,6 +492,46 @@ struct PaginatedListHoldTests {
     }
 
     @MainActor
+    @Test("a hold let go of before it starts never asks for its page")
+    func holdCancelledBeforeItStartsAsksNothing() async {
+        let (list, source) = await scrolledList()
+
+        // A row a fast scroll carries past: on screen for one frame, its
+        // hold taken and let go of before the hold's task first runs.
+        let hold = Task { await list.holdPage(containing: 200) }
+        hold.cancel()
+        await hold.value
+
+        #expect(!source.subscribedOffsets.contains(200))
+        #expect(list.idAt(200) == nil)
+    }
+
+    @MainActor
+    @Test("a hold let go of while its page loads lets go without waiting")
+    func holdCancelledWhileLoadingLetsGo() async throws {
+        let source = GatedAlbumPageSource(
+            albums: (0..<100).map { makeBridgeAlbum(id: "a\($0)") }
+        )
+        let list = AlbumList(
+            pageSource: source,
+            onError: { _ in },
+        )
+        await list.loadInitial()
+        var letGo = false
+        let hold = Task {
+            await list.holdPage(containing: 50)
+            letGo = true
+        }
+        // The page's subscription is held at the gate, unanswered.
+        await source.waitForPageEntry()
+
+        hold.cancel()
+
+        try await Wait.until { letGo }
+        await source.openGate()
+    }
+
+    @MainActor
     @Test("the cap on live pages counts only pages nobody holds")
     func capCountsUnheldPages() async {
         let (list, source) = await scrolledList()
