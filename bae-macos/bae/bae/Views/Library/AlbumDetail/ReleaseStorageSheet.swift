@@ -103,7 +103,7 @@ struct ReleaseStorageSheet: View {
         )
         .frame(width: 640, height: 600)
         .background(Theme.background)
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(OutboxStore(uploadsPaused: false))
         .preferredColorScheme(.dark)
     }
 #endif

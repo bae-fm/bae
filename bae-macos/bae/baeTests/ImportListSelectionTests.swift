@@ -298,7 +298,7 @@ enum ImportListHosting {
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(OutboxStore(uploadsPaused: false))
         .environment(uiStore)
         .environment(ImportSelection())
         .environment(ImageStore.stub())

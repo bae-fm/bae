@@ -87,7 +87,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         let downloadStore = DownloadStore()
         let castStore = CastStore()
-        let outboxStore = OutboxStore(snapshot: seed.outbox)
+        let outboxStore = OutboxStore(uploadsPaused: seed.uploadsPaused)
         let library = Library(handle: appHandle)
         let playback = Playback(handle: appHandle)
         let queue = Queue(handle: appHandle)

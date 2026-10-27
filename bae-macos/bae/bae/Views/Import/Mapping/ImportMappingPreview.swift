@@ -16,7 +16,7 @@
                 .environment(PreviewData.artImageStore())
                 .environment(UiStore())
                 .environment(ImportSelection())
-                .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+                .environment(OutboxStore(uploadsPaused: false))
                 .environment(PreviewData.configStore())
                 .environment(Importer.stub())
                 .environment(Library.stub())

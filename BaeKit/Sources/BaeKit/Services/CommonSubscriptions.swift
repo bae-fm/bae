@@ -109,20 +109,22 @@ private final class QueueValueSink: QueueCallback, @unchecked Sendable {
     }
 }
 
-private final class OutboxValueSink: OutboxCallback, @unchecked Sendable {
-    private let apply: @MainActor @Sendable (BridgeOutboxSnapshot) -> Void
+private final class UploadsPausedSink: UploadsPausedCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (Bool) -> Void
     private let fail: @MainActor @Sendable (any Error) -> Void
 
     init(
-        apply: @escaping @MainActor @Sendable (BridgeOutboxSnapshot) -> Void,
+        apply: @escaping @MainActor @Sendable (Bool) -> Void,
         fail: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         self.apply = apply
         self.fail = fail
     }
 
-    func onValue(value: BridgeOutboxSnapshot) {
-        Task { @MainActor in apply(value) }
+    func onValue(paused: Bool) {
+        Task { @MainActor in apply(paused) }
     }
 
     func onError(error: BridgeError) {
@@ -240,10 +242,10 @@ final class CommonSubscriptions {
                         fail: onError
                     )
                 ),
-                appHandle.subscribeOutbox(
-                    callback: OutboxValueSink(
-                        apply: { [outboxStore] value in
-                            outboxStore.applySnapshot(value)
+                appHandle.subscribeUploadsPaused(
+                    callback: UploadsPausedSink(
+                        apply: { [outboxStore] paused in
+                            outboxStore.applyUploadsPaused(paused)
                         },
                         fail: onError
                     )

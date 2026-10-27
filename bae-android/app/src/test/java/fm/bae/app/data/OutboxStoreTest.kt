@@ -1,55 +1,48 @@
 package fm.bae.app.data
 
-import fm.bae.app.BridgeFixtures
 import fm.bae.app.DisplayError
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import uniffi.bae_bridge.BridgeOutboxPauseState
-import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeUploadBar
 import uniffi.bae_bridge.BridgeUploadTransfer
 
 /**
- * The pause toggle renders from the outbox snapshot's pause phase, so the store
- * must surface the latest snapshot core emits rather than tracking it
+ * The pause toggle renders from whether core says uploads are paused, so the
+ * store must surface each value core sends rather than tracking it
  * optimistically, and a failed read in its place rather than the last one.
  * The whole queue's transfer, which the sync activity's upload line shows,
- * arrives apart from the snapshot.
+ * arrives apart.
  */
 class OutboxStoreTest {
     @Test
-    fun applyingASnapshotSurfacesWhetherPauseWasRequested() {
-        val store = OutboxStore(BridgeFixtures.outboxSnapshot())
-        assertFalse(store.current().pauseRequested)
+    fun eachValueSurfacesWhetherUploadsArePaused() {
+        val store = OutboxStore(initialUploadsPaused = false)
+        assertEquals(LiveValue.Current(false), store.uploadsPaused.value)
 
-        store.setSnapshot(
-            BridgeFixtures.outboxSnapshot(BridgeOutboxPauseState.PAUSED),
-        )
-        assertTrue(store.current().pauseRequested)
+        store.setUploadsPaused(true)
+        assertEquals(LiveValue.Current(true), store.uploadsPaused.value)
 
-        store.setSnapshot(BridgeFixtures.outboxSnapshot())
-        assertFalse(store.current().pauseRequested)
+        store.setUploadsPaused(false)
+        assertEquals(LiveValue.Current(false), store.uploadsPaused.value)
     }
 
     @Test
-    fun aFailedReadReplacesTheLastSnapshotUntilTheNextOne() {
-        val store = OutboxStore(BridgeFixtures.outboxSnapshot(BridgeOutboxPauseState.PAUSED))
-        val failure = DisplayError("Couldn't read the upload queue.")
+    fun aFailedReadReplacesTheLastValueUntilTheNextOne() {
+        val store = OutboxStore(initialUploadsPaused = true)
+        val failure = DisplayError("Couldn't read whether uploads are paused.")
 
         store.fail(failure)
-        assertEquals(LiveValue.Failed(failure), store.state.value)
+        assertEquals(LiveValue.Failed(failure), store.uploadsPaused.value)
 
-        store.setSnapshot(BridgeFixtures.outboxSnapshot())
-        assertFalse(store.current().pauseRequested)
+        store.setUploadsPaused(false)
+        assertEquals(LiveValue.Current(false), store.uploadsPaused.value)
     }
 
     /** The whole queue's transfer is absent until the total subscription delivers one, then follows it. */
     @Test
     fun theQueuesTransferFollowsEachTotal() {
-        val store = OutboxStore(BridgeFixtures.outboxSnapshot())
+        val store = OutboxStore(initialUploadsPaused = false)
         assertNull(store.totalTransfer.value)
         val transfer = { done: ULong -> BridgeUploadTransfer(BridgeUploadBar(done, 40uL), throughputBps = 5uL) }
 
@@ -59,6 +52,4 @@ class OutboxStoreTest {
         store.setTotalTransfer(transfer(20uL))
         assertEquals(transfer(20uL), store.totalTransfer.value)
     }
-
-    private fun OutboxStore.current(): BridgeOutboxSnapshot = (state.value as LiveValue.Current).value
 }

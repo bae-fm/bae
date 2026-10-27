@@ -41,26 +41,6 @@ async fn storage_page_uploading_filter_preserves_transition_admission_order() {
     );
 }
 
-#[test]
-fn transitioning_release_ids_preserve_upload_group_order() {
-    let group = |release_id: &str| crate::library::UploadReleaseGroup {
-        release_id: release_id.to_string(),
-        files: Vec::new(),
-        progress: crate::library::UploadProgress::default(),
-    };
-    let snapshot = crate::library::OutboxQueue {
-        upload_groups: vec![group("z-first"), group("a-second")],
-        other_files: Vec::new(),
-        total: crate::library::UploadProgress::default(),
-        pause_state: crate::library::OutboxPauseState::Running,
-    };
-
-    assert_eq!(
-        snapshot.transitioning_release_ids(),
-        vec!["z-first", "a-second"],
-    );
-}
-
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn upload_keeps_the_cover_and_every_file_in_the_queue() {

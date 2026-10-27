@@ -248,7 +248,7 @@ private struct UploadPauseToggle: View {
         Toggle(
             "Pause uploads",
             isOn: Binding(
-                get: { outboxStore.snapshot.pauseRequested },
+                get: { outboxStore.uploadsPaused },
                 set: { paused in
                     Task {
                         do { try await sync.setSyncPaused(paused) }
@@ -302,7 +302,7 @@ private struct UploadPauseToggle: View {
             )
         )
         .environment(UiStore())
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(OutboxStore(uploadsPaused: false))
     }
 
     #Preview("Not connected") {

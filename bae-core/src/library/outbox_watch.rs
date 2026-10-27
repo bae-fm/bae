@@ -1,93 +1,11 @@
-//! The upload queue and its transfers for a reader that draws them: the
-//! queue's summary each time it changes, each transfer as it moves, and the
-//! whole queue's transfer alone for a reader that draws only that.
+//! The upload queue's transfers for a reader that draws them: each transfer
+//! as it moves, and the whole queue's transfer alone for a reader that draws
+//! only that.
 
-use super::{
-    LibraryManager, OutboxState, OutboxSummary, OutboxTransfers, UploadTransfer, UploadTransferKey,
-};
+use super::{LibraryManager, OutboxState, OutboxTransfers, UploadTransfer, UploadTransferKey};
 use tokio::sync::watch;
 
 type OutboxValues = watch::Receiver<Option<Result<OutboxState, String>>>;
-
-/// The upload queue's summary: as it stands first, then each time the
-/// queue's revision moves, or the failure that kept it from being read.
-pub struct OutboxQueueWatch {
-    manager: LibraryManager,
-    values: OutboxValues,
-    /// What the reader was last told; `None` before the first read.
-    told: Option<Told>,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Told {
-    Revision(u64),
-    Failure,
-}
-
-impl OutboxQueueWatch {
-    pub(crate) fn of(manager: LibraryManager) -> Self {
-        Self {
-            values: manager.subscribe_outbox_values(),
-            manager,
-            told: None,
-        }
-    }
-
-    /// The queue now on the first call, read from the durable queue when
-    /// nothing has been published yet; after that, the next queue whose
-    /// revision differs, or a failure. A transfer that moves on the same
-    /// queue wakes nothing here. `None` once the outbox is gone.
-    pub async fn next(&mut self) -> Option<Result<OutboxSummary, String>> {
-        if self.told.is_none() {
-            let published = self.values.borrow_and_update().as_ref().map(Self::summary);
-            let value = match published {
-                Some(value) => value,
-                None => self
-                    .manager
-                    .outbox_state()
-                    .await
-                    .map(|state| state.summary())
-                    .map_err(|error| error.to_string()),
-            };
-            self.told = Some(match &value {
-                Ok(summary) => Told::Revision(summary.revision),
-                Err(_) => Told::Failure,
-            });
-            return Some(value);
-        }
-        loop {
-            self.values.changed().await.ok()?;
-            let current = self.values.borrow_and_update();
-            let Some(published) = current.as_ref() else {
-                tracing::warn!("outbox value stream published an absent queue");
-                continue;
-            };
-            let told = Self::telling(published);
-            if self.told == Some(told) && told != Told::Failure {
-                continue;
-            }
-            let value = Self::summary(published);
-            drop(current);
-            self.told = Some(told);
-            return Some(value);
-        }
-    }
-
-    /// What of the published queue the reader is told, read in place.
-    fn summary(value: &Result<OutboxState, String>) -> Result<OutboxSummary, String> {
-        value
-            .as_ref()
-            .map(OutboxState::summary)
-            .map_err(Clone::clone)
-    }
-
-    fn telling(value: &Result<OutboxState, String>) -> Told {
-        match value {
-            Ok(state) => Told::Revision(state.revision),
-            Err(_) => Told::Failure,
-        }
-    }
-}
 
 /// A change to one transfer, or every transfer.
 #[derive(Debug, Clone, PartialEq)]
@@ -105,9 +23,8 @@ pub enum OutboxTransferChange {
 }
 
 /// Every transfer for a reader that draws each one: all of them first, then
-/// each one that changed since it last read. A failed read of the queue is
-/// [`OutboxQueueWatch`]'s to report; this waits through it for the next
-/// queue.
+/// each one that changed since it last read. A failed read of the queue
+/// waits for the next queue.
 pub struct OutboxTransfersWatch {
     manager: LibraryManager,
     values: OutboxValues,
@@ -176,8 +93,8 @@ impl OutboxTransfersWatch {
 
 /// The whole queue's transfer for a reader that draws it alone: as it stands
 /// first, then each time it moves. A file's or a release's transfer moving
-/// while the total holds wakes nothing here. A failed read of the queue is
-/// [`OutboxQueueWatch`]'s to report; this waits through it for the next queue.
+/// while the total holds wakes nothing here. A failed read of the queue
+/// waits for the next queue.
 pub struct OutboxTotalTransferWatch {
     manager: LibraryManager,
     values: OutboxValues,

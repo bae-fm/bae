@@ -49,7 +49,7 @@ pub enum BridgeLiveQueryCause {
 
 callbacks! {
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
-    OutboxCallback: on_value(value: BridgeOutboxSnapshot) + on_error;
+    UploadsPausedCallback: on_value(paused: bool) + on_error;
     /// Every upload transfer as a `Reset` when the subscription opens, then
     /// each batch of the ones that moved or left, in one call.
     OutboxTransfersCallback: on_changes(changes: Vec<super::BridgeOutboxTransferChange>);

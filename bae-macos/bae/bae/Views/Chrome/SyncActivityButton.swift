@@ -86,7 +86,7 @@ private struct SyncActivityGlyph: View {
     }
 
     #Preview("Sync activity list") {
-        let outbox = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let outbox = OutboxStore(uploadsPaused: false)
         outbox.applyTransferChange(
             .totalUpdated(
                 transfer: BridgeUploadTransfer(

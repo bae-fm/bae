@@ -282,15 +282,13 @@ extension LibrarySessionOpenerTests {
 private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     let config: BridgeConfig
     let name: Result<String, any Error>
-    let outbox: Result<BridgeOutboxSnapshot, any Error>
+    let outbox: Result<Bool, any Error>
     private let closeFlag = Flag()
 
     init(
         config: BridgeConfig,
         name: Result<String, any Error> = .success("Test Library"),
-        outbox: Result<BridgeOutboxSnapshot, any Error> = .success(
-            OutboxStore.emptySnapshot
-        )
+        outbox: Result<Bool, any Error> = .success(false)
     ) {
         self.config = config
         self.name = name
@@ -302,7 +300,7 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     func getConfig() -> BridgeConfig { config }
     func libraryName() async throws -> String { try name.get() }
     func storageLocation() async throws -> BridgeStorageLocation? { nil }
-    func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot {
+    func getUploadsPaused() async throws -> Bool {
         try outbox.get()
     }
     func closeLibrary() throws { closeFlag.set() }

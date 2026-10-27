@@ -328,7 +328,6 @@ async fn completed_files_leave_no_empty_release_groups_or_stale_rates() {
     let rates = files.iter().map(|file| (file.file.id(), 100)).collect();
     let (snapshot, transfers) = OutboxQueue::from_queue(DbOutboxQueue::default(), &rates);
     assert!(snapshot.upload_groups.is_empty());
-    assert!(snapshot.per_release_progress().is_empty());
     assert!(transfers.keyed.is_empty());
     assert_eq!(transfers.total.throughput_bps, 0);
     assert_eq!(snapshot.total.activity(), None);

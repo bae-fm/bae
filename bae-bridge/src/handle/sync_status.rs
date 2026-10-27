@@ -44,22 +44,18 @@ impl AppHandle {
         })
     }
 
-    /// The upload queue's summary now, then each time the queue changes.
-    pub fn subscribe_outbox(
+    /// Whether the person paused uploads now, then each time that changes.
+    pub fn subscribe_uploads_paused(
         &self,
-        callback: Box<dyn crate::types::OutboxCallback>,
+        callback: Box<dyn crate::types::UploadsPausedCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services| async move {
-            let mut queue = services.watch_outbox_queue();
-            while let Some(value) = queue.next().await {
-                match value {
-                    Ok(summary) => {
-                        callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(summary))
-                    }
-                    Err(error) => callback.on_error(BridgeError::internal(error)),
-                }
-            }
-        })
+        self.subscribe_query(
+            move |services| services.subscribe_uploads_paused(),
+            move |result| match result {
+                Ok(paused) => callback.on_value(paused),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
     }
 
     /// Every upload transfer now, then each one as it moves or leaves.
@@ -165,14 +161,9 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// The upload queue's summary as it stands now.
-    fn get_outbox_snapshot() -> crate::types::BridgeOutboxSnapshot {
-        let state = this
-            .services
-            .outbox_state()
-            .await
-            .map_err(BridgeError::from)?;
-        Ok(crate::types::BridgeOutboxSnapshot::from_core(state.summary()))
+    /// Whether the person paused uploads, as it stands now.
+    fn get_uploads_paused() -> bool {
+        Ok(this.services.is_sync_paused().await?)
     }
 
     /// Retry failed uploads now: drain coven's upload queue immediately instead

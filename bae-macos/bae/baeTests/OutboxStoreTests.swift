@@ -13,23 +13,16 @@ private func cloudUploadReceipt(
     )
 }
 
-/// The Bridge* records are generated at build from `bae-bridge/src/types.rs`;
-/// these start from `OutboxStore.emptySnapshot`.
 @Suite("OutboxStore")
-struct OutboxStoreRevisionTests {
-    @Test("an older delivery cannot replace newer queue state")
-    func staleSnapshotCannotRegressTheStore() {
-        var current = OutboxStore.emptySnapshot
-        current.revision = 2
-        let store = OutboxStore(snapshot: current)
-
-        var stale = OutboxStore.emptySnapshot
-        stale.revision = 1
-        stale.pauseState = .paused
-        store.applySnapshot(stale)
-
-        #expect(store.snapshot.revision == 2)
-        #expect(store.snapshot.pauseState == .running)
+@MainActor
+struct OutboxStorePauseTests {
+    @Test("the pause control reads the pause each delivery carries")
+    func uploadsPausedFollowsEachDelivery() {
+        let store = OutboxStore(uploadsPaused: false)
+        store.applyUploadsPaused(true)
+        #expect(store.uploadsPaused)
+        store.applyUploadsPaused(false)
+        #expect(!store.uploadsPaused)
     }
 }
 
@@ -49,7 +42,7 @@ struct OutboxStoreTransferTests {
 
     @Test("a release's transfer follows each change that names it")
     func releaseTransferFollowsItsChanges() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let store = OutboxStore(uploadsPaused: false)
         store.applyTransferChange(
             .reset(
                 transfers: [
@@ -74,7 +67,7 @@ struct OutboxStoreTransferTests {
 
     @Test("the queue's rate shows only while bytes move")
     func queueRateShowsOnlyWhileBytesMove() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let store = OutboxStore(uploadsPaused: false)
         #expect(store.throughputText == nil)
 
         store.applyTransferChange(.totalUpdated(transfer: transfer(10)))

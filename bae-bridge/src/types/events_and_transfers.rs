@@ -351,28 +351,6 @@ pub struct BridgeOutputOp {
     pub kind: BridgeOutputKind,
 }
 
-/// Whether the upload queue is running or suspended.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeOutboxPauseState {
-    Running,
-    Paused,
-}
-
-/// The upload queue's summary, sent each time the queue changes: which
-/// releases have uploads queued and whether it is paused. Mirrors
-/// `OutboxSummary`. The files are the storage inspector's, read for one
-/// release; the bytes they move are the queue's transfers.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeOutboxSnapshot {
-    /// Increases with each change to the queue, so a subscriber that skipped
-    /// values can still tell an enqueue it was told about has finished.
-    pub revision: u64,
-    /// Each release with uploads queued, and how many wait and are being
-    /// sent. A release leaves when coven has none remaining for it.
-    pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
-    pub pause_state: BridgeOutboxPauseState,
-}
-
 /// Localization key for one release's upload phase alone, the word beside
 /// its progress bar. The UI resolves it against the `Core` table.
 #[uniffi::export]

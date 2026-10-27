@@ -7,7 +7,7 @@ public protocol LibrarySessionHandle: AnyObject, Sendable {
     func getConfig() -> BridgeConfig
     func libraryName() async throws -> String
     func storageLocation() async throws -> BridgeStorageLocation?
-    func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot
+    func getUploadsPaused() async throws -> Bool
     func closeLibrary() throws
 }
 
@@ -16,16 +16,16 @@ extension AppHandle: LibrarySessionHandle {}
 public struct LibrarySessionSeed: Sendable {
     public let name: String
     public let storage: BridgeStorageLocation?
-    public let outbox: BridgeOutboxSnapshot
+    public let uploadsPaused: Bool
 
     public init(
         name: String,
         storage: BridgeStorageLocation?,
-        outbox: BridgeOutboxSnapshot
+        uploadsPaused: Bool
     ) {
         self.name = name
         self.storage = storage
-        self.outbox = outbox
+        self.uploadsPaused = uploadsPaused
     }
 
     static func read(from handle: some LibrarySessionHandle) async throws
@@ -33,8 +33,8 @@ public struct LibrarySessionSeed: Sendable {
     {
         let name = try await handle.libraryName()
         let storage = try await handle.storageLocation()
-        let outbox = try await handle.getOutboxSnapshot()
-        return Self(name: name, storage: storage, outbox: outbox)
+        let uploadsPaused = try await handle.getUploadsPaused()
+        return Self(name: name, storage: storage, uploadsPaused: uploadsPaused)
     }
 }
 

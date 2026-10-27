@@ -14,20 +14,19 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.LiveValue
-import fm.bae.app.data.pauseRequested
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 
 @Composable
 internal fun SyncUploadPauseControl(session: OpenLibrary) {
-    val outbox by session.outboxStore.state.collectAsState()
-    val snapshot =
-        when (val current = outbox) {
+    val uploadsPaused by session.outboxStore.uploadsPaused.collectAsState()
+    val paused =
+        when (val current = uploadsPaused) {
             is LiveValue.Current -> {
                 current.value
             }
 
-            // Whether uploads are paused is unknown while the outbox's read has failed.
+            // Whether uploads are paused is unknown while its read has failed.
             is LiveValue.Failed -> {
                 Text(stringResource(R.string.settings_pause_uploads))
                 ErrorDetailDisclosure(current.error)
@@ -41,7 +40,7 @@ internal fun SyncUploadPauseControl(session: OpenLibrary) {
     ) {
         Text(stringResource(R.string.settings_pause_uploads), modifier = Modifier.weight(1f))
         Switch(
-            checked = snapshot.pauseRequested,
+            checked = paused,
             onCheckedChange = { paused ->
                 session.messages.perform("set sync pause state") {
                     session.appHandle.setSyncPaused(paused)

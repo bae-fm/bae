@@ -274,6 +274,8 @@ impl Database {
         self.inner.handle.evict_file(file).await
     }
 
+    /// coven's whole upload queue, for a test's drain to count what left it.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn uploads(&self) -> Result<coven::UploadQueue, DbError> {
         self.inner.handle.uploads().await.map_err(DbError::from)
     }

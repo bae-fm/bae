@@ -249,17 +249,6 @@
             }
         }
 
-        /// The upload queue's summary.
-        static func outboxSnapshot(
-            pauseState: BridgeOutboxPauseState = .running
-        ) -> BridgeOutboxSnapshot {
-            BridgeOutboxSnapshot(
-                revision: 1,
-                perRelease: [:],
-                pauseState: pauseState
-            )
-        }
-
         /// The bytes the preview's uploading files and release have moved, and
         /// how fast.
         static let uploadTransfers: BridgeOutboxTransferChange = .reset(
@@ -295,10 +284,8 @@
         )
 
         @MainActor
-        static func outboxStore(
-            _ snapshot: BridgeOutboxSnapshot = outboxSnapshot()
-        ) -> OutboxStore {
-            let store = OutboxStore(snapshot: snapshot)
+        static func outboxStore() -> OutboxStore {
+            let store = OutboxStore(uploadsPaused: false)
             store.applyTransferChange(uploadTransfers)
             return store
         }

@@ -41,9 +41,3 @@ public enum QueueSummary {
         return String(format: message("core.outbox.throughput"), rate)
     }
 }
-
-extension BridgeOutboxSnapshot {
-    /// The user's pause target. `Pausing` still counts as requested even though
-    /// the provider write already in progress has not finished yet.
-    public var pauseRequested: Bool { pauseState != .running }
-}

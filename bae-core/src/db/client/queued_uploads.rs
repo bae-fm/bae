@@ -111,6 +111,9 @@ pub(super) const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
      (SELECT COUNT(*) FROM coven_sending), \
      (SELECT paused FROM coven_upload_pause)";
 
+/// Whether the person paused uploads, as coven's one row says.
+const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
+
 impl Database {
     /// How many of the release's files still wait to upload from this device.
     pub async fn count_pending_uploads_for_release(
@@ -155,15 +158,19 @@ impl Database {
 
     /// Whether the person paused uploads, live, whether or not anything is
     /// queued.
-    #[cfg(desktop)]
     pub(crate) fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
-        self.inner.handle.subscribe(|sql| {
-            Ok(
-                sql.query_row("SELECT paused FROM coven_upload_pause", [], |row| {
-                    row.get(0)
-                })?,
-            )
+        self.inner
+            .handle
+            .subscribe(|sql| Ok(sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))?))
+    }
+
+    /// Whether the person paused uploads now.
+    pub(crate) async fn uploads_paused(&self) -> Result<bool, DbError> {
+        self.read(|sql| {
+            sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))
+                .map_err(DbError::from)
         })
+        .await
     }
 
     /// Whether an attached release file still waits to upload from this

@@ -276,7 +276,7 @@
                 .environment(PlaybackStore())
                 .environment(UiStore())
                 .environment(ImportStore())
-                .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+                .environment(OutboxStore(uploadsPaused: false))
                 .environment(PreviewData.configStore())
         }
     }

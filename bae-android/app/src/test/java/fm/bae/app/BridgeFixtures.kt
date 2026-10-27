@@ -22,8 +22,6 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
-import uniffi.bae_bridge.BridgeOutboxPauseState
-import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
@@ -233,13 +231,6 @@ object BridgeFixtures {
                 ),
             summaryParts = emptyList(),
             paused = paused,
-        )
-
-    fun outboxSnapshot(pauseState: BridgeOutboxPauseState = BridgeOutboxPauseState.RUNNING): BridgeOutboxSnapshot =
-        BridgeOutboxSnapshot(
-            revision = 0uL,
-            perRelease = emptyMap(),
-            pauseState = pauseState,
         )
 
     fun castDevice(

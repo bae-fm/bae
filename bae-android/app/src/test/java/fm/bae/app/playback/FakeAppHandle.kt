@@ -30,7 +30,6 @@ import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
-import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePlaylist
@@ -76,7 +75,6 @@ import uniffi.bae_bridge.LibraryNameCallback
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.MembershipCallback
-import uniffi.bae_bridge.OutboxCallback
 import uniffi.bae_bridge.OutboxTotalTransferCallback
 import uniffi.bae_bridge.OutboxTransfersCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
@@ -92,6 +90,7 @@ import uniffi.bae_bridge.StorageBrowseSubscription
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
+import uniffi.bae_bridge.UploadsPausedCallback
 import uniffi.bae_bridge.WorkDetailSubscription
 
 /** A bridge call a test fake doesn't fake: fail naming it. */
@@ -157,7 +156,7 @@ internal open class FakeAppHandle(
 
     override fun subscribeDownloadTransfers(callback: DownloadTransfersCallback): LiveSubscription = liveSubscription()
 
-    override fun subscribeOutbox(callback: OutboxCallback): LiveSubscription = liveSubscription()
+    override fun subscribeUploadsPaused(callback: UploadsPausedCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeOutboxTransfers(callback: OutboxTransfersCallback): LiveSubscription = liveSubscription()
 
@@ -703,7 +702,7 @@ internal open class FakeAppHandle(
         unfaked("dismissAbandonedAttachment")
     }
 
-    override suspend fun getOutboxSnapshot(): BridgeOutboxSnapshot = unfaked("getOutboxSnapshot")
+    override suspend fun getUploadsPaused(): Boolean = unfaked("getUploadsPaused")
 
     override fun getSyncStatus(): BridgeSyncStatusSnapshot = unfaked("getSyncStatus")
 

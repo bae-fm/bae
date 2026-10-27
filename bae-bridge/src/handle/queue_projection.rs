@@ -52,35 +52,6 @@ impl crate::types::BridgeOutboxTransferChange {
     }
 }
 
-impl crate::types::BridgeOutboxSnapshot {
-    pub(super) fn from_core(summary: bae_core::library::OutboxSummary) -> Self {
-        let bae_core::library::OutboxSummary {
-            revision,
-            per_release,
-            pause_state,
-        } = summary;
-        crate::types::BridgeOutboxSnapshot {
-            revision,
-            per_release: per_release
-                .into_iter()
-                .map(|(release_id, progress)| {
-                    (
-                        release_id,
-                        crate::types::BridgeUploadProgress::from_core(progress),
-                    )
-                })
-                .collect(),
-            pause_state: crate::types::BridgeOutboxPauseState::from_core(pause_state),
-        }
-    }
-}
-
-mirror_enum! {
-    crate::types::BridgeOutboxPauseState = bae_core::library::OutboxPauseState,
-    from_core: fn,
-    variants: { Running, Paused },
-}
-
 impl crate::types::BridgeUploadProgress {
     pub(super) fn from_core(progress: bae_core::library::UploadProgress) -> Self {
         let activity = progress

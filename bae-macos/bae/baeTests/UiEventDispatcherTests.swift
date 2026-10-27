@@ -291,7 +291,7 @@ private var emptySeed: LibrarySessionSeed {
     LibrarySessionSeed(
         name: "Test Library",
         storage: nil,
-        outbox: OutboxStore.emptySnapshot
+        uploadsPaused: false
     )
 }
 
@@ -357,8 +357,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         return NoopLiveSubscription()
     }
 
-    override func subscribeOutbox(
-        callback _: any OutboxCallback
+    override func subscribeUploadsPaused(
+        callback _: any UploadsPausedCallback
     ) -> LiveSubscription {
         NoopLiveSubscription()
     }

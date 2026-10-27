@@ -111,7 +111,7 @@ struct StorageStatusBand: View {
         )
         .frame(width: 560)
         .background(Theme.background)
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(OutboxStore(uploadsPaused: false))
     }
 
     // Local: the only offered transition is uploading to the cloud.

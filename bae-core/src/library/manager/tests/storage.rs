@@ -900,3 +900,18 @@ async fn the_sync_activity_counts_the_files_being_sent() {
     assert!((1..=2).contains(&sending.waiting), "{sending:?}");
     drain.await.unwrap().unwrap();
 }
+
+/// Whether uploads are paused reads from coven's pause, with nothing queued
+/// too, and follows each change.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let mut paused = manager.subscribe_uploads_paused();
+    assert!(!paused.next().await.unwrap().unwrap());
+    manager.set_sync_paused(true).await.unwrap();
+    assert!(paused.next().await.unwrap().unwrap());
+    assert!(manager.is_sync_paused().await.unwrap());
+    manager.set_sync_paused(false).await.unwrap();
+    assert!(!paused.next().await.unwrap().unwrap());
+}

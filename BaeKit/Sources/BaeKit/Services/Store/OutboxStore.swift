@@ -1,7 +1,4 @@
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("OutboxStore")
 
 /// One upload transfer, observed on its own: a part the provider confirms
 /// changes only this value, so only a view that draws it redraws.
@@ -14,33 +11,29 @@ public final class UploadTransferValue {
     }
 }
 
-/// Mirror of core's cloud upload queue summary, which the pause control
-/// reads, and of the queue's transfers. The retained outbox subscription
-/// lands the summary each time the queue changes. What of a release waits to
+/// Whether uploads are paused, which the pause control reads, and the upload
+/// queue's transfers. The retained subscription lands the pause each time it
+/// changes. What of a release waits to
 /// upload is its row's `upload`, read with the row. The transfer subscription
 /// lands each file's and release's rate into that key's own value, so a rate
 /// change redraws only what draws that key. Views read both at the leaf.
 @Observable
 public class OutboxStore {
-    public var snapshot: BridgeOutboxSnapshot
+    /// Whether the person paused uploads, as the retained subscription last
+    /// said.
+    public private(set) var uploadsPaused: Bool
     /// Each queued file's and uploading release's transfer, one value per
     /// key; the map changes only as keys come and go.
     private var transfers: [BridgeUploadTransferKey: UploadTransferValue] = [:]
     /// The whole queue's transfer; `nil` until the transfers first arrive.
     private var totalTransfer: UploadTransferValue?
 
-    public init(snapshot: BridgeOutboxSnapshot) {
-        self.snapshot = snapshot
+    public init(uploadsPaused: Bool) {
+        self.uploadsPaused = uploadsPaused
     }
 
-    public func applySnapshot(_ snapshot: BridgeOutboxSnapshot) {
-        guard snapshot.revision >= self.snapshot.revision else {
-            logger.debug(
-                "dropping outbox snapshot at revision \(snapshot.revision); revision \(self.snapshot.revision) is already applied"
-            )
-            return
-        }
-        self.snapshot = snapshot
+    public func applyUploadsPaused(_ paused: Bool) {
+        uploadsPaused = paused
     }
 
     /// Apply one change the transfer subscription delivered.
@@ -118,16 +111,6 @@ public class OutboxStore {
         }
     }
 
-    /// The idle queue used before the required initial snapshot arrives and by
-    /// previews/tests. A failed initial read fails library opening instead of
-    /// presenting this value as authoritative queue state.
-    public static var emptySnapshot: BridgeOutboxSnapshot {
-        BridgeOutboxSnapshot(
-            revision: 0,
-            perRelease: [:],
-            pauseState: .running,
-        )
-    }
 }
 
 /// A release's files in the upload queue as a Storage surface draws them:

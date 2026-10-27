@@ -113,7 +113,7 @@ impl SyncController {
     }
 
     pub(crate) async fn is_sync_paused(&self) -> Result<bool, LibraryError> {
-        Ok(self.database.uploads().await?.paused)
+        Ok(self.database.uploads_paused().await?)
     }
 
     /// The stream the outbox pane and upload standing read; each value is the

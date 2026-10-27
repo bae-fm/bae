@@ -37,8 +37,7 @@ impl LibraryManager {
     }
 
     /// Whether the person paused uploads, live.
-    #[cfg(desktop)]
-    pub(crate) fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
+    pub fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
         self.database.subscribe_uploads_paused()
     }
 

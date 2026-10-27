@@ -48,7 +48,6 @@ import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.OutboxCallback
 import uniffi.bae_bridge.OutboxTotalTransferCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
@@ -56,6 +55,7 @@ import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
+import uniffi.bae_bridge.UploadsPausedCallback
 
 private val logger = BaeLogger("bae.OpenLibrary")
 
@@ -267,10 +267,10 @@ class OpenLibrary internal constructor(
                 },
             )
         valueSubscriptions +=
-            appHandle.subscribeOutbox(
-                object : OutboxCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeOutboxSnapshot) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.setSnapshot(value) }
+            appHandle.subscribeUploadsPaused(
+                object : UploadsPausedCallback {
+                    override fun onValue(paused: Boolean) {
+                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.setUploadsPaused(paused) }
                     }
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {

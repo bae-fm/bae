@@ -118,7 +118,7 @@ class OpenLibraryDisposeTest {
                         transfers =
                             LibraryTransferStores(
                                 downloads = DownloadStore(BridgeFixtures.downloadCounts()),
-                                outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
+                                outbox = OutboxStore(initialUploadsPaused = false),
                             ),
                         cast = CastStore(),
                     ),

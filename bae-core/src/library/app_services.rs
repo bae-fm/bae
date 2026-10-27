@@ -635,17 +635,13 @@ impl AppServices {
     delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, crate::library::LibraryError>);
     delegate_async!(manager, library_name => library_name() -> Result<String, crate::library::LibraryError>);
     delegate_sync!(manager, subscribe_library_name => subscribe_library_name() -> coven::LiveQuery<String>);
+    delegate_sync!(manager, subscribe_uploads_paused => subscribe_uploads_paused() -> coven::LiveQuery<bool>);
+    delegate_async!(manager, is_sync_paused => is_sync_paused() -> Result<bool, crate::library::LibraryError>);
 
     pub fn subscribe_outbox_values(
         &self,
     ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxState, String>>> {
         self.inner.manager.subscribe_outbox_values()
-    }
-
-    /// The upload queue as the Storage Manager lists it, sent each time it
-    /// changes.
-    pub fn watch_outbox_queue(&self) -> crate::library::OutboxQueueWatch {
-        crate::library::OutboxQueueWatch::of(self.inner.manager.clone())
     }
 
     /// The bytes each queued upload has moved and how fast, sent as each one

@@ -116,7 +116,7 @@
                 onCancelAllIdentification: {},
                 onCancelAllImports: {}
             )
-            .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+            .environment(OutboxStore(uploadsPaused: false))
             .environment(ImportSelection())
             .environment(PreviewData.artImageStore())
             .environment(uiStore)
