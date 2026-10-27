@@ -303,11 +303,7 @@ async fn take_watch_report(
             }
             let affected = roots_for_watch_error(&error_paths, &roots);
             for root in affected {
-                active_roots.request_scan(
-                    root,
-                    RootScanCause::WatchError,
-                    None,
-                );
+                active_roots.request_scan(root, RootScanCause::WatchError, None);
             }
             return;
         }
@@ -322,17 +318,11 @@ async fn take_watch_report(
             whole.extend(roots.iter().cloned());
         }
         for path in &event.paths {
-            whole.extend(
-                roots.iter().filter(|root| root.starts_with(path)).cloned(),
-            );
+            whole.extend(roots.iter().filter(|root| root.starts_with(path)).cloned());
         }
     }
     for root in &whole {
-        active_roots.request_scan(
-            root.clone(),
-            RootScanCause::EventsDropped,
-            None,
-        );
+        active_roots.request_scan(root.clone(), RootScanCause::EventsDropped, None);
     }
     let changed = changed_paths(&events);
     let affected = affected_roots(&changed, &roots);
@@ -347,8 +337,7 @@ async fn take_watch_report(
             .filter(|path| path.starts_with(&root))
             .collect();
         let lost_track = events.iter().any(|event| {
-            event.need_rescan()
-                && event.paths.iter().any(|path| path.starts_with(&root))
+            event.need_rescan() && event.paths.iter().any(|path| path.starts_with(&root))
         });
         let holds = holds_its_own_release(library_manager, &root).await;
         let change = root_change_of(&root, &under, holds).await;

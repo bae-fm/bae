@@ -18,7 +18,10 @@
 //! as many as the folder has.
 
 use crate::import::release_group::ReleaseGroup;
-use crate::import::{AlbumLink, Credited, CandidateDraft, MetadataRef, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments};
+use crate::import::{
+    AlbumLink, CandidateDraft, Credited, MetadataRef, RawLabelEdit, RawReleaseEdit,
+    TrackArtistAssignments,
+};
 use bae_catalogs::catalog::Catalog;
 use bae_types::text_match;
 
@@ -108,7 +111,10 @@ pub(crate) fn shared_draft(
     readings: &[OfferedReading],
     folder_year: Option<i32>,
 ) -> CandidateDraft {
-    let offered: Vec<RawReleaseEdit> = readings.iter().map(|reading| reading.edit.clone()).collect();
+    let offered: Vec<RawReleaseEdit> = readings
+        .iter()
+        .map(|reading| reading.edit.clone())
+        .collect();
     let offered = offered.as_slice();
     let mut draft = current.clone();
     if let Some(title) = agreed(

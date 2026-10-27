@@ -392,12 +392,13 @@ impl ActiveRoots {
         parent: Option<PathBuf>,
         completion: RefreshCompletion,
     ) {
-        let held = roots.iter().chain(parent.iter()).find_map(|path| {
-            match self.roots.get(path) {
+        let held = roots
+            .iter()
+            .chain(parent.iter())
+            .find_map(|path| match self.roots.get(path) {
                 Some(RootActivity::Removing(id)) => Some((path, *id)),
                 Some(RootActivity::Scanning(_)) | None => None,
-            }
-        });
+            });
         if let Some((path, id)) = held {
             match self.removals.get_mut(&id) {
                 Some(removal) if removal.is(&roots, parent.as_deref()) => {
@@ -443,7 +444,8 @@ impl ActiveRoots {
             self.roots.insert(root.clone(), RootActivity::Removing(id));
         }
         if let Some(parent) = &parent {
-            self.roots.insert(parent.clone(), RootActivity::Removing(id));
+            self.roots
+                .insert(parent.clone(), RootActivity::Removing(id));
         }
         let backend = self.removal_backend.clone();
         let commit = self.folder_state_commit.clone();

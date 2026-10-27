@@ -22,8 +22,8 @@ use crate::import::album_links::{self, AlbumLink, AlbumLinks, GroupLinks};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::types::{CatalogAvailability, MetadataRef, SourceAvailability};
-use bae_catalogs::catalog::Catalog;
 use crate::signals::Failure;
+use bae_catalogs::catalog::Catalog;
 use tracing::debug;
 
 /// One provider's part of a candidate's manual search.
@@ -368,9 +368,7 @@ mod tests {
         ])
     }
 
-    fn availability(
-        states: &[(Catalog, SourceAvailability)],
-    ) -> Vec<CatalogAvailability> {
+    fn availability(states: &[(Catalog, SourceAvailability)]) -> Vec<CatalogAvailability> {
         states
             .iter()
             .map(|&(catalog, state)| CatalogAvailability { catalog, state })
@@ -426,7 +424,10 @@ mod tests {
         let mut search = CandidateSearch::started(query(), &discogs_unconfigured());
         assert!(!search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::Searching);
-        search.record(Catalog::MusicBrainz, Err(crate::signals::LookupFailure::Network.into()));
+        search.record(
+            Catalog::MusicBrainz,
+            Err(crate::signals::LookupFailure::Network.into()),
+        );
         assert!(!search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::Failed);
         search.restart_failed();
@@ -447,7 +448,10 @@ mod tests {
             answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
         assert_eq!(search.status(), SearchStatus::Searching);
-        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Timeout.into()));
+        search.record(
+            Catalog::Discogs,
+            Err(crate::signals::LookupFailure::Timeout.into()),
+        );
         assert_eq!(search.status(), SearchStatus::Failed);
         search.restart_failed();
         search.record(
@@ -503,10 +507,7 @@ mod tests {
         );
         assert_eq!(search.groups.len(), 2);
 
-        let kept = search.record_picked(
-            &musicbrainz("mb-1"),
-            AlbumLinks::Read(vec![link.clone()]),
-        );
+        let kept = search.record_picked(&musicbrainz("mb-1"), AlbumLinks::Read(vec![link.clone()]));
         assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
         assert_eq!(kept, vec![("group-x".to_string(), vec![link])]);
     }
@@ -520,7 +521,10 @@ mod tests {
         let numbered = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
-            found.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB 100"))];
+            found.labels = vec![bae_types::pressing::ReleaseLabel::of(
+                Some("Imprint"),
+                Some("LB 100"),
+            )];
             Ok(vec![(found, LibraryStatus::absent(release_id))])
         };
         let mut search = CandidateSearch::started(query(), &all_on());
@@ -528,7 +532,10 @@ mod tests {
             Catalog::MusicBrainz,
             numbered(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        search.record(Catalog::Discogs, numbered(Catalog::Discogs, "dg-1", "master-7"));
+        search.record(
+            Catalog::Discogs,
+            numbered(Catalog::Discogs, "dg-1", "master-7"),
+        );
         assert_eq!(search.groups.len(), 2);
 
         let kept = search.record_picked(&musicbrainz("mb-1"), AlbumLinks::Read(Vec::new()));
@@ -568,10 +575,7 @@ mod tests {
             search.source(Catalog::Discogs),
             Some(&SourceSearch::NotConfigured)
         );
-        assert_eq!(
-            search.searching_sources(),
-            vec![Catalog::MusicBrainz]
-        );
+        assert_eq!(search.searching_sources(), vec![Catalog::MusicBrainz]);
         assert!(!search.is_settled(), "MusicBrainz is still looking");
 
         search.record(
@@ -698,7 +702,10 @@ mod tests {
             Catalog::MusicBrainz,
             answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Network.into()));
+        search.record(
+            Catalog::Discogs,
+            Err(crate::signals::LookupFailure::Network.into()),
+        );
         assert!(search.is_settled());
         assert_eq!(search.failed_sources(), vec![Catalog::Discogs]);
         assert_eq!(search.groups.len(), 1);
@@ -712,7 +719,10 @@ mod tests {
             Catalog::MusicBrainz,
             answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Timeout.into()));
+        search.record(
+            Catalog::Discogs,
+            Err(crate::signals::LookupFailure::Timeout.into()),
+        );
 
         search.restart_failed();
         assert_eq!(search.searching_sources(), vec![Catalog::Discogs]);
@@ -757,7 +767,10 @@ mod tests {
             answer(Catalog::Discogs, "dg-2", "master-8"),
         );
         assert_eq!(search.groups.len(), 1);
-        assert_eq!(search.groups[0].sections[0].pressings[0].lead().release_id, "dg-1");
+        assert_eq!(
+            search.groups[0].sections[0].pressings[0].lead().release_id,
+            "dg-1"
+        );
     }
 
     /// A retry puts the failed source back to looking, and only then does its
@@ -765,14 +778,20 @@ mod tests {
     #[test]
     fn a_retried_source_lands_its_new_answer() {
         let mut search = CandidateSearch::started(query(), &all_on());
-        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Timeout.into()));
+        search.record(
+            Catalog::Discogs,
+            Err(crate::signals::LookupFailure::Timeout.into()),
+        );
         search.restart_failed();
         search.record(
             Catalog::Discogs,
             answer(Catalog::Discogs, "dg-2", "master-8"),
         );
         assert_eq!(search.groups.len(), 1);
-        assert_eq!(search.groups[0].sections[0].pressings[0].lead().release_id, "dg-2");
+        assert_eq!(
+            search.groups[0].sections[0].pressings[0].lead().release_id,
+            "dg-2"
+        );
     }
 
     /// Switching a source off mid-search closes its part and takes its results

@@ -27,8 +27,8 @@ pub(super) fn related_documents(
                 .as_ref()
                 .and_then(|group| group.relations.as_ref())
             {
-                for page in
-                    bae_catalogs::musicbrainz::relation_urls(relations).filter_map(parse_catalog_url)
+                for page in bae_catalogs::musicbrainz::relation_urls(relations)
+                    .filter_map(parse_catalog_url)
                 {
                     if let Some(request) = page_document(&page, true) {
                         next.push(request);
@@ -71,11 +71,12 @@ pub(super) fn related_documents(
             (Vec::new(), true)
         }
         PayloadSource::Wikidata => {
-            let item =
-                bae_catalogs::wikidata::parse_entity(json).map_err(|error| ImportError::SourceData {
+            let item = bae_catalogs::wikidata::parse_entity(json).map_err(|error| {
+                ImportError::SourceData {
                     catalog: Catalog::Wikidata,
                     detail: error.to_string(),
-                })?;
+                }
+            })?;
             for page in item.catalog_pages() {
                 if let Some(request) = page_document(&page, true) {
                     next.push(request);
@@ -259,18 +260,35 @@ impl DocumentTraversal {
     }
 
     /// Take what asking for one document came to.
-    fn record(&mut self, source: PayloadSource, key: String, fetched: Result<Fetched, ImportError>) {
+    fn record(
+        &mut self,
+        source: PayloadSource,
+        key: String,
+        fetched: Result<Fetched, ImportError>,
+    ) {
         match fetched {
             Ok(Fetched::Document(json)) => self.accept(SourcePayload::new(source, key, json)),
             Ok(Fetched::Absent) => {
-                tracing::debug!(?source, entity = key, "Supporting metadata document does not exist");
+                tracing::debug!(
+                    ?source,
+                    entity = key,
+                    "Supporting metadata document does not exist"
+                );
             }
             Ok(Fetched::DiscogsNotConfigured) => {
-                tracing::debug!(?source, entity = key, "Supporting Discogs document needs a Discogs key");
+                tracing::debug!(
+                    ?source,
+                    entity = key,
+                    "Supporting Discogs document needs a Discogs key"
+                );
                 self.missing(source, key, UnfetchedReason::DiscogsNotConfigured);
             }
             Ok(Fetched::FailedEarlier) => {
-                tracing::debug!(?source, entity = key, "Supporting metadata document failed under another key");
+                tracing::debug!(
+                    ?source,
+                    entity = key,
+                    "Supporting metadata document failed under another key"
+                );
                 self.missing(source, key, UnfetchedReason::Failed);
             }
             Err(error) => {
@@ -281,11 +299,9 @@ impl DocumentTraversal {
     }
 
     fn accept(&mut self, document: SourcePayload) {
-        if let Some(edges) = supporting_document_edges(
-            document.source,
-            &document.source_release_id,
-            &document.json,
-        ) {
+        if let Some(edges) =
+            supporting_document_edges(document.source, &document.source_release_id, &document.json)
+        {
             let from = (document.source, document.source_release_id.clone());
             self.admit(Some(&from), edges);
             self.payloads.supporting.push(document);
@@ -391,11 +407,7 @@ impl FetchDocuments<'_> {
         Ok(Fetched::Document(json))
     }
 
-    async fn document(
-        &mut self,
-        source: PayloadSource,
-        id: &str,
-    ) -> Result<Fetched, ImportError> {
+    async fn document(&mut self, source: PayloadSource, id: &str) -> Result<Fetched, ImportError> {
         if let Some(json) = self.documents.get(&(source, id.to_owned())) {
             return Ok(Fetched::Document(json.clone()));
         }

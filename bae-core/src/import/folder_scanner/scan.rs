@@ -344,7 +344,10 @@ fn in_disc_order(relative: &Path, audio_folders: &[PathBuf]) -> Vec<PathBuf> {
         Some(mut numbered) => {
             // Stable, so folders within one part keep the walk's order.
             numbered.sort_by_key(|(number, _)| *number);
-            numbered.into_iter().map(|(_, folder)| folder.clone()).collect()
+            numbered
+                .into_iter()
+                .map(|(_, folder)| folder.clone())
+                .collect()
         }
         None => audio_folders.to_vec(),
     }
@@ -521,9 +524,8 @@ where
         reading,
         Some((FolderReleaseDecision::KeepAsSeparateReleases, _))
     );
-    let can_stream_collection = ancestors_allow_actionable
-        && combined_as.is_none()
-        && (!has_direct_files || keep_separate);
+    let can_stream_collection =
+        ancestors_allow_actionable && combined_as.is_none() && (!has_direct_files || keep_separate);
     let mut collection_proven = !wrapper_has_files;
 
     for child in listing_dirs.clone() {

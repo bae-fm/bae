@@ -28,12 +28,9 @@ struct TestService {
 async fn setup_import_service() -> TestService {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+        .await
+        .unwrap();
 
     let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
 
@@ -102,7 +99,9 @@ async fn prepare_named_candidate(
         .expect("the scanned candidate has its initial preparation");
     let mut draft = preparation.draft;
     draft.album_title = album_title.to_string();
-    draft.album_artist_assignments = vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))];
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(
+        crate::import::ArtistAssignment::named("Artist Name"),
+    )];
     preparations
         .apply_source(
             watched_folder_path,

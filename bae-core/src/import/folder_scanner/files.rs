@@ -434,10 +434,7 @@ impl CandidateFile {
                 &self.file.path,
             ))
         .then(|| {
-            crate::import::CoverChoice::local(
-                self.file.relative_path.clone(),
-                self.file.version(),
-            )
+            crate::import::CoverChoice::local(self.file.relative_path.clone(), self.file.version())
         })
     }
 }

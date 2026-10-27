@@ -67,11 +67,8 @@ where
         .iter()
         .any(|file| file.size > 0 && is_audio_file(&file.path));
     let mut direct_scope_files = root_listing.files;
-    let walk_order = newest_first(&reader.folder_times(
-        &root,
-        &root_listing.directories,
-        cancellation,
-    )?);
+    let walk_order =
+        newest_first(&reader.folder_times(&root, &root_listing.directories, cancellation)?);
     for lent in read_folders_at_once(
         &walk,
         &root_listing.directories,
@@ -158,8 +155,7 @@ where
                     }
                 };
                 while !stop.is_cancelled() {
-                    let Some(&index) = walk_order.get(next.fetch_add(1, Ordering::Relaxed))
-                    else {
+                    let Some(&index) = walk_order.get(next.fetch_add(1, Ordering::Relaxed)) else {
                         break;
                     };
                     let folder = &folders[index];
@@ -194,7 +190,9 @@ where
                 } => lent[index] = Some(files),
                 // A folder stopped by an earlier failure says it was
                 // cancelled; the pass fails with what stopped it.
-                Said::Read { lent: Err(error), .. } => {
+                Said::Read {
+                    lent: Err(error), ..
+                } => {
                     failure.get_or_insert(error);
                 }
             }

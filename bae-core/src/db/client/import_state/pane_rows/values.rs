@@ -133,7 +133,12 @@ pub(super) fn load_draft_values_on(
         },
     )?;
     for (content_hash, work) in works {
-        values.works.entry(content_hash).or_default().works.push(work);
+        values
+            .works
+            .entry(content_hash)
+            .or_default()
+            .works
+            .push(work);
     }
     let composers = sql.query(
         "SELECT content_hash, musicbrainz_work_id, name, sort_name, musicbrainz_artist_id, \
@@ -188,7 +193,12 @@ pub(super) fn load_draft_values_on(
         },
     )?;
     for (content_hash, part) in parts {
-        values.works.entry(content_hash).or_default().parts.push(part);
+        values
+            .works
+            .entry(content_hash)
+            .or_default()
+            .parts
+            .push(part);
     }
     for (content_hash, role) in sql.query(
         "SELECT content_hash, name, sort_name, musicbrainz_artist_id, discogs_artist_id, \

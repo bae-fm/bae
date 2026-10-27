@@ -103,8 +103,13 @@ pub(super) fn insert_entry(
 /// Where a stored work node hangs: off the track that performs it, or off
 /// the work it is a part relation of.
 enum WorkPlace {
-    Performed { entry: i64 },
-    Part { parent: i64, direction: PartDirection },
+    Performed {
+        entry: i64,
+    },
+    Part {
+        parent: i64,
+        direction: PartDirection,
+    },
 }
 
 fn direction_column(direction: PartDirection) -> &'static str {
@@ -201,19 +206,18 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
     catalog: &str,
     key: &str,
 ) -> Result<Vec<SourceMedium>, DbError> {
-    let mut mediums: Vec<SourceMedium> = sql
-        .query(
-            "SELECT medium FROM source_release_medium \
+    let mut mediums: Vec<SourceMedium> = sql.query(
+        "SELECT medium FROM source_release_medium \
              WHERE catalog = ? AND release_id = ? ORDER BY position",
-            params![catalog, key],
-            |row| {
-                Ok(SourceMedium {
-                    medium: super::pressing_columns::keyed(row, "medium", Medium::from_key)?,
-                    disc_ids: Vec::new(),
-                    entries: Vec::new(),
-                })
-            },
-        )?;
+        params![catalog, key],
+        |row| {
+            Ok(SourceMedium {
+                medium: super::pressing_columns::keyed(row, "medium", Medium::from_key)?,
+                disc_ids: Vec::new(),
+                entries: Vec::new(),
+            })
+        },
+    )?;
     for (position, disc_id) in sql.query(
         "SELECT position, disc_id FROM source_release_medium_disc \
          WHERE catalog = ? AND release_id = ? ORDER BY position, disc",
@@ -437,7 +441,13 @@ fn load_works<S: QueryOne + QueryRows>(
         "SELECT node, position, name, sort_name, musicbrainz_artist_id, discogs_artist_id \
          FROM source_release_work_composer WHERE catalog = ? AND release_id = ?",
         params![catalog, key],
-        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i32>(1)?, artist_at(row, 2)?)),
+        |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, i32>(1)?,
+                artist_at(row, 2)?,
+            ))
+        },
     )? {
         let index = *index_of
             .get(&node)
@@ -468,9 +478,15 @@ fn load_works<S: QueryOne + QueryRows>(
                 if parent_index >= index {
                     return Err(unreadable("work parented under a later work", parent));
                 }
-                events[parent_index].push((row.position, SourceWorkEvent::Part { direction, work }));
+                events[parent_index]
+                    .push((row.position, SourceWorkEvent::Part { direction, work }));
             }
-            _ => return Err(unreadable("work placed on neither a track nor a work", row.node)),
+            _ => {
+                return Err(unreadable(
+                    "work placed on neither a track nor a work",
+                    row.node,
+                ))
+            }
         }
     }
     performed.reverse();

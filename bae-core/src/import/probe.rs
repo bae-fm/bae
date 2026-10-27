@@ -16,11 +16,11 @@
 //! becomes a valid scanned candidate; CUE slices are closed by the next INDEX
 //! 01 boundary or by the referenced audio file's probed end.
 
-use bae_audio::ProbeResult;
-use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::audio_layout::{audio_layout, UnitContribution};
+use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::types::{AudioFile, CueAnalyzedAudioFile, CueFlacAnalysis};
 use crate::import::ImportError;
+use bae_audio::ProbeResult;
 
 /// One audio unit and what it plays for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,13 +125,14 @@ pub(crate) fn sheet_track_duration_ms(
                 cue_track.file_reference
             ),
         })?;
-    let total_ms =
-        u64::try_from(audio.probe.duration.as_millis()).map_err(|error| ImportError::UnusableFile {
+    let total_ms = u64::try_from(audio.probe.duration.as_millis()).map_err(|error| {
+        ImportError::UnusableFile {
             detail: format!(
                 "{} is too long to represent in milliseconds: {error}",
                 audio.path.display()
             ),
-        })?;
+        }
+    })?;
     cue_track
         .duration_ms_with_file_duration(total_ms)
         .map_err(|error| ImportError::UnusableFile {

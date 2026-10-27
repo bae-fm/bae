@@ -9,8 +9,8 @@
 
 use super::*;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::import::preparation::CandidatePreparation;
 use crate::import::folder_scanner::FolderCandidate;
+use crate::import::preparation::CandidatePreparation;
 
 /// The revisions a save was prepared against, and — for a write that must
 /// not land on a folder the scan has since re-read — where the scan lists it.
@@ -189,17 +189,20 @@ pub(super) fn save_preparation_on(
         .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
         .transpose()?;
 
-    let previous_link = super::rows::load_release_link_rows_on(sql, Some(content_hash))?()?
-        .remove(content_hash);
-    let previous_provenance = super::rows::load_provenance_rows_on(sql, Some(content_hash))?()?
-        .remove(content_hash);
+    let previous_link =
+        super::rows::load_release_link_rows_on(sql, Some(content_hash))?()?.remove(content_hash);
+    let previous_provenance =
+        super::rows::load_provenance_rows_on(sql, Some(content_hash))?()?.remove(content_hash);
     if previous_link != prep.link
         || previous_provenance != prep.metadata.provenance
         || prep.metadata.draft.release_edit().is_blank()
     {
         // An answer belongs to these source credits. Changing their source
         // requires the person to decide any new conflict.
-        sql.execute("DELETE FROM import_candidate_artist_identity_choice WHERE content_hash = ?", [content_hash])?;
+        sql.execute(
+            "DELETE FROM import_candidate_artist_identity_choice WHERE content_hash = ?",
+            [content_hash],
+        )?;
         sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ? AND content_hash IN (SELECT content_hash FROM import_candidate_artist_identity_conflict)", [content_hash])?;
     }
 
@@ -239,8 +242,8 @@ pub(super) fn save_preparation_on(
                 &identification.verdict,
                 identification.kept_own_draft,
             )
-                .folder_check()
-                .is_none()
+            .folder_check()
+            .is_none()
             {
                 super::session_rows::move_pane_on(
                     sql,
@@ -260,20 +263,19 @@ pub(super) fn save_preparation_on(
                     "candidate file decision received duplicate scan entry keys".to_string(),
                 ));
             }
-            settle_scanned_candidates(
-                sql,
-                content_hash,
-                expected_edit,
-                next_edit,
-                &settled_by_key,
-            )?
+            settle_scanned_candidates(sql, content_hash, expected_edit, next_edit, &settled_by_key)?
         }
     };
     // The draft holds one track per audio unit, in the folder's order, so a
     // reshape lands only with a draft redrawn over the files it produced.
     for candidate in &reshaped {
         let units = crate::import::audio_layout::audio_units(&candidate.files);
-        let drawn = prep.metadata.draft.tracks.iter().map(|track| &track.edit.file);
+        let drawn = prep
+            .metadata
+            .draft
+            .tracks
+            .iter()
+            .map(|track| &track.edit.file);
         if !drawn.eq(units.iter()) {
             return Err(DbError::Message(format!(
                 "the draft stored for candidate {} is not drawn over its audio",
@@ -282,14 +284,9 @@ pub(super) fn save_preparation_on(
         }
     }
     if let Some(snapshot) = &extras.file_tag_snapshot {
-        let scanned = expected
-            .scanned
-            .as_ref()
-            .ok_or_else(|| {
-                DbError::Message(
-                    "a file-tag snapshot is stored under a scanned candidate key".into(),
-                )
-            })?;
+        let scanned = expected.scanned.as_ref().ok_or_else(|| {
+            DbError::Message("a file-tag snapshot is stored under a scanned candidate key".into())
+        })?;
         if snapshot.file_edit_revision != prep.file_edits.revision
             || Some(snapshot.scan_generation) != scan_generation
             || !super::folder_scans::replace_candidate_file_tag_snapshot_on(
@@ -316,8 +313,11 @@ pub(super) fn save_preparation_on(
 }
 
 fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
-    i64::try_from(value)
-        .map_err(|error| DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}")))
+    i64::try_from(value).map_err(|error| {
+        DbError::Message(format!(
+            "{what} {value} exceeds SQLite's integer range: {error}"
+        ))
+    })
 }
 
 impl Database {
@@ -356,20 +356,20 @@ impl Database {
         candidate_key: String,
         run: crate::identify::IdentifyRunId,
     ) -> Result<RunVerdictSaved, DbError> {
-        self.call(move |sql| {
-            match save_preparation_on(sql, &prep, &expected, &extras)? {
-                CandidateSaved::Landed(_) => Ok(RunVerdictSaved::Landed(
-                    super::change_identification_on(
+        self.call(
+            move |sql| match save_preparation_on(sql, &prep, &expected, &extras)? {
+                CandidateSaved::Landed(_) => {
+                    Ok(RunVerdictSaved::Landed(super::change_identification_on(
                         sql,
                         &candidate_key,
                         &crate::import::candidate_runtime::IdentificationChange::AnswerEnded {
                             run,
                         },
-                    )?,
-                )),
+                    )?))
+                }
                 CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
-            }
-        })
+            },
+        )
         .await
     }
 

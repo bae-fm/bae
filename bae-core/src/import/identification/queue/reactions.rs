@@ -192,7 +192,13 @@ pub(super) async fn finish(
             done.representative_key
         );
         // The Import was asked of this run, which another has replaced.
-        if matches!(done.settled, Settled::Stored { import_asked: true, .. }) {
+        if matches!(
+            done.settled,
+            Settled::Stored {
+                import_asked: true,
+                ..
+            }
+        ) {
             info!(
                 "identification: {}'s run was replaced; the Import asked of it is dropped",
                 done.representative_key

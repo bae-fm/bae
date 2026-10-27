@@ -243,12 +243,13 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             let (check, failure) = stored.split_once('.').ok_or_else(unreadable)?;
             C::StorageCheck {
                 check: check_of(check).ok_or_else(unreadable)?,
-                failure: serde_json::from_str(failure).map_err(|error| unreadable_because(&error))?,
+                failure: serde_json::from_str(failure)
+                    .map_err(|error| unreadable_because(&error))?,
             }
         }
-        Some(("versioning_unknown", stored)) => {
-            C::S3VersioningUnknown(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
-        }
+        Some(("versioning_unknown", stored)) => C::S3VersioningUnknown(
+            serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?,
+        ),
         Some(("s3_prefix", stored)) => {
             C::S3Prefix(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
         }
@@ -264,8 +265,12 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
         Some(("metadata_track_count", stored)) => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
             C::MetadataTrackCount {
-                folder_tracks: folder_tracks.parse().map_err(|error| unreadable_because(&error))?,
-                release_tracks: release_tracks.parse().map_err(|error| unreadable_because(&error))?,
+                folder_tracks: folder_tracks
+                    .parse()
+                    .map_err(|error| unreadable_because(&error))?,
+                release_tracks: release_tracks
+                    .parse()
+                    .map_err(|error| unreadable_because(&error))?,
             }
         }
         Some(_) => return Err(unreadable()),

@@ -93,8 +93,8 @@ fn write_id3v1_field(destination: &mut [u8], value: &str) {
 /// a scan marker whose `0xff` bytes each need an unsynchronisation guard
 /// byte, and an end-of-image marker.
 const PLACEHOLDER_JPEG: &[u8] = &[
-    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, b'J', b'F', b'I', b'F', 0x00, 0xff, 0x00, 0xff,
-    0xda, 0x12, 0x34, 0xff, 0xd9,
+    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, b'J', b'F', b'I', b'F', 0x00, 0xff, 0x00, 0xff, 0xda, 0x12,
+    0x34, 0xff, 0xd9,
 ];
 
 /// ID3v2 unsynchronisation: a `0x00` after every `0xff` that precedes a
@@ -219,7 +219,12 @@ fn embedded_cover_in_an_unsynchronised_id3v24_tag_reads_as_the_original_image() 
     assert_eq!(content_type, ContentType::Jpeg);
     assert_eq!(bytes, PLACEHOLDER_JPEG);
     assert_eq!(
-        LoftyFileTagReader.read(&path).unwrap().tags.title.as_deref(),
+        LoftyFileTagReader
+            .read(&path)
+            .unwrap()
+            .tags
+            .title
+            .as_deref(),
         Some("Track Alpha")
     );
 }
@@ -273,9 +278,7 @@ fn extraction_reads_every_file_before_returning_one_snapshot() {
     let files = paths
         .iter()
         .enumerate()
-        .map(|(index, path)| {
-            ScannedFile::new(path.clone(), format!("{:02}.flac", index + 1), 5, 1)
-        })
+        .map(|(index, path)| ScannedFile::new(path.clone(), format!("{:02}.flac", index + 1), 5, 1))
         .collect::<Vec<_>>();
     let reader = CountingReader::default();
 
@@ -306,9 +309,7 @@ fn extraction_refuses_a_file_whose_scanned_size_changed() {
 
     let error = extract_file_tag_snapshot(&[file], 1, 0, &reader).unwrap_err();
 
-    assert!(
-        matches!(error, ImportError::FileTags { detail } if detail.contains("changed after"))
-    );
+    assert!(matches!(error, ImportError::FileTags { detail } if detail.contains("changed after")));
     assert_eq!(reader.0.load(std::sync::atomic::Ordering::Relaxed), 0);
 }
 
@@ -448,7 +449,11 @@ fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
         let read = LoftyFileTagReader
             .read(&m4a_with(dir.path(), &[(atom, "placeholder")]))
             .unwrap();
-        assert_eq!(read.tags.store, Some(StoreMarker::ITunesPurchase), "{atom:?}");
+        assert_eq!(
+            read.tags.store,
+            Some(StoreMarker::ITunesPurchase),
+            "{atom:?}"
+        );
     }
     let read = LoftyFileTagReader
         .read(&m4a_with(dir.path(), &[(*b"cnID", "1")]))

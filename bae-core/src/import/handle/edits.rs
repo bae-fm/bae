@@ -54,7 +54,11 @@ impl ImportServiceHandle {
         };
         let _commit = self
             .commit_lock_for_revision(
-"set the cover",candidate_key, &hash, candidate.file_edit_revision)
+                "set the cover",
+                candidate_key,
+                &hash,
+                candidate.file_edit_revision,
+            )
             .await?;
         self.preparations
             .set_prepared_cover(
@@ -123,7 +127,11 @@ impl ImportServiceHandle {
         let hash = candidate.files.content_hash();
         let _commit = self
             .commit_lock_for_revision(
-"edit a field",candidate_key, &hash, candidate.file_edit_revision)
+                "edit a field",
+                candidate_key,
+                &hash,
+                candidate.file_edit_revision,
+            )
             .await?;
         self.preparations
             .set_field_prepared(
@@ -163,7 +171,7 @@ impl ImportServiceHandle {
         let base = self.draft_edit_base(candidate_key).await?;
         let _commit = self
             .commit_lock_for_revision(
-"set album artists",
+                "set album artists",
                 candidate_key,
                 &base.candidate.content_hash,
                 base.candidate.file_edit_revision,
@@ -204,7 +212,7 @@ impl ImportServiceHandle {
         let base = self.draft_edit_base(candidate_key).await?;
         let _commit = self
             .commit_lock_for_revision(
-"edit a track",
+                "edit a track",
                 candidate_key,
                 &base.candidate.content_hash,
                 base.candidate.file_edit_revision,
@@ -247,7 +255,7 @@ impl ImportServiceHandle {
         let base = self.draft_edit_base(candidate_key).await?;
         let _commit = self
             .commit_lock_for_revision(
-"set track artists",
+                "set track artists",
                 candidate_key,
                 &base.candidate.content_hash,
                 base.candidate.file_edit_revision,
@@ -270,8 +278,7 @@ impl ImportServiceHandle {
     async fn editable_candidate(
         &self,
         candidate_key: &str,
-    ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError>
-    {
+    ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError> {
         self.get_release_candidate(candidate_key)
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {

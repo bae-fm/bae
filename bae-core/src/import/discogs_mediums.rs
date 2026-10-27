@@ -80,7 +80,10 @@ struct Run {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum RunKind {
     Disc(u32),
-    Prefixed { medium: Medium, disc: Option<u32> },
+    Prefixed {
+        medium: Medium,
+        disc: Option<u32>,
+    },
     /// A record or cassette and the sides its rows have named so far, in
     /// order: one or two.
     Sided(Vec<u8>),
@@ -220,7 +223,10 @@ fn is_track_number(text: &str) -> bool {
     let digits_end = text
         .find(|c: char| !c.is_ascii_digit())
         .unwrap_or(text.len());
-    digits_end > 0 && text[digits_end..].bytes().all(|byte| byte.is_ascii_alphabetic())
+    digits_end > 0
+        && text[digits_end..]
+            .bytes()
+            .all(|byte| byte.is_ascii_alphabetic())
 }
 
 /// Each run's carrier, from the release's format entries.
@@ -237,9 +243,7 @@ fn carriers(release_id: &str, runs: &[Run], media: &StatedMedia) -> Vec<Option<M
         StatedMedia::Undescribed => Vec::new(),
         StatedMedia::Formats(formats) => formats
             .iter()
-            .flat_map(|format| {
-                std::iter::repeat_n(format.medium, format.quantity as usize)
-            })
+            .flat_map(|format| std::iter::repeat_n(format.medium, format.quantity as usize))
             .collect(),
         StatedMedia::PerMedium(_) => {
             unreachable!("a Discogs release states its media as format entries")
@@ -270,12 +274,16 @@ fn carriers(release_id: &str, runs: &[Run], media: &StatedMedia) -> Vec<Option<M
     let unlettered_units: Vec<Option<Medium>> = if sided.is_empty() {
         units
     } else {
-        units.into_iter().filter(|unit| !is_sided_unit(unit)).collect()
+        units
+            .into_iter()
+            .filter(|unit| !is_sided_unit(unit))
+            .collect()
     };
     for (group, group_units) in [(sided, sided_units), (unlettered, unlettered_units)] {
-        for (index, carrier) in group
-            .iter()
-            .zip(group_carriers(release_id, group.len(), &group_units))
+        for (index, carrier) in
+            group
+                .iter()
+                .zip(group_carriers(release_id, group.len(), &group_units))
         {
             carriers[*index] = carrier;
         }

@@ -158,9 +158,7 @@ impl CandidateActionBasis {
         // A running import can be cancelled; one writing its release
         // completes, so nothing is offered for it.
         match live.import {
-            Some(ImportStanding::Queued | ImportStanding::Running) => {
-                return vec![A::CancelImport]
-            }
+            Some(ImportStanding::Queued | ImportStanding::Running) => return vec![A::CancelImport],
             Some(ImportStanding::Writing) => return Vec::new(),
             None => {}
         }
@@ -285,9 +283,11 @@ mod tests {
                 pending,
                 "{placement:?}"
             );
-            assert!(!CandidateActionBasis::of(true, &placement, false, None, false, None)
-                .actions(&rest)
-                .contains(&CandidateAction::Import));
+            assert!(
+                !CandidateActionBasis::of(true, &placement, false, None, false, None)
+                    .actions(&rest)
+                    .contains(&CandidateAction::Import)
+            );
             assert_eq!(
                 CandidateActionBasis::of(false, &placement, true, None, false, None)
                     .actions(&TriageRuntimeFacts::default()),
@@ -430,10 +430,12 @@ mod tests {
     #[test]
     fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
         let rest = TriageRuntimeFacts::default();
-        let grouped = CandidateActionBasis::of(true, &TriagePlacement::Pending, true, None, true, None);
+        let grouped =
+            CandidateActionBasis::of(true, &TriagePlacement::Pending, true, None, true, None);
         assert!(grouped.actions(&rest).contains(&CandidateAction::Separate));
         assert!(!grouped.actions(&rest).contains(&CandidateAction::Combine));
-        let blocked = CandidateActionBasis::of(false, &TriagePlacement::Failed, true, None, true, None);
+        let blocked =
+            CandidateActionBasis::of(false, &TriagePlacement::Failed, true, None, true, None);
         assert_eq!(
             blocked.actions(&rest),
             vec![CandidateAction::Separate, CandidateAction::RevealFolder]
@@ -446,7 +448,9 @@ mod tests {
             identification: None,
             import: Some(ImportStanding::Running),
         };
-        assert!(!grouped.actions(&importing).contains(&CandidateAction::Separate));
+        assert!(!grouped
+            .actions(&importing)
+            .contains(&CandidateAction::Separate));
     }
 
     /// A candidate is offered identifying only while no lookup is stored for

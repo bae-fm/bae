@@ -66,10 +66,9 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
             .map_err(|error| error.to_string())?
             .ok_or_else(|| match parent {
                 None => format!("{roots:?} is not watched"),
-                Some(parent) => format!(
-                    "{} already watches the folders inside it",
-                    parent.display()
-                ),
+                Some(parent) => {
+                    format!("{} already watches the folders inside it", parent.display())
+                }
             })
     }
 }

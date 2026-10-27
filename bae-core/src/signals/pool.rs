@@ -144,10 +144,7 @@ mod tests {
             pool.push_bracket((*b).to_string());
         }
         let classification = pool.classify();
-        (
-            classification.catalogs,
-            classification.free_text,
-        )
+        (classification.catalogs, classification.free_text)
     }
 
     #[test]

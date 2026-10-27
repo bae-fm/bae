@@ -2,22 +2,21 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
-use bae_types::text_match::catalog_key;
-use bae_types::barcode::{comparison_key, written_digits, Barcode, Unusable};
-use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
-use bae_catalogs::remote_image::{RemoteCover, RemoteImageError};
-use crate::import::parse_year;
 use crate::import::album_links::AlbumLinks;
+use crate::import::parse_year;
 use crate::import::types::MetadataRef;
-use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use crate::import::ImportError;
-use bae_catalogs::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
-use bae_types::pressing::{
-    DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseLabel, ReleaseStatus,
-    StatedMedia,
-};
 use crate::signals::{Failure, InternalFailure, LookupFailure};
+use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
+use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
+use bae_catalogs::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::remote_image::{RemoteCover, RemoteImageError};
+use bae_types::barcode::{comparison_key, written_digits, Barcode, Unusable};
+use bae_types::pressing::{
+    DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseLabel, ReleaseStatus, StatedMedia,
+};
+use bae_types::text_match::catalog_key;
 use tracing::warn;
 
 /// A metadata search result from either MusicBrainz or Discogs.
@@ -280,10 +279,8 @@ pub fn discogs_search_result_to_metadata(
     };
     let year = r.year.as_ref().and_then(|y| y.parse::<i32>().ok());
     let cover_art = r.remote_cover();
-    let labels = ReleaseLabel::list([(
-        r.label.and_then(|names| names.into_iter().next()),
-        r.catno,
-    )]);
+    let labels =
+        ReleaseLabel::list([(r.label.and_then(|names| names.into_iter().next()), r.catno)]);
     let release_id = r.id.to_string();
     let notes = discogs_notes(&r.formats);
     let formats = bae_catalogs::discogs::formats::read(&release_id, &r.formats);
@@ -325,7 +322,9 @@ pub fn discogs_search_result_to_metadata(
 /// in order: its format entries' text, each line of its notes, the names of
 /// the companies it credits, then what each identifier other than a barcode
 /// reads — a barcode is its own field.
-pub(crate) fn discogs_release_notes(release: &bae_catalogs::discogs::DiscogsRelease) -> Vec<String> {
+pub(crate) fn discogs_release_notes(
+    release: &bae_catalogs::discogs::DiscogsRelease,
+) -> Vec<String> {
     discogs_notes(&release.formats)
         .into_iter()
         .chain(release.notes.iter().flat_map(|notes| lines(notes)))
@@ -344,7 +343,12 @@ pub(crate) fn musicbrainz_release_notes(release: &MbReleaseResponse) -> Vec<Stri
         .disambiguation
         .iter()
         .cloned()
-        .chain(release.annotation.iter().flat_map(|annotation| lines(annotation)))
+        .chain(
+            release
+                .annotation
+                .iter()
+                .flat_map(|annotation| lines(annotation)),
+        )
         .collect()
 }
 
@@ -436,7 +440,9 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
 /// The releases on other catalogs a MusicBrainz release's relations name as
 /// the same release, in relation order. A link to an album page names an
 /// album, not this pressing, and is not one of them.
-pub(crate) fn release_links_of(relations: &[bae_catalogs::musicbrainz::MbRelation]) -> Vec<MetadataRef> {
+pub(crate) fn release_links_of(
+    relations: &[bae_catalogs::musicbrainz::MbRelation],
+) -> Vec<MetadataRef> {
     bae_catalogs::musicbrainz::relation_urls(relations)
         .filter_map(parse_catalog_url)
         .filter_map(|page| match page {
@@ -465,13 +471,14 @@ fn mb_discid_releases_to_metadata(
 
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
     let labels = musicbrainz::release_labels(&r.label_info);
-    let (facts, media) = bae_catalogs::musicbrainz::pressing::read(bae_catalogs::musicbrainz::pressing::Stated {
-        release_id: &r.id,
-        country: r.country.as_deref(),
-        status: r.status.as_deref(),
-        packaging: r.packaging.as_deref(),
-        media: r.media.iter().map(|medium| medium.format.as_deref()),
-    });
+    let (facts, media) =
+        bae_catalogs::musicbrainz::pressing::read(bae_catalogs::musicbrainz::pressing::Stated {
+            release_id: &r.id,
+            country: r.country.as_deref(),
+            status: r.status.as_deref(),
+            packaging: r.packaging.as_deref(),
+            media: r.media.iter().map(|medium| medium.format.as_deref()),
+        });
     MetadataResult {
         source: Catalog::MusicBrainz,
         release_id: r.id,
@@ -677,9 +684,7 @@ impl SearchQuery {
 impl ProviderQuery for SearchQuery {
     fn keep_answers(&self, results: &mut Vec<MetadataResult>) {
         match self {
-            SearchQuery::CatalogNumber { catalog_number } => {
-                keep_numbered(catalog_number, results)
-            }
+            SearchQuery::CatalogNumber { catalog_number } => keep_numbered(catalog_number, results),
             SearchQuery::General { .. } | SearchQuery::Barcode { .. } => {}
         }
     }

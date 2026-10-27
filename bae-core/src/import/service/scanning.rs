@@ -13,7 +13,10 @@ impl ImportService {
         message: String,
         services: &crate::import::ImportServices,
     ) -> Result<bool, crate::import::ImportError> {
-        let _commit = services.folder_state_commit.lock("store a failed scan").await;
+        let _commit = services
+            .folder_state_commit
+            .lock("store a failed scan")
+            .await;
         if services
             .library_manager
             .finish_folder_scan(&root.to_string_lossy(), generation, Some(&message))
@@ -38,15 +41,16 @@ impl ImportService {
         let on_network_volume = volume_kind(root).await == VolumeKind::Network;
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+        event_tx.send(crate::import::handle::ImportEvent::Scan(
+            ScanEvent::FolderScanStatusChanged {
                 status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Failed { error: message },
                     on_network_volume,
                 },
-            }),
-        );
+            },
+        ));
     }
 
     pub(super) async fn persist_scan_item(
@@ -253,8 +257,7 @@ impl ImportService {
             ScanItem::Sidecar(_) => {}
             ScanItem::Decided { .. } => {
                 return Err(crate::import::ImportError::Internal {
-                    detail: "a folder reading is stored as a decision, not as a scan entry"
-                        .into(),
+                    detail: "a folder reading is stored as a decision, not as a scan entry".into(),
                 })
             }
         }
@@ -316,8 +319,7 @@ impl ImportService {
             }
         };
         let outcome =
-            Self::walk_and_reconcile(root, &root_key, generation, volume, scan, cancellation)
-                .await;
+            Self::walk_and_reconcile(root, &root_key, generation, volume, scan, cancellation).await;
         let Err(error) = outcome else {
             return Ok(());
         };
@@ -363,15 +365,16 @@ impl ImportService {
             .await?;
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+        event_tx.send(crate::import::handle::ImportEvent::Scan(
+            ScanEvent::FolderScanStatusChanged {
                 status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Scanning { found_count: 0 },
                     on_network_volume,
                 },
-            }),
-        );
+            },
+        ));
         Ok((generation, volume))
     }
 
@@ -591,25 +594,26 @@ impl ImportService {
             pruned
         );
         for candidate_key in pruned {
-            event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                    candidate_key,
-                }),
-            );
+            event_tx.send(crate::import::handle::ImportEvent::Scan(
+                ScanEvent::CandidateRemoved { candidate_key },
+            ));
         }
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+        event_tx.send(crate::import::handle::ImportEvent::Scan(
+            ScanEvent::FolderScanStatusChanged {
                 status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
                     status: crate::import::FolderScanStatus::Complete,
                     on_network_volume,
                 },
-            }),
-        );
+            },
+        ));
 
-        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::Finished),
-        );
+        event_tx.send(crate::import::handle::ImportEvent::Scan(
+            ScanEvent::Finished,
+        ));
         drop(commit);
         Ok(())
     }

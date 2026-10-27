@@ -21,10 +21,10 @@
 use super::folder_scanner::FolderReleaseDecisionKey;
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::ReleaseLink;
-use bae_catalogs::catalog::Catalog;
-use super::MetadataAuthor;
 use super::ImportedRelease;
+use super::MetadataAuthor;
 use crate::identify::{FolderCheck, LeadMatch, VerdictSummary};
+use bae_catalogs::catalog::Catalog;
 
 mod actions;
 mod model;
@@ -243,10 +243,12 @@ mod tests {
         vec![
             crate::import::ReleaseRecord::new(
                 &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-                None),
+                None,
+            ),
             crate::import::ReleaseRecord::new(
                 &crate::import::MetadataRef::new(Catalog::Discogs, "discogs-1".to_string()),
-                None),
+                None,
+            ),
         ]
     }
 

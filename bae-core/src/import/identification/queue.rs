@@ -96,7 +96,12 @@ impl Job {
     fn marks(&self) -> Vec<(String, CandidateFiles)> {
         self.members
             .iter()
-            .map(|member| (member.candidate.key(), CandidateFiles::of(&member.candidate)))
+            .map(|member| {
+                (
+                    member.candidate.key(),
+                    CandidateFiles::of(&member.candidate),
+                )
+            })
             .collect()
     }
 
@@ -330,7 +335,10 @@ impl Queue {
             JobState::Settling { abandon, .. } => abandon.cancel(),
         }
         for key in job.keys() {
-            first_failure(&mut ended, context.import.withdraw_identification(&key).await);
+            first_failure(
+                &mut ended,
+                context.import.withdraw_identification(&key).await,
+            );
         }
         info!(
             "identification: cancelled {} candidate(s) of one job",
@@ -562,7 +570,9 @@ pub(super) async fn run(
 }
 
 /// The events on the bus not yet taken off it.
-fn pending(bus: &mut mpsc::UnboundedReceiver<ImportEvent>) -> impl Iterator<Item = ImportEvent> + '_ {
+fn pending(
+    bus: &mut mpsc::UnboundedReceiver<ImportEvent>,
+) -> impl Iterator<Item = ImportEvent> + '_ {
     std::iter::from_fn(|| bus.try_recv().ok())
 }
 
@@ -575,11 +585,7 @@ pub(super) async fn admit(
     admission: Admission,
 ) {
     let content_hashes = queue.place(context, candidates, admission).await;
-    if let Err(error) = context
-        .import
-        .move_admitted_panes(content_hashes)
-        .await
-    {
+    if let Err(error) = context.import.move_admitted_panes(content_hashes).await {
         warn!("identification: could not open the admitted candidates' panes on Find online ({error})");
     }
 }

@@ -228,7 +228,8 @@ mod platform {
             .collect();
         // SAFETY: `drive_root` is a NUL-terminated wide string that outlives
         // the call, which only reads it.
-        let kind = unsafe { windows_sys::Win32::Storage::FileSystem::GetDriveTypeW(drive_root.as_ptr()) };
+        let kind =
+            unsafe { windows_sys::Win32::Storage::FileSystem::GetDriveTypeW(drive_root.as_ptr()) };
         if kind == windows_sys::Win32::System::WindowsProgramming::DRIVE_REMOTE {
             VolumeKind::Network
         } else {

@@ -2,10 +2,10 @@ use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
 use crate::import::types::{ImportCommand, ImportProgress};
-use bae_catalogs::catalog::Catalog;
 use crate::import::watched_folder::WatchedFolder;
 use crate::library::manager::DiscogsCheck;
 use crate::library::LibraryManager;
+use bae_catalogs::catalog::Catalog;
 use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -25,8 +25,8 @@ mod verdict_write;
 mod watch;
 
 pub use import::ImportStart;
-pub(crate) use verdict_write::VerdictWrite;
 pub(crate) use scan::external_metadata_with_cover;
+pub(crate) use verdict_write::VerdictWrite;
 
 use super::candidate_runtime::CandidateRuntime;
 use super::candidates::{
@@ -176,7 +176,12 @@ impl ImportEventBus {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
         let (reader, events) = mpsc::unbounded_channel();
-        self.delivery.every_event.lock().unwrap().readers.push(reader);
+        self.delivery
+            .every_event
+            .lock()
+            .unwrap()
+            .readers
+            .push(reader);
         events
     }
 
@@ -200,10 +205,7 @@ impl ImportEventBus {
     /// Stop the first thread that sends an event `matches` takes, before the
     /// event is recorded or delivered, until [`Self::release_send`].
     #[cfg(test)]
-    pub(crate) fn hold_send_where(
-        &self,
-        matches: impl Fn(&ImportEvent) -> bool + Send + 'static,
-    ) {
+    pub(crate) fn hold_send_where(&self, matches: impl Fn(&ImportEvent) -> bool + Send + 'static) {
         *self.send_hold.state.lock().unwrap() = HoldState::Armed(Box::new(matches));
     }
 
@@ -595,7 +597,10 @@ impl ImportServiceHandle {
     /// Where one key stands, as its row reads it from the standings table, for
     /// a test.
     #[cfg(test)]
-    pub(crate) async fn standing_facts_for_test(&self, key: &str) -> crate::import::TriageRuntimeFacts {
+    pub(crate) async fn standing_facts_for_test(
+        &self,
+        key: &str,
+    ) -> crate::import::TriageRuntimeFacts {
         self.runtime
             .standing_facts(key)
             .await
@@ -664,9 +669,7 @@ impl ImportServiceHandle {
     }
 
     /// Each candidate's signals and the two counts, as they change.
-    pub(crate) fn watch_runtime_values(
-        &self,
-    ) -> super::candidate_runtime::RuntimeValuesWatch {
+    pub(crate) fn watch_runtime_values(&self) -> super::candidate_runtime::RuntimeValuesWatch {
         super::candidate_runtime::RuntimeValuesWatch::of(&self.runtime)
     }
 
@@ -740,10 +743,7 @@ impl ImportServiceHandle {
     ) -> crate::import::FolderScanProgress {
         let mut scans = self.library_manager.subscribe_folder_scan_progress();
         loop {
-            let progress = scans
-                .next()
-                .await
-                .expect("the folder scan query reads");
+            let progress = scans.next().await.expect("the folder scan query reads");
             if accept(&progress) {
                 return progress;
             }

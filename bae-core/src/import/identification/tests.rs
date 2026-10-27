@@ -113,7 +113,9 @@ impl FakeProvider {
     fn reroute(&self, needle: &str, status: u16, body: impl Into<Vec<u8>>) {
         let mut state = self.state.lock().unwrap();
         state.routes.retain(|(existing, _, _)| existing != needle);
-        state.routes.insert(0, (needle.to_string(), status, body.into()));
+        state
+            .routes
+            .insert(0, (needle.to_string(), status, body.into()));
     }
 
     /// Replace every route.
@@ -557,8 +559,14 @@ impl Fixture {
     }
 
     /// Where the queue has `key`, as the runtime publishes it.
-    async fn identification_status(&self, key: &str) -> Option<crate::import::IdentificationStatus> {
-        self.import.standing_facts_for_test(key).await.identification
+    async fn identification_status(
+        &self,
+        key: &str,
+    ) -> Option<crate::import::IdentificationStatus> {
+        self.import
+            .standing_facts_for_test(key)
+            .await
+            .identification
     }
 
     /// The first of `dirs` the queue holds waiting.
@@ -677,12 +685,7 @@ impl Fixture {
     }
 
     /// Store the verdict a settled lead produces, without running the pipeline.
-    async fn store_settled_verdict(
-        &self,
-        dir: &Path,
-        release_id: &str,
-        group_id: &str,
-    ) {
+    async fn store_settled_verdict(&self, dir: &Path, release_id: &str, group_id: &str) {
         self.store_settled_verdict_listing(
             dir,
             release_id,
@@ -744,15 +747,17 @@ impl Fixture {
             .expect("the scanned candidate is answerable");
         let mut draft = candidate.blank_draft();
         draft.album_title = "Album".to_string();
-        draft.album_artist_assignments = vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Credit {
-            credit: crate::import::ArtistCredit {
-                credited_as: None,
-                name: "Artist".to_string(),
-                sort_name: None,
-                musicbrainz_artist_id: None,
-                discogs_artist_id: None,
+        draft.album_artist_assignments = vec![crate::import::Credited::plain(
+            crate::import::ArtistAssignment::Credit {
+                credit: crate::import::ArtistCredit {
+                    credited_as: None,
+                    name: "Artist".to_string(),
+                    sort_name: None,
+                    musicbrainz_artist_id: None,
+                    discogs_artist_id: None,
+                },
             },
-        })];
+        )];
         for (index, track) in draft.tracks.iter_mut().enumerate() {
             track.edit.title = format!("Track {}", index + 1);
         }

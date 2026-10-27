@@ -290,7 +290,10 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let date = FolderDate::read(directory.path()).unwrap();
         #[cfg(target_os = "macos")]
-        assert!(matches!(date, Some(FolderDate::AddedToDirectory(_))), "{date:?}");
+        assert!(
+            matches!(date, Some(FolderDate::AddedToDirectory(_))),
+            "{date:?}"
+        );
         #[cfg(not(target_os = "macos"))]
         let _ = date;
         assert!(FolderDate::read(&directory.path().join("missing")).is_err());
@@ -397,7 +400,10 @@ mod tests {
             .unwrap();
         std::fs::rename(&elsewhere, root.join("Arrives Later")).unwrap();
 
-        let folders = [PathBuf::from("Already There"), PathBuf::from("Arrives Later")];
+        let folders = [
+            PathBuf::from("Already There"),
+            PathBuf::from("Arrives Later"),
+        ];
         let times = times_of_folders(&root, &folders, &ScanCancellation::new()).unwrap();
         assert!(times[1].added > times[0].added, "{times:?}");
         assert!(times[0].modified > times[1].modified, "{times:?}");

@@ -5,9 +5,11 @@ use crate::import::candidates::{
     Admission, CandidateFiles, IdentificationRuntime, SaveFailure, SavingAnswer,
 };
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
-use crate::import::types::{CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability};
-use bae_catalogs::catalog::Catalog;
+use crate::import::types::{
+    CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability,
+};
 use crate::import::{ImportStanding, ImportStep};
+use bae_catalogs::catalog::Catalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::path::PathBuf;
 
@@ -169,8 +171,8 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
                     dirs.push(path);
                     continue;
                 }
-                let is_database = std::fs::read(&path)
-                    .is_ok_and(|bytes| bytes.starts_with(b"SQLite format 3\0"));
+                let is_database =
+                    std::fs::read(&path).is_ok_and(|bytes| bytes.starts_with(b"SQLite format 3\0"));
                 if !is_database {
                     continue;
                 }
@@ -190,7 +192,10 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
                 found = true;
             }
         }
-        assert!(found, "the library under the directory holds the standings table");
+        assert!(
+            found,
+            "the library under the directory holds the standings table"
+        );
     })
     .await
     .unwrap();
@@ -252,7 +257,11 @@ async fn import_progress_is_held_per_key_beside_its_claim() {
     runtime.record_event(&progress(key, 42));
 
     assert_eq!(
-        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
+        runtime
+            .snapshot(key)
+            .await
+            .unwrap()
+            .and_then(|runtime| runtime.import),
         Some(ImportInFlight {
             progress_percent: Some(42),
             step: ImportStep::Running(ImportPhase::MeasuringLoudness),
@@ -440,7 +449,10 @@ async fn a_rescan_reporting_new_files_ends_the_key_s_work_and_search() {
     let key = "/watch/a/rel1";
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
     let work = runtime.start_work(CandidateWork::Identify, key.to_string(), |token, _| token);
-    runtime.start_search(key, CandidateSearch::started(search_query(), &every_source_on()));
+    runtime.start_search(
+        key,
+        CandidateSearch::started(search_query(), &every_source_on()),
+    );
 
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
     assert!(!work.is_cancelled(), "an unchanged re-scan keeps the work");
@@ -471,7 +483,10 @@ async fn extracted_signals_are_retained_without_a_runtime_entry() {
         priority: CallPriority::Background,
     });
 
-    assert!(runtime.signals(key).is_some(), "the form can read them back");
+    assert!(
+        runtime.signals(key).is_some(),
+        "the form can read them back"
+    );
     assert!(runtime.snapshot(key).await.unwrap().is_none());
 
     // They describe this key's current files, so the scan dropping the key
@@ -496,7 +511,11 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
 
     report(&runtime, key, &files, run(1), triangulating()).await;
     assert!(matches!(
-        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
+        runtime
+            .snapshot(key)
+            .await
+            .unwrap()
+            .and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::Running(
             crate::identify::IdentifyState::Triangulating { .. }
         ))
@@ -509,7 +528,11 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
         Some(crate::import::IdentificationStatus::Finalizing)
     );
     assert!(matches!(
-        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
+        runtime
+            .snapshot(key)
+            .await
+            .unwrap()
+            .and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::Saving(SavingAnswer {
             state: crate::identify::IdentifyState::ManualOnly { .. },
             import_asked: false,
@@ -558,14 +581,20 @@ async fn a_write_ends_the_answer_it_ran_for_and_no_other() {
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
 
-    runtime.end_identification_answer(key, run(2)).await.unwrap();
+    runtime
+        .end_identification_answer(key, run(2))
+        .await
+        .unwrap();
     assert_eq!(
         identification(&runtime, key).await,
         Some(crate::import::IdentificationStatus::Finalizing),
         "another run's write says nothing about this answer"
     );
 
-    runtime.end_identification_answer(key, run(1)).await.unwrap();
+    runtime
+        .end_identification_answer(key, run(1))
+        .await
+        .unwrap();
     assert!(runtime.snapshot(key).await.unwrap().is_none());
 }
 
@@ -600,7 +629,11 @@ async fn a_failed_write_stands_until_the_next_run_starts() {
         })
     );
     assert_eq!(
-        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
+        runtime
+            .snapshot(key)
+            .await
+            .unwrap()
+            .and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::SaveFailed(not_written(
             "database write failed"
         )))
@@ -631,7 +664,10 @@ async fn a_finished_answer_keeps_a_key_whose_import_is_running() {
     report(&runtime, key, &files, run(1), manual_only()).await;
     claim(&runtime, key).await;
 
-    runtime.end_identification_answer(key, run(1)).await.unwrap();
+    runtime
+        .end_identification_answer(key, run(1))
+        .await
+        .unwrap();
 
     let recorded = runtime
         .snapshot(key)
@@ -784,7 +820,10 @@ async fn a_cleared_search_cannot_land() {
     );
 
     runtime.clear_search(key);
-    assert!(runtime.snapshot(key).await.unwrap().is_none(), "nothing else was running");
+    assert!(
+        runtime.snapshot(key).await.unwrap().is_none(),
+        "nothing else was running"
+    );
     assert!(!runtime.search_run_is_current(key, run));
     assert!(!runtime.land_search(
         key,

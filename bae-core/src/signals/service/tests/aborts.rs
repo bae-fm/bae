@@ -84,7 +84,14 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         signals.text
     );
     assert!(
-        matches!(artwork, ArtworkScan::Failed { read: 0, total: 0, .. }),
+        matches!(
+            artwork,
+            ArtworkScan::Failed {
+                read: 0,
+                total: 0,
+                ..
+            }
+        ),
         "the artwork pass failed before reading anything, got {artwork:?}"
     );
     assert_no_more_snapshots(&mut rx, "the aborted extraction's one snapshot");

@@ -83,9 +83,9 @@ impl IdentificationHandle {
 
     fn send_cancel(&self, command: Command) -> Result<(), crate::library::LibraryError> {
         self.commands.send(command).map_err(|error| {
-            crate::library::LibraryError::Internal(
-                format!("the identification queue has stopped: {error}"),
-            )
+            crate::library::LibraryError::Internal(format!(
+                "the identification queue has stopped: {error}"
+            ))
         })
     }
 
@@ -93,9 +93,9 @@ impl IdentificationHandle {
         cancelled: tokio::sync::oneshot::Receiver<Result<(), crate::library::LibraryError>>,
     ) -> Result<(), crate::library::LibraryError> {
         cancelled.await.map_err(|error| {
-            crate::library::LibraryError::Internal(
-                format!("the identification queue stopped before the cancel ended: {error}"),
-            )
+            crate::library::LibraryError::Internal(format!(
+                "the identification queue stopped before the cancel ended: {error}"
+            ))
         })?
     }
 

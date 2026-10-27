@@ -13,8 +13,8 @@ use crate::import::release_values::ReleaseValues;
 use crate::import::search::SourceTracks;
 use crate::import::source_release::{not_fetched, SourceRelease};
 use crate::import::ImportError;
-use bae_catalogs::catalog::Catalog;
 use crate::signals::AudioOrigin;
+use bae_catalogs::catalog::Catalog;
 use std::collections::BTreeSet;
 
 /// What each of the audio's tracks measures, in play order. Never empty: a
@@ -212,10 +212,12 @@ impl SourceRelease {
                     Catalog::MusicBrainz if medium.entries.is_empty() => BTreeSet::new(),
                     Catalog::MusicBrainz => BTreeSet::from([medium.entries.len()]),
                     // A layout that gives no tracks covers nothing.
-                    Catalog::Discogs => crate::import::discogs_mapper::layout_counts(&medium.entries)
-                        .into_iter()
-                        .filter(|&count| count > 0)
-                        .collect(),
+                    Catalog::Discogs => {
+                        crate::import::discogs_mapper::layout_counts(&medium.entries)
+                            .into_iter()
+                            .filter(|&count| count > 0)
+                            .collect()
+                    }
                     other => not_fetched(other),
                 },
                 carrier: medium.medium,
@@ -303,7 +305,9 @@ impl SourceRelease {
 /// A catalog reader's failure: always its release's own data.
 fn unreadable(error: ImportError) -> ReadingRefusal {
     match error {
-        ImportError::SourceData { catalog, detail } => ReadingRefusal::Unreadable { catalog, detail },
+        ImportError::SourceData { catalog, detail } => {
+            ReadingRefusal::Unreadable { catalog, detail }
+        }
         other => unreachable!("a catalog reader fails only on its release's own data: {other}"),
     }
 }

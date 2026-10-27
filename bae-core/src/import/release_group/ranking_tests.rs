@@ -19,10 +19,13 @@ fn agreed(count: u32) -> Agreements {
 /// they were pressed.
 #[test]
 fn rows_the_text_says_most_about_lead() {
-    let groups = group_results(vec![
-        (mb("rel-early", Some("group-x"), Some(1976)), agreed(1)),
-        (mb("rel-late", Some("group-x"), Some(2003)), agreed(4)),
-    ], None);
+    let groups = group_results(
+        vec![
+            (mb("rel-early", Some("group-x"), Some(1976)), agreed(1)),
+            (mb("rel-late", Some("group-x"), Some(2003)), agreed(4)),
+        ],
+        None,
+    );
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["rel-late"], vec!["rel-early"]]
@@ -32,10 +35,13 @@ fn rows_the_text_says_most_about_lead() {
 /// Rows the text says as much about keep the pressing-year order.
 #[test]
 fn rows_the_text_says_as_much_about_keep_the_year_order() {
-    let groups = group_results(vec![
-        (mb("rel-late", Some("group-x"), Some(2003)), agreed(2)),
-        (mb("rel-early", Some("group-x"), Some(1976)), agreed(2)),
-    ], None);
+    let groups = group_results(
+        vec![
+            (mb("rel-late", Some("group-x"), Some(2003)), agreed(2)),
+            (mb("rel-early", Some("group-x"), Some(1976)), agreed(2)),
+        ],
+        None,
+    );
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["rel-early"], vec!["rel-late"]]
@@ -51,11 +57,14 @@ fn a_paired_row_ranks_by_its_records_together() {
     mb_release.barcodes = vec!["0075678169328".to_string()];
     let mut dg_release = discogs("dg-1", Some("master-7"), Some(1976));
     dg_release.barcodes = vec!["0075678169328".to_string()];
-    let groups = group_results(vec![
-        (mb("mb-other", Some("group-x"), Some(1976)), agreed(2)),
-        (mb_release, Agreements::NONE),
-        (dg_release, agreed(4)),
-    ], None);
+    let groups = group_results(
+        vec![
+            (mb("mb-other", Some("group-x"), Some(1976)), agreed(2)),
+            (mb_release, Agreements::NONE),
+            (dg_release, agreed(4)),
+        ],
+        None,
+    );
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["dg-1", "mb-1"], vec!["mb-other"]],
@@ -81,11 +90,14 @@ fn a_row_outranks_by_what_its_records_add_up_to() {
         catalog: true,
         ..Agreements::NONE
     };
-    let groups = group_results(vec![
-        (mb_release, disc_id_only),
-        (dg_release, catalog_only),
-        (mb("mb-other", Some("group-x"), Some(1970)), disc_id_only),
-    ], None);
+    let groups = group_results(
+        vec![
+            (mb_release, disc_id_only),
+            (dg_release, catalog_only),
+            (mb("mb-other", Some("group-x"), Some(1970)), disc_id_only),
+        ],
+        None,
+    );
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["mb-1", "dg-1"], vec!["mb-other"]],
@@ -176,10 +188,13 @@ fn records_that_contradict_each_other_leave_their_common_match_ambiguous() {
 /// is the one at the top of the list.
 #[test]
 fn cards_are_ordered_by_their_best_row() {
-    let groups = group_results(vec![
-        (mb("rel-stranger", Some("group-stranger"), None), agreed(1)),
-        (mb("rel-named", Some("group-named"), None), agreed(4)),
-    ], None);
+    let groups = group_results(
+        vec![
+            (mb("rel-stranger", Some("group-stranger"), None), agreed(1)),
+            (mb("rel-named", Some("group-named"), None), agreed(4)),
+        ],
+        None,
+    );
     assert_eq!(
         groups
             .iter()

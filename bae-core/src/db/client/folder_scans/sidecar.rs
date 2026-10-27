@@ -58,38 +58,44 @@ pub(crate) fn load_sidecar(
         }
         "valid" => SidecarFiles::Valid(
             rows.into_iter()
-                .map(|(relative_path, absolute_path, size, modified_at_ns, role, damage)| {
-                    Ok(CandidateFile {
-                        file: ScannedFile::new(
-                            PathBuf::from(absolute_path),
-                            relative_path,
-                            to_u64(size, "a sidecar file's size")?,
-                            modified_at_ns,
-                        ),
-                        role: match (role.as_str(), damage) {
-                            ("artwork", None) => FileRole::Artwork,
-                            ("damaged_image", None) => FileRole::DamagedImage,
-                            ("document", None) => FileRole::Document,
-                            ("other", None) => FileRole::Other,
-                            (other, _) => return Err(unreadable("scan_sidecar_file.role", other)),
-                        },
-                    })
-                })
+                .map(
+                    |(relative_path, absolute_path, size, modified_at_ns, role, damage)| {
+                        Ok(CandidateFile {
+                            file: ScannedFile::new(
+                                PathBuf::from(absolute_path),
+                                relative_path,
+                                to_u64(size, "a sidecar file's size")?,
+                                modified_at_ns,
+                            ),
+                            role: match (role.as_str(), damage) {
+                                ("artwork", None) => FileRole::Artwork,
+                                ("damaged_image", None) => FileRole::DamagedImage,
+                                ("document", None) => FileRole::Document,
+                                ("other", None) => FileRole::Other,
+                                (other, _) => {
+                                    return Err(unreadable("scan_sidecar_file.role", other))
+                                }
+                            },
+                        })
+                    },
+                )
                 .collect::<Result<_, DbError>>()?,
         ),
         "invalid" => SidecarFiles::Invalid(
             rows.into_iter()
-                .map(|(relative_path, absolute_path, size, modified_at_ns, role, damage)| {
-                    Ok(SkippedFile {
-                        relative_path,
-                        file: FileVersion {
-                            path: PathBuf::from(absolute_path),
-                            size: to_u64(size, "a sidecar file's size")?,
-                            modified_at_ns,
-                        },
-                        role: proposed_role_of(&role, damage.as_deref())?,
-                    })
-                })
+                .map(
+                    |(relative_path, absolute_path, size, modified_at_ns, role, damage)| {
+                        Ok(SkippedFile {
+                            relative_path,
+                            file: FileVersion {
+                                path: PathBuf::from(absolute_path),
+                                size: to_u64(size, "a sidecar file's size")?,
+                                modified_at_ns,
+                            },
+                            role: proposed_role_of(&role, damage.as_deref())?,
+                        })
+                    },
+                )
                 .collect::<Result<_, DbError>>()?,
         ),
         other => return Err(unreadable("scan_sidecar.state", other)),
@@ -212,7 +218,10 @@ pub(super) fn write_sidecar(
         );
     }
     for folder in &touched {
-        sql.execute("DELETE FROM scan_sidecar WHERE folder = ?", [folder.to_string_lossy()])?;
+        sql.execute(
+            "DELETE FROM scan_sidecar WHERE folder = ?",
+            [folder.to_string_lossy()],
+        )?;
     }
     let state = match &sidecar.files {
         SidecarFiles::Valid(_) => "valid",

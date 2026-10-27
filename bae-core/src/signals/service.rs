@@ -20,9 +20,8 @@ use crate::identify::IdentifyRunId;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
 use crate::signals::{
-    AudioFacts,
-    ArtworkScan, AudioOrigin, BarcodeSignal, DiscIdSignal, InternalFailure, Signals, SourcedValue,
-    TextSignal,
+    ArtworkScan, AudioFacts, AudioOrigin, BarcodeSignal, DiscIdSignal, InternalFailure, Signals,
+    SourcedValue, TextSignal,
 };
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_util::session_cache::SessionCache;
@@ -162,9 +161,10 @@ impl ExtractionServiceHandle {
         let inner = self.inner.clone();
         let runtime_handle = self.inner.runtime_handle.clone();
         let (snapshots, watch) = watch::channel(None);
-        self.inner
-            .candidates
-            .start_work(CandidateWork::Extraction, key.clone(), move |token, generation| {
+        self.inner.candidates.start_work(
+            CandidateWork::Extraction,
+            key.clone(),
+            move |token, generation| {
                 let extraction = RunningExtraction {
                     run,
                     key,
@@ -175,13 +175,16 @@ impl ExtractionServiceHandle {
                 runtime_handle.spawn(async move {
                     run_extraction(inner, extraction, source, token).await;
                 });
-            });
+            },
+        );
         watch
     }
 
     /// Cancel a candidate's in-flight extraction.
     pub fn cancel(&self, key: &str) {
-        self.inner.candidates.cancel_work(CandidateWork::Extraction, key);
+        self.inner
+            .candidates
+            .cancel_work(CandidateWork::Extraction, key);
     }
 
     /// What ends once `key`'s extraction in flight is cancelled.
@@ -765,11 +768,7 @@ fn emit_aborted_signals(
 }
 
 /// What has been read so far while the artwork pass is still going.
-fn scanning_signals(
-    gathered: &Gathered,
-    catalogs: Vec<String>,
-    free_text: Vec<String>,
-) -> Signals {
+fn scanning_signals(gathered: &Gathered, catalogs: Vec<String>, free_text: Vec<String>) -> Signals {
     let text_pool = gathered.pool.text_lines();
     Signals {
         origin: gathered.origin.clone(),
@@ -796,9 +795,11 @@ fn emit_signals(
     snapshot: SignalsSnapshot,
 ) {
     let key = &extraction.key;
-    let sent = inner
-        .candidates
-        .while_work_current(CandidateWork::Extraction, key, extraction.generation, || {
+    let sent = inner.candidates.while_work_current(
+        CandidateWork::Extraction,
+        key,
+        extraction.generation,
+        || {
             let signals = snapshot.signals.clone();
             let artwork = snapshot.artwork.clone();
             extraction.snapshots.send_replace(Some(snapshot));
@@ -809,7 +810,8 @@ fn emit_signals(
                 artwork,
                 priority: extraction.priority,
             });
-        });
+        },
+    );
     if sent.is_none() {
         debug!("signals: {key} extraction was replaced; its snapshot is not sent");
     }

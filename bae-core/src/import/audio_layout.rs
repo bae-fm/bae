@@ -197,10 +197,8 @@ pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
     // A release read from several folders gives each its own run of discs,
     // its loose audio first; one read from one folder gives loose audio no
     // disc at all.
-    let layout = crate::import::folder_scanner::DiscLayout::of(
-        &files.files,
-        &files.parts,
-        |entry| {
+    let layout =
+        crate::import::folder_scanner::DiscLayout::of(&files.files, &files.parts, |entry| {
             matches!(
                 &entry.role,
                 crate::import::folder_scanner::FileRole::TrackSheet {
@@ -209,8 +207,7 @@ pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
                     ..
                 } if binding.is_resolved()
             )
-        },
-    );
+        });
     let mut numbers = std::collections::HashMap::<Option<u32>, u32>::new();
     audio_units(files)
         .into_iter()

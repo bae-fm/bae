@@ -202,7 +202,9 @@ impl WatchBatches {
                 let under: Vec<Gathering> = self
                     .pending
                     .keys()
-                    .filter(|other| matches!(other, Gathering::Folder { root: of, .. } if of == root))
+                    .filter(
+                        |other| matches!(other, Gathering::Folder { root: of, .. } if of == root),
+                    )
                     .cloned()
                     .collect();
                 for folder in under {
@@ -227,7 +229,10 @@ impl WatchBatches {
 
     /// When the next gathering goes quiet, if any is waiting.
     pub(super) fn next_quiet_at(&self) -> Option<Instant> {
-        self.pending.values().map(|pending| pending.last + QUIET).min()
+        self.pending
+            .values()
+            .map(|pending| pending.last + QUIET)
+            .min()
     }
 }
 
@@ -247,9 +252,7 @@ pub(super) fn run(
     loop {
         let received = match batches.next_quiet_at() {
             Some(at) => raw.recv_timeout(at.saturating_duration_since(Instant::now())),
-            None => raw
-                .recv()
-                .map_err(std::sync::mpsc::RecvTimeoutError::from),
+            None => raw.recv().map_err(std::sync::mpsc::RecvTimeoutError::from),
         };
         match received {
             Ok((root, Ok(event))) => batches.add(&root, event, Instant::now()),

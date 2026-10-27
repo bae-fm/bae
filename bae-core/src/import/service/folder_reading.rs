@@ -122,7 +122,9 @@ impl ImportService {
                         Self::announce_scan_failure(root, message, &scan.services.event_tx).await;
                     }
                 }
-                Ok(None) => Self::announce_scan_failure(root, message, &scan.services.event_tx).await,
+                Ok(None) => {
+                    Self::announce_scan_failure(root, message, &scan.services.event_tx).await
+                }
                 Err(status_error) => {
                     error!(
                         "{}'s generation could not be read to store a failed reading: \
@@ -264,7 +266,10 @@ impl ImportService {
         }
         let prepared_at = started.elapsed();
 
-        let _commit = services.folder_state_commit.lock("store a folder reading").await;
+        let _commit = services
+            .folder_state_commit
+            .lock("store a folder reading")
+            .await;
         let locked_at = started.elapsed();
         if cancellation.is_cancelled() {
             return Err(crate::import::ImportError::Internal {
@@ -388,17 +393,21 @@ fn read_top_level_folder(
         .map_err(|source| crate::import::folder_scanner::FolderScanError::io(root, source))?
         .is_dir()
     {
-        return Err(crate::import::folder_scanner::FolderScanError::NotADirectory {
-            path: root.to_path_buf(),
-        }
-        .into());
+        return Err(
+            crate::import::folder_scanner::FolderScanError::NotADirectory {
+                path: root.to_path_buf(),
+            }
+            .into(),
+        );
     }
     let absolute = root.join(folder);
     let present = match std::fs::metadata(&absolute) {
         Ok(metadata) => metadata.is_dir(),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
         Err(source) => {
-            return Err(crate::import::folder_scanner::FolderScanError::io(&absolute, source).into())
+            return Err(
+                crate::import::folder_scanner::FolderScanError::io(&absolute, source).into(),
+            )
         }
     };
     let mut seen = HashSet::new();

@@ -8,16 +8,16 @@
 //! import surfaces need out of it at once. The documents themselves are never
 //! stored: a set lives as long as the fetch that returned it.
 
-use bae_catalogs::discogs::client::DiscogsClient;
-use bae_catalogs::discogs::DiscogsRelease;
-use bae_catalogs::remote_image::RemoteCover;
 use crate::import::source_release::{
     not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
 };
 use crate::import::{ImportError, MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
+use bae_catalogs::discogs::client::DiscogsClient;
+use bae_catalogs::discogs::DiscogsRelease;
 use bae_catalogs::musicbrainz::MbReleaseResponse;
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::remote_image::RemoteCover;
 use tracing::warn;
 
 mod projection;
@@ -238,9 +238,9 @@ impl ReleasePayloads {
             .collect();
         for (catalog, key, json) in self.album_documents()? {
             match catalog {
-                Catalog::Discogs => {
-                    covers.extend(bae_catalogs::discogs::client::parse_discogs_master_covers(json)?)
-                }
+                Catalog::Discogs => covers.extend(
+                    bae_catalogs::discogs::client::parse_discogs_master_covers(json)?,
+                ),
                 Catalog::MusicBrainz => covers.push(RemoteCover::musicbrainz_release_group(key)),
                 other => not_fetched(other),
             }

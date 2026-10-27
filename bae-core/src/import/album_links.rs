@@ -206,7 +206,10 @@ pub(crate) fn apply(result: &mut MetadataResult, groups: &[GroupLinks]) {
 /// what an earlier reading kept. A group found to name nothing with nothing
 /// on the list to compare it against keeps what it had, and so does one whose
 /// reading is not known.
-pub(crate) fn to_keep(groups: &[GroupLinks], list: &[&MetadataResult]) -> Vec<(String, Vec<AlbumLink>)> {
+pub(crate) fn to_keep(
+    groups: &[GroupLinks],
+    list: &[&MetadataResult],
+) -> Vec<(String, Vec<AlbumLink>)> {
     let compared = list
         .iter()
         .any(|result| names_other_album(result.source) && result.source_group_id.is_some());

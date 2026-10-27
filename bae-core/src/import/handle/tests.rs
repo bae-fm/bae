@@ -26,7 +26,12 @@ async fn setup_test_manager_with(http: bae_util::http::Http) -> (LibraryManager,
     )
     .await
     .unwrap();
-    let config_handle = Arc::new(crate::config::ConfigHandle::new(crate::config::Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"))));
+    let config_handle = Arc::new(crate::config::ConfigHandle::new(
+        crate::config::Config::with_defaults(
+            database.store_id(),
+            temp_dir.path().join("preferences"),
+        ),
+    ));
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -152,7 +157,10 @@ async fn admit(handle: &ImportServiceHandle, key: &str) {
         .expect("the candidate is stored");
     handle
         .admit_identification(
-            vec![(key.to_string(), crate::import::CandidateFiles::of(&candidate))],
+            vec![(
+                key.to_string(),
+                crate::import::CandidateFiles::of(&candidate),
+            )],
             crate::import::Admission::Requested,
         )
         .await

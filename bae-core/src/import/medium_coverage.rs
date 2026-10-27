@@ -9,8 +9,8 @@
 //! (see `SourceRelease::read`). Among those, [`Fit`] orders what decides.
 
 use crate::import::audio_layout::LENGTH_DISAGREEMENT_MS;
-use bae_types::pressing::{CdAudio, Medium};
 use crate::signals::AudioOrigin;
+use bae_types::pressing::{CdAudio, Medium};
 use std::cmp::Reverse;
 use std::collections::BTreeSet;
 
@@ -200,7 +200,12 @@ impl Fit {
             measured.len(),
             "a fitting layout states one length per measured track"
         );
-        let covered = || coverage.positions.iter().map(|&position| &mediums[position]);
+        let covered = || {
+            coverage
+                .positions
+                .iter()
+                .map(|&position| &mediums[position])
+        };
         let mut fit = Self {
             discs_held: Reverse(covered().filter(|medium| medium.holds_folder_disc).count()),
             ruled_out: covered()
@@ -273,7 +278,10 @@ mod tests {
             ..medium(0)
         };
         let mediums = [suite, medium(10)];
-        assert_eq!(positions(candidate_sets(&mediums, 10)), vec![vec![0], vec![1]]);
+        assert_eq!(
+            positions(candidate_sets(&mediums, 10)),
+            vec![vec![0], vec![1]]
+        );
         assert_eq!(positions(candidate_sets(&mediums, 22)), vec![vec![0, 1]]);
     }
 
@@ -302,7 +310,12 @@ mod tests {
         assert_eq!(sets[10], vec![10, 11]);
     }
 
-    fn fit(shape: &[MediumShape], set: &[usize], origin: &AudioOrigin, stated: &[Option<u64>]) -> Fit {
+    fn fit(
+        shape: &[MediumShape],
+        set: &[usize],
+        origin: &AudioOrigin,
+        stated: &[Option<u64>],
+    ) -> Fit {
         let measured: Vec<u64> = stated.iter().map(|_| 200_000).collect();
         Fit::of(
             shape,
@@ -356,7 +369,8 @@ mod tests {
             not_cd_rate: Some(96_000),
         };
         assert!(
-            fit(&shape, &[0], &high_rate, &[None]) < fit(&shape, &[1], &high_rate, &[Some(200_000)])
+            fit(&shape, &[0], &high_rate, &[None])
+                < fit(&shape, &[1], &high_rate, &[Some(200_000)])
         );
     }
 

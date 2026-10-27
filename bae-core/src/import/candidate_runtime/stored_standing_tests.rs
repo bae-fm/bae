@@ -213,7 +213,10 @@ fn a_cancel_ends_a_run_or_an_answer_and_nothing_else() {
     for stored in [queued(), failed()] {
         assert_eq!(cancelled.applied(stored.as_ref()), stored);
     }
-    assert_eq!(IdentificationChange::Withdraw.applied(queued().as_ref()), None);
+    assert_eq!(
+        IdentificationChange::Withdraw.applied(queued().as_ref()),
+        None
+    );
     assert_eq!(
         IdentificationChange::Withdraw.applied(failed().as_ref()),
         failed()

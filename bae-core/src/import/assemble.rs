@@ -12,7 +12,10 @@ use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
-use crate::import::{ArtistAssignment, AudioFile, CandidateDraft, ImportError, ReleaseDraft, ReleaseRows, TrackArtistAssignments, TrackBinding, WorkGraphRows};
+use crate::import::{
+    ArtistAssignment, AudioFile, CandidateDraft, ImportError, ReleaseDraft, ReleaseRows,
+    TrackArtistAssignments, TrackBinding, WorkGraphRows,
+};
 use bae_catalogs::catalog::Catalog;
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdSource};
@@ -167,7 +170,12 @@ pub(crate) fn assemble_rows<Binding: TrackBinding>(
                 track_artists.push(DbTrackArtist {
                     credit: credited.artist.link_credit(),
                     join_phrase: credited.join.clone(),
-                    ..DbTrackArtist::new(&row.id, &artists.assigned(&credited.artist), position, now)
+                    ..DbTrackArtist::new(
+                        &row.id,
+                        &artists.assigned(&credited.artist),
+                        position,
+                        now,
+                    )
                 });
             }
         }

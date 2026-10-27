@@ -7,13 +7,12 @@ use crate::import::{ArtistIdentityConflict, ExistingArtist, ImportFailure, Impor
 pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";
 
 pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> rusqlite::Result<ImportFailureReason> {
-    Ok(ImportFailureReason { detail: row.get("failure_error")? })
+    Ok(ImportFailureReason {
+        detail: row.get("failure_error")?,
+    })
 }
 
-fn existing_artist_from_row(
-    row: &Row<'_>,
-    prefix: &str,
-) -> rusqlite::Result<ExistingArtist> {
+fn existing_artist_from_row(row: &Row<'_>, prefix: &str) -> rusqlite::Result<ExistingArtist> {
     let column = |suffix: &str| format!("{prefix}_{suffix}");
     Ok(ExistingArtist {
         artist_id: row.get(column("id").as_str())?,
@@ -75,7 +74,10 @@ pub(super) fn load_failure_on(
 
 /// Drop the failure the last import of `content_hash` left, and the artist
 /// conflict that hangs off it.
-pub(super) fn delete_failure_on(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_failure_on(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_failure WHERE content_hash = ?",
         [content_hash],

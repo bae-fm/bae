@@ -152,9 +152,13 @@ mod tests {
     async fn starting_a_key_again_advances_the_generation_and_cancels_the_last() {
         let runtime = CandidateRuntime::for_test().await;
         let (first, first_generation) =
-            runtime.start_work(WORK, "cand".to_string(), |token, generation| (token, generation));
+            runtime.start_work(WORK, "cand".to_string(), |token, generation| {
+                (token, generation)
+            });
         let (second, second_generation) =
-            runtime.start_work(WORK, "cand".to_string(), |token, generation| (token, generation));
+            runtime.start_work(WORK, "cand".to_string(), |token, generation| {
+                (token, generation)
+            });
 
         assert!(second_generation > first_generation);
         assert!(first.is_cancelled());
@@ -176,14 +180,26 @@ mod tests {
     async fn only_the_current_generation_emits() {
         let runtime = CandidateRuntime::for_test().await;
         let stale = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
-        assert_eq!(runtime.while_work_current(WORK, "cand", stale, || "sent"), Some("sent"));
+        assert_eq!(
+            runtime.while_work_current(WORK, "cand", stale, || "sent"),
+            Some("sent")
+        );
 
         let live = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
-        assert_eq!(runtime.while_work_current(WORK, "cand", stale, || "sent"), None);
-        assert_eq!(runtime.while_work_current(WORK, "cand", live, || "sent"), Some("sent"));
+        assert_eq!(
+            runtime.while_work_current(WORK, "cand", stale, || "sent"),
+            None
+        );
+        assert_eq!(
+            runtime.while_work_current(WORK, "cand", live, || "sent"),
+            Some("sent")
+        );
 
         runtime.cancel_work(WORK, "cand");
-        assert_eq!(runtime.while_work_current(WORK, "cand", live, || "sent"), None);
+        assert_eq!(
+            runtime.while_work_current(WORK, "cand", live, || "sent"),
+            None
+        );
     }
 
     #[tokio::test]
@@ -191,7 +207,9 @@ mod tests {
         let runtime = CandidateRuntime::for_test().await;
         let stale = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
         let (live, live_generation) =
-            runtime.start_work(WORK, "cand".to_string(), |token, generation| (token, generation));
+            runtime.start_work(WORK, "cand".to_string(), |token, generation| {
+                (token, generation)
+            });
 
         runtime.release_work(WORK, "cand", stale);
         assert!(runtime.is_working(WORK, "cand"));
@@ -205,10 +223,16 @@ mod tests {
     async fn a_removal_or_rebind_ends_every_kind_of_work_for_its_key_alone() {
         let runtime = CandidateRuntime::for_test().await;
         let extraction =
-            runtime.start_work(CandidateWork::Extraction, "gone".to_string(), |token, _| token);
+            runtime.start_work(CandidateWork::Extraction, "gone".to_string(), |token, _| {
+                token
+            });
         let identify =
-            runtime.start_work(CandidateWork::Identify, "gone".to_string(), |token, _| token);
-        let other = runtime.start_work(CandidateWork::Identify, "kept".to_string(), |token, _| token);
+            runtime.start_work(CandidateWork::Identify, "gone".to_string(), |token, _| {
+                token
+            });
+        let other = runtime.start_work(CandidateWork::Identify, "kept".to_string(), |token, _| {
+            token
+        });
 
         runtime.record_event(&crate::import::ImportEvent::Scan(
             crate::import::ScanEvent::CandidateRemoved {
@@ -218,6 +242,9 @@ mod tests {
 
         assert!(extraction.is_cancelled() && identify.is_cancelled());
         assert!(!other.is_cancelled());
-        assert_eq!(runtime.working_keys(CandidateWork::Identify), vec!["kept".to_string()]);
+        assert_eq!(
+            runtime.working_keys(CandidateWork::Identify),
+            vec!["kept".to_string()]
+        );
     }
 }

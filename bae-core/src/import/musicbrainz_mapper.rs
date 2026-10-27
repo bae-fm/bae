@@ -18,7 +18,9 @@ use crate::import::source_release::{
 };
 use crate::import::{ArtistCredit, CreditedRole, ImportError, SourceCredit};
 use bae_catalogs::catalog::Catalog;
-use bae_catalogs::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
+use bae_catalogs::musicbrainz::{
+    release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork,
+};
 use bae_types::pressing::{Medium, Pressing, StatedMedia};
 use std::collections::HashSet;
 use std::num::NonZeroU8;
@@ -158,13 +160,14 @@ fn source_work(work: &MbWork, reported: &mut HashSet<String>) -> SourceWork {
 /// The one MB → pressing projection. The committed release, the picker's detail,
 /// and a search result all read it, so a pressing shown is the pressing stored.
 pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) {
-    let (facts, media) = bae_catalogs::musicbrainz::pressing::read(bae_catalogs::musicbrainz::pressing::Stated {
-        release_id: &response.id,
-        country: response.country.as_deref(),
-        status: response.status.as_deref(),
-        packaging: response.packaging.as_deref(),
-        media: response.media.iter().map(|medium| medium.format.as_deref()),
-    });
+    let (facts, media) =
+        bae_catalogs::musicbrainz::pressing::read(bae_catalogs::musicbrainz::pressing::Stated {
+            release_id: &response.id,
+            country: response.country.as_deref(),
+            status: response.status.as_deref(),
+            packaging: response.packaging.as_deref(),
+            media: response.media.iter().map(|medium| medium.format.as_deref()),
+        });
     let pressing = Pressing {
         year: super::parse_year(response.date.as_deref()),
         labels: release_labels(&response.label_info),
@@ -281,17 +284,15 @@ pub(crate) fn artist_credits(
     let mut stated: Vec<SourceCredit> = Vec::new();
     for credit in credits {
         let artist = match &credit.artist {
-            Some(artist_obj) => {
-                mb_credited_artist(artist_obj, &credit.name).ok_or_else(|| {
-                    ImportError::SourceData {
-                        catalog: Catalog::MusicBrainz,
-                        detail: format!(
-                            "MusicBrainz release {} artist credit {:?} has no artist name",
-                            entity_id, artist_obj.id
-                        ),
-                    }
-                })?
-            }
+            Some(artist_obj) => mb_credited_artist(artist_obj, &credit.name).ok_or_else(|| {
+                ImportError::SourceData {
+                    catalog: Catalog::MusicBrainz,
+                    detail: format!(
+                        "MusicBrainz release {} artist credit {:?} has no artist name",
+                        entity_id, artist_obj.id
+                    ),
+                }
+            })?,
             None if credit.name.trim().is_empty() => continue,
             None => ArtistCredit::named(credit.name.trim()),
         };
@@ -334,7 +335,10 @@ pub(crate) fn mediums(response: &MbReleaseResponse) -> Vec<SourceMedium> {
         .media
         .iter()
         .map(|medium| SourceMedium {
-            medium: bae_catalogs::musicbrainz::pressing::medium(&response.id, medium.format.as_deref()),
+            medium: bae_catalogs::musicbrainz::pressing::medium(
+                &response.id,
+                medium.format.as_deref(),
+            ),
             disc_ids: medium.discs.iter().fold(Vec::new(), |mut held, disc| {
                 if !held.contains(&disc.id) {
                     held.push(disc.id.clone());
@@ -452,7 +456,9 @@ pub(crate) fn values(
 ) -> Result<ReleaseValues, ImportError> {
     let release_id = &release.release.key;
     let metadata = release.metadata.clone();
-    metadata.album.require_artists(Catalog::MusicBrainz, release_id)?;
+    metadata
+        .album
+        .require_artists(Catalog::MusicBrainz, release_id)?;
 
     let mut tracks: Vec<TrackValues> = Vec::new();
     let mut mediums = Vec::new();

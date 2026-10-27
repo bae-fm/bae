@@ -39,7 +39,9 @@ fn index(position: &str, sub_tracks: Vec<DiscogsTrack>) -> DiscogsTrack {
 
 /// `count` rows `<prefix>1` … `<prefix><count>`.
 fn rows(prefix: &str, count: u32) -> Vec<DiscogsTrack> {
-    (1..=count).map(|n| track(&format!("{prefix}{n}"))).collect()
+    (1..=count)
+        .map(|n| track(&format!("{prefix}{n}")))
+        .collect()
 }
 
 fn formats(entries: &[(Medium, u32)]) -> StatedMedia {
@@ -111,7 +113,10 @@ fn a_mixed_box_splits_into_each_record_disc_and_video_with_its_carrier() {
             (Some(Medium::Vinyl), second_record),
             (Some(Medium::Cd), first_cd),
             (Some(Medium::Cd), positions(&rows("CD2-", 10))),
-            (Some(Medium::BluRay), vec![String::new(), "BD-1".to_string()]),
+            (
+                Some(Medium::BluRay),
+                vec![String::new(), "BD-1".to_string()]
+            ),
         ],
         "each heading goes with the medium of the row after it"
     );
@@ -186,11 +191,7 @@ fn a_miscounted_format_names_the_carrier_only_when_it_is_the_only_one() {
             .collect::<Vec<_>>(),
         vec![Some(Medium::Cd); 3]
     );
-    let two_carriers = split(
-        "1",
-        &discs,
-        &formats(&[(Medium::Cd, 1), (Medium::Dvd, 1)]),
-    );
+    let two_carriers = split("1", &discs, &formats(&[(Medium::Cd, 1), (Medium::Dvd, 1)]));
     assert_eq!(
         two_carriers
             .iter()

@@ -269,11 +269,14 @@ pub(crate) fn offers_folder_reading(
     });
     match decision {
         FolderReleaseDecision::CombineAsOneRelease => {
-            releases.filter(|(path, _)| path.starts_with(&folder)).count() >= 2
+            releases
+                .filter(|(path, _)| path.starts_with(&folder))
+                .count()
+                >= 2
         }
-        FolderReleaseDecision::KeepAsSeparateReleases => {
-            releases.into_iter().any(|(path, grouped)| grouped && *path == folder)
-        }
+        FolderReleaseDecision::KeepAsSeparateReleases => releases
+            .into_iter()
+            .any(|(path, grouped)| grouped && *path == folder),
     }
 }
 

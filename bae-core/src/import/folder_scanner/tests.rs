@@ -45,7 +45,8 @@ fn source_audio_keeps_every_physical_file_in_release_order() {
         files: vec![
             audio_entry("/music/02.flac", "02.flac", 20),
             audio_entry("/music/03.flac", "03.flac", 30),
-        ], parts: Vec::new(), 
+        ],
+        parts: Vec::new(),
     };
 
     let source_audio = files.source_audio().expect("candidate has source audio");

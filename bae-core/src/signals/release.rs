@@ -18,13 +18,13 @@ impl ReleaseIdentity {
     pub(crate) fn read_audio(
         self,
     ) -> Result<crate::import::catalog_reading::ReadAudio, crate::import::ImportError> {
-        let lengths = crate::import::catalog_reading::MeasuredLengths::new(
-            self.audio.track_lengths_ms,
-        )
-        .ok_or_else(|| crate::import::ImportError::Internal {
-            detail: "a library release with no tracks has nothing to read a release against"
-                .to_string(),
-        })?;
+        let lengths =
+            crate::import::catalog_reading::MeasuredLengths::new(self.audio.track_lengths_ms)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail:
+                        "a library release with no tracks has nothing to read a release against"
+                            .to_string(),
+                })?;
         Ok(crate::import::catalog_reading::ReadAudio::of_rip(
             lengths, self.rip,
         ))
@@ -220,7 +220,7 @@ mod tests {
         use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
         use chrono::Utc;
-                use uuid::Uuid;
+        use uuid::Uuid;
 
         let temp = tempfile::TempDir::new().unwrap();
         let library_root = temp.path().join("library");
@@ -333,7 +333,7 @@ mod tests {
         use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
         use chrono::Utc;
-                use std::sync::Arc;
+        use std::sync::Arc;
         use uuid::Uuid;
 
         let temp = tempfile::TempDir::new().unwrap();
@@ -453,8 +453,10 @@ mod tests {
                 title: format!("Track {n}"),
                 medium_id: crate::db::identity::release_medium_id(&release.id, 1),
                 side: std::num::NonZeroU8::MIN,
-                track_number: std::num::NonZeroU32::new(u32::try_from(n).expect("a test track number fits u32"))
-                    .expect("track numbers count from one"),
+                track_number: std::num::NonZeroU32::new(
+                    u32::try_from(n).expect("a test track number fits u32"),
+                )
+                .expect("track numbers count from one"),
                 duration_ms: 180_000 + n as u64,
                 created_at: Utc::now(),
             };

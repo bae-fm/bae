@@ -42,14 +42,19 @@ fn track(position: usize, title: &str) -> CandidateTrack {
                 file_id: format!("{position:02}.flac"),
             },
         },
-        place(1, u32::try_from(position + 1).expect("a test position fits u32")),
+        place(
+            1,
+            u32::try_from(position + 1).expect("a test position fits u32"),
+        ),
     )
 }
 
 fn draft() -> CandidateDraft {
     CandidateDraft {
         album_title: " Album Title ".to_string(),
-        album_artist_assignments: vec![crate::import::Credited::plain(ArtistAssignment::named("Artist Name"))],
+        album_artist_assignments: vec![crate::import::Credited::plain(ArtistAssignment::named(
+            "Artist Name",
+        ))],
         album_year: "1971".to_string(),
         pressing: RawPressingEdit {
             year: "2005".to_string(),
@@ -119,9 +124,13 @@ fn a_picked_artist_is_one_row_linked_as_itself() {
     });
     let mut draft = draft();
     draft.album_artist_assignments = vec![crate::import::Credited::plain(picked.clone())];
-    draft.tracks[0].edit.artist_assignments = TrackArtistAssignments::Explicit(vec![crate::import::Credited::plain(picked)]);
+    draft.tracks[0].edit.artist_assignments =
+        TrackArtistAssignments::Explicit(vec![crate::import::Credited::plain(picked)]);
     let assembled = assemble(&draft);
-    assert_eq!(assembled.picked, HashSet::from(["library-artist".to_string()]));
+    assert_eq!(
+        assembled.picked,
+        HashSet::from(["library-artist".to_string()])
+    );
     assert_eq!(
         assembled
             .parsed
@@ -131,8 +140,14 @@ fn a_picked_artist_is_one_row_linked_as_itself() {
             .count(),
         1
     );
-    assert_eq!(assembled.parsed.album_artists[0].artist_id, "library-artist");
-    assert_eq!(assembled.parsed.track_artists[0].artist_id, "library-artist");
+    assert_eq!(
+        assembled.parsed.album_artists[0].artist_id,
+        "library-artist"
+    );
+    assert_eq!(
+        assembled.parsed.track_artists[0].artist_id,
+        "library-artist"
+    );
 }
 
 /// The album is a compilation when its one credit is the various-artists
@@ -141,15 +156,21 @@ fn a_picked_artist_is_one_row_linked_as_itself() {
 #[test]
 fn an_album_credited_to_various_artists_alone_is_a_compilation() {
     let mut draft = draft();
-    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::named("Various Artists"))];
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::named(
+        "Various Artists",
+    ))];
     assert!(assemble(&draft).parsed.album.is_compilation);
 
     draft
         .album_artist_assignments
-        .push(crate::import::Credited::plain(ArtistAssignment::named("Artist Name")));
+        .push(crate::import::Credited::plain(ArtistAssignment::named(
+            "Artist Name",
+        )));
     assert!(!assemble(&draft).parsed.album.is_compilation);
 
-    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::named("Artist Name"))];
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::named(
+        "Artist Name",
+    ))];
     assert!(!assemble(&draft).parsed.album.is_compilation);
 }
 
@@ -180,7 +201,10 @@ fn roles_and_works_are_written_from_the_draft() {
     };
     draft.works = WorkGraph {
         works: vec![
-            work("mb-movement-1", vec![credit("Composer A"), credit("Composer B")]),
+            work(
+                "mb-movement-1",
+                vec![credit("Composer A"), credit("Composer B")],
+            ),
             work("mb-suite", Vec::new()),
             work("mb-movement-2", vec![credit("Composer A")]),
         ],
@@ -224,7 +248,11 @@ fn roles_and_works_are_written_from_the_draft() {
         graph
             .work_artists
             .iter()
-            .map(|link| (link.work_id.clone(), name_of(&link.artist_id), link.position))
+            .map(|link| (
+                link.work_id.clone(),
+                name_of(&link.artist_id),
+                link.position
+            ))
             .collect::<Vec<_>>(),
         [
             (work_id("mb-movement-1"), "Composer A", 0),
@@ -284,8 +312,16 @@ fn a_draft_keeps_only_the_works_its_tracks_perform() {
     full.tracks[0].works = vec!["kept".to_string()];
     full.tracks[1].works = vec!["dropped".to_string()];
     full.works = WorkGraph {
-        works: vec![work("kept"), work("kept-parent"), work("dropped"), work("dropped-parent")],
-        parts: vec![part("kept-parent", "kept"), part("dropped-parent", "dropped")],
+        works: vec![
+            work("kept"),
+            work("kept-parent"),
+            work("dropped"),
+            work("dropped-parent"),
+        ],
+        parts: vec![
+            part("kept-parent", "kept"),
+            part("dropped-parent", "dropped"),
+        ],
     };
     let kept = full.with_tracks(vec![full.tracks[0].clone()]);
     assert_eq!(
@@ -304,9 +340,11 @@ fn a_draft_keeps_only_the_works_its_tracks_perform() {
 #[test]
 fn each_track_row_sits_on_the_medium_row_its_place_names() {
     let mut draft = draft();
-    draft.mediums.push(crate::mediums::ReleaseMedium::one_sided(Some(
-        bae_types::pressing::Medium::Cd,
-    )));
+    draft
+        .mediums
+        .push(crate::mediums::ReleaseMedium::one_sided(Some(
+            bae_types::pressing::Medium::Cd,
+        )));
     draft.tracks[1].place = place(2, 1);
     let parsed = assemble(&draft).parsed;
 
@@ -316,7 +354,10 @@ fn each_track_row_sits_on_the_medium_row_its_place_names() {
             .iter()
             .map(|medium| (medium.position.get(), medium.release_id.as_str()))
             .collect::<Vec<_>>(),
-        [(1, parsed.release.id.as_str()), (2, parsed.release.id.as_str())]
+        [
+            (1, parsed.release.id.as_str()),
+            (2, parsed.release.id.as_str())
+        ]
     );
     assert_eq!(parsed.tracks[0].medium_id, parsed.mediums[0].id);
     assert_eq!(parsed.tracks[1].medium_id, parsed.mediums[1].id);

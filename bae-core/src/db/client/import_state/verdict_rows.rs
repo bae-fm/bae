@@ -5,18 +5,19 @@
 //! rows hang off it. Deleting the row clears the matches with it, so a
 //! candidate can neither hold two verdicts nor keep matches without one.
 
-use super::*;
 use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
-use crate::signals::InternalFailure;
-use crate::identify::{MediumConflict, NamedNote, 
-    Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, NarrowedOut, TerminalVerdict,
+use super::*;
+use crate::identify::{
+    Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, MediumConflict, NamedNote,
+    NarrowedOut, TerminalVerdict,
 };
 use crate::import::album_links::AlbumLinks;
-use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks};
-use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use crate::import::MetadataRef;
+use crate::signals::InternalFailure;
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use std::str::FromStr;
 
 /// What a stored column holds that no writer here produces.
@@ -216,7 +217,11 @@ fn insert_matches(
             result,
             provenance,
             narrowed_out,
-            if narrowed_out { None } else { named_note(result) },
+            if narrowed_out {
+                None
+            } else {
+                named_note(result)
+            },
         )?;
     }
     Ok(())
@@ -232,8 +237,11 @@ fn insert_match(
     narrowed_out: bool,
     named_note: Option<&str>,
 ) -> Result<(), DbError> {
-    let position = i64::try_from(position)
-        .map_err(|error| DbError::Message(format!("a match list is longer than SQLite counts: {error}")))?;
+    let position = i64::try_from(position).map_err(|error| {
+        DbError::Message(format!(
+            "a match list is longer than SQLite counts: {error}"
+        ))
+    })?;
     let cover = result.cover_art.as_ref();
     let (tracks_kind, tracks_count) = match &result.source_tracks {
         None => (None, None),
@@ -319,7 +327,13 @@ fn insert_match(
                 "INSERT INTO import_candidate_match_cover_copy \
                      (content_hash, position, cover_url, max_edge, url) \
                  VALUES (?, ?, ?, ?, ?)",
-                params![content_hash, position, cover.image.url, copy.max_edge, copy.url],
+                params![
+                    content_hash,
+                    position,
+                    cover.image.url,
+                    copy.max_edge,
+                    copy.url
+                ],
             )?;
         }
     }
@@ -388,8 +402,11 @@ fn insert_match(
 }
 
 fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
-    i64::try_from(ordinal)
-        .map_err(|error| DbError::Message(format!("a match's list is longer than SQLite counts: {error}")))
+    i64::try_from(ordinal).map_err(|error| {
+        DbError::Message(format!(
+            "a match's list is longer than SQLite counts: {error}"
+        ))
+    })
 }
 
 /// The stored `album_links` values, one per [`AlbumLinks`] shape.
@@ -610,7 +627,9 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
                 })?;
             Some(SourceTracks::Listed {
                 count: u32::try_from(count).map_err(|error| {
-                    DbError::Message(format!("a source tracklist's count is out of range: {error}"))
+                    DbError::Message(format!(
+                        "a source tracklist's count is out of range: {error}"
+                    ))
                 })?,
             })
         }
@@ -678,7 +697,6 @@ pub(super) struct VerdictRow {
 
 pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
      failures_json, error_detail, ledger_json, identified_at, medium_conflict, kept_own_draft";
-
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
     Ok(VerdictRow {
@@ -823,9 +841,7 @@ pub(super) fn identification_of(
         "error" => {
             no_matches(&found)?;
             let detail = error_detail.ok_or_else(|| {
-                DbError::Message(format!(
-                    "error verdict for {content_hash} states no error"
-                ))
+                DbError::Message(format!("error verdict for {content_hash} states no error"))
             })?;
             TerminalVerdict::Error {
                 failure: InternalFailure { detail },

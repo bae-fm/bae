@@ -1,10 +1,10 @@
 use super::*;
-use bae_catalogs::discogs::client::DiscogsSearchResult;
-use bae_types::pressing::{MediaCount, Medium, StatedMedia};
 use crate::import::discogs_mapper::parse_duration_to_ms;
+use bae_catalogs::discogs::client::DiscogsSearchResult;
 use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
 };
+use bae_types::pressing::{MediaCount, Medium, StatedMedia};
 
 /// The release a MusicBrainz document extracts to, read by itself.
 fn mb_release(response: &MbReleaseResponse) -> crate::import::source_release::SourceRelease {
@@ -33,7 +33,9 @@ fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     )
     .extract()
     .expect("the Discogs fixture extracts")
-    .read(&crate::import::catalog_reading::ReadAudio::of_lengths(audio))
+    .read(&crate::import::catalog_reading::ReadAudio::of_lengths(
+        audio,
+    ))
     .expect("the Discogs fixture reads")
     .tracks
     .into_iter()
@@ -121,11 +123,10 @@ fn discogs_search_result_keeps_every_barcode_for_pairing() {
     musicbrainz.year = Some(1992);
     musicbrainz.barcodes = vec!["5051961234567".to_string()];
 
-    let groups =
-        crate::import::release_group::group_results(crate::import::release_group::unranked(vec![
-            musicbrainz,
-            discogs,
-        ]), None);
+    let groups = crate::import::release_group::group_results(
+        crate::import::release_group::unranked(vec![musicbrainz, discogs]),
+        None,
+    );
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].pressings().count(), 1);
     assert_eq!(
@@ -156,7 +157,8 @@ fn a_zero_master_id_is_no_group() {
         .all(|result| result.source_group_id.is_none()));
 
     let groups = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(converted), None,
+        crate::import::release_group::unranked(converted),
+        None,
     );
     assert_eq!(groups.len(), 2);
     assert_eq!(groups[0].id, "11");
@@ -197,7 +199,10 @@ fn discid_metadata_links_the_releases_its_document_names() {
             crate::import::MetadataRef::new(Catalog::Discogs, "43"),
         ]
     );
-    assert_eq!(metadata.media, StatedMedia::PerMedium(vec![Some(Medium::Cd)]));
+    assert_eq!(
+        metadata.media,
+        StatedMedia::PerMedium(vec![Some(Medium::Cd)])
+    );
 }
 
 /// A disc ID names one medium of a release that has several. The pressing is
@@ -258,12 +263,14 @@ fn discid_metadata_carries_every_medium_into_pairing() {
         result.barcode = vec![barcode.to_string()];
         result.formats = formats
             .iter()
-            .map(|(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
-                name: name.to_string(),
-                qty: "1".to_string(),
-                descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
-                text: None,
-            })
+            .map(
+                |(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
+                    name: name.to_string(),
+                    qty: "1".to_string(),
+                    descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+                    text: None,
+                },
+            )
             .collect();
         discogs_search_result_to_metadata(result)
     };
@@ -359,7 +366,11 @@ fn a_barcode_query_names_why_its_value_is_no_product_code() {
     assert_eq!(unusable("0000000000000"), Some(Unusable::Placeholder));
     assert_eq!(unusable("2100000123457"), Some(Unusable::StoreInternal));
     assert_eq!(unusable("0 12345 67890 5"), None);
-    assert_eq!(unusable("0 12345 67890 6"), None, "a check-digit slip is still a code");
+    assert_eq!(
+        unusable("0 12345 67890 6"),
+        None,
+        "a check-digit slip is still a code"
+    );
 
     let catalog = SearchQuery::CatalogNumber {
         catalog_number: "CAT-719".to_string(),
@@ -490,16 +501,17 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
     };
     let metadata = mb_discid_releases_to_metadata(
         "disc-1",
-        vec![answered(no_match), answered(multiple_matches), answered(valid)],
+        vec![
+            answered(no_match),
+            answered(multiple_matches),
+            answered(valid),
+        ],
     );
 
     assert_eq!(metadata.len(), 1);
     let (result, document) = &metadata[0];
     assert_eq!(result.release_id, "mb-release-2");
-    assert_eq!(
-        result.media,
-        StatedMedia::PerMedium(vec![Some(Medium::Cd)])
-    );
+    assert_eq!(result.media, StatedMedia::PerMedium(vec![Some(Medium::Cd)]));
     assert_eq!(
         document.release(),
         &MetadataRef::new(Catalog::MusicBrainz, "mb-release-2"),
@@ -619,16 +631,17 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     }];
 
     let detail = mb_detail(&response);
-    let parsed = mb_release(&response)
-    .every_medium_values()
-    .unwrap();
+    let parsed = mb_release(&response).every_medium_values().unwrap();
     let committed = parsed.pressing;
 
     assert_eq!(detail.year, committed.year);
     assert_eq!(detail.labels, committed.labels);
     assert_eq!(detail.facts, committed.facts);
     assert_eq!(detail.barcodes, committed.barcodes);
-    assert_eq!(detail.facts.status, Some(bae_types::pressing::ReleaseStatus::Promotion));
+    assert_eq!(
+        detail.facts.status,
+        Some(bae_types::pressing::ReleaseStatus::Promotion)
+    );
 }
 
 /// A track's title is the recording's first, the track's own title only as
@@ -656,9 +669,7 @@ fn a_track_title_prefers_the_recording_title() {
         tracks: vec![track, fallback],
     }]);
 
-    let parsed = mb_release(&response)
-    .every_medium_values()
-    .unwrap();
+    let parsed = mb_release(&response).every_medium_values().unwrap();
     let titles: Vec<&str> = parsed.tracks.iter().map(|t| t.title.as_str()).collect();
     assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
 }
@@ -696,39 +707,39 @@ fn a_track_without_any_title_fails_the_reading() {
 
 fn nested_discogs_release() -> String {
     serde_json::json!({
-            "id": 123,
-            "title": "Album Title",
-            "artists": [{ "id": 1, "name": "Artist Name" }],
-            "tracklist": [
-                {
-                    "position": "",
-                    "type_": "index",
-                    "title": "Suite Title",
-                    "duration": "5:00",
-                    "sub_tracks": [
-                        {
-                            "position": "1a",
-                            "type_": "track",
-                            "title": "Movement One",
-                            "duration": "2:00"
-                        },
-                        {
-                            "position": "1b",
-                            "type_": "track",
-                            "title": "Movement Two",
-                            "duration": "3:00"
-                        }
-                    ]
-                },
-                {
-                    "position": "2",
-                    "type_": "track",
-                    "title": "Track Title",
-                    "duration": "4:00"
-                }
-            ]
-        })
-        .to_string()
+        "id": 123,
+        "title": "Album Title",
+        "artists": [{ "id": 1, "name": "Artist Name" }],
+        "tracklist": [
+            {
+                "position": "",
+                "type_": "index",
+                "title": "Suite Title",
+                "duration": "5:00",
+                "sub_tracks": [
+                    {
+                        "position": "1a",
+                        "type_": "track",
+                        "title": "Movement One",
+                        "duration": "2:00"
+                    },
+                    {
+                        "position": "1b",
+                        "type_": "track",
+                        "title": "Movement Two",
+                        "duration": "3:00"
+                    }
+                ]
+            },
+            {
+                "position": "2",
+                "type_": "track",
+                "title": "Track Title",
+                "duration": "4:00"
+            }
+        ]
+    })
+    .to_string()
 }
 
 #[test]
@@ -834,20 +845,21 @@ fn nested_index_durations_align_after_preceding_tracks() {
 /// the counted media, and pairing reads each medium.
 #[test]
 fn a_musicbrainz_search_result_states_its_media() {
-    let release: bae_catalogs::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
-        "id": "mb-release-1",
-        "title": "Album Title",
-        "date": "1970",
-        "country": "JM",
-        "status": "Official",
-        "packaging": "Cardboard/Paper Sleeve",
-        "label-info": [],
-        "media": [
-            { "format": "Vinyl", "disc-count": 0, "track-count": 12 },
-            { "format": "", "disc-count": 0, "track-count": 1 }
-        ]
-    }))
-    .expect("search release parses");
+    let release: bae_catalogs::musicbrainz::SearchRelease =
+        serde_json::from_value(serde_json::json!({
+            "id": "mb-release-1",
+            "title": "Album Title",
+            "date": "1970",
+            "country": "JM",
+            "status": "Official",
+            "packaging": "Cardboard/Paper Sleeve",
+            "label-info": [],
+            "media": [
+                { "format": "Vinyl", "disc-count": 0, "track-count": 12 },
+                { "format": "", "disc-count": 0, "track-count": 1 }
+            ]
+        }))
+        .expect("search release parses");
     let result = search_release_to_metadata(release, None);
     assert_eq!(
         result.facts(),

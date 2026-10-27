@@ -109,12 +109,16 @@ impl ReleasePayloads {
         let anchor = self.musicbrainz_anchor()?;
         let mut found = Found::default();
 
-        let mut pages: Vec<CatalogPage> = bae_catalogs::musicbrainz::relation_urls(&anchor.relations)
-            .filter_map(parse_catalog_url)
-            .collect();
+        let mut pages: Vec<CatalogPage> =
+            bae_catalogs::musicbrainz::relation_urls(&anchor.relations)
+                .filter_map(parse_catalog_url)
+                .collect();
         if let Some(group) = &anchor.release_group {
             if let Some(relations) = &group.relations {
-                pages.extend(bae_catalogs::musicbrainz::relation_urls(relations).filter_map(parse_catalog_url));
+                pages.extend(
+                    bae_catalogs::musicbrainz::relation_urls(relations)
+                        .filter_map(parse_catalog_url),
+                );
             }
             match self.document(PayloadSource::MusicBrainzReleaseGroup, &group.id) {
                 Some(json) => {
@@ -126,7 +130,8 @@ impl ReleasePayloads {
                     );
                 }
                 None if group.relations.is_none() => {
-                    found.unread |= self.was_unfetched(PayloadSource::MusicBrainzReleaseGroup, &group.id);
+                    found.unread |=
+                        self.was_unfetched(PayloadSource::MusicBrainzReleaseGroup, &group.id);
                 }
                 None => {}
             }
@@ -134,7 +139,10 @@ impl ReleasePayloads {
         for page in &pages {
             if let CatalogPage::Group { catalog, key } = page {
                 if names_other_album(*catalog) {
-                    found.push(MetadataRef::new(*catalog, key.clone()), AlbumStatement::Page);
+                    found.push(
+                        MetadataRef::new(*catalog, key.clone()),
+                        AlbumStatement::Page,
+                    );
                 }
             }
         }

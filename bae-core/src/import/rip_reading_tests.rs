@@ -294,9 +294,21 @@ fn every_sheet_without_a_log_is_hashed_and_one_disc_is_kept_once() {
     let reading = read(RipArtifacts {
         documents: Vec::new(),
         sheets: vec![
-            rip_sheet(&one, Path::new("/folder/Disc 1/Album.cue"), "Disc 1/Album.cue"),
-            rip_sheet(&one, Path::new("/folder/Disc 1/Copy.cue"), "Disc 1/Copy.cue"),
-            rip_sheet(&other, Path::new("/folder/Disc 2/Album.cue"), "Disc 2/Album.cue"),
+            rip_sheet(
+                &one,
+                Path::new("/folder/Disc 1/Album.cue"),
+                "Disc 1/Album.cue",
+            ),
+            rip_sheet(
+                &one,
+                Path::new("/folder/Disc 1/Copy.cue"),
+                "Disc 1/Copy.cue",
+            ),
+            rip_sheet(
+                &other,
+                Path::new("/folder/Disc 2/Album.cue"),
+                "Disc 2/Album.cue",
+            ),
         ],
         audio: vec![&format],
     });

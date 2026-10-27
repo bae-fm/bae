@@ -7,10 +7,7 @@ use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
     AudioOrigin, AudioSource, BarcodeSignal, CdProof, ComputedDiscId, DiscIdSignal, DownloadProof,
-    InternalFailure,
-    Signals,
-    SourcedValue, StoreMarker,
-    TextLine, TextSignal,
+    InternalFailure, Signals, SourcedValue, StoreMarker, TextLine, TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str = "content_hash, audio_source, cd_rip_proof, download_proof, \
@@ -150,7 +147,12 @@ pub(super) fn insert_signals(
                 "INSERT INTO import_candidate_text_line ({TEXT_LINE_COLUMNS}) \
                  VALUES (?, ?, ?, ?)"
             ),
-            params![content_hash, position as i64, line.text, line.origin.as_str()],
+            params![
+                content_hash,
+                position as i64,
+                line.text,
+                line.origin.as_str()
+            ],
         )?;
     }
     Ok(())
@@ -287,9 +289,7 @@ pub(super) fn load_signals_on(
                     })?;
                     Some(AudioSource::Download(DownloadProof::Store { marker, file }))
                 }
-                (source, ..) => {
-                    return Err(unreadable("audio_source", source.unwrap_or("NULL")))
-                }
+                (source, ..) => return Err(unreadable("audio_source", source.unwrap_or("NULL"))),
             };
             let origin = AudioOrigin {
                 source,

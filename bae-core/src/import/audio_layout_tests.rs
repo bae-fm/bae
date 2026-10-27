@@ -108,8 +108,10 @@ fn rows_for(units: Vec<AudioFile>) -> Vec<(crate::import::TrackRow, AudioFile)> 
                     title: format!("Track Title {}", index + 1),
                     medium_id: crate::db::identity::release_medium_id("release-1", 1),
                     side: std::num::NonZeroU8::MIN,
-                    track_number: std::num::NonZeroU32::new(u32::try_from(index + 1).expect("a test track number fits u32"))
-                        .expect("track numbers count from one"),
+                    track_number: std::num::NonZeroU32::new(
+                        u32::try_from(index + 1).expect("a test track number fits u32"),
+                    )
+                    .expect("track numbers count from one"),
                     created_at: now,
                 },
                 unit,

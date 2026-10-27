@@ -470,7 +470,10 @@ mod tests {
                 matches!(call, Call::Watch(root, ..) | Call::Unwatch(root, ..) | Call::Stop(root, ..) if *root == second)
             })
             .collect();
-        assert_eq!(second_calls, [Call::Watch(second.clone(), 2, second.clone())]);
+        assert_eq!(
+            second_calls,
+            [Call::Watch(second.clone(), 2, second.clone())]
+        );
         assert_eq!(installed(&watcher, &second), Some(HashSet::from([second])));
     }
 
@@ -534,7 +537,10 @@ mod tests {
         watcher.install_directory(&root, &root).unwrap();
         *fake.fail_watch.lock().unwrap() = true;
         assert!(watcher.install_directory(&root, &root).is_err());
-        assert_eq!(installed(&watcher, &root), Some(HashSet::from([root.clone()])));
+        assert_eq!(
+            installed(&watcher, &root),
+            Some(HashSet::from([root.clone()]))
+        );
         *fake.fail_watch.lock().unwrap() = false;
         watcher.install_directory(&root, &root).unwrap();
 

@@ -105,10 +105,16 @@ pub(crate) enum IdentificationChange {
     /// The queue let the candidate go before its run started.
     Withdraw,
     /// `run`'s first report: it started from the wait for `files`.
-    RunStarted { files: CandidateFiles, run: IdentifyRunId },
+    RunStarted {
+        files: CandidateFiles,
+        run: IdentifyRunId,
+    },
     /// `run` reached its answer; `reads_pick` when the answer picks a release
     /// unattended, which is read before it is written.
-    RunAnswered { run: IdentifyRunId, reads_pick: bool },
+    RunAnswered {
+        run: IdentifyRunId,
+        reads_pick: bool,
+    },
     /// `run` ended without an answer: it was cancelled.
     RunEnded { run: IdentifyRunId },
     /// `run`'s answer is disposed of: written, refused, or given up.
@@ -214,9 +220,7 @@ impl IdentificationChange {
                         stage: IdentificationStage::Failed { .. },
                         ..
                     }) => failed(files),
-                    Some(answered) if answered.stage.run() == Some(*run) => {
-                        failed(&answered.files)
-                    }
+                    Some(answered) if answered.stage.run() == Some(*run) => failed(&answered.files),
                     Some(_) => unchanged(),
                 }
             }

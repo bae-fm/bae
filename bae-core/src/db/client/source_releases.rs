@@ -5,16 +5,16 @@
 //! import surface. Writing it again replaces every row under it in one
 //! transaction, so a reader sees one extraction or the other, never a mix.
 
-use crate::import::album_links::AlbumLinks;
 use super::*;
-use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use crate::import::album_links::AlbumLinks;
 use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::import::source_release::{
-    ArchiveRelease, CatalogFacts, DisplayCredit, PartDirection, EntryKind, PerformedWork, ReleaseCovers,
-    RoleCredit, SourceMedium, SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
-    UnfetchedDocument, UnfetchedReason,
+    ArchiveRelease, CatalogFacts, DisplayCredit, EntryKind, PartDirection, PerformedWork,
+    ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork, SourceWorkEvent,
+    TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
 use crate::import::{MetadataRef, ReleaseRecord};
+use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use bae_types::pressing::{Medium, Pressing, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
 
@@ -50,7 +50,8 @@ fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbEr
             AlbumLinks::Read(_) => Ok(Some(ALBUM_LINKS_READ)),
             AlbumLinks::Unread => Ok(Some(ALBUM_LINKS_UNREAD)),
             AlbumLinks::NotAsked => Err(DbError::Message(
-                "a fetched MusicBrainz release carries album links that were never read".to_string(),
+                "a fetched MusicBrainz release carries album links that were never read"
+                    .to_string(),
             )),
         },
         CatalogFacts::Discogs { .. } => Ok(None),
@@ -58,7 +59,9 @@ fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbEr
 }
 
 fn unreadable(what: &str, value: impl std::fmt::Debug) -> DbError {
-    DbError::Message(format!("stored source release holds an unreadable {what}: {value:?}"))
+    DbError::Message(format!(
+        "stored source release holds an unreadable {what}: {value:?}"
+    ))
 }
 
 #[expect(
@@ -78,8 +81,11 @@ fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
 }
 
 fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
-    i64::try_from(value)
-        .map_err(|error| DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}")))
+    i64::try_from(value).map_err(|error| {
+        DbError::Message(format!(
+            "{what} {value} exceeds SQLite's integer range: {error}"
+        ))
+    })
 }
 
 /// Write `release`, replacing whatever was stored for it.
@@ -173,7 +179,13 @@ pub(super) fn replace_source_release_on(
                     "INSERT INTO source_release_link \
                          (catalog, release_id, position, link_catalog, link_key) \
                      VALUES (?, ?, ?, ?, ?)",
-                    params![catalog, key, position as i64, link.catalog.as_str(), link.key],
+                    params![
+                        catalog,
+                        key,
+                        position as i64,
+                        link.catalog.as_str(),
+                        link.key
+                    ],
                 )?;
             }
             for (ordinal, link) in album_links.read().iter().enumerate() {
@@ -287,7 +299,14 @@ pub(super) fn replace_source_release_on(
                     "INSERT INTO source_release_cover_copy \
                          (catalog, release_id, scope, position, max_edge, url) \
                      VALUES (?, ?, ?, ?, ?, ?)",
-                    params![catalog, key, scope, position as i64, copy.max_edge, copy.url],
+                    params![
+                        catalog,
+                        key,
+                        scope,
+                        position as i64,
+                        copy.max_edge,
+                        copy.url
+                    ],
                 )?;
             }
         }
@@ -321,7 +340,12 @@ pub(super) fn replace_source_release_on(
         sql.execute(
             "INSERT INTO source_release_medium (catalog, release_id, position, medium) \
              VALUES (?, ?, ?, ?)",
-            params![catalog, key, position as i64, medium.medium.map(Medium::key)],
+            params![
+                catalog,
+                key,
+                position as i64,
+                medium.medium.map(Medium::key)
+            ],
         )?;
         for (disc, disc_id) in medium.disc_ids.iter().enumerate() {
             sql.execute(
@@ -331,7 +355,15 @@ pub(super) fn replace_source_release_on(
             )?;
         }
         for entry in &medium.entries {
-            insert_entry(sql, catalog, key, position as i64, None, entry, &mut numbering)?;
+            insert_entry(
+                sql,
+                catalog,
+                key,
+                position as i64,
+                None,
+                entry,
+                &mut numbering,
+            )?;
         }
     }
     Ok(())
@@ -482,7 +514,11 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                     params![catalog, key],
                     |row| {
                         Ok(StatedFormat {
-                            medium: super::pressing_columns::keyed(row, "medium", Medium::from_key)?,
+                            medium: super::pressing_columns::keyed(
+                                row,
+                                "medium",
+                                Medium::from_key,
+                            )?,
                             quantity: row.get(1)?,
                         })
                     },
@@ -540,7 +576,8 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         &other_records,
     )?;
     other_records.extend(joined.iter().map(ReleaseRecord::album));
-    other_records.sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
+    other_records
+        .sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
     let mut covers = ReleaseCovers {
         release: Vec::new(),
         album: Vec::new(),
@@ -632,8 +669,9 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         .into_iter()
         .map(|(document, document_key, reason)| {
             Ok(UnfetchedDocument {
-                document: crate::import::PayloadSource::from_str(&document)
-                    .map_err(|error| unreadable(&format!("unfetched document ({error})"), &document))?,
+                document: crate::import::PayloadSource::from_str(&document).map_err(|error| {
+                    unreadable(&format!("unfetched document ({error})"), &document)
+                })?,
                 key: document_key,
                 reason: match reason.as_str() {
                     "failed" => UnfetchedReason::Failed,

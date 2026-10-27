@@ -25,8 +25,8 @@
 //! identified" is on, or when a person asked for the import while the settle
 //! read the release.
 
-use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::folder_scanner::FolderCandidate;
+use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::{Admission, CandidateFiles};
@@ -53,7 +53,6 @@ use settle::*;
 /// How many runs go at once: a cap on local work such as OCR, since the
 /// provider rate limiter already paces the network. Settles run beside them.
 const MAX_IN_FLIGHT: usize = 4;
-
 
 /// The services the queue runs on.
 #[derive(Clone)]

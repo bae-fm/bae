@@ -86,7 +86,8 @@ impl Database {
     /// Where each watched folder's scan stands now.
     pub(crate) async fn load_folder_scan_progress(&self) -> Result<FolderScanProgress, DbError> {
         self.read(move |sql| load_folder_scan_progress_on(&sql))
-            .process(|statuses| Ok(FolderScanProgress::of(statuses))).await
+            .process(|statuses| Ok(FolderScanProgress::of(statuses)))
+            .await
     }
 
     /// Where each watched folder's scan stands, live.

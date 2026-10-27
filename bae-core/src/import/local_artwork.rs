@@ -48,7 +48,9 @@ pub(crate) fn file_tags_cover<'a>(
 /// The folder image named as the front cover, by [`artwork_order`] among
 /// several.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn front_cover_file<'a>(files: impl IntoIterator<Item = &'a ScannedFile>) -> Option<&'a ScannedFile> {
+fn front_cover_file<'a>(
+    files: impl IntoIterator<Item = &'a ScannedFile>,
+) -> Option<&'a ScannedFile> {
     files
         .into_iter()
         .filter(|file| {
@@ -130,7 +132,9 @@ mod tests {
     }
 
     fn embedded() -> Option<crate::import::CoverSelection> {
-        Some(crate::import::CoverSelection::Embedded("01 Track.mp3".to_string()))
+        Some(crate::import::CoverSelection::Embedded(
+            "01 Track.mp3".to_string(),
+        ))
     }
 
     fn local(path: &str) -> Option<crate::import::CoverSelection> {

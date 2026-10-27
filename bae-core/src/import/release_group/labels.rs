@@ -4,14 +4,19 @@ use super::Pressing;
 
 /// Whether two records state the same label: names of one label, and the
 /// same number, each compared the way two spellings of one are.
-fn same_label(a: &bae_types::pressing::ReleaseLabel, b: &bae_types::pressing::ReleaseLabel) -> bool {
+fn same_label(
+    a: &bae_types::pressing::ReleaseLabel,
+    b: &bae_types::pressing::ReleaseLabel,
+) -> bool {
     let same_name = match (a.name(), b.name()) {
         (Some(a), Some(b)) => bae_types::text_match::same_label_name(a, b),
         (a, b) => a.is_none() && b.is_none(),
     };
     same_name
-        && a.catalog_number().and_then(bae_types::text_match::catalog_key)
-            == b.catalog_number().and_then(bae_types::text_match::catalog_key)
+        && a.catalog_number()
+            .and_then(bae_types::text_match::catalog_key)
+            == b.catalog_number()
+                .and_then(bae_types::text_match::catalog_key)
 }
 
 impl Pressing {
@@ -41,7 +46,6 @@ impl Pressing {
     pub fn label_lines(&self) -> Vec<bae_types::pressing::LabelLine> {
         bae_types::pressing::label_lines(&self.labels())
     }
-
 }
 
 #[cfg(test)]
@@ -131,7 +135,11 @@ mod tests {
     fn a_label_written_two_ways_is_listed_once() {
         let pressing = Pressing {
             releases: vec![
-                record(Catalog::MusicBrainz, "mb-1", &[("Harbor Records", "AB-100")]),
+                record(
+                    Catalog::MusicBrainz,
+                    "mb-1",
+                    &[("Harbor Records", "AB-100")],
+                ),
                 record(Catalog::Discogs, "dg-1", &[("Harbor", "AB 100")]),
             ],
         };

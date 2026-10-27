@@ -10,9 +10,8 @@
 mod pane_edits;
 
 use crate::db::{
-    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, Database, DbCandidateIdentifyResult,
-    NewImportCandidateVerdict, ScannedCandidateKey,
+    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, Database,
+    DbCandidateIdentifyResult, NewImportCandidateVerdict, ScannedCandidateKey,
 };
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
@@ -92,8 +91,14 @@ impl CandidatePreparations {
     async fn verdict_save(
         &self,
         verdict: &NewImportCandidateVerdict,
-    ) -> Result<Option<(CandidatePreparation, CandidateSaveExpectation, CandidateSaveExtras)>, LibraryError>
-    {
+    ) -> Result<
+        Option<(
+            CandidatePreparation,
+            CandidateSaveExpectation,
+            CandidateSaveExtras,
+        )>,
+        LibraryError,
+    > {
         let Some(mut prep) = self
             .database
             .load_candidate_preparation(&verdict.content_hash)
@@ -242,14 +247,8 @@ impl CandidatePreparations {
             cover_options: Vec::new(),
             assets: crate::import::CandidatePreparedAssets::default(),
         };
-        self.apply_metadata(
-            prep,
-            None,
-            folder_path,
-            metadata,
-            None,
-        )
-        .await
+        self.apply_metadata(prep, None, folder_path, metadata, None)
+            .await
     }
 
     /// Link the candidate to `link`, or to nothing, leaving everything else
@@ -300,14 +299,8 @@ impl CandidatePreparations {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
         };
-        self.apply_metadata(
-            prep,
-            Some(scanned),
-            folder_path,
-            metadata.clone(),
-            None,
-        )
-        .await
+        self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
+            .await
     }
 
     /// A person's pick: the candidate is linked to `link`, the draft read

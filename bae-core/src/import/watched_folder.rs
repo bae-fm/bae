@@ -149,7 +149,10 @@ pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
 pub(crate) fn folder_below(root: &str, relative: &str) -> Result<String, WatchedPathError> {
     validate_relative_path(relative)?;
     let mut folder = std::path::PathBuf::from(root);
-    for component in relative.split('/').filter(|component| !component.is_empty()) {
+    for component in relative
+        .split('/')
+        .filter(|component| !component.is_empty())
+    {
         folder.push(component);
     }
     Ok(folder.to_string_lossy().into_owned())

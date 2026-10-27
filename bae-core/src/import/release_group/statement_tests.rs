@@ -30,7 +30,11 @@ fn stated_through(mut release: MetadataResult, twin: &str, master: &str) -> Meta
 #[test]
 fn a_release_link_s_master_joins_the_albums_and_its_twin_joins_the_row() {
     let groups = grouped(vec![
-        stated_through(mb("mb-us", Some("group-a"), Some(2006)), "dg-us", "master-7"),
+        stated_through(
+            mb("mb-us", Some("group-a"), Some(2006)),
+            "dg-us",
+            "master-7",
+        ),
         discogs("dg-eu-1", Some("master-7"), Some(2006)),
         discogs("dg-eu-2", Some("master-7"), Some(2006)),
         discogs("dg-us", Some("master-7"), Some(2006)),
@@ -56,7 +60,11 @@ fn a_release_link_s_master_joins_the_albums_and_its_twin_joins_the_row() {
 #[test]
 fn a_twin_under_another_master_joins_no_listed_album() {
     let groups = grouped(vec![
-        stated_through(mb("mb-us", Some("group-a"), Some(2006)), "dg-us", "master-8"),
+        stated_through(
+            mb("mb-us", Some("group-a"), Some(2006)),
+            "dg-us",
+            "master-8",
+        ),
         discogs("dg-eu-1", Some("master-7"), Some(2006)),
         discogs("dg-us", Some("master-8"), Some(2006)),
     ]);

@@ -126,7 +126,8 @@ impl Database {
         }
         let read_under = generation_column(stamp.read_under)?;
         let generation = generation_column(stamp.generation)?;
-        let observed_at = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
+        let observed_at =
+            chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
         self.call(move |sql| {
             let current: Option<i64> = sql
                 .query_row(
@@ -231,11 +232,8 @@ impl Database {
                     )?;
                 }
             }
-            let regrouped = super::super::release_groupings::rebuild_groupings(
-                sql,
-                &pruned,
-                &pruned_sidecars,
-            )?;
+            let regrouped =
+                super::super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
             Ok(FolderReadingWrite {
                 writes,
                 pruned,

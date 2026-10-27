@@ -279,10 +279,7 @@ mod tests {
         started.await.unwrap();
 
         assert_eq!(cancels.cancel("Album"), CancelOutcome::CancelledRunning);
-        assert!(matches!(
-            run.await.unwrap(),
-            ImportRunEnd::CancelledRunning
-        ));
+        assert!(matches!(run.await.unwrap(), ImportRunEnd::CancelledRunning));
         assert_eq!(cancels.cancel("Album"), CancelOutcome::NotImporting);
     }
 
@@ -305,7 +302,13 @@ mod tests {
     fn a_cancelled_import_cannot_begin_writing() {
         let cancels = ImportCancels::default();
         cancels.register("Album", "import-1");
-        cancels.entries.lock().unwrap().get_mut("Album").unwrap().stage = Stage::Running;
+        cancels
+            .entries
+            .lock()
+            .unwrap()
+            .get_mut("Album")
+            .unwrap()
+            .stage = Stage::Running;
 
         assert_eq!(cancels.cancel("Album"), CancelOutcome::CancelledRunning);
         assert!(matches!(
@@ -337,8 +340,20 @@ mod tests {
         cancels.register("Album 1", "import-1");
         cancels.register("Album 2", "import-2");
         cancels.register("Album 3", "import-3");
-        cancels.entries.lock().unwrap().get_mut("Album 2").unwrap().stage = Stage::Running;
-        cancels.entries.lock().unwrap().get_mut("Album 3").unwrap().stage = Stage::Writing;
+        cancels
+            .entries
+            .lock()
+            .unwrap()
+            .get_mut("Album 2")
+            .unwrap()
+            .stage = Stage::Running;
+        cancels
+            .entries
+            .lock()
+            .unwrap()
+            .get_mut("Album 3")
+            .unwrap()
+            .stage = Stage::Writing;
 
         assert_eq!(
             cancels.cancel_all(),

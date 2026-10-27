@@ -176,7 +176,8 @@ impl MatchedRelease {
     pub fn of_summary(summary: &VerdictSummary) -> Option<Self> {
         let lead = summary.lead.as_ref()?;
         // A failed lookup may have named other pressings.
-        let settled = summary.kind == crate::identify::VerdictKind::Found && summary.pressing_count == 1;
+        let settled =
+            summary.kind == crate::identify::VerdictKind::Found && summary.pressing_count == 1;
         Some(Self {
             release_id: lead.release_id.clone(),
             title: lead.title.clone(),
@@ -355,11 +356,15 @@ impl TriageTabCounts {
 /// import failure.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriageImportStatus {
-    Complete { release: ImportedRelease },
+    Complete {
+        release: ImportedRelease,
+    },
     /// The last import failed, and why.
     Error {
         failure: crate::import::ImportFailureReason,
     },
     /// A release read from several folders that cannot be worked on, and why.
-    Blocked { reason: crate::import::GroupingBlock },
+    Blocked {
+        reason: crate::import::GroupingBlock,
+    },
 }

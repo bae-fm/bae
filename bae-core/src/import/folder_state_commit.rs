@@ -91,7 +91,10 @@ mod tests {
 
     #[test]
     fn a_long_hold_warns_naming_the_operation_that_held_it() {
-        let logs = logs_of_a_hold(tracing::Level::WARN, NOTICEABLE_HOLD + Duration::from_millis(20));
+        let logs = logs_of_a_hold(
+            tracing::Level::WARN,
+            NOTICEABLE_HOLD + Duration::from_millis(20),
+        );
         assert!(logs.contains("WARN"), "{logs}");
         assert!(logs.contains("operation=\"store a scan item\""), "{logs}");
         assert!(logs.contains("held_ms="), "{logs}");

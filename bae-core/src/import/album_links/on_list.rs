@@ -61,12 +61,9 @@ impl Printed {
     /// Whether the two print one catalog number under one label.
     fn shares_catalog_number(&self, other: &Self) -> bool {
         self.numbers.iter().any(|(label, number)| {
-            other
-                .numbers
-                .iter()
-                .any(|(other_label, other_number)| {
-                    number == other_number && label.same_label(other_label)
-                })
+            other.numbers.iter().any(|(other_label, other_number)| {
+                number == other_number && label.same_label(other_label)
+            })
         })
     }
 
@@ -103,21 +100,27 @@ pub(super) fn albums(group: &str, list: &[&MetadataResult]) -> Vec<AlbumLink> {
             side.push((result, Printed::of(result)));
         }
     }
-    let by_barcode = pairs(&ours, &theirs, Printed::shares_barcode, |musicbrainz_release, release| {
-        AlbumStatement::Barcode {
+    let by_barcode = pairs(
+        &ours,
+        &theirs,
+        Printed::shares_barcode,
+        |musicbrainz_release, release| AlbumStatement::Barcode {
             musicbrainz_release,
             release,
-        }
-    });
+        },
+    );
     if !by_barcode.is_empty() {
         return by_barcode;
     }
-    pairs(&ours, &theirs, Printed::shares_catalog_number, |musicbrainz_release, release| {
-        AlbumStatement::CatalogNumber {
+    pairs(
+        &ours,
+        &theirs,
+        Printed::shares_catalog_number,
+        |musicbrainz_release, release| AlbumStatement::CatalogNumber {
             musicbrainz_release,
             release,
-        }
-    })
+        },
+    )
 }
 
 /// The albums of `theirs` that `shares` pairs with one of `ours`, and whose

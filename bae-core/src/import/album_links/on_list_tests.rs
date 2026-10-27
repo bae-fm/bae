@@ -120,7 +120,13 @@ fn titles_sharing_only_a_stop_word_do_not_join() {
 fn one_catalog_number_under_one_label_joins_the_albums() {
     let joined = albums_on(&[
         ours("Album", &[], &[("Imprint", "LB 100")]),
-        theirs("dg-1", "700", "Album", &[], &[("Imprint Records", "LB-100")]),
+        theirs(
+            "dg-1",
+            "700",
+            "Album",
+            &[],
+            &[("Imprint Records", "LB-100")],
+        ),
     ]);
     assert_eq!(joined, vec![by_catalog_number("dg-1", "700")]);
 }
@@ -130,7 +136,11 @@ fn one_catalog_number_under_one_label_joins_the_albums() {
 #[test]
 fn a_catalog_number_is_compared_with_every_label_a_release_states() {
     let joined = albums_on(&[
-        ours("Album", &[], &[("Imprint", "LB 100"), ("Second Press", "SP 5")]),
+        ours(
+            "Album",
+            &[],
+            &[("Imprint", "LB 100"), ("Second Press", "SP 5")],
+        ),
         theirs("dg-1", "700", "Album", &[], &[("Second Press", "SP-5")]),
     ]);
     assert_eq!(joined, vec![by_catalog_number("dg-1", "700")]);

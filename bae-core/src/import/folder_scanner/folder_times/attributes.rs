@@ -44,8 +44,7 @@ fn attribute_list(common: libc::attrgroup_t) -> libc::attrlist {
 /// its file system keeps no date added.
 pub(super) fn added(path: &Path) -> io::Result<Option<SystemTime>> {
     let name = std::ffi::CString::new(path.as_os_str().as_bytes())?;
-    let mut attributes =
-        attribute_list(libc::ATTR_CMN_RETURNED_ATTRS | libc::ATTR_CMN_ADDEDTIME);
+    let mut attributes = attribute_list(libc::ATTR_CMN_RETURNED_ATTRS | libc::ATTR_CMN_ADDEDTIME);
     // The length, the returned set and one timespec. Packing even what the
     // file system doesn't keep holds the layout fixed; the returned set
     // says whether the date is one.
@@ -144,11 +143,14 @@ struct Packed {
 /// A date no `SystemTime` holds, or an answer cut off, is invalid data.
 fn decode(buffer: &[u8]) -> io::Result<Packed> {
     let invalid = |what: &str| io::Error::new(io::ErrorKind::InvalidData, what.to_string());
-    let length = u32_at(buffer, 0).ok_or_else(|| invalid("an attribute answer has no length"))? as usize;
+    let length =
+        u32_at(buffer, 0).ok_or_else(|| invalid("an attribute answer has no length"))? as usize;
     // Past the length and the five groups of the returned set.
     let mut at = 4 + std::mem::size_of::<libc::attribute_set_t>();
     if length < at {
-        return Err(invalid("an attribute answer is shorter than its returned set"));
+        return Err(invalid(
+            "an attribute answer is shorter than its returned set",
+        ));
     }
     let entry = buffer
         .get(..length)
@@ -216,7 +218,9 @@ fn i64_at(buffer: &[u8], at: usize) -> Option<i64> {
 
 /// A timespec's instant; `None` for one no `SystemTime` holds.
 fn system_time(seconds: i64, nanos: i64) -> Option<SystemTime> {
-    let nanos = u32::try_from(nanos).ok().filter(|nanos| *nanos < 1_000_000_000)?;
+    let nanos = u32::try_from(nanos)
+        .ok()
+        .filter(|nanos| *nanos < 1_000_000_000)?;
     match u64::try_from(seconds) {
         Ok(seconds) => UNIX_EPOCH.checked_add(Duration::new(seconds, nanos)),
         Err(_) => UNIX_EPOCH
@@ -300,7 +304,11 @@ mod tests {
     fn a_cut_off_entry_or_one_whose_date_is_no_time_is_invalid() {
         let entry = packed(None, "Folder", &[(libc::ATTR_CMN_ADDEDTIME, 1, 0)]);
         assert!(decode(&entry[..entry.len() - 8]).is_err());
-        let entry = packed(None, "Folder", &[(libc::ATTR_CMN_ADDEDTIME, 1, 1_000_000_000)]);
+        let entry = packed(
+            None,
+            "Folder",
+            &[(libc::ATTR_CMN_ADDEDTIME, 1, 1_000_000_000)],
+        );
         assert!(decode(&entry).is_err());
     }
 

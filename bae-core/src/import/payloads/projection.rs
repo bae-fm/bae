@@ -88,7 +88,9 @@ impl ReleasePayloads {
             other => not_fetched(other),
         };
         let linked_album_year = counterpart.as_ref().and_then(|value| value.album.year);
-        let linked_first_year = counterpart.as_ref().and_then(|value| value.album.first_year);
+        let linked_first_year = counterpart
+            .as_ref()
+            .and_then(|value| value.album.first_year);
         if let Some(mut counterpart) = counterpart {
             // The linked record is the same pressing on the other catalog: it
             // speaks for the album they share, never for the pressing, whose
@@ -149,10 +151,7 @@ impl ReleasePayloads {
                     .and_then(|release| release.release_group.map(|group| group.id)),
                 other => not_fetched(other),
             };
-            merge_record(
-                &mut records,
-                ReleaseRecord::new(&counterpart, parent),
-            );
+            merge_record(&mut records, ReleaseRecord::new(&counterpart, parent));
         }
         for album in self.album_links()? {
             merge_record(&mut records, ReleaseRecord::album(&album));

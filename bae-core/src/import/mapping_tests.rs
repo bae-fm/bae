@@ -167,7 +167,10 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     );
     assert_eq!(track_file(mappings[0]).name, "01.flac");
     assert_eq!(track_file(mappings[1]).name, "02.flac");
-    assert_eq!(mapping_tracks(&table), blank_candidate_draft(&files).release_edit().tracks);
+    assert_eq!(
+        mapping_tracks(&table),
+        blank_candidate_draft(&files).release_edit().tracks
+    );
     let MappingFileRow::File(file) = &table.files[0] else {
         panic!("expected a carried file, got {:?}", table.files[0]);
     };
@@ -465,7 +468,10 @@ fn a_side_of_loose_rows_and_a_sheet_is_one_side_of_two_runs() {
     let [MappingTrackRun::Tracks(loose), MappingTrackRun::Sheet { sheet, entries }] =
         side_a.runs.as_slice()
     else {
-        panic!("side A holds the loose run, then the sheet: {:?}", side_a.runs);
+        panic!(
+            "side A holds the loose run, then the sheet: {:?}",
+            side_a.runs
+        );
     };
     assert_eq!(
         loose
@@ -510,7 +516,11 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
     let tracks = mapping_tracks(&table);
     assert_eq!(
         tracks.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(),
-        vec!["candidate-track-0", "candidate-track-1", "candidate-track-2"],
+        vec![
+            "candidate-track-0",
+            "candidate-track-1",
+            "candidate-track-2"
+        ],
     );
     // The cover is not a track, and the bonus file leads the sheet's two
     // slices exactly as the folder's audio units do (case-insensitive name
@@ -825,9 +835,10 @@ fn source_disc_assignments_do_not_invent_sides() {
     draft.pressing.facts = made_of(Medium::Vinyl, 1);
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
     assert!(
-        table.track_sides.iter().all(|side| {
-            !matches!(side.side, crate::album_detail::TrackSide::Sided { .. })
-        }),
+        table
+            .track_sides
+            .iter()
+            .all(|side| { !matches!(side.side, crate::album_detail::TrackSide::Sided { .. }) }),
         "available CUE audio does not establish vinyl sides"
     );
     let positions: Vec<_> = mappings(&table)
@@ -905,9 +916,6 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     );
     assert_eq!(sheet.reference_options, expected);
     for (name, count) in ["first.flac", "second.flac"].into_iter().zip(opens) {
-        assert_eq!(
-            bae_audio::test_reads::probes(&tmp.path().join(name)),
-            count
-        );
+        assert_eq!(bae_audio::test_reads::probes(&tmp.path().join(name)), count);
     }
 }

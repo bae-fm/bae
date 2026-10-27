@@ -1,12 +1,11 @@
-use bae_catalogs::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
 use crate::import::source_release::{
-    CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease,
-    TracklistEntry,
+    CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
 };
 use crate::import::{ArtistCredit, CreditedRole, ImportError};
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};
@@ -309,7 +308,9 @@ pub(crate) fn values(
     let processed = process_tracklist(&entries, audio_durations_ms);
     let covered_layout = covered_layout(&covered, &entries, &entry_mediums, &processed);
     let metadata = release.metadata.clone();
-    metadata.album.require_artists(Catalog::Discogs, release_id)?;
+    metadata
+        .album
+        .require_artists(Catalog::Discogs, release_id)?;
 
     let release_roles = match &release.catalog {
         CatalogFacts::Discogs { release_roles, .. } => release_roles
@@ -394,10 +395,7 @@ fn covered_layout(
             .filter(|track| track_mediums[*track] == index)
             .collect();
         let sided = medium.medium.is_some_and(Medium::is_sided);
-        let base = on_medium
-            .iter()
-            .filter_map(|track| letters[*track])
-            .min();
+        let base = on_medium.iter().filter_map(|track| letters[*track]).min();
         let mut count = std::num::NonZeroU8::MIN;
         if let (true, Some(base)) = (sided, base) {
             let mut current = std::num::NonZeroU8::MIN;
@@ -604,33 +602,34 @@ fn candidate_layouts<'a>(
     let mut entry_index = 0;
     while entry_index < entries.len() {
         let entry = &entries[entry_index];
-        let (layout_entry, consumed) = if entry.kind == EntryKind::Index && !entry.children.is_empty() {
-            (LayoutEntry::Index(entry), 1)
-        } else if entry.kind == EntryKind::Heading && title_of(entry) != "-" {
-            let mut end = entry_index + 1;
-            while end < entries.len()
-                && entries[end].kind == EntryKind::Track
-                && is_sub_track_position(position_of(&entries[end]))
-            {
-                end += 1;
-            }
-            if end == entry_index + 1 {
+        let (layout_entry, consumed) =
+            if entry.kind == EntryKind::Index && !entry.children.is_empty() {
+                (LayoutEntry::Index(entry), 1)
+            } else if entry.kind == EntryKind::Heading && title_of(entry) != "-" {
+                let mut end = entry_index + 1;
+                while end < entries.len()
+                    && entries[end].kind == EntryKind::Track
+                    && is_sub_track_position(position_of(&entries[end]))
+                {
+                    end += 1;
+                }
+                if end == entry_index + 1 {
+                    entry_index += 1;
+                    continue;
+                }
+                (
+                    LayoutEntry::Heading {
+                        heading: entry,
+                        children: &entries[entry_index + 1..end],
+                    },
+                    end - entry_index,
+                )
+            } else if entry.kind == EntryKind::Track {
+                (LayoutEntry::Track(entry), 1)
+            } else {
                 entry_index += 1;
                 continue;
-            }
-            (
-                LayoutEntry::Heading {
-                    heading: entry,
-                    children: &entries[entry_index + 1..end],
-                },
-                end - entry_index,
-            )
-        } else if entry.kind == EntryKind::Track {
-            (LayoutEntry::Track(entry), 1)
-        } else {
-            entry_index += 1;
-            continue;
-        };
+            };
         let mut combined = std::collections::BTreeMap::new();
         for prefix in layouts.values() {
             for option in layout_entry.options(audio, audio_offset + prefix.tracks.len()) {
@@ -788,10 +787,7 @@ fn leaf_tracks(entries: &[TracklistEntry]) -> Vec<&TracklistEntry> {
 }
 
 fn sum_track_durations(tracks: &[&TracklistEntry]) -> Option<u64> {
-    tracks
-        .iter()
-        .map(|track| track.duration_ms)
-        .sum()
+    tracks.iter().map(|track| track.duration_ms).sum()
 }
 
 /// Whether a flat position names a sub-track (`B1ii` or `1b`).

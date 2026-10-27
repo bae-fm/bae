@@ -176,11 +176,7 @@ pub(crate) fn draft_of_edit(edit: RawReleaseEdit) -> CandidateDraft {
                         artist_assignments: track.artist_assignments,
                         file: track.file.expect("a seeded track names its audio"),
                     },
-                    placer.place(
-                        std::num::NonZeroU16::MIN,
-                        std::num::NonZeroU8::MIN,
-                        None,
-                    ),
+                    placer.place(std::num::NonZeroU16::MIN, std::num::NonZeroU8::MIN, None),
                 )
             })
             .collect(),
@@ -314,7 +310,10 @@ fn without_empty_mediums(
             .expect("every track's medium is kept");
         track.place.medium = crate::mediums::medium_position(index);
     }
-    (kept.into_iter().map(|index| mediums[index]).collect(), tracks)
+    (
+        kept.into_iter().map(|index| mediums[index]).collect(),
+        tracks,
+    )
 }
 
 /// The draft a folder's stored file-tag reading makes, one track per audio

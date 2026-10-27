@@ -66,12 +66,16 @@ fn stored_identification(
         if state.is_none() {
             // A run records what it published before the table names it,
             // and forgets it only once the table no longer does.
-            tracing::error!("candidate runtime: {key}'s run {run:?} is stored with nothing it published");
+            tracing::error!(
+                "candidate runtime: {key}'s run {run:?} is stored with nothing it published"
+            );
         }
         state
     };
     match stage {
-        IdentificationStage::Queued { admission } => Some(IdentificationRuntime::Queued(*admission)),
+        IdentificationStage::Queued { admission } => {
+            Some(IdentificationRuntime::Queued(*admission))
+        }
         IdentificationStage::Running { run } => published(*run).map(IdentificationRuntime::Running),
         IdentificationStage::Finalizing { run } => published(*run).map(|state| {
             IdentificationRuntime::Saving(SavingAnswer {
@@ -79,14 +83,12 @@ fn stored_identification(
                 import_asked: false,
             })
         }),
-        IdentificationStage::ReadingPick { run, import_asked } => {
-            published(*run).map(|state| {
-                IdentificationRuntime::Saving(SavingAnswer {
-                    state,
-                    import_asked: *import_asked,
-                })
+        IdentificationStage::ReadingPick { run, import_asked } => published(*run).map(|state| {
+            IdentificationRuntime::Saving(SavingAnswer {
+                state,
+                import_asked: *import_asked,
             })
-        }
+        }),
         IdentificationStage::Failed { failure } => {
             Some(IdentificationRuntime::SaveFailed(failure.clone()))
         }
@@ -258,7 +260,9 @@ impl RuntimeView {
             return false;
         }
         let was_importing = previous.is_some_and(|snapshot| snapshot.import.is_some());
-        let importing = next.as_ref().is_some_and(|snapshot| snapshot.import.is_some());
+        let importing = next
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.import.is_some());
         match next {
             Some(next) => {
                 self.snapshots.insert(key.to_string(), next);
@@ -357,6 +361,9 @@ mod tests {
 
         composed.borrow_mut().clear();
         assert!(!view.take_read(read(vec![("a", importing("imp-a"))]), compose_one));
-        assert!(composed.borrow().is_empty(), "a read that moves nothing composes nothing");
+        assert!(
+            composed.borrow().is_empty(),
+            "a read that moves nothing composes nothing"
+        );
     }
 }

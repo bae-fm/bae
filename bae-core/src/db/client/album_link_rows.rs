@@ -207,7 +207,11 @@ pub(super) fn joined_albums_on<S: QueryRows>(
     let albums: Vec<MetadataRef> = source_group_id
         .map(|group| MetadataRef::new(catalog, group))
         .into_iter()
-        .chain(records.iter().filter_map(crate::import::ReleaseRecord::album_ref))
+        .chain(
+            records
+                .iter()
+                .filter_map(crate::import::ReleaseRecord::album_ref),
+        )
         .collect();
     let mut joined: Vec<MetadataRef> = Vec::new();
     for statement in group_statements_on(sql, &albums)? {
@@ -216,7 +220,9 @@ pub(super) fn joined_albums_on<S: QueryRows>(
                 continue;
             };
             let reached = other.catalog == catalog
-                || records.iter().any(|record| record.catalog() == other.catalog)
+                || records
+                    .iter()
+                    .any(|record| record.catalog() == other.catalog)
                 || joined.iter().any(|named| named.catalog == other.catalog);
             if !reached {
                 joined.push(other);

@@ -24,8 +24,8 @@ async fn album_of_discs(
         std::fs::copy(&fixture, album.join("00.flac")).unwrap();
     }
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    let root = crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy())
-        .unwrap();
+    let root =
+        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap();
     manager.add_watched_import_folder(&root).await.unwrap();
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
@@ -73,7 +73,10 @@ async fn two_discs_of_three_take_the_album_folders_cover() {
     let tmp = TempDir::new().unwrap();
     let (handle, album) =
         album_of_discs(&manager, &tmp, &["Disc 1", "Disc 2", "Disc 3"], false).await;
-    assert_eq!(files_of(&handle, &key_of(&album.join("Disc 3"))).await, ["01.flac"]);
+    assert_eq!(
+        files_of(&handle, &key_of(&album.join("Disc 3"))).await,
+        ["01.flac"]
+    );
 
     let key = handle
         .combine_candidates(vec![
@@ -90,10 +93,16 @@ async fn two_discs_of_three_take_the_album_folders_cover() {
         files_of(&handle, &key).await,
         ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
     );
-    assert_eq!(files_of(&handle, &key_of(&album.join("Disc 3"))).await, ["01.flac"]);
+    assert_eq!(
+        files_of(&handle, &key_of(&album.join("Disc 3"))).await,
+        ["01.flac"]
+    );
 
     handle.separate_candidate(&key).await.unwrap();
-    assert_eq!(files_of(&handle, &key_of(&album.join("Disc 1"))).await, ["01.flac"]);
+    assert_eq!(
+        files_of(&handle, &key_of(&album.join("Disc 1"))).await,
+        ["01.flac"]
+    );
     shut_down(handle).await;
 }
 

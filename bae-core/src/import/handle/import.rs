@@ -183,9 +183,7 @@ impl ImportServiceHandle {
             match &started {
                 Ok(_) => {}
                 // Another import owns the candidate and reports how it went.
-                Err(
-                    crate::import::ImportError::CandidateImportInProgress,
-                ) => {}
+                Err(crate::import::ImportError::CandidateImportInProgress) => {}
                 Err(error) => this.record_failed_start(&candidate_key, error).await,
             }
             started
@@ -202,7 +200,9 @@ impl ImportServiceHandle {
                 return;
             }
             Err(read) => {
-                tracing::error!("could not read {candidate_key} to record its refused import: {read}");
+                tracing::error!(
+                    "could not read {candidate_key} to record its refused import: {read}"
+                );
                 return;
             }
         };
@@ -251,7 +251,12 @@ impl ImportServiceHandle {
         // it and what follows imports the stored pick. Every request kind
         // waits: the read is not cancelled, and the draft it replaces is not
         // imported.
-        if self.runtime.ask_import_once_stored(candidate_key).await.map_err(crate::library::LibraryError::from)? {
+        if self
+            .runtime
+            .ask_import_once_stored(candidate_key)
+            .await
+            .map_err(crate::library::LibraryError::from)?
+        {
             info!("{candidate_key} imports once the release its run picked is read and stored");
             return Ok(ImportStart::WhenPickStored);
         }
@@ -347,7 +352,10 @@ impl ImportServiceHandle {
             source: candidate.source(),
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
-            destination: self.library_manager.get_config().import_destination(self.library_manager.is_sync_configured().await?),
+            destination: self
+                .library_manager
+                .get_config()
+                .import_destination(self.library_manager.is_sync_configured().await?),
             #[cfg(any(test, feature = "test-utils"))]
             pick: None,
             #[cfg(any(test, feature = "test-utils"))]
@@ -380,16 +388,28 @@ impl ImportServiceHandle {
         let this = self.clone();
         let key = candidate_key.to_string();
         self.committed(async move {
-            let _commit = this.folder_state_commit.lock("choose an import artist").await;
-            let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("{key} is not a scanned folder candidate"),
+            let _commit = this
+                .folder_state_commit
+                .lock("choose an import artist")
+                .await;
+            let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| {
+                crate::import::ImportError::Internal {
+                    detail: format!("{key} is not a scanned folder candidate"),
+                }
             })?;
-            this.candidate_standing(&key, &candidate).await?.editable()?;
-            this.library_manager.choose_import_artist_identity(
-                &candidate.files.content_hash(), metadata_revision, choice,
-            ).await?;
+            this.candidate_standing(&key, &candidate)
+                .await?
+                .editable()?;
+            this.library_manager
+                .choose_import_artist_identity(
+                    &candidate.files.content_hash(),
+                    metadata_revision,
+                    choice,
+                )
+                .await?;
             Ok(())
-        }).await
+        })
+        .await
     }
 
     /// Check a submitted Discogs key against Discogs and store it unless
@@ -445,12 +465,11 @@ impl ImportServiceHandle {
 
     /// Remove the stored Discogs key and its validation.
     pub async fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        self.library_manager
-            .clear_discogs_key()
-            .await
-            .map_err(|e| crate::import::ImportError::Config {
+        self.library_manager.clear_discogs_key().await.map_err(|e| {
+            crate::import::ImportError::Config {
                 detail: e.to_string(),
-            })
+            }
+        })
     }
 
     /// Store `command`'s folder as a scanned candidate carrying the command's
@@ -594,10 +613,11 @@ impl ImportServiceHandle {
                 detail: "test import has no candidate state".into(),
             })?
             .metadata_revision;
-        let file_tag_snapshot = if command.read_file_tags || matches!(
-            command.selected_cover,
-            Some(crate::import::CoverSelection::Embedded(_))
-        ) {
+        let file_tag_snapshot = if command.read_file_tags
+            || matches!(
+                command.selected_cover,
+                Some(crate::import::CoverSelection::Embedded(_))
+            ) {
             let snapshot = self
                 .library_manager
                 .load_candidate_file_tag_snapshot(
@@ -664,7 +684,8 @@ impl ImportServiceHandle {
             .is_err()
         {
             self.import_cancels.forget(&candidate_key, &import_id);
-            self.release_import_claim(&candidate_key, &import_id).await?;
+            self.release_import_claim(&candidate_key, &import_id)
+                .await?;
             return Err(crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
             });
@@ -698,7 +719,10 @@ impl ImportServiceHandle {
     /// Cancel the waiting or running import of `candidate_key`, leaving the
     /// candidate as it stood before the import was asked for. An import already
     /// writing its release finishes, and that is the error.
-    pub async fn cancel_import(&self, candidate_key: &str) -> Result<(), crate::import::ImportError> {
+    pub async fn cancel_import(
+        &self,
+        candidate_key: &str,
+    ) -> Result<(), crate::import::ImportError> {
         match self.import_cancels.cancel(candidate_key) {
             CancelOutcome::NotImporting | CancelOutcome::CancelledRunning => Ok(()),
             CancelOutcome::CancelledWaiting { import_id } => {

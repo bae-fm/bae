@@ -60,7 +60,9 @@ pub enum LiveStanding {
     /// before the answer is written.
     ReadingPick,
     /// bae could not store a run's answer.
-    Error { failure: InternalFailure },
+    Error {
+        failure: InternalFailure,
+    },
     Importing,
 }
 

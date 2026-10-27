@@ -4,8 +4,8 @@ use crate::import::source_release::{
     CatalogFacts, EntryKind, ReleaseCovers, SourceMedium, TracklistEntry,
 };
 use crate::import::{ArtistCredit, MetadataRef};
-use bae_types::pressing::{Medium, Pressing, StatedMedia};
 use crate::signals::{AudioSource, CdProof};
+use bae_types::pressing::{Medium, Pressing, StatedMedia};
 
 /// One tracklist row: a track at `position` with `title`, stating `length`.
 fn track(position: &str, title: &str, length: Option<u64>) -> TracklistEntry {
@@ -119,7 +119,13 @@ fn stated(lengths: &[u64], prefix: &str, name: &str) -> Vec<TracklistEntry> {
     lengths
         .iter()
         .enumerate()
-        .map(|(i, &length)| track(&format!("{prefix}{}", i + 1), &format!("{name} {}", i + 1), Some(length)))
+        .map(|(i, &length)| {
+            track(
+                &format!("{prefix}{}", i + 1),
+                &format!("{name} {}", i + 1),
+                Some(length),
+            )
+        })
         .collect()
 }
 
@@ -152,7 +158,9 @@ fn mixed_box_discogs() -> SourceRelease {
         ..track("", title, None)
     };
     let with_heading = |title: &str, rows: Vec<TracklistEntry>| {
-        std::iter::once(heading(title)).chain(rows).collect::<Vec<_>>()
+        std::iter::once(heading(title))
+            .chain(rows)
+            .collect::<Vec<_>>()
     };
     let mut lp1 = stated(&CD1[..6], "A", "LP Side A");
     lp1.extend(stated(&CD1[6..], "B", "LP Side B"));
@@ -163,7 +171,10 @@ fn mixed_box_discogs() -> SourceRelease {
         vec![
             medium(Some(Medium::Vinyl), with_heading("Records", lp1)),
             medium(Some(Medium::Vinyl), lp2),
-            medium(Some(Medium::Cd), with_heading("Discs", stated(&CD1, "CD1-", "CD One"))),
+            medium(
+                Some(Medium::Cd),
+                with_heading("Discs", stated(&CD1, "CD1-", "CD One")),
+            ),
             medium(Some(Medium::Cd), stated(&CD2, "CD2-", "CD Two")),
             medium(
                 Some(Medium::BluRay),
@@ -185,7 +196,10 @@ fn a_cd_rip_of_the_mixed_box_reads_its_two_cds() {
         assert_eq!(read.len(), 22);
         assert_eq!(read[0], "CD One 1");
         assert_eq!(read[12], "CD Two 1");
-        assert!(read.iter().all(|title| title.starts_with("CD ")), "{read:?}");
+        assert!(
+            read.iter().all(|title| title.starts_with("CD ")),
+            "{read:?}"
+        );
         let values = reading.as_ref().expect("the release reads");
         assert_eq!(
             values.mediums,
@@ -227,7 +241,12 @@ fn tied_discs_that_read_differently_are_refused_naming_them() {
 
     let audio = audio(rip, AudioOrigin::default(), &[]);
     let tied = mixed_box_musicbrainz().read(&audio);
-    assert_eq!(tied, Err(ReadingRefusal::Tied { mediums: vec![1, 3] }));
+    assert_eq!(
+        tied,
+        Err(ReadingRefusal::Tied {
+            mediums: vec![1, 3]
+        })
+    );
     assert_eq!(
         listing(&tied, &audio),
         SourceTracks::Listed { count: 12 },
@@ -252,7 +271,10 @@ fn identical_layers_of_a_hybrid_disc_are_one_answer() {
         ],
     );
     let reading = release.read(&audio(vec![400_200; 4], proven_cd_rip(), &[]));
-    assert_eq!(titles(&reading), vec!["Movement 1", "Movement 2", "Movement 3", "Movement 4"]);
+    assert_eq!(
+        titles(&reading),
+        vec!["Movement 1", "Movement 2", "Movement 3", "Movement 4"]
+    );
 }
 
 /// A medium MusicBrainz registers one of the folder's Disc IDs against is
@@ -319,7 +341,10 @@ fn an_untitled_track_in_a_covered_medium_is_never_a_fit() {
     let release = release(Catalog::MusicBrainz, vec![medium(Some(Medium::Cd), rows)]);
     let audio = audio(vec![200_000; 2], AudioOrigin::default(), &[]);
     let reading = release.read(&audio);
-    assert!(matches!(reading, Err(ReadingRefusal::Unreadable { .. })), "{reading:?}");
+    assert!(
+        matches!(reading, Err(ReadingRefusal::Unreadable { .. })),
+        "{reading:?}"
+    );
     let listed = listing(&reading, &audio);
     assert_eq!(listed, SourceTracks::Unreadable);
     assert_eq!(

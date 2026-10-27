@@ -1,6 +1,6 @@
 use super::*;
-use bae_audio::ProbeResult;
 use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
+use bae_audio::ProbeResult;
 use std::sync::Arc;
 
 fn scanned_non_audio(
@@ -59,8 +59,7 @@ fn resolve_file_content_type_maps_non_audio_by_extension() {
         ContentType::Png
     );
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/notes.txt", FileRole::Document))
-            .unwrap(),
+        resolve_file_content_type(&scanned_non_audio("/x/notes.txt", FileRole::Document)).unwrap(),
         ContentType::PlainText
     );
     assert_eq!(
@@ -105,9 +104,12 @@ fn resolve_file_content_type_without_an_extension_is_opaque_binary() {
 }
 
 fn test_clock() -> coven::FixedClock {
-    coven::FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    coven::FixedClock::new(
+        (chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc)).into())
+            .with_timezone(&chrono::Utc))
+        .into(),
+    )
 }
 
 #[test]
@@ -208,10 +210,9 @@ INDEX 01 01:00:00
     .expect("write cue");
 
     let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe = bae_audio::probe_audio_from_path(
-        audio_path.to_str().expect("fixture path is UTF-8"),
-    )
-    .expect("analyze ape");
+    let probe =
+        bae_audio::probe_audio_from_path(audio_path.to_str().expect("fixture path is UTF-8"))
+            .expect("analyze ape");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
@@ -343,7 +344,7 @@ fn build_audio_formats_uses_stored_standalone_facts() {
         &ids,
         &crate::diagnostics::Diagnostics::noop(),
     )
-        .expect("build audio formats");
+    .expect("build audio formats");
 
     assert_eq!(built.audio_formats.len(), 1);
     assert_eq!(built.audio_formats[0].track_id, "track-0");
@@ -563,9 +564,12 @@ INDEX 01 11:01:30
         })
         .collect();
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
-    let clock = coven::FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = coven::FixedClock::new(
+        (chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc)).into());
+            .with_timezone(&chrono::Utc))
+        .into(),
+    );
     let ids = coven::SequentialIds::new();
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
 
@@ -578,7 +582,10 @@ INDEX 01 11:01:30
     )
     .expect("build audio formats");
     let reports = bugs.reports();
-    assert!(reports.is_empty(), "the image's track starts read: {reports:?}");
+    assert!(
+        reports.is_empty(),
+        "the image's track starts read: {reports:?}"
+    );
     let main_segments: Vec<_> = built
         .audio_segments
         .iter()
@@ -713,8 +720,7 @@ FILE "second.flac" WAVE
     .expect("write cue");
 
     let probe = |path: &std::path::Path| {
-        bae_audio::probe_audio_from_path(path.to_str().expect("UTF-8 path"))
-            .expect("probe")
+        bae_audio::probe_audio_from_path(path.to_str().expect("UTF-8 path")).expect("probe")
     };
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet: crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue"),
@@ -845,7 +851,11 @@ fn assert_track_start_is_its_frame(name: &str, format: bae_audio::EncodeFormat) 
         .0
         .iter()
         .rev()
-        .find(|packet| packet.sample.is_some_and(|sample| sample <= track2.start_sample))
+        .find(|packet| {
+            packet
+                .sample
+                .is_some_and(|sample| sample <= track2.start_sample)
+        })
         .expect("a frame at or before the track's start");
     assert_eq!(
         track2.start_byte, holding.byte,
@@ -860,7 +870,10 @@ fn assert_track_start_is_its_frame(name: &str, format: bae_audio::EncodeFormat) 
 #[test]
 fn an_mp3_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
     bae_audio::init();
-    assert_track_start_is_its_frame("image.mp3", bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 192 });
+    assert_track_start_is_its_frame(
+        "image.mp3",
+        bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 192 },
+    );
 }
 
 /// An AAC (MP4) image's track start byte is the frame its first sample is
@@ -869,7 +882,10 @@ fn an_mp3_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
 #[test]
 fn an_aac_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
     bae_audio::init();
-    assert_track_start_is_its_frame("image.m4a", bae_audio::EncodeFormat::Aac { bitrate_kbps: 192 });
+    assert_track_start_is_its_frame(
+        "image.m4a",
+        bae_audio::EncodeFormat::Aac { bitrate_kbps: 192 },
+    );
 }
 
 /// The scan probed every image a sheet names, so where its tracks start can

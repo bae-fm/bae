@@ -54,7 +54,10 @@ struct TrackRead {
 #[derive(Debug, Clone, PartialEq)]
 enum TagRead {
     /// What they state, and what is known of the picture they embed.
-    Read { tags: FileTags, cover: EmbeddedCover },
+    Read {
+        tags: FileTags,
+        cover: EmbeddedCover,
+    },
     /// They could not be read, for this reason.
     Unreadable(String),
 }
@@ -81,7 +84,9 @@ enum EmbeddedCover {
 #[derive(Debug, Clone, PartialEq)]
 enum FileRead {
     Track(TrackRead),
-    Image { decodes: bool },
+    Image {
+        decodes: bool,
+    },
     /// A track sheet, as it parsed: `None` for one that does not.
     Sheet(Option<CueSheet>),
 }
@@ -263,7 +268,10 @@ impl FileReads {
 
     /// What the track `file`'s tags state — what is known, or a read of them
     /// now — or why they could not be read.
-    pub(super) fn tags(&self, file: &ScannedFile) -> Result<Result<FileTags, String>, FolderScanError> {
+    pub(super) fn tags(
+        &self,
+        file: &ScannedFile,
+    ) -> Result<Result<FileTags, String>, FolderScanError> {
         let version = file.version();
         if !self.tags_known(&version) {
             unchanged(file, "changed before its tags could be read")?;
@@ -356,7 +364,10 @@ impl FileReads {
                 modified_at_ns: file.modified_at_ns,
             };
             let (mut tags, mut cover) = self.with_known(|known| {
-                match known.track(&file.version()).and_then(|track| track.tags.as_ref()) {
+                match known
+                    .track(&file.version())
+                    .and_then(|track| track.tags.as_ref())
+                {
                     Some(TagRead::Read { tags, cover }) => Ok((
                         Some(tags.clone()),
                         match cover {
@@ -364,9 +375,7 @@ impl FileReads {
                             EmbeddedCover::Held {
                                 data, content_type, ..
                             } => CoverRead::Picture(data.clone(), content_type.clone()),
-                            EmbeddedCover::Unknown | EmbeddedCover::Released => {
-                                CoverRead::Unknown
-                            }
+                            EmbeddedCover::Unknown | EmbeddedCover::Released => CoverRead::Unknown,
                         },
                     )),
                     Some(TagRead::Unreadable(error)) => Err(ImportError::FileTags {
@@ -695,7 +704,11 @@ impl Known {
             Entry::Occupied(entry) => {
                 return Err(FolderScanError::Other(format!(
                     "the stored scan says two things about the tags of {:?}: {:?} and {tags:?}",
-                    entry.key().iter().map(|file| &file.path).collect::<Vec<_>>(),
+                    entry
+                        .key()
+                        .iter()
+                        .map(|file| &file.path)
+                        .collect::<Vec<_>>(),
                     entry.get()
                 )))
             }

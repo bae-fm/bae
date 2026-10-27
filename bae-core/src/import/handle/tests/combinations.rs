@@ -82,7 +82,9 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     handle
         .set_candidate_album_artists(
             &key,
-            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Combined Artist"))],
+            vec![crate::import::Credited::plain(
+                crate::import::ArtistAssignment::named("Combined Artist"),
+            )],
         )
         .await
         .unwrap();
@@ -121,16 +123,27 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .display
             .sides
             .iter()
-            .flat_map(|side| side.tracks().map(|track| (side.side.clone(), track.position_text.as_str())))
+            .flat_map(|side| side
+                .tracks()
+                .map(|track| (side.side.clone(), track.position_text.as_str())))
             .collect::<Vec<_>>(),
-        [(disc(1), "1"), (disc(1), "2"), (disc(2), "1"), (disc(2), "2")]
+        [
+            (disc(1), "1"),
+            (disc(1), "2"),
+            (disc(2), "1"),
+            (disc(2), "2")
+        ]
     );
     assert!(pane(&handle, &key).await.is_added);
     handle.separate_candidate(&key).await.unwrap();
     assert_eq!(
-        handle.library_manager.open_release_edit(&release_id).await.unwrap()
-        .opened()
-        .clone(),
+        handle
+            .library_manager
+            .open_release_edit(&release_id)
+            .await
+            .unwrap()
+            .opened()
+            .clone(),
         imported,
         "separating source folders preserves the imported copy"
     );
@@ -191,7 +204,10 @@ async fn separating_picked_folders_returns_them_as_they_were() {
         .unwrap();
     // The two roots are temporary folders, so which one sorts first — and so
     // plays first and names the release — is the order of their keys.
-    let mut members = vec![(first_key.clone(), "Volume A"), (second_key.clone(), "Volume B")];
+    let mut members = vec![
+        (first_key.clone(), "Volume A"),
+        (second_key.clone(), "Volume B"),
+    ];
     members.sort();
     assert_eq!(pending(&handle).await, vec![members[0].1.to_string()]);
     let order: Vec<String> = members.into_iter().map(|(key, _)| key).collect();
@@ -201,7 +217,12 @@ async fn separating_picked_folders_returns_them_as_they_were() {
     ));
 
     handle.separate_candidate(&key).await.unwrap();
-    assert!(handle.library_manager.load_grouping(&key).await.unwrap().is_none());
+    assert!(handle
+        .library_manager
+        .load_grouping(&key)
+        .await
+        .unwrap()
+        .is_none());
     assert!(handle.get_release_candidate(&key).await.unwrap().is_none());
     assert_eq!(pending(&handle).await.len(), 2);
     assert_eq!(pane(&handle, &first_key).await.metadata_draft, before);
@@ -233,8 +254,8 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root = crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy())
-        .unwrap();
+    let root =
+        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap();
     manager.add_watched_import_folder(&root).await.unwrap();
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
@@ -301,8 +322,8 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root = crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy())
-        .unwrap();
+    let root =
+        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap();
     manager.add_watched_import_folder(&root).await.unwrap();
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())

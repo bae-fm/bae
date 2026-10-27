@@ -32,7 +32,9 @@ impl Database {
         }
         let watched = self.watched_import_roots().await?;
         if roots.iter().all(|root| !watched.contains(root))
-            && parent.as_ref().is_none_or(|parent| watched.contains(parent))
+            && parent
+                .as_ref()
+                .is_none_or(|parent| watched.contains(parent))
         {
             return Ok(None);
         }
@@ -138,12 +140,11 @@ fn forget_folders_under(
         ("folder_discovery", "folder"),
     ] {
         let folders: Vec<String> =
-            sql.query(&format!("SELECT {column} FROM {table}"), [], |row| row.get(0))?;
+            sql.query(&format!("SELECT {column} FROM {table}"), [], |row| {
+                row.get(0)
+            })?;
         for folder in folders.iter().filter(|folder| under(folder)) {
-            sql.execute(
-                &format!("DELETE FROM {table} WHERE {column} = ?"),
-                [folder],
-            )?;
+            sql.execute(&format!("DELETE FROM {table} WHERE {column} = ?"), [folder])?;
         }
     }
     // A grouping goes with its anchor folder or any folder it takes a

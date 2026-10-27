@@ -45,7 +45,9 @@ impl ProviderServer {
                 *recorded.lock().unwrap().entry(key.clone()).or_insert(0) += 1;
                 let unexpected = || (599, format!("Unexpected provider request: {key}"));
                 let (status, body) = match resources.as_slice() {
-                    [_, _, ..] => several_resources(&answers, &resources).unwrap_or_else(unexpected),
+                    [_, _, ..] => {
+                        several_resources(&answers, &resources).unwrap_or_else(unexpected)
+                    }
                     _ => answers.get(&key).cloned().unwrap_or_else(unexpected),
                 };
                 let response = format!("HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
@@ -129,19 +131,26 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
         ),
     );
     for id in [910001, 910002] {
-        server.providers.discogs().seed_master_cache(
-            &id.to_string(),
-            serde_json::json!({"id":id}).to_string(),
-        );
+        server
+            .providers
+            .discogs()
+            .seed_master_cache(&id.to_string(), serde_json::json!({"id":id}).to_string());
     }
     server.providers.musicbrainz().seed_discogs_page_lookup(&[
         (DiscogsPage::Master("910001".into()), Some("shared-group")),
         (DiscogsPage::Master("910002".into()), Some("shared-group")),
     ]);
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
-    let payloads = server.providers.fetch_payloads(Some(&discogs), &MetadataRef::new(Catalog::MusicBrainz, "selected"), ReadDepth::Complete, CallPriority::Interactive)
-    .await
-    .unwrap();
+    let payloads = server
+        .providers
+        .fetch_payloads(
+            Some(&discogs),
+            &MetadataRef::new(Catalog::MusicBrainz, "selected"),
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
+        .await
+        .unwrap();
 
     assert_eq!(
         server.requests(),
@@ -154,7 +163,8 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
         .all(|document| document.source == PayloadSource::DiscogsMaster));
     assert_eq!(
         payloads
-            .extract().unwrap()
+            .extract()
+            .unwrap()
             .records()
             .iter()
             .filter(|record| record.catalog() == Catalog::MusicBrainz)
@@ -206,7 +216,12 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
     let selected = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
     let payloads = tokio::time::timeout(
         std::time::Duration::from_secs(15),
-        server.providers.fetch_payloads(Some(&discogs), &selected, ReadDepth::Complete, CallPriority::Interactive),
+        server.providers.fetch_payloads(
+            Some(&discogs),
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        ),
     )
     .await
     .unwrap()
@@ -252,7 +267,12 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
     let namer = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
     server
         .providers
-        .fetch_payloads(Some(&discogs), &namer, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            Some(&discogs),
+            &namer,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
     let asked = server.requests();
@@ -260,11 +280,19 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
     let named = MetadataRef::new(Catalog::Discogs, "920001");
     let twin = server
         .providers
-        .fetch_payloads(Some(&discogs), &named, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            Some(&discogs),
+            &named,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
     assert_eq!(server.requests(), asked, "reading the twin asks nothing");
-    assert!(twin.unfetched.is_empty(), "and it reads every document it names");
+    assert!(
+        twin.unfetched.is_empty(),
+        "and it reads every document it names"
+    );
 }
 
 /// The supporting documents a read stored, by source and key.
@@ -344,11 +372,21 @@ async fn a_complete_read_of_a_discogs_release_asks_about_both_addresses_at_once(
 #[tokio::test]
 async fn an_address_musicbrainz_does_not_know_is_absent_beside_one_it_does() {
     let mut answers = linked_pair_answers();
-    answers.insert("url:https://www.discogs.com/master/920002".into(), (404, String::new()));
+    answers.insert(
+        "url:https://www.discogs.com/master/920002".into(),
+        (404, String::new()),
+    );
     answers.remove("/ws/2/release-group/cycle-group");
     let server = ProviderServer::start(answers).await;
-    let release = release_json("cycle-release", None, &["https://www.discogs.com/release/920001"]);
-    server.providers.musicbrainz().seed_release_cache("cycle-release", release);
+    let release = release_json(
+        "cycle-release",
+        None,
+        &["https://www.discogs.com/release/920001"],
+    );
+    server
+        .providers
+        .musicbrainz()
+        .seed_release_cache("cycle-release", release);
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let payloads = server
         .providers
@@ -410,7 +448,10 @@ async fn a_failed_lookup_by_both_addresses_fails_both() {
             (BOTH_ADDRESSES.into(), 1),
         ])
     );
-    assert_eq!(stored_keys(&payloads), vec![(PayloadSource::DiscogsMaster, "920002".into())]);
+    assert_eq!(
+        stored_keys(&payloads),
+        vec![(PayloadSource::DiscogsMaster, "920002".into())]
+    );
     let mut unfetched = payloads.unfetched.clone();
     unfetched.sort_by_key(|document| document.document.as_str());
     assert_eq!(
@@ -567,8 +608,10 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
     );
 
     let complete_server = ProviderServer::start(statement_answers()).await;
-    let complete_discogs =
-        DiscogsClient::new(complete_server.providers.discogs().clone(), "fixture-token".into());
+    let complete_discogs = DiscogsClient::new(
+        complete_server.providers.discogs().clone(),
+        "fixture-token".into(),
+    );
     let complete = complete_server
         .providers
         .fetch_payloads(
@@ -584,7 +627,12 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
     let completed = complete.extract().unwrap();
     assert_eq!(identified.album_links(), completed.album_links());
     assert_eq!(
-        identified.album_links().read().iter().map(|link| link.album.clone()).collect::<Vec<_>>(),
+        identified
+            .album_links()
+            .read()
+            .iter()
+            .map(|link| link.album.clone())
+            .collect::<Vec<_>>(),
         vec![MetadataRef::new(Catalog::Discogs, "920002")]
     );
     assert_eq!(identified.links(), completed.links());
@@ -652,8 +700,10 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
     assert!(stored.fetch_could_add(ReadDepth::Complete, true));
 
     let complete_server = ProviderServer::start(statement_answers()).await;
-    let complete_discogs =
-        DiscogsClient::new(complete_server.providers.discogs().clone(), "fixture-token".into());
+    let complete_discogs = DiscogsClient::new(
+        complete_server.providers.discogs().clone(),
+        "fixture-token".into(),
+    );
     let complete = complete_server
         .providers
         .fetch_payloads(
@@ -691,13 +741,20 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
         "930001",
         serde_json::json!({"id":930001,"title":"Album Title","master_id":930002}).to_string(),
     );
-    server.providers.discogs().seed_master_cache(
-        "930002",
-        serde_json::json!({"id":930002}).to_string(),
-    );
+    server
+        .providers
+        .discogs()
+        .seed_master_cache("930002", serde_json::json!({"id":930002}).to_string());
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let selected = MetadataRef::new(Catalog::Discogs, "930001");
-    let payloads = server.providers.fetch_payloads(Some(&discogs), &selected, ReadDepth::Complete, CallPriority::Interactive)
+    let payloads = server
+        .providers
+        .fetch_payloads(
+            Some(&discogs),
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
 
@@ -712,7 +769,8 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
     assert_eq!(payloads.supporting.len(), 1);
     assert_eq!(payloads.supporting[0].source, PayloadSource::DiscogsMaster);
     assert!(payloads
-        .extract().unwrap()
+        .extract()
+        .unwrap()
         .records()
         .iter()
         .all(|record| record.catalog() == Catalog::Discogs));
@@ -735,7 +793,12 @@ async fn a_malformed_optional_group_is_skipped() {
     .await;
     let fetched = server
         .providers
-        .fetch_payloads(None, &selected, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            None,
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
     assert!(fetched.supporting.is_empty());
@@ -816,7 +879,12 @@ async fn documents_a_fetch_could_not_get_are_named() {
     .await;
     let fetched = server
         .providers
-        .fetch_payloads(None, &selected, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            None,
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
     let mut unfetched = fetched.unfetched.clone();
@@ -837,7 +905,10 @@ async fn documents_a_fetch_could_not_get_are_named() {
         ]
     );
     let stored = fetched.extract().unwrap();
-    assert!(stored.fetch_could_add(ReadDepth::Complete, false), "the failed group can be asked again");
+    assert!(
+        stored.fetch_could_add(ReadDepth::Complete, false),
+        "the failed group can be asked again"
+    );
     let mut only_the_key_missing = stored.clone();
     only_the_key_missing
         .unfetched
@@ -860,11 +931,16 @@ async fn a_malformed_required_anchor_is_rejected() {
         (200, "{}".into()),
     )]))
     .await;
-    assert!(
-        server.providers.fetch_payloads(None, &selected, ReadDepth::Complete, CallPriority::Interactive)
-            .await
-            .is_err()
-    );
+    assert!(server
+        .providers
+        .fetch_payloads(
+            None,
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive
+        )
+        .await
+        .is_err());
     assert_eq!(
         server.requests(),
         HashMap::from([("/ws/2/release/required-shape-release".into(), 1)])

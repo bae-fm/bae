@@ -271,7 +271,8 @@ fn load_file_tag_facts(
 }
 
 /// The `scan_candidate_file_tag` columns a query selects, in this order.
-pub(super) const FILE_TAG_COLUMNS: &str = "tags.relative_path, tags.file_size, tags.modified_at_ns, \
+pub(super) const FILE_TAG_COLUMNS: &str =
+    "tags.relative_path, tags.file_size, tags.modified_at_ns, \
      tags.title, tags.track_artists, tags.album_title, tags.album_artists, tags.compilation, \
      tags.years, tags.track_number, tags.disc_number, tags.isrcs, tags.labels, tags.copyrights, \
      tags.store";
@@ -348,7 +349,9 @@ impl StoredFileTags {
                     .store
                     .map(|key| {
                         crate::signals::StoreMarker::from_key(&key).ok_or_else(|| {
-                            DbError::Message(format!("a file-tag store {key:?} is no store bae reads"))
+                            DbError::Message(format!(
+                                "a file-tag store {key:?} is no store bae reads"
+                            ))
                         })
                     })
                     .transpose()?,
@@ -359,8 +362,9 @@ impl StoredFileTags {
 
 /// A multi-valued tag's values, read back from their JSON array column.
 fn tag_values<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
-    serde_json::from_str(json)
-        .map_err(|error| DbError::Message(format!("a file tag's stored {what} do not read: {error}")))
+    serde_json::from_str(json).map_err(|error| {
+        DbError::Message(format!("a file tag's stored {what} do not read: {error}"))
+    })
 }
 
 /// Whether a valid or invalid entry, rather than a tentative one or none, is
@@ -797,8 +801,7 @@ fn load_skipped_files_rows(
         },
     )?;
     let mut files: SkippedFilesByCandidate = HashMap::new();
-    for (candidate_path, relative_path, absolute_path, size, modified_at_ns, role, damage) in rows
-    {
+    for (candidate_path, relative_path, absolute_path, size, modified_at_ns, role, damage) in rows {
         files.entry(candidate_path).or_default().push(SkippedFile {
             relative_path,
             file: FileVersion {

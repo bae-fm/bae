@@ -2,8 +2,8 @@ use super::*;
 use crate::identify::LeadMatch;
 use crate::import::search::SourceTracks;
 use crate::import::{ImportStanding, MetadataRef, PendingFilter, PressingLink, SaveFailure};
-use bae_catalogs::catalog::Catalog;
 use crate::signals::InternalFailure;
+use bae_catalogs::catalog::Catalog;
 use std::collections::HashSet;
 
 fn lead(source_tracks: Option<SourceTracks>) -> LeadMatch {
@@ -205,7 +205,10 @@ fn running_work_decides_over_the_tables() {
         stored.clone().with_live(&importing),
         PendingStanding::Importing
     );
-    assert_eq!(stored.clone().with_live(&TriageRuntimeFacts::default()), stored);
+    assert_eq!(
+        stored.clone().with_live(&TriageRuntimeFacts::default()),
+        stored
+    );
 }
 
 /// A run whose release is being read for the pick it made unattended is
@@ -220,7 +223,10 @@ fn a_pick_being_read_is_identified() {
     for import_asked in [false, true] {
         let live = LiveStanding::of(&reading(import_asked));
         assert_eq!(live, Some(LiveStanding::ReadingPick));
-        assert_eq!(live.map(|live| live.state()), Some(PendingState::Identified));
+        assert_eq!(
+            live.map(|live| live.state()),
+            Some(PendingState::Identified)
+        );
         assert_eq!(
             PendingStanding::NotLookedUp.with_live(&reading(import_asked)),
             PendingStanding::Identified

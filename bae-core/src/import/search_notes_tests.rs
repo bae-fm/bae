@@ -2,18 +2,18 @@
 
 use super::*;
 
-
 /// A search result carries the free text its catalog writes about the
 /// pressing before any document is read: a MusicBrainz release's
 /// disambiguation, and what a Discogs format entry writes beside its name.
 #[test]
 fn a_search_result_carries_its_notes() {
-    let release: bae_catalogs::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
-        "id": "mb-release-1",
-        "title": "Album Title",
-        "disambiguation": "made in Nordland",
-    }))
-    .expect("search release parses");
+    let release: bae_catalogs::musicbrainz::SearchRelease =
+        serde_json::from_value(serde_json::json!({
+            "id": "mb-release-1",
+            "title": "Album Title",
+            "disambiguation": "made in Nordland",
+        }))
+        .expect("search release parses");
     assert_eq!(
         search_release_to_metadata(release, None).notes,
         vec!["made in Nordland".to_string()]

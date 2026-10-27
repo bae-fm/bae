@@ -7,9 +7,10 @@ impl ImportServiceHandle {
         &self,
         candidate: crate::import::folder_scanner::FolderCandidate,
     ) {
-        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
-            candidate,
-        }));
+        self.event_tx
+            .send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
+                candidate,
+            }));
     }
 
     /// Mark the candidate at `path` skipped or unskipped and announce the
@@ -296,7 +297,9 @@ impl ImportServiceHandle {
             .fetch_release_cover(release, &partners)
             .await
             .map_err(|failure| failure.error)?;
-        Ok(external_metadata_with_cover(draft, release, &partners, cover))
+        Ok(external_metadata_with_cover(
+            draft, release, &partners, cover,
+        ))
     }
 
     /// The cover a draft read from an external release is written with: the
@@ -387,7 +390,10 @@ impl ImportServiceHandle {
             // current one: read again.
             let stored_generation = self
                 .library_manager
-                .load_candidate_file_tag_snapshot(&read.candidate.watched_folder_path, &candidate_key)
+                .load_candidate_file_tag_snapshot(
+                    &read.candidate.watched_folder_path,
+                    &candidate_key,
+                )
                 .await?
                 .map(|stored| stored.scan_generation);
             if stored_generation != Some(seed.snapshot.scan_generation) {
@@ -421,16 +427,13 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let release = self
-            .release_for_pick(&candidate_key, &link.record)
-            .await?;
+        let release = self.release_for_pick(&candidate_key, &link.record).await?;
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
         self.land_picked(&candidate_key, release.release(), release.album_links())
             .await;
         let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
-        let folder_tracks =
-            u32::try_from(audio.lengths.len()).expect("a folder's tracks fit u32");
+        let folder_tracks = u32::try_from(audio.lengths.len()).expect("a folder's tracks fit u32");
         // A release that cannot be read onto the folder's audio — it lists
         // another number of tracks than the folder holds, several sets of its
         // discs fit alike, or a track it lays on the audio has no title — is
@@ -635,7 +638,9 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            let revision = this.unlink_candidate_release_write(candidate_key.clone()).await?;
+            let revision = this
+                .unlink_candidate_release_write(candidate_key.clone())
+                .await?;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })

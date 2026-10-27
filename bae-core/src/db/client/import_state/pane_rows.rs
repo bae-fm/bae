@@ -14,13 +14,13 @@ mod writes;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::db::client::candidate_state_rows::COVER_COLUMNS;
-use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
-use std::str::FromStr;
 use crate::import::{
-    ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
-    ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
+    ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection,
+    Credited, ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
+use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use std::str::FromStr;
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
      labels, barcodes, country, region, media, status, packaging, discogs_details";
@@ -133,9 +133,8 @@ pub(crate) fn insert_draft(
                 track.place.medium,
                 track.place.side,
                 track.place.number,
-                track
-                    .stated_length_ms
-                    .map(|length| i64::try_from(length).expect("a stated length fits SQLite's integer range")),
+                track.stated_length_ms.map(|length| i64::try_from(length)
+                    .expect("a stated length fits SQLite's integer range")),
                 file_kind,
                 file_id,
                 sheet_id,
@@ -246,9 +245,7 @@ pub(crate) fn load_covers_on(
             })?),
             "remote" => CoverSelection::Remote(
                 RemoteImageSet::with_copies(
-                    url.ok_or_else(|| {
-                        DbError::Message("a remote cover names no address".into())
-                    })?,
+                    url.ok_or_else(|| DbError::Message("a remote cover names no address".into()))?,
                     copies,
                 ),
                 Catalog::from_str(
@@ -507,7 +504,9 @@ fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
             sort_name: None,
             musicbrainz_id: None,
             discogs_id: None,
-            credit_key: credit_name.as_ref().map(|credit_name| credit_name.key.as_str()),
+            credit_key: credit_name
+                .as_ref()
+                .map(|credit_name| credit_name.key.as_str()),
             credited_as: None,
             join_phrase,
         },
@@ -555,7 +554,8 @@ const STORED_ASSIGNMENT_COLUMNS: &str = "assignment.assignment_kind, assignment.
      picked_credit.name_key AS credit_key, picked_credit.name AS credit_name, \
      assignment.credited_as, assignment.join_phrase";
 
-const STORED_ASSIGNMENT_JOINS: &str = "LEFT JOIN artists picked ON picked.id = assignment.artist_id \
+const STORED_ASSIGNMENT_JOINS: &str =
+    "LEFT JOIN artists picked ON picked.id = assignment.artist_id \
      LEFT JOIN artist_credits picked_credit \
          ON picked_credit.artist_id = assignment.artist_id \
         AND picked_credit.name_key = assignment.credit_key";
@@ -599,9 +599,9 @@ impl StoredAssignment {
             },
             "credit" => ArtistAssignment::Credit {
                 credit: ArtistCredit {
-                    name: self.name.ok_or_else(|| {
-                        DbError::Message("an artist credit has no name".into())
-                    })?,
+                    name: self
+                        .name
+                        .ok_or_else(|| DbError::Message("an artist credit has no name".into()))?,
                     sort_name: self.sort_name,
                     musicbrainz_artist_id: self.musicbrainz_artist_id,
                     discogs_artist_id: self.discogs_artist_id,
@@ -692,11 +692,18 @@ pub(crate) fn load_album_artist_assignments_on(
              ORDER BY assignment.content_hash, assignment.position"
         ),
         named_params! { ":only": only },
-        |row| Ok((row.get::<_, String>("content_hash")?, StoredAssignment::read(row)?)),
+        |row| {
+            Ok((
+                row.get::<_, String>("content_hash")?,
+                StoredAssignment::read(row)?,
+            ))
+        },
     )?;
     let mut out: HashMap<String, Vec<Credited>> = HashMap::new();
     for (content_hash, stored) in rows {
-        out.entry(content_hash).or_default().push(stored.credited()?);
+        out.entry(content_hash)
+            .or_default()
+            .push(stored.credited()?);
     }
     Ok(out)
 }
@@ -781,7 +788,13 @@ pub(super) fn load_cover_options_on(
         "SELECT position, max_edge, url FROM import_candidate_cover_option_copy \
          WHERE content_hash = ? ORDER BY position, max_edge",
         [content_hash],
-        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, u32>(1)?, row.get::<_, String>(2)?)),
+        |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, u32>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
     )? {
         copies
             .entry(position)
@@ -809,7 +822,9 @@ pub(super) fn load_cover_options_on(
             image: RemoteImageSet::with_copies(url, copies.remove(&position).unwrap_or_default()),
             label,
             source: bae_catalogs::catalog::Catalog::from_str(&source).map_err(|error| {
-                DbError::Message(format!("a stored cover option's catalog is unreadable: {error}"))
+                DbError::Message(format!(
+                    "a stored cover option's catalog is unreadable: {error}"
+                ))
             })?,
             standing: CoverStanding::from_column(&standing)
                 .ok_or_else(|| unreadable("cover option standing", &standing))?,

@@ -71,8 +71,14 @@ fn countries_and_regions_compare_by_what_they_name() {
 fn labels_agree_by_name_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
-    b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name"), None)];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        Some("Label Name Records"),
+        None,
+    )];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        Some("Label Name"),
+        None,
+    )];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
     b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("LN"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
@@ -87,10 +93,19 @@ fn labels_agree_by_name_and_never_disagree() {
 fn catalog_numbers_compare_squashed_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("WPCR-80001"))];
-    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("wpcr 80001"))];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        None,
+        Some("WPCR-80001"),
+    )];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        None,
+        Some("wpcr 80001"),
+    )];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Same);
-    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("WPCR-80002"))];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        None,
+        Some("WPCR-80002"),
+    )];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
 }
 
@@ -122,12 +137,14 @@ fn per_medium(names: &[&str]) -> StatedMedia {
 fn formats(entries: &[(&str, &[&str])]) -> StatedMedia {
     let entries: Vec<bae_catalogs::discogs::DiscogsFormat> = entries
         .iter()
-        .map(|(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
-            name: name.to_string(),
-            qty: "1".to_string(),
-            descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
-            text: None,
-        })
+        .map(
+            |(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
+                name: name.to_string(),
+                qty: "1".to_string(),
+                descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+                text: None,
+            },
+        )
         .collect();
     bae_catalogs::discogs::formats::read("dg-1", &entries).media
 }

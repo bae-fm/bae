@@ -52,7 +52,10 @@ impl ImportServiceHandle {
         if let Some(covering) = watched.iter().find(|folder| {
             folder.path != path && std::path::Path::new(&path).starts_with(&folder.path)
         }) {
-            info!("{path} is inside the watched folder {}; re-reading it", covering.path);
+            info!(
+                "{path} is inside the watched folder {}; re-reading it",
+                covering.path
+            );
             return self.send_watcher_command(
                 WatcherCommand::Rescan(std::path::PathBuf::from(&covering.path)),
                 "Failed to start watching folder",
@@ -86,8 +89,10 @@ impl ImportServiceHandle {
             return Err(error);
         }
         let folders = self.watched_folders().await?;
-        self.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
-        );
+        self.event_tx
+            .send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged {
+                folders,
+            }));
         Ok(())
     }
 

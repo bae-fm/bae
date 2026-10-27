@@ -27,9 +27,9 @@ use std::path::{Path, PathBuf};
 pub(super) use self::read::{
     load_candidate_file_tag_snapshot, load_item_by_key, stored_entries, RowSources,
 };
+pub(crate) use self::reading::{FolderReadingCommit, FolderReadingStamp, FolderReadingWrite};
 pub(super) use self::sidecar::load_sidecar;
 pub(super) use self::write::{delete_entry, insert_candidate_files, StoredEntry};
-pub(crate) use self::reading::{FolderReadingCommit, FolderReadingStamp, FolderReadingWrite};
 
 /// What finishing a scan generation removed: the entries it did not see, and
 /// the releases groupings rebuilt without them.
@@ -127,7 +127,9 @@ fn item_was_read_for(
 
 fn generation_column(generation: u64) -> Result<i64, DbError> {
     i64::try_from(generation).map_err(|error| {
-        DbError::Message(format!("folder scan generation exceeds SQLite's integer range: {error}"))
+        DbError::Message(format!(
+            "folder scan generation exceeds SQLite's integer range: {error}"
+        ))
     })
 }
 
@@ -285,8 +287,9 @@ impl Database {
                      volume = excluded.volume",
                 params![watched_folder_path, generation, volume],
             )?;
-            u64::try_from(generation)
-                .map_err(|error| DbError::Message(format!("folder scan generation is negative: {error}")))
+            u64::try_from(generation).map_err(|error| {
+                DbError::Message(format!("folder scan generation is negative: {error}"))
+            })
         })
         .await
     }
@@ -304,7 +307,8 @@ impl Database {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
         let item = item.clone();
-        let observed_at = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
+        let observed_at =
+            chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }
@@ -446,8 +450,8 @@ impl Database {
         self.read(move |sql| {
             load_folder_scan_items_on(&sql, &watched_folder_path, RowSources::Scanned)
         })
-            .process(|process| process())
-            .await
+        .process(|process| process())
+        .await
     }
 
     /// Every stored entry under every watched root.
@@ -572,8 +576,7 @@ fn write_scan_item(
     let touched: Vec<String> = std::iter::once(entry_key)
         .chain(superseded_keys.iter().cloned())
         .collect();
-    let regrouped =
-        super::release_groupings::rebuild_groupings(sql, &touched, &uncovered)?;
+    let regrouped = super::release_groupings::rebuild_groupings(sql, &touched, &uncovered)?;
     Ok(ScanItemWrite::Stored {
         superseded_keys,
         regrouped,
@@ -699,7 +702,8 @@ pub(super) fn write_entry(
     };
     // An unchanged row only takes the stamp, so an untouched folder
     // announces nothing.
-    let stored_item = read::load_item_by_key(sql, &entry_key, sources)?.map(|(_, stored)| stored.item);
+    let stored_item =
+        read::load_item_by_key(sql, &entry_key, sources)?.map(|(_, stored)| stored.item);
     if stored_item.as_ref() == Some(item) {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
         record_discovery()?;

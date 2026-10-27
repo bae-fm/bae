@@ -9,14 +9,14 @@
 //! heading rows are laid out against it, are chosen when the release is read
 //! against the audio (see `import::catalog_reading`).
 
-use bae_types::pressing::Pressing;
-use bae_catalogs::remote_image::RemoteCover;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_metadata::ReleaseMetadata;
 use crate::import::search::ImportSearchReleaseDetail;
-use bae_types::pressing::{Medium, StatedMedia};
 use crate::import::{ArtistCredit, ImportError, MetadataRef, ReleaseRecord};
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::remote_image::RemoteCover;
+use bae_types::pressing::Pressing;
+use bae_types::pressing::{Medium, StatedMedia};
 
 /// The catalogs bae fetches releases from are exactly the ones it asks, so a
 /// source release cannot exist for any other.
@@ -401,9 +401,9 @@ impl SourceRelease {
     pub(crate) fn stated_media(&self) -> StatedMedia {
         match &self.catalog {
             CatalogFacts::MusicBrainz { .. } if self.mediums.is_empty() => StatedMedia::Undescribed,
-            CatalogFacts::MusicBrainz { .. } => StatedMedia::PerMedium(
-                self.mediums.iter().map(|medium| medium.medium).collect(),
-            ),
+            CatalogFacts::MusicBrainz { .. } => {
+                StatedMedia::PerMedium(self.mediums.iter().map(|medium| medium.medium).collect())
+            }
             CatalogFacts::Discogs { media, .. } => media.clone(),
         }
     }
@@ -461,7 +461,6 @@ impl SourceRelease {
             cover_art: pick_covers(self, partners),
         }
     }
-
 }
 
 pub(crate) fn catalog_rank(catalog: Catalog) -> usize {

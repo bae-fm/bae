@@ -9,12 +9,20 @@ use tokio::sync::watch;
 /// One value that changed.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum RuntimeValue {
-    Signals { key: String, signals: Signals },
+    Signals {
+        key: String,
+        signals: Signals,
+    },
     /// How many of the running batch of identifications have ended, of how
     /// many; `(0, 0)` is none running.
-    IdentificationProgress { identified: u32, total: u32 },
+    IdentificationProgress {
+        identified: u32,
+        total: u32,
+    },
     /// How many imports are waiting for the worker or running.
-    ImportsInFlight { count: u32 },
+    ImportsInFlight {
+        count: u32,
+    },
 }
 
 pub(crate) struct RuntimeValuesWatch {

@@ -44,7 +44,10 @@ impl ImportServiceHandle {
         }
         let mut members = Vec::with_capacity(keys.len());
         {
-            let _commit = self.folder_state_commit.lock("check folders to combine").await;
+            let _commit = self
+                .folder_state_commit
+                .lock("check folders to combine")
+                .await;
             for key in &keys {
                 self.ensure_combination_idle(key).await?;
                 members.push(self.editable_candidate_for_commit(key).await?);
@@ -58,8 +61,9 @@ impl ImportServiceHandle {
                     self.library_manager.load_grouping(grouping).await?
                 {
                     return Err(ImportError::Internal {
-                        detail: "separate an existing combination before combining its folders again"
-                            .into(),
+                        detail:
+                            "separate an existing combination before combining its folders again"
+                                .into(),
                     });
                 }
             }
@@ -77,7 +81,9 @@ impl ImportServiceHandle {
         for candidate_key in keys {
             self.identification_ended(&candidate_key).await;
             self.event_tx
-                .send(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
+                .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                    candidate_key,
+                }));
         }
         self.announce_regrouped(&regrouped).await?;
         Ok(key)
@@ -108,8 +114,10 @@ impl ImportServiceHandle {
         if folder == root_path || !folder.starts_with(root_path) {
             return Ok(None);
         }
-        let selected: std::collections::BTreeSet<String> =
-            members.iter().map(crate::import::FolderCandidate::key).collect();
+        let selected: std::collections::BTreeSet<String> = members
+            .iter()
+            .map(crate::import::FolderCandidate::key)
+            .collect();
         let below: std::collections::BTreeSet<String> = self
             .library_manager
             .load_folder_scan_items(root)
@@ -142,15 +150,21 @@ impl ImportServiceHandle {
         &self,
         folder: FolderReleaseDecisionKey,
     ) -> Result<String, ImportError> {
-        self.set_folder_release_decision(folder.clone(), FolderReleaseDecision::CombineAsOneRelease)
-            .await?;
+        self.set_folder_release_decision(
+            folder.clone(),
+            FolderReleaseDecision::CombineAsOneRelease,
+        )
+        .await?;
         self.library_manager
             .load_folder_release_decisions(&folder.watched_folder_path)
             .await?
             .get(&folder.relative_folder_path)
             .map(|reading| reading.grouping.clone())
             .ok_or_else(|| ImportError::Internal {
-                detail: format!("{} was combined but no grouping is stored for it", folder.relative_folder_path),
+                detail: format!(
+                    "{} was combined but no grouping is stored for it",
+                    folder.relative_folder_path
+                ),
             })
     }
 
@@ -165,7 +179,10 @@ impl ImportServiceHandle {
 
     async fn separate_candidate_write(&self, key: &str) -> Result<Vec<String>, ImportError> {
         {
-            let _commit = self.folder_state_commit.lock("check a release to separate").await;
+            let _commit = self
+                .folder_state_commit
+                .lock("check a release to separate")
+                .await;
             self.ensure_combination_idle(key).await?;
         }
         match self.library_manager.load_grouping(key).await? {
@@ -177,14 +194,18 @@ impl ImportServiceHandle {
                 .await
             }
             Some(crate::db::GroupingFacts::Picked { .. }) => {
-                let _commit = self.folder_state_commit.lock("separate a picked release").await;
+                let _commit = self
+                    .folder_state_commit
+                    .lock("separate a picked release")
+                    .await;
                 let (returned, regrouped) =
                     self.library_manager.separate_picked_grouping(key).await?;
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
                 self.identification_ended(key).await;
-                self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                    candidate_key: key.into(),
-                }));
+                self.event_tx
+                    .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                        candidate_key: key.into(),
+                    }));
                 for item in returned {
                     let event = match item {
                         // Each release a separation returns is found, as
@@ -233,14 +254,17 @@ impl ImportServiceHandle {
         regrouped: &crate::db::GroupingChanges,
     ) -> Result<(), ImportError> {
         for candidate_key in &regrouped.removed {
-            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                candidate_key: candidate_key.clone(),
-            }));
+            self.event_tx
+                .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                    candidate_key: candidate_key.clone(),
+                }));
         }
         for item in &regrouped.written {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => {
-                    let standing = self.candidate_standing(&candidate.key(), &candidate).await?;
+                    let standing = self
+                        .candidate_standing(&candidate.key(), &candidate)
+                        .await?;
                     ScanEvent::FolderCandidate {
                         found_while_automatic: regrouped.found.contains(&candidate.key())
                             && self.library_manager.identifies_automatically(),

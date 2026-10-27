@@ -10,10 +10,10 @@
 //! whether the two records are candidates for one pressing and how well
 //! supported that claim is.
 
-use bae_types::barcode::comparison_key;
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataRef;
 use bae_catalogs::catalog::Catalog;
+use bae_types::barcode::comparison_key;
 use bae_types::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
 use bae_types::text_match::{catalog_key, LabelName};
 use tracing::debug;
@@ -270,9 +270,8 @@ impl PressingEvidence {
         if !(self.link || barcode) {
             return None;
         }
-        let country_outweighed = barcode
-            && self.label == Comparison::Same
-            && self.year == Comparison::Same;
+        let country_outweighed =
+            barcode && self.label == Comparison::Same && self.year == Comparison::Same;
         let country_contradicts = self.country == Comparison::Different && !country_outweighed;
         let contradicted = country_contradicts
             || [self.barcode, self.year, self.medium].contains(&Comparison::Different);

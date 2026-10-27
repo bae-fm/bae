@@ -108,9 +108,7 @@ impl StandingColumns {
                 };
                 Some(StoredIdentification {
                     files: CandidateFiles {
-                        content_hash: self
-                            .content_hash
-                            .ok_or_else(|| broken("names no files"))?,
+                        content_hash: self.content_hash.ok_or_else(|| broken("names no files"))?,
                         file_edit_revision: self
                             .file_edit_revision
                             .ok_or_else(|| broken("names no file revision"))?
@@ -132,7 +130,9 @@ impl StandingColumns {
                 },
             }),
             (Some(_), None) | (None, Some(_)) => {
-                return Err(broken("names an import without its id, or an id without it"))
+                return Err(broken(
+                    "names an import without its id, or an id without it",
+                ))
             }
         };
         Ok(StoredStanding {
@@ -380,7 +380,9 @@ fn write_on(
 
 fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value).map_err(|error| {
-        DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}"))
+        DbError::Message(format!(
+            "{what} {value} exceeds SQLite's integer range: {error}"
+        ))
     })
 }
 

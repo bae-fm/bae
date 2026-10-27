@@ -59,7 +59,9 @@ pub enum ProposedRole {
     /// Audio bae plays.
     Audio,
     /// Named as audio, and bae can't play it.
-    DamagedAudio { damage: AudioDamage },
+    DamagedAudio {
+        damage: AudioDamage,
+    },
     /// A `.cue`, before it is parsed.
     Cue,
     Image,
@@ -185,9 +187,10 @@ impl InvalidCandidate {
 
     /// Where its row draws [`Self::cover`] from.
     pub fn cover_image(&self) -> Option<crate::import::CoverImageSource> {
-        self.cover().map(|file| crate::import::CoverImageSource::Local {
-            file: file.file.clone(),
-        })
+        self.cover()
+            .map(|file| crate::import::CoverImageSource::Local {
+                file: file.file.clone(),
+            })
     }
 }
 
@@ -759,13 +762,36 @@ mod heuristic_tests {
     /// can't be one release's discs whatever the folders hold.
     #[test]
     fn names_without_parts_one_and_two_cannot_number_a_set() {
-        let names = |names: &[&str]| names.iter().map(|name| name.to_string()).collect::<Vec<_>>();
-        assert!(names_could_number_one_release(false, &names(&["CD1", "CD2", "Bonus"])));
-        assert!(names_could_number_one_release(false, &names(&["Part 01", "Part 02", "Part 99"])));
-        assert!(!names_could_number_one_release(false, &names(&["1990 - First", "1992 - Second"])));
-        assert!(!names_could_number_one_release(false, &names(&["Release 01", "Release 99"])));
-        assert!(!names_could_number_one_release(false, &names(&["Live in Tokyo", "Live in Osaka"])));
-        assert!(!names_could_number_one_release(true, &names(&["Disc 1", "Disc 2"])));
+        let names = |names: &[&str]| {
+            names
+                .iter()
+                .map(|name| name.to_string())
+                .collect::<Vec<_>>()
+        };
+        assert!(names_could_number_one_release(
+            false,
+            &names(&["CD1", "CD2", "Bonus"])
+        ));
+        assert!(names_could_number_one_release(
+            false,
+            &names(&["Part 01", "Part 02", "Part 99"])
+        ));
+        assert!(!names_could_number_one_release(
+            false,
+            &names(&["1990 - First", "1992 - Second"])
+        ));
+        assert!(!names_could_number_one_release(
+            false,
+            &names(&["Release 01", "Release 99"])
+        ));
+        assert!(!names_could_number_one_release(
+            false,
+            &names(&["Live in Tokyo", "Live in Osaka"])
+        ));
+        assert!(!names_could_number_one_release(
+            true,
+            &names(&["Disc 1", "Disc 2"])
+        ));
     }
 
     /// One child is not a set.

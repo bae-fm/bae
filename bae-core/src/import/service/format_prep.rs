@@ -8,10 +8,10 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
-use bae_audio::ProbeResult;
 use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use crate::import::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::import::ImportError;
+use bae_audio::ProbeResult;
 use bae_util::content_type::ContentType;
 use bae_util::content_type_hint::ContentTypeHint;
 
@@ -83,7 +83,10 @@ pub(super) fn resolve_file_content_type(
 
     if hint.is_audio() {
         return Err(ImportError::UnusableFile {
-            detail: format!("{} is named as audio the scan did not read as audio", path.display()),
+            detail: format!(
+                "{} is named as audio the scan did not read as audio",
+                path.display()
+            ),
         });
     }
 
@@ -494,8 +497,7 @@ impl ImportService {
                         .ok_or_else(|| ImportError::Internal {
                             detail: format!("No DbFile registered for track source {file_path:?}"),
                         })?;
-                    let af =
-                        standalone_audio_format(
+                    let af = standalone_audio_format(
                         &db_track.id,
                         file_path,
                         source_audio,

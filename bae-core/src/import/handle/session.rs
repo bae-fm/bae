@@ -48,7 +48,10 @@ impl ImportServiceHandle {
         &self,
         content_hashes: Vec<String>,
     ) -> Result<(), crate::import::ImportError> {
-        let _commit = self.folder_state_commit.lock("open panes on Find online").await;
+        let _commit = self
+            .folder_state_commit
+            .lock("open panes on Find online")
+            .await;
         self.library_manager
             .move_import_candidate_panes(content_hashes, PaneMove::Admitted)
             .await?;
@@ -107,9 +110,7 @@ impl ImportServiceHandle {
             error: error.ui_error(),
         };
         match self
-            .update_candidate_session(candidate_key, move |session| {
-                session.error = Some(failure)
-            })
+            .update_candidate_session(candidate_key, move |session| session.error = Some(failure))
             .await
         {
             Ok(()) => Ok(PaneOutcome::Failed),

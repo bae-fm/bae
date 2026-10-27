@@ -26,20 +26,20 @@ pub(super) use pane_rows::{
     author_of, insert_draft, load_album_artist_assignments_on, load_covers_on, load_pane_rows_on,
 };
 pub(crate) use preparation_rows::{
-    CandidatePaneWrite, CandidateSaveExpectation,
-    CandidateSaveExtras, CandidateSaved, RunVerdictSaved, ScannedCandidateKey,
+    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
+    RunVerdictSaved, ScannedCandidateKey,
 };
 pub(super) use rows::{
     load_candidate_file_edits_on, load_matches_on, load_provenance_on, load_release_links_on,
     load_states_on,
 };
 use session_rows::load_session_on;
-pub(crate) use standing_rows::{ImportClaim, StandingsRead};
+use signal_rows::{delete_signals, insert_signals};
 pub(super) use standing_rows::{
     change_identification_on, end_identification_unless_of_on, load_standing_facts_on,
     load_standing_on, move_import_on,
 };
-use signal_rows::{delete_signals, insert_signals};
+pub(crate) use standing_rows::{ImportClaim, StandingsRead};
 
 use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
@@ -104,8 +104,12 @@ pub(super) fn require_current_candidate(
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .optional()?;
-    let expected_file_edit_revision = i64::try_from(expected_file_edit_revision)
-        .map_err(|error| DbError::Message(format!("candidate file revision exceeds SQLite range: {error}")))?;
+    let expected_file_edit_revision =
+        i64::try_from(expected_file_edit_revision).map_err(|error| {
+            DbError::Message(format!(
+                "candidate file revision exceeds SQLite range: {error}"
+            ))
+        })?;
     let Some((current_hash, generation, current_file_edit_revision)) = current else {
         return Err(DbError::Message(format!(
             "candidate changed before metadata was stored: {candidate_path} is no longer valid"
@@ -116,8 +120,9 @@ pub(super) fn require_current_candidate(
             "candidate changed before metadata was stored: {candidate_path} no longer names the prepared files"
         )));
     }
-    u64::try_from(generation)
-        .map_err(|error| DbError::Message(format!("candidate scan generation is negative: {error}")))
+    u64::try_from(generation).map_err(|error| {
+        DbError::Message(format!("candidate scan generation is negative: {error}"))
+    })
 }
 
 /// `folder`, a stored folder under the watched folder `root`, by its path
@@ -131,11 +136,9 @@ pub(super) fn relative_below(root: &str, folder: &str) -> Result<String, DbError
 /// with the watched folder covering it, so one stored outside every watched
 /// folder would never be deleted.
 pub(super) fn require_watched(sql: &SqlContext<'_, '_>, folder: &str) -> Result<String, DbError> {
-    let roots: Vec<String> = sql.query(
-        "SELECT path FROM watched_import_folders",
-        [],
-        |row| row.get(0),
-    )?;
+    let roots: Vec<String> = sql.query("SELECT path FROM watched_import_folders", [], |row| {
+        row.get(0)
+    })?;
     crate::import::watched_folder::covering_root(&roots, folder)
         .map(str::to_string)
         .ok_or_else(|| DbError::Message(format!("{folder} is under no watched folder")))
@@ -539,12 +542,11 @@ pub(super) fn settle_scanned_candidates(
                 })?,
             }),
         )?;
-        let stored =
-            super::release_groupings::load_candidate_on(sql, &path)?.ok_or_else(|| {
-                DbError::Message(format!(
-                    "candidate {path} disappeared while its source decisions were stored"
-                ))
-            })?;
+        let stored = super::release_groupings::load_candidate_on(sql, &path)?.ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {path} disappeared while its source decisions were stored"
+            ))
+        })?;
         updated_candidates.push(stored.candidate);
     }
     if updated_folders.len() != settled_by_key.len() {

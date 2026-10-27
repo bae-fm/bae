@@ -80,9 +80,13 @@ pub struct SelectedRows {
 /// The one selected row, when exactly one is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SingleSelection {
-    Candidate { key: String },
+    Candidate {
+        key: String,
+    },
     /// A folder that failed validation.
-    InvalidCandidate { key: String },
+    InvalidCandidate {
+        key: String,
+    },
 }
 
 /// What the selection holds and can be told to do, as it stands.
@@ -96,10 +100,7 @@ pub struct SelectionSummary {
 impl SelectionSummary {
     /// The selection of `selected`, the rows as the list placed them, with
     /// what is running for each.
-    pub(crate) fn of(
-        selected: &SelectedRows,
-        facts: &HashMap<String, TriageRuntimeFacts>,
-    ) -> Self {
+    pub(crate) fn of(selected: &SelectedRows, facts: &HashMap<String, TriageRuntimeFacts>) -> Self {
         let single = match (selected.candidates.as_slice(), selected.invalid.as_slice()) {
             ([only], []) => Some(SingleSelection::Candidate {
                 key: only.candidate_key.clone(),
@@ -171,10 +172,10 @@ mod tests {
             },
             &HashMap::new(),
         )
-            .offers
-            .into_iter()
-            .find(|offer| offer.action == CandidateAction::Identify)
-            .map(|offer| offer.count)
+        .offers
+        .into_iter()
+        .find(|offer| offer.action == CandidateAction::Identify)
+        .map(|offer| offer.count)
     }
 
     /// A selection of identified rows offers no Identify at all.

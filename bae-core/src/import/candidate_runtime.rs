@@ -31,10 +31,10 @@ use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
 use super::types::{ImportProgress, ImportStep};
-use bae_catalogs::catalog::Catalog;
 use crate::db::{Database, LibraryStatus};
 use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{Failure, Signals};
+use bae_catalogs::catalog::Catalog;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -48,13 +48,13 @@ mod standing_writes;
 mod stored_standing;
 mod values_watch;
 mod work;
+pub(crate) use snapshots::RuntimeView;
 pub use snapshots_watch::RuntimeSnapshotsWatch;
 pub(crate) use standing_writes::RunSubject;
 pub(crate) use stored_standing::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredStanding,
 };
-pub(crate) use snapshots::RuntimeView;
 pub(crate) use values_watch::{RuntimeValue, RuntimeValuesWatch};
 pub(crate) use work::CandidateWork;
 
@@ -517,7 +517,8 @@ impl CandidateRuntime {
         };
         self.set(key, |_, runtime| runtime.search = None);
         if signals_removed {
-            self.revisions.send_modify(|revisions| revisions.signals += 1);
+            self.revisions
+                .send_modify(|revisions| revisions.signals += 1);
         }
     }
 
@@ -596,7 +597,9 @@ impl CandidateRuntime {
                         {
                             runtime.import = None;
                         } else {
-                            debug!("{candidate_key}: import {import_id} ended after another reported");
+                            debug!(
+                                "{candidate_key}: import {import_id} ended after another reported"
+                            );
                         }
                     }
                 });
@@ -637,7 +640,8 @@ impl CandidateRuntime {
                     moved
                 };
                 if moved {
-                    self.revisions.send_modify(|revisions| revisions.signals += 1);
+                    self.revisions
+                        .send_modify(|revisions| revisions.signals += 1);
                 }
             }
             // These change rows, not runtime.

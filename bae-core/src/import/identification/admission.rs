@@ -33,10 +33,7 @@ pub(super) async fn admit_found(context: &Context, queue: &mut Queue, keys: Vec<
 }
 
 /// Whether a result is stored for the files this candidate has now.
-fn usable_stored_answer(
-    row: Option<&DbImportCandidateState>,
-    candidate: &FolderCandidate,
-) -> bool {
+fn usable_stored_answer(row: Option<&DbImportCandidateState>, candidate: &FolderCandidate) -> bool {
     row.is_some_and(|row| {
         row.file_edits.revision == candidate.file_edit_revision && row.identify.is_some()
     })

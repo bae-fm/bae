@@ -2,10 +2,12 @@
 //! blocking call, plus the artwork to read afterwards.
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
-use bae_types::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::signals::{AudioFacts, AudioOrigin, AudioSource, DiscIdSignal, DownloadProof, SourcedValue};
+use crate::signals::{
+    AudioFacts, AudioOrigin, AudioSource, DiscIdSignal, DownloadProof, SourcedValue,
+};
+use bae_types::barcode::Barcode;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
@@ -156,8 +158,7 @@ pub(super) fn gather_non_ocr_sources(
             // A file a ripper made reading a disc outweighs a tag, which can
             // be copied.
             if pass.origin.source.is_none() {
-                pass.origin.source =
-                    download_proof(&tags, categorized).map(AudioSource::Download);
+                pass.origin.source = download_proof(&tags, categorized).map(AudioSource::Download);
             }
             let mut seen = HashSet::new();
             for fact in &tags.files {
@@ -352,8 +353,7 @@ fn download_proof(
         return Some(DownloadProof::Store { marker, file });
     }
     let read_off_a_disc = categorized.files.iter().any(|entry| {
-        crate::import::discid::is_rip_document(&entry.file.path)
-            || has_ext(&entry.file.path, "cue")
+        crate::import::discid::is_rip_document(&entry.file.path) || has_ext(&entry.file.path, "cue")
     });
     let delivered = !tags.files.is_empty()
         && tags.files.iter().all(|fact| {

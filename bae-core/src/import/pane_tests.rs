@@ -76,7 +76,12 @@ fn metadata_splits_one_draft_disc_into_sides() {
     let laid = values_over_audio(
         metadata(
             vec![record],
-            &[place(1, 1, 1), place(1, 1, 2), place(1, 2, 1), place(1, 2, 2)],
+            &[
+                place(1, 1, 1),
+                place(1, 1, 2),
+                place(1, 2, 1),
+                place(1, 2, 2),
+            ],
         ),
         &current,
     )
@@ -90,7 +95,9 @@ fn metadata_splits_one_draft_disc_into_sides() {
 #[test]
 fn metadata_merges_two_draft_discs_into_one() {
     let mut current = draft(4);
-    current.mediums.push(crate::mediums::ReleaseMedium::one_sided(None));
+    current
+        .mediums
+        .push(crate::mediums::ReleaseMedium::one_sided(None));
     current.tracks[2].place = place(2, 1, 1);
     current.tracks[3].place = place(2, 1, 2);
     let laid = values_over_audio(one_disc(4), &current).unwrap();
@@ -104,8 +111,7 @@ fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
     let mut current = draft(2);
     current.tracks[0].edit.id = "kept-first".into();
     current.tracks[1].edit.id = "kept-second".into();
-    let laid = values_over_audio(one_disc(2), &current)
-        .unwrap();
+    let laid = values_over_audio(one_disc(2), &current).unwrap();
     assert_eq!(
         laid.tracks
             .iter()

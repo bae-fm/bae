@@ -44,17 +44,24 @@ impl ImportServiceHandle {
         let identify = state
             .identify
             .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} has no lookup whose pressings to link the album of"),
+                detail: format!(
+                    "{candidate_key} has no lookup whose pressings to link the album of"
+                ),
             })?;
         // The rows as the pane lists them: ranked by the candidate's own text,
         // as it reads now.
-        let text =
-            crate::identify::CandidateText::of_stored(state.signals.as_ref(), &state.lookup_choices);
-        let shared = crate::identify::view::shared_album_of(identify.verdict, &text).ok_or_else(
-            || crate::import::ImportError::Internal {
-                detail: format!("{candidate_key}'s lookup offers no several pressings of one album"),
-            },
-        )?;
+        let text = crate::identify::CandidateText::of_stored(
+            state.signals.as_ref(),
+            &state.lookup_choices,
+        );
+        let shared =
+            crate::identify::view::shared_album_of(identify.verdict, &text).ok_or_else(|| {
+                crate::import::ImportError::Internal {
+                    detail: format!(
+                        "{candidate_key}'s lookup offers no several pressings of one album"
+                    ),
+                }
+            })?;
         let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
         // What picking each row would read, top-ranked first. A release that
         // fails to load, or cannot be read onto the folder's audio, fails the

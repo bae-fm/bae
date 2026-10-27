@@ -100,7 +100,9 @@ fn label(name: &str, catalog_number: &str) -> RawLabelEdit {
 fn row(title: &str, catalog_number: &str, tracks: &[&str]) -> RawReleaseEdit {
     RawReleaseEdit {
         album_title: title.to_string(),
-        album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))],
+        album_artist_assignments: vec![crate::import::Credited::plain(
+            crate::import::ArtistAssignment::named("Artist Name"),
+        )],
         album_year: "1990".to_string(),
         pressing: RawPressingEdit {
             year: String::new(),
@@ -129,9 +131,7 @@ fn offered(rows: Vec<RawReleaseEdit>) -> Vec<OfferedReading> {
             let places = edit
                 .tracks
                 .iter()
-                .map(|_| {
-                    placer.place(std::num::NonZeroU16::MIN, std::num::NonZeroU8::MIN, None)
-                })
+                .map(|_| placer.place(std::num::NonZeroU16::MIN, std::num::NonZeroU8::MIN, None))
                 .collect();
             OfferedReading {
                 edit,
@@ -147,7 +147,9 @@ fn offered(rows: Vec<RawReleaseEdit>) -> Vec<OfferedReading> {
 fn draft() -> CandidateDraft {
     CandidateDraft {
         album_title: "album title (tags)".to_string(),
-        album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("artist from tags"))],
+        album_artist_assignments: vec![crate::import::Credited::plain(
+            crate::import::ArtistAssignment::named("artist from tags"),
+        )],
         album_year: "1985".to_string(),
         pressing: RawPressingEdit {
             year: "2005".to_string(),
@@ -193,7 +195,11 @@ fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
     let shared = shared_draft(
         &draft(),
         &offered(vec![
-            row("Album Title", "ABC-100", &["First Song", "Second Song (Remastered)"]),
+            row(
+                "Album Title",
+                "ABC-100",
+                &["First Song", "Second Song (Remastered)"],
+            ),
             row("ALBUM TITLE", "ABC-200", &["first song", "Second Song"]),
         ]),
         None,
@@ -201,7 +207,9 @@ fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
     assert_eq!(shared.album_title, "Album Title");
     assert_eq!(
         shared.album_artist_assignments,
-        vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))]
+        vec![crate::import::Credited::plain(
+            crate::import::ArtistAssignment::named("Artist Name")
+        )]
     );
     assert_eq!(shared.album_year, "1990");
     assert_eq!(
@@ -259,7 +267,11 @@ fn tracks_agree_only_when_every_pressing_lists_the_folders_count() {
         &current,
         &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
-            row("Album Title", "ABC-200", &["First Song", "Second Song", "Bonus"]),
+            row(
+                "Album Title",
+                "ABC-200",
+                &["First Song", "Second Song", "Bonus"],
+            ),
         ]),
         None,
     );
@@ -295,6 +307,10 @@ fn a_year_the_pressings_do_not_share_is_the_folder_s() {
     second.pressing.year = "2010".to_string();
     let shared = shared_draft(&draft(), &offered(vec![first.clone(), second]), Some(1986));
     assert_eq!(shared.pressing.year, "1986");
-    let agreeing = shared_draft(&draft(), &offered(vec![first.clone(), first.clone()]), Some(1986));
+    let agreeing = shared_draft(
+        &draft(),
+        &offered(vec![first.clone(), first.clone()]),
+        Some(1986),
+    );
     assert_eq!(agreeing.pressing.year, "2005");
 }

@@ -34,7 +34,10 @@ fn a_group_is_every_album_its_read_releases_name() {
     let groups = read(
         &list,
         &[
-            ("mb-1", AlbumLinks::Read(vec![names("7", AlbumStatement::Page)])),
+            (
+                "mb-1",
+                AlbumLinks::Read(vec![names("7", AlbumStatement::Page)]),
+            ),
             (
                 "mb-2",
                 AlbumLinks::Read(vec![
@@ -69,7 +72,10 @@ fn an_unread_release_leaves_the_group_unknown_only_where_nothing_is_named() {
     let named = read(
         &list,
         &[
-            ("mb-1", AlbumLinks::Read(vec![names("7", AlbumStatement::Page)])),
+            (
+                "mb-1",
+                AlbumLinks::Read(vec![names("7", AlbumStatement::Page)]),
+            ),
             ("mb-2", AlbumLinks::Unread),
         ],
     );
@@ -80,7 +86,10 @@ fn an_unread_release_leaves_the_group_unknown_only_where_nothing_is_named() {
 
     let unknown = read(
         &list,
-        &[("mb-1", AlbumLinks::Read(Vec::new())), ("mb-2", AlbumLinks::Unread)],
+        &[
+            ("mb-1", AlbumLinks::Read(Vec::new())),
+            ("mb-2", AlbumLinks::Unread),
+        ],
     );
     assert_eq!(unknown[0].links, AlbumLinks::Unread);
 }

@@ -204,11 +204,12 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
     // Record where the grouping sits before anything can block it, so other
     // groupings in that folder find it; leaving a folder rebuilds the ones
     // blocked there.
-    let sits_in = crate::import::grouping::shared_parent(
-        members
-            .iter()
-            .map(|member| (member.watched_folder_path.as_str(), member.file_root.as_path())),
-    );
+    let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
+        (
+            member.watched_folder_path.as_str(),
+            member.file_root.as_path(),
+        )
+    }));
     let sits_in_text = sits_in
         .as_ref()
         .map(|folder| folder.to_string_lossy().into_owned());
@@ -273,9 +274,7 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
                 .map(SkippedFile::of_release_file)
                 .chain(parent_files)
                 .collect();
-            files.sort_by(|a, b| {
-                natord::compare_ignore_case(&a.relative_path, &b.relative_path)
-            });
+            files.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
             invalid(candidate, files)
         }
         ParentFiles::None | ParentFiles::Files(_) => {
@@ -484,11 +483,9 @@ fn anchored_at(
     sql: &(impl QueryOne + QueryRows),
     anchor: &str,
 ) -> Result<FolderReleaseDecisionKey, DbError> {
-    let roots: Vec<String> = sql.query(
-        "SELECT path FROM watched_import_folders",
-        [],
-        |row| row.get(0),
-    )?;
+    let roots: Vec<String> = sql.query("SELECT path FROM watched_import_folders", [], |row| {
+        row.get(0)
+    })?;
     let root = crate::import::watched_folder::covering_root(&roots, anchor)
         .ok_or_else(|| DbError::Message(format!("{anchor} is under no watched folder")))?;
     Ok(FolderReleaseDecisionKey {
@@ -657,11 +654,12 @@ impl Database {
         let key_for_compose = key.clone();
         // Check for a refusal on the read connection; the write checks again
         // and fails if the store changed in between.
-        let sits_in = crate::import::grouping::shared_parent(
-            members
-                .iter()
-                .map(|member| (member.watched_folder_path.as_str(), member.file_root.as_path())),
-        );
+        let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
+            (
+                member.watched_folder_path.as_str(),
+                member.file_root.as_path(),
+            )
+        }));
         let refusal_key = key.clone();
         let refused = self
             .read(move |sql| {
@@ -682,7 +680,10 @@ impl Database {
                 with_edits.push((member.clone(), edits));
             }
             let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
-                (member.watched_folder_path.as_str(), member.file_root.as_path())
+                (
+                    member.watched_folder_path.as_str(),
+                    member.file_root.as_path(),
+                )
             }));
             let parent = parent_files_on(sql, &key_for_compose, sits_in.as_deref(), false)?
                 .map_err(|block| {
@@ -707,8 +708,7 @@ impl Database {
                 )?;
                 if in_use {
                     return Err(DbError::Message(
-                        "this combined release is already present in the queue or library"
-                            .into(),
+                        "this combined release is already present in the queue or library".into(),
                     ));
                 }
                 // Drop any state an undone grouping of the same files left.
@@ -775,9 +775,11 @@ impl Database {
                 )?;
             }
             let mut changes = rebuild_grouping(sql, &key)?;
-            if changes.written.iter().any(
-                |item| matches!(item, ScanItem::Valid(release) if release.key() == key),
-            ) {
+            if changes
+                .written
+                .iter()
+                .any(|item| matches!(item, ScanItem::Valid(release) if release.key() == key))
+            {
                 changes.found.push(key.clone());
             }
             if changes.written.is_empty() {

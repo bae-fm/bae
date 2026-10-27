@@ -63,15 +63,7 @@ pub(super) async fn settle_answer(
     token: CancellationToken,
 ) -> Finished {
     let representative_key = candidate.key();
-    let settled = settle_verdict(
-        &context,
-        &candidate,
-        run,
-        state,
-        priority,
-        &token,
-    )
-    .await;
+    let settled = settle_verdict(&context, &candidate, run, state, priority, &token).await;
     let files = CandidateFiles::of(&candidate);
     let ended = match &settled {
         // A write that ran ended its own pending save.
@@ -135,14 +127,11 @@ async fn settle_verdict(
     // The text the run judged its rows against, which the verdict does not
     // keep: what the pick's year falls back on.
     let text = state.candidate_text();
-    let mut verdict = TerminalVerdict::try_from(state)
-        .expect("the queue settles only terminal identify states");
+    let mut verdict =
+        TerminalVerdict::try_from(state).expect("the queue settles only terminal identify states");
 
     // This run's own snapshot, not another run's of the same candidate.
-    let Some(signals) = context
-        .import
-        .candidate_run_signals(&candidate.key(), run)
-    else {
+    let Some(signals) = context.import.candidate_run_signals(&candidate.key(), run) else {
         return Settled::Unwritable {
             error: format!(
                 "{} reached a verdict with no settled signals",
@@ -237,11 +226,7 @@ async fn lead_metadata(
                 error: error.to_string(),
             }
         })?;
-    let cover = match context
-        .import
-        .fetch_release_cover(release, &partners)
-        .await
-    {
+    let cover = match context.import.fetch_release_cover(release, &partners).await {
         Ok(cover) => cover,
         Err(failure) => {
             let Some(lookup) = crate::import::search::remote_image_failure(&failure.error) else {
@@ -358,14 +343,13 @@ async fn settle_lead(
     let pressing_year = crate::identify::row_facts::folder_pressing_year(text, &pressing.releases);
 
     let settle = async {
-        let release =
-            crate::import::service::prepare_release(
-                &context.library_manager,
-                &primary,
-                crate::import::payloads::ReadDepth::Complete,
-                priority,
-            )
-            .await?;
+        let release = crate::import::service::prepare_release(
+            &context.library_manager,
+            &primary,
+            crate::import::payloads::ReadDepth::Complete,
+            priority,
+        )
+        .await?;
         let prepared_partners = crate::import::service::prepare_partners(
             &context.library_manager,
             &primary,

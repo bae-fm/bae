@@ -1,7 +1,7 @@
 use super::*;
 use crate::import::source_release::SourceRelease;
-use bae_catalogs::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::MetadataRef;
+use bae_catalogs::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 
 /// A lone Discogs release document as bae keeps it: its own facts and
 /// tracklist, no other document behind it.
@@ -195,10 +195,12 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
     let release_artist_roles = &parsed.release_artist_roles;
     let track_artist_roles = &parsed.track_artist_roles;
     assert!(release_artist_roles.iter().any(|role| {
-        committed[&role.artist_id] == composer && role.source_credit.as_deref() == Some("Composed By")
+        committed[&role.artist_id] == composer
+            && role.source_credit.as_deref() == Some("Composed By")
     }));
     assert!(track_artist_roles.iter().any(|role| {
-        committed[&role.artist_id] == composer && role.source_credit.as_deref() == Some("Written-By")
+        committed[&role.artist_id] == composer
+            && role.source_credit.as_deref() == Some("Written-By")
     }));
     assert!(!parsed
         .artists
@@ -573,7 +575,10 @@ fn id_less_role_credit_reuses_release_artist_however_it_is_accented() {
         .release_artist_roles
         .first()
         .expect("composer role imported");
-    assert_eq!(committed[&role.artist_id], committed[&parsed.album_artists[0].artist_id]);
+    assert_eq!(
+        committed[&role.artist_id],
+        committed[&parsed.album_artists[0].artist_id]
+    );
 }
 
 /// An id-less Discogs role credit is its *credited* name — the name stored on
@@ -722,12 +727,7 @@ fn release_barcodes_reach_pressing_metadata() {
         payloads.extract().unwrap().detail(&[]).barcodes,
         release.barcodes
     );
-    assert_eq!(
-        metadata(&release)
-            .pressing
-            .barcodes,
-        release.barcodes
-    );
+    assert_eq!(metadata(&release).pressing.barcodes, release.barcodes);
 }
 
 #[test]
@@ -772,8 +772,5 @@ fn every_label_and_its_catalog_number_is_read() {
         ReleaseLabel::of(Some("Label C"), None),
     ];
     assert_eq!(release.labels, expected);
-    assert_eq!(
-        pressing(&release).0.labels,
-        expected
-    );
+    assert_eq!(pressing(&release).0.labels, expected);
 }

@@ -4,8 +4,7 @@
 
 use super::*;
 use crate::import::folder_scanner::{
-    AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding,
-    SheetDisc,
+    AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
 };
 
 /// A column holding a value no writer here produces.
@@ -14,8 +13,9 @@ pub(crate) fn unreadable(column: &str, stored: &str) -> DbError {
 }
 
 pub(super) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
-    i64::try_from(value)
-        .map_err(|error| DbError::Message(format!("{what} exceeds SQLite's integer range: {error}")))
+    i64::try_from(value).map_err(|error| {
+        DbError::Message(format!("{what} exceeds SQLite's integer range: {error}"))
+    })
 }
 
 pub(crate) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
@@ -23,8 +23,11 @@ pub(crate) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
 }
 
 pub(crate) fn to_u32(value: i64, what: &str) -> Result<u32, DbError> {
-    u32::try_from(value)
-        .map_err(|error| DbError::Message(format!("{what} is outside the range it counts over: {error}")))
+    u32::try_from(value).map_err(|error| {
+        DbError::Message(format!(
+            "{what} is outside the range it counts over: {error}"
+        ))
+    })
 }
 
 pub(super) fn scope_text(scope: ReleaseFileScope) -> &'static str {

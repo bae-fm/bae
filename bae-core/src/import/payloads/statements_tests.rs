@@ -12,7 +12,11 @@ fn url(resource: &str) -> serde_json::Value {
 
 /// A release in group `g` linking `release_urls`, the group's relations
 /// embedded as `embedded` where given.
-fn release(release_urls: &[&str], embedded: Option<&[&str]>, supporting: Vec<SourcePayload>) -> ReleasePayloads {
+fn release(
+    release_urls: &[&str],
+    embedded: Option<&[&str]>,
+    supporting: Vec<SourcePayload>,
+) -> ReleasePayloads {
     let mut group = json!({"id":"g"});
     if let Some(urls) = embedded {
         group["relations"] = urls.iter().map(|resource| url(resource)).collect();
@@ -172,7 +176,11 @@ fn linked_releases_name_one_master_only_when_every_one_was_read() {
 
 #[test]
 fn a_linked_release_that_was_not_fetched_leaves_the_album_unread() {
-    let mut payloads = release(&["https://www.discogs.com/release/11"], None, vec![group_document(&[])]);
+    let mut payloads = release(
+        &["https://www.discogs.com/release/11"],
+        None,
+        vec![group_document(&[])],
+    );
     payloads.unfetched.push(UnfetchedDocument {
         document: PayloadSource::Discogs,
         key: "11".to_string(),
@@ -184,5 +192,8 @@ fn a_linked_release_that_was_not_fetched_leaves_the_album_unread() {
 #[test]
 fn documents_that_link_nothing_name_no_album() {
     let payloads = release(&[], None, vec![group_document(&[])]);
-    assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Read(Vec::new()));
+    assert_eq!(
+        payloads.album_statements().unwrap(),
+        AlbumLinks::Read(Vec::new())
+    );
 }

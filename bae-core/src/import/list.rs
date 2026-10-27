@@ -23,7 +23,6 @@
 //! read carries each row's standing already composed with the rows.
 
 use super::cover_art::CoverChoice;
-use bae_catalogs::remote_image::RemoteCover;
 use super::folder_scanner::FolderCandidate;
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
@@ -40,6 +39,7 @@ use crate::identify::{IdentifyState, VerdictSummary};
 use crate::import::CandidateSession;
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use crate::signals::Signals;
+use bae_catalogs::remote_image::RemoteCover;
 use std::collections::{BTreeMap, BTreeSet};
 
 mod flatten;
@@ -50,8 +50,8 @@ mod subscription;
 mod tests;
 
 pub(crate) use flatten::{
-    first_identifying_candidate, flatten, locate_candidate, release_keys_in_path_order,
-    Flattened, ItemRef,
+    first_identifying_candidate, flatten, locate_candidate, release_keys_in_path_order, Flattened,
+    ItemRef,
 };
 pub use pending_filter::{PendingFilter, PendingFilterEntry};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};

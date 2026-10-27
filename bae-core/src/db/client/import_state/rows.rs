@@ -6,8 +6,7 @@ use super::lookup_choice_rows::load_lookup_choices_on;
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{
     identification_of, match_of, read_match_row, read_verdict_row, unreadable, MatchEntries,
-    StoredMedium,
-    StoredMatches, VERDICT_COLUMNS,
+    StoredMatches, StoredMedium, VERDICT_COLUMNS,
 };
 use super::*;
 use crate::import::{AlbumLink, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
@@ -247,12 +246,13 @@ pub(crate) fn load_release_link_rows_on(
                     })
                 }
                 ("album", None, None) => ReleaseLink::Album(
-                    AlbumLink::new(albums.remove(&content_hash).unwrap_or_default())
-                        .ok_or_else(|| {
+                    AlbumLink::new(albums.remove(&content_hash).unwrap_or_default()).ok_or_else(
+                        || {
                             DbError::Message(format!(
                                 "{content_hash} is linked to an album no catalog names"
                             ))
-                        })?,
+                        },
+                    )?,
                 ),
                 (other, _, _) => return Err(unreadable("release link", other)),
             };

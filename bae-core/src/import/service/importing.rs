@@ -1,6 +1,6 @@
 use super::*;
-use crate::import::types::TrackAudio;
 use crate::import::import_cancel::{ImportRunEnd, ImportStop};
+use crate::import::types::TrackAudio;
 use bae_util::worker_thread::WorkerThread;
 
 impl ImportService {
@@ -28,7 +28,12 @@ impl ImportService {
             clock.clone(),
             ids.clone(),
         );
-        Ok(Self::start_with(runtime_handle, services, runtime, diagnostics)?)
+        Ok(Self::start_with(
+            runtime_handle,
+            services,
+            runtime,
+            diagnostics,
+        )?)
     }
 
     /// [`Self::start`] reading folders' tags through `file_tags`, for a test
@@ -46,13 +51,8 @@ impl ImportService {
     ) -> ImportServiceHandle {
         let runtime = CandidateRuntime::new(database, diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
-        let mut services = crate::import::ImportServices::new(
-            event_tx,
-            library_manager,
-            preparations,
-            clock,
-            ids,
-        );
+        let mut services =
+            crate::import::ImportServices::new(event_tx, library_manager, preparations, clock, ids);
         services.file_tags = file_tags;
         Self::start_with(runtime_handle, services, runtime, diagnostics)
             .expect("a test's library is open while its import service starts")
@@ -215,7 +215,9 @@ impl ImportService {
             _ => None,
         };
         crate::import::ImportFailure {
-            reason: crate::import::ImportFailureReason { detail: error.to_string() },
+            reason: crate::import::ImportFailureReason {
+                detail: error.to_string(),
+            },
             failed_at,
             artist_identity_conflict,
         }
@@ -341,9 +343,7 @@ impl ImportService {
         }
 
         let records = match &release_link {
-            Some(link) => {
-                linked_records(library_manager, link).await?
-            }
+            Some(link) => linked_records(library_manager, link).await?,
             None => Vec::new(),
         };
         // The draft holds every value the release is written with; nothing
@@ -359,12 +359,7 @@ impl ImportService {
             .candidate_album_pick(&categorized.content_hash())
             .await?;
         let mut prepared = self
-            .reconcile_prepared_release(
-                assembled.parsed,
-                records,
-                picked_album,
-                assembled.picked,
-            )
+            .reconcile_prepared_release(assembled.parsed, records, picked_album, assembled.picked)
             .await?;
 
         prepared.db_release.source_folder_name = Some(source_name);
@@ -629,41 +624,52 @@ impl ImportService {
             let reported_percent = Arc::new(std::sync::atomic::AtomicU8::new(last_release_percent));
             let reported_percent_for_progress = Arc::clone(&reported_percent);
             let original = coven::UserFile {
-                path: file.path.clone(), size: file.size,
+                path: file.path.clone(),
+                size: file.size,
                 modified_at: chrono::DateTime::from_timestamp_nanos(file.modified_at_ns).into(),
             };
             let prepared_source = match destination {
                 ImportDestination::Local => PreparedImportSource::Local(original),
-                ImportDestination::Remote { .. } => PreparedImportSource::Shared { original, attachment: Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
-                let completed = bytes_read_before_file + u128::from(consumed);
-                let percent = ((completed * 100) / total_bytes).min(100) as u8;
-                let previous = reported_percent_for_progress
-                    .swap(percent, std::sync::atomic::Ordering::Relaxed);
-                if previous != percent {
-                    ImportService::emit_phase_progress_on(
-                        &event_tx,
-                        ImportRun {
-                            import_id: &import_id_for_progress,
-                            candidate_key: &candidate_key_for_progress,
-                        },
-                        &release_id_for_progress,
-                        Some(percent),
-                        ImportPhase::ReadingFiles,
-                    );
-                }
-            }))
-            .await
-            .map_err(|error| crate::import::ImportError::UnusableFile {
-                detail: format!(
-                    "coven could not prepare {} for import: {error}",
-                    file.path.display()
-                ),
-            })? },
+                ImportDestination::Remote { .. } => PreparedImportSource::Shared {
+                    original,
+                    attachment: Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
+                        let completed = bytes_read_before_file + u128::from(consumed);
+                        let percent = ((completed * 100) / total_bytes).min(100) as u8;
+                        let previous = reported_percent_for_progress
+                            .swap(percent, std::sync::atomic::Ordering::Relaxed);
+                        if previous != percent {
+                            ImportService::emit_phase_progress_on(
+                                &event_tx,
+                                ImportRun {
+                                    import_id: &import_id_for_progress,
+                                    candidate_key: &candidate_key_for_progress,
+                                },
+                                &release_id_for_progress,
+                                Some(percent),
+                                ImportPhase::ReadingFiles,
+                            );
+                        }
+                    }))
+                    .await
+                    .map_err(|error| {
+                        crate::import::ImportError::UnusableFile {
+                            detail: format!(
+                                "coven could not prepare {} for import: {error}",
+                                file.path.display()
+                            ),
+                        }
+                    })?,
+                },
             };
             bytes_read += u128::from(file.size);
             let completed_percent = ((bytes_read * 100) / total_bytes).min(100) as u8;
             if reported_percent.load(std::sync::atomic::Ordering::Relaxed) != completed_percent {
-                self.emit_phase_progress(run, &db_release.id, Some(completed_percent), ImportPhase::ReadingFiles);
+                self.emit_phase_progress(
+                    run,
+                    &db_release.id,
+                    Some(completed_percent),
+                    ImportPhase::ReadingFiles,
+                );
             }
             last_release_percent = completed_percent;
             let mut db_file = DbFile::new(
@@ -736,7 +742,9 @@ impl ImportService {
         // Decoding is CPU work: measure as many tracks at once as there are
         // cores, which also bounds the source files open at once.
         let parallelism = std::thread::available_parallelism().unwrap_or_else(|error| {
-            warn!("could not read the available parallelism ({error}); measuring one track at a time");
+            warn!(
+                "could not read the available parallelism ({error}); measuring one track at a time"
+            );
             std::num::NonZeroUsize::MIN
         });
         let loudness = crate::import::loudness::measure_loudness(
@@ -807,13 +815,14 @@ impl ImportService {
             Some(candidate) => {
                 // Decoding and re-encoding the image is CPU work.
                 let source = candidate.bytes;
-                let bytes =
-                    tokio::task::spawn_blocking(move || bae_util::stored_image::stored_jpeg(&source))
-                        .await
-                        .map_err(|e| crate::import::ImportError::Internal {
-                            detail: format!("cover resize task failed: {e}"),
-                        })?
-                        .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
+                let bytes = tokio::task::spawn_blocking(move || {
+                    bae_util::stored_image::stored_jpeg(&source)
+                })
+                .await
+                .map_err(|e| crate::import::ImportError::Internal {
+                    detail: format!("cover resize task failed: {e}"),
+                })?
+                .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
                 let image = crate::db::DbLibraryImage::cover(
                     &db_release.id,
                     &candidate.source,
@@ -832,7 +841,8 @@ impl ImportService {
 
         // Past here the release is written in one transaction, which a cancel
         // no longer interrupts; one that came first stops the import here.
-        self.import_cancels.begin_writing(candidate_key, import_id)?;
+        self.import_cancels
+            .begin_writing(candidate_key, import_id)?;
         self.event_tx
             .send_once_written(
                 Self::phase_progress(run, &db_release.id, None, ImportPhase::Finalizing),

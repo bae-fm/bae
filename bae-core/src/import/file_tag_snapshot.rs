@@ -207,15 +207,17 @@ impl FileTagReader for LoftyFileTagReader {
             _ => LegacyTagText::default(),
         };
         let values = |legacy: Option<Vec<String>>, key: ItemKey| {
-            stated_values(legacy.unwrap_or_else(|| {
-                tag.get_strings(key).map(String::from).collect()
-            }))
+            stated_values(
+                legacy.unwrap_or_else(|| tag.get_strings(key).map(String::from).collect()),
+            )
         };
         Ok(FileTagRead {
             tags: FileTags {
                 title: non_empty(legacy.title.or_else(|| tag.title().map(String::from))),
                 track_artists: values(legacy.track_artists, ItemKey::TrackArtist),
-                album_title: non_empty(legacy.album_title.or_else(|| tag.album().map(String::from))),
+                album_title: non_empty(
+                    legacy.album_title.or_else(|| tag.album().map(String::from)),
+                ),
                 album_artists: values(legacy.album_artists, ItemKey::AlbumArtist),
                 compilation: tag
                     .get_string(ItemKey::FlagCompilation)

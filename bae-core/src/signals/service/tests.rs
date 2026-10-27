@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::ScanEvent;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkScan, TextOrigin};
 use bae_catalogs::rate_limiter::CallPriority;
 use std::collections::HashMap;
@@ -8,7 +9,6 @@ use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 use tempfile::TempDir;
-use crate::import::ScanEvent;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 mod aborts;
@@ -86,10 +86,7 @@ impl ArtworkAnalyzer for PanicAnalyzer {
 }
 
 /// Drain `SignalsUpdated` events until `expected` of them arrive, or time out.
-async fn collect_signals(
-    rx: &mut UnboundedReceiver<ImportEvent>,
-    expected: usize,
-) -> Vec<Signals> {
+async fn collect_signals(rx: &mut UnboundedReceiver<ImportEvent>, expected: usize) -> Vec<Signals> {
     collect_snapshots(rx, expected)
         .await
         .into_iter()
@@ -148,7 +145,8 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
 
     // Unique per test so keyring entries don't collide in the shared mock store.
 
-    let config = crate::config::Config::with_defaults(database.store_id(), tmp.path().join("preferences"));
+    let config =
+        crate::config::Config::with_defaults(database.store_id(), tmp.path().join("preferences"));
     let config_handle = Arc::new(crate::config::ConfigHandle::new(config));
 
     let manager = crate::library::LibraryManager::new(
@@ -310,11 +308,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
         signals[0].text,
     );
     assert!(
-        signals[0]
-            .text
-            .catalogs()
-            .iter()
-            .any(|c| c == "XX34b"),
+        signals[0].text.catalogs().iter().any(|c| c == "XX34b"),
         "expected folder-bracket catalog in fast pass, got {:?}",
         signals[0].text.catalogs(),
     );
@@ -329,27 +323,15 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     );
 
     // Artwork is OCR'd in sorted order — Back.jpg, then Cover.jpg.
-    assert!(signals[1]
-        .text
-        .catalogs()
-        .iter()
-        .any(|c| c == "XX34b"));
+    assert!(signals[1].text.catalogs().iter().any(|c| c == "XX34b"));
 
     assert!(
         matches!(signals[2].text, TextSignal::Settled { .. }),
         "final text should be Settled, got {:?}",
         signals[2].text,
     );
-    assert!(signals[2]
-        .text
-        .catalogs()
-        .iter()
-        .any(|c| c == "XX34b"));
-    assert!(signals[2]
-        .text
-        .catalogs()
-        .iter()
-        .any(|c| c == "WPCR-80001"));
+    assert!(signals[2].text.catalogs().iter().any(|c| c == "XX34b"));
+    assert!(signals[2].text.catalogs().iter().any(|c| c == "WPCR-80001"));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -830,7 +812,8 @@ async fn an_unchanged_folder_is_not_read_again() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Album Title [XX34b]", &["Cover.jpg"], &[]);
     let analyzer = Arc::new(StubAnalyzer::new().with("Cover.jpg", vec!["Line One".to_string()]));
-    let (handle, mut rx, mut first_run, _lib_tmp) = start_signals(folder.clone(), analyzer.clone()).await;
+    let (handle, mut rx, mut first_run, _lib_tmp) =
+        start_signals(folder.clone(), analyzer.clone()).await;
     let first = collect_snapshots(&mut rx, 2).await;
     assert!(matches!(first[1].1, ArtworkScan::Done { total: 1 }));
     assert_eq!(analyzer.calls(), 1);

@@ -120,7 +120,10 @@ fn a_delivery_set_with_a_part_missing_or_beside_a_rip_file_proves_nothing() {
         .source,
         None
     );
-    assert_eq!(origin_of(DELIVERED, &[("rip.log", b"not a log")]).source, None);
+    assert_eq!(
+        origin_of(DELIVERED, &[("rip.log", b"not a log")]).source,
+        None
+    );
     assert_eq!(
         origin_of(DELIVERED, &[("Album.cue", b"FILE \"01.flac\" WAVE\n")]).source,
         None
@@ -169,7 +172,10 @@ fn each_track_is_titled_by_its_tag_or_its_file_name() {
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
-    tagged_flac(&folder.join("01 - First File.flac"), &[("TITLE", "Song One")]);
+    tagged_flac(
+        &folder.join("01 - First File.flac"),
+        &[("TITLE", "Song One")],
+    );
     tagged_flac(&folder.join("02 - Song Two.flac"), &[]);
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,

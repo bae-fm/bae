@@ -26,7 +26,10 @@ impl CandidateRuntime {
         &self,
         changes: Vec<(String, IdentificationChange)>,
     ) -> Result<Vec<(String, IdentificationMove)>, DbError> {
-        let moved = self.database.change_candidate_identifications(changes).await?;
+        let moved = self
+            .database
+            .change_candidate_identifications(changes)
+            .await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(moved.iter().map(|(key, _)| key.as_str()))
             .await;

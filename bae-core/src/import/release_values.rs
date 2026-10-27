@@ -10,9 +10,9 @@
 
 use crate::import::source_release::{PartDirection, SourceWork, SourceWorkEvent};
 use crate::import::{
-    ArtistCredit, AudioFile, CandidateDraft, Credited, CreditedRole, GraphWork,
-    RawPressingEdit, RawTrackEdit, ReleaseUserEdit, SourceCredit, TrackArtistAssignments,
-    TrackUserEdit, WorkGraph, WorkPart,
+    ArtistCredit, AudioFile, CandidateDraft, Credited, CreditedRole, GraphWork, RawPressingEdit,
+    RawTrackEdit, ReleaseUserEdit, SourceCredit, TrackArtistAssignments, TrackUserEdit, WorkGraph,
+    WorkPart,
 };
 use bae_types::pressing::Pressing;
 use std::collections::HashSet;
@@ -276,9 +276,14 @@ impl WorkGraphBuilder {
             .find(|work| work.musicbrainz_work_id == work_id)
             .expect("a work is held before its relations are read");
         let held = work.composers.iter().any(|known| {
-            match (&known.musicbrainz_artist_id, &composer.musicbrainz_artist_id) {
+            match (
+                &known.musicbrainz_artist_id,
+                &composer.musicbrainz_artist_id,
+            ) {
                 (Some(known), Some(composer)) => known == composer,
-                (None, None) => bae_types::text_match::same_artist_name(&known.name, &composer.name),
+                (None, None) => {
+                    bae_types::text_match::same_artist_name(&known.name, &composer.name)
+                }
                 (Some(_), None) | (None, Some(_)) => false,
             }
         });
@@ -352,7 +357,10 @@ pub(crate) fn place_labels(
 /// [`place_labels`] of a reading's tracks.
 #[cfg(test)]
 pub(crate) fn value_labels(values: &ReleaseValues) -> Vec<String> {
-    place_labels(&values.mediums, values.tracks.iter().map(|track| track.place))
+    place_labels(
+        &values.mediums,
+        values.tracks.iter().map(|track| track.place),
+    )
 }
 
 /// [`place_labels`] of an import's track rows.

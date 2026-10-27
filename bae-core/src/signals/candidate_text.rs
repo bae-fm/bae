@@ -2,11 +2,11 @@
 //! Album free text, plus the extractors for folder names and file names. Pure
 //! string work.
 
+use bae_types::text_match::{normalize, printed_catalog_numbers, strip_trailing_brackets};
 use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use bae_types::text_match::{normalize, printed_catalog_numbers, strip_trailing_brackets};
 use strsim::jaro_winkler;
 
 /// The catalog numbers the lines print, each once in first-seen order — see
@@ -243,13 +243,23 @@ pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
 /// source names its file, so one file's lines stay apart from another's.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Source {
-    Artwork { path: PathBuf },
+    Artwork {
+        path: PathBuf,
+    },
     PathComponent,
-    FilenameGeneric { path: PathBuf },
-    CueField { file_id: String },
-    TextFile { path: PathBuf },
+    FilenameGeneric {
+        path: PathBuf,
+    },
+    CueField {
+        file_id: String,
+    },
+    TextFile {
+        path: PathBuf,
+    },
     /// An audio file's tag: its album, artist or label.
-    FileTag { file_id: String },
+    FileTag {
+        file_id: String,
+    },
 }
 
 /// A candidate line and where it came from, verbatim.
