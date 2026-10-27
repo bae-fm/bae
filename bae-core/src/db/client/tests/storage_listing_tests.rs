@@ -105,3 +105,33 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
         3
     );
 }
+
+/// The plan SQLite chooses for `statement`, one detail line per step.
+async fn plan(db: &Database, statement: String) -> Vec<String> {
+    db.read(move |sql| {
+        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| {
+            row.get::<_, String>(3)
+        })
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap()
+}
+
+/// The cloud-only count reads the releases that count from an index of the
+/// listing, and asks nothing of their files or coven's pins.
+#[tokio::test]
+async fn the_cloud_only_count_reads_one_index_of_the_listing() {
+    let (db, _tmp) = super::temp_db().await;
+    assert_eq!(
+        plan(
+            &db,
+            super::super::query::CLOUD_ONLY_RELEASE_COUNT.to_string()
+        )
+        .await,
+        vec![
+            "SEARCH listing USING COVERING INDEX idx_release_listing_cloud_only (stored=?)"
+                .to_string()
+        ]
+    );
+}

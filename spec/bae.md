@@ -1369,7 +1369,9 @@ title (ignoring ASCII case), artist (§2.3), media (a release stating none
 last), file count or size, either way, ties going by album title, then when
 the release was added, then id; the upload filter lists its releases in the
 order their first files wait in the queue. The upload queue and the pins are
-coven's, which the list's query reads beside the library's rows.
+coven's, which the list's query reads beside the library's rows. Whether a
+release is pinned is read from how many of its files coven's `coven_pins`
+lists, a count bae keeps per release in the transaction that changes a pin.
 
 ### 4.3 Pinning and the cache
 
@@ -1461,7 +1463,9 @@ files from wherever they are: the person's own path, the cache, or storage.
 - **A device with no cloud home** has only local releases; moving to the cloud
   needs one.
 - **What disconnecting would cost.** bae counts the uploaded releases this
-  device hasn't pinned: those it could no longer play without the cloud.
+  device hasn't pinned: those it could no longer play without the cloud. The
+  count reads an index of the releases whose pinned count falls short of
+  their file count.
 
 ---
 
@@ -2788,14 +2792,17 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter |
+| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; and how many of its files this device keeps pinned, with an index of the uploaded releases not wholly pinned |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
 Local triggers write every table here after the first two in the same write as the library rows they
 come from, on this device or applied from another, so they always match those
-rows. A write applied from another device can hold a row before a row it
+rows. A release's pinned count follows coven's `coven_pins` the same way, in
+the transaction that changes a pin, whether this device's own write, another
+device's applied, or coven's as a file is pinned, downloads, uploads or is
+unpinned. A write applied from another device can hold a row before a row it
 references; the triggers count a row once what it references is there.
 
 Whether a release is local or uploaded is not a column: it is whether its files

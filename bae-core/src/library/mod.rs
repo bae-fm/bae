@@ -267,6 +267,14 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
         crate::migrations::natural_order,
     )
     .expect("natural_order registers");
+    // The schema's triggers follow coven's `coven_pins`, which coven creates
+    // before it migrates; these tests pin nothing, so an empty table of the
+    // same shape lets the triggers exist.
+    conn.execute_batch(
+        "CREATE TABLE coven_pins (table_name TEXT NOT NULL, key BLOB NOT NULL, \
+         kept INTEGER NOT NULL, PRIMARY KEY (table_name, key)) STRICT, WITHOUT ROWID;",
+    )
+    .expect("the stand-in coven_pins table creates");
     conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
         .expect("the schema applies");
     conn

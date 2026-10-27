@@ -1136,16 +1136,18 @@ BEGIN
 END;
 
 -- The Storage Manager (§4.2) lists every release with its album's title and
--- credits, its media, its files' count and size and whether they are stored,
--- sorted and filtered by any of them. `release_listing` holds those values,
--- kept by the triggers below, with an index for each sort, alone and after
--- `stored` for the Remote and Local filters.
+-- credits, its media, its files' count and size, whether they are stored and
+-- whether this device keeps them all pinned, sorted and filtered by any of
+-- them. `release_listing` holds those values, kept by the triggers below,
+-- with an index for each sort, alone and after `stored` for the Remote and
+-- Local filters.
 
 -- Each release, with what the Storage Manager sorts and filters it by:
 -- `album_title` and the credit keys copied from its album's `album_listing`
 -- row; `media_empty` (1 for a release stating no medium) and `media_key`
 -- (every stated medium with its count, in order); its files' count and total
--- size; and `stored`, 1 when it has files and every one names its stored file.
+-- size; `stored`, 1 when it has files and every one names its stored file;
+-- and `pinned_count`, how many of its files coven's `coven_pins` lists.
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -1157,7 +1159,8 @@ CREATE TABLE IF NOT EXISTS release_listing (
     created_at TEXT NOT NULL,
     file_count INTEGER NOT NULL,
     total_size INTEGER NOT NULL,
-    stored INTEGER NOT NULL
+    stored INTEGER NOT NULL,
+    pinned_count INTEGER NOT NULL
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_album ON release_listing (album_id);
@@ -1183,6 +1186,12 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files ON release_listing (
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files_desc ON release_listing (stored, file_count DESC, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size ON release_listing (stored, total_size, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_desc ON release_listing (stored, total_size DESC, album_title COLLATE NOCASE, created_at, release_id);
+
+-- The uploaded releases this device doesn't keep wholly pinned (§4.3): those
+-- it could no longer play without the cloud. It holds the columns its WHERE
+-- names, so counting them reads this index alone.
+CREATE INDEX IF NOT EXISTS idx_release_listing_cloud_only ON release_listing (stored, pinned_count, file_count)
+    WHERE stored = 1 AND pinned_count < file_count;
 
 -- How many releases are stored and how many aren't, and their files' total
 -- size, for the Storage Manager's count and total: a row for each of `stored`
@@ -1229,7 +1238,7 @@ CREATE TRIGGER IF NOT EXISTS release_listing_refresh INSTEAD OF INSERT ON releas
 BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
-        media_empty, media_key, created_at, file_count, total_size, stored)
+        media_empty, media_key, created_at, file_count, total_size, stored, pinned_count)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            json_array_length(r.media) = 0,
            (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'),
@@ -1239,7 +1248,10 @@ BEGIN
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
            (SELECT COALESCE(SUM(f.file_size), 0) FROM release_files f WHERE f.release_id = r.id),
            EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id)
-             AND NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL)
+             AND NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL),
+           (SELECT COUNT(*) FROM release_files f
+            JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id)
+            WHERE f.release_id = r.id)
     FROM releases r
     JOIN album_listing album ON album.album_id = r.album_id
     WHERE r.id = NEW.release_id
@@ -1253,7 +1265,8 @@ BEGIN
         created_at = excluded.created_at,
         file_count = excluded.file_count,
         total_size = excluded.total_size,
-        stored = excluded.stored;
+        stored = excluded.stored,
+        pinned_count = excluded.pinned_count;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_release_added AFTER INSERT ON releases
@@ -1297,6 +1310,28 @@ END;
 -- A release file's key as coven's state views name it (`coven_key`), so a
 -- read joining coven's upload queue or pins reaches the file by its key.
 CREATE INDEX IF NOT EXISTS idx_release_files_coven_key ON release_files (coven_key(id));
+
+-- A pin beginning or ending on a release file moves its release's pinned
+-- count, in the transaction that changes the pin: this device's own write,
+-- another device's applied, or coven's own as a file is pinned, downloads,
+-- uploads or is unpinned. Completing an upload ends the queued file's pin and
+-- begins the stored file's, which leaves the count as it was. A file whose
+-- row is gone, or whose release is not listed yet, moves nothing: the
+-- refresh above counts its release's pins from `coven_pins` as it writes the
+-- release's row.
+CREATE TRIGGER IF NOT EXISTS release_listing_file_pinned AFTER INSERT ON coven_pins
+WHEN NEW.table_name = 'release_files'
+BEGIN
+    UPDATE release_listing SET pinned_count = pinned_count + 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_file_unpinned AFTER DELETE ON coven_pins
+WHEN OLD.table_name = 'release_files'
+BEGIN
+    UPDATE release_listing SET pinned_count = pinned_count - 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = OLD.key);
+END;
 
 -- Library search (§2.3) matches a query anywhere inside a title or a name,
 -- ignoring case: each searched text is kept in an FTS5 table as

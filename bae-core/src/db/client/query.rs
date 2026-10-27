@@ -671,13 +671,11 @@ pub(super) const UPLOADING_RELEASES: &str =
      WHERE upload.table_name = 'release_files' \
      GROUP BY file.release_id";
 
-/// Whether this device keeps every file of the release `r` pinned (coven's
-/// `coven_pins`); false for a release with no files.
-const RELEASE_R_PINNED: &str =
-    "EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) AND \
-     NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND NOT EXISTS ( \
-         SELECT 1 FROM coven_pins pin \
-         WHERE pin.table_name = 'release_files' AND pin.key = coven_key(f.id)))";
+/// How many uploaded releases this device doesn't keep wholly pinned, read
+/// from the listing's index of them.
+pub(super) const CLOUD_ONLY_RELEASE_COUNT: &str =
+    "SELECT COUNT(*) FROM release_listing AS listing \
+     WHERE listing.stored = 1 AND listing.pinned_count < listing.file_count";
 
 /// What a Storage Manager filter keeps of `release_listing listing`: the
 /// joins and the WHERE clause that follow its FROM.
@@ -708,7 +706,7 @@ fn storage_row_select(filter: StorageFilter) -> String {
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             listing.file_count, \
             listing.total_size, \
-            ({RELEASE_R_PINNED}) AS pinned, \
+            listing.file_count > 0 AND listing.pinned_count = listing.file_count AS pinned, \
             {album_columns} \
         FROM release_listing listing \
         JOIN releases r ON r.id = listing.release_id \

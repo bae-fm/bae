@@ -77,26 +77,14 @@ impl Database {
             .process(Ok)
     }
 
-    /// How many uploaded releases this device doesn't keep pinned: a remote
-    /// release with no files, or with a file coven's `coven_pins` doesn't
-    /// list. Each is reachable only through the cloud, so disconnecting would
-    /// leave it unplayable here.
+    /// How many uploaded releases this device doesn't keep pinned: those with
+    /// a file coven's `coven_pins` doesn't list, as the listing's pinned count
+    /// keeps them. Each is reachable only through the cloud, so disconnecting
+    /// would leave it unplayable here.
     pub async fn cloud_only_release_count(&self) -> Result<u64, DbError> {
         self.read(|sql| {
-            sql.query_row(
-                "SELECT COUNT(*) FROM release_listing AS listing \
-                 WHERE listing.stored = 1 \
-                   AND (NOT EXISTS (SELECT 1 FROM release_files AS f \
-                                    WHERE f.release_id = listing.release_id) \
-                        OR EXISTS (SELECT 1 FROM release_files AS f \
-                                   WHERE f.release_id = listing.release_id \
-                                     AND NOT EXISTS (SELECT 1 FROM coven_pins AS p \
-                                                     WHERE p.table_name = ?1 \
-                                                       AND p.key = coven_key(f.id))))",
-                [crate::sync::RELEASE_FILES_NAMESPACE],
-                |row| row.get::<_, u64>(0),
-            )
-            .map_err(DbError::from)
+            sql.query_row(CLOUD_ONLY_RELEASE_COUNT, [], |row| row.get::<_, u64>(0))
+                .map_err(DbError::from)
         })
         .await
     }

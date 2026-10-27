@@ -221,6 +221,7 @@ mod scrub_points_sync;
 mod sign_in;
 include!("tests/transfer_order.rs");
 include!("tests/upload_pin.rs");
+include!("tests/pin_count_upkeep.rs");
 include!("tests/downloads.rs");
 include!("tests/output.rs");
 include!("tests/identity.rs");
