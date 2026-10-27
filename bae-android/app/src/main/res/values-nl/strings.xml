@@ -278,6 +278,7 @@
     <string name="invite_lifetime_week">1 week</string>
     <string name="members_add_device">Apparaat toevoegen</string>
     <string name="add_device_title">Een apparaat toevoegen</string>
+    <string name="add_device_added">%1$s toegevoegd</string>
     <string name="add_device_instructions">Kies op het nieuwe apparaat ‘Apparaat toevoegen’ en scan dan dit of typ:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Uitnodiging maken</string>

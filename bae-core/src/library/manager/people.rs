@@ -88,6 +88,17 @@ impl LibraryManager {
             .process(|members| Ok(crate::sync::membership::Membership::from_members(members)))
     }
 
+    /// This person's device that joins after the subscription's first
+    /// result: none until one does. Add Device's sheet watches it while it
+    /// shows the code.
+    pub fn subscribe_added_device(
+        &self,
+    ) -> coven::LiveQuery<Option<crate::sync::membership::ActiveDevice>> {
+        let watch = crate::sync::membership::AddedDeviceWatch::default();
+        self.subscribe_members()
+            .process(move |membership| Ok(watch.added(&membership)))
+    }
+
     pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), LibraryError> {
         Ok(self.database.remove_member(member).await?)
     }

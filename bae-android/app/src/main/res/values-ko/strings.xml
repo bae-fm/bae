@@ -275,6 +275,7 @@
     <string name="invite_lifetime_week">1주</string>
     <string name="members_add_device">기기 추가</string>
     <string name="add_device_title">기기 추가</string>
+    <string name="add_device_added">%1$s 추가됨</string>
     <string name="add_device_instructions">새 기기에서 ‘기기 추가’ 항목을 선택한 다음, 이 코드를 스캔하거나 다음을 입력하세요:</string>
     <string name="invite_email">이메일</string>
     <string name="invite_create">초대 만들기</string>

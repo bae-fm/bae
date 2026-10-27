@@ -150,6 +150,7 @@ class RecoveryCodeSectionTest {
             BaeTheme {
                 AddDeviceDialogContent(
                     share = BridgeRestoreCodeShare(code = CODE, qrText = CODE, qrCarriesS3Key = false),
+                    added = null,
                     error = null,
                     onDismiss = {},
                 )
@@ -171,6 +172,7 @@ class RecoveryCodeSectionTest {
             BaeTheme {
                 AddDeviceDialogContent(
                     share = BridgeRestoreCodeShare(code = CODE, qrText = CODE_WITH_KEY, qrCarriesS3Key = true),
+                    added = null,
                     error = null,
                     onDismiss = {},
                 )

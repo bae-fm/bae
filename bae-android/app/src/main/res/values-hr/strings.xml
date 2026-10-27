@@ -281,6 +281,7 @@
     <string name="invite_lifetime_week">1 tjedan</string>
     <string name="members_add_device">Dodaj uređaj</string>
     <string name="add_device_title">Dodaj uređaj</string>
+    <string name="add_device_added">Uređaj dodan: %1$s</string>
     <string name="add_device_instructions">Na novom uređaju odaberite „Dodaj uređaj”, a zatim skenirajte ovo ili upišite:</string>
     <string name="invite_email">E-pošta</string>
     <string name="invite_create">Stvori pozivnicu</string>

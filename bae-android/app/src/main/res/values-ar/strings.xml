@@ -290,6 +290,7 @@
     <string name="invite_lifetime_week">أسبوع واحد</string>
     <string name="members_add_device">إضافة جهاز</string>
     <string name="add_device_title">إضافة جهاز</string>
+    <string name="add_device_added">تمت إضافة %1$s</string>
     <string name="add_device_instructions">على الجهاز الجديد، اختر «إضافة جهاز»، ثم امسح هذا الرمز أو اكتب:</string>
     <string name="invite_email">البريد الإلكتروني</string>
     <string name="invite_create">إنشاء دعوة</string>

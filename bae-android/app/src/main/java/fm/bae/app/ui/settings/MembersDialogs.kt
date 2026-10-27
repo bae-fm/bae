@@ -94,7 +94,7 @@ internal fun MembersDialogsShown(
             )
         }
     if (dialogs.addingDevice) {
-        AddDeviceDialog(session = session, onDismiss = { dialogs.addingDevice = false })
+        AddDeviceDialog(appHandle = session.appHandle, onDismiss = { dialogs.addingDevice = false })
     }
     dialogs.pendingRemoval?.let { removal ->
         RemovalConfirmDialog(

@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
+import uniffi.bae_bridge.AddedDeviceCallback
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.AlbumSelectionSubscription
@@ -596,6 +597,8 @@ internal open class FakeAppHandle(
     override fun subscribeInvites(callback: InvitesCallback): LiveSubscription = unfaked("subscribeInvites")
 
     override fun subscribeMembers(callback: MembershipCallback): LiveSubscription = unfaked("subscribeMembers")
+
+    override fun subscribeAddedDevice(callback: AddedDeviceCallback): LiveSubscription = unfaked("subscribeAddedDevice")
 
     override suspend fun appendPlaylistEntry(
         playlist: String,

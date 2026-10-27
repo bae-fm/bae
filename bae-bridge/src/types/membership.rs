@@ -39,7 +39,7 @@ pub struct BridgeActiveDevice {
     pub can_remove: bool,
 }
 impl BridgeActiveDevice {
-    fn from_core(device: bae_core::sync::membership::ActiveDevice) -> Self {
+    pub(crate) fn from_core(device: bae_core::sync::membership::ActiveDevice) -> Self {
         let bae_core::sync::membership::ActiveDevice {
             id,
             name,

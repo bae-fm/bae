@@ -281,6 +281,7 @@
     <string name="invite_lifetime_week">שבוע אחד</string>
     <string name="members_add_device">הוספת מכשיר</string>
     <string name="add_device_title">הוספת מכשיר</string>
+    <string name="add_device_added">המכשיר %1$s נוסף</string>
     <string name="add_device_instructions">במכשיר החדש בחרו ב“הוספת מכשיר”, ואז סרקו את זה או הקלידו:</string>
     <string name="invite_email">אימייל</string>
     <string name="invite_create">יצירת הזמנה</string>

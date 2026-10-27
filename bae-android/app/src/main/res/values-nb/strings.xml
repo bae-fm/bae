@@ -277,6 +277,7 @@
     <string name="invite_lifetime_week">1 uke</string>
     <string name="members_add_device">Legg til enhet</string>
     <string name="add_device_title">Legg til en enhet</string>
+    <string name="add_device_added">%1$s er lagt til</string>
     <string name="add_device_instructions">Velg «Legg til enhet» på den nye enheten, og skann deretter dette eller skriv inn:</string>
     <string name="invite_email">E-post</string>
     <string name="invite_create">Opprett invitasjon</string>

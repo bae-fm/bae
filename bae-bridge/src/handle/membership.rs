@@ -41,6 +41,13 @@ pub trait MembershipCallback: Send + Sync {
     fn on_value(&self, value: BridgeMembership);
     fn on_error(&self, error: BridgeError);
 }
+/// The person's device that joined after the subscription's first value, or
+/// none yet.
+#[uniffi::export(callback_interface)]
+pub trait AddedDeviceCallback: Send + Sync {
+    fn on_value(&self, device: Option<BridgeActiveDevice>);
+    fn on_error(&self, error: BridgeError);
+}
 #[uniffi::export(callback_interface)]
 pub trait InvitesCallback: Send + Sync {
     fn on_value(&self, value: Vec<BridgeInvite>);
@@ -55,6 +62,20 @@ impl AppHandle {
             |services| services.subscribe_members(),
             move |result| match result {
                 Ok(value) => callback.on_value(BridgeMembership::from_core(value)),
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
+            },
+        )
+    }
+    /// This person's device that joins after the first value, which is
+    /// none: Add Device's sheet watches it while it shows the code.
+    pub fn subscribe_added_device(
+        &self,
+        callback: Box<dyn AddedDeviceCallback>,
+    ) -> Arc<crate::LiveSubscription> {
+        self.subscribe_query(
+            |services| services.subscribe_added_device(),
+            move |result| match result {
+                Ok(device) => callback.on_value(device.map(BridgeActiveDevice::from_core)),
                 Err(error) => callback.on_error(BridgeError::database_query(error)),
             },
         )

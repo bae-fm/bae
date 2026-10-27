@@ -279,6 +279,7 @@
     <string name="invite_lifetime_week">1 settimana</string>
     <string name="members_add_device">Aggiungi dispositivo</string>
     <string name="add_device_title">Aggiungi un dispositivo</string>
+    <string name="add_device_added">Dispositivo aggiunto: %1$s</string>
     <string name="add_device_instructions">Sul nuovo dispositivo, scegli “Aggiungi dispositivo”, poi scansiona questo codice o digita:</string>
     <string name="invite_email">Email</string>
     <string name="invite_create">Crea invito</string>

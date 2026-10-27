@@ -275,6 +275,7 @@
     <string name="invite_lifetime_week">1週間</string>
     <string name="members_add_device">デバイスを追加</string>
     <string name="add_device_title">デバイスを追加</string>
+    <string name="add_device_added">%1$s を追加しました</string>
     <string name="add_device_instructions">新しいデバイスで「デバイスを追加」を選んでから、これをスキャンするか、次のコードを入力してください：</string>
     <string name="invite_email">メールアドレス</string>
     <string name="invite_create">招待を作成</string>

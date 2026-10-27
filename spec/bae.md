@@ -1819,7 +1819,10 @@ The code to type holds no key, and asks for it separately.
 Carol adds a device from **Add Device…** under her own row in People, shown
 only for a library with a cloud home. Its sheet tells her to choose **Add
 device** on the new device, then scan its QR code or type the code it shows;
-on S3 it says the QR code carries her key. Settings keeps the code under **Your
+on S3 it says the QR code carries her key. While it shows the code it watches
+her devices, as People's list of them does: once a device of hers that wasn't
+there when it opened joins, the sheet says that device's name was added in
+place of the code, and **Done** closes it. Settings keeps the code under **Your
 recovery code**, for the day she loses every device: hidden until she asks,
 then shown in place as coven formats it, to copy or hide, and hidden again
 when Settings closes. On S3 that section also says she will need her access
@@ -2605,7 +2608,8 @@ move, each naming the track or clip it is of; and the queue.
 Through `AppServices`: move releases to the cloud and make them local again,
 pin and unpin, cancel a transition, export and save; set up a cloud home,
 reconnect, pause, read the pending list and act on its records; list people
-and their devices, invite a person in person or by sending the code, list this
+and their devices, watch for a device of this person's that joins after the
+watch begins, invite a person in person or by sending the code, list this
 device's open invites, approve or decline a sent invite's request,
 change a role, remove a person or a device, rename the library; make a restore
 code; create and rename a profile, set its avatar and history setting, rate,

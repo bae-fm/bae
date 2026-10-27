@@ -331,6 +331,8 @@
     <string name="invite_lifetime_week">1 week</string>
     <string name="members_add_device">Add device</string>
     <string name="add_device_title">Add a device</string>
+    <!-- Shown in place of the QR code once the person's new device has joined; the argument is that device's name -->
+    <string name="add_device_added">%1$s added</string>
     <!-- The quoted label is onboarding_add_device, the choice on the new device's first screen -->
     <string name="add_device_instructions">On the new device, choose “Add device”, then scan this or type:</string>
     <string name="invite_email">Email</string>

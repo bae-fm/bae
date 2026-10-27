@@ -275,6 +275,7 @@
     <string name="invite_lifetime_week">1 周</string>
     <string name="members_add_device">添加设备</string>
     <string name="add_device_title">添加设备</string>
+    <string name="add_device_added">已添加%1$s</string>
     <string name="add_device_instructions">在新设备上选择“添加设备”，然后扫描此代码或输入：</string>
     <string name="invite_email">电子邮件</string>
     <string name="invite_create">创建邀请</string>

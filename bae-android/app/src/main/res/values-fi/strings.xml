@@ -277,6 +277,7 @@
     <string name="invite_lifetime_week">1 viikko</string>
     <string name="members_add_device">Lisää laite</string>
     <string name="add_device_title">Lisää laite</string>
+    <string name="add_device_added">%1$s lisätty</string>
     <string name="add_device_instructions">Valitse uudella laitteella ”Lisää laite” ja skannaa sitten tämä tai kirjoita:</string>
     <string name="invite_email">Sähköposti</string>
     <string name="invite_create">Luo kutsu</string>

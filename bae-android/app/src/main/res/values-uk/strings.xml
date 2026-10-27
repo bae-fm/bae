@@ -284,6 +284,7 @@
     <string name="invite_lifetime_week">1 тиждень</string>
     <string name="members_add_device">Додати пристрій</string>
     <string name="add_device_title">Додати пристрій</string>
+    <string name="add_device_added">Пристрій додано: %1$s</string>
     <string name="add_device_instructions">На новому пристрої виберіть «Додати пристрій», а потім відскануйте це або введіть:</string>
     <string name="invite_email">Ел. пошта</string>
     <string name="invite_create">Створити запрошення</string>

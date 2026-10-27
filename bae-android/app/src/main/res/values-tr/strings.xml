@@ -278,6 +278,7 @@
     <string name="invite_lifetime_week">1 hafta</string>
     <string name="members_add_device">Cihaz ekle</string>
     <string name="add_device_title">Cihaz ekle</string>
+    <string name="add_device_added">%1$s eklendi</string>
     <string name="add_device_instructions">Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:</string>
     <string name="invite_email">E-posta</string>
     <string name="invite_create">Davet oluştur</string>

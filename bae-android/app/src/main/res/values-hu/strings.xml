@@ -277,6 +277,7 @@
     <string name="invite_lifetime_week">1 hét</string>
     <string name="members_add_device">Eszköz hozzáadása</string>
     <string name="add_device_title">Eszköz hozzáadása</string>
+    <string name="add_device_added">%1$s hozzáadva</string>
     <string name="add_device_instructions">Az új eszközön válaszd ezt: „Eszköz hozzáadása”, majd olvasd be ezt, vagy írd be:</string>
     <string name="invite_email">E-mail</string>
     <string name="invite_create">Meghívó létrehozása</string>

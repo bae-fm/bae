@@ -277,6 +277,7 @@
     <string name="invite_lifetime_week">1 εβδομάδα</string>
     <string name="members_add_device">Προσθήκη συσκευής</string>
     <string name="add_device_title">Προσθήκη συσκευής</string>
+    <string name="add_device_added">Προστέθηκε η συσκευή %1$s</string>
     <string name="add_device_instructions">Στη νέα συσκευή, επιλέξτε «Προσθήκη συσκευής» και μετά σαρώστε αυτό ή πληκτρολογήστε:</string>
     <string name="invite_email">Email</string>
     <string name="invite_create">Δημιουργία πρόσκλησης</string>

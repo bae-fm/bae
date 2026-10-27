@@ -278,6 +278,7 @@
     <string name="invite_lifetime_week">1 седмица</string>
     <string name="members_add_device">Добавяне на устройство</string>
     <string name="add_device_title">Добавяне на устройство</string>
+    <string name="add_device_added">Добавено устройство: %1$s</string>
     <string name="add_device_instructions">На новото устройство изберете „Добавяне на устройство“, след това сканирайте това или въведете:</string>
     <string name="invite_email">Имейл</string>
     <string name="invite_create">Създаване на покана</string>

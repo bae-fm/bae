@@ -275,6 +275,7 @@
     <string name="invite_lifetime_week">1 週</string>
     <string name="members_add_device">新增裝置</string>
     <string name="add_device_title">新增裝置</string>
+    <string name="add_device_added">已新增%1$s</string>
     <string name="add_device_instructions">在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入：</string>
     <string name="invite_email">電子郵件</string>
     <string name="invite_create">建立邀請</string>

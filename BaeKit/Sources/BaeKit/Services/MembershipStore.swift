@@ -20,9 +20,16 @@ public final class MembershipStore {
     public private(set) var invites: [BridgeInvite] = []
     /// The last failed read; cleared by the next successful one.
     public private(set) var error: DisplayError?
+    /// This person's device that joined while `watchForAddedDevice` ran, nil
+    /// until one does.
+    public private(set) var addedDevice: BridgeActiveDevice?
 
     /// Starts the membership, profile and invite subscriptions.
     private let subscribe: @MainActor (MembershipStore) -> [LiveSubscription]
+    /// Starts the subscription to this person's device that joins after its
+    /// first value, returning what cancels it.
+    private let subscribeAddedDevice:
+        @MainActor (any AddedDeviceCallback) -> @Sendable () -> Void
     private let readPeopleOperation: @Sendable () async throws -> [BridgePerson]
     @ObservationIgnored
     private var subscriptions: [LiveSubscription] = []
@@ -55,29 +62,45 @@ public final class MembershipStore {
                     ),
                 ]
             },
-            readPeople: { try await handle.people() }
+            readPeople: { try await handle.people() },
+            subscribeAddedDevice: { callback in
+                let subscription = handle.subscribeAddedDevice(
+                    callback: callback
+                )
+                return { subscription.cancel() }
+            }
         )
     }
 
     private init(
         subscribe: @escaping @MainActor (MembershipStore) -> [LiveSubscription],
-        readPeople: @escaping @Sendable () async throws -> [BridgePerson]
+        readPeople: @escaping @Sendable () async throws -> [BridgePerson],
+        subscribeAddedDevice:
+            @escaping @MainActor (any AddedDeviceCallback) ->
+            @Sendable () ->
+            Void
     ) {
         self.subscribe = subscribe
         readPeopleOperation = readPeople
+        self.subscribeAddedDevice = subscribeAddedDevice
     }
 
     #if DEBUG
         /// A store showing `people` and `invites` from the start, with no
-        /// subscriptions.
+        /// subscriptions; watching for an added device finds `addedDevice`.
         public static func stub(
             people: [BridgePerson],
             selfIsAdmin: Bool,
-            invites: [BridgeInvite] = []
+            invites: [BridgeInvite] = [],
+            addedDevice: BridgeActiveDevice? = nil
         ) -> MembershipStore {
             let store = MembershipStore(
                 subscribe: { _ in [] },
-                readPeople: { people }
+                readPeople: { people },
+                subscribeAddedDevice: { callback in
+                    callback.onValue(device: addedDevice)
+                    return {}
+                }
             )
             store.selfIsAdmin = selfIsAdmin
             store.invites = invites
@@ -89,6 +112,26 @@ public final class MembershipStore {
     public func start() {
         precondition(subscriptions.isEmpty, "membership subscribed twice")
         subscriptions = subscribe(self)
+    }
+
+    /// Watch for this person's device that joins from now on, until the
+    /// calling task is cancelled: Add Device's sheet runs it while it shows
+    /// the code.
+    public func watchForAddedDevice() async {
+        addedDevice = nil
+        let (devices, deliver) = AsyncStream.makeStream(
+            of: BridgeActiveDevice?.self
+        )
+        let cancel = subscribeAddedDevice(
+            AddedDeviceSink(
+                apply: { deliver.yield($0) },
+                fail: { [weak self] error in self?.fail(error) }
+            )
+        )
+        defer { cancel() }
+        for await device in devices {
+            addedDevice = device
+        }
     }
 
     private func readPeople() {
@@ -145,6 +188,22 @@ private final class ProfilesSink: ProfilesCallback, Sendable {
     func onValue(value _: [BridgePersonProfile]) {
         Task { @MainActor in apply() }
     }
+    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
+}
+
+private final class AddedDeviceSink: AddedDeviceCallback, Sendable {
+    private let apply: @Sendable (BridgeActiveDevice?) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
+
+    init(
+        apply: @escaping @Sendable (BridgeActiveDevice?) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        self.apply = apply
+        self.fail = fail
+    }
+
+    func onValue(device: BridgeActiveDevice?) { apply(device) }
     func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 }
 

@@ -63,6 +63,31 @@ impl Membership {
     }
 }
 
+/// Watches the membership for a device of this device's person that wasn't
+/// there at the watch's first look. Add Device's sheet shows its code until
+/// one joins.
+#[derive(Default)]
+pub struct AddedDeviceWatch {
+    /// The person's active devices at the first look.
+    known: std::sync::OnceLock<std::collections::BTreeSet<coven::DeviceId>>,
+}
+
+impl AddedDeviceWatch {
+    /// The first of the person's active devices, in device-id order, that
+    /// wasn't there at the first look; none until one joins. The first call
+    /// is the first look.
+    pub fn added(&self, membership: &Membership) -> Option<ActiveDevice> {
+        let own = membership.members.iter().find(|member| member.is_self)?;
+        let known = self
+            .known
+            .get_or_init(|| own.active_devices.iter().map(|device| device.id).collect());
+        own.active_devices
+            .iter()
+            .find(|device| !known.contains(&device.id))
+            .cloned()
+    }
+}
+
 impl MembershipMember {
     fn new(member: coven::MemberInfo, self_is_admin: bool) -> Self {
         let coven::MemberInfo {
@@ -257,5 +282,51 @@ mod tests {
         assert!(!membership.self_is_admin);
         assert_eq!(removable(&membership.members[0]), [false, true]);
         assert_eq!(removable(&membership.members[1]), [false]);
+    }
+
+    /// Add Device's sheet watches for the person's device that joins while
+    /// it shows the code: what the person had at the first look is no news,
+    /// nor is another person's new device.
+    #[test]
+    fn a_watch_finds_the_persons_device_that_joins_after_its_first_look() {
+        use coven::DeviceState::Active;
+        let membership = |own: Vec<coven::DeviceInfo>, others: Vec<coven::DeviceInfo>| {
+            Membership::from_members(vec![
+                member(1, coven::MemberRole::Admin, true, own),
+                member(2, coven::MemberRole::Member, false, others),
+            ])
+        };
+        let watch = AddedDeviceWatch::default();
+
+        assert_eq!(
+            watch.added(&membership(
+                vec![device(1, Active, true), device(2, Active, false)],
+                vec![device(3, Active, false)],
+            )),
+            None
+        );
+        assert_eq!(
+            watch.added(&membership(
+                vec![device(1, Active, true), device(2, Active, false)],
+                vec![device(3, Active, false), device(4, Active, false)],
+            )),
+            None
+        );
+        assert_eq!(
+            watch.added(&membership(
+                vec![
+                    device(1, Active, true),
+                    device(2, Active, false),
+                    device(5, Active, false),
+                ],
+                vec![device(3, Active, false), device(4, Active, false)],
+            )),
+            Some(ActiveDevice {
+                id: coven::DeviceId(5),
+                name: "Device 5".into(),
+                is_self: false,
+                can_remove: true,
+            })
+        );
     }
 }
