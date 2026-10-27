@@ -43,6 +43,7 @@ impl LibraryManager {
     ///
     /// The atomic commit wakes subscriptions for the destination and any vacated
     /// source album.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn set_records(
         &self,
         release_id: &str,

@@ -225,6 +225,7 @@ impl<Extra: Clone, Progress: Clone> ReleaseQueue<Extra, Progress> {
         self.state.lock().unwrap().ops.clone()
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn is_paused(&self) -> bool {
         self.state.lock().unwrap().paused
     }

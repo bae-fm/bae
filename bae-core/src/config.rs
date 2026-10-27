@@ -442,6 +442,7 @@ impl Config {
         Ok(())
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn with_defaults(store_id: coven::StoreId, library_path: impl Into<PathBuf>) -> Self {
         Self {
             store_id,

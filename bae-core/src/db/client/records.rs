@@ -50,7 +50,7 @@ impl Database {
     /// Replace a release's record rows and move the release between albums
     /// when the target differs from the source, in one transaction (see
     /// [`set_records_on`]).
-    #[cfg(desktop)]
+    #[cfg(all(desktop, any(test, feature = "test-utils")))]
     pub(crate) async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         self.call_sql(move |sql| set_records_on(&sql, &change, now))

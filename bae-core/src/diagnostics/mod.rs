@@ -55,6 +55,7 @@ pub enum DiagnosticsConfig {
 }
 
 impl DiagnosticsConfig {
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn sends_events(&self) -> bool {
         matches!(self, Self::Enabled(config) if config.is_complete())
     }
