@@ -5,8 +5,6 @@
 //! MusicBrainz's, name for name, and the test that compares it against the
 //! captured table keeps the code and the record together.
 
-use bae_util::desktop_only;
-
 super::vocabulary! {
     /// Whether the artist and their label stand behind a release, and whether
     /// it reached the public as planned.
@@ -30,33 +28,33 @@ super::vocabulary! {
     }
 }
 
-desktop_only! {
-    impl ReleaseStatus {
-        /// The status a MusicBrainz release's `status` names. `None` for a name
-        /// outside the list, which the caller logs: the list is what needs the
-        /// new name.
-        pub fn musicbrainz(name: &str) -> Option<Self> {
-            MUSICBRAINZ_RELEASE_STATUSES
-                .iter()
-                .find(|(stated, _)| super::same_name(stated, name))
-                .map(|(_, status)| *status)
-        }
+#[cfg(desktop)]
+impl ReleaseStatus {
+    /// The status a MusicBrainz release's `status` names. `None` for a name
+    /// outside the list, which the caller logs: the list is what needs the
+    /// new name.
+    pub fn musicbrainz(name: &str) -> Option<Self> {
+        MUSICBRAINZ_RELEASE_STATUSES
+            .iter()
+            .find(|(stated, _)| super::same_name(stated, name))
+            .map(|(_, status)| *status)
     }
-
-    /// Every `release_status` row of MusicBrainz, in id order. Source: the
-    /// server's attribute translations (`po/attributes.pot`, generated from the
-    /// `release_status` table), captured 2026-09-25. The web service answers
-    /// with these names.
-    const MUSICBRAINZ_RELEASE_STATUSES: &[(&str, ReleaseStatus)] = &[
-        ("Official", ReleaseStatus::Official),
-        ("Promotion", ReleaseStatus::Promotion),
-        ("Bootleg", ReleaseStatus::Bootleg),
-        ("Pseudo-Release", ReleaseStatus::PseudoRelease),
-        ("Withdrawn", ReleaseStatus::Withdrawn),
-        ("Cancelled", ReleaseStatus::Cancelled),
-        ("Expunged", ReleaseStatus::Expunged),
-    ];
 }
+
+/// Every `release_status` row of MusicBrainz, in id order. Source: the
+/// server's attribute translations (`po/attributes.pot`, generated from the
+/// `release_status` table), captured 2026-09-25. The web service answers
+/// with these names.
+#[cfg(desktop)]
+const MUSICBRAINZ_RELEASE_STATUSES: &[(&str, ReleaseStatus)] = &[
+    ("Official", ReleaseStatus::Official),
+    ("Promotion", ReleaseStatus::Promotion),
+    ("Bootleg", ReleaseStatus::Bootleg),
+    ("Pseudo-Release", ReleaseStatus::PseudoRelease),
+    ("Withdrawn", ReleaseStatus::Withdrawn),
+    ("Cancelled", ReleaseStatus::Cancelled),
+    ("Expunged", ReleaseStatus::Expunged),
+];
 
 #[cfg(test)]
 mod tests {

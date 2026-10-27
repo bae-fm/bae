@@ -37,8 +37,6 @@
 //! A barcode is compared by [`crate::barcode::comparison_key`], which lives
 //! with the symbology rules it is built on.
 
-use bae_util::desktop_only;
-
 mod artist;
 mod catalog_number;
 mod fold;
@@ -49,11 +47,10 @@ pub use catalog_number::catalog_key;
 pub use fold::{is_stop_word, normalize, squash, words, written_words};
 pub use label::{same_label_name, LabelName};
 
-desktop_only! {
-    mod title;
+#[cfg(desktop)]
+mod title;
 
-    pub use catalog_number::{catalog_words, printed_catalog_numbers};
-    pub use title::{
-        album_title_words, bare_album_title, strip_trailing_brackets, track_title_key,
-    };
-}
+#[cfg(desktop)]
+pub use catalog_number::{catalog_words, printed_catalog_numbers};
+#[cfg(desktop)]
+pub use title::{album_title_words, bare_album_title, strip_trailing_brackets, track_title_key};

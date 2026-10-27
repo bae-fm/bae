@@ -14,7 +14,6 @@
 //! record is what keeps the code and the record from drifting apart.
 
 use super::PhysicalMedium;
-use bae_util::desktop_only;
 
 super::vocabulary! {
     /// A carrier family: what the physical (or downloaded) object a pressing is
@@ -147,8 +146,8 @@ pub enum CdAudio {
     Never,
 }
 
-desktop_only! {
 /// What a catalog's word for a medium turns out to be.
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lookup {
     /// A format name of the catalog's list, and the carrier it names.
@@ -162,6 +161,7 @@ pub enum Lookup {
 }
 
 /// What the name of a Discogs format entry is.
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiscogsFormatName {
     /// A medium, and the carrier it names.
@@ -175,6 +175,7 @@ pub enum DiscogsFormatName {
     BoxSet,
 }
 
+#[cfg(desktop)]
 impl Medium {
     /// What a MusicBrainz medium's format name names. A MusicBrainz medium
     /// states one format name and nothing else, so anything outside the list
@@ -196,6 +197,7 @@ impl Medium {
 /// The entry of `table` whose name is `value`, whatever the case either is
 /// written in — the catalogs are consistent about their own spelling but
 /// nothing enforces it, and a lowercased "vinyl" names the same carrier.
+#[cfg(desktop)]
 fn found(table: &[(&str, Option<Medium>)], value: &str) -> Lookup {
     table
         .iter()
@@ -211,6 +213,7 @@ fn found(table: &[(&str, Option<Medium>)], value: &str) -> Lookup {
 /// the medium_format table), captured 2026-09-21. "Unknown format" — a NULL
 /// format — is a medium with no name, which is an unstated entry rather than
 /// a name to look up, so the list omits it.
+#[cfg(desktop)]
 const MUSICBRAINZ_FORMAT_NAMES: &[(&str, Option<Medium>)] = &[
     ("Digital Media", Some(Medium::Digital)),
     ("CD", Some(Medium::Cd)),
@@ -333,6 +336,7 @@ const MUSICBRAINZ_FORMAT_NAMES: &[(&str, Option<Medium>)] = &[
 /// https://www.discogs.com/help/formatslist, "The Format Field" table, read
 /// through https://web.archive.org/web/20260103075003/https://www.discogs.com/help/formatslist,
 /// captured 2026-01-03.
+#[cfg(desktop)]
 const DISCOGS_FORMAT_NAMES: &[(&str, DiscogsFormatName)] = &[
     ("Vinyl", DiscogsFormatName::Carrier(Medium::Vinyl)),
     ("Cassette", DiscogsFormatName::Carrier(Medium::Cassette)),
@@ -343,10 +347,16 @@ const DISCOGS_FORMAT_NAMES: &[(&str, DiscogsFormatName)] = &[
     ("Flexi-disc", DiscogsFormatName::Carrier(Medium::Vinyl)),
     ("Lathe Cut", DiscogsFormatName::Carrier(Medium::Vinyl)),
     ("Shellac", DiscogsFormatName::Carrier(Medium::Shellac)),
-    ("Mighty Tiny", DiscogsFormatName::Carrier(Medium::MightyTiny)),
+    (
+        "Mighty Tiny",
+        DiscogsFormatName::Carrier(Medium::MightyTiny),
+    ),
     ("Sopic", DiscogsFormatName::Carrier(Medium::Sopic)),
     ("Pathé Disc", DiscogsFormatName::Carrier(Medium::PatheDisc)),
-    ("Edison Disc", DiscogsFormatName::Carrier(Medium::EdisonDisc)),
+    (
+        "Edison Disc",
+        DiscogsFormatName::Carrier(Medium::EdisonDisc),
+    ),
     ("Cylinder", DiscogsFormatName::Carrier(Medium::Cylinder)),
     ("CDV", DiscogsFormatName::Carrier(Medium::Cdv)),
     ("DVD", DiscogsFormatName::Carrier(Medium::Dvd)),
@@ -355,28 +365,58 @@ const DISCOGS_FORMAT_NAMES: &[(&str, DiscogsFormatName)] = &[
     ("HD DVD-R", DiscogsFormatName::Carrier(Medium::HdDvd)),
     ("Blu-ray", DiscogsFormatName::Carrier(Medium::BluRay)),
     ("Blu-ray-R", DiscogsFormatName::Carrier(Medium::BluRay)),
-    ("Ultra HD Blu-ray", DiscogsFormatName::Carrier(Medium::BluRay)),
+    (
+        "Ultra HD Blu-ray",
+        DiscogsFormatName::Carrier(Medium::BluRay),
+    ),
     ("SACD", DiscogsFormatName::Carrier(Medium::Sacd)),
-    ("4-Track Cartridge", DiscogsFormatName::Carrier(Medium::Cartridge)),
-    ("8-Track Cartridge", DiscogsFormatName::Carrier(Medium::Cartridge)),
-    ("DC-International", DiscogsFormatName::Carrier(Medium::Cassette)),
+    (
+        "4-Track Cartridge",
+        DiscogsFormatName::Carrier(Medium::Cartridge),
+    ),
+    (
+        "8-Track Cartridge",
+        DiscogsFormatName::Carrier(Medium::Cartridge),
+    ),
+    (
+        "DC-International",
+        DiscogsFormatName::Carrier(Medium::Cassette),
+    ),
     ("Elcaset", DiscogsFormatName::Carrier(Medium::Cassette)),
     ("PlayTape", DiscogsFormatName::Carrier(Medium::Cartridge)),
-    ("RCA Tape Cartridge", DiscogsFormatName::Carrier(Medium::Cartridge)),
+    (
+        "RCA Tape Cartridge",
+        DiscogsFormatName::Carrier(Medium::Cartridge),
+    ),
     ("DAT", DiscogsFormatName::Carrier(Medium::Dat)),
     ("DCC", DiscogsFormatName::Carrier(Medium::Dcc)),
-    ("Microcassette", DiscogsFormatName::Carrier(Medium::Cassette)),
+    (
+        "Microcassette",
+        DiscogsFormatName::Carrier(Medium::Cassette),
+    ),
     ("NT Cassette", DiscogsFormatName::Carrier(Medium::Cassette)),
-    ("Pocket Rocker", DiscogsFormatName::Carrier(Medium::Cartridge)),
-    ("Revere Magnetic Stereo Tape Ca", DiscogsFormatName::Carrier(Medium::Cartridge)),
+    (
+        "Pocket Rocker",
+        DiscogsFormatName::Carrier(Medium::Cartridge),
+    ),
+    (
+        "Revere Magnetic Stereo Tape Ca",
+        DiscogsFormatName::Carrier(Medium::Cartridge),
+    ),
     ("Tefifon", DiscogsFormatName::Carrier(Medium::Tefifon)),
-    ("Reel-To-Reel", DiscogsFormatName::Carrier(Medium::ReelToReel)),
+    (
+        "Reel-To-Reel",
+        DiscogsFormatName::Carrier(Medium::ReelToReel),
+    ),
     ("Sabamobil", DiscogsFormatName::Carrier(Medium::Cartridge)),
     ("Beta ED", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Betacam", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Betacam SP", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Betamax", DiscogsFormatName::Carrier(Medium::VideoTape)),
-    ("Cartrivision", DiscogsFormatName::Carrier(Medium::VideoTape)),
+    (
+        "Cartrivision",
+        DiscogsFormatName::Carrier(Medium::VideoTape),
+    ),
     ("MiniDV", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Super Beta", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Super VHS", DiscogsFormatName::Carrier(Medium::VideoTape)),
@@ -387,22 +427,29 @@ const DISCOGS_FORMAT_NAMES: &[(&str, DiscogsFormatName)] = &[
     ("Film Reel", DiscogsFormatName::Carrier(Medium::FilmReel)),
     ("HitClips", DiscogsFormatName::Carrier(Medium::FlashMemory)),
     ("Laserdisc", DiscogsFormatName::Carrier(Medium::LaserDisc)),
-    ("SelectaVision", DiscogsFormatName::Carrier(Medium::SelectaVision)),
+    (
+        "SelectaVision",
+        DiscogsFormatName::Carrier(Medium::SelectaVision),
+    ),
     ("TeD", DiscogsFormatName::Carrier(Medium::Ted)),
     ("VHD", DiscogsFormatName::Carrier(Medium::Vhd)),
-    ("Wire Recording", DiscogsFormatName::Carrier(Medium::WireRecording)),
+    (
+        "Wire Recording",
+        DiscogsFormatName::Carrier(Medium::WireRecording),
+    ),
     ("Minidisc", DiscogsFormatName::Carrier(Medium::MiniDisc)),
     ("MVD", DiscogsFormatName::Carrier(Medium::Mvd)),
     ("UMD", DiscogsFormatName::Carrier(Medium::Umd)),
     ("Floppy Disk", DiscogsFormatName::Carrier(Medium::Floppy)),
     ("Zip Disk", DiscogsFormatName::Carrier(Medium::Floppy)),
-    ("Memory Stick", DiscogsFormatName::Carrier(Medium::FlashMemory)),
+    (
+        "Memory Stick",
+        DiscogsFormatName::Carrier(Medium::FlashMemory),
+    ),
     ("Hybrid", DiscogsFormatName::Hybrid),
     ("All Media", DiscogsFormatName::AllMedia),
     ("Box Set", DiscogsFormatName::BoxSet),
 ];
-
-}
 
 #[cfg(test)]
 mod tests {

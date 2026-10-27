@@ -998,7 +998,6 @@ dependencies = [
 name = "bae-types"
 version = "0.0.0-dev"
 dependencies = [
- "bae-util",
  "regex",
  "serde",
  "unicode-normalization",

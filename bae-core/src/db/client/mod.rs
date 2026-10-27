@@ -7,7 +7,6 @@ use crate::queue::QueueItem;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use bae_catalogs::catalog::Catalog;
 use bae_util::content_type::ContentType;
-use bae_util::desktop_only;
 use chrono::{DateTime, Utc};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use rusqlite::named_params;
@@ -64,34 +63,44 @@ pub(crate) use records::RecordsChange;
 // `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,
 // and every caller is a gated import module — the mobile builds are sync and
 // playback clients with no import pipeline.
-desktop_only! {
-    mod folder_scans;
-    pub use folder_scans::{FinishedScan, ScanItemWrite};
-    pub(crate) use folder_scans::{
-        FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, ScanItemSeed,
-        ScanItemToWrite,
-    };
-    mod release_groupings;
-    pub use release_groupings::GroupingChanges;
-    pub(crate) use release_groupings::GroupingFacts;
-    mod import_content_hash;
-    mod import_list;
-    mod import_state;
-    pub use import_list::{
-        CandidateListGrouping, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
-        ScanCandidateListRow,
-    };
-    pub(crate) use import_state::{
-        CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-        ImportClaim, RunVerdictSaved, ScannedCandidateKey, StandingsRead,
-    };
-    mod source_releases;
-    mod album_link_rows;
-}
+#[cfg(desktop)]
+mod folder_scans;
+#[cfg(desktop)]
+pub use folder_scans::{FinishedScan, ScanItemWrite};
+#[cfg(desktop)]
+pub(crate) use folder_scans::{
+    FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
+};
+#[cfg(desktop)]
+mod release_groupings;
+#[cfg(desktop)]
+pub use release_groupings::GroupingChanges;
+#[cfg(desktop)]
+pub(crate) use release_groupings::GroupingFacts;
+#[cfg(desktop)]
+mod import_content_hash;
+#[cfg(desktop)]
+mod import_list;
+#[cfg(desktop)]
+mod import_state;
+#[cfg(desktop)]
+pub use import_list::{
+    CandidateListGrouping, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
+    ScanCandidateListRow,
+};
+#[cfg(desktop)]
+pub(crate) use import_state::{
+    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportClaim,
+    RunVerdictSaved, ScannedCandidateKey, StandingsRead,
+};
+#[cfg(desktop)]
+mod album_link_rows;
 mod collections;
 mod history;
 mod people;
 mod playback;
+#[cfg(desktop)]
+mod source_releases;
 pub(crate) use files::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
 mod release;

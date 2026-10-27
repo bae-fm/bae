@@ -2,8 +2,6 @@
 //! up and narrows by, produced as one [`Signals`] value per pass. Embedded tags
 //! are not a signal; they seed the file-metadata import instead.
 
-use bae_util::desktop_only;
-
 // `failure` and `origin` are plain data used on every platform; the rest is
 // desktop-only extraction.
 pub mod failure;
@@ -12,32 +10,49 @@ pub use failure::{Failure, InternalFailure, LookupFailure};
 pub mod origin;
 pub use origin::{SourcedValue, TextOrigin};
 
-desktop_only! {
-    mod analyzer;
-    pub mod artwork;
-    pub mod audio;
-    pub mod barcode;
-    pub(crate) mod candidate_text;
-    pub mod disc_id;
-    mod fast_pass;
-    mod pool;
-    pub(crate) mod release;
-    pub mod rip;
-    pub mod service;
-    pub mod text;
+#[cfg(desktop)]
+mod analyzer;
+#[cfg(desktop)]
+pub mod artwork;
+#[cfg(desktop)]
+pub mod audio;
+#[cfg(desktop)]
+pub mod barcode;
+#[cfg(desktop)]
+pub(crate) mod candidate_text;
+#[cfg(desktop)]
+pub mod disc_id;
+#[cfg(desktop)]
+mod fast_pass;
+#[cfg(desktop)]
+mod pool;
+#[cfg(desktop)]
+pub(crate) mod release;
+#[cfg(desktop)]
+pub mod rip;
+#[cfg(desktop)]
+pub mod service;
+#[cfg(desktop)]
+pub mod text;
 
-    pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
-    pub use artwork::ArtworkScan;
-    pub use audio::AudioFacts;
-    pub use barcode::BarcodeSignal;
-    pub use disc_id::{ComputedDiscId, DiscIdSignal};
-    pub use rip::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
-    pub use service::{
-        ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch,
-        SignalsSnapshot,
-    };
-    pub use text::{TextLine, TextSignal};
-}
+#[cfg(desktop)]
+pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
+#[cfg(desktop)]
+pub use artwork::ArtworkScan;
+#[cfg(desktop)]
+pub use audio::AudioFacts;
+#[cfg(desktop)]
+pub use barcode::BarcodeSignal;
+#[cfg(desktop)]
+pub use disc_id::{ComputedDiscId, DiscIdSignal};
+#[cfg(desktop)]
+pub use rip::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
+#[cfg(desktop)]
+pub use service::{
+    ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch, SignalsSnapshot,
+};
+#[cfg(desktop)]
+pub use text::{TextLine, TextSignal};
 
 /// The signals extracted from one candidate's files, streamed as snapshots
 /// while the artwork is read.

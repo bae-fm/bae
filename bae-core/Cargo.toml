@@ -5,6 +5,8 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# Sets the `desktop` cfg; see that file.
+build = "../bae-util/build.rs"
 
 [lib]
 name = "bae_core"

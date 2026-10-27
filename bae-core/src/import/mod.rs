@@ -1,81 +1,122 @@
-use bae_util::desktop_only;
-
-// Gated with its two callers (`handle` and `service`), which the mobile builds
-// leave out — the import editor is desktop-only.
-desktop_only! {
-    pub mod album_links;
-    pub(crate) mod assemble;
-    pub(crate) mod release_metadata;
-    pub(crate) mod candidate_runtime;
-    pub mod candidate_search;
-    pub(crate) mod candidates;
-    pub mod grouping;
-    pub mod cover_art;
-}
-desktop_only! {
-    pub mod discid;
-    mod discid_hash;
-    pub mod discogs_mapper;
-    /// A Discogs tracklist split into the mediums its positions name.
-    pub(crate) mod discogs_mediums;
-}
+// Every module but `error`, `lookup_choices`, `session` and `types` is the
+// import pipeline (scanning, transcoding, identification), which only the
+// desktop builds carry: mobile is a sync and playback client. Of `types`, only
+// the shared domain types compile on mobile.
+#[cfg(desktop)]
+pub mod album_links;
+#[cfg(desktop)]
+pub(crate) mod assemble;
+#[cfg(desktop)]
+pub mod audio_layout;
+#[cfg(desktop)]
+pub(crate) mod candidate_runtime;
+#[cfg(desktop)]
+pub mod candidate_search;
+#[cfg(desktop)]
+pub(crate) mod candidates;
+/// Reading a catalog release against a candidate's audio, once.
+#[cfg(desktop)]
+pub(crate) mod catalog_reading;
+#[cfg(desktop)]
+pub mod cover_art;
+#[cfg(desktop)]
+pub mod discid;
+#[cfg(desktop)]
+mod discid_hash;
+#[cfg(desktop)]
+pub mod discogs_mapper;
+/// A Discogs tracklist split into the mediums its positions name.
+#[cfg(desktop)]
+pub(crate) mod discogs_mediums;
 mod error;
-desktop_only! {
-    mod file_evidence;
-    mod file_identity;
-    pub mod file_tag_mapper;
-    pub(crate) mod file_tag_snapshot;
-    pub(crate) mod file_metadata_seed;
-    pub(crate) mod track_numbers;
-    mod file_validation;
-    pub mod folder_scanner;
-    pub(crate) mod folder_state_commit;
-    pub(crate) mod import_cancel;
-    pub(crate) mod volume;
-    pub mod watched_folder;
-    pub use volume::check_period_minutes;
-    pub use volume::VolumeKind;
-    // The import pipeline (scanning, transcoding, identify orchestration) is
-    // desktop-only; mobile is a sync/playback client. Only the shared domain
-    // types below (re-exported from `types`) compile on mobile.
-    mod import_failure;
-    mod handle;
-    pub mod list;
-    pub(crate) mod local_artwork;
-    mod loudness;
-    pub(crate) mod scrub_points;
-    // The folder's audio units beside the draft's tracks — the desktop import
-    // pane's one structure, and desktop-only like the scan it reads.
-    pub mod mapping;
-    /// Reading a catalog release against a candidate's audio, once.
-    pub(crate) mod catalog_reading;
-    /// Which of a release's mediums a folder's audio is a rip of.
-    pub(crate) mod medium_coverage;
-    pub mod musicbrainz_mapper;
-    pub mod pane;
-    pub mod payloads;
-    pub mod preparation;
-    pub mod preparations;
-    pub mod probe;
-    pub(crate) mod pressing_evidence;
-    pub mod release_candidate;
-    /// What one reading of a source says a release is, as plain values.
-    pub(crate) mod release_values;
-    pub mod release_group;
-    pub mod search;
-    pub mod selection;
-    pub mod shared_album;
-    pub(crate) mod service;
-    pub mod source_release;
-}
+#[cfg(desktop)]
+mod file_evidence;
+#[cfg(desktop)]
+mod file_identity;
+#[cfg(desktop)]
+pub(crate) mod file_metadata_seed;
+#[cfg(desktop)]
+pub mod file_tag_mapper;
+#[cfg(desktop)]
+pub(crate) mod file_tag_snapshot;
+#[cfg(desktop)]
+mod file_validation;
+#[cfg(desktop)]
+pub mod folder_scanner;
+#[cfg(desktop)]
+pub(crate) mod folder_state_commit;
+#[cfg(desktop)]
+pub mod grouping;
+#[cfg(desktop)]
+mod handle;
+#[cfg(desktop)]
+pub mod identification;
+#[cfg(desktop)]
+pub(crate) mod import_cancel;
+#[cfg(desktop)]
+mod import_failure;
+#[cfg(desktop)]
+pub mod list;
+#[cfg(desktop)]
+pub(crate) mod local_artwork;
 pub mod lookup_choices;
+#[cfg(desktop)]
+mod loudness;
+#[cfg(desktop)]
+pub mod mapping;
+/// Which of a release's mediums a folder's audio is a rip of.
+#[cfg(desktop)]
+pub(crate) mod medium_coverage;
+#[cfg(desktop)]
+pub mod musicbrainz_mapper;
+#[cfg(desktop)]
+pub mod pane;
+#[cfg(desktop)]
+pub mod payloads;
+#[cfg(desktop)]
+pub mod preparation;
+#[cfg(desktop)]
+pub mod preparations;
+#[cfg(desktop)]
+pub(crate) mod pressing_evidence;
+#[cfg(desktop)]
+pub mod probe;
+#[cfg(desktop)]
+pub mod release_candidate;
+#[cfg(desktop)]
+pub mod release_group;
+#[cfg(desktop)]
+pub(crate) mod release_metadata;
+/// What one reading of a source says a release is, as plain values.
+#[cfg(desktop)]
+pub(crate) mod release_values;
+#[cfg(desktop)]
+pub(crate) mod scrub_points;
+#[cfg(desktop)]
+pub mod search;
+#[cfg(desktop)]
+pub mod selection;
+#[cfg(desktop)]
+pub(crate) mod service;
 pub mod session;
-desktop_only! {
-    pub mod identification;
-    pub mod audio_layout;
-    pub mod triage;
-}
+#[cfg(desktop)]
+pub mod shared_album;
+#[cfg(desktop)]
+pub mod source_release;
+#[cfg(desktop)]
+pub(crate) mod track_numbers;
+#[cfg(desktop)]
+pub mod triage;
 mod types;
+#[cfg(desktop)]
+pub(crate) mod volume;
+#[cfg(desktop)]
+pub mod watched_folder;
+
+#[cfg(desktop)]
+pub use volume::check_period_minutes;
+#[cfg(desktop)]
+pub use volume::VolumeKind;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::{
@@ -208,74 +249,83 @@ impl ImportServices {
     }
 }
 
-desktop_only! {
-    pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange, RuntimeSnapshotsWatch};
-    pub(crate) use candidate_runtime::CandidateWork;
-    pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
-    pub use candidates::{
-        Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateStanding,
-        FolderScanStatus, IdentificationInFlight, IdentificationRuntime,
-        ImportCandidateSnapshot, ImportInFlight, ImportedRelease, SaveFailure, SavingAnswer,
-        WatchedFolderScanStatus,
-    };
-    pub use cover_art::{CoverChoice, CoverImageSource};
-    pub use import_failure::{ImportFailure, ImportFailureReason};
-}
+#[cfg(desktop)]
+pub(crate) use candidate_runtime::CandidateWork;
+#[cfg(desktop)]
+pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange, RuntimeSnapshotsWatch};
+#[cfg(desktop)]
+pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
+#[cfg(desktop)]
+pub use candidates::{
+    Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
+    IdentificationInFlight, IdentificationRuntime, ImportCandidateSnapshot, ImportInFlight,
+    ImportedRelease, SaveFailure, SavingAnswer, WatchedFolderScanStatus,
+};
+#[cfg(desktop)]
+pub use cover_art::{CoverChoice, CoverImageSource};
 pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ImportError;
 pub use error::{ArtistIdentityConflict, ArtistIdentityConflictChoice};
+#[cfg(desktop)]
+pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
+#[cfg(desktop)]
+pub use folder_scanner::{
+    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
+    InvalidReason, ReleaseFileScope, ReleasePart,
+};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use folder_state_commit::{FolderStateCommit, FolderStateCommitGuard};
-desktop_only! {
-    pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
-    pub use grouping::GroupingBlock;
-    pub use folder_scanner::{
-        FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
-        InvalidReason, ReleaseFileScope, ReleasePart,
-    };
-    pub use handle::{
-        DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
-        ImportEventBus, ImportServiceHandle, ImportStart, ScanEvent,
-    };
-    pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
-    pub use list::{
-        ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement,
-        FolderScanActivity,
-        FolderScanProgress,
-        ImportCandidateDetail,
-        ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
-        ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
-        ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
-        ImportListNarrowing, ImportQueueSummary, NarrowedCount, PendingFilter, PendingFilterEntry,
-        UploadStatus, UploadStatusKnown,
-    };
-    pub use mapping::{
-        mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
-        MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable,
-        MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
-    };
-    pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
-    pub use preparations::CandidatePreparations;
-    pub use search::{SearchQuery, SourceFailure, SourceLookup};
-    pub use service::ImportService;
-}
+#[cfg(desktop)]
+pub use grouping::GroupingBlock;
+#[cfg(desktop)]
+pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
+#[cfg(desktop)]
+pub use handle::{
+    DiscogsSaveOutcome, GroupedSearchResults, ImportEvent, ImportEventBus, ImportServiceHandle,
+    ImportStart, ScanEvent,
+};
+#[cfg(desktop)]
+pub use identification::IdentificationHandle;
+#[cfg(desktop)]
+pub use import_failure::{ImportFailure, ImportFailureReason};
+#[cfg(desktop)]
+pub use list::{
+    ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement, FolderScanActivity,
+    FolderScanProgress, ImportCandidateDetail, ImportCandidateDetailProjection,
+    ImportCandidateListLocation, ImportListItem, ImportListNarrowing, ImportListOrder,
+    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListSubscription,
+    ImportListSubscriptionError, ImportListView, ImportListWindow, ImportQueueSummary,
+    NarrowedCount, PendingFilter, PendingFilterEntry, UploadStatus, UploadStatusKnown,
+};
 pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
+#[cfg(desktop)]
+pub use mapping::{
+    mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
+    MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable, MappingTrackRun,
+    MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
+};
+#[cfg(desktop)]
+pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
+#[cfg(desktop)]
+pub use preparations::CandidatePreparations;
+#[cfg(desktop)]
+pub use search::{SearchQuery, SourceFailure, SourceLookup};
+#[cfg(desktop)]
+pub use service::ImportService;
 pub use session::{
     CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
     PaneOutcome, SearchForm, SearchTab,
 };
-desktop_only! {
-    pub use identification::IdentificationHandle;
-    pub use triage::{
-        CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
-        MatchEvidence, MatchedPressing, MatchedRelease,
-        MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
-        TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
-        BadgeTone, ImportStanding, LiveStanding, NeedsYouReason, PendingBadge, PendingStanding,
-        PendingState, StoredLookup,
-    };
-    pub use types::ImportCommand;
-}
+#[cfg(desktop)]
+pub use triage::{
+    BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
+    ImportStanding, LiveStanding, MatchEvidence, MatchedPressing, MatchedRelease, MatchedSignal,
+    NeedsYouReason, PendingBadge, PendingStanding, PendingState, StoredLookup, TriageGroup,
+    TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow, TriageRuntimeFacts,
+    TriageSkipAction, TriageTab, TriageTabCounts,
+};
+#[cfg(desktop)]
+pub use types::ImportCommand;
 pub use types::{
     artists_standing, asked_sources, credited_line, is_the_only_asked_source, AlbumLink,
     ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft,
@@ -287,12 +337,11 @@ pub use types::{
     SourceAvailability, SourceCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
     WorkGraph, WorkPart,
 };
-desktop_only! {
-    pub use types::{
-        CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, DiscogsArtistImage,
-        ImportPhase, ImportDestination, ImportProgress, ImportStep, PayloadSource, PrepareStep,
-        CueAnalyzedAudioFile, CueFlacAnalysis, SourcePayload, TrackAudio,
-        TrackFile,
-    };
-    pub use watched_folder::WatchedFolder;
-}
+#[cfg(desktop)]
+pub use types::{
+    CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, CueAnalyzedAudioFile,
+    CueFlacAnalysis, DiscogsArtistImage, ImportDestination, ImportPhase, ImportProgress,
+    ImportStep, PayloadSource, PrepareStep, SourcePayload, TrackAudio, TrackFile,
+};
+#[cfg(desktop)]
+pub use watched_folder::WatchedFolder;

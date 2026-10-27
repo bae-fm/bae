@@ -5,8 +5,6 @@
 //! one word for packaging is the "Box Set" format, which says the media are
 //! enclosed in a box, and that is read as [`Packaging::Box`].
 
-use bae_util::desktop_only;
-
 super::vocabulary! {
     /// The outermost packaging of a release, leaving out shipping material.
     pub enum Packaging {
@@ -39,49 +37,49 @@ super::vocabulary! {
     }
 }
 
-desktop_only! {
-    impl Packaging {
-        /// The packaging a MusicBrainz release's `packaging` names. `None` for a
-        /// name outside the list, which the caller logs.
-        pub fn musicbrainz(name: &str) -> Option<Self> {
-            MUSICBRAINZ_RELEASE_PACKAGING
-                .iter()
-                .find(|(stated, _)| super::same_name(stated, name))
-                .map(|(_, packaging)| *packaging)
-        }
+#[cfg(desktop)]
+impl Packaging {
+    /// The packaging a MusicBrainz release's `packaging` names. `None` for a
+    /// name outside the list, which the caller logs.
+    pub fn musicbrainz(name: &str) -> Option<Self> {
+        MUSICBRAINZ_RELEASE_PACKAGING
+            .iter()
+            .find(|(stated, _)| super::same_name(stated, name))
+            .map(|(_, packaging)| *packaging)
     }
-
-    /// Every `release_packaging` row of MusicBrainz, in id order. Source: the
-    /// server's attribute translations (`po/attributes.pot`, generated from the
-    /// `release_packaging` table), captured 2026-09-25. The web service answers
-    /// with these names.
-    const MUSICBRAINZ_RELEASE_PACKAGING: &[(&str, Packaging)] = &[
-        ("Jewel Case", Packaging::JewelCase),
-        ("Slim Jewel Case", Packaging::SlimJewelCase),
-        ("Digipak", Packaging::Digipak),
-        ("Cardboard/Paper Sleeve", Packaging::CardboardSleeve),
-        ("Other", Packaging::Other),
-        ("Keep Case", Packaging::KeepCase),
-        ("None", Packaging::Unpackaged),
-        ("Cassette Case", Packaging::CassetteCase),
-        ("Book", Packaging::Book),
-        ("Fatbox", Packaging::Fatbox),
-        ("Snap Case", Packaging::SnapCase),
-        ("Gatefold Cover", Packaging::GatefoldCover),
-        ("Discbox Slider", Packaging::DiscboxSlider),
-        ("Super Jewel Box", Packaging::SuperJewelBox),
-        ("Digibook", Packaging::Digibook),
-        ("Plastic Sleeve", Packaging::PlasticSleeve),
-        ("Box", Packaging::Box),
-        ("Slidepack", Packaging::Slidepack),
-        ("SnapPack", Packaging::SnapPack),
-        ("Metal Tin", Packaging::MetalTin),
-        ("Longbox", Packaging::Longbox),
-        ("Clamshell Case", Packaging::ClamshellCase),
-        ("Digifile", Packaging::Digifile),
-        ("Slipcase", Packaging::Slipcase),
-    ];
 }
+
+/// Every `release_packaging` row of MusicBrainz, in id order. Source: the
+/// server's attribute translations (`po/attributes.pot`, generated from the
+/// `release_packaging` table), captured 2026-09-25. The web service answers
+/// with these names.
+#[cfg(desktop)]
+const MUSICBRAINZ_RELEASE_PACKAGING: &[(&str, Packaging)] = &[
+    ("Jewel Case", Packaging::JewelCase),
+    ("Slim Jewel Case", Packaging::SlimJewelCase),
+    ("Digipak", Packaging::Digipak),
+    ("Cardboard/Paper Sleeve", Packaging::CardboardSleeve),
+    ("Other", Packaging::Other),
+    ("Keep Case", Packaging::KeepCase),
+    ("None", Packaging::Unpackaged),
+    ("Cassette Case", Packaging::CassetteCase),
+    ("Book", Packaging::Book),
+    ("Fatbox", Packaging::Fatbox),
+    ("Snap Case", Packaging::SnapCase),
+    ("Gatefold Cover", Packaging::GatefoldCover),
+    ("Discbox Slider", Packaging::DiscboxSlider),
+    ("Super Jewel Box", Packaging::SuperJewelBox),
+    ("Digibook", Packaging::Digibook),
+    ("Plastic Sleeve", Packaging::PlasticSleeve),
+    ("Box", Packaging::Box),
+    ("Slidepack", Packaging::Slidepack),
+    ("SnapPack", Packaging::SnapPack),
+    ("Metal Tin", Packaging::MetalTin),
+    ("Longbox", Packaging::Longbox),
+    ("Clamshell Case", Packaging::ClamshellCase),
+    ("Digifile", Packaging::Digifile),
+    ("Slipcase", Packaging::Slipcase),
+];
 
 #[cfg(test)]
 mod tests {

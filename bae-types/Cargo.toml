@@ -5,14 +5,14 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# Sets the `desktop` cfg; see that file.
+build = "../bae-util/build.rs"
 
 [lib]
 name = "bae_types"
 path = "src/lib.rs"
 
 [dependencies]
-# The `desktop_only!` gate the import-only parts sit behind.
-bae-util = { path = "../bae-util" }
 # Every pressing value is stored and serialized by its key.
 serde = { version = "1.0", features = ["derive"] }
 # Text is compared with its diacritics folded away (src/text_match/fold.rs).
