@@ -5,10 +5,11 @@
 //! (`import_list_selection`); every release's tab, Found state, group, dates,
 //! shown text and command basis are in `import_list_placement`, which triggers
 //! keep in the write that changes any table they come from. A read of the list
-//! is then a handful of indexed statements: the requested windows in the
-//! list's order (`order`), each window's rows by key (`window`), and the
-//! counts and the selection's offers beside them (`summary`). Nothing is
-//! placed, filtered, sorted or counted outside SQLite.
+//! is then a handful of indexed statements: the counts and the selection's
+//! offers (`summary`), the requested windows in the list's order (`order`),
+//! and each window's rows by key (`window`). A search reads the rows its
+//! index (`import_list_search`) finds. Nothing is placed, filtered, sorted or
+//! counted outside SQLite.
 
 mod listed;
 mod order;
@@ -89,7 +90,7 @@ fn list_row(
     ) = sql
         .query_row(
             "SELECT tab, pending_filter, filter_text, list_order, view_revision, \
-                    selection_revision, narrows, needle <> '', keeps_all \
+                    selection_revision, narrows, pattern IS NOT NULL, keeps_all \
              FROM import_list_view WHERE id = ?",
             [id.0],
             |row| {
@@ -147,21 +148,16 @@ fn load_import_list_on(
     request: &ImportListRequest,
 ) -> Result<ImportListRows, DbError> {
     let list = list_row(sql, request.list)?;
-    let items = list.items(Shown::View);
+    let counts = summary::counts(sql)?;
+    let listed = summary::listed(sql, &list, &counts)?;
     let windows = request
         .windows
         .iter()
         .map(|window| {
-            let keys = items.window(sql, window)?;
+            let keys = list.items(listed.shown(window)).window(sql, window)?;
             Ok((window.clone(), window::materialise(sql, &list, &keys)?))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
-    let counts = summary::counts(sql)?;
-    let total_count = summary::total_count(sql, &list)?;
-    let narrowed = match list.narrows {
-        true => Some(summary::narrowed(sql, &list, &counts)?),
-        false => None,
-    };
     let watched_folders = sql
         .query(
             "SELECT path FROM watched_import_folders ORDER BY position",
@@ -175,12 +171,12 @@ fn load_import_list_on(
     let selection = summary::selection(sql, list.id)?;
     Ok(ImportListRows {
         windows,
-        total_count,
+        total_count: listed.total,
         summary: ImportQueueSummary {
             counts: counts.tabs,
             watched_folders,
             has_groups: counts.has_groups,
-            narrowed,
+            narrowed: listed.narrowed,
             narrowing: ImportListNarrowing {
                 tab: list.view.tab,
                 filter_text: list.view.filter_text.clone(),
@@ -249,6 +245,55 @@ impl Database {
         self.read(move |sql| {
             let row = list_row(&sql, list)?;
             row.items(Shown::View).window_plans(&sql)
+        })
+        .await
+    }
+
+    /// The plans a searching list's counts and its windows read from the
+    /// rows its search finds are read by, one line per step, the counts
+    /// first: what a test holds them to the search index with.
+    #[cfg(test)]
+    pub(crate) async fn import_list_search_plans(
+        &self,
+        list: ImportListId,
+    ) -> Result<Vec<Vec<String>>, DbError> {
+        self.read(move |sql| {
+            let row = list_row(&sql, list)?;
+            let counts = sql.query(
+                &format!("EXPLAIN QUERY PLAN {}", summary::SEARCH_COUNTS),
+                named_params! { ":list": list.0 },
+                |row| row.get::<_, String>(3),
+            )?;
+            let mut plans = vec![counts];
+            plans.extend(row.items(Shown::Found).window_plans(&sql)?);
+            Ok(plans)
+        })
+        .await
+    }
+
+    /// Every item a searching list shows, read from its tab's rows in order
+    /// and from the rows its search finds: the two reads a window may be read
+    /// by, which a test holds to agree.
+    #[cfg(test)]
+    pub(crate) async fn import_list_searched_both_ways(
+        &self,
+        list: ImportListId,
+    ) -> Result<(Vec<String>, Vec<String>), DbError> {
+        self.read(move |sql| {
+            let row = list_row(&sql, list)?;
+            let everything = crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: u64::MAX,
+            };
+            let keys = |shown| -> Result<Vec<String>, DbError> {
+                Ok(row
+                    .items(shown)
+                    .window(&sql, &everything)?
+                    .into_iter()
+                    .map(|item| format!("{:?} {}", item.item, item.key))
+                    .collect())
+            };
+            Ok((keys(Shown::View)?, keys(Shown::Found)?))
         })
         .await
     }

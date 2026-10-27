@@ -122,6 +122,25 @@ pub(crate) fn fold_case(text: &str) -> String {
     text.to_lowercase()
 }
 
+/// The `GLOB` pattern matching `query` anywhere inside a text folded as the
+/// search tables fold theirs: the folded query with `*`, `?` and `[`, which
+/// `GLOB` reads as wildcards, each written as the one-character class that
+/// matches only itself. The schema's `bae_search_pattern` is this, for the
+/// import list's search.
+pub(crate) fn search_pattern(query: &str) -> String {
+    let mut pattern = String::from("*");
+    for character in fold_case(query).chars() {
+        match character {
+            '*' => pattern.push_str("[*]"),
+            '?' => pattern.push_str("[?]"),
+            '[' => pattern.push_str("[[]"),
+            other => pattern.push(other),
+        }
+    }
+    pattern.push('*');
+    pattern
+}
+
 /// How many results a library search returns. The one place this is decided —
 /// surfaces no longer each pass their own limit into `search_library`.
 pub const SEARCH_RESULT_LIMIT: usize = 50;

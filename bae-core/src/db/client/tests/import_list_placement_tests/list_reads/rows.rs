@@ -106,6 +106,58 @@ async fn the_filter_folds_case_beyond_ascii() {
     );
 }
 
+/// What is typed is matched as itself: `*`, `?` and `[`, which a `GLOB`
+/// pattern reads as wildcards, find only text holding them.
+#[tokio::test]
+async fn the_filter_matches_wildcard_characters_as_themselves() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}{}",
+        scanned_with_states(&lib, &["Starred", "Asked", "Bracketed", "Plain"]),
+        lib.draft("Starred", "A*B"),
+        lib.draft("Asked", "Why?"),
+        lib.draft("Bracketed", "[Live]"),
+    ))
+    .await;
+    for (needle, found) in [
+        ("*", "candidate Starred"),
+        ("a*b", "candidate Starred"),
+        ("?", "candidate Asked"),
+        ("why?", "candidate Asked"),
+        ("[", "candidate Bracketed"),
+        ("[live]", "candidate Bracketed"),
+    ] {
+        assert_eq!(
+            lib.found_by(TriageTab::Pending, needle).await,
+            [found],
+            "{needle}"
+        );
+    }
+}
+
+/// A search of one or two characters, shorter than any run the search index
+/// holds, finds every row holding it all the same.
+#[tokio::test]
+async fn the_filter_finds_one_or_two_characters() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}",
+        scanned_with_states(&lib, &["Folder", "Other"]),
+        lib.draft("Folder", "Xy"),
+        lib.draft("Other", "Yz"),
+    ))
+    .await;
+    assert_eq!(
+        lib.found_by(TriageTab::Pending, "y").await,
+        ["candidate Folder", "candidate Other"]
+    );
+    assert_eq!(
+        lib.found_by(TriageTab::Pending, "XY").await,
+        ["candidate Folder"]
+    );
+    assert!(lib.found_by(TriageTab::Pending, "q").await.is_empty());
+}
+
 /// A Done row shows the row it was in Found — its draft, or its folder while
 /// it has none — so that is what finds it, and nothing the library release
 /// says does.

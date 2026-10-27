@@ -4,10 +4,12 @@
 //!
 //! Every order is one of the placement's order indexes, so a window reads
 //! about as many index entries as its offset and limit, and a position is the
-//! count of the items before it in the same scan. Done runs in two parts: the
-//! releases coven still has uploads queued for (`coven_uploads`), first to go
-//! first, and then the rest in the index's order. The first part is the
-//! outbox's handful; the second is read by its index like any other tab.
+//! count of the items before it in the same scan. A search that finds few
+//! rows has its windows read from those rows instead, sorted. Done runs in
+//! two parts: the releases coven still has uploads queued for
+//! (`coven_uploads`), first to go first, and then the rest in the index's
+//! order. The first part is the outbox's handful; the second is read by its
+//! index like any other tab.
 
 use super::super::query::{QueryOne, QueryRows};
 use super::*;
@@ -142,8 +144,12 @@ pub(super) fn uploading_cte() -> String {
 /// Which rows a stream of a list's items runs over.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Shown<'a> {
-    /// What the list shows under its view.
+    /// What the list shows under its view, its tab's rows read in order and
+    /// each tested.
     View,
+    /// What a searching list shows, read from the rows its search finds and
+    /// sorted: the same items as `View`.
+    Found,
     /// What `tab` shows with the filters cleared and the group `opened`
     /// folded open: the view a release is revealed in, its other folds kept.
     Revealing {
@@ -208,6 +214,10 @@ impl<'a> Items<'a> {
                 "import_list_item AS i",
                 "i.list_id = :list AND i.tab = :tab",
             ),
+            Shown::Found => (
+                "import_list_found_item AS i",
+                "i.list_id = :list AND i.tab = :tab",
+            ),
             Shown::Revealing { .. } => (
                 "import_list_placement AS i",
                 "i.tab = :tab \
@@ -260,7 +270,7 @@ impl<'a> Items<'a> {
                 Some(opened.watched_folder_path.as_str()),
                 Some(opened.relative_folder_path.as_str()),
             ),
-            Shown::Revealing { opened: None } | Shown::View => (None, None),
+            Shown::Revealing { opened: None } | Shown::View | Shown::Found => (None, None),
         };
         let tab = tab_column(self.tab);
         let mut named: Vec<(&str, &dyn ToSql)> = vec![

@@ -71,19 +71,31 @@ impl Library {
         self.db.open_import_list(view).await.unwrap()
     }
 
-    /// One read of `list` through `window`.
+    /// One read of `list` through `window`. A searching list's items read
+    /// from its tab's rows and from the rows its search finds must agree,
+    /// since its windows are read by either.
     async fn read_through(
         &self,
         list: ImportListId,
         window: LibraryPageWindow,
     ) -> ImportListProjection {
-        self.db
+        let read = self
+            .db
             .load_import_list(ImportListRequest {
                 list,
                 windows: std::iter::once(window).collect(),
             })
             .await
-            .unwrap()
+            .unwrap();
+        if !read.summary.narrowing.filter_text.is_empty() {
+            let (walked, found) = self.db.import_list_searched_both_ways(list).await.unwrap();
+            assert_eq!(
+                walked, found,
+                "searching {:?}: the tab's rows in order against the rows the search finds",
+                read.summary.narrowing.filter_text
+            );
+        }
+        read
     }
 
     /// One read of `list` through one window over every item.

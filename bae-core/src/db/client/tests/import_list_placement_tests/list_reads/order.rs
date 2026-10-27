@@ -567,3 +567,32 @@ async fn every_order_reads_its_windows_off_its_index() {
         }
     }
 }
+
+/// A search's counts and its windows read from the rows it finds reach them
+/// through the search index, each row by its number: none reads the tab's
+/// rows to test them.
+#[tokio::test]
+async fn a_search_reads_the_rows_its_index_finds() {
+    let lib = Library::new().await;
+    lib.run(&format!("{}{}", lib.scan("Box/Wanted"), lib.scan("Loose")))
+        .await;
+    for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
+        let list = lib
+            .open(ImportListView {
+                filter_text: "wanted".to_string(),
+                ..view(tab)
+            })
+            .await;
+        for plan in lib.db.import_list_search_plans(list).await.unwrap() {
+            assert!(
+                plan.iter()
+                    .any(|step| step.contains("VIRTUAL TABLE INDEX") && step.contains(":G")),
+                "{tab:?}: {plan:?}"
+            );
+            assert!(
+                !plan.iter().any(|step| step.contains("(tab=?)")),
+                "{tab:?} reads its tab: {plan:?}"
+            );
+        }
+    }
+}

@@ -691,8 +691,12 @@ and what its commands are decided from are kept beside it as it changes
 Its counts — each tab's, each filter entry's, how many items the list holds
 and how many releases its filters keep, and how many each group's header
 counts — are kept beside the placement as rows move, so reading them costs
-the same however long the queue is; only a search counts over the rows it
-reads.
+the same however long the queue is. A search counts the rows its index finds:
+each release's shown text is kept, case folded, in a trigram index beside its
+placement (Appendix A.7), so a search of three characters or more reads the
+rows holding it, and a shorter one reads every release's text from the
+index. A search that finds few rows reads its windows from them, sorted;
+one that finds many reads its windows in the list's order, testing each row.
 The pane reads its one candidate's rows by the candidate's key, and so does
 every read of one candidate's state, draft or preparation, so how long one
 takes does not grow with how many candidates the queue holds.
@@ -2923,6 +2927,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 | Table | Holds |
 |---|---|
 | `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order serves each tab's windows |
+| `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
 | `import_list_tab_count`, `import_list_entry_count`, `import_list_group_entry_count` | how many placement rows each tab holds of each kind, how many of Found's releases each filter entry holds, and how many of each group's releases each entry holds, kept by triggers on the placement in the write that moves a row, so the list's counts read these and not the placement |
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order, and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |

@@ -1,22 +1,6 @@
 use super::*;
 
-/// The `GLOB` pattern matching `query` anywhere inside a text folded as the
-/// search tables fold theirs: the folded query with `*`, `?` and `[`, which
-/// `GLOB` reads as wildcards, each written as the one-character class that
-/// matches only itself.
-fn search_pattern(query: &str) -> String {
-    let mut pattern = String::from("*");
-    for character in crate::library::search::fold_case(query).chars() {
-        match character {
-            '*' => pattern.push_str("[*]"),
-            '?' => pattern.push_str("[?]"),
-            '[' => pattern.push_str("[[]"),
-            other => pattern.push(other),
-        }
-    }
-    pattern.push('*');
-    pattern
-}
+use crate::library::search::search_pattern;
 
 impl Database {
     /// Track ids for an album's primary release. `None` means no album carries

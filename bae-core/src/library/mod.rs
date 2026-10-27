@@ -231,11 +231,23 @@ pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
             coven::Determinism::Deterministic,
             |arguments| Ok(fold_case_value(arguments.get(0)?)),
         )
+        .function(
+            "bae_search_pattern",
+            1,
+            coven::Determinism::Deterministic,
+            |arguments| Ok(search_pattern_value(arguments.get(0)?)),
+        )
 }
 
 /// `bae_fold_case`: a text folded as library search folds it; NULL stays NULL.
 fn fold_case_value(text: Option<String>) -> Option<String> {
     text.map(|text| search::fold_case(&text))
+}
+
+/// `bae_search_pattern`: the `GLOB` pattern library search matches a query
+/// by; NULL stays NULL.
+fn search_pattern_value(query: Option<String>) -> Option<String> {
+    query.map(|query| search::search_pattern(&query))
 }
 
 /// An in-memory database on bae's schema outside coven, with the SQL
@@ -254,6 +266,15 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
         |context| Ok(fold_case_value(context.get(0)?)),
     )
     .expect("bae_fold_case registers");
+    conn.create_scalar_function(
+        "bae_search_pattern",
+        1,
+        FunctionFlags::SQLITE_UTF8
+            | FunctionFlags::SQLITE_DETERMINISTIC
+            | FunctionFlags::SQLITE_INNOCUOUS,
+        |context| Ok(search_pattern_value(context.get(0)?)),
+    )
+    .expect("bae_search_pattern registers");
     // The schema indexes coven's `coven_key`, which coven registers on its own
     // connections. These tests read no coven state, so any deterministic
     // stand-in lets the index exist: this one returns its one value.

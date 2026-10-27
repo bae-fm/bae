@@ -1,6 +1,7 @@
 //! What the chrome around a list says, read beside its windows: the tab
-//! counts and Found's filter entries from the placement's counts index, how
-//! many items the list holds and how many its filters keep, where its first
+//! counts and Found's filter entries from the counts kept beside the
+//! placement, how many items the list holds and how many its filters keep
+//! (a search's from the rows its index finds), where its first
 //! selected row sits, and what its selection holds and offers. And the reads a
 //! surface makes of a list on its own: where a candidate would be revealed,
 //! the first one being identified, and the selected rows a bulk action takes.
@@ -68,17 +69,94 @@ pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
     })
 }
 
-/// How many items the list holds: its releases its filters keep outside the
-/// groups it folds shut, and the header of each group holding one. Without
-/// a text filter that is the kept counts; a text filter is counted over the
-/// rows it reads.
-pub(super) fn total_count(sql: &SqlReadContext<'_>, list: &ListRow) -> Result<u64, DbError> {
-    let statement = match (list.keeps_all, list.filters_text) {
-        (true, _) => {
-            "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
-             JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?"
+/// How many items a list holds, and how many of its tab's releases its
+/// filters keep of how many the tab has, while they narrow it.
+pub(super) struct Listed {
+    pub(super) total: u64,
+    pub(super) narrowed: Option<NarrowedCount>,
+    /// Whether its search narrows it, which decides where its windows are
+    /// read from.
+    searching: bool,
+}
+
+/// What a row read from a search's matches costs against a row the tab's
+/// order passes: it is reached through the search index, its item worked out
+/// by its number, and sorted with the rest, about three times as much as a
+/// row read in order and tested.
+const FOUND_ROW_COST: u128 = 3;
+
+impl Listed {
+    /// The rows a window of the list is read from. A search's window is read
+    /// from the rows the search finds, sorted, when reading them costs less
+    /// than passing the rows the tab's order would pass to reach the window's
+    /// end: about the window's end times the tab's releases over the releases
+    /// the search keeps. Otherwise, like every other list's, it is read from
+    /// the tab's rows in order, each tested.
+    pub(super) fn shown(&self, window: &crate::library::LibraryPageWindow) -> Shown<'static> {
+        let Some(narrowed) = self.narrowed.filter(|_| self.searching) else {
+            return Shown::View;
+        };
+        let kept = u128::from(narrowed.shown);
+        let end = u128::from(window.offset.saturating_add(window.limit));
+        match FOUND_ROW_COST * kept * kept < end * u128::from(narrowed.total) {
+            true => Shown::Found,
+            false => Shown::View,
         }
-        (false, false) => {
+    }
+}
+
+/// How many releases a searching list's filters keep, and how many items it
+/// holds, both counted over the rows its search finds, which are read once:
+/// the kept releases outside the groups it folds shut, and the headers among
+/// its items of the groups holding a kept release.
+pub(super) const SEARCH_COUNTS: &str = "WITH kept AS MATERIALIZED ( \
+         SELECT m.watched_folder_path, m.group_name, m.folded FROM import_list_found AS f \
+         CROSS JOIN import_list_matching AS m ON m.list_id = f.list_id AND m.entry = f.entry \
+         WHERE f.list_id = :list) \
+     SELECT (SELECT count(*) FROM kept), \
+            (SELECT count(*) FROM kept WHERE NOT folded) \
+            + (SELECT count(*) \
+               FROM (SELECT DISTINCT watched_folder_path, group_name FROM kept \
+                     WHERE group_name IS NOT NULL) AS g \
+               CROSS JOIN import_list_item AS h \
+                   ON h.list_id = :list AND h.watched_folder_path = g.watched_folder_path \
+                  AND h.item = 'group' AND h.key = g.group_name)";
+
+/// How many items the list holds — its releases its filters keep outside the
+/// groups it folds shut, and the header of each group holding one — and how
+/// many releases its filters keep. Without a search these are the kept
+/// counts; a search counts the rows it finds.
+pub(super) fn listed(
+    sql: &SqlReadContext<'_>,
+    list: &ListRow,
+    counts: &Counts,
+) -> Result<Listed, DbError> {
+    let narrowed = |shown: i64| -> Result<NarrowedCount, DbError> {
+        Ok(NarrowedCount {
+            shown: to_u32(shown, "a list's narrowed count")?,
+            total: counts.tabs.of(list.view.tab),
+        })
+    };
+    let total = |count: i64| to_u64(count, "a list's item count");
+    if list.filters_text {
+        let (kept, items) =
+            sql.query_row(SEARCH_COUNTS, named_params! { ":list": list.id.0 }, |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+            })?;
+        return Ok(Listed {
+            total: total(items)?,
+            narrowed: Some(narrowed(kept)?),
+            searching: true,
+        });
+    }
+    let items = match list.keeps_all {
+        true => sql.query_row(
+            "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
+             JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?",
+            [list.id.0],
+            |row| row.get::<_, i64>(0),
+        )?,
+        false => sql.query_row(
             "SELECT \
                  CASE WHEN v.tab = 'pending' AND v.pending_filter <> 'all' \
                       THEN COALESCE((SELECT e.count FROM import_list_entry_count AS e \
@@ -100,42 +178,25 @@ pub(super) fn total_count(sql: &SqlReadContext<'_>, list: &ListRow) -> Result<u6
                                        WHERE t.tab = 'pending' AND t.item = 'group'), 0) \
                         ELSE (SELECT count(*) FROM import_list_group_entry_count AS g \
                               WHERE g.pending_entry = v.pending_filter) END \
-             FROM import_list_view AS v WHERE v.id = ?"
-        }
-        (false, true) => {
-            "SELECT count(*) FROM import_list_view AS v \
-             JOIN import_list_item AS i ON i.list_id = v.id AND i.tab = v.tab WHERE v.id = ?"
-        }
+             FROM import_list_view AS v WHERE v.id = ?",
+            [list.id.0],
+            |row| row.get::<_, i64>(0),
+        )?,
     };
-    let count = sql.query_row(statement, [list.id.0], |row| row.get::<_, i64>(0))?;
-    to_u64(count, "a list's item count")
-}
-
-/// How many of the tab's releases the list's filters keep, of how many it
-/// has: the kept count of Found's filter entry, or, filtered by text, a count
-/// over the rows the filter reads.
-pub(super) fn narrowed(
-    sql: &SqlReadContext<'_>,
-    list: &ListRow,
-    counts: &Counts,
-) -> Result<NarrowedCount, DbError> {
-    let shown = match list.filters_text {
-        false => sql.query_row(
+    let narrowed = match list.narrows {
+        true => Some(narrowed(sql.query_row(
             "SELECT COALESCE((SELECT e.count FROM import_list_entry_count AS e \
                               WHERE e.pending_entry = v.pending_filter), 0) \
              FROM import_list_view AS v WHERE v.id = ?",
             [list.id.0],
             |row| row.get::<_, i64>(0),
-        )?,
-        true => sql.query_row(
-            "SELECT count(*) FROM import_list_matching WHERE list_id = ? AND tab = ?",
-            params![list.id.0, super::order::tab_column(list.view.tab)],
-            |row| row.get::<_, i64>(0),
-        )?,
+        )?)?),
+        false => None,
     };
-    Ok(NarrowedCount {
-        shown: to_u32(shown, "a list's narrowed count")?,
-        total: counts.tabs.of(list.view.tab),
+    Ok(Listed {
+        total: total(items)?,
+        narrowed,
+        searching: false,
     })
 }
 

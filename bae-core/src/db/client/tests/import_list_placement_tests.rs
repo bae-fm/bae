@@ -290,11 +290,12 @@ impl Library {
         )
     }
 
-    /// Run `sql`, and check the counts kept beside the placement still count
-    /// it: every write here moves placement rows, and each must move the
-    /// counts with them.
+    /// Run `sql`, and check the counts and the search index kept beside the
+    /// placement still say what it holds: every write here moves placement
+    /// rows, and each must move the counts and the searched text with them.
     async fn run(&self, sql: &str) {
         exec_batch(&self.db, sql).await;
+        self.searchable(sql).await;
         let (kept, counted) = self
             .db
             .read(|sql| {
@@ -344,6 +345,39 @@ impl Library {
                 "the counts kept beside the placement after {sql}"
             );
         }
+    }
+
+    /// Check the search index holds each release's folded shown text under
+    /// its placement row's number, and nothing else.
+    async fn searchable(&self, after: &str) {
+        let (indexed, placed) = self
+            .db
+            .read(|sql| {
+                let rows = |statement: &str| {
+                    sql.query(statement, [], |row| {
+                        Ok((
+                            row.get::<_, i64>(0)?,
+                            row.get::<_, Option<String>>(1)?,
+                            row.get::<_, Option<String>>(2)?,
+                        ))
+                    })
+                };
+                Ok((
+                    rows("SELECT rowid, title, artists FROM import_list_search ORDER BY rowid")?,
+                    rows(
+                        "SELECT entry, filter_title, filter_artists FROM import_list_placement \
+                         WHERE item <> 'group' ORDER BY entry",
+                    )?,
+                ))
+            })
+            .await
+            .unwrap();
+        assert_eq!(indexed, placed, "the search index after {after}");
+        exec_batch(
+            &self.db,
+            "INSERT INTO import_list_search (import_list_search, rank) VALUES ('integrity-check', 1);",
+        )
+        .await;
     }
 
     /// Every placement row as it stands.

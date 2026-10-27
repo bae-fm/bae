@@ -3013,6 +3013,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
 -- the triggers below write them here, indexed, in the same write that changes
 -- any of those tables. Computed from device-local rows and never synced.
 CREATE TABLE IF NOT EXISTS import_list_placement (
+    -- The row's number, which the list's search index (`import_list_search`)
+    -- finds it by.
+    entry               INTEGER PRIMARY KEY,
     watched_folder_path TEXT NOT NULL,
     -- 'candidate': a release; 'invalid': a folder that failed validation;
     -- 'group': the header of a group of Found's releases.
@@ -3094,7 +3097,7 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     draft_valid         INTEGER CHECK (draft_valid IN (0, 1)),
     lookup              TEXT CHECK (lookup IN ('answered', 'failed')),
     separable           INTEGER CHECK (separable IN (0, 1)),
-    PRIMARY KEY (watched_folder_path, item, key),
+    UNIQUE (watched_folder_path, item, key),
     CHECK (item <> 'invalid' OR tab = 'skipped'),
     CHECK ((tab = 'pending' AND item <> 'group') = (pending_state IS NOT NULL)),
     CHECK ((pending_state IS 'needs_you') = (needs_you_reason IS NOT NULL)),
@@ -3650,6 +3653,40 @@ BEGIN
     VALUES (NEW.watched_folder_path, NEW.item, NEW.tab, NEW.pending_entry, NEW.group_name);
 END;
 
+-- The list's search (§3.2) finds the rows whose shown text holds what was
+-- typed the way library search finds its titles (above): each release's
+-- shown title and artists, folded as `filter_title` and `filter_artists` hold
+-- them, in an FTS5 trigram index under its placement row's number, so a
+-- search of three characters or more reads the rows it finds and not the
+-- whole queue. The triggers below keep it in the write that places, changes
+-- or removes the row. A header shows no text and has no row here.
+CREATE VIRTUAL TABLE IF NOT EXISTS import_list_search USING fts5(
+    title, artists,
+    tokenize = 'trigram case_sensitive 1'
+);
+
+CREATE TRIGGER IF NOT EXISTS import_list_search_added AFTER INSERT ON import_list_placement
+WHEN NEW.item <> 'group'
+BEGIN
+    INSERT INTO import_list_search (rowid, title, artists)
+    VALUES (NEW.entry, NEW.filter_title, NEW.filter_artists);
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_search_changed
+AFTER UPDATE OF shown_title, shown_artists ON import_list_placement
+WHEN NEW.item <> 'group'
+ AND (OLD.filter_title, OLD.filter_artists) IS NOT (NEW.filter_title, NEW.filter_artists)
+BEGIN
+    UPDATE import_list_search SET title = NEW.filter_title, artists = NEW.filter_artists
+    WHERE rowid = NEW.entry;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_search_removed AFTER DELETE ON import_list_placement
+WHEN OLD.item <> 'group'
+BEGIN
+    DELETE FROM import_list_search WHERE rowid = OLD.entry;
+END;
+
 -- Each import list a surface has open, as it is viewed: its tab, filter
 -- entry and filter text, and its order; which of its groups are folded shut
 -- (`import_list_collapsed`); and the rows selected in it
@@ -3665,9 +3702,12 @@ CREATE TABLE IF NOT EXISTS import_list (
     pending_filter     TEXT NOT NULL CHECK (pending_filter IN (
         'all', 'needs_you', 'in_progress', 'identified', 'unmatched', 'not_looked_up')),
     filter_text        TEXT NOT NULL,
-    -- What a row's shown text must contain, case folded as `filter_title`
-    -- is; empty keeps every row.
-    needle             TEXT GENERATED ALWAYS AS (bae_fold_case(filter_text)) STORED,
+    -- The `GLOB` pattern a row's shown text, case folded as `filter_title`
+    -- is, must match to be kept: the filter text anywhere inside it, as
+    -- library search matches a query. NULL with no filter text, which keeps
+    -- every row.
+    pattern            TEXT GENERATED ALWAYS AS (
+        CASE WHEN filter_text <> '' THEN bae_search_pattern(filter_text) END) STORED,
     list_order         TEXT NOT NULL CHECK (list_order IN (
         'newest_first', 'oldest_first', 'path_ascending', 'path_descending')),
     view_revision      INTEGER NOT NULL DEFAULT 0 CHECK (view_revision >= 0),
@@ -3709,20 +3749,34 @@ SELECT l.*,
        NOT l.narrows
        AND NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c WHERE c.list_id = l.id)
            AS keeps_all
-FROM (SELECT *, needle <> '' OR (tab = 'pending' AND pending_filter <> 'all') AS narrows
+FROM (SELECT *, pattern IS NOT NULL OR (tab = 'pending' AND pending_filter <> 'all') AS narrows
       FROM import_list) AS l;
 
 -- Each list's rows of its tab, each with whether its filters keep it: on
--- Found, in its filter entry; and with its shown text containing the
--- needle. The tab is matched by value rather than by index (`+p.tab`), so a
--- lookup of a group's members reaches them by their group.
+-- Found, in its filter entry; and with its shown text matching its search's
+-- pattern, the test `import_list_search` finds the matching rows by. And
+-- whether the list folds the row's group shut. The tab is matched by value
+-- rather than by index (`+p.tab`), so a lookup of a group's members reaches
+-- them by their group.
 CREATE VIEW IF NOT EXISTS import_list_judged AS
 SELECT v.id AS list_id, v.keeps_all, p.*,
        (v.tab <> 'pending' OR v.pending_filter = 'all' OR p.pending_entry = v.pending_filter)
-       AND (v.needle = '' OR instr(p.filter_title, v.needle) > 0
-            OR instr(p.filter_artists, v.needle) > 0) AS kept
+       AND (v.pattern IS NULL OR p.filter_title GLOB v.pattern
+            OR p.filter_artists GLOB v.pattern) AS kept,
+       p.group_name IS NOT NULL
+       AND EXISTS (SELECT 1 FROM import_list_collapsed AS c
+                   WHERE c.list_id = v.id AND c.watched_folder_path = p.watched_folder_path
+                     AND c.group_name = p.group_name) AS folded
 FROM import_list_view AS v
 JOIN import_list_placement AS p ON +p.tab = v.tab;
+
+-- Each searching list's rows whose shown text matches its search's pattern,
+-- every tab's, as the search index finds them: what a search's counts and
+-- windows read instead of testing every row of the tab.
+CREATE VIEW IF NOT EXISTS import_list_found AS
+SELECT l.id AS list_id, s.rowid AS entry
+FROM import_list AS l
+JOIN import_list_search AS s ON s.title GLOB l.pattern OR s.artists GLOB l.pattern;
 
 -- Each list's releases its filters keep, folded groups' members included.
 CREATE VIEW IF NOT EXISTS import_list_matching AS
@@ -3739,12 +3793,26 @@ WHERE j.keeps_all
                         WHERE m.list_id = j.list_id
                           AND m.watched_folder_path = j.watched_folder_path
                           AND m.group_name = j.key)
-           ELSE j.kept
-                AND (j.group_name IS NULL
-                     OR NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c
-                                    WHERE c.list_id = j.list_id
-                                      AND c.watched_folder_path = j.watched_folder_path
-                                      AND c.group_name = j.group_name)) END;
+           ELSE j.kept AND NOT j.folded END;
+
+-- Each searching list's items, read from its search's matches rather than
+-- from every row of its tab: the matched releases among its items, and the
+-- headers among them of the groups holding a release its filters keep. The
+-- same items `import_list_item` holds for the list. Each row is reached
+-- from its match (`CROSS JOIN` keeps that order), never the tab scanned for
+-- its matches.
+CREATE VIEW IF NOT EXISTS import_list_found_item AS
+SELECT i.* FROM import_list_found AS f
+CROSS JOIN import_list_item AS i ON i.list_id = f.list_id AND i.entry = f.entry
+UNION ALL
+SELECT h.*
+FROM (SELECT DISTINCT m.list_id, m.watched_folder_path, m.group_name
+      FROM import_list_found AS f
+      CROSS JOIN import_list_matching AS m ON m.list_id = f.list_id AND m.entry = f.entry
+      WHERE m.group_name IS NOT NULL) AS g
+CROSS JOIN import_list_item AS h
+    ON h.list_id = g.list_id AND h.watched_folder_path = g.watched_folder_path
+   AND h.item = 'group' AND h.key = g.group_name;
 
 -- Each list's releases it shows.
 CREATE VIEW IF NOT EXISTS import_list_shown AS
