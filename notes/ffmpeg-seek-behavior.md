@@ -309,10 +309,19 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   the last point whose `exact_from` is at or before its target; before the
   first it reads from the stream's start. Every sample it plays equals a
   decode from the stream's start, in CBR and VBR files with and without a
-  Xing table. An MP3 asked for a sample seek with no point (a preview of an
-  unimported file) reads from its start: without the flag a sample seek
-  would read forward from the first frames anyway, with a pre-roll short of
-  the reservoir.
+  Xing table, mono, MPEG-2 (22.05 kHz) and MPEG-2.5 (8 kHz, 8 kbps), a file
+  shorter than 10 s (no points), and a 10.8 MB one. An MP3 asked for a sample
+  seek with no point (a preview of an unimported file) reads from its start:
+  without the flag a sample seek would read forward from the first frames
+  anyway, with a pre-roll short of the reservoir.
+
+  Over the fill, a scrub 4 minutes into that 10.8 MB, 320 kbps file fetched
+  the head window, two 32 KiB read-aheads past it (the fill keeps a window
+  ahead of the probe's reads until the decode seeks), and the window from
+  the point: 4 fetches, 4.66 MB. Opening an MP3 with no ID3v2 tag reads its
+  last 128 bytes for an ID3v1 tag (`ff_id3v1_read` in `mp3_read_header`);
+  the fill evicts the head window behind that read and fetches it again
+  when the demuxer reads on: 7 fetches, 8.89 MB, for the same scrub.
 - **A lossy start is placed on the stream's own sample count.** Sample 0 is
   the stream's `start_time` (an MP3's LAME delay puts it 1,105 samples past
   the first packet), the decoder gets the stream's time base
