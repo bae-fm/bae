@@ -34,8 +34,9 @@ public final class Library: Sendable, Observable {
     /// One live read of the album grid's multi-selection, pointed at each new
     /// selection in place.
     public let albumSelection: @Sendable () -> AlbumSelectionQuery
-    public let searchArtists:
-        @Sendable (_ query: String) async throws -> [BridgeArtistSearchResult]
+    /// Open an artist picker's live search, pointed at each new text and
+    /// window in place.
+    public let artistSearch: @Sendable () -> ArtistSearchQuery
     /// What the library holds, as it stands now, for every artist credit in a
     /// release editor's form — what the editor badges each credit with.
     public let resolveReleaseEditCredits:
@@ -103,9 +104,9 @@ public final class Library: Sendable, Observable {
         albumSelection: @escaping @Sendable () -> AlbumSelectionQuery = {
             fatalError("Library album selection is not installed")
         },
-        searchArtists:
-            @escaping @Sendable (String) async throws
-            -> [BridgeArtistSearchResult] = { _ in [] },
+        artistSearch: @escaping @Sendable () -> ArtistSearchQuery = {
+            fatalError("Library artist search is not installed")
+        },
         resolveReleaseEditCredits:
             @escaping @Sendable (BridgeRawReleaseEdit) async throws
             -> [BridgeResolvedCredit] = { _ in [] },
@@ -137,7 +138,7 @@ public final class Library: Sendable, Observable {
         self.composerDetail = composerDetail
         self.workDetail = workDetail
         self.albumSelection = albumSelection
-        self.searchArtists = searchArtists
+        self.artistSearch = artistSearch
         self.resolveReleaseEditCredits = resolveReleaseEditCredits
         self.storageBrowse = storageBrowse
         self.storageInspector = storageInspector
@@ -190,8 +191,8 @@ public final class Library: Sendable, Observable {
                 albumSelection: {
                     AlbumSelectionQuery(handle.subscribeAlbumSelection())
                 },
-                searchArtists: {
-                    try await handle.searchArtists(query: $0)
+                artistSearch: {
+                    ArtistSearchQuery(handle.subscribeArtistSearch())
                 },
                 resolveReleaseEditCredits: {
                     try await handle.resolveReleaseEditCredits(edit: $0)

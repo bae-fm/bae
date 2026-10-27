@@ -14,6 +14,9 @@ struct ImportMappingTrackRow: View {
     /// other row.
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
+    /// Opens the live artist search the track's artist field reads while
+    /// open.
+    let artistSearch: @Sendable () -> ArtistSearchQuery
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
@@ -25,6 +28,7 @@ struct ImportMappingTrackRow: View {
                 columns: columns,
                 editingCommands: editingCommands,
                 position: mapping.position,
+                artistSearch: artistSearch,
                 onChange: { actions.editTrack($0) }
             )
         }

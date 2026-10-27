@@ -137,24 +137,6 @@ forward! { async this => {
         Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
     }
 
-    /// Existing library artists matching a name or exact stored ID. A blank
-    /// query is not a search and returns no suggestions.
-    fn search_artists(query: String) -> Vec<BridgeArtistSearchResult> {
-        let Some(query) = bae_core::library::LibrarySearchQuery::parse(&query) else {
-            return Ok(Vec::new());
-        };
-        this.services
-            .search_artists(&query)
-            .await
-            .map(|results| {
-                results
-                    .into_iter()
-                    .map(BridgeArtistSearchResult::from_core)
-                    .collect()
-            })
-            .map_err(BridgeError::database)
-    }
-
     /// Resolve a list of IDs (album or track) to track IDs.
     /// Album IDs are expanded to the primary release's tracks.
     fn resolve_to_track_ids(ids: Vec<String>) -> Vec<String> {

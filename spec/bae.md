@@ -298,8 +298,11 @@ it matches is the name the credit prints). The artist page lists the names,
 and renames or removes each in one write with every credit linking it:
 renamed, they print the new name; removed, the artist's own. The artist field
 of an editor lists each found artist with its other names under it; picking
-one prints the artist by that name. Typing a name, or picking an artist for a
-tag credit that spelled it differently, prints the artist's own name.
+one prints the artist by that name. That search is live for as long as the
+field is open: one read, moved to each text typed and to the part of the list
+on screen, so an artist added, renamed or given another name meanwhile shows
+as it is. Typing a name, or picking an artist for a tag credit that spelled it
+differently, prints the artist's own name.
 
 Two artists can be merged into one, and only one way: on the import page, when
 an import's credit shows that two library artists are the same person and the
@@ -2529,14 +2532,14 @@ Reads come two ways:
 - **One-time reads** return the library as it stands: an album's detail, a
   release's tracks and files, an artist, a work, a search.
 - **Live subscriptions** deliver a value, then a new one each time the rows it
-  read change. The album grid, the artist and composer lists, a search, the
-  import list, sync status, uploads, downloads and the queue are all live. A
-  read that fails is delivered as a value and the subscription goes on, but
-  one that fails because the store closed, or because the library can no
-  longer read or write it, is delivered once and ends the subscription. A
-  subscription that shows a window of a long list is pointed at a new window
-  in place as the person scrolls; one that has ended takes the new window and
-  reads nothing more. The downloads list on the phones is such a list: it
+  read change. The album grid, the artist and composer lists, a search, an
+  editor's artist search, the import list, sync status, uploads, downloads and
+  the queue are all live. A read that fails is delivered as a value and the
+  subscription goes on, but one that fails because the store closed, or
+  because the library can no longer read or write it, is delivered once and
+  ends the subscription. A subscription that shows a window of a long list is
+  pointed at a new window in place as the person scrolls; one that has ended
+  takes the new window and reads nothing more. The downloads list on the phones is such a list: it
   reads how many releases the queue holds and the windows on screen, and its
   pause and retry controls and summary line read how many are in each phase.
   The Storage Manager's list is also told

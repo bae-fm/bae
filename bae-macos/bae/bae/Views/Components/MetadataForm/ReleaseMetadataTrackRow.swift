@@ -11,6 +11,8 @@ struct ReleaseMetadataTrackRow: View {
     let editingCommands: EditingCommitCommands
     /// How the track's place reads ("A1", "3"): core's, and never edited.
     let position: String
+    /// Opens the live artist search the artist field reads while open.
+    let artistSearch: @Sendable () -> ArtistSearchQuery
     let onChange: @MainActor (BridgeRawTrackEdit) async -> Void
 
     var body: some View {
@@ -63,6 +65,7 @@ struct ReleaseMetadataTrackRow: View {
             onUseAlbumArtists: {
                 updateArtists(.albumArtists)
             },
+            artistSearch: artistSearch,
             onChange: {
                 updateArtists(.explicit(assignments: $0))
             },
@@ -176,12 +179,12 @@ func releaseDurationText(_ milliseconds: Int64?) -> String {
             columns: columns,
             editingCommands: EditingCommitCommands(),
             position: "1",
+            artistSearch: { PreviewData.artistSearch() },
             onChange: { track = $0 }
         )
         .padding(ThemeSpace.section)
         .frame(width: 960)
         .background(Theme.background)
-        .environment(PreviewData.artistAssignmentsLibrary())
         .environment(UiStore())
     }
 #endif

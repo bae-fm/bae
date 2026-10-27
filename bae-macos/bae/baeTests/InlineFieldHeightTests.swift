@@ -122,10 +122,10 @@ struct InlineFieldHeightTests {
                 values: session.form,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
+                artistSearch: { .fixed([]) },
                 cover: { EmptyView() },
                 audioFacts: { EmptyView() }
             )
-            .environment(Library.stub())
             .environment(UiStore())
             .preferredColorScheme(.light)
             .background(.white)

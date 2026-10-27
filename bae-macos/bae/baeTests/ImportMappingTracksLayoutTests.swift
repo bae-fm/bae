@@ -27,11 +27,11 @@ struct ImportMappingTracksLayoutTests {
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
-                actions: actions(recording: MappingTrackActionRecorder())
+                actions: actions(recording: MappingTrackActionRecorder()),
+                artistSearch: { .fixed([]) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
-            .environment(Library.stub())
             .environment(UiStore()),
             size: size
         ) { _, host in
@@ -83,11 +83,11 @@ struct ImportMappingTracksLayoutTests {
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
-                actions: actions(recording: recorder)
+                actions: actions(recording: recorder),
+                artistSearch: { .fixed([]) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
-            .environment(Library.stub())
             .environment(UiStore()),
             size: size
         ) { window, host in
@@ -184,10 +184,10 @@ struct ImportMappingTracksLayoutTests {
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
-                actions: actions(recording: MappingTrackActionRecorder())
+                actions: actions(recording: MappingTrackActionRecorder()),
+                artistSearch: { .fixed([]) }
             )
             .frame(width: size.width, height: size.height, alignment: .leading)
-            .environment(Library.stub())
             .environment(UiStore()),
             size: size
         ) { _, host in
@@ -472,11 +472,11 @@ extension ImportMappingTracksLayoutTests {
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
-                actions: actions(recording: recorder)
+                actions: actions(recording: recorder),
+                artistSearch: { .fixed([]) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
-            .environment(Library.stub())
             .environment(UiStore()),
             size: size
         ) { window, host in

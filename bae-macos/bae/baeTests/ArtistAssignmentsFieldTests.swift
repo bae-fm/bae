@@ -97,12 +97,12 @@ struct ArtistAssignmentsFieldTests {
                 values: values,
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
                 editingCommands: EditingCommitCommands(),
+                artistSearch: { .fixed([]) },
                 cover: { Color.clear },
                 audioFacts: { EmptyView() }
             )
             .padding(24)
             .frame(width: size.width, height: size.height)
-            .environment(Library.stub())
             .environment(UiStore()),
             size: size
         ) {
@@ -132,11 +132,11 @@ struct ArtistAssignmentsFieldTests {
             ArtistAssignmentsField(
                 assignments: assignments,
                 placeholder: "Artist",
+                artistSearch: { .fixed([]) },
                 onChange: { _ in }
             )
             .frame(width: size.width, height: size.height)
             .environment(\.artistResolutions, resolutions)
-            .environment(Library.stub())
             .environment(UiStore()),
             size: size
         ) { _, host in

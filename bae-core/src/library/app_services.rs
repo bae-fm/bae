@@ -248,6 +248,21 @@ impl AppServices {
         })
     }
 
+    /// One live search of the library's artists for an artist picker,
+    /// pointed at a new text and new windows in place as the person types and
+    /// scrolls; it starts with no text and no windows.
+    pub fn subscribe_artist_search(&self) -> crate::library::ArtistSearchSubscription {
+        crate::library::ArtistSearchSubscription::new(
+            self.inner
+                .manager
+                .subscribe_artist_search(crate::library::ArtistSearchView {
+                    query: None,
+                    windows: crate::library::LibraryPageWindows::new(),
+                }),
+            LibraryManager::resolve_artist_search,
+        )
+    }
+
     /// The library membership of the releases an import pane offers, as one
     /// live query whose checks move in place as the pane's offers change; it
     /// starts with none.
@@ -386,7 +401,6 @@ impl AppServices {
     delegate_async!(manager, get_artist_count => get_artist_count() -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_detail => get_artist_detail(artist_id: &str) -> Result<Option<crate::album_detail::ArtistDetail>, crate::library::LibraryError>);
-    delegate_async!(manager, search_artists => search_artists(query: &crate::library::LibrarySearchQuery) -> Result<Vec<crate::album_detail::ArtistSearchResult>, crate::library::LibraryError>);
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), crate::library::LibraryError>);

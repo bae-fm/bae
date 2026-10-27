@@ -59,16 +59,26 @@ impl DiscogsPick {
 
     /// The bytes of the picture the library holds for `artist_id`, if any.
     async fn picture_of(&self, artist_id: &str) -> Option<Vec<u8>> {
-        let result = self
-            .handle
-            .library_manager
-            .search_artists(
-                &crate::library::LibrarySearchQuery::parse("Track Artist")
-                    .expect("the artist query is not blank"),
-            )
+        let mut search = self.handle.library_manager.subscribe_artist_search(
+            crate::library::ArtistSearchView {
+                query: crate::library::LibrarySearchQuery::parse("Track Artist"),
+                windows: [crate::library::LibraryPageWindow {
+                    offset: 0,
+                    limit: 50,
+                }]
+                .into(),
+            },
+        );
+        let found = search
+            .next()
             .await
-            .unwrap()
+            .expect("the artist search stays open")
+            .result
+            .unwrap();
+        let result = crate::library::LibraryManager::resolve_artist_search(found, 0)
+            .windows
             .into_iter()
+            .flat_map(|window| window.rows)
             .find(|result| result.artist.id == artist_id)
             .expect("the track artist is searchable");
         let image = result.image?;

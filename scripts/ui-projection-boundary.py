@@ -146,14 +146,6 @@ OPEN_CHILD_FINDINGS = (
         "AppKit places the row, so no SwiftUI parent observes the outbox to "
         "pass it in",
     ),
-    OpenFinding(
-        "swift",
-        "bae-macos/bae/bae/Views/Components/MetadataForm/ReleaseMetadataHeader.swift",
-        "ArtistAssignmentsField",
-        "Library",
-        "searches artists from its popover as the user types; the results are "
-        "the editor's, not a fact the track row renders",
-    ),
 )
 
 

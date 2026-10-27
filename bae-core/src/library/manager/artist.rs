@@ -49,35 +49,49 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Search existing artists by library ID, provider ID, display name, or
-    /// sort name. The parsed query and result limit are shared with library
-    /// search, while this result set includes artists without album links.
-    pub async fn search_artists(
+    /// Follow what an artist picker's search finds, from `initial` on.
+    pub(crate) fn subscribe_artist_search(
         &self,
-        query: &crate::library::LibrarySearchQuery,
-    ) -> Result<Vec<ArtistSearchResult>, LibraryError> {
-        let artists = self
-            .database
-            .search_artists(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
-            .await?;
-        let artist_ids = artists
-            .iter()
-            .map(|artist| artist.id.clone())
-            .collect::<Vec<_>>();
-        let images = self.artist_image_refs(&artist_ids).await?;
-        let mut credit_names = self.database.get_artist_credit_names(&artist_ids).await?;
-        Ok(artists
-            .into_iter()
-            .map(|artist| {
-                let image = images.get(&artist.id).cloned();
-                let credit_names = credit_names.remove(&artist.id).unwrap_or_default();
-                ArtistSearchResult {
-                    artist,
-                    image,
-                    credit_names,
-                }
-            })
-            .collect())
+        initial: crate::library::ArtistSearchView,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::library::ArtistSearchView,
+        crate::db::ArtistSearchProjection,
+    > {
+        self.database.subscribe_artist_search(initial)
+    }
+
+    /// The artists an artist search's windows hold, each beside its image
+    /// and its other printed names.
+    pub(crate) fn resolve_artist_search(
+        projection: crate::db::ArtistSearchProjection,
+        request_revision: u64,
+    ) -> crate::library::ArtistSearchSnapshot {
+        let crate::db::ArtistSearchProjection {
+            windows,
+            mut credit_names,
+            image_versions,
+            total_count,
+        } = projection;
+        let images = image_refs(image_versions, LibraryImageType::Artist);
+        crate::library::ArtistSearchSnapshot {
+            windows: windows
+                .into_iter()
+                .map(|window| crate::library::LibraryBrowseWindow {
+                    window: window.window,
+                    rows: window
+                        .rows
+                        .into_iter()
+                        .map(|artist| ArtistSearchResult {
+                            image: images.get(&artist.id).cloned(),
+                            credit_names: credit_names.remove(&artist.id).unwrap_or_default(),
+                            artist,
+                        })
+                        .collect(),
+                })
+                .collect(),
+            total_count,
+            request_revision,
+        }
     }
 
     /// Give an artist another printed name, which credits can then print for

@@ -35,6 +35,7 @@ struct ReleaseMetadataEditorContent: View {
                 values: session.form,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
+                artistSearch: library.artistSearch,
                 cover: { cover },
                 audioFacts: { sourceAudio }
             )
@@ -210,6 +211,7 @@ struct ReleaseMetadataEditorContent: View {
                 columns: columns,
                 editingCommands: session.editingCommands,
                 position: item.context.positionText,
+                artistSearch: library.artistSearch,
                 onChange: { session.updateTrack($0) }
             )
         }

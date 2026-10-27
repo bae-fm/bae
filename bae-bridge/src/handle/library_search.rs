@@ -68,7 +68,9 @@ impl LibrarySearchSubscription {
     }
 }
 
-fn search_error(error: bae_core::library::LibrarySearchSubscriptionError) -> BridgeError {
+pub(super) fn search_error(
+    error: bae_core::library::LibrarySearchSubscriptionError,
+) -> BridgeError {
     match error {
         bae_core::library::LibrarySearchSubscriptionError::Cancelled => BridgeError::Cancelled,
         bae_core::library::LibrarySearchSubscriptionError::Query(error) => {

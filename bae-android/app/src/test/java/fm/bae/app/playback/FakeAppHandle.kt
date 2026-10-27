@@ -7,10 +7,10 @@ import uniffi.bae_bridge.AlbumSelectionSubscription
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.ArtistDetailSubscription
+import uniffi.bae_bridge.ArtistSearchSubscription
 import uniffi.bae_bridge.BridgeAbandonedRecord
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeArtistSearchResult
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCatalog
@@ -389,7 +389,7 @@ internal open class FakeAppHandle(
         deviceName: String,
     ): BridgeStorageSetup = unfaked("saveSyncConfig")
 
-    override suspend fun searchArtists(query: String): List<BridgeArtistSearchResult> = unfaked("searchArtists")
+    override fun subscribeArtistSearch(): ArtistSearchSubscription = unfaked("subscribeArtistSearch")
 
     override fun seekByRatio(ratio: Double) {
         unfaked("seekByRatio")

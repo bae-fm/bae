@@ -45,6 +45,19 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
     (db, tmp)
 }
 
+/// The first ten artists `text` finds.
+async fn search(db: &Database, text: &str) -> Vec<DbArtist> {
+    db.search_artists(
+        &crate::library::LibrarySearchQuery::parse(text).expect("the text is not blank"),
+        crate::library::LibraryPageWindow {
+            offset: 0,
+            limit: 10,
+        },
+    )
+    .await
+    .unwrap()
+}
+
 #[tokio::test]
 async fn artist_search_ranks_exact_prefix_and_substring_matches() {
     let (db, _tmp) = seeded_db().await;
@@ -64,7 +77,7 @@ async fn artist_search_ranks_exact_prefix_and_substring_matches() {
     .await
     .unwrap();
 
-    let matches = db.search_artists("artist search", 10).await.unwrap();
+    let matches = search(&db, "artist search").await;
     let ids = matches
         .iter()
         .map(|artist| artist.id.as_str())
@@ -88,17 +101,14 @@ async fn artist_search_ranks_exact_prefix_and_substring_matches() {
         Some("mb-exact")
     );
 
-    let by_musicbrainz_id = db.search_artists("mb-exact", 10).await.unwrap();
+    let by_musicbrainz_id = search(&db, "mb-exact").await;
     assert_eq!(by_musicbrainz_id.len(), 1);
     assert_eq!(
         by_musicbrainz_id[0].id,
         "0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b"
     );
 
-    let by_library_id = db
-        .search_artists("0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b", 10)
-        .await
-        .unwrap();
+    let by_library_id = search(&db, "0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b").await;
     assert_eq!(by_library_id.len(), 1);
     assert_eq!(
         by_library_id[0].discogs_artist_id.as_deref(),

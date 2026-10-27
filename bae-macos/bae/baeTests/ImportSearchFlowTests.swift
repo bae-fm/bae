@@ -414,10 +414,10 @@ final class MetadataApplicationEditingTests: XCTestCase {
                     }
                 ),
                 editingCommands: editingCommands,
+                artistSearch: { .fixed([]) },
                 cover: { EmptyView() },
                 audioFacts: { EmptyView() }
             )
-            .environment(Library.stub())
             .environment(UiStore())
             .frame(width: size.width, height: size.height),
             size: size

@@ -69,10 +69,10 @@ struct ReleaseEditorTests {
                 values: session.form,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
+                artistSearch: { .fixed([]) },
                 cover: { EmptyView() },
                 audioFacts: { EmptyView() }
             )
-            .environment(Library.stub())
             .environment(UiStore())
             .frame(width: size.width, height: size.height),
             size: size

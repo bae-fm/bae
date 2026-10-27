@@ -12,6 +12,8 @@ struct ImportMappingTable: View {
     let actions: ImportMappingActions
     let editingCommands: EditingCommitCommands
 
+    @Environment(Library.self)
+    private var library
     /// The width the pane leaves the table; the table is laid out at it or at
     /// its own minimum, whichever is wider.
     @State
@@ -146,6 +148,7 @@ struct ImportMappingTable: View {
             editingCommands: editingCommands,
             evidence: evidenceFor(mapping),
             actions: actions,
+            artistSearch: library.artistSearch,
         )
         .mappingRowChrome(
             background: mapping.source.previewTarget == previewingTarget

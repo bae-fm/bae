@@ -33,7 +33,9 @@ pub use artist::{
 };
 mod artist;
 mod artist_credit_names;
+mod artist_search;
 use artist_credit_names::settle_credit_name;
+pub use artist_search::ArtistSearchProjection;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_identity_choice;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

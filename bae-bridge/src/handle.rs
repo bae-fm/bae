@@ -92,6 +92,10 @@ macro_rules! forward {
 }
 
 mod album_selection;
+mod artist_search;
+pub use artist_search::{
+    ArtistSearchSubscription, BridgeArtistSearchSnapshot, BridgeArtistSearchWindow,
+};
 mod base;
 mod cloud_operations;
 mod collection_subscription;

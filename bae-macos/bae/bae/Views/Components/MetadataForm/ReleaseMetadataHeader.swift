@@ -87,6 +87,8 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
+    /// Opens the live artist search the album artist field reads while open.
+    let artistSearch: @Sendable () -> ArtistSearchQuery
     @ViewBuilder
     let cover: () -> Cover
     /// The audio's codec, rate and depth as the identity column's last line;
@@ -112,6 +114,7 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
                     values: values,
                     writer: writer,
                     editingCommands: editingCommands,
+                    artistSearch: artistSearch,
                     audioFacts: audioFacts
                 )
             }
@@ -130,6 +133,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
+    let artistSearch: @Sendable () -> ArtistSearchQuery
     @ViewBuilder
     let audioFacts: () -> AudioFacts
 
@@ -146,6 +150,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
             ArtistAssignmentsField(
                 assignments: values.albumArtistAssignments,
                 placeholder: String(localized: "Album artist"),
+                artistSearch: artistSearch,
                 onChange: { assignments in
                     Task { await writer.setAlbumArtists(assignments) }
                 },
@@ -553,24 +558,16 @@ struct ArtistAssignmentsField: View {
     var width: Width = .value
     var inheritsAlbumArtists = false
     var onUseAlbumArtists: (() -> Void)?
+    /// Opens the live artist search the open field reads while it is open.
+    let artistSearch: @Sendable () -> ArtistSearchQuery
     let onChange: ([BridgeCredited]) -> Void
 
-    @Environment(Library.self)
-    private var library
     @Environment(UiStore.self)
     private var uiStore
     @Environment(\.artistResolutions)
     private var resolutions
     @State
     private var isPresented = false
-    @State
-    private var query = ""
-    @State
-    private var results: [BridgeArtistSearchResult] = []
-    @State
-    private var isSearching = false
-    @State
-    private var searchError: DisplayError?
 
     var body: some View {
         Button {
@@ -590,9 +587,18 @@ struct ArtistAssignmentsField: View {
         .buttonStyle(.plain)
         .focusable()
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            editor
-                .frame(width: 320)
-                .padding(ThemeSpace.group)
+            ArtistAssignmentsEditor(
+                assignments: assignments,
+                onUseAlbumArtists: onUseAlbumArtists,
+                artistSearch: artistSearch,
+                onChange: onChange,
+                onViewArtist: { artistId in
+                    isPresented = false
+                    uiStore.navigateToArtist(artistId)
+                }
+            )
+            .frame(width: 320)
+            .padding(ThemeSpace.group)
         }
     }
 
@@ -619,8 +625,30 @@ struct ArtistAssignmentsField: View {
             Text(placeholder).foregroundStyle(.tertiary)
         }
     }
+}
 
-    private var editor: some View {
+/// The open artist field: the artists assigned, the search box, and the
+/// library artists the search finds. The search is its own live query, open
+/// while the field is.
+private struct ArtistAssignmentsEditor: View {
+    /// The tallest the found artists' list draws before it scrolls.
+    static let resultsHeight: CGFloat = 280
+
+    let assignments: [BridgeCredited]
+    let onUseAlbumArtists: (() -> Void)?
+    let artistSearch: @Sendable () -> ArtistSearchQuery
+    let onChange: ([BridgeCredited]) -> Void
+    /// Show a library artist's page, closing the field.
+    let onViewArtist: (String) -> Void
+
+    @Environment(\.artistResolutions)
+    private var resolutions
+    @State
+    private var query = ""
+    @State
+    private var search: ArtistSearchResults?
+
+    var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             if let onUseAlbumArtists {
                 Button("Album artist", action: onUseAlbumArtists)
@@ -662,52 +690,45 @@ struct ArtistAssignmentsField: View {
                 Button("Add", action: addTypedArtist)
                     .disabled(trimmedQuery.isEmpty)
             }
-            if isSearching {
+            if search?.isSearching == true {
                 ProgressView().controlSize(.small)
             }
-            if let searchError {
-                ErrorDetailDisclosure(error: searchError)
+            if let error = search?.error {
+                ErrorDetailDisclosure(error: error)
             }
-            ForEach(results, id: \.artist.artistId) { result in
-                VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
-                    Button {
-                        onChange(assignments + [.picked(result.artist)])
-                        query = ""
-                    } label: {
-                        ArtistSearchResultLabel(artist: result.artist)
-                    }
-                    .buttonStyle(.plain)
-                    // The artist's other printed names, under it: picking one
-                    // credits the artist printed by that name.
-                    ForEach(result.creditNames, id: \.credit.key) { name in
-                        Button {
-                            onChange(
-                                assignments + [
-                                    .picked(
-                                        result.artist,
-                                        creditName: name.credit
-                                    )
-                                ]
-                            )
-                            query = ""
-                        } label: {
-                            Text(verbatim: name.credit.name)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.leading, ThemeSpace.group)
-                    }
-                    Button("View in Library") {
-                        isPresented = false
-                        uiStore.navigateToArtist(result.artist.artistId)
-                    }
-                    .buttonStyle(.link)
-                    .themeText(.detail)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let list = search?.list {
+                foundArtists(list)
             }
         }
-        .task(id: query) { await search() }
+        .onChange(of: query) { search?.search(query) }
+        .task {
+            let opened = ArtistSearchResults(open: artistSearch)
+            search = opened
+            await Task.untilCancelled()
+            opened.close()
+        }
+    }
+
+    /// What the search finds, each row holding the page it sits in.
+    private func foundArtists(_ list: ArtistSearchList) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: ThemeSpace.related) {
+                ForEach(0..<list.totalCount, id: \.self) { index in
+                    ArtistSearchResultRow(
+                        result: list.row(at: index),
+                        onPick: { picked in
+                            onChange(assignments + [picked])
+                            query = ""
+                        },
+                        onViewArtist: onViewArtist
+                    )
+                    .task(id: RowLoadID(epoch: list.loadEpoch, index: index)) {
+                        await list.holdPage(containing: index)
+                    }
+                }
+            }
+        }
+        .frame(maxHeight: Self.resultsHeight)
     }
 
     /// The library artists a credit could be; picking one replaces the credit.
@@ -745,28 +766,50 @@ struct ArtistAssignmentsField: View {
         onChange(assignments + [.typed(query)])
         query = ""
     }
+}
 
-    @MainActor
-    private func search() async {
-        searchError = nil
-        guard !trimmedQuery.isEmpty else {
-            results = []
-            isSearching = false
-            return
+/// One library artist the search found, with its other printed names under
+/// it; a row whose page has not answered yet holds its place.
+struct ArtistSearchResultRow: View {
+    let result: BridgeArtistSearchResult?
+    /// Credit the artist, by its own name or one of its other names.
+    let onPick: (BridgeCredited) -> Void
+    let onViewArtist: (String) -> Void
+
+    var body: some View {
+        if let result {
+            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
+                Button {
+                    onPick(.picked(result.artist))
+                } label: {
+                    ArtistSearchResultLabel(artist: result.artist)
+                }
+                .buttonStyle(.plain)
+                // The artist's other printed names, under it: picking one
+                // credits the artist printed by that name.
+                ForEach(result.creditNames, id: \.credit.key) { name in
+                    Button {
+                        onPick(.picked(result.artist, creditName: name.credit))
+                    } label: {
+                        Text(verbatim: name.credit.name)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, ThemeSpace.group)
+                }
+                Button("View in Library") {
+                    onViewArtist(result.artist.artistId)
+                }
+                .buttonStyle(.link)
+                .themeText(.detail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        do {
-            try await Task.sleep(for: .milliseconds(200))
-            isSearching = true
-            results = try await library.searchArtists(query)
-            isSearching = false
-        }
-        catch is CancellationError {
-            isSearching = false
-        }
-        catch {
-            isSearching = false
-            results = []
-            searchError = DisplayError(error)
+        else {
+            // A name's line, so the list keeps its height while the page
+            // loads.
+            Text(verbatim: " ")
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -782,6 +825,7 @@ struct ArtistAssignmentsField: View {
             values: form,
             writer: .binding($form),
             editingCommands: EditingCommitCommands(),
+            artistSearch: { PreviewData.artistSearch() },
             cover: {
                 ImageView(
                     imageRef: nil,
@@ -794,7 +838,6 @@ struct ArtistAssignmentsField: View {
         .padding(ThemeSpace.section)
         .frame(width: previewSize.width, height: previewSize.height)
         .background(Theme.background)
-        .environment(PreviewData.artistAssignmentsLibrary())
         .environment(ImageStore.stub())
         .environment(UiStore())
     }
@@ -807,6 +850,7 @@ struct ArtistAssignmentsField: View {
             values: form,
             writer: .binding($form),
             editingCommands: EditingCommitCommands(),
+            artistSearch: { PreviewData.artistSearch() },
             cover: {
                 ImageView(
                     imageRef: nil,
@@ -819,7 +863,6 @@ struct ArtistAssignmentsField: View {
         .padding(ThemeSpace.section)
         .frame(width: previewSize.width, height: previewSize.height)
         .background(Theme.background)
-        .environment(PreviewData.artistAssignmentsLibrary())
         .environment(ImageStore.stub())
         .environment(UiStore())
     }

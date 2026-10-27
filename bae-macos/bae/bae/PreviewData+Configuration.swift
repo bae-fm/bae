@@ -279,8 +279,15 @@
             )
         }
 
+        /// The library an artist field's search reads in previews.
         static func artistAssignmentsLibrary() -> Library {
-            Library(searchArtists: { _ in
+            Library(artistSearch: { artistSearch() })
+        }
+
+        /// Two library artists of one name for an artist field's search,
+        /// whatever is typed; the first with another printed name.
+        static func artistSearch() -> ArtistSearchQuery {
+            .fixed(
                 [
                     BridgeArtistSearchResult(
                         artist: BridgeExistingArtist(
@@ -313,7 +320,7 @@
                         creditNames: []
                     ),
                 ]
-            })
+            )
         }
     }
 

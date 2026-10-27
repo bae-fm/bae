@@ -1,5 +1,6 @@
 mod album_selection;
 pub mod app_services;
+mod artist_search;
 mod bootstrap_auth;
 mod browse;
 mod detail;
@@ -30,6 +31,7 @@ pub use album_selection::{
     AlbumSelectionSnapshot, AlbumSelectionSubscription, AlbumSelectionSubscriptionError,
 };
 pub use app_services::*;
+pub use artist_search::{ArtistSearchSnapshot, ArtistSearchSubscription, ArtistSearchView};
 pub use browse::*;
 pub use detail::{DetailSnapshot, DetailSubscription};
 pub use download_snapshot::{

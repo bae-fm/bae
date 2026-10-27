@@ -110,6 +110,8 @@ struct ImportReleaseHeader: View {
 
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(Library.self)
+    private var library
     /// The metadata menu's command the card is asking about.
     @State
     private var confirming: ImportDraftCommand?
@@ -124,6 +126,7 @@ struct ImportReleaseHeader: View {
                     values: editValues,
                     writer: editActions,
                     editingCommands: editingCommands,
+                    artistSearch: library.artistSearch,
                     cover: {
                         ImportCoverWell(
                             coverContent: coverContent,
