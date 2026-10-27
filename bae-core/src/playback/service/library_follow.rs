@@ -7,7 +7,7 @@
 //! branch never throws away a read in flight; the loop's only branch is a
 //! channel receive.
 
-use tracing::error;
+use tracing::{error, warn};
 
 pub(super) struct LibraryFollow<Request, Value> {
     requests: coven::LiveQueryRequests<Request>,
@@ -22,7 +22,9 @@ where
     Value: Clone + PartialEq + Send + 'static,
 {
     /// Follow `query` on a task of its own. A read that fails is logged under
-    /// `what` and the follow keeps running: the next change reads again.
+    /// `what` and the follow keeps running: the next change reads again. One
+    /// that fails because the store closed or its handle failed ends the
+    /// query, and the follow reads nothing more.
     pub(super) fn new(
         mut query: coven::ReconfigurableLiveQuery<Request, Value>,
         request: Request,
@@ -51,12 +53,14 @@ where
         }
     }
 
-    /// Point the read at `request`, unless it already reads it.
+    /// Point the read at `request`, unless it already reads it. A follow
+    /// whose query ended, once its store closed or its handle failed, reads
+    /// nothing more, for this request or any later one.
     pub(super) fn follow(&mut self, request: Request) {
         if request != self.request {
-            self.requests
-                .set(request.clone())
-                .expect("the follow task holds its query while this handle lives");
+            if self.requests.set(request.clone()).is_err() {
+                warn!("the follow's query has ended; {request:?} is not read");
+            }
             self.request = request;
         }
     }
@@ -106,5 +110,30 @@ mod tests {
             .await
             .expect("the follow's task ends")
             .expect("the follow's task does not fail");
+    }
+
+    /// Pointing a follow whose query ended at another request reads nothing,
+    /// and leaves the service that holds it running.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_ended_follow_takes_a_new_request() {
+        let directory = tempfile::TempDir::new().unwrap();
+        let path = directory.path().join("library.db");
+        let database = crate::db::Database::new_test(
+            path.to_str().unwrap(),
+            std::sync::Arc::new(coven::SystemClock),
+        )
+        .await
+        .unwrap();
+        let mut follow =
+            LibraryFollow::new(database.subscribe_album_detail(None), None, "the album");
+        database.close().await.unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(10), &mut follow.task)
+            .await
+            .expect("the follow's task ends")
+            .expect("the follow's task does not fail");
+
+        follow.follow(Some("another album".to_string()));
+
+        assert_eq!(follow.request, Some("another album".to_string()));
     }
 }
