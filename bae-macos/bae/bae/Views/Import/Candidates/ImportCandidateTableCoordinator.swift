@@ -28,6 +28,9 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private var content: ImportCandidateTableContent?
     /// Each row in view's hold on its page, by row.
     private var rowHolds: [Int: Task<Void, Never>] = [:]
+    /// Each row drawn before its page landed asking for the page, by row,
+    /// for as long as the table draws it.
+    private var drawnHolds: [Int: Task<Void, Never>] = [:]
     /// The key of the row the person last pointed at without Shift.
     var anchorKey: String?
     /// Set while an update moves the rows and scrolls to keep the place, so
@@ -264,12 +267,16 @@ extension ImportCandidateTableCoordinator {
         row: Int
     ) -> NSView? {
         guard let item = item(at: row) else {
-            // A row drawn before its page lands asks for the page, and the
-            // page's delivery reloads the table. The rows in view hold their
-            // pages already; this is for a row off screen that accessibility
-            // reads, which the table draws for it.
-            let list = list
-            Task { await list.withPage(containing: row) {} }
+            // A row drawn before its page lands asks for the page while the
+            // table draws it, and the page's delivery reloads the table. The
+            // table draws rows before the rows in view take their holds, and
+            // draws rows off screen for accessibility to read; a row a fast
+            // scroll carries past stops being drawn a frame later and lets
+            // its page go.
+            if drawnHolds[row] == nil {
+                let list = list
+                drawnHolds[row] = Task { await list.holdPage(containing: row) }
+            }
             return reused(tableView, Self.placeholder) { _ in
                 NSTableCellView()
             }
@@ -375,6 +382,25 @@ extension ImportCandidateTableCoordinator {
             hold.cancel()
         }
         rowHolds.removeAll()
+        releaseDrawnHolds()
+    }
+
+    /// A row the table stops drawing lets its page go.
+    func tableView(
+        _: NSTableView,
+        didRemove _: NSTableRowView,
+        forRow row: Int
+    ) {
+        drawnHolds.removeValue(forKey: row)?.cancel()
+    }
+
+    /// Every drawn row lets its page go: the list they were drawn from is
+    /// gone.
+    private func releaseDrawnHolds() {
+        for hold in drawnHolds.values {
+            hold.cancel()
+        }
+        drawnHolds.removeAll()
     }
 }
 
