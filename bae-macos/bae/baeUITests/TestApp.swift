@@ -179,9 +179,10 @@ private func silentCDAudio(seconds: Int) -> Data {
 extension XCTestCase {
     /// Launch the app on a library of its own, under a fresh `HOME`, holding
     /// the state `library` names, with `defaults` read in place of the app's
-    /// user defaults of those names. The app's user defaults are those of the
-    /// person running the test, which `HOME` does not move, so a test states
-    /// a default here rather than changing it in the app.
+    /// user defaults of those names, and return once the library is open. The
+    /// app's user defaults are those of the person running the test, which
+    /// `HOME` does not move, so a test states a default here rather than
+    /// changing it in the app.
     @MainActor
     func launchApp(
         library: LibraryFixture = LibraryFixture(),
@@ -222,6 +223,17 @@ extension XCTestCase {
         app.launch()
         app.activate()
         addTeardownBlock { app.terminate() }
+        // The window says "Loading..." until the library opens, and only then
+        // shows the title bar's Library section.
+        guard
+            app.windows.firstMatch.buttons["Library"]
+                .waitForExistence(timeout: 30)
+        else {
+            throw LibraryDidNotOpen()
+        }
         return app
     }
 }
+
+/// The launched app never showed its library.
+private struct LibraryDidNotOpen: Error {}
