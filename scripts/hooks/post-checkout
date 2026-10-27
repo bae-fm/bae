@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # post-checkout: fires after `git checkout` and `git worktree add`.
-# On new-worktree creation, run per-worktree setup (build output links, the
-# CLAUDE.md symlink, shared FFmpeg, xcconfigs and Android local.properties),
-# then prime: build the Rust bridge and the macOS app once, so the checkout's
-# first build is incremental.
-# BUILDS_SKIP_PRIME=1 (`builds new --no-prime`) skips the prime. Skip on normal
-# branch checkouts.
+# On new-worktree creation, run per-worktree setup: build output links, the
+# CLAUDE.md symlink, shared FFmpeg, xcconfigs, Android local.properties and the
+# macOS app's resolved SwiftPM versions. It builds nothing: a side worktree
+# builds host Rust only, and app builds stay warm in the app checkout and main
+# (projects/bae.md, "Worktrees and build output"). Skip on normal branch
+# checkouts.
 
 set -euo pipefail
 
@@ -64,42 +64,20 @@ if [ -f "$main_checkout/bae-android/local.properties" ] \
     echo "Linked bae-android/local.properties -> $main_checkout"
 fi
 
-if [ "${BUILDS_SKIP_PRIME:-0}" = 1 ]; then
-    echo
-    echo "Worktree ready (not primed): $worktree_root"
-    exit 0
-fi
-
-# Build the Rust bridge before generating and building the Xcode project, in the
-# same order the pre-commit hook uses. build-macos.sh produces both
-# BaeBridgeFFI.xcframework and the generated Swift bindings, and both must exist
-# on disk before xcodegen/xcodebuild run: xcodebuild's framework-dependency check
-# fails when the xcframework is absent, and xcodegen globs the source tree, so it
-# drops bae_bridge.swift if the project is generated before the bindings land.
-./bae-bridge/build-macos.sh
-./bae-bridge/install-swift-bindings.sh macos
-(cd bae-macos/bae && xcodegen generate)
-# xcodegen writes a fresh xcodeproj with no resolved SwiftPM set, but the build
-# below runs with -disableAutomaticPackageResolution (as scripts/check.sh does),
-# which requires a Package.resolved. It lives inside the gitignored
-# generated xcodeproj, so a new worktree never inherits one and the resolve step
-# fails. Seed it from the main checkout (which is kept building), so every
-# worktree resolves the same dependency versions as main from cache.
+# The macOS app builds in scripts/check.sh run with
+# -disableAutomaticPackageResolution, which requires a Package.resolved. It lives
+# inside the gitignored generated xcodeproj, so a new worktree never inherits
+# one. Seed it from the main checkout (which keeps building the app), so an app
+# build here resolves the same dependency versions as main from cache; xcodegen
+# keeps a Package.resolved that is already in place when it generates the
+# project.
 resolved="bae-macos/bae/bae.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-if [ -f "$main_checkout/$resolved" ]; then
+if [ "$main_checkout" != "$worktree_root" ] \
+    && [ -f "$main_checkout/$resolved" ] && [ ! -e "$resolved" ]; then
     mkdir -p "$(dirname "$resolved")"
     cp "$main_checkout/$resolved" "$resolved"
     echo "Seeded Package.resolved from $main_checkout"
 fi
-# The xcodebuild flags scripts/check.sh builds the app with, so its build is
-# incremental from this one. Callers may move DerivedData elsewhere by setting
-# BAE_MACOS_DERIVED_DATA_PATH.
-macos_derived_data_path="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
-(cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
-    -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath "$macos_derived_data_path" \
-    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
-    -disableAutomaticPackageResolution build)
 
 echo
 echo "Worktree ready: $worktree_root"
