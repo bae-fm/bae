@@ -1,9 +1,9 @@
 import Foundation
 
-/// The context's upcoming tail past the queue snapshot's first window, read
-/// through one live subscription: which windows it reads is changed in place,
-/// and each value answers every window at once, stamped with the queue revision
-/// it was sliced from.
+/// The context's upcoming tail, read through one live subscription: which
+/// windows it reads is changed in place, and each value answers every window
+/// at once with the tail's length, and says whether the queue changed or only
+/// the windows moved.
 public struct QueueUpcomingQuery: Sendable {
     public let setWindows: @Sendable ([BridgeLibraryPageWindow]) throws -> Void
     public let next: @Sendable () async throws -> BridgeQueueUpcomingSnapshot

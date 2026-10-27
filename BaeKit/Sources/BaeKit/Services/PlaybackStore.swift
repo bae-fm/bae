@@ -23,19 +23,24 @@ public class PlaybackStore {
     public var repeatMode: BridgeRepeatMode = .off
     /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [BridgeQueueEntry] = []
-    /// The release being played from, or `nil`. `context.upcoming` holds only
-    /// the first window; read any index through `upcomingItem(at:)`.
+    /// Counts the queue values applied, so a view keyed on it hears the manual
+    /// lane change even when its rows look the same.
+    public private(set) var manualEpoch: UInt64 = 0
+    /// What's playing from, or `nil`. Its tracks are read through the upcoming
+    /// read: `upcomingTotal` and `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
-    /// Context-tail entries read past the initial window, keyed by their
-    /// absolute index in the tail: the latest upcoming value whose revision
-    /// matches `revision`, and empty while none does.
-    public var pagedUpcoming: [Int: BridgeQueueEntry] = [:]
-    /// The queue revision the current `manualQueue`/`queueContext` were resolved
-    /// from. Upcoming values sliced from any other revision are not shown.
-    @ObservationIgnored
-    public private(set) var revision: UInt64 = 0
-    /// The live read of the upcoming tail, opened by the first
-    /// `loadUpcomingRange` and reused after.
+    /// The length of the context's not-yet-played tail, from the upcoming
+    /// read; 0 until the read answers.
+    public private(set) var upcomingTotal = 0
+    /// The tail entries the upcoming read last delivered, keyed by their index
+    /// in the tail. Indices it did not read are absent.
+    public private(set) var upcomingRows: [Int: BridgeQueueEntry] = [:]
+    /// Counts the upcoming values that answered a change to the queue rather
+    /// than only a scroll, so the context lane's rows and held order follow
+    /// core's.
+    public private(set) var contextEpoch: UInt64 = 0
+    /// The live read of the upcoming tail, opened by `showUpcoming` and kept
+    /// while a context plays.
     @ObservationIgnored
     private var upcomingQuery: QueueUpcomingQuery?
     @ObservationIgnored
@@ -45,12 +50,8 @@ public class PlaybackStore {
     /// from it.
     @ObservationIgnored
     private var upcomingWindows: [Range<Int>] = []
-    /// The newest upcoming value, held in case it arrives before the queue
-    /// value of its revision.
-    @ObservationIgnored
-    private var latestUpcoming: BridgeQueueUpcomingSnapshot?
     /// Why the upcoming read stopped, until `retryUpcoming` opens it again.
-    /// Rows past the first window stay placeholders while it is set.
+    /// Unread rows stay placeholders while it is set.
     public private(set) var upcomingFailure: DisplayError?
 
     /// Sent through Combine rather than `@Observable` because it changes with
@@ -291,40 +292,39 @@ public class PlaybackStore {
 }
 
 extension PlaybackStore {
+    /// Take core's queue value. A value without a context ends the upcoming
+    /// read: there is no tail to read.
+    @MainActor
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
-        guard snapshot.revision >= revision else {
-            logger.debug(
-                "dropping queue snapshot at revision \(snapshot.revision); revision \(self.revision) is already applied"
-            )
-            return
-        }
         manualQueue = snapshot.manual
+        manualEpoch &+= 1
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
-        if snapshot.revision > revision {
-            revision = snapshot.revision
-            showLatestUpcoming()
+        if queueContext == nil {
+            closeUpcomingQuery()
+            upcomingTotal = 0
+            upcomingRows = [:]
         }
     }
 
-    /// The upcoming item at `index`, or `nil` when it is not loaded or past
+    /// The upcoming item at `index`, or `nil` when it is not read or past
     /// the end.
     public func upcomingItem(at index: Int) -> BridgeQueueEntry? {
-        guard let context = queueContext else {
-            return nil
-        }
-        if index < context.upcoming.count {
-            return context.upcoming[index]
-        }
-        return pagedUpcoming[index]
+        upcomingRows[index]
     }
 
-    /// Whether a loaded upcoming row is the entry `entryId`.
+    /// Whether a read upcoming row is the entry `entryId`.
     public func upcomingHolds(entryId: String) -> Bool {
-        guard let context = queueContext else {
-            return false
+        upcomingRows.values.contains { $0.id == entryId }
+    }
+
+    /// Open the upcoming read while a context plays, so its length is known
+    /// before any of its rows is asked for.
+    @MainActor
+    public func showUpcoming(queue: Queue) {
+        guard queueContext != nil else {
+            return
         }
-        return context.upcoming.contains { $0.id == entryId }
-            || pagedUpcoming.values.contains { $0.id == entryId }
+        _ = openUpcomingQuery(queue: queue)
     }
 
     /// Read `[offset, offset + limit)` of the upcoming tail. Beyond
@@ -333,10 +333,10 @@ extension PlaybackStore {
     /// which the queue shows with Retry.
     @MainActor
     public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
-        guard let context = queueContext else {
+        guard queueContext != nil else {
             return
         }
-        let end = min(offset + limit, context.upcomingTotal)
+        let end = min(offset + limit, upcomingTotal)
         guard offset < end else {
             return
         }
@@ -385,6 +385,7 @@ extension PlaybackStore {
         upcomingFailure = nil
         let covered = upcomingWindows
         closeUpcomingQuery()
+        showUpcoming(queue: queue)
         for window in covered {
             await loadUpcomingRange(
                 offset: window.lowerBound,
@@ -434,29 +435,21 @@ extension PlaybackStore {
         return query
     }
 
+    /// Show what the upcoming read delivered: the tail's length and the rows
+    /// of every window, read together, so the two always agree.
     @MainActor
     private func applyUpcoming(_ snapshot: BridgeQueueUpcomingSnapshot) {
-        latestUpcoming = snapshot
-        guard snapshot.revision == revision else {
-            return
-        }
-        showLatestUpcoming()
-    }
-
-    /// Show the newest upcoming value only when it matches the queue revision
-    /// on screen; otherwise its offsets count from another queue's tail.
-    private func showLatestUpcoming() {
-        guard let latestUpcoming, latestUpcoming.revision == revision else {
-            pagedUpcoming = [:]
-            return
-        }
-        var items: [Int: BridgeQueueEntry] = [:]
-        for window in latestUpcoming.windows {
+        var rows: [Int: BridgeQueueEntry] = [:]
+        for window in snapshot.windows {
             for (i, entry) in window.entries.enumerated() {
-                items[Int(window.window.offset) + i] = entry
+                rows[Int(window.window.offset) + i] = entry
             }
         }
-        pagedUpcoming = items
+        upcomingTotal = Int(snapshot.upcomingTotal)
+        upcomingRows = rows
+        if snapshot.queueChanged {
+            contextEpoch &+= 1
+        }
     }
 
     private func distance(from range: Range<Int>, to index: Int) -> Int {

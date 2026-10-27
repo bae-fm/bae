@@ -32,7 +32,7 @@ struct QueueSectionVirtualizationTests {
                     acceptsExternalDrops: false,
                     laneId: .context,
                     coordinator: QueueDragCoordinator(),
-                    queueRevision: 1,
+                    laneChanges: 1,
                     onClear: {},
                     onSkipTo: { _ in },
                     onRemove: { _ in },

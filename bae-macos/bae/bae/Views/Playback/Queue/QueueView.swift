@@ -35,16 +35,11 @@ struct QueueView: View {
 
     /// The manual "Up Next" lane, played first and always loaded in full.
     private var manual: [BridgeQueueEntry] { playbackStore.manualQueue }
-    /// What's playing from, or `nil`; `upcomingTotal` may exceed what's loaded.
+    /// What's playing from, or `nil`; its tracks come from the upcoming read.
     private var context: QueuePlaybackContext? { playbackStore.queueContext }
 
     private var isEmpty: Bool {
-        switch context {
-        case .none:
-            return manual.isEmpty
-        case .some(let context):
-            return manual.isEmpty && context.upcomingTotal == 0
-        }
+        manual.isEmpty && (context == nil || playbackStore.upcomingTotal == 0)
     }
 
     var body: some View {
@@ -98,7 +93,7 @@ struct QueueView: View {
                             acceptsExternalDrops: true,
                             laneId: .manual,
                             coordinator: dragCoordinator,
-                            queueRevision: playbackStore.revision,
+                            laneChanges: playbackStore.manualEpoch,
                             onClear: onClearUpNext,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
@@ -108,18 +103,18 @@ struct QueueView: View {
                         )
                         .zIndex(dragCoordinator.isDragSource(.manual) ? 1 : 0)
 
-                        if let context, context.upcomingTotal > 0 {
-                            // Partly loaded: `upcomingItem` returns `nil` for
-                            // rows not yet fetched.
+                        if let context, playbackStore.upcomingTotal > 0 {
+                            // Partly read: `upcomingItem` returns `nil` for
+                            // rows not yet read.
                             QueueSection(
                                 title: Self.contextSectionTitle(context),
                                 shuffled: context.shuffled,
-                                count: context.upcomingTotal,
+                                count: playbackStore.upcomingTotal,
                                 itemAt: { playbackStore.upcomingItem(at: $0) },
                                 holdsEntry: {
                                     playbackStore.upcomingHolds(entryId: $0)
                                 },
-                                loadEpoch: playbackStore.revision,
+                                loadEpoch: playbackStore.contextEpoch,
                                 loadRange: { offset, limit in
                                     await playbackStore.loadUpcomingRange(
                                         offset: offset,
@@ -130,7 +125,7 @@ struct QueueView: View {
                                 acceptsExternalDrops: false,
                                 laneId: .context,
                                 coordinator: dragCoordinator,
-                                queueRevision: playbackStore.revision,
+                                laneChanges: playbackStore.contextEpoch,
                                 onClear: onClearPlayingFrom,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
@@ -160,6 +155,10 @@ struct QueueView: View {
                     dragCoordinator.manualGapCount = manual.count
                 }
             }
+        }
+        // The context's length is read before any of its rows is shown.
+        .task(id: context != nil) {
+            playbackStore.showUpcoming(queue: queue)
         }
         // No background: QueuePanel supplies the panel material.
     }
@@ -288,10 +287,12 @@ struct QueueView: View {
         @Environment(PlaybackStore.self)
         private var store
 
-        static func store(for presentation: Presentation) -> PlaybackStore {
+        static func queue(for presentation: Presentation) -> (
+            store: PlaybackStore, queue: Queue
+        ) {
             switch presentation {
             case .populated:
-                let store = PreviewData.queueStore(
+                let (store, queue) = PreviewData.echoingQueue(
                     manualCount: 2,
                     shuffled: true
                 )
@@ -311,12 +312,9 @@ struct QueueView: View {
                         )
                     )
                 )
-                return store
+                return (store, queue)
             case .empty:
-                return PreviewData.queueStore(
-                    manualCount: 0,
-                    context: nil
-                )
+                return PreviewData.echoingQueue(manualCount: 0, context: false)
             }
         }
 
@@ -345,18 +343,18 @@ struct QueueView: View {
     }
 
     #Preview("With items") {
+        let (store, queue) = QueueViewPreviewScene.queue(for: .populated)
         QueueViewPreviewScene(width: 420)
-            .environment(
-                QueueViewPreviewScene.store(for: .populated)
-            )
-            .environment(Queue.stub())
+            .environment(store)
+            .environment(queue)
             .environment(ImageStore.stub())
     }
 
     #Preview("Empty") {
+        let (store, queue) = QueueViewPreviewScene.queue(for: .empty)
         QueueViewPreviewScene(width: 420)
-            .environment(QueueViewPreviewScene.store(for: .empty))
-            .environment(Queue.stub())
+            .environment(store)
+            .environment(queue)
             .environment(ImageStore.stub())
     }
 #endif

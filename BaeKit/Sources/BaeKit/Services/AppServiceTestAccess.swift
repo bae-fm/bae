@@ -14,10 +14,6 @@
                 nowPlaying: playbackStore.nowPlaying,
                 playbackPosition: playbackStore.playbackPositionEvent,
                 manualQueueEntryIds: playbackStore.manualQueue.map(\.entryId),
-                upcomingQueueEntryIds: playbackStore.queueContext?.upcoming
-                    .map(
-                        \.entryId
-                    ),
                 volume: playbackStore.volume,
                 isMuted: playbackStore.isMuted,
                 repeatMode: playbackStore.repeatMode

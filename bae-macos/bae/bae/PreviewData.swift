@@ -2,6 +2,81 @@
     import BaeKit
     import Foundation
 
+    /// The upcoming read behind `PreviewData.echoingQueue`: answers the
+    /// windows it is asked for out of the model's context lane, and again
+    /// after every change to it, as core's live read does.
+    private final class PreviewUpcomingFeed: @unchecked Sendable {
+        private let lock = NSLock()
+        private var rows: [BridgeQueueEntry] = []
+        private var windows: [BridgeLibraryPageWindow] = []
+        private var changed = false
+        /// Whether a value is due that `next` has not taken yet.
+        private var due = true
+        private var waiter:
+            CheckedContinuation<BridgeQueueUpcomingSnapshot, Never>?
+
+        func show(_ rows: [BridgeQueueEntry]) {
+            deliver {
+                self.rows = rows
+                self.changed = true
+            }
+        }
+
+        func setWindows(_ windows: [BridgeLibraryPageWindow]) {
+            deliver { self.windows = windows }
+        }
+
+        func next() async -> BridgeQueueUpcomingSnapshot {
+            await withCheckedContinuation { continuation in
+                let ready: BridgeQueueUpcomingSnapshot? = lock.withLock {
+                    guard due else {
+                        waiter = continuation
+                        return nil
+                    }
+                    due = false
+                    return takeValue()
+                }
+                if let ready { continuation.resume(returning: ready) }
+            }
+        }
+
+        private func deliver(_ change: () -> Void) {
+            let ready:
+                (
+                    CheckedContinuation<BridgeQueueUpcomingSnapshot, Never>,
+                    BridgeQueueUpcomingSnapshot
+                )? =
+                    lock.withLock {
+                        change()
+                        guard let waiter else {
+                            due = true
+                            return nil
+                        }
+                        self.waiter = nil
+                        return (waiter, takeValue())
+                    }
+            if let (waiter, value) = ready { waiter.resume(returning: value) }
+        }
+
+        /// The value for the windows asked for; called under the lock.
+        private func takeValue() -> BridgeQueueUpcomingSnapshot {
+            defer { changed = false }
+            return BridgeQueueUpcomingSnapshot(
+                revision: 0,
+                upcomingTotal: UInt64(rows.count),
+                queueChanged: changed,
+                windows: windows.map { window in
+                    let start = min(Int(window.offset), rows.count)
+                    let end = min(start + Int(window.limit), rows.count)
+                    return BridgeQueueUpcomingWindow(
+                        window: window,
+                        entries: Array(rows[start..<end])
+                    )
+                }
+            )
+        }
+    }
+
     /// The in-memory queue behind `PreviewData.echoingQueue`: holds the two
     /// lanes, applies each command the way core would, and pushes the result
     /// into the store as a fresh snapshot. A dependency fake — the views under
@@ -19,6 +94,7 @@
         private var revision: UInt64 = 1
         /// Uniques the entry ids this model mints for inserted tracks.
         private var mintedEntryCount = 0
+        let upcomingFeed = PreviewUpcomingFeed()
 
         init(
             store: PlaybackStore,
@@ -38,6 +114,7 @@
 
         private func apply() {
             revision += 1
+            upcomingFeed.show(hasContext ? upcoming : [])
             store.applyQueueSnapshot(
                 BridgeQueueSnapshot(
                     manual: manual,
@@ -268,9 +345,9 @@
         ]
 
         /// A `PlaybackStore` preloaded with `queueEntries`: `manualCount` in the
-        /// manual lane, the rest in the context tail. Used by previews that need a
-        /// live store in the environment (`QueueView` reads its queue state via
-        /// `@Environment`, not by-value props).
+        /// manual lane, and a context of `context`'s kind. Used by previews that
+        /// show the store's queue state but not the context's rows, which only
+        /// `echoingQueue`'s upcoming read serves.
         @MainActor
         static func queueStore(
             manualCount: Int,
@@ -302,8 +379,8 @@
         }
 
         /// A store plus a `Queue` whose commands mutate an in-memory queue and
-        /// re-apply a fresh snapshot (revision bumped) — the preview stand-in
-        /// for core's queue subscription. Echo-driven view behavior (the
+        /// re-apply a fresh snapshot, and whose upcoming read answers out of it
+        /// — the preview stand-in for core's queue subscriptions. Echo-driven view behavior (the
         /// post-reorder hold clearing, the removal unmount, the shuffle flip)
         /// only works in a preview against this; against `Queue.stub()` the echo
         /// never lands and a second drag starts from a stale display order.
@@ -359,6 +436,13 @@
                         Task { @MainActor in
                             model.setShuffle(on)
                         }
+                    },
+                    subscribeUpcoming: { [feed = model.upcomingFeed] in
+                        QueueUpcomingQuery(
+                            setWindows: { feed.setWindows($0) },
+                            next: { await feed.next() },
+                            cancel: {}
+                        )
                     }
                 )
             )

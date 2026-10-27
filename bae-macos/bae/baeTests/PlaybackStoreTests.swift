@@ -21,50 +21,20 @@ private func makeTrack(_ id: String) -> BridgeNowPlayingTrack {
     )
 }
 
-private func makeQueueSnapshot(
-    entryId: String,
-    revision: UInt64
-) -> BridgeQueueSnapshot {
-    BridgeQueueSnapshot(
-        manual: [
-            BridgeQueueEntry(
-                entryId: entryId,
-                trackId: "track-\(entryId)",
-                display: BridgeTrackDisplay(
-                    title: "Track Title",
-                    artistNames: "Artist Name",
-                    albumId: "album-1",
-                    releaseId: "release-1",
-                    albumTitle: "Album Title",
-                    coverImage: nil
-                ),
-                durationClock: bridgeLengthClock(ms: 180_000)
-            )
-        ],
-        context: nil,
-        hasNext: false,
-        hasPrevious: false,
-        revision: revision
+private func queueEntry(_ entryId: String) -> BridgeQueueEntry {
+    BridgeQueueEntry(
+        entryId: entryId,
+        trackId: "track-\(entryId)",
+        display: BridgeTrackDisplay(
+            title: "Track Title",
+            artistNames: "Artist Name",
+            albumId: "album-1",
+            releaseId: "release-1",
+            albumTitle: "Album Title",
+            coverImage: nil
+        ),
+        durationClock: bridgeLengthClock(ms: 180_000)
     )
-}
-
-@Suite("PlaybackStore queue revisions")
-struct PlaybackStoreQueueRevisionTests {
-    @MainActor
-    @Test("an older queue read cannot overwrite a newer event")
-    func rejectsOlderSnapshot() {
-        let store = PlaybackStore()
-
-        store.applyQueueSnapshot(
-            makeQueueSnapshot(entryId: "newer", revision: 2)
-        )
-        store.applyQueueSnapshot(
-            makeQueueSnapshot(entryId: "older", revision: 1)
-        )
-
-        #expect(store.revision == 2)
-        #expect(store.manualQueue.map(\.entryId) == ["newer"])
-    }
 }
 
 /// An upcoming read the test drives: it records every window request and
@@ -82,7 +52,7 @@ private final class UpcomingFeed: @unchecked Sendable {
     var requested: [[BridgeLibraryPageWindow]] { lock.withLock { requests } }
     /// How many times the store has asked for a value. It applies each value
     /// before asking again, so an ask past a delivered value means that value
-    /// was handled, shown or not.
+    /// was handled.
     var asks: Int { lock.withLock { askedCount } }
 
     func query() -> QueueUpcomingQuery {
@@ -120,31 +90,29 @@ private final class UpcomingFeed: @unchecked Sendable {
         waiter?.resume(throwing: error)
     }
 
-    func deliver(revision: UInt64, offset: UInt64, entryId: String) {
+    /// Answer with a tail of `total` entries, one of them, `entryId`, read at
+    /// `offset` when given.
+    func deliver(
+        total: UInt64,
+        queueChanged: Bool,
+        offset: UInt64? = nil,
+        entryId: String = ""
+    ) {
         let snapshot = BridgeQueueUpcomingSnapshot(
-            revision: revision,
-            upcomingTotal: offset + 1,
-            queueChanged: false,
-            windows: [
-                BridgeQueueUpcomingWindow(
-                    window: BridgeLibraryPageWindow(offset: offset, limit: 1),
-                    entries: [
-                        BridgeQueueEntry(
-                            entryId: entryId,
-                            trackId: "track-\(entryId)",
-                            display: BridgeTrackDisplay(
-                                title: "Track Title",
-                                artistNames: "Artist Name",
-                                albumId: "album-1",
-                                releaseId: "release-1",
-                                albumTitle: "Album Title",
-                                coverImage: nil
-                            ),
-                            durationClock: bridgeLengthClock(ms: 180_000)
-                        )
-                    ]
-                )
-            ]
+            revision: 0,
+            upcomingTotal: total,
+            queueChanged: queueChanged,
+            windows: offset.map { offset in
+                [
+                    BridgeQueueUpcomingWindow(
+                        window: BridgeLibraryPageWindow(
+                            offset: offset,
+                            limit: 1
+                        ),
+                        entries: [queueEntry(entryId)]
+                    )
+                ]
+            } ?? []
         )
         let waiter:
             CheckedContinuation<BridgeQueueUpcomingSnapshot, any Error>? =
@@ -160,35 +128,46 @@ private final class UpcomingFeed: @unchecked Sendable {
     }
 }
 
-private func libraryContext(upcomingTotal: Int) -> BridgePlaybackContext {
-    BridgePlaybackContext(
-        kind: .library,
-        sourceTitle: nil,
-        shuffled: false,
-        upcoming: [],
-        upcomingTotal: UInt64(upcomingTotal)
+private func contextSnapshot(manual: [String] = []) -> BridgeQueueSnapshot {
+    BridgeQueueSnapshot(
+        manual: manual.map(queueEntry),
+        context: BridgePlaybackContext(
+            kind: .library,
+            sourceTitle: nil,
+            shuffled: false,
+            upcoming: [],
+            upcomingTotal: 0
+        ),
+        hasNext: true,
+        hasPrevious: false,
+        revision: 0
     )
 }
 
-private func contextSnapshot(revision: UInt64) -> BridgeQueueSnapshot {
-    BridgeQueueSnapshot(
-        manual: [],
-        context: libraryContext(upcomingTotal: 500),
-        hasNext: true,
-        hasPrevious: false,
-        revision: revision
-    )
+/// A store showing a context whose upcoming read has answered with a tail of
+/// `total` entries.
+@MainActor
+private func storeReading(
+    total: UInt64,
+    feed: UpcomingFeed,
+    queue: Queue
+) async throws -> PlaybackStore {
+    let store = PlaybackStore()
+    store.applyQueueSnapshot(contextSnapshot())
+    store.showUpcoming(queue: queue)
+    feed.deliver(total: total, queueChanged: false)
+    try await Wait.until { store.upcomingTotal == Int(total) }
+    return store
 }
 
 @Suite("PlaybackStore upcoming windows")
 struct PlaybackStoreUpcomingWindowTests {
     @MainActor
     @Test("scrolling the queue moves one upcoming read's windows")
-    func scrollingMovesOneRead() async {
+    func scrollingMovesOneRead() async throws {
         let feed = UpcomingFeed()
         let queue = Queue(subscribeUpcoming: { feed.query() })
-        let store = PlaybackStore()
-        store.applyQueueSnapshot(contextSnapshot(revision: 1))
+        let store = try await storeReading(total: 500, feed: feed, queue: queue)
 
         for offset in [0, 100, 200, 300] {
             await store.loadUpcomingRange(
@@ -217,37 +196,72 @@ struct PlaybackStoreUpcomingWindowTests {
 
     @MainActor
     @Test(
-        "an upcoming value shows only at the queue revision it was sliced from"
+        "the lane's length and rows come from one read, and only a change to the queue counts as one"
     )
-    func upcomingFollowsQueueRevision() async throws {
+    func lengthAndRowsComeTogether() async throws {
         let feed = UpcomingFeed()
         let queue = Queue(subscribeUpcoming: { feed.query() })
-        let store = PlaybackStore()
-        store.applyQueueSnapshot(contextSnapshot(revision: 1))
+        let store = try await storeReading(total: 500, feed: feed, queue: queue)
+        let changes = store.contextEpoch
         await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
 
-        feed.deliver(revision: 1, offset: 100, entryId: "first")
+        feed.deliver(
+            total: 500,
+            queueChanged: false,
+            offset: 100,
+            entryId: "first"
+        )
         try await Wait.until { store.upcomingItem(at: 100) != nil }
         #expect(store.upcomingItem(at: 100)?.entryId == "first")
+        #expect(store.contextEpoch == changes, "a scroll is not a change")
 
-        // The next revision's value arrives before its queue value. The third
-        // ask comes only after the store has handled it.
-        feed.deliver(revision: 2, offset: 100, entryId: "second")
-        try await Wait.until { feed.asks >= 3 }
-        #expect(
-            store.upcomingItem(at: 100)?.entryId == "first",
-            "a value ahead of the queue on screen waits for it"
+        feed.deliver(
+            total: 300,
+            queueChanged: true,
+            offset: 100,
+            entryId: "second"
         )
-
-        store.applyQueueSnapshot(contextSnapshot(revision: 2))
-        #expect(store.upcomingItem(at: 100)?.entryId == "second")
-
-        store.applyQueueSnapshot(contextSnapshot(revision: 3))
-        #expect(
-            store.upcomingItem(at: 100) == nil,
-            "a queue revision the read has not reached shows no stale entries"
-        )
+        try await Wait.until {
+            store.upcomingItem(at: 100)?.entryId == "second"
+        }
+        #expect(store.upcomingTotal == 300)
+        #expect(store.contextEpoch == changes + 1)
         #expect(feed.openedCount == 1)
+    }
+
+    @MainActor
+    @Test("a queue with no context ends the read and empties the lane")
+    func noContextEndsTheRead() async throws {
+        let feed = UpcomingFeed()
+        let queue = Queue(subscribeUpcoming: { feed.query() })
+        let store = try await storeReading(total: 5, feed: feed, queue: queue)
+
+        store.applyQueueSnapshot(
+            BridgeQueueSnapshot(
+                manual: [],
+                context: nil,
+                hasNext: false,
+                hasPrevious: false,
+                revision: 0
+            )
+        )
+
+        #expect(store.upcomingTotal == 0)
+        #expect(store.upcomingItem(at: 0) == nil)
+        store.applyQueueSnapshot(contextSnapshot())
+        store.showUpcoming(queue: queue)
+        #expect(feed.openedCount == 2, "a new context opens the read again")
+    }
+
+    @MainActor
+    @Test("every queue value counts as a change to the manual lane")
+    func queueValuesCountManualChanges() {
+        let store = PlaybackStore()
+        store.applyQueueSnapshot(contextSnapshot(manual: ["a"]))
+        let changes = store.manualEpoch
+        store.applyQueueSnapshot(contextSnapshot(manual: ["a"]))
+        #expect(store.manualEpoch == changes + 1)
+        #expect(store.manualQueue.map(\.entryId) == ["a"])
     }
 }
 
@@ -258,10 +272,9 @@ struct PlaybackStoreUpcomingFailureTests {
     func failedReadRetries() async throws {
         let feed = UpcomingFeed()
         let queue = Queue(subscribeUpcoming: { feed.query() })
-        let store = PlaybackStore()
-        store.applyQueueSnapshot(contextSnapshot(revision: 1))
+        let store = try await storeReading(total: 500, feed: feed, queue: queue)
         await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
-        try await Wait.until { feed.asks >= 1 }
+        try await Wait.until { feed.asks >= 2 }
 
         feed.fail(
             BridgeError.Diagnostic(

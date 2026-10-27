@@ -67,7 +67,6 @@ public struct AppServiceComponents {
         public let nowPlaying: NowPlaying
         public let playbackPosition: PlaybackPositionEvent
         public let manualQueueEntryIds: [String]
-        public let upcomingQueueEntryIds: [String]?
         public let volume: Float
         public let isMuted: Bool
         public let repeatMode: BridgeRepeatMode

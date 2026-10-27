@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 private let queueUpcomingLoadBatchSize = 100
 
 // periphery:ignore
-/// A row's load task identity: the queue revision, so a new revision restarts
+/// A row's load task identity: the lane's change count, so a change restarts
 /// the load, and the absolute index.
 private struct QueueRowLoadID: Hashable {
     let epoch: UInt64
@@ -53,8 +53,9 @@ struct QueueSection: View {
     let laneId: QueueLaneID
     /// The shared drag state every row shift is derived from.
     let coordinator: QueueDragCoordinator
-    /// The store's queue revision; a change drops the held post-commit order.
-    let queueRevision: UInt64
+    /// Counts core's changes to this lane; a change drops the held post-commit
+    /// order.
+    let laneChanges: UInt64
     /// Empties this lane; offered only while the lane has rows.
     let onClear: () -> Void
     let onSkipTo: (String) -> Void
@@ -215,9 +216,9 @@ struct QueueSection: View {
         }
         // Core applied the change, so the canonical order now matches the held
         // one and dropping it doesn't snap.
-        .onChange(of: queueRevision) {
+        .onChange(of: laneChanges) {
             coordinator.clearHold(laneId)
-            // Drop only ids whose rows are gone: the snapshot and revision
+            // Drop only ids whose rows are gone: the rows and the change count
             // update separately, and a still-present row would jump back open.
             removingEntryIds = removingEntryIds.filter(holdsEntry)
         }
@@ -504,7 +505,7 @@ extension QueueSection {
             acceptsExternalDrops: acceptsExternalDrops,
             laneId: laneId,
             coordinator: QueueDragCoordinator(),
-            queueRevision: 1,
+            laneChanges: 1,
             onClear: {},
             onSkipTo: { _ in },
             onRemove: { _ in },

@@ -115,7 +115,7 @@ final class QueueDragCoordinator {
     private var geometry: [QueueLaneID: QueueLaneGeometry] = [:]
     /// A committed reorder, held per lane so the rows stay put between the
     /// gesture ending and core's snapshot echoing the same order back (the
-    /// revision bump clears it — visually a no-op).
+    /// lane's next change clears it — visually a no-op).
     private var held: [QueueLaneID: QueueRowMove] = [:]
     /// The manual lane's row count, mirrored here by `QueueView` so the context
     /// section's gesture — which can't see the manual section's props — has it
@@ -295,8 +295,8 @@ final class QueueDragCoordinator {
 
     /// End the drag, resolving what (if anything) to commit. The caller (the
     /// source lane's section, which owns the command callbacks and `itemAt`)
-    /// executes the outcome; `reorder` holds the move here until the revision
-    /// bump.
+    /// executes the outcome; `reorder` holds the move here until the lane's
+    /// next change.
     ///
     /// A same-lane release starts the row settling: the copy glides from the
     /// cursor into the row's start slot — or, once the caller holds a
@@ -343,7 +343,7 @@ final class QueueDragCoordinator {
         settling = nil
     }
 
-    /// Core's snapshot landed for this lane's revision: the canonical order
+    /// Core's change to this lane landed: the canonical order
     /// now equals whatever was held, so dropping the hold is visually a no-op.
     func clearHold(_ lane: QueueLaneID) {
         held[lane] = nil
