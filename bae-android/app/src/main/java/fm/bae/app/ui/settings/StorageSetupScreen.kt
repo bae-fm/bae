@@ -56,8 +56,6 @@ import uniffi.bae_bridge.availableCloudProviders
 
 private val logger = BaeLogger("bae.StorageSetupScreen")
 
-private val qrSize = 220.dp
-
 /** Where setting up a cloud home stands. */
 private sealed interface SetupStep {
     data object Choose : SetupStep
@@ -266,7 +264,6 @@ private fun ColumnScope.SetupDone(
     QRCodeImage(
         text = restoreCode,
         contentDescription = stringResource(R.string.recovery_code_title),
-        modifier = Modifier.size(qrSize).align(Alignment.CenterHorizontally),
     )
     SelectionContainer {
         Text(text = restoreCode, style = ThemeText.mono.style)

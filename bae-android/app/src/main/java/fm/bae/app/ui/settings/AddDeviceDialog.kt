@@ -30,7 +30,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
@@ -47,8 +46,6 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 
 private val logger = BaeLogger("bae.AddDeviceDialog")
-
-private val qrSize = 220.dp
 
 /**
  * Adds another of this person's devices: their recovery code, generated on
@@ -123,7 +120,6 @@ private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
     QRCodeImage(
         text = share.qrText,
         contentDescription = stringResource(R.string.recovery_code_title),
-        modifier = Modifier.size(qrSize),
     )
     Spacer(modifier = Modifier.height(ThemeSpace.group))
     Text(

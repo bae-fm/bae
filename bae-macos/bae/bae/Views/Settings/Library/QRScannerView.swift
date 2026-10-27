@@ -103,6 +103,15 @@ struct QRScannerView: View {
             state = .unavailable
             return
         }
+        // A phone shows a join or invite code up to QR version 20, which
+        // Vision reads from 20 to 25 cm in 1920x1080 frames but only from
+        // 15 cm in 1280x720 ones.
+        if session.canSetSessionPreset(.hd1920x1080) {
+            session.sessionPreset = .hd1920x1080
+        }
+        logger.info(
+            "QR camera \(device.localizedName): preset \(session.sessionPreset.rawValue)"
+        )
         let output = AVCaptureVideoDataOutput()
         output.alwaysDiscardsLateVideoFrames = true
         guard session.canAddOutput(output) else {
@@ -216,6 +225,7 @@ private struct CameraPreview: NSViewRepresentable {
         /// Set after the first decode so a held-up code fires only once.
         private var didScan = false
         private var didLogDecodeFailure = false
+        private var tally = FrameTally()
 
         init(onScan: @escaping (String) -> Void) {
             self.onScan = onScan
@@ -230,11 +240,13 @@ private struct CameraPreview: NSViewRepresentable {
                 let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
             else { return }
 
+            tally.start(pixelBuffer)
             let code: String?
             do {
                 code = try VisionQRCodeDecoder.payload(in: pixelBuffer)
             }
             catch {
+                tally.record(read: false)
                 if !didLogDecodeFailure {
                     didLogDecodeFailure = true
                     logger.error(
@@ -243,11 +255,46 @@ private struct CameraPreview: NSViewRepresentable {
                 }
                 return
             }
+            tally.record(read: code != nil)
             guard let code else { return }
             didScan = true
             Task { @MainActor in
                 self.onScan(code)
             }
+        }
+    }
+
+    /// Logs the camera's frames: their size and format once, when the first
+    /// arrives, and how many were read once a second after that, so a scan
+    /// that never reads a code shows what Vision was given. Runs on the scan
+    /// queue only.
+    struct FrameTally {
+        private var started = false
+        private var windowStart = ContinuousClock.now
+        private var analysed = 0
+        private var read = 0
+
+        mutating func start(_ pixelBuffer: CVPixelBuffer) {
+            guard !started else { return }
+            started = true
+            windowStart = .now
+            let format = CVPixelBufferGetPixelFormatType(pixelBuffer)
+            logger.info(
+                "QR frames: \(CVPixelBufferGetWidth(pixelBuffer))x\(CVPixelBufferGetHeight(pixelBuffer)), pixel format \(format)"
+            )
+        }
+
+        mutating func record(read didRead: Bool) {
+            analysed += 1
+            if didRead { read += 1 }
+            let elapsed = windowStart.duration(to: .now)
+            guard didRead || elapsed >= .seconds(1) else { return }
+            logger.info(
+                "QR frames in \(elapsed.formatted(.units(allowed: [.milliseconds]))): \(analysed) analysed, \(read) read"
+            )
+            windowStart = .now
+            analysed = 0
+            read = 0
         }
     }
 

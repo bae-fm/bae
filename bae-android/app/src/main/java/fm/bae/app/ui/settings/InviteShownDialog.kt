@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -24,7 +23,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
@@ -47,8 +45,6 @@ import java.time.Instant
 import java.util.Date
 
 private val logger = BaeLogger("bae.InviteShownDialog")
-
-private val qrSize = 220.dp
 
 /**
  * One of this device's open invites, shown again: the QR code of an in-person
@@ -159,7 +155,6 @@ private fun InviteCodeDialog(
                         QRCodeImage(
                             text = invite.code,
                             contentDescription = title,
-                            modifier = Modifier.size(qrSize),
                         )
                     }
 
