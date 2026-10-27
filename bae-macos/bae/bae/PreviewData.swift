@@ -62,7 +62,6 @@
         private func takeValue() -> BridgeQueueUpcomingSnapshot {
             defer { changed = false }
             return BridgeQueueUpcomingSnapshot(
-                revision: 0,
                 upcomingTotal: UInt64(rows.count),
                 queueChanged: changed,
                 windows: windows.map { window in
@@ -91,7 +90,6 @@
         private let orderedUpcoming: [BridgeQueueEntry]
         private var hasContext: Bool
         private var shuffled: Bool
-        private var revision: UInt64 = 1
         /// Uniques the entry ids this model mints for inserted tracks.
         private var mintedEntryCount = 0
         let upcomingFeed = PreviewUpcomingFeed()
@@ -113,7 +111,6 @@
         }
 
         private func apply() {
-            revision += 1
             upcomingFeed.show(hasContext ? upcoming : [])
             store.applyQueueSnapshot(
                 BridgeQueueSnapshot(
@@ -122,13 +119,10 @@
                         ? BridgePlaybackContext(
                             kind: .release,
                             sourceTitle: "Neon Frequencies",
-                            shuffled: shuffled,
-                            upcoming: upcoming,
-                            upcomingTotal: UInt64(upcoming.count)
+                            shuffled: shuffled
                         ) : nil,
                     hasNext: !manual.isEmpty || !upcoming.isEmpty,
-                    hasPrevious: false,
-                    revision: revision
+                    hasPrevious: false
                 )
             )
         }
@@ -365,14 +359,11 @@
                             kind: kind,
                             sourceTitle: kind == .release
                                 ? "Neon Frequencies" : nil,
-                            shuffled: shuffled,
-                            upcoming: upcoming,
-                            upcomingTotal: UInt64(upcoming.count)
+                            shuffled: shuffled
                         )
                     },
                     hasNext: !upcoming.isEmpty,
-                    hasPrevious: false,
-                    revision: 1
+                    hasPrevious: false
                 )
             )
             return store

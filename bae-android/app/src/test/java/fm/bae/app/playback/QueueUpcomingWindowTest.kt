@@ -134,8 +134,6 @@ class QueueUpcomingWindowTest {
             kind = BridgePlaybackSourceKind.LIBRARY,
             sourceTitle = null,
             shuffled = false,
-            upcoming = emptyList(),
-            upcomingTotal = 0uL,
         )
 
     private fun window(

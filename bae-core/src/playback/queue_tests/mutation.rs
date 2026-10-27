@@ -61,10 +61,10 @@ async fn test_remove_one_duplicate_keeps_the_other() {
 async fn test_remove_unknown_id_is_noop() {
     let mut f = release(&["a"]).await;
     f.add(&["a"]).await;
-    let revision = f.revision().await;
+    let before = f.shown().await;
     assert_eq!(f.queue.remove(QueueEntryId(i64::MAX)).await.unwrap(), None);
     assert_eq!(f.upcoming().await, names(&["a"]));
-    assert_eq!(f.revision().await, revision, "an unknown id changes nothing");
+    assert_eq!(f.shown().await, before, "an unknown id changes nothing");
 }
 
 #[tokio::test]
@@ -171,11 +171,11 @@ async fn test_clear_playing_from_then_up_next_drains_and_stops() {
 async fn test_clear_playing_from_with_no_context_is_noop() {
     let mut f = release(&["m1"]).await;
     f.add(&["m1"]).await;
-    let revision = f.revision().await;
+    let before = f.shown().await;
 
     f.queue.clear_playing_from().await.unwrap();
 
-    assert_eq!(f.revision().await, revision, "nothing to clear");
+    assert_eq!(f.shown().await, before, "nothing to clear");
     assert_eq!(f.upcoming().await, names(&["m1"]));
 }
 
@@ -454,17 +454,17 @@ async fn test_set_shuffle_to_the_current_state_is_idempotent() {
     f.play_from("t1").await;
     f.queue.set_shuffle(true).await.unwrap();
     let order = f.context_order().await;
-    let revision = f.revision().await;
+    let before = f.shown().await;
 
     f.queue.set_shuffle(true).await.unwrap();
 
     assert_eq!(f.context_order().await, order, "the lane is not shuffled again");
-    assert_eq!(f.revision().await, revision);
+    assert_eq!(f.shown().await, before);
 
     f.queue.set_shuffle(false).await.unwrap();
-    let sequential = f.revision().await;
+    let sequential = f.shown().await;
     f.queue.set_shuffle(false).await.unwrap();
-    assert_eq!(f.revision().await, sequential);
+    assert_eq!(f.shown().await, sequential);
 }
 
 #[tokio::test]

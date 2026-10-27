@@ -265,10 +265,6 @@ pub struct BridgeQueueSnapshot {
     pub context: Option<BridgePlaybackContext>,
     pub has_next: bool,
     pub has_previous: bool,
-    /// The queue revision this snapshot was read at. The UI shows the
-    /// upcoming windows it reads past `context.upcoming` only while their
-    /// revision matches this one.
-    pub revision: u64,
 }
 
 /// Which kind of source the context plays from, so the UI labels the section
@@ -293,10 +289,10 @@ impl BridgePlaybackSourceKind {
 }
 
 /// The context lane (what the queue is playing from), delivered alongside the
-/// manual lane so each UI renders the two as distinct sections:
-/// its kind (release vs library, for the section label), its not-yet-played tail,
-/// plus whether it was ordered by shuffle (the UI shows a shuffle indicator when
-/// so).
+/// manual lane so each UI renders the two as distinct sections: its kind
+/// (release vs library, for the section label) and whether it was ordered by
+/// shuffle (the UI shows a shuffle indicator when so). Its tracks are read
+/// through `subscribe_queue_upcoming`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackContext {
     pub kind: BridgePlaybackSourceKind,
@@ -306,14 +302,6 @@ pub struct BridgePlaybackContext {
     /// prose itself stays UI-side (localized).
     pub source_title: Option<String>,
     pub shuffled: bool,
-    /// The first page of the not-yet-played tail — not the whole tail. See
-    /// `upcoming_total` for the full length and `subscribe_queue_upcoming`
-    /// for the rest.
-    pub upcoming: Vec<BridgeQueueEntry>,
-    /// The full length of the not-yet-played tail, including entries beyond
-    /// `upcoming`. The UI renders a placeholder for every index up to this and
-    /// pages in the rest as it scrolls.
-    pub upcoming_total: u64,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

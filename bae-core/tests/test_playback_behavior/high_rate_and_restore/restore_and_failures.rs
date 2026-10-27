@@ -97,6 +97,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     handle.add_to_queue(vec![lib.track_ids[0].clone()]);
     handle.pause();
     let before = handle.queue_value().await.expect("queue value");
+    let order = handle.queue_upcoming().await.expect("queue upcoming");
     assert!(before.context.as_ref().is_some_and(|context| context.shuffled));
     handle.shutdown().await;
 
@@ -114,7 +115,12 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     assert_eq!(
         handle.queue_value().await.expect("queue value"),
         before,
-        "the restarted queue is the one that was playing, in its order"
+        "the restarted queue is the one that was playing"
+    );
+    assert_eq!(
+        handle.queue_upcoming().await.expect("queue upcoming"),
+        order,
+        "in its order"
     );
 
     handle.stop();

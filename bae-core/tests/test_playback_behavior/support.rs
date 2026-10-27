@@ -230,7 +230,7 @@ async fn wait_for_playing_capturing_queue_on(
     let entries = value
         .manual
         .into_iter()
-        .chain(value.context.map(|context| context.upcoming).unwrap_or_default())
+        .chain(playback_handle.queue_upcoming().await.expect("queue upcoming"))
         .map(|item| bae_core::playback::QueueEntry {
             id: item.entry_id.parse().expect("a queue entry id"),
             track_id: item.track_id,

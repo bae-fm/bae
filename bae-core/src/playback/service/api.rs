@@ -244,7 +244,17 @@ pub(crate) enum PlaybackCommand {
     GetVolume(oneshot::Sender<f32>),
     /// Test-only: replies with the queue once every earlier command has finished.
     #[cfg(any(test, feature = "test-utils"))]
-    GetQueue(oneshot::Sender<Result<crate::queue::ResolvedQueueSnapshot, String>>),
+    GetQueue(
+        oneshot::Sender<
+            Result<
+                (
+                    crate::queue::ResolvedQueueSnapshot,
+                    Vec<crate::queue::QueueItem>,
+                ),
+                String,
+            >,
+        >,
+    ),
     /// Save state, reply, then stop the loop.
     Shutdown(oneshot::Sender<()>),
     /// Save state without stopping playback, for a mobile app going to the
@@ -494,6 +504,26 @@ impl PlaybackHandle {
     /// this one has changed it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn queue_value(&self) -> Result<crate::queue::ResolvedQueueSnapshot, String> {
+        Ok(self.queue_read().await?.0)
+    }
+
+    /// Every one of the context lane's tracks after the playing one, read
+    /// after every command sent before this one has changed the queue.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn queue_upcoming(&self) -> Result<Vec<crate::queue::QueueItem>, String> {
+        Ok(self.queue_read().await?.1)
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    async fn queue_read(
+        &self,
+    ) -> Result<
+        (
+            crate::queue::ResolvedQueueSnapshot,
+            Vec<crate::queue::QueueItem>,
+        ),
+        String,
+    > {
         let (tx, rx) = oneshot::channel();
         self.dispatch(PlaybackCommand::GetQueue(tx));
         rx.await

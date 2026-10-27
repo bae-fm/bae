@@ -418,51 +418,33 @@ async fn play_seeded(manager: &LibraryManager, first_track: &str) {
         .unwrap();
 }
 
-/// The queue value resolves only the first `QUEUE_UPCOMING_WINDOW` entries
-/// of a library-scaled context tail, not the whole thing, while still
-/// reporting the tail's real length via `upcoming_total` and preserving order.
+/// The context lane's tail reads in order after the playing track, however
+/// long it is; the queue value says only that it has one.
 #[tokio::test]
-async fn queue_value_windows_a_library_scaled_context_tail() {
+async fn the_context_tail_reads_in_order_after_the_playing_track() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 51).await;
+    let track_ids = seed_release_tracks(&manager, 151).await;
     play_seeded(&manager, &track_ids[0]).await;
 
-    let snapshot = manager.queue_value().await.unwrap();
-    let context = snapshot.context.expect("a context was set");
-    assert_eq!(
-        context.upcoming.len(),
-        crate::queue::QUEUE_UPCOMING_WINDOW,
-        "only the window is resolved, not the whole library-scaled tail"
-    );
-    assert_eq!(context.upcoming_total, track_ids.len() as u64 - 1);
-    let resolved: Vec<&str> = context.upcoming.iter().map(|i| i.track_id.as_str()).collect();
-    let expected: Vec<&str> = track_ids[1..=crate::queue::QUEUE_UPCOMING_WINDOW]
-        .iter()
-        .map(String::as_str)
+    let value = manager.queue_value().await.unwrap();
+    assert!(value.context.is_some() && value.has_next);
+    let upcoming: Vec<String> = manager
+        .queue_upcoming()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|item| item.track_id)
         .collect();
-    assert_eq!(resolved, expected, "the window preserves order");
+    assert_eq!(upcoming, track_ids[1..].to_vec());
 }
 
-/// A context tail shorter than the window resolves in full, and
-/// `upcoming_total` still matches its real (smaller) length.
-#[tokio::test]
-async fn queue_value_shorter_than_window_resolves_it_all() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, 6).await;
-    play_seeded(&manager, &track_ids[0]).await;
-
-    let context = manager.queue_value().await.unwrap().context.expect("a context was set");
-    assert_eq!(context.upcoming.len(), 5);
-    assert_eq!(context.upcoming_total, 5);
-}
-
-/// The manual lane is explicit and user-curated, not library-scaled — it
-/// resolves in full even when it is larger than the context window.
+/// The manual lane is explicit and user-curated, not library-scaled — the
+/// queue value carries it in full.
 #[tokio::test]
 async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 10).await;
-    let manual_count = crate::queue::QUEUE_UPCOMING_WINDOW + 3;
+    let track_ids = seed_release_tracks(&manager, 110).await;
+    let manual_count = 103;
     manager
         .playback_queue_tables()
         .add_manual(track_ids[..manual_count].to_vec(), crate::db::ManualPlace::End)

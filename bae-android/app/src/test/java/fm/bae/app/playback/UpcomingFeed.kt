@@ -16,7 +16,7 @@ internal class UpcomingFeed {
     private companion object {
         /** Wakes a waiting read so it can fail; never applied. */
         val PLACEHOLDER =
-            BridgeQueueUpcomingSnapshot(revision = 0uL, upcomingTotal = 0uL, queueChanged = false, windows = emptyList())
+            BridgeQueueUpcomingSnapshot(upcomingTotal = 0uL, queueChanged = false, windows = emptyList())
     }
 
     var opened = 0
@@ -66,7 +66,6 @@ internal class UpcomingFeed {
     ) {
         values.trySend(
             BridgeQueueUpcomingSnapshot(
-                revision = 0uL,
                 upcomingTotal = total.toULong(),
                 queueChanged = queueChanged,
                 windows =

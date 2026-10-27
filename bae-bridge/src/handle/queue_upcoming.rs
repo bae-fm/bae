@@ -8,12 +8,9 @@ pub struct BridgeQueueUpcomingWindow {
     pub entries: Vec<crate::types::BridgeQueueEntry>,
 }
 
-/// Every requested window of the upcoming tail as of one queue revision.
+/// Every requested window of the upcoming tail as of one read.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeQueueUpcomingSnapshot {
-    /// The queue revision the windows were read at. The UI shows them only
-    /// while its queue snapshot carries the same revision.
-    pub revision: u64,
     /// The tail's length at the same read, which the windows are laid out in.
     pub upcoming_total: u64,
     /// Whether the queue changed since the value before; `false` when only
@@ -22,9 +19,9 @@ pub struct BridgeQueueUpcomingSnapshot {
     pub windows: Vec<BridgeQueueUpcomingWindow>,
 }
 
-/// The context's upcoming tail past the queue snapshot's first window, read
-/// in the windows the UI asks for: one live read for as long as the queue is
-/// shown, moved in place as it scrolls and as the queue changes.
+/// The context's upcoming tail, read in the windows the UI asks for: one live
+/// read for as long as the queue is shown, moved in place as it scrolls and as
+/// the queue changes.
 #[derive(uniffi::Object)]
 pub struct QueueUpcomingSubscription {
     inner: bae_core::library::QueueUpcomingSubscription,
@@ -87,7 +84,6 @@ impl QueueUpcomingSubscription {
 impl BridgeQueueUpcomingSnapshot {
     fn from_core(snapshot: bae_core::library::QueueUpcomingSnapshot) -> Self {
         Self {
-            revision: snapshot.revision,
             upcoming_total: snapshot.upcoming_total,
             queue_changed: snapshot.queue_changed,
             windows: snapshot

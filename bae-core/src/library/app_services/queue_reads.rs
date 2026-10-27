@@ -53,7 +53,6 @@ impl AppServices {
                         event = query.recv_with_cause() => {
                             let Some((cause, result)) = event else { return };
                             let value = result.map(|read| crate::library::QueueUpcomingSnapshot {
-                                revision: read.revision,
                                 upcoming_total: read.upcoming_total,
                                 queue_changed: !matches!(cause, coven::LiveQueryCause::Request),
                                 windows: read.windows,

@@ -82,21 +82,17 @@ async fn now_playing_until(
 
 /// The queue's first upcoming item once `accept` takes it.
 async fn first_upcoming_until(
-    queue: &mut tokio::sync::mpsc::UnboundedReceiver<
-        Result<bae_core::queue::ResolvedQueueSnapshot, bae_core::library::LibraryError>,
-    >,
+    queue: &bae_core::library::QueueUpcomingSubscription,
     accept: impl Fn(&bae_core::queue::QueueItem) -> bool,
 ) -> bae_core::queue::QueueItem {
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            let value = queue
-                .recv()
-                .await
-                .expect("the queue subscription stays open")
-                .expect("the queue resolves");
+            let value = queue.next().await.expect("the queue's upcoming read resolves");
             if let Some(item) = value
-                .context
-                .and_then(|context| context.upcoming.into_iter().next())
+                .windows
+                .into_iter()
+                .flat_map(|window| window.items)
+                .next()
                 .filter(|item| accept(item))
             {
                 return item;
@@ -105,6 +101,17 @@ async fn first_upcoming_until(
     })
     .await
     .expect("the queue shows the edit")
+}
+
+/// The queue's upcoming read over its first track.
+fn first_upcoming(services: &bae_core::library::AppServices) -> bae_core::library::QueueUpcomingSubscription {
+    let queue = services.subscribe_queue_upcoming();
+    queue
+        .set(bae_core::library::LibraryPageWindows::from([
+            bae_core::library::LibraryPageWindow { offset: 0, limit: 1 },
+        ]))
+        .expect("the read takes its window");
+    queue
 }
 
 /// Changing the cover of the release the paused track is on shows the new
@@ -116,11 +123,11 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let (services, release_id) = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
     let mut values = services.subscribe_playback_values();
-    let mut queue = services.subscribe_queue_values();
+    let queue = first_upcoming(&services);
     let before = now_playing_until(&mut values, &track_id, "the paused track", |_| true)
         .await
         .cover_image;
-    first_upcoming_until(&mut queue, |item| item.display.cover_image == before).await;
+    first_upcoming_until(&queue, |item| item.display.cover_image == before).await;
 
     let image_dir = TempDir::new().unwrap();
     let image_path = image_dir.path().join("front.gif");
@@ -162,7 +169,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let after = now_playing_until(&mut values, &track_id, "the new cover", |display| changed(&display.cover_image))
         .await
         .cover_image;
-    let upcoming = first_upcoming_until(&mut queue, |item| changed(&item.display.cover_image)).await;
+    let upcoming = first_upcoming_until(&queue, |item| changed(&item.display.cover_image)).await;
     assert_eq!(upcoming.display.cover_image, after, "the queue shows the same cover");
 }
 
@@ -174,9 +181,9 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
     let (services, release_id) = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
     let mut values = services.subscribe_playback_values();
-    let mut queue = services.subscribe_queue_values();
+    let queue = first_upcoming(&services);
     now_playing_until(&mut values, &track_id, "the paused track", |_| true).await;
-    first_upcoming_until(&mut queue, |_| true).await;
+    first_upcoming_until(&queue, |_| true).await;
 
     let mut edit = services
         .open_release_edit(&release_id)
@@ -197,7 +204,7 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         display.title == "Renamed Opening Track" && display.album_title == "Renamed Album"
     })
     .await;
-    first_upcoming_until(&mut queue, |item| {
+    first_upcoming_until(&queue, |item| {
         item.display.title == "Renamed Second Track" && item.display.album_title == "Renamed Album"
     })
     .await;

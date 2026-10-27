@@ -133,7 +133,7 @@ impl Fixture {
     /// Up Next's entries then the context lane's upcoming ones.
     async fn upcoming_entries(&self) -> Vec<QueueEntry> {
         let value = self.value().await;
-        let context = value.context.map(|c| c.upcoming).unwrap_or_default();
+        let context = self.db.queue_upcoming().await.unwrap();
         value
             .manual
             .into_iter()
@@ -220,8 +220,24 @@ impl Fixture {
         }
     }
 
-    async fn revision(&self) -> u64 {
-        self.value().await.revision
+    /// Everything the queue screens and the tables show, to tell that an
+    /// operation changed nothing.
+    async fn shown(
+        &self,
+    ) -> (
+        crate::queue::ResolvedQueueSnapshot,
+        Vec<String>,
+        Vec<String>,
+    ) {
+        (
+            self.value().await,
+            self.upcoming().await,
+            self.context_order_or_empty().await,
+        )
+    }
+
+    async fn context_order_or_empty(&self) -> Vec<String> {
+        self.context_order().await
     }
 }
 

@@ -1472,9 +1472,6 @@ END;
 CREATE TABLE IF NOT EXISTS playback_queue (
     singleton  INTEGER PRIMARY KEY CHECK (singleton = 1),
     repeat     TEXT NOT NULL CHECK (repeat IN ('off', 'track', 'context')),
-    -- Counts the changes to the queue, so a window read of it can be told
-    -- from one of the queue before.
-    revision   INTEGER NOT NULL,
     -- The entry number the next queued track gets: no two entries ever share
     -- one.
     next_entry INTEGER NOT NULL,
@@ -1488,8 +1485,8 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     CHECK ((source IS NULL) = (shuffled IS NULL) AND (source IS NULL) = (cursor IS NULL))
 ) STRICT;
 
-INSERT OR IGNORE INTO playback_queue (singleton, repeat, revision, next_entry)
-VALUES (1, 'off', 0, 1);
+INSERT OR IGNORE INTO playback_queue (singleton, repeat, next_entry)
+VALUES (1, 'off', 1);
 
 -- The queued tracks: Up Next (`manual`), drained first, and the context lane
 -- a play fills, each in position order. Positions are only an order: a lane
@@ -1516,13 +1513,6 @@ WHEN OLD.lane = 'context'
  AND NOT EXISTS (SELECT 1 FROM playback_queue_entries WHERE lane = 'context')
 BEGIN
     UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL;
-END;
-
--- Deleting a queued track changes the queue, though no queue write does it.
-CREATE TRIGGER IF NOT EXISTS tracks_leave_playback_queue BEFORE DELETE ON tracks
-WHEN EXISTS (SELECT 1 FROM playback_queue_entries WHERE track_id = OLD.id)
-BEGIN
-    UPDATE playback_queue SET revision = revision + 1;
 END;
 
 -- Where this device's playback stood, so a restart resumes it: the queue

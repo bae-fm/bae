@@ -125,10 +125,7 @@ impl Database {
             }
             sql.execute("DELETE FROM playback_state", [])?;
             sql.execute("DELETE FROM playback_queue_entries", [])?;
-            sql.execute(
-                "UPDATE playback_queue SET repeat = 'off', revision = revision + 1",
-                [],
-            )?;
+            sql.execute("UPDATE playback_queue SET repeat = 'off'", [])?;
             Ok(())
         })
         .await
@@ -187,7 +184,7 @@ impl PlaybackQueueTables {
                     "DELETE FROM playback_queue_entries WHERE lane = 'manual'",
                     [],
                 )?;
-                bump_revision_on(sql)
+                Ok(())
             })
             .await
     }
@@ -205,7 +202,6 @@ impl PlaybackQueueTables {
                     "DELETE FROM playback_queue_entries WHERE lane = 'context'",
                     [],
                 )?;
-                bump_revision_on(sql)?;
                 Ok(true)
             })
             .await
@@ -225,7 +221,7 @@ impl PlaybackQueueTables {
                     "UPDATE playback_queue SET repeat = ?",
                     [repeat_column(mode)],
                 )?;
-                bump_revision_on(sql)
+                Ok(())
             })
             .await
     }
@@ -244,7 +240,6 @@ impl PlaybackQueueTables {
                 let Some(track_id) = removed else {
                     return Ok(None);
                 };
-                bump_revision_on(sql)?;
                 Ok(Some(QueueEntry { id, track_id }))
             })
             .await
@@ -281,7 +276,6 @@ impl PlaybackQueueTables {
                     }
                     Lane::Context => set_cursor_on(sql, located.position)?,
                 }
-                bump_revision_on(sql)?;
                 Ok(Some(located.entry))
             })
             .await
@@ -399,11 +393,6 @@ fn queue_row_on(sql: &SqlContext<'_, '_>) -> rusqlite::Result<QueueRow> {
             })
         },
     )
-}
-
-fn bump_revision_on(sql: &SqlContext<'_, '_>) -> Result<(), DbError> {
-    sql.execute("UPDATE playback_queue SET revision = revision + 1", [])?;
-    Ok(())
 }
 
 fn set_cursor_on(sql: &SqlContext<'_, '_>, position: i64) -> rusqlite::Result<()> {
@@ -653,7 +642,7 @@ fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled,
     };
     sql.execute(
         "UPDATE playback_queue SET source = ?, shuffled = ?, cursor = ?, \
-         next_entry = ?, revision = revision + 1",
+         next_entry = ?",
         params![
             source.to_column(),
             shuffled,
@@ -724,10 +713,7 @@ fn add_manual_on(
              FROM json_each(?1) j JOIN tracks t ON t.id = j.value)",
         params![track_ids, base, start],
     )?;
-    sql.execute(
-        "UPDATE playback_queue SET next_entry = ?, revision = revision + 1",
-        [base + count],
-    )?;
+    sql.execute("UPDATE playback_queue SET next_entry = ?", [base + count])?;
     Ok(count as usize)
 }
 
@@ -749,10 +735,7 @@ fn set_shuffle_on(sql: &SqlContext<'_, '_>, on: bool) -> Result<ShuffleChange, D
     } else {
         reorder_context_after_on(sql, cursor, "unshuffled, entry")?;
     }
-    sql.execute(
-        "UPDATE playback_queue SET shuffled = ?, revision = revision + 1",
-        [on],
-    )?;
+    sql.execute("UPDATE playback_queue SET shuffled = ?", [on])?;
     Ok(ShuffleChange::Changed)
 }
 
@@ -828,7 +811,6 @@ fn reorder_on(
             set_cursor_on(sql, moved_cursor)?;
         }
     }
-    bump_revision_on(sql)?;
     Ok(true)
 }
 
@@ -846,7 +828,6 @@ fn advance_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
             "DELETE FROM playback_queue_entries WHERE entry = ?",
             [entry.id.0],
         )?;
-        bump_revision_on(sql)?;
         return Ok(Some(entry));
     }
     let next = sql
@@ -862,7 +843,6 @@ fn advance_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
         return Ok(None);
     };
     set_cursor_on(sql, position)?;
-    bump_revision_on(sql)?;
     Ok(Some(entry))
 }
 
@@ -884,7 +864,6 @@ fn wrap_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
         entry_from_row,
     )?;
     set_cursor_on(sql, position)?;
-    bump_revision_on(sql)?;
     Ok(Some(first))
 }
 
@@ -919,7 +898,6 @@ fn step_back_on(
         return Ok(None);
     };
     set_cursor_on(sql, position)?;
-    bump_revision_on(sql)?;
     Ok(Some(entry))
 }
 

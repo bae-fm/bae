@@ -1051,11 +1051,15 @@ impl PlaybackService {
                 }
                 #[cfg(any(test, feature = "test-utils"))]
                 PlaybackCommand::GetQueue(reply) => {
-                    let value = self
-                        .library_manager
-                        .queue_value()
-                        .await
-                        .map_err(|e| e.to_string());
+                    let value = match self.library_manager.queue_value().await {
+                        Ok(value) => self
+                            .library_manager
+                            .queue_upcoming()
+                            .await
+                            .map(|upcoming| (value, upcoming)),
+                        Err(e) => Err(e),
+                    }
+                    .map_err(|e| e.to_string());
                     if reply.send(value).is_err() {
                         debug!("queue asked for by a caller that stopped waiting");
                     }

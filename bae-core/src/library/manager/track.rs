@@ -63,6 +63,12 @@ impl LibraryManager {
         Ok(self.database.queue_value().await?)
     }
 
+    /// Every one of the context lane's tracks after the playing one.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn queue_upcoming(&self) -> Result<Vec<crate::queue::QueueItem>, LibraryError> {
+        Ok(self.database.queue_upcoming().await?)
+    }
+
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
     pub(crate) fn subscribe_queue_upcoming(
         &self,

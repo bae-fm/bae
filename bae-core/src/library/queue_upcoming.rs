@@ -1,5 +1,5 @@
-//! The context's upcoming tail past the queue value's own first window, read
-//! through one live subscription whose windows move as the queue scrolls.
+//! The context's upcoming tail, read through one live subscription whose
+//! windows move as the queue scrolls.
 
 use super::{LibraryPageWindow, LibraryPageWindows};
 
@@ -10,15 +10,11 @@ pub struct QueueUpcomingWindow {
     pub items: Vec<crate::queue::QueueItem>,
 }
 
-/// Every requested window as of one queue revision. Offsets are into the
-/// not-yet-played tail — the same coordinate space as
-/// [`crate::queue::ResolvedContext::upcoming`] — and a window reaching past
-/// the tail's end holds what remains of it.
+/// Every requested window as of one read. Offsets are into the
+/// not-yet-played tail, the first entry after the playing one at offset 0, and
+/// a window reaching past the tail's end holds what remains of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueUpcomingSnapshot {
-    /// The queue's revision the windows were read at. A UI shows them only
-    /// while its queue value carries the same revision.
-    pub revision: u64,
     /// The length of the not-yet-played tail at the same read, so the windows
     /// and the length the UI lays them out in always agree.
     pub upcoming_total: u64,

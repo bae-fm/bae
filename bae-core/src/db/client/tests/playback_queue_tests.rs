@@ -53,11 +53,10 @@ async fn play(db: &Database, start: ReleaseStart) -> crate::playback::QueueEntry
 }
 
 async fn upcoming(db: &Database) -> Vec<String> {
-    let value = db.queue_value().await.unwrap();
-    value
-        .manual
+    let manual = db.queue_value().await.unwrap().manual;
+    manual
         .into_iter()
-        .chain(value.context.map(|c| c.upcoming).unwrap_or_default())
+        .chain(db.queue_upcoming().await.unwrap())
         .map(|item| item.track_id)
         .collect()
 }
@@ -108,13 +107,12 @@ async fn duplicate_entries_show_in_order_with_distinct_ids() {
     assert_eq!(entry_ids.len(), 3);
 }
 
-/// A deleted track leaves both lanes, and the queue's revision moves with it.
+/// A deleted track leaves both lanes.
 #[tokio::test]
-async fn deleting_a_queued_track_takes_its_rows_and_moves_the_revision() {
+async fn deleting_a_queued_track_takes_its_rows() {
     let (db, _tmp, tracks) = release_db(3).await;
     play(&db, ReleaseStart::First).await;
     super::queue_items(&db, &[&tracks[1], &tracks[2]]).await;
-    let before = db.queue_value().await.unwrap().revision;
 
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[1]]).await;
 
@@ -122,7 +120,6 @@ async fn deleting_a_queued_track_takes_its_rows_and_moves_the_revision() {
         upcoming(&db).await,
         vec![tracks[2].clone(), tracks[2].clone()]
     );
-    assert!(db.queue_value().await.unwrap().revision > before);
 }
 
 /// Deleting the playing track keeps where the lane stands: the track after it

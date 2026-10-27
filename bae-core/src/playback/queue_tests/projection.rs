@@ -19,9 +19,10 @@ async fn test_value_keeps_manual_and_context_separate() {
     let manual: Vec<String> = value.manual.iter().map(|i| f.name(&i.track_id)).collect();
     assert_eq!(manual, names(&["m1", "m2"]));
     let context = value.context.expect("a release is playing");
-    let tail: Vec<String> = context.upcoming.iter().map(|i| f.name(&i.track_id)).collect();
-    assert_eq!(tail, names(&["t2", "t3"]));
-    assert_eq!(context.upcoming_total, 2);
+    assert_eq!(
+        f.db.queue_upcoming().await.unwrap().iter().map(|i| f.name(&i.track_id)).collect::<Vec<_>>(),
+        names(&["t2", "t3"])
+    );
     assert!(!context.shuffled);
     assert_eq!(context.source, ContextSource::Release(f.id("r1")));
     assert_eq!(context.source_title.as_deref(), Some("Album Title"));
@@ -54,20 +55,17 @@ async fn test_has_next_and_has_previous() {
     assert!(f.value().await.has_next, "repeat always has a next track");
 }
 
-/// The value carries the first window of the upcoming tail and its whole
-/// length; later windows are read by offset from the playing track.
+/// The context lane's tracks are read in windows by offset from the playing
+/// track, each read with the tail's length.
 #[tokio::test]
-async fn test_value_window_and_offset_windows() {
+async fn test_offset_windows_read_with_the_tail_length() {
     let tracks: Vec<String> = (0..130).map(|i| format!("t{i:03}")).collect();
     let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
     let mut f = release(&refs).await;
     f.play_from("t000").await;
 
-    let context = f.value().await.context.unwrap();
-    assert_eq!(context.upcoming.len(), crate::queue::QUEUE_UPCOMING_WINDOW);
-    assert_eq!(context.upcoming_total, 129);
-
     let windows = crate::library::LibraryPageWindows::from([
+        crate::library::LibraryPageWindow { offset: 0, limit: 3 },
         crate::library::LibraryPageWindow { offset: 100, limit: 20 },
         crate::library::LibraryPageWindow { offset: 125, limit: 20 },
     ]);
@@ -83,9 +81,10 @@ async fn test_value_window_and_offset_windows() {
         .iter()
         .map(|w| w.items.iter().map(|i| f.name(&i.track_id)).collect())
         .collect();
-    assert_eq!(window_tracks[0], tracks[101..121].to_vec());
-    assert_eq!(window_tracks[1], tracks[126..130].to_vec(), "a window past the end holds what remains");
-    assert_eq!(read.revision, f.revision().await);
+    assert_eq!(window_tracks[0], tracks[1..4].to_vec());
+    assert_eq!(window_tracks[1], tracks[101..121].to_vec());
+    assert_eq!(window_tracks[2], tracks[126..130].to_vec(), "a window past the end holds what remains");
+    assert_eq!(read.upcoming_total, 129);
 }
 
 /// The only edge that yields a physical side pause: the next track of a
@@ -143,46 +142,6 @@ async fn test_previous_action_from_manual_current_lands_on_cursor() {
     f.add(&["m1"]).await;
     assert_eq!(f.next().await, Some("m1".into()));
     assert_eq!(f.previous(1_000).await, Some("t1".into()));
-}
-
-/// Every change bumps the revision; reads never do.
-#[tokio::test]
-async fn test_revision_bumps_on_mutations_not_reads() {
-    let mut f = release(&["a", "b", "t1", "t2", "t3"]).await;
-    let mut revision = f.revision().await;
-    fn bumped(revision: &mut u64, now: u64, what: &str) {
-        assert!(now > *revision, "{what} bumps");
-        *revision = now;
-    }
-
-    f.add(&["a", "b"]).await;
-    bumped(&mut revision, f.revision().await, "add_to_queue");
-    let _ = f.queue.front().await.unwrap();
-    let _ = f.value().await;
-    assert_eq!(f.revision().await, revision, "reads never bump");
-
-    let id = f.manual_ids().await[0];
-    f.queue.reorder(id, None).await.unwrap();
-    bumped(&mut revision, f.revision().await, "reorder");
-    f.queue.remove(id).await.unwrap();
-    bumped(&mut revision, f.revision().await, "remove");
-    f.play_from("t1").await;
-    bumped(&mut revision, f.revision().await, "play");
-    f.next().await;
-    bumped(&mut revision, f.revision().await, "advance");
-    f.previous(1_000).await;
-    bumped(&mut revision, f.revision().await, "step back");
-    let t3 = f.entry("t3").await;
-    f.queue.skip_to(t3).await.unwrap();
-    bumped(&mut revision, f.revision().await, "skip_to");
-    f.queue.set_shuffle(true).await.unwrap();
-    bumped(&mut revision, f.revision().await, "set_shuffle");
-    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
-    bumped(&mut revision, f.revision().await, "set_repeat_mode");
-    f.queue.clear_up_next().await.unwrap();
-    bumped(&mut revision, f.revision().await, "clear_up_next");
-    f.queue.clear_playing_from().await.unwrap();
-    bumped(&mut revision, f.revision().await, "clear_playing_from");
 }
 
 /// Reordering a context entry with `before = None` moves it to the end of the

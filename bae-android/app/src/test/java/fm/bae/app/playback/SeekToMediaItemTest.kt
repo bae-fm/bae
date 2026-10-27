@@ -68,8 +68,6 @@ class SeekToMediaItemTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     sourceTitle = null,
                     shuffled = false,
-                    upcoming = emptyList(),
-                    upcomingTotal = 0uL,
                 ),
         )
         // The context's tracks reach the playlist through the upcoming read.

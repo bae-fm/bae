@@ -402,7 +402,14 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
         !ctx.shuffled,
         "SetShuffle(false) puts the lane back in sequential order"
     );
-    let upcoming: Vec<String> = ctx.upcoming.iter().map(|e| e.track_id.clone()).collect();
+    let upcoming: Vec<String> = fixture
+        .playback_handle
+        .queue_upcoming()
+        .await
+        .expect("queue upcoming")
+        .iter()
+        .map(|e| e.track_id.clone())
+        .collect();
     assert_eq!(
         upcoming,
         vec![second, third],
@@ -447,12 +454,9 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
         fixture.playback_handle.set_shuffle(true);
         let front = fixture
             .playback_handle
-            .queue_value()
+            .queue_upcoming()
             .await
-            .expect("queue value")
-            .context
-            .expect("a playing context")
-            .upcoming
+            .expect("queue upcoming")
             .first()
             .expect("the shuffled lane still has an upcoming track")
             .track_id
@@ -813,11 +817,18 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
         .await
         .expect("the third track plays");
     let release_id = current_release_id(&fixture.playback_handle).await;
-    let before = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
+    let before = (
+        fixture
+            .playback_handle
+            .queue_value()
+            .await
+            .expect("queue value"),
+        fixture
+            .playback_handle
+            .queue_upcoming()
+            .await
+            .expect("queue upcoming"),
+    );
 
     fixture.playback_handle.play_release(
         release_id,
@@ -832,16 +843,19 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
         .filter(|s| s.track_id().is_some_and(|id| id != third))
         .collect();
     assert!(other_track.is_empty(), "no other track starts: {other_track:?}");
-    let after = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
-    assert_eq!(
-        (after.revision, &after.context),
-        (before.revision, &before.context),
-        "the queue is left as it was"
+    let after = (
+        fixture
+            .playback_handle
+            .queue_value()
+            .await
+            .expect("queue value"),
+        fixture
+            .playback_handle
+            .queue_upcoming()
+            .await
+            .expect("queue upcoming"),
     );
+    assert_eq!(after, before, "the queue is left as it was");
 }
 
 /// A deletion of tracks, both branches. Two releases share one library so

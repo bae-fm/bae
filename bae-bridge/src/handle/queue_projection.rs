@@ -328,18 +328,11 @@ impl crate::types::BridgePlaybackContext {
             source,
             source_title,
             shuffled,
-            upcoming,
-            upcoming_total,
         } = context;
         crate::types::BridgePlaybackContext {
             kind: crate::types::BridgePlaybackSourceKind::from_core(&source),
             source_title,
             shuffled,
-            upcoming: upcoming
-                .into_iter()
-                .map(crate::types::BridgeQueueEntry::from_core)
-                .collect(),
-            upcoming_total,
         }
     }
 }
@@ -352,7 +345,6 @@ mirror_struct! {
         context: (opt crate::types::BridgePlaybackContext),
         has_next,
         has_previous,
-        revision,
     },
 }
 

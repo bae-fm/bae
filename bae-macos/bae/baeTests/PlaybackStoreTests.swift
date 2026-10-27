@@ -99,7 +99,6 @@ private final class UpcomingFeed: @unchecked Sendable {
         entryId: String = ""
     ) {
         let snapshot = BridgeQueueUpcomingSnapshot(
-            revision: 0,
             upcomingTotal: total,
             queueChanged: queueChanged,
             windows: offset.map { offset in
@@ -134,13 +133,10 @@ private func contextSnapshot(manual: [String] = []) -> BridgeQueueSnapshot {
         context: BridgePlaybackContext(
             kind: .library,
             sourceTitle: nil,
-            shuffled: false,
-            upcoming: [],
-            upcomingTotal: 0
+            shuffled: false
         ),
         hasNext: true,
-        hasPrevious: false,
-        revision: 0
+        hasPrevious: false
     )
 }
 
@@ -241,8 +237,7 @@ struct PlaybackStoreUpcomingWindowTests {
                 manual: [],
                 context: nil,
                 hasNext: false,
-                hasPrevious: false,
-                revision: 0
+                hasPrevious: false
             )
         )
 

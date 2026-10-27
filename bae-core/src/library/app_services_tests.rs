@@ -156,18 +156,17 @@ fn window_track_ids(snapshot: &crate::library::QueueUpcomingSnapshot) -> Vec<Vec
 }
 
 /// One subscription reads every requested window of a real, actor-resolved
-/// context tail in one value, each in order, stamped with the revision of the
-/// queue value the windows were sliced from.
+/// context tail in one value, each in order, with the tail's length.
 #[tokio::test]
 async fn queue_upcoming_reads_every_window_of_a_live_context_tail_in_one_value() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
-    let queue = queue_value_with_context(&services).await;
+    queue_value_with_context(&services).await;
     let subscription = services.subscribe_queue_upcoming();
 
     subscription.set(windows(&[(2, 3), (7, 2)])).unwrap();
     let value = upcoming_until(&subscription, |value| value.windows.len() == 2).await;
 
-    assert_eq!(value.revision, queue.revision);
+    assert_eq!(value.upcoming_total, 11);
     // track_ids[0] is playing, so the tail is track_ids[1..]; offset 2 into
     // it is track_ids[3].
     assert_eq!(
@@ -232,38 +231,44 @@ async fn queue_upcoming_moves_its_windows_in_place() {
     );
 }
 
-/// A queue revision reaches the windows through the subscription that is
-/// already open: one that leaves the windows' entries alone restamps the
-/// same items, and one that moves the tail redelivers the windows' new
-/// entries.
+/// A change to the context lane reaches the windows through the subscription
+/// that is already open, marked as a change: skipping ahead moves the tail
+/// under them, and dropping the context empties it.
 #[tokio::test]
-async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
+async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
-    let queue = queue_value_with_context(&services).await;
+    queue_value_with_context(&services).await;
     let subscription = services.subscribe_queue_upcoming();
     subscription.set(windows(&[(2, 3)])).unwrap();
     let first = upcoming_until(&subscription, |value| value.windows.len() == 1).await;
+    let skip_to = first.windows[0].items[0].entry_id.parse().unwrap();
 
-    // The manual lane is not part of the context tail the windows slice.
-    services.playback_add_to_queue(vec![track_ids[0].clone()]);
-    let restamped = upcoming_until(&subscription, |value| value.revision > first.revision).await;
-    assert_eq!(
-        restamped.windows, first.windows,
-        "the windows' entries are unchanged"
-    );
-    assert!(
-        restamped.queue_changed,
-        "the queue changed under the windows"
-    );
-
-    // Dropping the context empties the tail the windows slice.
-    services.playback_clear_playing_from();
-    let cleared = upcoming_until(&subscription, |value| {
-        value.windows.iter().all(|window| window.items.is_empty())
+    services.playback_skip_to_entry(skip_to);
+    let moved = upcoming_until(&subscription, |value| {
+        value.upcoming_total < first.upcoming_total
     })
     .await;
-    assert!(cleared.revision > queue.revision);
-    assert_eq!(cleared.upcoming_total, 0);
+    assert!(moved.queue_changed, "the queue changed under the windows");
+    assert_eq!(
+        moved.upcoming_total, 8,
+        "track_ids[3] plays; track_ids[4..] follow"
+    );
+    assert_eq!(
+        moved.windows[0]
+            .items
+            .iter()
+            .map(|item| item.track_id.as_str())
+            .collect::<Vec<_>>(),
+        track_ids[6..9]
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+    );
+
+    // Dropping the context empties the tail the windows read.
+    services.playback_clear_playing_from();
+    let cleared = upcoming_until(&subscription, |value| value.upcoming_total == 0).await;
+    assert!(cleared.windows.iter().all(|window| window.items.is_empty()));
 }
 
 /// A library release's re-identify session keeps its choices in core: each
