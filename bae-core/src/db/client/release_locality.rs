@@ -65,20 +65,13 @@ impl Database {
         &self,
         releases: Vec<String>,
     ) -> Result<Vec<String>, DbError> {
-        let uploads = self.uploads().await?;
         let mut prepared = Vec::new();
         for release in releases {
-            let files = self.get_files_for_release(&release).await?;
-            let queued = uploads.files.iter().any(|upload| {
-                upload.file.table() == "release_files"
-                    && files
-                        .iter()
-                        .any(|file| upload.file.key() == &coven::RowKey::from(file.id.as_str()))
-            });
-            if !queued {
+            if !self.has_pending_uploads_for_release(&release).await? {
                 tracing::debug!(release, "no current audio upload to cancel");
                 continue;
             }
+            let files = self.get_files_for_release(&release).await?;
             let mut attached = Vec::with_capacity(files.len());
             for file in &files {
                 let reference = self
