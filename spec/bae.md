@@ -1952,7 +1952,8 @@ shows only until the pending list is first read, and if it can't be read the
 line says "Couldn't read sync status", opening onto the error. Opening it lists each thing coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
-in plain words, with an action wherever the person can act. The error behind
+in plain words, in the order they arose, with an action wherever the person
+can act. A record whose condition changes keeps its place. The error behind
 a record sits behind a disclosure, to copy: its text names every cause below
 it, with secrets and URLs already cut by coven. Only the process that met the
 failure holds that error, so a record read after a restart has no details and

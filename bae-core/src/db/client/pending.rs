@@ -18,8 +18,7 @@ pub(crate) struct PendingRow {
 
 impl Database {
     /// Every pending record with the row its file is the file of, live, in
-    /// the view's `record` order: coven gives the records no order of their
-    /// own, and this one is the same on every read.
+    /// the order the records arose.
     pub(crate) fn subscribe_pending_rows(&self) -> coven::LiveQuery<Vec<PendingRow>> {
         let query = pending_rows_query();
         self.inner.handle.subscribe(move |sql| {
@@ -56,6 +55,6 @@ impl Database {
 pub(super) fn pending_rows_query() -> String {
     format!(
         "SELECT file.record, {FILE_ROW_COLUMNS} FROM coven_pending AS file {FILE_ROW_JOINS} \
-         ORDER BY file.record"
+         ORDER BY file.position"
     )
 }

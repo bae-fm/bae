@@ -102,3 +102,70 @@ async fn a_retry_that_fails_again_shows_its_own_error() {
         "the record stays as it was"
     );
 }
+
+/// The pending list keeps the order its records arose in, whatever coven's
+/// ids for them: an upload that failed first stays first after a later one
+/// fails, and after it fails again.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_pending_list_keeps_the_order_its_records_arose_in() {
+    let (manager, temp, first, _file_id) = queued_upload_fixture("first").await;
+    let mut values = manager.subscribe_sync_status_values();
+    manager.start().unwrap();
+    // A file's record as coven stores it begins with its subject, so two
+    // records of one reason sort as their subjects' stored text does.
+    let stored_subject = |release: String| {
+        let manager = manager.library.clone();
+        async move {
+            let file = release_files(&manager, &release).await.remove(0);
+            let file = manager.release_file_ref(&file.id).await.unwrap();
+            serde_json::to_vec(&coven::PendingSubject::File {
+                device: file.uploader(),
+                file: file.id(),
+            })
+            .unwrap()
+        }
+    };
+    std::fs::remove_file(temp.path().join("first/a.flac")).unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    let first_subject = stored_subject(first.id.clone()).await;
+
+    // A second failure whose stored record sorts before the first's, so an
+    // order by record would put it first. Releases that sort after upload.
+    let mut attempt = 0;
+    let second = loop {
+        attempt += 1;
+        let folder = format!("second-{attempt}");
+        let release = insert_release_with_queued_uploads(
+            &manager,
+            &temp.path().join(&folder),
+            &format!("Album Title {attempt}"),
+            &[("b.flac", b"second-bytes")],
+        )
+        .await;
+        if stored_subject(release.id.clone()).await < first_subject {
+            std::fs::remove_file(temp.path().join(folder).join("b.flac")).unwrap();
+            break release;
+        }
+    };
+    manager.drain_uploads_expecting_work().await.unwrap();
+
+    let album = |title: &str| PendingSubjectName::ReleaseFile {
+        file_name: if title == "Test Album" { "a.flac" } else { "b.flac" }.into(),
+        album_title: title.into(),
+    };
+    let second_album = format!("Album Title {attempt}");
+    let listed = pending_list_until(&mut values, |items| {
+        items.iter().filter(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. })).count() == 2
+    })
+    .await;
+    assert_eq!(
+        listed
+            .iter()
+            .map(|item| item.subject.clone())
+            .filter(|subject| matches!(subject, PendingSubjectName::ReleaseFile { .. }))
+            .collect::<Vec<_>>(),
+        vec![album("Test Album"), album(&second_album)],
+        "{second:?} failed after the first"
+    );
+}
