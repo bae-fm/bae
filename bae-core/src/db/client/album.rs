@@ -442,9 +442,7 @@ impl Database {
             .iter()
             .flat_map(ReleaseDeletion::file_rows)
             .collect();
-        let abandoned = self
-            .own_abandonments(&rows, coven::AbandonReason::RowGone)
-            .await?;
+        let abandoned = self.own_abandonments(&rows).await?;
         let album_id = album_id.to_string();
         self.call_sql(move |sql| {
             let mut current: Vec<String> = sql.query(

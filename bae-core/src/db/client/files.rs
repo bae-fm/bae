@@ -62,10 +62,7 @@ impl Database {
             .await?;
         after_planning().await;
         let abandoned = self
-            .own_abandonments(
-                &[(namespace, image.id.clone())],
-                coven::AbandonReason::Replaced,
-            )
+            .own_abandonments(&[(namespace, image.id.clone())])
             .await?;
         // coven attaches the bytes to the row whose file id column — the row's
         // own `id` — names them.

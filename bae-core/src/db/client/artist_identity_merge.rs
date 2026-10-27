@@ -49,11 +49,8 @@ impl Database {
         // dismissed.
         let abandoned = match &plan.images.1 {
             Some(_) => {
-                self.own_abandonments(
-                    &[("artist_images", plan.absorbed_artist_id.clone())],
-                    coven::AbandonReason::RowGone,
-                )
-                .await?
+                self.own_abandonments(&[("artist_images", plan.absorbed_artist_id.clone())])
+                    .await?
             }
             None => Vec::new(),
         };

@@ -669,9 +669,7 @@ impl Database {
         &self,
         plan: ReleaseDeletion,
     ) -> Result<bool, DbError> {
-        let abandoned = self
-            .own_abandonments(&plan.file_rows(), coven::AbandonReason::RowGone)
-            .await?;
+        let abandoned = self.own_abandonments(&plan.file_rows()).await?;
         let vacated = self
             .call_sql(move |sql| {
                 plan.apply_on(&sql)?;

@@ -90,7 +90,7 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .dismiss_abandoned_attachments(std::slice::from_ref(&record))
+            .dismiss_abandoned_attachments(&[record.file])
             .await?)
     }
 }

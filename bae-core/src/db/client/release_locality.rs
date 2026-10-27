@@ -103,9 +103,7 @@ impl Database {
             .iter()
             .flat_map(|(_, files)| files.iter().map(|(id, _, _)| ("release_files", id.clone())))
             .collect();
-        let abandoned = self
-            .own_abandonments(&rows, coven::AbandonReason::Cleared)
-            .await?;
+        let abandoned = self.own_abandonments(&rows).await?;
         let detached = self
             .call_sql(move |sql| {
                 let mut detached = Vec::with_capacity(prepared.len());

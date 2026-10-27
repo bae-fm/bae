@@ -30,30 +30,30 @@ impl Database {
         self.inner.handle.subscribe_abandoned_attachments()
     }
 
-    /// Forget these records; ones already gone are ignored.
+    /// Forget the records of these abandoned files; ones already gone are
+    /// ignored.
     pub(crate) async fn dismiss_abandoned_attachments(
         &self,
-        records: &[coven::AbandonedAttachment],
+        files: &[coven::FileId],
     ) -> Result<(), DbError> {
-        if records.is_empty() {
+        if files.is_empty() {
             return Ok(());
         }
         self.inner
             .handle
-            .dismiss_abandoned_attachments(records)
+            .dismiss_abandoned_attachments(files)
             .await
             .map_err(DbError::from)
     }
 
-    /// The records a write changing these rows' files will leave for this
-    /// device's uploads still queued on them: the person's own change, which
-    /// [`Self::dismiss_abandoned_attachments`] takes off the list once the
-    /// write commits.
+    /// The files a write changing these rows' files will abandon: this
+    /// device's uploads still queued on them. The abandonment is the person's
+    /// own change, which [`Self::dismiss_abandoned_attachments`] takes off
+    /// the list once the write commits.
     pub(crate) async fn own_abandonments(
         &self,
         rows: &[(&str, String)],
-        reason: coven::AbandonReason,
-    ) -> Result<Vec<coven::AbandonedAttachment>, DbError> {
+    ) -> Result<Vec<coven::FileId>, DbError> {
         if rows.is_empty() {
             return Ok(Vec::new());
         }
@@ -68,21 +68,16 @@ impl Database {
                         && upload.file.key() == &coven::RowKey::from(key.as_str())
                 })
             })
-            .map(|upload| coven::AbandonedAttachment {
-                table: upload.file.table().to_string(),
-                key: upload.file.key().clone(),
-                file: upload.file.id(),
-                reason,
-            })
+            .map(|upload| upload.file.id())
             .collect())
     }
 
     /// Dismiss the records a committed write of the person's own left. The
     /// write stands either way: a record that stays listed is still true, and
     /// the person can dismiss it there.
-    pub(crate) async fn dismiss_own_abandonments(&self, records: &[coven::AbandonedAttachment]) {
-        if let Err(error) = self.dismiss_abandoned_attachments(records).await {
-            tracing::error!(%error, ?records, "could not dismiss the abandonments a write of this device's made");
+    pub(crate) async fn dismiss_own_abandonments(&self, files: &[coven::FileId]) {
+        if let Err(error) = self.dismiss_abandoned_attachments(files).await {
+            tracing::error!(%error, ?files, "could not dismiss the abandonments a write of this device's made");
         }
     }
 
