@@ -21,6 +21,12 @@ enum QRCode {
             return nil
         }
 
+        // The generator draws a one-module quiet zone around the symbol.
+        let modules = Int(ciImage.extent.width) - 2
+        logger.info(
+            "QR for a \(string.utf8.count)-byte payload: version \((modules - 17) / 4), \(modules) modules, correction M"
+        )
+
         let scale = 10.0
         let scaled = ciImage.transformed(
             by: CGAffineTransform(scaleX: scale, y: scale)

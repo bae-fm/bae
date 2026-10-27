@@ -10,8 +10,6 @@ import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.qrcode.QRCodeWriter
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.ByteBuffer
@@ -19,55 +17,31 @@ import java.nio.ByteBuffer
 class QRScannerScreenTest {
     @Test
     fun successfulFrameScansAndCloses() {
-        val scanned = mutableListOf<String>()
         val imageProxy = qrImageProxy("qr-text")
-        var failure: Exception? = null
 
-        analyzeQrFrame(
-            reader = qrReader(),
-            imageProxy = imageProxy,
-            onScanned = { scanned += it },
-            onDecodeFailure = { failure = it },
-        )
+        val outcome = analyzeQrFrame(qrReader(), imageProxy)
 
-        assertEquals(listOf("qr-text"), scanned)
-        assertNull(failure)
+        assertEquals(QrFrameOutcome.Found("qr-text"), outcome)
         assertTrue(imageProxy.closed)
     }
 
     @Test
-    fun missingCodeFrameClosesWithoutLoggingFailure() {
+    fun missingCodeFrameClosesWithoutFailure() {
         val imageProxy = blankImageProxy(width = 128, height = 128, rowStride = 128)
-        var scanned = false
-        var failure: Exception? = null
 
-        analyzeQrFrame(
-            reader = qrReader(),
-            imageProxy = imageProxy,
-            onScanned = { scanned = true },
-            onDecodeFailure = { failure = it },
-        )
+        val outcome = analyzeQrFrame(qrReader(), imageProxy)
 
-        assertFalse(scanned)
-        assertNull(failure)
+        assertEquals(QrFrameOutcome.NotFound, outcome)
         assertTrue(imageProxy.closed)
     }
 
     @Test
     fun malformedFrameReportsFailureAndCloses() {
         val imageProxy = blankImageProxy(width = 128, height = 128, rowStride = 64)
-        var scanned = false
-        var failure: Exception? = null
 
-        analyzeQrFrame(
-            reader = qrReader(),
-            imageProxy = imageProxy,
-            onScanned = { scanned = true },
-            onDecodeFailure = { failure = it },
-        )
+        val outcome = analyzeQrFrame(qrReader(), imageProxy)
 
-        assertFalse(scanned)
-        assertTrue(failure is IllegalArgumentException)
+        assertTrue((outcome as QrFrameOutcome.Failed).error is IllegalArgumentException)
         assertTrue(imageProxy.closed)
     }
 }

@@ -1,6 +1,7 @@
 package fm.bae.app.ui.components
 
 import android.content.Context
+import android.graphics.ImageFormat
 import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -43,6 +44,8 @@ import java.util.concurrent.ExecutorService
 private const val ANALYSIS_WIDTH = 1280
 private const val ANALYSIS_HEIGHT = 720
 private const val TAG = "QRScannerScreen"
+private const val NANOS_PER_MILLI = 1_000_000L
+private const val SUMMARY_INTERVAL_NANOS = 1_000 * NANOS_PER_MILLI
 
 @Composable
 fun QRScannerScreen(
@@ -123,18 +126,23 @@ private fun createQRPreviewView(
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also { analysis ->
+                    val tally = QrFrameTally(logger)
                     analysis.setAnalyzer(analysisExecutor) { imageProxy ->
-                        analyzeQrFrame(
-                            reader = reader,
-                            imageProxy = imageProxy,
-                            onScanned = { text ->
-                                // onScanned touches Compose state, so run it on main.
-                                mainExecutor.execute { onScanned(text) }
-                            },
-                            onDecodeFailure = { e ->
-                                logger.warning("QR analyzer failed to decode frame", e)
-                            },
-                        )
+                        tally.start(imageProxy)
+                        val outcome = analyzeQrFrame(reader, imageProxy)
+                        tally.record(outcome)
+                        when (outcome) {
+                            // onScanned touches Compose state, so run it on main.
+                            is QrFrameOutcome.Found -> {
+                                mainExecutor.execute { onScanned(outcome.text) }
+                            }
+
+                            QrFrameOutcome.NotFound -> {}
+
+                            is QrFrameOutcome.Failed -> {
+                                logger.warning("QR analyzer failed to decode frame", outcome.error)
+                            }
+                        }
                     }
                 }
         cameraProvider.unbindAll()
@@ -149,23 +157,84 @@ private fun createQRPreviewView(
     return previewView
 }
 
+/** What one analysis frame came to. */
+internal sealed interface QrFrameOutcome {
+    data class Found(
+        val text: String,
+    ) : QrFrameOutcome
+
+    /** The frame holds no code ZXing can read; scanning continues. */
+    data object NotFound : QrFrameOutcome
+
+    data class Failed(
+        val error: Exception,
+    ) : QrFrameOutcome
+}
+
+/** Decodes one frame and closes it. */
 internal fun analyzeQrFrame(
     reader: MultiFormatReader,
     imageProxy: ImageProxy,
-    onScanned: (String) -> Unit,
-    onDecodeFailure: (Exception) -> Unit,
-) {
+): QrFrameOutcome =
     try {
-        onScanned(decodeQrFrame(reader, imageProxy))
+        QrFrameOutcome.Found(decodeQrFrame(reader, imageProxy))
     } catch (_: NotFoundException) {
-        // No QR code in this frame; keep scanning.
+        QrFrameOutcome.NotFound
     } catch (e: Exception) {
-        onDecodeFailure(e)
+        QrFrameOutcome.Failed(e)
     } finally {
         try {
             reader.reset()
         } finally {
             imageProxy.close()
+        }
+    }
+
+/**
+ * Logs the frames the camera delivers: their shape once, when the first
+ * arrives, and what they came to once a second after that, so a scan that
+ * never reads a code shows what the decoder was given. Runs on the analyzer's
+ * thread only.
+ */
+private class QrFrameTally(
+    private val logger: BaeLogger,
+) {
+    private var started = false
+    private var windowStart = 0L
+    private var found = 0
+    private var notFound = 0
+    private var failed = 0
+
+    fun start(imageProxy: ImageProxy) {
+        if (started) return
+        started = true
+        windowStart = System.nanoTime()
+        val luma = imageProxy.planes[0]
+        logger.info(
+            "QR analysis frames: ${imageProxy.width}x${imageProxy.height}, " +
+                "rotation ${imageProxy.imageInfo.rotationDegrees}, " +
+                "format ${imageProxy.format}" +
+                (if (imageProxy.format == ImageFormat.YUV_420_888) " (YUV_420_888)" else "") +
+                ", luma row stride ${luma.rowStride}, pixel stride ${luma.pixelStride}",
+        )
+    }
+
+    fun record(outcome: QrFrameOutcome) {
+        when (outcome) {
+            is QrFrameOutcome.Found -> found++
+            QrFrameOutcome.NotFound -> notFound++
+            is QrFrameOutcome.Failed -> failed++
+        }
+        val elapsed = System.nanoTime() - windowStart
+        if (outcome is QrFrameOutcome.Found || elapsed >= SUMMARY_INTERVAL_NANOS) {
+            logger.info(
+                "QR frames in ${elapsed / NANOS_PER_MILLI} ms: ${found + notFound + failed} analysed, " +
+                    "$found found, $notFound without a code, $failed failed",
+            )
+            windowStart += elapsed
+            found = 0
+            notFound = 0
+            failed = 0
         }
     }
 }
