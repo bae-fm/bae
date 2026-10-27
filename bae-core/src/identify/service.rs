@@ -186,7 +186,6 @@ impl IdentifyServiceHandle {
     /// to say so. Nothing will report on `run`, so a caller waiting on it
     /// stops waiting.
     #[must_use]
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn start(
         &self,
         run: IdentifyRunId,
@@ -274,7 +273,6 @@ impl IdentifyServiceHandle {
 /// only the latest: the reducer turns each into lookups and a catalog filter,
 /// and every snapshot is the whole of what was read so far, so the latest is
 /// the only one it needs.
-#[allow(clippy::too_many_arguments)]
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,

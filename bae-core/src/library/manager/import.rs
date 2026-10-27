@@ -512,7 +512,6 @@ impl LibraryManager {
     /// against a read just before the write; the write fails if its own
     /// artist resolution creates different artists, so no picture lands
     /// without its artist.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
         guard: crate::db::ImportCommitGuard,

@@ -636,7 +636,6 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
 
 /// Fold the latest snapshot in. Each lookup starts once, from its first
 /// settled input: the disc ID while `Computing`, the barcodes once `Settled`.
-#[allow(clippy::too_many_arguments)]
 fn apply_signals(
     discid: DiscidProgress,
     barcode: BarcodeProgress,

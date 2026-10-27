@@ -195,7 +195,6 @@ impl Database {
     /// tracks and track-artist links in one transaction. The `artists` rows
     /// the credits name must already exist — insert them first.
     #[cfg(any(test, feature = "test-utils"))]
-    #[allow(clippy::too_many_arguments)]
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
@@ -458,7 +457,6 @@ impl Database {
     /// Finalize an import in one transaction. Nothing of it is in the DB yet except
     /// the import record — every row below lands together or not at all.
     #[cfg(desktop)]
-    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
         guard: ImportCommitGuard,

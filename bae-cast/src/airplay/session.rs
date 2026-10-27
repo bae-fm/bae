@@ -139,7 +139,6 @@ fn parse_audio_latency(response: &RtspResponse) -> Option<u32> {
 /// SETUP announcing the sender's `control_port`/`timing_port`, RECORD with the
 /// RTP anchor, and an initial volume SET_PARAMETER. Returns the receiver's ports
 /// and the audio latency it reported, if any.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn perform_handshake(
     conn: &mut RtspConnection,
     uri: &str,
@@ -246,7 +245,6 @@ pub(crate) struct RaopSession {
 impl RaopSession {
     /// Connect to `receiver`, run the handshake, and start streaming `source`.
     /// `cipher` is the negotiated encryption ([`RaopCipher::none`] for `et=0`).
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn start(
         receiver: IpAddr,
         rtsp_port: u16,

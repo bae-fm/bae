@@ -432,7 +432,6 @@ impl LibraryManager {
         )))
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn resolve_release_detail_context(
         &self,
         release_id: &str,

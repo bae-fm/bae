@@ -482,7 +482,6 @@ fn decode_track(
 /// Nothing has been committed yet, so importing again once the source is
 /// readable is the whole remedy; carrying on would commit tracks that were
 /// never measured or verified.
-#[allow(clippy::too_many_arguments)]
 pub(super) async fn measure_loudness(
     event_tx: &crate::import::handle::ImportEventBus,
     parallelism: NonZeroUsize,

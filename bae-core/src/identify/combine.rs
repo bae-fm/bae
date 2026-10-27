@@ -481,7 +481,6 @@ fn support_of(
 
 /// Offer the rows tied at the highest [`Support`] and set the rest aside,
 /// each in ranked order, with the medium conflict when every row fails it.
-#[allow(clippy::too_many_arguments)]
 fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,

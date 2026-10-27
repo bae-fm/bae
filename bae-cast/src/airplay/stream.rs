@@ -302,7 +302,6 @@ impl RaopStream {
     /// sockets in `sockets`. AirPlay 2 anchors its timeline with
     /// SETRATEANCHORTIME instead of RAOP sync packets, so it passes
     /// `send_sync = false`.
-    #[allow(clippy::too_many_arguments)]
     pub(super) fn spawn(
         source: Box<dyn PcmSource>,
         crypto: PayloadCrypto,

@@ -515,7 +515,6 @@ impl ImportService {
     /// without its release. Its steps write where it stands — running once it
     /// is taken up, writing once it writes — before they are announced, and
     /// a step that cannot be written fails the import.
-    #[allow(clippy::too_many_arguments)]
     pub(super) async fn run_import(
         &self,
         committed: CommittedCandidate,

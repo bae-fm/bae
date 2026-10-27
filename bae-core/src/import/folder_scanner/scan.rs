@@ -380,7 +380,6 @@ fn parts_under(root: &Path, relative: &Path, part_folders: &[PathBuf]) -> Vec<Re
 /// One release read from `files`: rooted at `relative`, shown as the folder
 /// at `candidate_relative`, and — when `grouping` names one — read as the
 /// folders `part_folders` together.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn candidate_from_files(
     scan: &ScanRoot<'_>,
     files: Vec<FileEntry>,

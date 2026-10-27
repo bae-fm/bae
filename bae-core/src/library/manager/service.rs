@@ -42,7 +42,6 @@ impl BackgroundTasks {
 impl LibraryManager {
     /// Open coven through the top-level builder and create the library manager
     /// over the resulting handle.
-    #[allow(clippy::too_many_arguments)]
     pub async fn open(
         app_dir: crate::config::AppDir,
         config_handle: Arc<ConfigHandle>,
@@ -95,7 +94,6 @@ impl LibraryManager {
 
     /// Create a library manager over an already-open database handle. Production
     /// uses [`Self::open`]; tests can supply a handle built with `TestCoven`.
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         database: Database,
         app_dir: crate::config::AppDir,
@@ -122,7 +120,6 @@ impl LibraryManager {
     }
 
     /// Assemble the services that share this open library.
-    #[allow(clippy::too_many_arguments)]
     fn assemble(
         database: Database,
         app_dir: crate::config::AppDir,
