@@ -226,29 +226,26 @@ pub(crate) fn album_records_name_on(
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
     for record in records {
-        let pressing: Vec<(String, String)> = record
-            .release_ref()
-            .map(|release| (release.catalog.as_str().to_string(), release.key.clone()))
-            .into_iter()
-            .collect();
-        let mut albums = find_albums_by_record_pairs(
-            sql,
-            "CASE WHEN rr.kind = 'pressing' THEN rr.key END",
-            &pressing,
-            excluding,
-        )?;
-        if albums.is_empty() {
-            let album: Vec<(String, String)> = record
-                .album_ref()
-                .map(|album| (album.catalog.as_str().to_string(), album.key))
-                .into_iter()
-                .collect();
-            albums = find_albums_by_record_pairs(
+        let mut albums = match record.release_ref() {
+            Some(release) => albums_holding_record(
                 sql,
-                "CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END",
-                &album,
+                RecordMatch::Pressing,
+                release.catalog.as_str(),
+                &release.key,
                 excluding,
-            )?;
+            )?,
+            None => Vec::new(),
+        };
+        if albums.is_empty() {
+            if let Some(album) = record.album_ref() {
+                albums = albums_holding_record(
+                    sql,
+                    RecordMatch::Album,
+                    album.catalog.as_str(),
+                    &album.key,
+                    excluding,
+                )?;
+            }
         }
         let own = crate::db::identity::album_id_for_records(std::slice::from_ref(record));
         if let Some(album) = own
@@ -261,34 +258,52 @@ pub(crate) fn album_records_name_on(
     Ok(None)
 }
 
-/// The lookup [`album_records_name_on`] reads each record by: every album holding a
-/// release with a record matching `pairs` on `(rr.catalog, {key_expression})`,
-/// skipping records of `exclude_release_ids`, each once, oldest first (ties
-/// by id): a stated order, so every device reads one list.
-///
-/// `key_expression` chooses the pressing or album identity.
-fn find_albums_by_record_pairs(
+/// Which identity a record lookup matches a library record by.
+#[derive(Clone, Copy)]
+enum RecordMatch {
+    /// A copy of the pressing: a pressing record naming the same release.
+    Pressing,
+    /// Another release of the album: a record naming the same album (release
+    /// group, master), as an album record does by its key and a pressing
+    /// record by its album key.
+    Album,
+}
+
+impl RecordMatch {
+    /// The predicate on `rr` with `?1` the catalog and `?2` the key: plain
+    /// equality on the index that kind of record has —
+    /// `idx_release_records_catalog_key` for a pressing,
+    /// `idx_release_records_catalog_album`, whose expression this is, for an
+    /// album.
+    fn predicate(self) -> &'static str {
+        match self {
+            RecordMatch::Pressing => "rr.catalog = ?1 AND rr.kind = 'pressing' AND rr.key = ?2",
+            RecordMatch::Album => {
+                "rr.catalog = ?1 \
+                 AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = ?2"
+            }
+        }
+    }
+}
+
+/// The lookup [`album_records_name_on`] reads each record by: every album
+/// holding a release with a record matching `(catalog, key)` the way `kind`
+/// says, skipping records of `exclude_release_ids`, each once, oldest first
+/// (ties by id): a stated order, so every device reads one list.
+fn albums_holding_record(
     sql: &SqlReadContext<'_>,
-    key_expression: &str,
-    pairs: &[(String, String)],
+    kind: RecordMatch,
+    catalog: &str,
+    key: &str,
     exclude_release_ids: &[String],
 ) -> Result<Vec<String>, DbError> {
-    if pairs.is_empty() {
-        return Ok(Vec::new());
-    }
-    let placeholders = pairs
-        .iter()
-        .map(|_| "(?, ?)")
-        .collect::<Vec<_>>()
-        .join(", ");
     let exclude_predicate = if exclude_release_ids.is_empty() {
         String::new()
     } else {
         format!(
             "AND rr.release_id NOT IN ({})",
-            exclude_release_ids
-                .iter()
-                .map(|_| "?")
+            (0..exclude_release_ids.len())
+                .map(|index| format!("?{}", index + 3))
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -296,21 +311,17 @@ fn find_albums_by_record_pairs(
     let query = format!(
         "SELECT a.id FROM albums a
          WHERE a.id IN (
-             SELECT r.album_id FROM releases r
-             JOIN release_records rr ON rr.release_id = r.id
-             WHERE (rr.catalog, {key_expression}) IN ({placeholders})
+             SELECT r.album_id FROM release_records rr
+             JOIN releases r ON r.id = rr.release_id
+             WHERE {predicate}
                {exclude_predicate})
-         ORDER BY a.created_at, a.id"
+         ORDER BY a.created_at, a.id",
+        predicate = kind.predicate()
     );
-    let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2 + exclude_release_ids.len());
-    for (catalog, key) in pairs {
-        binds.push(catalog);
-        binds.push(key);
-    }
-    for release_id in exclude_release_ids {
-        binds.push(release_id);
-    }
-    sql.query(&query, rusqlite::params_from_iter(binds.iter()), |row| {
+    let binds = [catalog, key]
+        .into_iter()
+        .chain(exclude_release_ids.iter().map(String::as_str));
+    sql.query(&query, rusqlite::params_from_iter(binds), |row| {
         row.get::<_, String>(0)
     })
     .map_err(DbError::from)
