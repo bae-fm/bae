@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

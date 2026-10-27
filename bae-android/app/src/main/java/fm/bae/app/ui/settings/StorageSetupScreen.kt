@@ -45,7 +45,6 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.rememberScreenScope

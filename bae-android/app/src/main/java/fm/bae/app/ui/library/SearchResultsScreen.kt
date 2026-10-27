@@ -40,7 +40,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import uniffi.bae_bridge.BridgeAlbumSearchResult
-import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeWorkSummary

@@ -30,7 +30,6 @@ import fm.bae.app.data.SyncFailure
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.DeviceResetDialog
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Notice
 import fm.bae.app.ui.components.StatusTone

@@ -57,6 +57,9 @@ naming:
     active: false
 
 style:
+  # ktlint 1.x has no unused-import rule, so detekt's is what catches them.
+  UnusedImports:
+    active: true
   # @Preview functions have no caller by design — the Compose tooling invokes
   # them — so the unused-private check would fire on every one.
   UnusedPrivateMember:

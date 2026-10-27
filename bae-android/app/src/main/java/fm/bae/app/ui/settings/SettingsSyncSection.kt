@@ -1,17 +1,12 @@
 package fm.bae.app.ui.settings
 
 import android.content.Context
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -20,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -29,7 +23,6 @@ import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.SyncFailure
 import fm.bae.app.displayError
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
@@ -37,21 +30,15 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LabeledValueRow
-import fm.bae.app.ui.components.Notice
 import fm.bae.app.ui.components.PrimaryButton
-import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.BridgeSyncIndicator
-import uniffi.bae_bridge.bridgeSyncIndicatorKey
 
 /**
  * Where the library is stored and how its sync stands: the cloud home's
