@@ -31,11 +31,15 @@ use std::path::PathBuf;
 /// The items `keys` name, in their order, loaded whole for the list `list`.
 pub(super) fn materialise(
     sql: &SqlReadContext<'_>,
-    list: ImportListId,
+    list: &ListRow,
     keys: &[ItemKey],
 ) -> Result<Vec<WindowItemRows>, DbError> {
     let mut headers = header_rows(sql, list, keys.iter().filter(|key| key.item == Item::Group))?;
-    let mut releases = release_rows(sql, list, keys.iter().filter(|key| key.item != Item::Group))?;
+    let mut releases = release_rows(
+        sql,
+        list.id,
+        keys.iter().filter(|key| key.item != Item::Group),
+    )?;
     let current: Vec<&str> = releases
         .values()
         .filter(|release| release.current)
@@ -81,10 +85,12 @@ pub(super) fn materialise(
         .collect()
 }
 
-/// One group header's columns, read for the window that holds it.
+/// One group header's columns, read for the window that holds it. How many
+/// of its releases the filters keep is the counts kept beside the placement,
+/// unless a text filter reads the rows.
 fn header_rows<'a>(
     sql: &SqlReadContext<'_>,
-    list: ImportListId,
+    list: &ListRow,
     keys: impl Iterator<Item = &'a ItemKey>,
 ) -> Result<HashMap<(String, String), ImportListItem>, DbError> {
     let heads: Vec<serde_json::Value> = keys
@@ -97,8 +103,22 @@ fn header_rows<'a>(
     // it keeps its releases apart, or, with nothing stored, when it is the
     // nearest folder above some release holding two releases or more: no
     // folder between the two has nothing stored and two releases below it.
+    let entry_count = match list.filters_text {
+        true => {
+            "(SELECT count(*) FROM import_list_matching AS m \
+              WHERE m.list_id = :list AND m.watched_folder_path = h.root \
+                AND m.group_name = h.name)"
+        }
+        false => {
+            "(SELECT COALESCE(SUM(g.count), 0) FROM import_list_view AS v \
+              JOIN import_list_group_entry_count AS g \
+                  ON v.pending_filter = 'all' OR g.pending_entry = v.pending_filter \
+              WHERE v.id = :list AND g.watched_folder_path = h.root AND g.group_name = h.name)"
+        }
+    };
     let rows = sql.query(
-        "WITH RECURSIVE \
+        &format!(
+            "WITH RECURSIVE \
              heads (root, name) AS ( \
                  SELECT value ->> 0, value ->> 1 FROM json_each(:heads)), \
              below (root, name, display_path) AS ( \
@@ -128,9 +148,7 @@ fn header_rows<'a>(
                 NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
                             WHERE c.list_id = :list AND c.watched_folder_path = h.root \
                               AND c.group_name = h.name) AS expanded, \
-                (SELECT count(*) FROM import_list_matching AS m \
-                 WHERE m.list_id = :list AND m.watched_folder_path = h.root \
-                   AND m.group_name = h.name) AS entry_count, \
+                {entry_count} AS entry_count, \
                 COALESCE( \
                     (SELECT g.combined = 0 FROM release_grouping AS g \
                      WHERE g.anchor_folder = \
@@ -146,10 +164,11 @@ fn header_rows<'a>(
                               WHERE n.root = b.root AND n.name = b.name \
                                 AND b.display_path > n.folder || '/' \
                                 AND b.display_path < n.folder || '0'))) AS combinable \
-         FROM heads AS h",
+         FROM heads AS h"
+        ),
         named_params! {
             ":heads": serde_json::Value::Array(heads).to_string(),
-            ":list": list.0,
+            ":list": list.id.0,
             ":sep": std::path::MAIN_SEPARATOR_STR,
         },
         |row| {

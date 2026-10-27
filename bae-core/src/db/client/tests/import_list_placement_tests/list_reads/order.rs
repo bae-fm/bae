@@ -22,7 +22,7 @@ impl Library {
     }
 
     /// The group at `name` under the watched folder.
-    fn group_key(&self, name: &str) -> FolderReleaseDecisionKey {
+    pub(super) fn group_key(&self, name: &str) -> FolderReleaseDecisionKey {
         FolderReleaseDecisionKey {
             watched_folder_path: self.root.clone(),
             relative_folder_path: name.to_string(),

@@ -25,36 +25,42 @@ pub(super) struct Counts {
     pub(super) has_groups: bool,
 }
 
-/// One scan of the placement's counts index.
+/// The counts kept beside the placement.
 pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
-    let rows = sql.query(
-        "SELECT tab, item, pending_entry, count(*) FROM import_list_placement \
-         GROUP BY tab, item, pending_entry",
+    let mut tabs = TriageTabCounts::default();
+    let mut has_groups = false;
+    for (tab, item, count) in sql.query(
+        "SELECT tab, item, count FROM import_list_tab_count",
         [],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(2)?,
             ))
         },
-    )?;
-    let mut tabs = TriageTabCounts::default();
-    let mut has_groups = false;
-    let mut in_entries = Vec::new();
-    for (tab, item, entry, count) in rows {
-        let count = to_u32(count, "a placement count")?;
-        if Item::of(&item)? == Item::Group {
-            has_groups = true;
-            continue;
-        }
-        let tab = tab_of(&tab)?;
-        tabs.add(tab, count);
-        if let Some(entry) = entry {
-            in_entries.push((pending_filter_of(&entry)?, count));
+    )? {
+        match Item::of(&item)? {
+            Item::Group => has_groups = true,
+            Item::Candidate | Item::Invalid => {
+                tabs.add(tab_of(&tab)?, to_u32(count, "a tab's count")?)
+            }
         }
     }
+    let in_entries = sql
+        .query(
+            "SELECT pending_entry, count FROM import_list_entry_count",
+            [],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+        )?
+        .into_iter()
+        .map(|(entry, count)| {
+            Ok((
+                pending_filter_of(&entry)?,
+                to_u32(count, "a filter entry's count")?,
+            ))
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
     Ok(Counts {
         tabs,
         entries: crate::import::list::pending_filter_entries(&in_entries),
@@ -62,33 +68,71 @@ pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
     })
 }
 
-/// How many items the list holds: every row of its tab while its view keeps
-/// them all, otherwise the items it shows.
+/// How many items the list holds: its releases its filters keep outside the
+/// groups it folds shut, and the header of each group holding one. Without
+/// a text filter that is the kept counts; a text filter is counted over the
+/// rows it reads.
 pub(super) fn total_count(sql: &SqlReadContext<'_>, list: &ListRow) -> Result<u64, DbError> {
-    let count = sql.query_row(
-        "SELECT CASE WHEN v.keeps_all \
-                     THEN (SELECT count(*) FROM import_list_placement AS p WHERE p.tab = v.tab) \
-                     ELSE (SELECT count(*) FROM import_list_item AS i \
-                           WHERE i.list_id = v.id AND i.tab = v.tab) END \
-         FROM import_list_view AS v WHERE v.id = ?",
-        [list.id.0],
-        |row| row.get::<_, i64>(0),
-    )?;
+    let statement = match (list.keeps_all, list.filters_text) {
+        (true, _) => {
+            "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
+             JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?"
+        }
+        (false, false) => {
+            "SELECT \
+                 CASE WHEN v.tab = 'pending' AND v.pending_filter <> 'all' \
+                      THEN COALESCE((SELECT e.count FROM import_list_entry_count AS e \
+                                     WHERE e.pending_entry = v.pending_filter), 0) \
+                      ELSE COALESCE((SELECT SUM(t.count) FROM import_list_tab_count AS t \
+                                     WHERE t.tab = v.tab AND t.item <> 'group'), 0) END \
+                 - CASE WHEN v.tab = 'pending' \
+                        THEN COALESCE((SELECT SUM(g.count) FROM import_list_collapsed AS c \
+                                       JOIN import_list_group_entry_count AS g \
+                                           ON g.watched_folder_path = c.watched_folder_path \
+                                          AND g.group_name = c.group_name \
+                                       WHERE c.list_id = v.id \
+                                         AND (v.pending_filter = 'all' \
+                                              OR g.pending_entry = v.pending_filter)), 0) \
+                        ELSE 0 END \
+                 + CASE WHEN v.tab <> 'pending' THEN 0 \
+                        WHEN v.pending_filter = 'all' \
+                        THEN COALESCE((SELECT t.count FROM import_list_tab_count AS t \
+                                       WHERE t.tab = 'pending' AND t.item = 'group'), 0) \
+                        ELSE (SELECT count(*) FROM import_list_group_entry_count AS g \
+                              WHERE g.pending_entry = v.pending_filter) END \
+             FROM import_list_view AS v WHERE v.id = ?"
+        }
+        (false, true) => {
+            "SELECT count(*) FROM import_list_view AS v \
+             JOIN import_list_item AS i ON i.list_id = v.id AND i.tab = v.tab WHERE v.id = ?"
+        }
+    };
+    let count = sql.query_row(statement, [list.id.0], |row| row.get::<_, i64>(0))?;
     to_u64(count, "a list's item count")
 }
 
 /// How many of the tab's releases the list's filters keep, of how many it
-/// has.
+/// has: the kept count of Found's filter entry, or, filtered by text, a count
+/// over the rows the filter reads.
 pub(super) fn narrowed(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
     counts: &Counts,
 ) -> Result<NarrowedCount, DbError> {
-    let shown = sql.query_row(
-        "SELECT count(*) FROM import_list_matching WHERE list_id = ? AND tab = ?",
-        params![list.id.0, super::order::tab_column(list.view.tab)],
-        |row| row.get::<_, i64>(0),
-    )?;
+    let shown = match list.filters_text {
+        false => sql.query_row(
+            "SELECT COALESCE((SELECT e.count FROM import_list_entry_count AS e \
+                              WHERE e.pending_entry = v.pending_filter), 0) \
+             FROM import_list_view AS v WHERE v.id = ?",
+            [list.id.0],
+            |row| row.get::<_, i64>(0),
+        )?,
+        true => sql.query_row(
+            "SELECT count(*) FROM import_list_matching WHERE list_id = ? AND tab = ?",
+            params![list.id.0, super::order::tab_column(list.view.tab)],
+            |row| row.get::<_, i64>(0),
+        )?,
+    };
     Ok(NarrowedCount {
         shown: to_u32(shown, "a list's narrowed count")?,
         total: counts.tabs.of(list.view.tab),

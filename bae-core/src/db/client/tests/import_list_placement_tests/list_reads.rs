@@ -12,6 +12,7 @@ use crate::import::{
 };
 use crate::library::LibraryPageWindow;
 
+mod counts;
 mod order;
 mod rows;
 mod selection;

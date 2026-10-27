@@ -39,6 +39,12 @@ struct ListRow {
     selection_revision: u64,
     /// Whether the text filter or Found's filter entry narrows the tab.
     narrows: bool,
+    /// Whether the text filter narrows it, which only a read of every row's
+    /// text can count.
+    filters_text: bool,
+    /// Whether it shows every row of its tab: nothing narrows it and no
+    /// group is folded shut.
+    keeps_all: bool,
 }
 
 impl ListRow {
@@ -76,21 +82,30 @@ fn list_row(
     sql: &(impl super::query::QueryOne + super::query::QueryRows),
     id: ImportListId,
 ) -> Result<ListRow, DbError> {
-    let (tab, pending_filter, filter_text, order, view_revision, selection_revision, narrows) = sql
+    let (
+        (tab, pending_filter, filter_text, order),
+        (view_revision, selection_revision),
+        (narrows, filters_text, keeps_all),
+    ) = sql
         .query_row(
             "SELECT tab, pending_filter, filter_text, list_order, view_revision, \
-                    selection_revision, narrows \
+                    selection_revision, narrows, needle <> '', keeps_all \
              FROM import_list_view WHERE id = ?",
             [id.0],
             |row| {
                 Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, String>(3)?,
-                    row.get::<_, i64>(4)?,
-                    row.get::<_, i64>(5)?,
-                    row.get::<_, bool>(6)?,
+                    (
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                    ),
+                    (row.get::<_, i64>(4)?, row.get::<_, i64>(5)?),
+                    (
+                        row.get::<_, bool>(6)?,
+                        row.get::<_, bool>(7)?,
+                        row.get::<_, bool>(8)?,
+                    ),
                 ))
             },
         )
@@ -107,6 +122,8 @@ fn list_row(
         view_revision: to_u64(view_revision, "a list's view revision")?,
         selection_revision: to_u64(selection_revision, "a list's selection revision")?,
         narrows,
+        filters_text,
+        keeps_all,
     })
 }
 
@@ -136,7 +153,7 @@ fn load_import_list_on(
         .iter()
         .map(|window| {
             let keys = items.window(sql, window)?;
-            Ok((window.clone(), window::materialise(sql, list.id, &keys)?))
+            Ok((window.clone(), window::materialise(sql, &list, &keys)?))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
     let counts = summary::counts(sql)?;

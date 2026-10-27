@@ -290,8 +290,60 @@ impl Library {
         )
     }
 
+    /// Run `sql`, and check the counts kept beside the placement still count
+    /// it: every write here moves placement rows, and each must move the
+    /// counts with them.
     async fn run(&self, sql: &str) {
         exec_batch(&self.db, sql).await;
+        let (kept, counted) = self
+            .db
+            .read(|sql| {
+                let rows = |statement: &str| {
+                    sql.query(statement, [], |row| {
+                        Ok((
+                            row.get::<_, Option<String>>(0)?,
+                            row.get::<_, Option<String>>(1)?,
+                            row.get::<_, Option<String>>(2)?,
+                            row.get::<_, i64>(3)?,
+                        ))
+                    })
+                };
+                let kept = [
+                    rows("SELECT tab, item, NULL, count FROM import_list_tab_count")?,
+                    rows("SELECT pending_entry, NULL, NULL, count FROM import_list_entry_count")?,
+                    rows(
+                        "SELECT watched_folder_path, group_name, pending_entry, count \
+                         FROM import_list_group_entry_count",
+                    )?,
+                ];
+                let counted = [
+                    rows(
+                        "SELECT tab, item, NULL, count(*) FROM import_list_placement \
+                         GROUP BY tab, item",
+                    )?,
+                    rows(
+                        "SELECT pending_entry, NULL, NULL, count(*) FROM import_list_placement \
+                         WHERE pending_entry IS NOT NULL GROUP BY pending_entry",
+                    )?,
+                    rows(
+                        "SELECT watched_folder_path, group_name, pending_entry, count(*) \
+                         FROM import_list_placement \
+                         WHERE item = 'candidate' AND group_name IS NOT NULL \
+                         GROUP BY watched_folder_path, group_name, pending_entry",
+                    )?,
+                ];
+                Ok((kept, counted))
+            })
+            .await
+            .unwrap();
+        for (mut kept, mut counted) in kept.into_iter().zip(counted) {
+            kept.sort();
+            counted.sort();
+            assert_eq!(
+                kept, counted,
+                "the counts kept beside the placement after {sql}"
+            );
+        }
     }
 
     /// Every placement row as it stands.

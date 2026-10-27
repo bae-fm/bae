@@ -415,6 +415,9 @@ mod tests {
         // Where each row of the import list sits, worked out from the rows
         // above.
         "import_list_placement",
+        "import_list_tab_count",
+        "import_list_entry_count",
+        "import_list_group_entry_count",
         // The import lists open on this device: each one's view, its folded
         // groups and its selection.
         "import_list",
