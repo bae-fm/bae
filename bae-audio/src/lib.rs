@@ -123,13 +123,8 @@ pub trait DecodedSink {
 pub struct DecodedStream {
     /// The codec the decode found.
     pub content_type: bae_util::content_type::ContentType,
-    /// Whether the seek index the demuxer built from the file's header holds
-    /// an entry past the stream's first sample. For a FLAC that index is its
-    /// SEEKTABLE, and it is what FFmpeg seeks a sample through: without one, a
-    /// FLAC seek binary-searches the file, and a table of only placeholder
-    /// points gives one entry before the first sample, so its seek lands on
-    /// the first frame and decodes everything up to the target.
-    pub header_index_passes_start: bool,
+    /// The seek index the demuxer built from the file's header.
+    pub header_index: HeaderSeekIndex,
     /// Where the decode started reading the stream. A lossy stream's sink
     /// decode starts at the stream's start whatever it was asked.
     pub start: DecodeStart,
@@ -137,6 +132,55 @@ pub struct DecodedStream {
     /// Where the decode's window ends: frames from here on belong to what
     /// follows it.
     pub stop_at_sample: Option<u64>,
+}
+
+/// The seek index a file's header gave its demuxer, before a decode's reads
+/// add entries of their own. For a FLAC it is the SEEKTABLE (read with
+/// `AVFMT_FLAG_FAST_SEEK`), and it is what FFmpeg seeks a sample through: a
+/// seek lands on the last entry at or before its target and decodes forward
+/// from there. Without a SEEKTABLE a FLAC seek binary-searches the file; a
+/// table of only placeholder points gives one entry, before the first sample,
+/// so its seek lands on the first frame.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeaderSeekIndex {
+    /// The first sample of each entry at or past the stream's first sample, in
+    /// order.
+    pub entries: Vec<u64>,
+    /// The stream's length in samples, as its header states it.
+    pub length: Option<u64>,
+}
+
+impl HeaderSeekIndex {
+    /// The index of a stream whose header gave it none.
+    pub(crate) fn none() -> Self {
+        Self {
+            entries: Vec::new(),
+            length: None,
+        }
+    }
+
+    /// Whether every seek through the index lands at most `samples` before
+    /// its target: it holds an entry past the stream's first sample, and no
+    /// stretch from that first sample to the first entry, between two
+    /// entries, or from the last entry to the stream's end is longer. A header
+    /// that states no length leaves the stretch after its last entry
+    /// unbounded.
+    pub fn lands_within(&self, samples: u64) -> bool {
+        let Some(length) = self.length else {
+            return false;
+        };
+        if !self.entries.iter().any(|&entry| entry > 0) {
+            return false;
+        }
+        let mut before = 0;
+        for &boundary in self.entries.iter().chain([&length]) {
+            if boundary.saturating_sub(before) > samples {
+                return false;
+            }
+            before = before.max(boundary);
+        }
+        true
+    }
 }
 
 /// A packet the decoder accepted, as the demuxer placed it: one frame, for

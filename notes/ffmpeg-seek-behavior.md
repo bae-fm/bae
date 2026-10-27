@@ -236,9 +236,9 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   every rip) uses its index: one fetch. The container is probed before
   `avformat_open_input` so the flag is set for every demuxer but MP3's. The
   exceptions are a FLAC with scrub points and every MP3, below.
-- **A FLAC without a usable seektable scrubs by byte, to a stored scrub
-  point.** Left to FFmpeg, such a scrub is slow in one of two ways (FFmpeg
-  n8.1.2, `flacdec.c`):
+- **A FLAC without a usable seektable, or with a sparse one, scrubs by byte,
+  to a stored scrub point.** Left to FFmpeg, such a scrub is slow in one of
+  three ways (FFmpeg n8.1.2, `flacdec.c`):
   - *No SEEKTABLE:* `flac_seek` returns -1 and avformat binary-searches the
     file (`ff_seek_frame_binary`). Waiting on the buffer doesn't fail the search:
     its read of the file's end waits for the fill, and each step is a fetch
@@ -253,13 +253,22 @@ which computes the byte position directly from `block_align` and `byte_rate`:
     at the first frame, before every sample. `flac_seek` finds it and
     succeeds, and the decode reads every byte from the first frame to the
     target. A seek to 20 s in a synthetic 30 s file read all 12 MB up to it.
+  - *A sparse SEEKTABLE* (points minutes apart, or none near the end):
+    `flac_seek` lands on the last point at or before the target, and the
+    decode reads everything from there. With one point per 10 minutes a seek
+    decodes up to 10 minutes of audio. MEASUREMENT
 
   Import's loudness pass, which decodes every segment from a frame start (its
   recorded landing byte, or the file's first frame), checks the demuxer's
   index right after `avformat_open_input` and before
-  `avformat_find_stream_info` (whose packets add entries of their own). A FLAC
-  whose index has no entry past sample 0 gets scrub points
-  (`audio_segment_scrub_points`): each packet the decoder accepts gives its
+  `avformat_find_stream_info` (whose packets add entries of their own, and
+  which estimates a duration the header doesn't state). A FLAC gets scrub
+  points unless that index lands every seek within their 10-second spacing
+  of its target: it has an entry past sample 0, and no stretch from sample 0
+  to its first entry, between entries, or from its last entry to the stream
+  length STREAMINFO states is longer than 10 seconds
+  (`bae_audio::HeaderSeekIndex::lands_within`). The points
+  (`audio_segment_scrub_points`) come from the decode: each packet the decoder accepts gives its
   frame's byte (`pkt->pos`) and first sample (`pkt->pts`, the frame header's
   own number, since the FLAC demuxer parses with `PARSER_FLAG_USE_CODEC_TS`).
   A segment keeps its first frame, then the first frame each 10 seconds of

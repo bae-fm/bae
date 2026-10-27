@@ -124,3 +124,4 @@ include!("tests/decode_and_encode.rs");
 include!("tests/seek_and_stream.rs");
 include!("tests/source_read_failure.rs");
 include!("tests/lossy_start.rs");
+include!("tests/header_seek_index.rs");

@@ -3,9 +3,9 @@
 use crate::db::ScrubPoint;
 
 /// The frames a scrub can start its decode at in one segment's file, in
-/// sample order. Import stores them for a FLAC the demuxer can only
-/// binary-search and for every MP3; a scrub in any other file seeks by sample
-/// through the demuxer's own index.
+/// sample order. Import stores them for a FLAC whose seektable is missing or
+/// sparser than their spacing and for every MP3; a scrub in any other file
+/// seeks by sample through the demuxer's own index.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScrubPoints(Vec<ScrubPoint>);
 

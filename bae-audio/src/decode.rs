@@ -160,9 +160,8 @@ unsafe fn allocate_input_format_context(
     Ok(fmt_ctx)
 }
 
-/// Open and probe the input, returning whether the seek index the file's
-/// header gave the demuxer reaches past the stream's first sample (see
-/// [`header_index_passes_start`]).
+/// Open and probe the input, returning the seek index the file's header gave
+/// the demuxer for each stream (see [`HeaderIndex`]).
 ///
 /// The container is identified first, as `avformat_open_input` would itself,
 /// so the demuxer opens knowing whether to load its header's seek index
@@ -179,7 +178,7 @@ unsafe fn allocate_input_format_context(
 unsafe fn open_and_probe_input(
     fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,
-) -> Result<bool, InputOpenProbeError> {
+) -> Result<Vec<HeaderIndex>, InputOpenProbeError> {
     use ffmpeg_sys_next::*;
 
     debug_assert_eq!((**fmt_ctx).pb, avio);
@@ -204,34 +203,60 @@ unsafe fn open_and_probe_input(
     if ret < 0 {
         return Err(InputOpenProbeError::Open(ret));
     }
-    // Read before probing: the probe's packets add index entries of their own.
-    let index_passes_start = header_index_passes_start(*fmt_ctx);
+    // Read before probing: the probe's packets add index entries of their own,
+    // and a stream whose header states no duration gets an estimate.
+    let header_indexes = (0..(**fmt_ctx).nb_streams as usize)
+        .map(|stream_index| HeaderIndex::of_stream(*(**fmt_ctx).streams.add(stream_index)))
+        .collect();
 
     let ret = avformat_find_stream_info(*fmt_ctx, ptr::null_mut());
     if ret < 0 {
         return Err(InputOpenProbeError::Probe(ret));
     }
 
-    Ok(index_passes_start)
+    Ok(header_indexes)
 }
 
-/// Whether any stream's seek index, as the demuxer built it from the file's
-/// header, holds an entry past the stream's first sample. For a FLAC that
-/// index is its SEEKTABLE (read with `AVFMT_FLAG_FAST_SEEK`), and it is what
-/// `flac_seek` searches: a table of only placeholder points adds one entry
-/// before the first sample (placeholders read as timestamp -1), and a point
-/// at sample 0 one at the first frame, so a seek through either lands at the
-/// first frame and decodes forward from there.
-unsafe fn header_index_passes_start(fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext) -> bool {
-    use ffmpeg_sys_next::*;
+/// One stream's seek index as the demuxer built it from the file's header,
+/// on the stream's time base: the timestamp of each entry, and the duration
+/// the header states. For a FLAC the index is its SEEKTABLE (read with
+/// `AVFMT_FLAG_FAST_SEEK`), and it is what `flac_seek` searches; a
+/// placeholder point reads as timestamp -1.
+struct HeaderIndex {
+    timestamps: Vec<i64>,
+    duration: Option<i64>,
+}
 
-    (0..(*fmt_ctx).nb_streams as usize).any(|stream_index| {
-        let stream = *(*fmt_ctx).streams.add(stream_index);
-        (0..avformat_index_get_entries_count(stream)).any(|entry_index| {
-            let entry = avformat_index_get_entry(stream, entry_index);
-            !entry.is_null() && (*entry).timestamp > 0
-        })
-    })
+impl HeaderIndex {
+    unsafe fn of_stream(stream: *mut ffmpeg_sys_next::AVStream) -> Self {
+        use ffmpeg_sys_next::*;
+
+        let timestamps = (0..avformat_index_get_entries_count(stream))
+            .filter_map(|entry_index| {
+                let entry = avformat_index_get_entry(stream, entry_index);
+                (!entry.is_null()).then(|| (*entry).timestamp)
+            })
+            .collect();
+        let duration = Some((*stream).duration).filter(|&duration| duration != AV_NOPTS_VALUE);
+        Self {
+            timestamps,
+            duration,
+        }
+    }
+
+    /// The index on the stream's sample count, by `sample_clock`.
+    fn on_samples(&self, sample_clock: &SampleClock) -> super::HeaderSeekIndex {
+        super::HeaderSeekIndex {
+            entries: self
+                .timestamps
+                .iter()
+                .filter_map(|&timestamp| u64::try_from(sample_clock.sample_at(timestamp)).ok())
+                .collect(),
+            length: self
+                .duration
+                .and_then(|duration| u64::try_from(sample_clock.samples_in(duration)).ok()),
+        }
+    }
 }
 
 unsafe fn open_probed_audio_codec(
@@ -363,9 +388,8 @@ struct BufferInput {
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,
     avio_ctx_ptr: *mut StreamingAvioContext,
-    /// Whether the seek index the file's header gave the demuxer reaches past
-    /// the stream's first sample.
-    header_index_passes_start: bool,
+    /// The seek index the file's header gave the demuxer, per stream.
+    header_indexes: Vec<HeaderIndex>,
 }
 
 enum BufferInputError {
@@ -451,8 +475,8 @@ unsafe fn open_buffer_input(
         return Err(BufferInputError::Alloc("Failed to allocate format context"));
     };
 
-    let header_index_passes_start = match open_and_probe_input(&mut fmt_ctx, avio) {
-        Ok(passes_start) => passes_start,
+    let header_indexes = match open_and_probe_input(&mut fmt_ctx, avio) {
+        Ok(header_indexes) => header_indexes,
         Err(e) => {
             let error = match e {
                 InputOpenProbeError::Open(ret) => {
@@ -473,7 +497,7 @@ unsafe fn open_buffer_input(
         fmt_ctx,
         avio,
         avio_ctx_ptr,
-        header_index_passes_start,
+        header_indexes,
     })
 }
 
@@ -617,7 +641,7 @@ unsafe fn decode_buffer_to_sink_impl(
         mut fmt_ctx,
         avio,
         avio_ctx_ptr,
-        header_index_passes_start,
+        header_indexes,
     } = open_buffer_input(&buffer, cancel.clone()).map_err(|e| e.into_decode_error(&cancel))?;
 
     // Count only the audio decode's errors: probing an embedded cover during
@@ -638,7 +662,8 @@ unsafe fn decode_buffer_to_sink_impl(
             // `start` asked.
             sink.on_stream(&decoded_stream(
                 AVCodecID::AV_CODEC_ID_PCM_S64LE,
-                header_index_passes_start,
+                &audio,
+                &header_indexes,
                 start_at_sample.map_or(DecodeStart::StreamStart, DecodeStart::Sample),
                 (*audio.codecpar).sample_rate as u32,
                 stop_at_sample,
@@ -693,7 +718,8 @@ unsafe fn decode_buffer_to_sink_impl(
     sink.on_format(sample_rate, channels);
     sink.on_stream(&decoded_stream(
         (*audio.codecpar).codec_id,
-        header_index_passes_start,
+        &audio,
+        &header_indexes,
         start,
         sample_rate,
         stop_at_sample,
@@ -788,17 +814,24 @@ unsafe fn decode_buffer_to_sink_impl(
     Ok(())
 }
 
-/// What a sink decode tells its sink about the stream it opened.
-fn decoded_stream(
+/// What a sink decode tells its sink about the `audio` stream it opened.
+unsafe fn decoded_stream(
     codec_id: ffmpeg_sys_next::AVCodecID,
-    header_index_passes_start: bool,
+    audio: &AudioStreamInfo,
+    header_indexes: &[HeaderIndex],
     start: DecodeStart,
     sample_rate: u32,
     stop_at_sample: Option<u64>,
 ) -> super::DecodedStream {
+    let sample_clock = SampleClock::of_stream(audio.stream, sample_rate);
     super::DecodedStream {
         content_type: super::probe::content_type_from_codec_id(codec_id),
-        header_index_passes_start,
+        // A stream the probe found past the header's has no header index.
+        header_index: header_indexes
+            .get(audio.stream_index as usize)
+            .map_or_else(super::HeaderSeekIndex::none, |index| {
+                index.on_samples(&sample_clock)
+            }),
         start,
         sample_rate,
         stop_at_sample,

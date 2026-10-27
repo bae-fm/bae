@@ -1,9 +1,11 @@
 #![cfg(feature = "test-utils")]
-//! What import stores for a scrub to start at in a FLAC the demuxer can only
-//! binary-search: no SEEKTABLE, or one holding only placeholder points. Each
-//! segment gets its first frame, then the first frame each 10 seconds of audio
-//! on, every one an exact frame start the file's own packets confirm. A FLAC
-//! with a real seektable gets none. And in every MP3 (a whole file: bae binds
+//! What import stores for a scrub to start at in a FLAC whose own seek index
+//! lands a seek more than 10 seconds before its target somewhere: no
+//! SEEKTABLE, one holding only placeholder points, or one whose points lie
+//! further apart than that or stop short of the end. Each segment gets its
+//! first frame, then the first frame each 10 seconds of audio on, every one an
+//! exact frame start the file's own packets confirm. A FLAC whose seektable
+//! leaves no such stretch gets none. And in every MP3 (a whole file: bae binds
 //! no CUE sheet to lossy audio): for the first frame each 10 seconds of audio
 //! on, an earlier frame a decode can start at and play it exactly.
 
@@ -41,24 +43,64 @@ fn noise_flac(seconds: u32, seed: u32) -> Vec<u8> {
     .expect("encode the noise FLAC")
 }
 
-/// `flac` with a SEEKTABLE of `count` placeholder points after its STREAMINFO,
-/// the block a ripper reserves to fill in later.
-fn with_placeholder_seektable(flac: &[u8], count: usize) -> Vec<u8> {
+/// One SEEKTABLE point: the first sample of the frame it names, that frame's
+/// byte offset from the first frame, and its sample count.
+#[derive(Clone, Copy)]
+struct SeekPoint {
+    sample: u64,
+    offset: u64,
+    frame_samples: u16,
+}
+
+/// The point a ripper reserves to fill in later: sample number all ones.
+const PLACEHOLDER: SeekPoint = SeekPoint {
+    sample: u64::MAX,
+    offset: 0,
+    frame_samples: 0,
+};
+
+/// `flac` with a SEEKTABLE of `points` after its STREAMINFO.
+fn with_seektable(flac: &[u8], points: &[SeekPoint]) -> Vec<u8> {
     const STREAMINFO_END: usize = 4 + 4 + 34;
     assert_eq!(&flac[..4], b"fLaC");
     assert_eq!(flac[4] & 0x7f, 0, "STREAMINFO comes first");
     let streaminfo_last = flac[4] & 0x80 != 0;
     let mut out = flac[..STREAMINFO_END].to_vec();
     out[4] &= 0x7f;
-    let length = 18 * count;
+    let length = 18 * points.len();
     out.push(if streaminfo_last { 0x83 } else { 0x03 });
     out.extend_from_slice(&(length as u32).to_be_bytes()[1..]);
-    for _ in 0..count {
-        out.extend_from_slice(&u64::MAX.to_be_bytes());
-        out.extend_from_slice(&[0; 10]);
+    for point in points {
+        out.extend_from_slice(&point.sample.to_be_bytes());
+        out.extend_from_slice(&point.offset.to_be_bytes());
+        out.extend_from_slice(&point.frame_samples.to_be_bytes());
     }
     out.extend_from_slice(&flac[STREAMINFO_END..]);
     out
+}
+
+/// `flac` with a SEEKTABLE naming its first frame, then, up to sample
+/// `until`, the last frame at most `apart` samples past the point before.
+fn with_seek_points(flac: &[u8], apart: u64, until: u64) -> Vec<u8> {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("plain.flac");
+    std::fs::write(&path, flac).unwrap();
+    let frames = frames(&path);
+    let first = frames[0];
+    let point = |frame: &ScrubPoint, next: &ScrubPoint| SeekPoint {
+        sample: frame.sample,
+        offset: frame.byte - first.byte,
+        frame_samples: u16::try_from(next.sample - frame.sample).unwrap(),
+    };
+    let mut points = vec![point(&first, &frames[1])];
+    for pair in frames.windows(2) {
+        let (frame, next) = (&pair[0], &pair[1]);
+        let last = points.last().unwrap().sample;
+        if frame.sample <= until && next.sample > last + apart {
+            points.push(point(frame, next));
+        }
+    }
+    with_seektable(flac, &points)
 }
 
 /// `seconds` of 16-bit stereo noise, encoded as a 128 kbps MP3.
@@ -318,7 +360,7 @@ async fn per_track_files_without_a_seektable_store_points() {
 #[tokio::test]
 async fn a_seektable_of_placeholders_counts_as_none() {
     support::tracing_init();
-    let flac = with_placeholder_seektable(&noise_flac(25, 17), 4);
+    let flac = with_seektable(&noise_flac(25, 17), &[PLACEHOLDER; 4]);
     let imported = import(
         release("scrub-points-placeholders", &[("Track One", "0:25")]),
         move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
@@ -328,6 +370,60 @@ async fn a_seektable_of_placeholders_counts_as_none() {
     let points = imported.tracks[0].segments[0].scrub_points.as_slice();
     assert_points_every_ten_seconds(points, &frames, 0, u64::MAX);
     assert_eq!(points.len(), 3);
+}
+
+/// A file whose seektable names one frame each 30 seconds: a seek through it
+/// lands up to 30 seconds before its target and decodes forward from there.
+#[tokio::test]
+async fn a_seektable_sparser_than_ten_seconds_stores_points() {
+    support::tracing_init();
+    let flac = with_seek_points(&noise_flac(45, 19), 30 * u64::from(SAMPLE_RATE), u64::MAX);
+    let imported = import(
+        release("scrub-points-sparse-seektable", &[("Track One", "0:45")]),
+        move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
+    )
+    .await;
+    let frames = frames(&imported.album_dir.join("01 Track One.flac"));
+    let points = imported.tracks[0].segments[0].scrub_points.as_slice();
+    assert_points_every_ten_seconds(points, &frames, 0, u64::MAX);
+    assert_eq!(points.len(), 5, "{points:?}");
+}
+
+/// A seektable dense for the first 20 seconds of a 45-second file leaves a
+/// seek past its last point to decode up to 25 seconds forward.
+#[tokio::test]
+async fn a_seektable_that_stops_short_of_the_end_stores_points() {
+    support::tracing_init();
+    let flac = with_seek_points(
+        &noise_flac(45, 23),
+        TEN_SECONDS,
+        20 * u64::from(SAMPLE_RATE),
+    );
+    let imported = import(
+        release("scrub-points-short-seektable", &[("Track One", "0:45")]),
+        move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
+    )
+    .await;
+    let frames = frames(&imported.album_dir.join("01 Track One.flac"));
+    let points = imported.tracks[0].segments[0].scrub_points.as_slice();
+    assert_points_every_ten_seconds(points, &frames, 0, u64::MAX);
+    assert_eq!(points.len(), 5, "{points:?}");
+}
+
+/// A seektable whose points lie at most 10 seconds apart, the last within 10
+/// seconds of the end, already lands every seek as close as a scrub point
+/// would.
+#[tokio::test]
+async fn a_seektable_no_sparser_than_ten_seconds_stores_no_points() {
+    support::tracing_init();
+    let flac = with_seek_points(&noise_flac(45, 29), TEN_SECONDS, u64::MAX);
+    let imported = import(
+        release("scrub-points-dense-seektable", &[("Track One", "0:45")]),
+        move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
+    )
+    .await;
+    let points = imported.tracks[0].segments[0].scrub_points.as_slice();
+    assert!(points.is_empty(), "{points:?}");
 }
 
 /// The CUE/FLAC fixture carries a real SEEKTABLE: the demuxer seeks it by its

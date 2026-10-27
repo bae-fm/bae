@@ -62,6 +62,11 @@ impl SampleClock {
         }
     }
 
+    /// The samples a span of `duration` timestamps holds.
+    pub(crate) fn samples_in(&self, duration: i64) -> i64 {
+        unsafe { ffmpeg_sys_next::av_rescale_q(duration, self.time_base, self.samples()) }
+    }
+
     /// The timestamp of `sample`, which lies before the stream's first when
     /// negative.
     pub(crate) fn timestamp_of(&self, sample: i64) -> i64 {

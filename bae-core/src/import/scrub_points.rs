@@ -1,9 +1,11 @@
 //! Scrub points, picked from the frames the import's verifying decode reads.
 //!
-//! A FLAC with no usable SEEKTABLE gives FFmpeg nothing to seek a sample by,
-//! so a scrub binary-searches the file, one fetch per step over the cloud. An
-//! MP3's frames state no position at all: FFmpeg places a seek into one from
-//! its bitrate or its Xing table of contents, an estimate. The verifying
+//! A FLAC with no SEEKTABLE gives FFmpeg nothing to seek a sample by, so a
+//! scrub binary-searches the file, one fetch per step over the cloud; one
+//! whose SEEKTABLE is sparse lands a scrub up to its widest gap early, and the
+//! decode reads everything from there to the target. An MP3's frames state no
+//! position at all: FFmpeg places a seek into one from its bitrate or its Xing
+//! table of contents, an estimate. The verifying
 //! decode reads every frame of a FLAC segment from a frame start, and every
 //! frame of an MP3 from the stream's first, so each packet it reads carries
 //! its frame's exact byte and first sample. A few of those, stored, let a
@@ -79,15 +81,20 @@ pub(crate) struct ScrubPointTaker {
 
 impl ScrubPointTaker {
     /// The taker for a segment's decode of `stream`, when its file needs
-    /// scrub points: a FLAC whose header gave FFmpeg no seek index past the
-    /// first sample, decoded from a frame start; or an MP3, decoded from the
-    /// stream's start. Every other format bae decodes seeks by an index of its
-    /// own or by arithmetic.
+    /// scrub points: a FLAC whose header's seek index (its SEEKTABLE) lands
+    /// a seek somewhere more than the points' spacing before its target,
+    /// decoded from a frame start; or an MP3, decoded from the stream's start.
+    /// Every other format bae decodes seeks by an index of its own or by
+    /// arithmetic.
     pub(crate) fn for_stream(stream: &DecodedStream) -> Option<Self> {
         let codec = match stream.content_type {
             ContentType::Flac => {
-                if stream.header_index_passes_start {
-                    debug!("the FLAC's seektable indexes it; no scrub points");
+                let spacing = SPACING_SECONDS * u64::from(stream.sample_rate);
+                if stream.header_index.lands_within(spacing) {
+                    debug!(
+                        "the FLAC's seektable lands every seek within {SPACING_SECONDS} s of its \
+                         target; no scrub points"
+                    );
                     return None;
                 }
                 // After a jump into the middle of a frame the first packets
@@ -100,7 +107,7 @@ impl ScrubPointTaker {
                 };
                 if !starts_at_frame {
                     warn!(
-                        "a FLAC without a usable seektable decoded from a sample seek; no scrub points"
+                        "a FLAC that needs scrub points decoded from a sample seek; no scrub points"
                     );
                     return None;
                 }

@@ -1056,10 +1056,12 @@ Ana clicks Import. bae:
 4. **Measures loudness** by decoding every track: its EBU R128 integrated
    loudness and true peak, and the album's over all its tracks. A near-silent
    track stores no loudness and plays unchanged. The same decode records
-   *scrub points* for a FLAC whose seektable gives FFmpeg nothing to seek by
-   (none, or one of only placeholder points): for each segment of a track,
-   the frame it starts in, then the first frame each 10 seconds of audio on,
-   or sooner where the bytes from the last point would outgrow the window a
+   *scrub points* for a FLAC whose seektable leaves FFmpeg somewhere to seek
+   more than 10 seconds of audio short of its target: none, one of only
+   placeholder points, or one whose points lie more than 10 seconds apart,
+   or start or stop more than 10 seconds from the file's start or end. For
+   each segment of a track, the frame it starts in, then the first frame
+   each 10 seconds of audio on, or sooner where the bytes from the last point would outgrow the window a
    scrub fetches (§7.6). A segment's last frame is never a point: a decode
    that jumps to a FLAC's last frame can't tell which sample it holds, so the
    frame before it stands in. Each point is a frame's first sample and the
@@ -2243,9 +2245,11 @@ seek to their first sample with the whole file read ahead.
 A seek inside a track
 is left to FFmpeg, which seeks through the file's own index where it has one:
 a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points
-(§3.7) has no index FFmpeg can use, so the seek jumps to the last point at or
-before the new position and decodes forward to it: one window fetched from
-the point, instead of a search across the file with one fetch per step.
+(§3.7) has no index FFmpeg can use, or one too sparse to land a seek near
+its target, so the seek jumps to the last point at or before the new
+position and decodes forward to it: one window fetched from the point,
+instead of a search across the file with one fetch per step, or a decode of
+everything from a seektable point minutes earlier.
 An MP3 has no index FFmpeg seeks exactly (it would place the seek from the
 file's bitrate or its table of contents, an estimate), so the seek decodes
 from the last scrub point (§3.7) that plays the new position exactly, or from
@@ -2724,7 +2728,7 @@ All sync.
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
-| `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC with no usable seektable and for every MP3 (§3.7) |
+| `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC whose seektable is missing or sparser than the points' 10-second spacing, and for every MP3 (§3.7) |
 
 Beside them, device-local tables:
 
