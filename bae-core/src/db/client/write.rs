@@ -633,23 +633,16 @@ pub(super) fn insert_audio_segment_row(
     .map_err(DbError::from)
 }
 
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
-pub(super) fn insert_scrub_point_row(
+#[cfg(any(test, feature = "test-utils", desktop))]
+pub(super) fn insert_scrub_points_row(
     conn: &SqlContext<'_, '_>,
-    point: &DbScrubPoint,
+    points: &DbScrubPoints,
 ) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO audio_segment_scrub_points \
-         (audio_format_segment_id, sample, byte, exact_from) VALUES (?, ?, ?, ?)",
+        "INSERT INTO audio_segment_scrub_points (audio_format_segment_id, points) VALUES (?, ?)",
         params![
-            point.audio_segment_id,
-            sqlite_count(point.point.sample, "scrub point sample")?,
-            sqlite_count(point.point.byte, "scrub point byte")?,
-            sqlite_count(point.point.exact_from, "scrub point exact_from")?,
+            points.audio_segment_id,
+            super::scrub_points_column::encode(&points.points)?,
         ],
     )
     .map(|_| ())

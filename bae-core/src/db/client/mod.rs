@@ -143,6 +143,7 @@ mod tests;
 mod pressing_columns;
 mod query;
 mod read;
+mod scrub_points_column;
 mod write;
 
 use query::*;

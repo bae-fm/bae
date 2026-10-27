@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::{DbScrubPoint, ScrubPoint};
+use crate::db::{DbScrubPoints, ScrubPoint};
 
 /// Scrub points sync with their segment: another device playing the track
 /// from storage resolves the same points, so its scrubs jump the same way.
@@ -56,21 +56,16 @@ async fn check_scrub_points_sync(devices: &crate::sync::test_devices::TwoDevices
     ];
     manager
         .database
-        .insert_scrub_points_for_test(
-            &points
-                .iter()
-                .map(|point| DbScrubPoint {
-                    audio_segment_id: segment.id.clone(),
-                    point: *point,
-                })
-                .collect::<Vec<_>>(),
-        )
+        .insert_scrub_points_for_test(&DbScrubPoints {
+            audio_segment_id: segment.id.clone(),
+            points: points.to_vec(),
+        })
         .await
         .unwrap();
 
     devices
         .converge(
-            "SELECT audio_format_segment_id || ' ' || sample || ' ' || byte \
+            "SELECT audio_format_segment_id || ' ' || hex(points) \
              FROM audio_segment_scrub_points",
         )
         .await;

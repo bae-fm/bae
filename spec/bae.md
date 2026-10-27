@@ -2718,7 +2718,7 @@ All sync.
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
-| `audio_segment_scrub_points` | frame a seek inside a segment can jump to, keyed by the segment and the frame's first sample: that sample and the frame's byte; only for a FLAC with no usable seektable (§3.7) |
+| `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC with no usable seektable and for every MP3 (§3.7) |
 
 Beside them, device-local tables:
 
@@ -2865,7 +2865,7 @@ not declared, so they never sync.
 | `release_files` | independent | store | | the person's own; attached on upload; read on first use; detached to return to local paths |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
-| `audio_segment_scrub_points` | independent: its segment, and a sample | store | | |
+| `audio_segment_scrub_points` | independent: its segment | store | | |
 | `covers` | shared key: the release | store | | bae's own; read on first use |
 | `artist_images` | shared key: the artist | store | | bae's own; read on first use |
 | `people` | shared key: the person's `MemberId` | store | yes | the avatar: bae's own; read on first use |

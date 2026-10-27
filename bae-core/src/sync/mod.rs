@@ -108,10 +108,9 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         ),
         SyncedTable::new("audio_formats", RowIdentity::IndependentUuid),
         SyncedTable::new("audio_format_segments", RowIdentity::IndependentUuid),
-        // A point is its segment's (an independent row) at a sample: the
-        // segment's id is the key's UUID.
+        // A segment's points are one row, keyed by the segment's id.
         SyncedTable::new("audio_segment_scrub_points", RowIdentity::IndependentUuid)
-            .key_columns(["audio_format_segment_id", "sample"]),
+            .key_columns(["audio_format_segment_id"]),
         SyncedTable::new("covers", RowIdentity::SharedKey).carries_files(
             FileDecl::new(
                 COVERS_NAMESPACE,
@@ -225,7 +224,7 @@ mod tests {
             let keys: &[&str] = match table.name() {
                 "playlist_entries" => &["playlist_id", "position_id"],
                 "artist_credits" => &["artist_id", "name_key"],
-                "audio_segment_scrub_points" => &["audio_format_segment_id", "sample"],
+                "audio_segment_scrub_points" => &["audio_format_segment_id"],
                 _ => &["id"],
             };
             assert_eq!(table.get_key_columns(), keys);

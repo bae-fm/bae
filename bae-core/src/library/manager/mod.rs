@@ -415,8 +415,8 @@ pub(crate) struct TrackAudioMeta {
     pub release: DbRelease,
     pub audio_format: DbAudioFormat,
     pub audio_segments: Vec<DbAudioSegment>,
-    /// Every segment's scrub points, each segment's in sample order.
-    pub scrub_points: Vec<crate::db::DbScrubPoint>,
+    /// The scrub points of every segment that has any.
+    pub scrub_points: Vec<crate::db::DbScrubPoints>,
     pub audio_files: Vec<DbFile>,
 }
 
@@ -540,9 +540,8 @@ impl ResolvedTrackAudio {
                     scrub_points: crate::playback::ScrubPoints::new(
                         meta.scrub_points
                             .iter()
-                            .filter(|stored| stored.audio_segment_id == segment.id)
-                            .map(|stored| stored.point)
-                            .collect(),
+                            .find(|stored| stored.audio_segment_id == segment.id)
+                            .map_or_else(Vec::new, |stored| stored.points.clone()),
                     ),
                 }
             })

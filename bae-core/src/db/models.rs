@@ -582,11 +582,11 @@ pub struct ScrubPoint {
     pub exact_from: u64,
 }
 
-/// One stored scrub point and the segment whose file it lies in.
+/// One segment's stored scrub points, in sample order: one row.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbScrubPoint {
+pub struct DbScrubPoints {
     pub audio_segment_id: String,
-    pub point: ScrubPoint,
+    pub points: Vec<ScrubPoint>,
 }
 impl DbAlbumArtist {
     /// The credit's row id: one place of one album's list is one row on

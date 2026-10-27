@@ -146,23 +146,34 @@ impl Database {
         .await
     }
 
-    /// The scrub points of every segment of an audio format, each segment's in
-    /// sample order.
+    /// The scrub points of every segment of an audio format that has any,
+    /// in segment order, each segment's in sample order. A stored blob that
+    /// doesn't decode to points is a damaged database.
     pub async fn get_scrub_points_for_format(
         &self,
         audio_format_id: &str,
-    ) -> Result<Vec<DbScrubPoint>, DbError> {
+    ) -> Result<Vec<DbScrubPoints>, DbError> {
         let audio_format_id = audio_format_id.to_string();
         self.read(move |sql| {
-            sql.query(
-                "SELECT p.* FROM audio_segment_scrub_points p \
-                 JOIN audio_format_segments s ON s.id = p.audio_format_segment_id \
-                 WHERE s.audio_format_id = ? \
-                 ORDER BY s.segment_index, p.sample",
-                params![audio_format_id],
-                row_to_scrub_point,
-            )
-            .map_err(DbError::from)
+            let rows: Vec<(String, Vec<u8>)> = sql
+                .query(
+                    "SELECT p.audio_format_segment_id, p.points \
+                     FROM audio_segment_scrub_points p \
+                     JOIN audio_format_segments s ON s.id = p.audio_format_segment_id \
+                     WHERE s.audio_format_id = ? \
+                     ORDER BY s.segment_index",
+                    params![audio_format_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(DbError::from)?;
+            rows.into_iter()
+                .map(|(audio_segment_id, blob)| {
+                    Ok(DbScrubPoints {
+                        audio_segment_id,
+                        points: super::scrub_points_column::decode(&blob)?,
+                    })
+                })
+                .collect()
         })
         .await
     }

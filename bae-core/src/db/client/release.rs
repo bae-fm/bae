@@ -31,7 +31,7 @@ pub(crate) struct ImportRows<'a> {
     pub artists: super::artist_resolution::ArtistCredits<'a>,
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
-    pub scrub_points: &'a [DbScrubPoint],
+    pub scrub_points: &'a [DbScrubPoints],
     pub records: &'a [crate::import::ReleaseRecord],
 }
 
@@ -433,16 +433,11 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_scrub_points_for_test(
         &self,
-        points: &[DbScrubPoint],
+        points: &DbScrubPoints,
     ) -> Result<(), DbError> {
-        let points = points.to_vec();
-        self.call_sql(move |sql| {
-            for point in &points {
-                insert_scrub_point_row(&sql, point)?;
-            }
-            Ok(())
-        })
-        .await
+        let points = points.clone();
+        self.call_sql(move |sql| insert_scrub_points_row(&sql, &points))
+            .await
     }
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
@@ -647,8 +642,8 @@ impl Database {
                 for segment in &audio_segments {
                     insert_audio_segment_row(tx, segment)?;
                 }
-                for point in &scrub_points {
-                    insert_scrub_point_row(tx, point)?;
+                for points in &scrub_points {
+                    insert_scrub_points_row(tx, points)?;
                 }
 
                 if let Some((image, _)) = &library_image {

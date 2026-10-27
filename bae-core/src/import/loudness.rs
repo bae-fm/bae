@@ -29,7 +29,7 @@ pub(super) struct LoudnessResult {
     pub broken: Vec<String>,
     /// The frames a scrub starts its decode at, for every segment whose file
     /// is a FLAC the demuxer can only binary-search or an MP3.
-    pub scrub_points: Vec<crate::db::DbScrubPoint>,
+    pub scrub_points: Vec<crate::db::DbScrubPoints>,
 }
 
 /// One track's decode outcome from the blocking measure task.
@@ -41,7 +41,7 @@ enum TrackOutcome {
     Decoded {
         measured: Option<(ebur128::EbuR128, f64, f64)>,
         broken: Option<String>,
-        scrub_points: Vec<crate::db::DbScrubPoint>,
+        scrub_points: Vec<crate::db::DbScrubPoints>,
     },
     /// A read of the source failed, so the decode never saw the track's bytes.
     /// Says nothing about the audio.
@@ -404,7 +404,7 @@ fn decode_track(
     track: &MeasuredTrack,
     streams: &HashMap<String, SharedSparseBuffer>,
     sink: &mut LoudnessProgressSink,
-) -> Result<Vec<crate::db::DbScrubPoint>, DecodeStop> {
+) -> Result<Vec<crate::db::DbScrubPoints>, DecodeStop> {
     let segments = track
         .segments
         .iter()
@@ -430,18 +430,18 @@ fn decode_track(
                 );
                 return Ok(Vec::new());
             }
+            // A segment whose file needs no points, or got none (an MP3
+            // shorter than their spacing), stores no row.
             Ok(track
                 .segments
                 .iter()
                 .zip(per_segment)
-                .flat_map(|(segment, points)| {
-                    points
-                        .into_iter()
-                        .flatten()
-                        .map(|point| crate::db::DbScrubPoint {
-                            audio_segment_id: segment.id.clone(),
-                            point,
-                        })
+                .filter_map(|(segment, points)| {
+                    let points = points.filter(|points| !points.is_empty())?;
+                    Some(crate::db::DbScrubPoints {
+                        audio_segment_id: segment.id.clone(),
+                        points,
+                    })
                 })
                 .collect())
         }
@@ -643,7 +643,7 @@ pub(super) async fn measure_loudness(
     let mut meters: Vec<ebur128::EbuR128> = Vec::new();
     let mut track_peaks: Vec<f64> = Vec::new();
     let mut broken_tracks: Vec<String> = Vec::new();
-    let mut all_scrub_points: Vec<crate::db::DbScrubPoint> = Vec::new();
+    let mut all_scrub_points: Vec<crate::db::DbScrubPoints> = Vec::new();
     for (index, outcome) in outcomes {
         let Some(TrackOutcome::Decoded {
             measured,
