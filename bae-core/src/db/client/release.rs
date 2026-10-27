@@ -765,27 +765,4 @@ impl Database {
         })
         .await
     }
-
-    /// The audio uploads still queued for this release.
-    pub async fn count_pending_uploads_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<i64, DbError> {
-        let files = self.get_files_for_release(release_id).await?;
-        let uploads = self.inner.handle.uploads().await?;
-        Ok(uploads
-            .files
-            .iter()
-            .filter(|upload| {
-                upload.file.table() == "release_files"
-                    && files
-                        .iter()
-                        .any(|file| upload.file.key() == &coven::RowKey::from(file.id.as_str()))
-            })
-            .count() as i64)
-    }
-
-    pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
-        Ok(self.count_pending_uploads_for_release(release_id).await? > 0)
-    }
 }

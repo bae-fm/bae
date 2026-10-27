@@ -52,6 +52,7 @@ pub(crate) use abandoned::AbandonedRow;
 mod file_row;
 pub(crate) use file_row::FileRow;
 mod pending;
+mod queued_uploads;
 pub(crate) use pending::PendingRow;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;

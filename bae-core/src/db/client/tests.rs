@@ -263,6 +263,7 @@ mod album_listing_tests;
 
 #[cfg(test)]
 mod file_row_tests;
+mod queued_upload_reads_tests;
 mod storage_listing_tests;
 
 #[cfg(test)]

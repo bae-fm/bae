@@ -222,22 +222,6 @@ impl Database {
         }
     }
 
-    /// Whether an attached file is still waiting for upload.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
-        Ok(self
-            .inner
-            .handle
-            .uploads()
-            .await?
-            .files
-            .iter()
-            .any(|upload| {
-                upload.file.table() == "release_files"
-                    && upload.file.key() == &coven::RowKey::from(file_id)
-            }))
-    }
-
     /// The releases whose own files are queued, in upload queue order
     /// (`UPLOADING_RELEASES`). Image uploads, a release's cover among them,
     /// remain visible in the queue but are no release uploading.
