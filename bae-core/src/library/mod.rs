@@ -74,7 +74,9 @@ pub use search::{
     LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,
 };
 pub use storage_browse::{StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseView};
-pub use sync_activity::{DownloadsInFlight, SyncActivity, SyncActivityStream, UploadsInFlight};
+pub use sync_activity::{
+    DownloadsInFlight, SyncActivity, SyncActivityStream, UploadQueueCounts, UploadsInFlight,
+};
 
 #[cfg(test)]
 mod creation_tests;

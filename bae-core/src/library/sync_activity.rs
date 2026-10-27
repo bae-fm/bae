@@ -3,10 +3,7 @@
 
 use crate::library::release_queue::ReleaseQueueProgress;
 use crate::library::CountLabel;
-use crate::library::{
-    AbandonedItem, OutboxPauseState, OutboxState, PendingItem, ReleaseQueueCounts,
-    SyncStatusSnapshot,
-};
+use crate::library::{AbandonedItem, PendingItem, ReleaseQueueCounts, SyncStatusSnapshot};
 use crate::ui::UiError;
 
 /// What sync is doing now: the work that needs the person and the transfers
@@ -37,6 +34,16 @@ pub struct UploadsInFlight {
     pub sending: u32,
     /// Files queued behind them.
     pub waiting: u32,
+}
+
+/// How many files wait in this device's upload queue, how many of them this
+/// process is sending now, and whether the person paused uploads, read from
+/// coven's queue in one query.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UploadQueueCounts {
+    pub queued: u32,
+    pub sending: u32,
+    pub paused: bool,
 }
 
 /// The releases being downloaded to keep offline.
@@ -75,19 +82,19 @@ impl DownloadsInFlight {
 }
 
 impl SyncActivity {
-    /// Assemble the activity from the sync status, the upload queue and the
-    /// offline downloads.
+    /// Assemble the activity from the sync status, the upload queue's counts
+    /// and the offline downloads.
     pub fn new(
         status: &SyncStatusSnapshot,
-        outbox: &OutboxState,
+        uploads: &UploadQueueCounts,
         downloads: &ReleaseQueueCounts,
     ) -> Self {
-        let total = &outbox.queue.total;
-        let uploads = (total.uploading > 0).then_some(UploadsInFlight {
-            sending: total.uploading,
-            waiting: match outbox.queue.pause_state {
-                OutboxPauseState::Running => total.queued,
-                OutboxPauseState::Paused => 0,
+        let uploads = (uploads.sending > 0).then_some(UploadsInFlight {
+            sending: uploads.sending,
+            waiting: if uploads.paused {
+                0
+            } else {
+                uploads.queued - uploads.sending
             },
         });
         let download_total = &downloads.total;
@@ -129,12 +136,14 @@ impl SyncActivity {
 }
 
 /// The sync activity, live: a new value whenever a change to the sync
-/// status, the upload queue or the offline downloads changes it. Bytes
-/// moving change those sources but not the activity, so they send nothing.
+/// status, the upload queue's counts or the offline downloads changes it.
+/// Bytes moving change none of those, so they send nothing.
 pub struct SyncActivityStream {
-    manager: crate::library::LibraryManager,
     status: tokio::sync::watch::Receiver<SyncStatusSnapshot>,
-    outbox: tokio::sync::watch::Receiver<Option<Result<OutboxState, String>>>,
+    uploads: coven::LiveQuery<UploadQueueCounts>,
+    /// The upload queue's counts as last read; `None` before the first read
+    /// and after a failed one.
+    upload_counts: Option<UploadQueueCounts>,
     downloads: coven::LiveQuery<ReleaseQueueCounts>,
     /// The download queue's counts as last read; `None` before the first
     /// read and after a failed one.
@@ -149,12 +158,12 @@ impl SyncActivityStream {
     pub(crate) fn new(manager: crate::library::LibraryManager) -> Self {
         Self {
             status: manager.subscribe_sync_status_values(),
-            outbox: manager.subscribe_outbox_values(),
+            uploads: manager.subscribe_upload_counts(),
+            upload_counts: None,
             downloads: manager.subscribe_download_counts(),
             download_counts: None,
             started: false,
             returned: None,
-            manager,
         }
     }
 
@@ -163,27 +172,59 @@ impl SyncActivityStream {
     /// change reads it again.
     pub async fn next(&mut self) -> Result<SyncActivity, UiError> {
         loop {
-            if self.started && self.download_counts.is_some() {
+            if self.started && self.download_counts.is_some() && self.upload_counts.is_some() {
                 tokio::select! {
                     changed = self.status.changed() => changed.expect("the sync status outlives its readers"),
-                    changed = self.outbox.changed() => changed.expect("the upload queue outlives its readers"),
+                    counts = self.uploads.next() => self.take_upload_counts(counts)?,
                     counts = self.downloads.next() => self.take_download_counts(counts)?,
                 }
             } else {
-                let counts = self.downloads.next().await;
-                self.take_download_counts(counts)?;
+                if self.download_counts.is_none() {
+                    let counts = self.downloads.next().await;
+                    self.take_download_counts(counts)?;
+                }
+                if self.upload_counts.is_none() {
+                    let counts = self.uploads.next().await;
+                    self.take_upload_counts(counts)?;
+                }
             }
             self.started = true;
-            let activity = match self.read().await {
-                Ok(activity) => activity,
-                Err(error) => {
-                    self.returned = None;
-                    return Err(error);
-                }
+            let (Some(uploads), Some(downloads)) = (&self.upload_counts, &self.download_counts)
+            else {
+                unreachable!("both counts are read before the activity");
             };
+            let activity = SyncActivity::new(&self.status.borrow_and_update(), uploads, downloads);
             if self.returned.as_ref() != Some(&activity) {
                 self.returned = Some(activity.clone());
                 return Ok(activity);
+            }
+        }
+    }
+
+    /// Hold the upload queue's counts as their live read delivered them; a
+    /// failed read fails the value, and so does the read ending with the
+    /// library.
+    fn take_upload_counts(
+        &mut self,
+        counts: Option<coven::CovenResult<UploadQueueCounts>>,
+    ) -> Result<(), UiError> {
+        match counts {
+            Some(Ok(counts)) => {
+                self.upload_counts = Some(counts);
+                Ok(())
+            }
+            Some(Err(error)) => {
+                self.upload_counts = None;
+                self.returned = None;
+                let error = crate::library::LibraryError::from(error);
+                Err(UiError::diagnostic(error.category(), error))
+            }
+            None => {
+                self.upload_counts = None;
+                self.returned = None;
+                Err(UiError::internal(
+                    "the upload queue's read ended with its library".to_string(),
+                ))
             }
         }
     }
@@ -214,40 +255,6 @@ impl SyncActivityStream {
                 ))
             }
         }
-    }
-
-    /// The activity the sources hold now, read in place.
-    async fn read(&mut self) -> Result<SyncActivity, UiError> {
-        let downloads = self
-            .download_counts
-            .clone()
-            .expect("the download counts are read before the activity");
-        let published = match &*self.outbox.borrow_and_update() {
-            Some(Ok(outbox)) => Some(Ok(Self::activity(&mut self.status, &downloads, outbox))),
-            Some(Err(error)) => Some(Err(UiError::internal(error.clone()))),
-            None => None,
-        };
-        match published {
-            Some(activity) => activity,
-            // Nothing has published the queue yet; read it as the upload
-            // list does.
-            None => {
-                let outbox = self
-                    .manager
-                    .outbox_state()
-                    .await
-                    .map_err(|error| UiError::diagnostic(error.category(), error))?;
-                Ok(Self::activity(&mut self.status, &downloads, &outbox))
-            }
-        }
-    }
-
-    fn activity(
-        status: &mut tokio::sync::watch::Receiver<SyncStatusSnapshot>,
-        downloads: &ReleaseQueueCounts,
-        outbox: &OutboxState,
-    ) -> SyncActivity {
-        SyncActivity::new(&status.borrow_and_update(), outbox, downloads)
     }
 }
 

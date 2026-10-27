@@ -581,6 +581,13 @@ impl LibraryManager {
     /// Follow how many downloads are in each phase, and whether the queue is
     /// paused: what the sync activity and the Downloads pane's controls show
     /// of them.
+    /// The upload queue's counts, live.
+    pub(crate) fn subscribe_upload_counts(
+        &self,
+    ) -> coven::LiveQuery<crate::library::UploadQueueCounts> {
+        self.database.subscribe_upload_counts()
+    }
+
     pub(crate) fn subscribe_download_counts(
         &self,
     ) -> coven::LiveQuery<crate::library::ReleaseQueueCounts> {

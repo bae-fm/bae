@@ -856,3 +856,47 @@ async fn a_storage_row_counts_the_file_being_sent() {
     .expect("the row counts the file being sent");
     drain.await.unwrap().unwrap();
 }
+
+/// The sync activity counts the files being sent and those waiting behind
+/// them, from the upload queue.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_sync_activity_counts_the_files_being_sent() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("sending"),
+        "Album Title",
+        &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b"), ("c.flac", b"bytes-c")],
+    )
+    .await;
+    manager.database.set_transfer_limits(coven::TransferLimits {
+        uploads: std::num::NonZeroUsize::new(1).unwrap(),
+        ..manager.database.transfer_limits()
+    });
+    let mut activity = crate::library::SyncActivityStream::new(manager.library.clone());
+    assert_eq!(activity.next().await.unwrap().uploads, None);
+    home.set_faults(coven::Faults {
+        delay: std::time::Duration::from_secs(2),
+        ..coven::Faults::none()
+    })
+    .await;
+    let drain = tokio::spawn({
+        let manager = manager.library.clone();
+        async move { manager.drain_uploads_for_test().await }
+    });
+    // One file is sent at a time; until the last, others wait behind it.
+    let sending = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            if let Some(uploads) = activity.next().await.unwrap().uploads {
+                break uploads;
+            }
+        }
+    })
+    .await
+    .expect("the activity counts the file being sent");
+    assert_eq!(sending.sending, 1);
+    assert!((1..=2).contains(&sending.waiting), "{sending:?}");
+    drain.await.unwrap().unwrap();
+}
