@@ -53,7 +53,10 @@ fn a_verdict_at_a_stale_edit_revision_is_not_the_row_s_answer() {
 
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Pending);
-    assert!(!offers_import(row), "a draft for other files is not this row's");
+    assert!(
+        !offers_import(row),
+        "a draft for other files is not this row's"
+    );
 }
 #[test]
 fn an_imported_content_hash_puts_its_row_in_done() {
@@ -131,11 +134,10 @@ fn a_failed_import_stays_pending_and_reads_its_error_from_its_row() {
     rows.candidates = vec![candidate("Release")];
     rows.states
         .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
-    rows.failures
-        .insert(
-            "hash-Release".to_string(),
-            crate::import::ImportFailureReason::error("boom"),
-        );
+    rows.failures.insert(
+        "hash-Release".to_string(),
+        crate::import::ImportFailureReason::error("boom"),
+    );
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
@@ -160,11 +162,10 @@ fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
     rows.candidates = vec![candidate("Release")];
     rows.states
         .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
-    rows.failures
-        .insert(
-            "hash-Release".to_string(),
-            crate::import::ImportFailureReason::error("boom"),
-        );
+    rows.failures.insert(
+        "hash-Release".to_string(),
+        crate::import::ImportFailureReason::error("boom"),
+    );
     assert_eq!(
         row_for(&flattened(&rows, &view(TriageTab::Pending)), "Release").placement,
         TriagePlacement::Failed
@@ -172,7 +173,10 @@ fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
 
     rows.failures.clear();
     let flat = flattened(&rows, &view(TriageTab::Pending));
-    assert_eq!(row_for(&flat, "Release").placement, TriagePlacement::Pending);
+    assert_eq!(
+        row_for(&flat, "Release").placement,
+        TriagePlacement::Pending
+    );
     assert_eq!(flat.summary.counts.pending, 1);
 
     rows.imported.insert(
@@ -194,11 +198,10 @@ fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
 fn an_imported_release_outranks_a_leftover_failure() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
-    rows.failures
-        .insert(
-            "hash-Release".to_string(),
-            crate::import::ImportFailureReason::error("boom"),
-        );
+    rows.failures.insert(
+        "hash-Release".to_string(),
+        crate::import::ImportFailureReason::error("boom"),
+    );
     rows.imported.insert(
         "hash-Release".to_string(),
         ImportedRelease {
@@ -234,13 +237,23 @@ fn a_row_offers_import_exactly_when_its_draft_would_import() {
             },
             true,
         ),
-        ("a person picked among several", picked_by_the_person(several_matches_state()), true),
         (
-            "identification picked, the track count differs",
-            with_verdict(auto_importable_state("mb-1"), |verdict| verdict.track_count = Some(10)),
+            "a person picked among several",
+            picked_by_the_person(several_matches_state()),
             true,
         ),
-        ("several matched and none is picked", several_matches_state(), false),
+        (
+            "identification picked, the track count differs",
+            with_verdict(auto_importable_state("mb-1"), |verdict| {
+                verdict.track_count = Some(10)
+            }),
+            true,
+        ),
+        (
+            "several matched and none is picked",
+            several_matches_state(),
+            false,
+        ),
         ("nothing matched", not_found_state(), false),
         (
             "a person's draft would not import",
@@ -304,8 +317,7 @@ fn a_pick_does_not_outrank_skipped_or_done() {
 
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
-    rows.states
-        .insert("hash-Release".to_string(), picked);
+    rows.states.insert("hash-Release".to_string(), picked);
     rows.imported.insert(
         "hash-Release".to_string(),
         ImportedRelease {

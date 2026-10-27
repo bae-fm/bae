@@ -120,15 +120,16 @@ impl LoudnessProgress {
     }
 
     fn send(&self, percent: Option<u8>) {
-        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
-            candidate_key: self.candidate_key.clone(),
-            progress: crate::import::types::ImportProgress::Progress {
-                id: self.release_id.clone(),
-                percent,
-                phase: crate::import::types::ImportPhase::MeasuringLoudness,
-                import_id: self.import_id.clone(),
-            },
-        });
+        self.event_tx
+            .send(crate::import::handle::ImportEvent::ImportProgress {
+                candidate_key: self.candidate_key.clone(),
+                progress: crate::import::types::ImportProgress::Progress {
+                    id: self.release_id.clone(),
+                    percent,
+                    phase: crate::import::types::ImportPhase::MeasuringLoudness,
+                    import_id: self.import_id.clone(),
+                },
+            });
     }
 }
 
@@ -444,9 +445,7 @@ fn decode_track(
                 })
                 .collect())
         }
-        Err(bae_audio::DecodeError::SourceRead(error)) => {
-            Err(DecodeStop::Unreadable(error))
-        }
+        Err(bae_audio::DecodeError::SourceRead(error)) => Err(DecodeStop::Unreadable(error)),
         Err(e) => {
             warn!(
                 "loudness: decode failed for track {}: {e}; track stays unmeasured",
@@ -536,11 +535,9 @@ pub(super) async fn measure_loudness(
             segments
                 .iter()
                 .try_fold(0u64, |total, segment| {
-                    segment.end_sample.map(|end| {
-                        total.saturating_add(
-                            end.saturating_sub(segment.start_sample),
-                        )
-                    })
+                    segment
+                        .end_sample
+                        .map(|end| total.saturating_add(end.saturating_sub(segment.start_sample)))
                 })
                 .or_else(|| {
                     let ms = track_file.db_track.duration_ms;

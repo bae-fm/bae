@@ -21,15 +21,15 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         .tempfile()
         .expect("temp file");
     std::fs::write(temp.path(), damaged).expect("damaged MP3 fixture");
-    let probe =
-        bae_audio::probe_audio_from_path(temp.path().to_str().expect("UTF-8 temp path"))
-            .expect("damaged MP3 probe");
+    let probe = bae_audio::probe_audio_from_path(temp.path().to_str().expect("UTF-8 temp path"))
+        .expect("damaged MP3 probe");
     let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
     // The track's stored length is the probe's, as an import measures it.
     let mut db_track = crate::db::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
-    db_track.duration_ms = u64::try_from(probe.duration.as_millis()).expect("the probe's length fits");
+    db_track.duration_ms =
+        u64::try_from(probe.duration.as_millis()).expect("the probe's length fits");
     let track = TrackFile {
         db_track,
         audio: crate::import::TrackAudio::Standalone {
@@ -51,7 +51,9 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         "track-id",
         probe.content_type,
         std::num::NonZeroU32::new(probe.sample_rate).unwrap(),
-        probe.bits_per_sample.map(|bits| std::num::NonZeroU32::new(bits).unwrap()),
+        probe
+            .bits_per_sample
+            .map(|bits| std::num::NonZeroU32::new(bits).unwrap()),
         std::num::NonZeroU32::new(probe.channels).unwrap(),
         "format-id".to_string(),
         now,
@@ -73,7 +75,8 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         temp.path().to_path_buf(),
         std::fs::metadata(temp.path()).unwrap().len(),
     )]);
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
 
     let result = measure_loudness(
         &event_tx,

@@ -1,12 +1,16 @@
 use super::*;
 use bae_audio::sparse_buffer::create_sparse_buffer;
 
-fn progress(event_tx: &crate::import::handle::ImportEventBus, total: Option<u64>) -> LoudnessProgress {
+fn progress(
+    event_tx: &crate::import::handle::ImportEventBus,
+    total: Option<u64>,
+) -> LoudnessProgress {
     LoudnessProgress::new(event_tx, "test", "release-1", "import-1", total)
 }
 
 async fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut sink = LoudnessProgressSink::new(total, progress(&event_tx, total));
     sink.done_frames = done;
     sink.decode_error_count = errors;
@@ -15,7 +19,8 @@ async fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgre
 
 #[tokio::test]
 async fn measured_frames_control_progress_value_and_determinacy() {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut rx = event_tx.every_event();
 
     // 100 frames of earlier tracks are done; this track has measured 450 of
@@ -55,19 +60,31 @@ async fn measured_frames_control_progress_value_and_determinacy() {
 #[tokio::test]
 async fn broken_reason_flags_shortfall_and_errors_not_clean() {
     assert!(
-        sink_with(Some(1000), 1000, 0).await.broken_reason().is_none(),
+        sink_with(Some(1000), 1000, 0)
+            .await
+            .broken_reason()
+            .is_none(),
         "a full-window decode is clean"
     );
     assert!(
-        sink_with(Some(1000), 970, 0).await.broken_reason().is_none(),
+        sink_with(Some(1000), 970, 0)
+            .await
+            .broken_reason()
+            .is_none(),
         "a 3% shortfall is boundary rounding, within slack"
     );
     assert!(
-        sink_with(Some(1000), 100, 0).await.broken_reason().is_some(),
+        sink_with(Some(1000), 100, 0)
+            .await
+            .broken_reason()
+            .is_some(),
         "a 90% shortfall is a truncated body"
     );
     assert!(
-        sink_with(Some(1000), 1000, 1).await.broken_reason().is_some(),
+        sink_with(Some(1000), 1000, 1)
+            .await
+            .broken_reason()
+            .is_some(),
         "a fatal decode error is broken even with the full window"
     );
     assert!(
@@ -353,17 +370,15 @@ async fn measure_loudness_fails_on_a_source_whose_read_fails() {
         Some(std::io::ErrorKind::UnexpectedEof),
         "{error}"
     );
-    assert!(
-        !error.to_string().contains("Invalid data found"),
-        "{error}"
-    );
+    assert!(!error.to_string().contains("Invalid data found"), "{error}");
 }
 
 /// A track whose audio format has no segments is skipped (nothing to
 /// decode) and stays unmeasured.
 #[tokio::test]
 async fn measure_loudness_skips_track_with_no_segments() {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
     let audio_segments: Vec<crate::db::DbAudioSegment> = Vec::new();
     let file_ids = HashMap::new();
@@ -389,7 +404,8 @@ async fn measure_loudness_skips_track_with_no_segments() {
 #[tokio::test]
 async fn measure_loudness_computes_track_and_album_values() {
     bae_audio::init();
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
     let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
@@ -423,7 +439,8 @@ async fn measure_loudness_computes_track_and_album_values() {
 #[tokio::test]
 async fn measure_loudness_progress_weights_tracks_by_frames() {
     bae_audio::init();
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut rx = event_tx.every_event();
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![
@@ -472,7 +489,8 @@ async fn measure_loudness_progress_weights_tracks_by_frames() {
 #[tokio::test]
 async fn measure_loudness_leaves_ungated_track_unmeasured() {
     bae_audio::init();
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
     // ~50 ms at 44.1 kHz — far short of a 400 ms gated block.
@@ -515,7 +533,8 @@ async fn peak_open_sources(
     file_ids: &HashMap<PathBuf, String>,
     tracks: &[TrackFile],
 ) -> usize {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let source_file_sizes: HashMap<PathBuf, u64> = file_ids
         .keys()
         .map(|path| (path.clone(), std::fs::metadata(path).unwrap().len()))
@@ -589,8 +608,14 @@ async fn measure_loudness_holds_at_most_parallelism_track_files_open() {
         );
         measured.push(track_loudness(&formats));
     }
-    assert!(measured[0].iter().all(Option::is_some), "every track is measured");
-    assert_eq!(measured[0], measured[1], "measuring at once changes no result");
+    assert!(
+        measured[0].iter().all(Option::is_some),
+        "every track is measured"
+    );
+    assert_eq!(
+        measured[0], measured[1],
+        "measuring at once changes no result"
+    );
 }
 
 /// Every track of one image reads it through one open file, however many

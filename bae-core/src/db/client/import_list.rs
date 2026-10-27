@@ -182,16 +182,19 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         .collect::<Result<_, DbError>>()?;
 
     let failures: HashMap<String, crate::import::ImportFailureReason> = {
-        use super::import_state::failure_rows::{
-            failure_reason_from_row, FAILURE_REASON_COLUMNS,
-        };
+        use super::import_state::failure_rows::{failure_reason_from_row, FAILURE_REASON_COLUMNS};
         sql.query(
             &format!(
                 "SELECT failure.content_hash AS content_hash, {FAILURE_REASON_COLUMNS} \
                  FROM import_candidate_failure failure"
             ),
             [],
-            |row| Ok((row.get::<_, String>("content_hash")?, failure_reason_from_row(row)?)),
+            |row| {
+                Ok((
+                    row.get::<_, String>("content_hash")?,
+                    failure_reason_from_row(row)?,
+                ))
+            },
         )?
         .into_iter()
         .collect()
@@ -301,7 +304,9 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
             let grouping = match grouping_key {
                 Some(grouping_key) => Some(CandidateListGrouping {
                     skipped: grouping_skipped.ok_or_else(|| {
-                        DbError::Message(format!("release {path} names no stored grouping {grouping_key}"))
+                        DbError::Message(format!(
+                            "release {path} names no stored grouping {grouping_key}"
+                        ))
                     })?,
                     error: super::release_groupings::block_of(
                         blocked,
@@ -395,7 +400,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             .first()
             .map(|stored| LeadMatch::of(&stored.result, Some(&stored.provenance)));
         let pressing_count = crate::import::release_group::row_count(
-            &found.iter().map(|stored| stored.pressing).collect::<Vec<_>>(),
+            &found
+                .iter()
+                .map(|stored| stored.pressing)
+                .collect::<Vec<_>>(),
         ) as u32;
         let summary = VerdictSummary {
             kind: match kind.as_str() {
@@ -471,7 +479,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
 
 #[derive(Clone, PartialEq)]
 struct ImportListRows {
-    windows: Vec<(crate::library::LibraryPageWindow, Vec<window::WindowItemRows>)>,
+    windows: Vec<(
+        crate::library::LibraryPageWindow,
+        Vec<window::WindowItemRows>,
+    )>,
     total_count: u64,
     summary: crate::import::ImportQueueSummary,
     shown_keys: Vec<String>,
@@ -510,7 +521,8 @@ fn load_import_list_on(
 
 impl ImportListRows {
     fn process(self) -> Result<ImportListProjection, DbError> {
-        let windows = self.windows
+        let windows = self
+            .windows
             .into_iter()
             .map(|(window, items)| {
                 Ok(ImportListWindow {
@@ -642,7 +654,11 @@ impl Database {
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
         self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
-            .process(|process| process.map(window::CandidateDetailRows::process).transpose())
+            .process(|process| {
+                process
+                    .map(window::CandidateDetailRows::process)
+                    .transpose()
+            })
             .await
     }
 }

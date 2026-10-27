@@ -179,7 +179,8 @@ impl ImportListSubscription {
     pub(crate) fn start(
         open: impl FnOnce(
             ImportListRequest,
-        ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
+        )
+            -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
         view: ImportListView,
         windows: LibraryPageWindows,
         mut outbox: watch::Receiver<Option<Result<OutboxState, String>>>,
@@ -272,7 +273,8 @@ impl ImportListSubscription {
                 return Err(error.into());
             }
         };
-        self.request.settle_selection(request_revision, &projection)?;
+        self.request
+            .settle_selection(request_revision, &projection)?;
         let ImportListProjection {
             windows,
             total_count,

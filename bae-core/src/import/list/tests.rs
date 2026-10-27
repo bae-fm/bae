@@ -8,10 +8,10 @@ use super::*;
 use crate::db::{CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::search::SourceTracks;
-use bae_catalogs::catalog::Catalog;
 use crate::import::watched_folder::host_root;
 use crate::import::ImportedRelease;
 use crate::import::{TriageImportStatus, TriagePlacement};
+use bae_catalogs::catalog::Catalog;
 
 mod actions;
 mod dates;

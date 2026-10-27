@@ -10,6 +10,7 @@ use super::{
     PendingFilter, PendingFilterEntry, PlacedRow, UploadStanding, UploadStatus,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
+use crate::import::folder_scanner::ScanItem;
 use crate::import::selection::SelectionSummary;
 use crate::import::triage::{
     import_status_of, place, CandidateActionBasis, CandidateLiveState, MatchedRelease,
@@ -17,7 +18,6 @@ use crate::import::triage::{
     TriageTab, TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
-use crate::import::folder_scanner::ScanItem;
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::LibraryError;
 use std::borrow::Cow;
@@ -231,7 +231,11 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                 };
                 let matches_filter = kept
                     && filter.keeps(|| {
-                        Ok(triage_row.shown_text().into_iter().map(Cow::Borrowed).collect())
+                        Ok(triage_row
+                            .shown_text()
+                            .into_iter()
+                            .map(Cow::Borrowed)
+                            .collect())
                     })?;
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
@@ -467,11 +471,7 @@ pub(super) fn place_row(
         .filter(|state| state.edit_revision == row.file_edit_revision);
     let verdict = state.and_then(|state| state.verdict.as_ref());
     let imported = rows.imported.get(content_hash);
-    let import_status = import_status_of(
-        imported,
-        row.error(),
-        rows.failures.get(content_hash),
-    );
+    let import_status = import_status_of(imported, row.error(), rows.failures.get(content_hash));
     let skipped = match &row.grouping {
         Some(grouping) => grouping.skipped,
         None => rows.skipped.contains(&(

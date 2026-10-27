@@ -439,11 +439,7 @@ fn the_first_identifying_candidate_follows_the_queue_order() {
         Some(key("Release 2"))
     );
     assert_eq!(
-        first_among(
-            &rows,
-            view(TriageTab::Pending),
-            &["Release 2", "Release 1"]
-        ),
+        first_among(&rows, view(TriageTab::Pending), &["Release 2", "Release 1"]),
         Some(key("Release 1"))
     );
     assert_eq!(
@@ -544,8 +540,10 @@ fn candidate_location_follows_an_import_from_pending_to_done() {
 fn the_summary_filters_pending_covers_and_keeps_the_counts_whole() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Group/Wanted"), candidate("Group/Other")];
-    rows.states
-        .insert("hash-Group/Wanted".to_string(), auto_importable_state("mb-1"));
+    rows.states.insert(
+        "hash-Group/Wanted".to_string(),
+        auto_importable_state("mb-1"),
+    );
     rows.states.insert(
         "hash-Group/Other".to_string(),
         with_verdict(auto_importable_state("mb-2"), |verdict| {
@@ -601,7 +599,8 @@ fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
         candidate("Singles/Label/Series/One"),
         candidate("Singles/Label/Series/Two"),
     ];
-    rows.folder_readings.insert((root(), "Box".to_string()), false);
+    rows.folder_readings
+        .insert((root(), "Box".to_string()), false);
     rows.folder_readings
         .insert((root(), "Singles/Label/Series".to_string()), false);
 

@@ -457,9 +457,11 @@ fn an_entry_holding_no_row_cannot_be_chosen() {
         .filter(|entry| entry.filter != PendingFilter::InProgress)
         .all(|entry| entry.selectable));
 
-    assert!(entries_at_rest(&flattened(&queue(), &view(TriageTab::Pending)))
-        .iter()
-        .all(|entry| entry.count == 0 && !entry.selectable));
+    assert!(
+        entries_at_rest(&flattened(&queue(), &view(TriageTab::Pending)))
+            .iter()
+            .all(|entry| entry.count == 0 && !entry.selectable)
+    );
 }
 
 /// An entry chosen while it held rows stays chosen once it holds none: the
@@ -472,7 +474,10 @@ fn a_chosen_entry_holding_no_row_stays_chosen() {
 
     let ended = flattened(&rows, &under(PendingFilter::InProgress));
     assert!(ended.items.is_empty());
-    assert_eq!(ended.summary.narrowing.pending_filter, PendingFilter::InProgress);
+    assert_eq!(
+        ended.summary.narrowing.pending_filter,
+        PendingFilter::InProgress
+    );
     assert_eq!(
         ended.summary.narrowed,
         Some(NarrowedCount {
@@ -548,7 +553,9 @@ fn the_text_filter_composes_with_the_pending_filter() {
         needs_you.summary.counts.pending, 14,
         "the tab counts are the whole queue's, whatever the list shows"
     );
-    assert!(texted(PendingFilter::Identified, "nothing").items.is_empty());
+    assert!(texted(PendingFilter::Identified, "nothing")
+        .items
+        .is_empty());
 }
 
 /// Locating a candidate clears the filters, so a row the entry hides is
@@ -641,7 +648,11 @@ fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
         .collect();
     let flat = flattened(&rows, &under(PendingFilter::InProgress));
     let members = select_all(&flat, &identifying);
-    assert_eq!(members.len(), 2, "the entry shows the rows being identified");
+    assert_eq!(
+        members.len(),
+        2,
+        "the entry shows the rows being identified"
+    );
 
     let offers = selection_offers(&members);
     assert!(!offers
@@ -763,15 +774,18 @@ fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
         selected: std::iter::once(key("Unidentified")).collect(),
         ..ImportListRequest::default()
     };
-    let not_looked_up = flatten(&rows, &selecting(PendingFilter::NotLookedUp))
-        .expect("the queue flattens");
+    let not_looked_up =
+        flatten(&rows, &selecting(PendingFilter::NotLookedUp)).expect("the queue flattens");
     let position = not_looked_up
         .summary
         .first_selected_position
         .expect("the selected row is shown") as usize;
     match not_looked_up.items[position] {
         ItemRef::Candidate { index, .. } => {
-            assert_eq!(not_looked_up.rows[index].row.candidate_key, key("Unidentified"))
+            assert_eq!(
+                not_looked_up.rows[index].row.candidate_key,
+                key("Unidentified")
+            )
         }
         other => panic!("the position names a header or invalid row: {other:?}"),
     }

@@ -47,10 +47,7 @@ async fn setting_the_windows_reruns_the_query_as_a_request_change() {
         )
         .expect("the first window is requested");
     let requested = subscription.next().await.expect("the requested value");
-    assert_eq!(
-        requested.cause,
-        coven::LiveQueryCause::Request
-    );
+    assert_eq!(requested.cause, coven::LiveQueryCause::Request);
     assert_eq!(requested.windows.len(), 1);
     assert_eq!(requested.request_revision, 1);
 }
@@ -108,7 +105,10 @@ async fn a_failed_upload_queue_read_makes_the_done_order_unreadable() {
     );
 
     outbox_tx.send_replace(Some(Err("the queue's table is locked".to_string())));
-    let unreadable = subscription.next().await.expect("the value after the failed read");
+    let unreadable = subscription
+        .next()
+        .await
+        .expect("the value after the failed read");
     assert_eq!(
         unreadable.summary.done_upload_status,
         Some(UploadStatusKnown::Unreadable)

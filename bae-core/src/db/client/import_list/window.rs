@@ -5,18 +5,18 @@
 //! pick. All three are read for the entries inside a requested window and for
 //! the one key a selection names — never for the queue.
 
-use super::super::release_groupings::{load_candidate_on, skipped_on};
 use super::super::import_state::{
     load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
 };
-use super::super::source_releases::load_source_release_on;
 use super::super::records::{album_records_name_on, check_releases_in_library_on};
+use super::super::release_groupings::{load_candidate_on, skipped_on};
+use super::super::source_releases::load_source_release_on;
 use super::*;
 use crate::identify::{TerminalVerdict, VerdictSummary};
 use crate::import::cover_art::CoverChoice;
+use crate::import::folder_scanner::FolderCandidate;
 use crate::import::folder_scanner::{CategorizedFiles, FileVersion, ScanItem};
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
-use crate::import::folder_scanner::FolderCandidate;
 use crate::import::search::MetadataResult;
 use crate::import::triage::MatchedRelease;
 use crate::import::{CoverSelection, PressingLink, ReleaseLink};
@@ -80,15 +80,15 @@ pub(super) fn materialise(
                 // releases are read in this snapshot and interpreted after it
                 // ends; an album names its records itself.
                 let picked = match row.release_link.as_ref() {
-                    Some(ReleaseLink::Pressing(pressing)) => Some(LinkedRows::Pressing(
-                        picked_release(
+                    Some(ReleaseLink::Pressing(pressing)) => {
+                        Some(LinkedRows::Pressing(picked_release(
                             sql,
                             pressing,
                             files
                                 .as_ref()
                                 .expect("a candidate linked to a pressing has fetched files"),
-                        )?,
-                    )),
+                        )?))
+                    }
                     Some(ReleaseLink::Album(album)) => Some(LinkedRows::Album(album.records())),
                     None => None,
                 };
@@ -416,10 +416,7 @@ pub(super) struct CandidateDetailRows {
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &str,
-) -> Result<
-    Option<CandidateDetailRows>,
-    DbError,
-> {
+) -> Result<Option<CandidateDetailRows>, DbError> {
     let Some(stored) = load_candidate_on(sql, key)? else {
         return Ok(None);
     };
@@ -468,8 +465,9 @@ pub(super) fn load_candidate_detail_on(
         params![candidate.watched_folder_path, candidate.key()],
         |row| row.get::<_, i64>(0),
     )?;
-    let metadata_revision = u64::try_from(metadata_revision)
-        .map_err(|error| DbError::Message(format!("candidate metadata revision is negative: {error}")))?;
+    let metadata_revision = u64::try_from(metadata_revision).map_err(|error| {
+        DbError::Message(format!("candidate metadata revision is negative: {error}"))
+    })?;
 
     let statuses = identify
         .map(|identify| library_statuses(sql, &identify.verdict))
@@ -505,9 +503,23 @@ pub(super) fn load_candidate_detail_on(
         )?),
         _ => None,
     };
-    Ok(Some(CandidateDetailRows { candidate, source_error, actionable, skipped,
-        imported, current, pane_rows, artist_resolutions, metadata_revision,
-        statuses, records, picked_library_status, album, embedded_cover, standing }))
+    Ok(Some(CandidateDetailRows {
+        candidate,
+        source_error,
+        actionable,
+        skipped,
+        imported,
+        current,
+        pane_rows,
+        artist_resolutions,
+        metadata_revision,
+        statuses,
+        records,
+        picked_library_status,
+        album,
+        embedded_cover,
+        standing,
+    }))
 }
 
 /// The album an import of the candidate `content_hash`, linked to what
@@ -544,21 +556,39 @@ fn candidate_album_on(
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
-        let Self { candidate, source_error, actionable, skipped, imported, current,
-            pane_rows, artist_resolutions, metadata_revision, statuses,
-            records, picked_library_status, album, embedded_cover, standing } = self;
-        let metadata_provenance = current.as_ref().and_then(|state| state.metadata_provenance.clone());
-        let release_link = current.as_ref().and_then(|state| state.release_link.clone());
-    let metadata_author = current
-        .as_ref()
-        .map_or(crate::import::MetadataAuthor::Nobody, |state| {
-            state.metadata_author
-        });
-    let signals = current.as_ref().and_then(|state| state.signals.clone());
-    let lookup_choices = current
-        .as_ref()
-        .map(|state| state.lookup_choices.clone())
-        .unwrap_or_default();
+        let Self {
+            candidate,
+            source_error,
+            actionable,
+            skipped,
+            imported,
+            current,
+            pane_rows,
+            artist_resolutions,
+            metadata_revision,
+            statuses,
+            records,
+            picked_library_status,
+            album,
+            embedded_cover,
+            standing,
+        } = self;
+        let metadata_provenance = current
+            .as_ref()
+            .and_then(|state| state.metadata_provenance.clone());
+        let release_link = current
+            .as_ref()
+            .and_then(|state| state.release_link.clone());
+        let metadata_author = current
+            .as_ref()
+            .map_or(crate::import::MetadataAuthor::Nobody, |state| {
+                state.metadata_author
+            });
+        let signals = current.as_ref().and_then(|state| state.signals.clone());
+        let lookup_choices = current
+            .as_ref()
+            .map(|state| state.lookup_choices.clone())
+            .unwrap_or_default();
 
         let audio = crate::signals::AudioFacts::of_files(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
@@ -580,34 +610,28 @@ impl CandidateDetailRows {
                     .expect("the library check covers every release the verdict names")
                     .clone()
             };
-            verdict = Some(VerdictSummary::of(&identify.verdict, identify.kept_own_draft));
+            verdict = Some(VerdictSummary::of(
+                &identify.verdict,
+                identify.kept_own_draft,
+            ));
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed: striking a number out re-orders the
             // rows the next time they are read, with nothing asked again.
-            let text =
-                crate::identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
+            let text = crate::identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
             resumed_identify_state =
                 identify
                     .verdict
                     .clone()
                     .resume_state(&status_of, text, audio.clone());
         }
-        let pane = crate::import::pane::draft_pane(
-            &candidate.files,
-            durations,
-            &pane_rows.draft,
-        )
-        .map_err(|error| {
+        let pane = crate::import::pane::draft_pane(&candidate.files, durations, &pane_rows.draft)
+            .map_err(|error| {
             DbError::Message(format!(
                 "candidate {} cannot be drawn: {error}",
                 candidate.key()
             ))
         })?;
-        let cover = chosen_cover(
-            &candidate.files,
-            pane_rows.cover.as_ref(),
-            embedded_cover,
-        );
+        let cover = chosen_cover(&candidate.files, pane_rows.cover.as_ref(), embedded_cover);
         Ok(ImportCandidateDetailProjection {
             is_added: imported.is_some(),
             candidate,
@@ -657,14 +681,13 @@ fn claimed_releases_on(
     };
     link.claimed()
         .map(|release| {
-            load_source_release_on(sql, release)?
-                .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "{} is claimed for {} but nothing fetched it",
-                        release.key,
-                        candidate.key()
-                    ))
-                })
+            load_source_release_on(sql, release)?.ok_or_else(|| {
+                DbError::Message(format!(
+                    "{} is claimed for {} but nothing fetched it",
+                    release.key,
+                    candidate.key()
+                ))
+            })
         })
         .collect()
 }
