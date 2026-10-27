@@ -419,18 +419,10 @@ impl Database {
     }
 
     /// Every candidate's user-set file decisions, keyed by `content_hash`, so a
-    /// folder scan reports the roles the user settled. Projected from the
-    /// candidate-state read rather than a second query over the same rows.
+    /// folder scan reports the roles the user settled.
     pub async fn load_stored_candidate_edits(&self) -> Result<StoredCandidateEdits, DbError> {
-        self.read(move |sql| load_states_rows_on(&sql, CandidateRows::All))
-            .process(|process| {
-                Ok(StoredCandidateEdits::new(
-                    process()?
-                        .into_iter()
-                        .map(|(hash, state)| (hash, state.file_edits))
-                        .collect(),
-                ))
-            })
+        self.read(move |sql| rows::load_stored_candidate_edits_on(&sql))
+            .process(|process| process())
             .await
     }
 
@@ -498,9 +490,11 @@ impl Database {
             .await
     }
 
-    /// Every stored `import_candidate_state` row, keyed by `content_hash`. A
-    /// column holding a value no writer produces fails the read.
-    pub async fn load_import_candidate_states(
+    /// Every stored `import_candidate_state` row, keyed by `content_hash`, for
+    /// the tests that read back everything a write stored. A column holding a
+    /// value no writer produces fails the read.
+    #[cfg(test)]
+    pub(crate) async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
         self.read(move |sql| load_states_rows_on(&sql, CandidateRows::All))

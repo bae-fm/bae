@@ -668,9 +668,10 @@ impl LibraryManager {
         Ok(outbox_revision)
     }
 
-    /// Every stored candidate row, keyed by content hash, for the sweep to
-    /// decide in memory which still need identifying.
-    pub async fn load_import_candidate_states(
+    /// Every stored candidate row, keyed by content hash, for the tests that
+    /// read back what identification stored.
+    #[cfg(test)]
+    pub(crate) async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, crate::db::DbImportCandidateState>, LibraryError> {
         Ok(self.database.load_import_candidate_states().await?)

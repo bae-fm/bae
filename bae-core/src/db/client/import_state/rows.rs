@@ -667,6 +667,36 @@ fn load_edits_on(
     }))
 }
 
+/// The file decisions of every candidate a decision was made for, each at its
+/// revision: the candidates whose decisions stand, and those whose revision
+/// moved past zero though none stands now. Any other candidate has none at
+/// revision zero, which is what a scan reads where nothing is stored.
+pub(crate) fn load_stored_candidate_edits_on(
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+) -> Result<FinishEdits<crate::import::folder_scanner::StoredCandidateEdits>, DbError> {
+    let revisions = sql.query(
+        "SELECT content_hash, edit_revision FROM import_candidate_state \
+         WHERE edit_revision > 0",
+        [],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+    )?;
+    let edits = load_edits_on(sql, CandidateRows::All)?;
+    Ok(Box::new(move || {
+        let mut edits = edits()?;
+        for (content_hash, revision) in revisions {
+            edits.entry(content_hash.clone()).or_default().revision = u64::try_from(revision)
+                .map_err(|error| {
+                    DbError::Message(format!(
+                        "import candidate {content_hash} has a negative edit revision: {error}"
+                    ))
+                })?;
+        }
+        Ok(crate::import::folder_scanner::StoredCandidateEdits::new(
+            edits,
+        ))
+    }))
+}
+
 /// One candidate's file decisions, revision included. Progressive scans call
 /// this after they compute a content hash, so each emitted row performs one
 /// indexed lookup instead of rereading the whole table.

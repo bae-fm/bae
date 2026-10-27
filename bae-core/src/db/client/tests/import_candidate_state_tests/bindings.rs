@@ -107,9 +107,12 @@ async fn a_cleared_binding_survives_a_relaunch() {
     assert_eq!(restored_candidate.track_count(), 1);
     assert!(restored_candidate.files.bound_sheets().is_empty());
 
-    // A subsequent scan reads the same decisions and derives the same
-    // shape as the candidate restored before that scan.
+    // A subsequent scan reads the same decisions, at the revision they stand
+    // at, and derives the same shape as the candidate restored before that
+    // scan.
     let stored = db.load_stored_candidate_edits().await.unwrap();
+    assert_eq!(stored.revision_for_hash(&scanned.content_hash()), 1);
+    assert_eq!(stored.revision_for_hash("missing"), 0);
     let reopened = collect_release_candidate_files_with_scope(
         folder.path(),
         crate::import::ReleaseFileScope::Recursive,

@@ -2045,6 +2045,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     edit_revision     INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0)
 ) STRICT;
 
+-- The candidates a file decision was made for, which a scan reads the
+-- decisions of before it walks.
+CREATE INDEX IF NOT EXISTS import_candidate_state_file_decided
+    ON import_candidate_state (content_hash, edit_revision) WHERE edit_revision > 0;
+
 -- The folders on disk a candidate was found at (several when the same files
 -- sit in two places). The candidate lives while a watched folder covers one.
 CREATE TABLE IF NOT EXISTS import_candidate_folder (

@@ -2864,7 +2864,7 @@ Keyed by the candidate's content hash.
 
 | Table | Holds |
 |---|---|
-| `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found |
+| `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks |
 | `import_candidate_edit`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, each track's place and listed length (§3.6) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
