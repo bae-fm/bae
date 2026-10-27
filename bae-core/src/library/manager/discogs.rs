@@ -7,30 +7,30 @@
 
 use super::*;
 use crate::config::DiscogsValidation;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use bae_catalogs::discogs::client::{
     DiscogsClient, DiscogsError, DiscogsKeySignal, DiscogsSearchParams,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use bae_catalogs::rate_limiter::CallPriority;
 
 /// Nothing panics while the stored key's client is locked, so a poisoned lock
 /// is a bug and fails loudly.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 const DISCOGS_CLIENT_LOCK: &str = "the Discogs client lock is never held across a panic";
 
 /// One operation's view of Discogs: the client for the stored key, when there
 /// is one Discogs may be asked with, and the other providers a release fetch
 /// follows links into.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 struct DiscogsSession {
     client: Option<Arc<DiscogsClient>>,
     providers: crate::providers::Providers,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl DiscogsSession {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async fn search(
         &self,
         params: DiscogsSearchParams,
@@ -43,7 +43,7 @@ impl DiscogsSession {
         Ok(crate::import::search::search_discogs(client, params, priority).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async fn fetch_payloads(
         &self,
         release: &crate::import::MetadataRef,
@@ -55,7 +55,7 @@ impl DiscogsSession {
             .await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async fn read_disc_id_release(
         &self,
         answered: &crate::import::payloads::DiscIdRelease,
@@ -66,7 +66,7 @@ impl DiscogsSession {
             .await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async fn release_covers(
         &self,
         release_id: &str,
@@ -86,7 +86,7 @@ impl DiscogsSession {
         Ok(covers)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async fn master_covers(
         &self,
         master_id: &str,
@@ -100,7 +100,7 @@ impl DiscogsSession {
         Ok(master.covers)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async fn artist_image_url(
         &self,
         artist_id: &str,
@@ -117,7 +117,7 @@ impl DiscogsSession {
             .await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async fn validate(&self) -> Result<DiscogsCheck, LibraryError> {
         let client = self.client.as_ref().ok_or_else(|| {
             LibraryError::Internal(
@@ -134,7 +134,7 @@ impl DiscogsSession {
 /// rejects it, and a success confirms a key nothing had confirmed yet.
 /// Blocking — it persists the change — so the client's observer runs it on a
 /// blocking thread.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn record_discogs_validation_signal(config_handle: &ConfigHandle, signal: DiscogsKeySignal) {
     let next_of = |current: Option<DiscogsValidation>| match (current, &signal) {
         (None, _) => None,
@@ -166,7 +166,7 @@ fn record_discogs_validation_signal(config_handle: &ConfigHandle, signal: Discog
 /// What a token-validation request proves about a key: Discogs accepted it,
 /// rejected it, or could not be asked — a failure that says nothing about the
 /// key, kept so the person is told why the key went unchecked.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug)]
 pub(crate) enum DiscogsCheck {
     Valid,
@@ -174,7 +174,7 @@ pub(crate) enum DiscogsCheck {
     Unchecked(DiscogsError),
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl DiscogsCheck {
     /// Read a token-validation request's outcome. A failure that leaves the
     /// key unchecked is warned with its cause.
@@ -220,17 +220,17 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let database = self.database.clone();
         let config_handle = Arc::clone(&self.config_handle);
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         let discogs_client = Arc::clone(&self.discogs_client);
         let token = token.to_string();
         blocking(move || {
             // Held across the writes, so no call builds a client from a key
             // halfway through being replaced.
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             let mut client = discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
             database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)?;
             // The cached client asks with the key just replaced.
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             {
                 *client = None;
             }
@@ -245,17 +245,17 @@ impl LibraryManager {
     pub async fn clear_discogs_key(&self) -> Result<(), LibraryError> {
         let database = self.database.clone();
         let config_handle = Arc::clone(&self.config_handle);
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         let discogs_client = Arc::clone(&self.discogs_client);
         blocking(move || {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             let mut client = discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
             config_handle.update_preferences_now(|prefs| prefs.discogs = None)?;
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             {
                 *client = None;
             }
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             database.delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
             Ok(())
         })
@@ -279,7 +279,7 @@ impl LibraryManager {
         self.config_handle.config().prefs.discogs
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn search_discogs(
         &self,
         params: DiscogsSearchParams,
@@ -288,7 +288,7 @@ impl LibraryManager {
         self.discogs_session()?.search(params, priority).await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn fetch_release_payloads(
         &self,
         release: &crate::import::MetadataRef,
@@ -302,7 +302,7 @@ impl LibraryManager {
 
     /// A release a Disc ID lookup returned, read for an identify run from
     /// that answer (see [`crate::import::payloads::read_disc_id_release`]).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn read_disc_id_release_payloads(
         &self,
         answered: &crate::import::payloads::DiscIdRelease,
@@ -316,7 +316,7 @@ impl LibraryManager {
     /// The Discogs session a read of `release` asks with. A MusicBrainz
     /// release whose session cannot be had is read without its Discogs
     /// cross-reference, as it is without a key.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     fn release_read_session(
         &self,
         release: &crate::import::MetadataRef,
@@ -341,7 +341,7 @@ impl LibraryManager {
     /// them, so a stored release of either album names the other among its
     /// records. Keeping it failing leaves the list's answer standing, and is
     /// logged.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn keep_album_links(
         &self,
         kept: Vec<(String, Vec<crate::import::album_links::AlbumLink>)>,
@@ -351,7 +351,7 @@ impl LibraryManager {
         }
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn fetch_discogs_release_covers(
         &self,
         release_id: &str,
@@ -362,7 +362,7 @@ impl LibraryManager {
             .await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn fetch_discogs_master_covers(
         &self,
         master_id: &str,
@@ -377,7 +377,7 @@ impl LibraryManager {
     /// one artist at a time, each picture downscaled to the JPEG bae stores.
     /// A provider or download failure, or a picture that does not decode,
     /// fails the caller with it.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn fetch_discogs_artist_images(
         &self,
         ids: std::collections::BTreeSet<String>,
@@ -422,7 +422,7 @@ impl LibraryManager {
     /// artist when the import fetched its pictures and is not one now: the
     /// library's artists changed under the import, which fails so it can be
     /// run again.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn artist_image_rows(
         &self,
         inserted_artists: &[DbArtist],
@@ -468,7 +468,7 @@ impl LibraryManager {
     /// Check an unvalidated key again. A check Discogs could not answer
     /// leaves the key unvalidated and fails with why, so the person who asked
     /// is told rather than shown the same state again.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         if self.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
@@ -483,12 +483,12 @@ impl LibraryManager {
         }
     }
 
-    #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+    #[cfg(all(test, desktop))]
     pub(super) fn discogs_available_for_test(&self) -> Result<bool, LibraryError> {
         Ok(self.discogs_session()?.client.is_some())
     }
 
-    #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+    #[cfg(all(test, desktop))]
     pub(super) async fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
         let config_handle = Arc::clone(&self.config_handle);
         blocking(move || {
@@ -506,7 +506,7 @@ impl LibraryManager {
     /// set or cleared.
     /// Whether a release on `catalog` can be fetched now: MusicBrainz always
     /// can, and Discogs can when this library holds a key it may ask with.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn can_fetch_releases_from(
         &self,
         catalog: bae_catalogs::catalog::Catalog,
@@ -518,7 +518,7 @@ impl LibraryManager {
         }
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     fn discogs_session(&self) -> Result<DiscogsSession, LibraryError> {
         let providers = self.providers.clone();
         // Held while the stored key is read, so a key being set or cleared is
@@ -555,7 +555,7 @@ impl LibraryManager {
 
     /// Ask Discogs whether it accepts `key`, which this library does not
     /// store: how a key is tried before it is saved.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn try_discogs_key(
         &self,
         key: &str,

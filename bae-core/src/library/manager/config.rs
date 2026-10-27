@@ -99,7 +99,7 @@ impl LibraryManager {
     }
 
     /// Whether a release found now is identified on its own.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn identifies_automatically(&self) -> bool {
         self.config_handle.config().prefs.identification.automatic
     }

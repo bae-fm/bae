@@ -706,7 +706,7 @@ forward! {
 // Gated on the target, not on `desktop`: bae-core gates `mod export` itself on the
 // target, so the export queue and the track exporter exist on every non-mobile
 // build whether or not this crate's `desktop` feature is on.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[uniffi::export]
 impl AppHandle {
     /// The percent each exporting release has reached, now and then as it
@@ -730,7 +730,7 @@ impl AppHandle {
 }
 
 forward! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     sync this => {
         /// Pause or resume the export queue. The in-flight export finishes; the queue
         /// stops starting new ones until resumed.
@@ -758,7 +758,7 @@ forward! {
 }
 
 forward! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     async this => {
         /// Enqueue a verbatim release export to `target_dir`. It joins the in-memory
         /// serial output queue; the worker drains it one release at a time. The

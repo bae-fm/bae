@@ -297,7 +297,7 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
 /// The timestamps of `samples` in `stream`, counted as a decode from the
 /// stream's start counts them: from its `start_time`, past any encoder delay.
 /// An error when the stream states no sample rate or an unusable time base.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn stream_timestamps(
     stream: *const ffmpeg_sys_next::AVStream,
     samples: &[u64],
@@ -340,7 +340,7 @@ unsafe fn stream_timestamps(
 /// Playback never searches for a track: it byte-seeks straight to the recorded
 /// byte (FLAC) or sample-seeks and prefetches it (APE). An error, saying why,
 /// only if the file can't be opened or its frames can't be read or seeked.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Result<Vec<u64>, String> {
     unsafe {
         let (mut fmt_ctx, stream_index) = open_best_audio_stream(path)?;
@@ -381,7 +381,7 @@ pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Result<Vec<u64>, Strin
 /// holds before it emits a frame (`FLAC_MIN_HEADERS`, 10, in
 /// `libavcodec/flac_parser.c`). An offset the search reads a timestamp from
 /// before these frames therefore always has a full run of headers after it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 const FLAC_TAIL_FRAMES: usize = 11;
 
 /// The byte of the FLAC frame holding each of `targets` (stream timestamps).
@@ -407,7 +407,7 @@ const FLAC_TAIL_FRAMES: usize = 11;
 /// no timestamp, and nothing before it was read -- so it couldn't trim to the
 /// target. From the frame before, which the parser dates, the last frame's
 /// timestamp follows.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn flac_frame_landings(
     path: &str,
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
@@ -461,7 +461,7 @@ unsafe fn flac_frame_landings(
 /// wrong byte (the parser counts the leftover it passes over from where it
 /// stopped reading, not where that frame begins). The searching opening must
 /// not inherit that entry.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn flac_final_frames(path: &str) -> Result<Vec<(i64, u64)>, String> {
     use ffmpeg_sys_next::*;
 
@@ -478,7 +478,7 @@ unsafe fn flac_final_frames(path: &str) -> Result<Vec<(i64, u64)>, String> {
 }
 
 /// [`flac_final_frames`] over an opened file.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn flac_final_frames_in(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
@@ -528,7 +528,7 @@ unsafe fn flac_final_frames_in(
 
 /// The largest frame, in bytes, the FLAC's STREAMINFO block (FFmpeg's
 /// extradata for the stream) records; `None` when the encoder left it unknown.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn flac_max_frame_bytes(codecpar: *const ffmpeg_sys_next::AVCodecParameters) -> Option<i64> {
     // STREAMINFO: min/max block size (16 bits each), then min/max frame size
     // (24 bits each).
@@ -550,7 +550,7 @@ unsafe fn flac_max_frame_bytes(codecpar: *const ffmpeg_sys_next::AVCodecParamete
 /// file. A read that starts inside a frame first passes over the rest of it,
 /// which the parser emits undated; every frame after the first dated one must be
 /// dated.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn flac_frames_to_end(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
@@ -595,7 +595,7 @@ unsafe fn flac_frames_to_end(
 }
 
 /// How to read where a demuxer's seek landed.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy)]
 enum LandingByte {
     /// The read cursor (`avio_tell`), for a demuxer whose seek moves it to the
@@ -609,7 +609,7 @@ enum LandingByte {
 }
 
 /// The byte the demuxer's own seek to `target` (a stream timestamp) lands on.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn demuxer_seek_landing(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
@@ -637,7 +637,7 @@ unsafe fn demuxer_seek_landing(
 }
 
 /// The byte the next packet of `stream_index` begins at.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 unsafe fn next_packet_byte(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,

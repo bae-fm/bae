@@ -118,7 +118,7 @@ pub use volume::check_period_minutes;
 #[cfg(desktop)]
 pub use volume::VolumeKind;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
@@ -126,13 +126,13 @@ use crate::db::{
 
 /// The four-digit year at the head of a metadata date string (`"1998"`,
 /// `"1998-05-01"`), or `None` when the value is absent or has no leading year.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) fn parse_year(date: Option<&str>) -> Option<i32> {
     date?.split('-').next()?.parse().ok()
 }
 
 /// The rows of the works one import writes.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub struct WorkGraphRows {
     pub works: Vec<DbWork>,
@@ -145,7 +145,7 @@ pub struct WorkGraphRows {
 /// (`assemble::assemble_release`) and turned by the commit into `albums` /
 /// `releases` / `tracks` writes. The records are the link's to state, not the
 /// draft's, so they reach the commit alongside rather than inside it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub struct ReleaseRows {
     pub album: DbAlbum,
@@ -166,7 +166,7 @@ pub struct ReleaseRows {
 /// measure. Binding it makes the [`DbTrack`] (see
 /// `audio_layout::resolve_track_files`), so no track row exists without its
 /// length.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackRow {
     pub id: String,
@@ -178,7 +178,7 @@ pub struct TrackRow {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl TrackRow {
     /// The row, its audio measuring `duration_ms`.
     pub(crate) fn measured(self, duration_ms: u64) -> DbTrack {
@@ -203,7 +203,7 @@ impl TrackRow {
 /// [`service::ImportService::start`] builds one and hands it to the service
 /// handle and to every folder scan, which is why it is declared here rather
 /// than in either of those modules — its fields stay private to `import`.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Clone)]
 pub(crate) struct ImportServices {
     event_tx: handle::ImportEventBus,
@@ -226,7 +226,7 @@ pub(crate) struct ImportServices {
     import_cancels: import_cancel::ImportCancels,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl ImportServices {
     pub(crate) fn new(
         event_tx: handle::ImportEventBus,
@@ -273,7 +273,7 @@ pub use folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
     InvalidReason, ReleaseFileScope, ReleasePart,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) use folder_state_commit::{FolderStateCommit, FolderStateCommitGuard};
 #[cfg(desktop)]
 pub use grouping::GroupingBlock;

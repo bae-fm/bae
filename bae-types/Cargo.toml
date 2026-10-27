@@ -5,7 +5,8 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# Sets the `desktop` cfg; see that file.
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
 build = "../bae-util/build.rs"
 
 [lib]
@@ -20,7 +21,7 @@ unicode-normalization = "0.1"
 
 # Album and track titles are read for the brackets that name an edition
 # (src/text_match/title.rs), which only the import pipeline compares; the
-# predicate is spelled as the code that gates the module spells it.
+# predicate is the `desktop` cfg's (bae-util/build.rs), which gates the module.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 regex = "1.11"
 

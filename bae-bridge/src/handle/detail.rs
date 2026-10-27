@@ -107,12 +107,12 @@ impl DetailValue for crate::types::BridgeInvalidCandidateDetail {
 }
 
 // Gated on the target, as the export queue its transfers include is.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl DetailValue for crate::types::BridgeStorageInspector {
     type Core = bae_core::library::storage_inspector::StorageInspector;
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 detail_subscription! {
     object: StorageInspectorSubscription,
     subscribe: subscribe_storage_inspector,

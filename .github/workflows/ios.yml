@@ -65,8 +65,7 @@ jobs:
     - name: Clippy (iOS target)
       # Run clippy against the iOS target so cfg(target_os = "ios")-gated
       # dead-code warnings are caught. The host clippy in ci.yml targets macOS,
-      # where not(any(target_os = "ios", target_os = "android")) is true and those
-      # warnings don't fire. One target is enough; dead-code warnings are
+      # where the `desktop` cfg is set and those warnings don't fire. One target is enough; dead-code warnings are
       # target-specific, not ABI-specific — but they ARE feature-specific, so this
       # runs per edition (the matrix's full and baeium cells) against this cell's
       # BAE_BRIDGE_FEATURES.

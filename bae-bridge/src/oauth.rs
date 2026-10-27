@@ -46,25 +46,13 @@ pub struct BridgeOAuthRedirects {
     pub onedrive: String,
 }
 
-#[cfg(any(
-    test,
-    all(
-        feature = "oauth-providers",
-        any(target_os = "ios", target_os = "android")
-    )
-))]
+#[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
 pub(crate) struct NativeOAuthPresenter {
     pub(crate) redirects: BridgeOAuthRedirects,
     pub(crate) callback: Box<dyn OAuthPresenterCallback>,
 }
 
-#[cfg(any(
-    test,
-    all(
-        feature = "oauth-providers",
-        any(target_os = "ios", target_os = "android")
-    )
-))]
+#[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
 #[async_trait::async_trait]
 impl coven::OAuthPresenter for NativeOAuthPresenter {
     fn redirect_uri(&self, provider: coven::CloudProvider) -> &str {

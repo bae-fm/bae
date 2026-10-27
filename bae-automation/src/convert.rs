@@ -498,14 +498,14 @@ pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelec
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationSignalKind = bae_core::identify::SignalKind,
     from_core: pub(crate) fn,
     variants: { DiscId, Barcode, Catalog, Isrc },
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationSignalState = bae_core::identify::SignalState,
     from_core: pub(crate) fn,
     variants: {
@@ -519,14 +519,14 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationSignalOption = bae_core::identify::SignalOption,
     from_core: pub(crate) fn,
     fields: { value, chosen },
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationToolbarSignal = bae_core::identify::ToolbarSignal,
     from_core: pub(crate) fn,
     fields: {

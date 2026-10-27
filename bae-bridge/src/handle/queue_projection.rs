@@ -1,4 +1,4 @@
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mirror_struct! {
     crate::types::BridgeUploadReleaseGroup = bae_core::library::UploadReleaseGroup,
     from_core: pub(super) fn,
@@ -9,7 +9,7 @@ mirror_struct! {
     },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl crate::types::BridgeUploadFileOp {
     pub(super) fn from_core(file: bae_core::library::UploadFileOp) -> Self {
         let bae_core::library::UploadFileOp {
@@ -35,7 +35,7 @@ mirror_struct! {
     fields: { bytes_done, bytes_total },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mirror_enum! {
     crate::types::BridgeUploadFileLabel = bae_core::library::UploadFileLabel,
     from_core: fn,
@@ -242,7 +242,7 @@ impl crate::types::BridgeDownloadProgress {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl crate::types::BridgeOutputState {
     pub(super) fn from_core(state: bae_core::library::OutputPhase) -> Self {
         use crate::types::BridgeOutputState;
@@ -255,7 +255,7 @@ impl crate::types::BridgeOutputState {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl crate::types::BridgeOutputTransferChange {
     pub(super) fn from_core(change: bae_core::library::OutputTransferChange) -> Self {
         use bae_core::library::ReleaseTransferChange;
@@ -283,7 +283,7 @@ impl crate::types::BridgeOutputTransferChange {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl crate::types::BridgeOutputOp {
     pub(super) fn from_core(row: bae_core::library::OutputPhaseRow) -> Self {
         let bae_core::library::release_queue::ReleaseQueueRow { op, release } = row;

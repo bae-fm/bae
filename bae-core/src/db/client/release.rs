@@ -1,4 +1,4 @@
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use super::import_state::{
     end_import_attempt_of_commit, record_import_origin_on, require_import_commit_guard,
 };
@@ -16,7 +16,7 @@ mod storage;
 /// id of one of `artists.credits`. The commit resolves those credits to
 /// library artists inside its own transaction and writes each link to the
 /// artist its credit resolved to.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Default)]
 pub(crate) struct ImportRows<'a> {
     pub mediums: &'a [DbReleaseMedium],
@@ -41,7 +41,7 @@ pub(crate) struct ImportRows<'a> {
 /// again and refuses to commit if the new artists it would create are not
 /// exactly `expected_new_artists` — a picture is never left without its
 /// artist, and no new artist misses the picture prepared for it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Default, Clone, Copy)]
 pub(crate) struct NewArtistImages<'a> {
     pub expected_new_artists: &'a [String],
@@ -80,7 +80,7 @@ pub(crate) struct ReleaseMetadataRows {
 pub(crate) enum AlbumFields {
     Written,
     #[cfg_attr(
-        any(target_os = "ios", target_os = "android"),
+        not(desktop),
         expect(
             dead_code,
             reason = "only a desktop edit session moves a release into an album the person picked"
@@ -461,7 +461,7 @@ impl Database {
 
     /// Finalize an import in one transaction. Nothing of it is in the DB yet except
     /// the import record — every row below lands together or not at all.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,

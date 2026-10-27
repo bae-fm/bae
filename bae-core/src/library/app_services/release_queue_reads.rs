@@ -41,7 +41,7 @@ impl AppServices {
     }
 
     /// The export queue as it stands now, each entry beside its release.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub async fn output_snapshot(&self) -> Result<crate::library::OutputSnapshot, LibraryError> {
         self.resolve_release_queue(self.inner.manager.output_queue())
             .await
@@ -52,7 +52,7 @@ impl AppServices {
     /// or a library change to a release it names. The storage inspector
     /// reads it. The percent each export has reached is
     /// [`watch_output_transfers`](Self::watch_output_transfers).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn subscribe_output_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -65,7 +65,7 @@ impl AppServices {
     }
 
     /// The percent each exporting release has reached, sent as it moves.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn watch_output_transfers(&self) -> crate::library::OutputTransfersWatch {
         crate::library::OutputTransfersWatch::of(self.inner.manager.subscribe_output_queue())
     }

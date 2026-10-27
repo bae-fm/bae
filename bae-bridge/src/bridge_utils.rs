@@ -1,4 +1,4 @@
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCastTranscodeFormat, BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus,
@@ -104,7 +104,7 @@ mirror_enum! {
 
 // The output queue and its bridge functions are desktop-only (handle.rs gates
 // them off ios/android), so this conversion's one consumer is too.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl BridgeOutputKind {
     /// Display-only: a save carries its preset's resolved name, not an id — the
     /// queue row never dereferences a preset. No `into_core`; enqueue takes a

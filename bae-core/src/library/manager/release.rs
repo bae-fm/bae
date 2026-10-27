@@ -58,14 +58,14 @@ impl LibraryManager {
     /// `hash`. The import watcher stamps each scanned candidate with this, so
     /// a folder imported here is Done after a restart, and after a move or a
     /// rename: it matches by file structure, not by path.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, LibraryError> {
         Ok(self.release_imported_from(hash).await?.is_some())
     }
 
     /// The release this device imported from files whose folder hash is
     /// `hash`, if it imported one.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub async fn release_imported_from(&self, hash: &str) -> Result<Option<String>, LibraryError> {
         Ok(self.database.release_imported_from(hash).await?)
     }
@@ -87,7 +87,7 @@ impl LibraryManager {
 
     /// The library album an import carrying `records` joins, or `None` for a
     /// new one (see [`crate::db::Database::album_records_name`]).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub async fn find_existing_album_for_import(
         &self,
         records: &[crate::import::ReleaseRecord],
@@ -101,7 +101,7 @@ impl LibraryManager {
     /// The audio a catalog release is read against for the library release
     /// `release_id`: its tracks' stored lengths, and what its own files say
     /// it was copied from.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(super) async fn release_read_audio(
         &self,
         release_id: &str,
@@ -594,7 +594,7 @@ impl LibraryManager {
 }
 
 /// Each of a library release's tracks' stored length, in track order.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Vec<u64> {
     tracks.iter().map(|track| track.duration_ms).collect()
 }

@@ -433,7 +433,7 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         .find(|file| file.label == UploadFileLabel::Cover)
         .unwrap();
     assert_ne!(cover.file.id(), release.files[0].file.id());
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     {
         use crate::library::storage_inspector::{
             StorageInspector, StorageInspectorFile, StorageInspectorTransfer,

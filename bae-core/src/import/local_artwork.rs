@@ -17,7 +17,7 @@ use bae_util::content_type_hint::ContentTypeHint;
 /// One rule, run wherever a candidate's cover is filled in: a scan, a reset,
 /// the migration that fills what earlier scans left empty. A candidate's
 /// cover is a stored value, so nothing derives one when a candidate is read.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) fn folder_cover<'a>(
     embedded: Option<super::CoverSelection>,
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
@@ -33,7 +33,7 @@ pub(crate) fn folder_cover<'a>(
 /// artwork, unless the folder holds an image named as the front cover, which
 /// [`folder_cover`] ranks ahead of it. `None` when the tags embed nothing, so
 /// applying them leaves the candidate's cover as it is.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) fn file_tags_cover<'a>(
     embedded: Option<super::CoverSelection>,
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
@@ -47,7 +47,7 @@ pub(crate) fn file_tags_cover<'a>(
 
 /// The folder image named as the front cover, by [`artwork_order`] among
 /// several.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn front_cover_file<'a>(
     files: impl IntoIterator<Item = &'a ScannedFile>,
 ) -> Option<&'a ScannedFile> {
@@ -60,7 +60,7 @@ fn front_cover_file<'a>(
         .min_by(|left, right| artwork_order(left, right))
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn local_selection(file: &ScannedFile) -> super::CoverSelection {
     super::CoverSelection::Local(file.relative_path.clone())
 }

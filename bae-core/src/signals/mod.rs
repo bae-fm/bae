@@ -56,7 +56,7 @@ pub use text::{TextLine, TextSignal};
 
 /// The signals extracted from one candidate's files, streamed as snapshots
 /// while the artwork is read.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signals {
     /// What the files say about where the audio came from; it decides
@@ -80,7 +80,7 @@ pub struct Signals {
     pub track_titles: Vec<String>,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl Signals {
     /// How bae broke reading the folder's files, when it did: the disc ID's
     /// derivation first, then the artwork's reading, which fails the barcode

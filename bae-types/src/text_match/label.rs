@@ -68,19 +68,19 @@ impl LabelName {
     }
 
     /// Its words run together, as a line of text is searched for it.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn stated(&self) -> &str {
         &self.stated
     }
 
     /// Its initials, when its words make some.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn initials(&self) -> Option<&str> {
         self.initials.as_deref()
     }
 
     /// The initials it is written as, when it is.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn written_initials(&self) -> Option<&str> {
         self.written_initials.as_deref()
     }

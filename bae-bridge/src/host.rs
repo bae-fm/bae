@@ -11,7 +11,7 @@ pub struct BridgeHost {
     keychain: bae_core::library::Keychain,
     runtime: Option<tokio::runtime::Runtime>,
     oauth_clients: Mutex<coven::OAuthClients>,
-    #[cfg(any(target_os = "ios", target_os = "android"))]
+    #[cfg(not(desktop))]
     presenter: Mutex<Option<Arc<dyn coven::OAuthPresenter>>>,
     /// How this platform shares the speaker, for every library's playback.
     audio_focus: bae_core::playback::AudioFocus,
@@ -82,11 +82,11 @@ impl BridgeHost {
             .keychain
             .store_builder(&self.app_dir)
             .oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         {
             builder.oauth_presenter(Arc::new(coven::DesktopOAuthPresenter))
         }
-        #[cfg(any(target_os = "ios", target_os = "android"))]
+        #[cfg(not(desktop))]
         {
             match self.presenter.lock().expect(HOST_LOCK).clone() {
                 Some(presenter) => builder.oauth_presenter(presenter),
@@ -117,7 +117,7 @@ impl BridgeHost {
                 None,
                 Arc::new(coven::SystemClock),
             )),
-            #[cfg(any(target_os = "ios", target_os = "android"))]
+            #[cfg(not(desktop))]
             presenter: Mutex::new(None),
             audio_focus,
             closing_libraries: Default::default(),
@@ -128,10 +128,7 @@ impl BridgeHost {
 /// A host whose keys and credentials stay in an in-memory keychain for this
 /// process: the macOS debug app's UI tests start it so they never touch the
 /// login keychain.
-#[cfg(all(
-    any(test, feature = "test-keyring"),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-keyring"), desktop))]
 #[uniffi::export]
 impl BridgeHost {
     #[uniffi::constructor]
@@ -149,7 +146,7 @@ impl BridgeHost {
 }
 
 /// The desktop's host: any app plays without asking for the speaker.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[uniffi::export]
 impl BridgeHost {
     #[uniffi::constructor]
@@ -168,7 +165,7 @@ impl BridgeHost {
 
 /// A phone's host, holding the system's audio focus (Android) or audio
 /// session (iOS), which every library's playback asks before it starts.
-#[cfg(any(target_os = "ios", target_os = "android"))]
+#[cfg(not(desktop))]
 #[uniffi::export]
 impl BridgeHost {
     #[uniffi::constructor]
@@ -357,10 +354,7 @@ impl BridgeHost {
     }
 }
 
-#[cfg(all(
-    feature = "oauth-providers",
-    any(target_os = "ios", target_os = "android")
-))]
+#[cfg(all(feature = "oauth-providers", not(desktop)))]
 #[uniffi::export]
 impl BridgeHost {
     pub fn set_oauth_presenter(
@@ -396,7 +390,7 @@ pub fn init_app(
     )
 }
 
-#[cfg(all(debug_assertions, not(any(target_os = "ios", target_os = "android"))))]
+#[cfg(all(debug_assertions, desktop))]
 #[uniffi::export]
 pub fn init_app_on_fixture(
     library_id: String,

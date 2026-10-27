@@ -105,7 +105,7 @@ pub use collection_subscription::{
     BridgeComposerBrowseSnapshot, BridgeComposerBrowseWindow, ComposerBrowseSubscription,
 };
 pub use library_search::{BridgeLibrarySearchSnapshot, LibrarySearchSubscription};
-#[cfg(any(feature = "cast", not(any(target_os = "ios", target_os = "android"))))]
+#[cfg(any(feature = "cast", desktop))]
 mod desktop;
 #[cfg(feature = "desktop")]
 mod desktop_services;
@@ -132,7 +132,7 @@ mod queue_projection;
 mod queue_upcoming;
 mod service_status;
 mod storage_browse;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod storage_inspector;
 mod sync_status;
 mod ui_events;

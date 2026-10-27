@@ -29,7 +29,7 @@ impl LibraryManager {
         Ok(self.database.find_artist_by_id(artist_id).await?)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn choose_import_artist_identity(
         &self,
         content_hash: &str,

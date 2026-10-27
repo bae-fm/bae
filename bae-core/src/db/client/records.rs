@@ -50,7 +50,7 @@ impl Database {
     /// Replace a release's record rows and move the release between albums
     /// when the target differs from the source, in one transaction (see
     /// [`set_records_on`]).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         self.call_sql(move |sql| set_records_on(&sql, &change, now))
@@ -93,7 +93,7 @@ impl Database {
 
 /// A release's new records and the album they file it under: what
 /// [`set_records_on`] writes.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) struct RecordsChange {
     pub release_id: String,
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -124,7 +124,7 @@ pub(crate) struct RecordsChange {
 /// *catalog's* release, so re-pointing the records at a different one already
 /// reads a different row. There is nothing stale to wipe, and the rows this
 /// release used may be another candidate's.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(super) fn set_records_on(
     tx: &SqlContext<'_, '_>,
     change: &RecordsChange,

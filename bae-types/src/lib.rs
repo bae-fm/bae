@@ -2,7 +2,7 @@
 //! nothing in bae beneath them: what a pressing is, how two pieces of written
 //! text name one thing, and how a barcode is read.
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod barcode;
 pub mod pressing;
 pub mod text_match;

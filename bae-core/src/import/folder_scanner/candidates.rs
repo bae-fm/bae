@@ -194,7 +194,7 @@ impl InvalidCandidate {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl InvalidCandidate {
     /// The key this row is stored and addressed under.
     pub fn key(&self) -> String {
@@ -269,7 +269,7 @@ pub enum SidecarFiles {
 
 /// Only the durable folder-scan tables key items this way, and those are
 /// desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl ScanItem {
     /// The durable scan entry this item is, or `None` for an item that is not
     /// one — the folder reading the scan decided, which is stored as a decision
@@ -518,7 +518,7 @@ pub(crate) struct Coverage {
     pub whole_subtree: bool,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl Coverage {
     /// Whether two entries read any of the same files, and so cannot both
     /// stand: one reading of a folder replaces the other.
@@ -555,7 +555,7 @@ impl FolderReleaseDecisions {
 
     /// Read `relative_folder_path` as `reading`, whatever was stored for it —
     /// the reading a decision about to be stored gives.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn insert(&mut self, relative_folder_path: String, reading: FolderReading) {
         self.0.insert(relative_folder_path, reading);
     }

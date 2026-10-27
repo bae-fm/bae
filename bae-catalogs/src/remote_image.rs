@@ -13,9 +13,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::{debug, warn};
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod archive;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use archive::{musicbrainz_gallery, musicbrainz_group_gallery};
 
 /// Why a catalog's image or an archive gallery could not be read.
@@ -97,7 +97,7 @@ pub enum CoverStanding {
 
 /// How a standing is stored. Only the desktop's candidate and source-release
 /// tables store covers.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl CoverStanding {
     /// The stored column value.
     pub fn as_str(self) -> &'static str {
@@ -246,7 +246,7 @@ pub(crate) const ARCHIVE_COPY_EDGES: [u32; 3] = [250, 500, 1200];
 /// This pressing's own front image, offered only when the release document
 /// says the archive serves one — that block is the release's own statement,
 /// so nothing has to be asked.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub fn musicbrainz_release_cover(
     response: &crate::musicbrainz::MbReleaseResponse,
 ) -> Option<RemoteCover> {
@@ -263,7 +263,7 @@ pub fn musicbrainz_release_cover(
 /// block — so the address is offered and the fetch is what answers. That is
 /// why it is an album option and never a pressing's: it may be some other
 /// release's cover, and it may be nothing at all.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub fn musicbrainz_album_cover(
     response: &crate::musicbrainz::MbReleaseResponse,
 ) -> Option<RemoteCover> {
@@ -276,7 +276,7 @@ pub fn musicbrainz_album_cover(
 /// Append `cover` unless the list already offers the same image. Two identity
 /// rows on one release can name the same archive entity, and the picker should
 /// show that image once — stated, when either of the two stated it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
     match covers
         .iter_mut()

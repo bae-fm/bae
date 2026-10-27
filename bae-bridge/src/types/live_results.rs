@@ -71,7 +71,7 @@ callbacks! {
     DownloadTransfersCallback: on_changes(changes: Vec<super::BridgeDownloadTransferChange>);
     /// Every exporting release's percent as a `Reset` when the subscription
     /// opens, then each batch of the ones that moved or ended, in one call.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     OutputTransfersCallback: on_changes(changes: Vec<super::BridgeOutputTransferChange>);
 
     /// What every candidate has in flight: a `Reset` with every running key

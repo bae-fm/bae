@@ -474,10 +474,7 @@ impl ImportServiceHandle {
 
     /// Store `command`'s folder as a scanned candidate carrying the command's
     /// metadata and cover, then queue its import and return the import ID.
-    #[cfg(all(
-        any(test, feature = "test-utils"),
-        not(any(target_os = "ios", target_os = "android"))
-    ))]
+    #[cfg(all(any(test, feature = "test-utils"), desktop))]
     pub async fn send_command(
         &self,
         mut command: ImportCommand,

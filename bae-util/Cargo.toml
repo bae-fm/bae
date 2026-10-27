@@ -39,8 +39,8 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 libc = "0.2"
 
 # Text encoding detection (src/text_encoding.rs) serves the import pipeline,
-# which a mobile build does not compile; the predicate is spelled as the code
-# that gates the module spells it.
+# which a mobile build does not compile; the predicate is the `desktop` cfg's
+# (build.rs), which gates the module.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 chardetng = "0.1"
 encoding_rs = "0.8"

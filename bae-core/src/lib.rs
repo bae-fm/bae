@@ -6,17 +6,17 @@ pub mod collections;
 #[doc(hidden)]
 pub mod config;
 pub mod credits;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod cue_flac;
 pub mod db;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
 pub mod diagnostics;
 pub mod history;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod identify;
 pub mod import;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod isrc;
 pub mod keys;
 pub mod library;
@@ -26,7 +26,7 @@ pub(crate) mod live_query;
 // the same predicate that gates `import`'s pipeline modules and `ebur128`
 // itself. Playback derives its gain from the stored measurements with plain
 // arithmetic, so mobile needs neither.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod loudness;
 pub mod mediums;
 pub mod migrations;
@@ -34,7 +34,7 @@ pub mod migrations;
 pub mod open_files_peak;
 pub mod people;
 pub mod playback;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod providers;
 pub mod queue;
 pub mod renderer;
@@ -49,7 +49,7 @@ pub mod sync;
 pub(crate) mod test_files;
 #[cfg(test)]
 pub(crate) mod test_gate;
-#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+#[cfg(all(test, desktop))]
 pub(crate) mod test_images;
 #[cfg(test)]
 pub(crate) mod test_logs;

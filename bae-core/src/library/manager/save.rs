@@ -489,7 +489,7 @@ fn pregap_frames(samples: Option<u64>) -> u64 {
     samples.unwrap_or(0)
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn unique_output_path(
     dir: &std::path::Path,
     stem: &str,

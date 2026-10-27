@@ -267,7 +267,7 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
     assert_eq!(json["step"]["step"], "validating_source_files");
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod identify_mirrors {
     use super::*;
     use bae_catalogs::catalog::Catalog;

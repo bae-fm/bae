@@ -7,7 +7,7 @@ use super::*;
 use crate::import::ReleaseRows;
 
 /// What a save writes over the release's rows.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) enum ReleaseEditWrite {
     /// The editable fields only: album title, credits and year, the pressing,
     /// and each track's title and credits. Mediums, places, roles and works
@@ -24,7 +24,7 @@ pub(crate) enum ReleaseEditWrite {
     },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl Database {
     /// Save an edit session: move the release and replace its records where
     /// `change` says (see [`super::records::set_records_on`]), then write
@@ -57,7 +57,7 @@ impl Database {
 /// Write `rows` over the release they name: its album's fields and credits,
 /// its pressing, its mediums and each track's place, title and credits, and
 /// its roles and works, every one the rows hold and no other.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn write_applied_rows_on(
     tx: &SqlContext<'_, '_>,
     rows: &ReleaseRows,

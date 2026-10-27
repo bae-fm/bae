@@ -5,7 +5,8 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# Sets the `desktop` cfg; see that file.
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
 build = "../bae-util/build.rs"
 
 [lib]
@@ -62,12 +63,11 @@ coreaudio-sys = "0.2"
 # AAudio output sink for the in-core decode path (src/playback/aaudio_output.rs).
 ndk = { version = "0.9", features = ["audio"] }
 
-# The import pipeline's dependencies. The predicate is the pipeline's own — a
-# mobile build is a sync/playback client and compiles none of this — and it is
-# spelled here exactly as the code that uses these crates spells it
-# (`cfg(not(any(target_os = "ios", target_os = "android")))`). Naming the desktop
-# targets positively instead would let a new non-mobile target compile the
-# pipeline while its dependencies stayed behind.
+# The import pipeline's dependencies. The predicate is the pipeline's own, the
+# `desktop` cfg's (bae-util/build.rs): a mobile build is a sync/playback client
+# and compiles none of this. Naming the desktop targets positively instead
+# would let a new non-mobile target compile the pipeline while its
+# dependencies stayed behind.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 lofty = "0.25"
 # A scanned file's name is matched against a sheet's or a tag's with its

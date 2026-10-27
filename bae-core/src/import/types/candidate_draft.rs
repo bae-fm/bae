@@ -199,7 +199,7 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
     /// Every artist credit the draft's album and track artists name, the
     /// album's first, then each track's own; picked library artists are not
     /// credits.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
         self.album_artist_assignments
             .iter()

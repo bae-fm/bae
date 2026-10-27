@@ -226,7 +226,7 @@ impl AppServices {
 
     /// The folder that failed validation the import pane looks into, as it
     /// changes; another folder is a new key on the same read.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn subscribe_invalid_candidate(
         &self,
         runtime_handle: &tokio::runtime::Handle,

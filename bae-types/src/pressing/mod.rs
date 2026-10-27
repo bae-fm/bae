@@ -251,7 +251,7 @@ impl Pressing {
 /// Whether two names are the same word. Compared character by character in
 /// lower case, so neither side is allocated and the accented names compare
 /// the way the unaccented ones do.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn same_name(a: &str, b: &str) -> bool {
     a.chars()
         .flat_map(char::to_lowercase)

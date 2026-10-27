@@ -24,7 +24,7 @@ impl Default for ImportStoragePreferences {
 impl super::Config {
     /// Where an import goes: to the cloud, pinned as chosen, when the choice is
     /// the cloud and the library has a cloud home; locally otherwise.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn import_destination(&self, storage_configured: bool) -> crate::import::ImportDestination {
         let storage = self.prefs.import_storage;
         if storage.cloud && storage_configured {

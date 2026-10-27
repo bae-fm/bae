@@ -12,17 +12,17 @@
 //!
 //! An import always lands as a local, playable release. An
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use crate::cue_flac::CueSheet;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use crate::db::DbTrack;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use bae_audio::ProbeResult;
 use bae_catalogs::catalog::Catalog;
 use serde::{Deserialize, Serialize};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod progress;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use progress::*;
 mod candidate_edit_field;
 pub use candidate_edit_field::{CandidateEditField, DraftFieldEdit, PressingFactEdit};
@@ -40,7 +40,7 @@ pub use candidate_draft::{
     CandidateDraft, CandidateTrack, CreditedRole, DraftTrack, GraphWork, LibraryDraft,
     LibraryTrack, ReleaseDraft, TrackBinding, WorkGraph, WorkPart,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use std::{path::PathBuf, sync::Arc};
 
 /// Whether a source is asked when the sources are asked together, and when it
@@ -99,7 +99,7 @@ pub fn is_the_only_asked_source(sources: &[CatalogAvailability], source: Catalog
 /// Wider than [`Catalog`]: fetching one release fetches supporting documents
 /// that belong to other entities — its release group, a Discogs master — and
 /// each is keyed by the entity it describes.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PayloadSource {
     /// A MusicBrainz release, by release id.
@@ -125,7 +125,7 @@ pub enum PayloadSource {
     Wikidata,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl PayloadSource {
     /// The stored `document` column value of a document a fetch missed.
     pub fn as_str(self) -> &'static str {
@@ -151,7 +151,7 @@ impl PayloadSource {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl std::str::FromStr for PayloadSource {
     type Err = String;
 
@@ -171,7 +171,7 @@ impl std::str::FromStr for PayloadSource {
 
 /// One document a metadata lookup returned, carrying the entity it describes so
 /// the walk can key it without re-reading it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourcePayload {
     pub source: PayloadSource,
@@ -179,7 +179,7 @@ pub struct SourcePayload {
     pub json: String,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl SourcePayload {
     pub fn new(source: PayloadSource, source_release_id: impl Into<String>, json: String) -> Self {
         Self {
@@ -309,7 +309,7 @@ impl PressingLink {
 /// One candidate's editable metadata, independent of the source that last
 /// populated it. The selected cover belongs to the draft; candidate files and
 /// mapping decisions do not.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateMetadataDraft {
     /// Ordered included tracks, each with audio and a required number.
@@ -327,7 +327,7 @@ pub struct CandidateMetadataDraft {
 /// Provider image bytes owned by the candidate metadata revision that fetched
 /// them: the remote cover's. Import reads these bytes; it never asks a
 /// provider for the cover again.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CandidatePreparedAssets {
     pub remote_cover: Option<bae_catalogs::remote_image::RemoteImage>,
@@ -336,7 +336,7 @@ pub struct CandidatePreparedAssets {
 /// Discogs' answer for the picture of one artist an import is about to
 /// create, fetched by that import before it writes anything. `Nothing` is a
 /// real answer: Discogs has no picture of that artist.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum DiscogsArtistImage {
     Image {
@@ -352,7 +352,7 @@ pub enum DiscogsArtistImage {
     },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl DiscogsArtistImage {
     pub fn discogs_artist_id(&self) -> &str {
         match self {
@@ -645,7 +645,7 @@ impl TrackArtistAssignments {
 /// One import track's metadata and the audio that supplies its samples.
 /// The metadata has the same shape whether the audio is a whole file or a
 /// track described by a CUE sheet.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub struct TrackFile {
     pub db_track: DbTrack,
@@ -654,7 +654,7 @@ pub struct TrackFile {
 
 /// The resolved audio source for an import track. CUE sources share their
 /// sheet's analysis and identify the playable track within it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub enum TrackAudio {
     Standalone {
@@ -669,14 +669,14 @@ pub enum TrackAudio {
 
 /// Parsed CUE sheet plus probed container analysis, shared across all tracks
 /// that live inside the same file.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug)]
 pub struct CueFlacAnalysis {
     pub cue_sheet: CueSheet,
     pub audio_files: Vec<CueAnalyzedAudioFile>,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl CueFlacAnalysis {
     /// The audio a `FILE` directive of the sheet names, as the scan resolved
     /// and probed it.
@@ -687,7 +687,7 @@ impl CueFlacAnalysis {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug)]
 pub struct CueAnalyzedAudioFile {
     pub file_reference: String,
@@ -702,7 +702,7 @@ pub struct CueAnalyzedAudioFile {
 /// work it does is fetching the Discogs pictures of the artists it creates.
 ///
 #[derive(Debug)]
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub struct ImportCommand {
     pub import_id: String,
     pub candidate_key: String,

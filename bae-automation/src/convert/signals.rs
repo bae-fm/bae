@@ -5,7 +5,7 @@
 use super::*;
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationLookupFailure = bae_core::signals::LookupFailure,
     from_core: pub(crate) fn,
     variants: {
@@ -16,7 +16,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationInternalFailure = bae_core::signals::InternalFailure,
     from_core: pub(crate) fn,
     fields: { detail },
@@ -25,7 +25,7 @@ mirror_struct! {
 impl AutomationBarcodeSignal {
     /// Not a copy: core keeps a code once per file it was read off, and this
     /// lists each code once.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn from_core(signal: bae_core::signals::BarcodeSignal) -> Self {
         use bae_core::signals::{BarcodeSignal, SourcedValue};
         match signal {
@@ -45,7 +45,7 @@ impl AutomationBarcodeSignal {
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationTextSignal = bae_core::signals::TextSignal,
     from_core: pub(crate) fn,
     variants: {
@@ -57,7 +57,7 @@ mirror_enum! {
 
 impl AutomationDiscIdSignal {
     /// Not a copy: the file each computed disc ID came from does not cross.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn from_core(signal: bae_core::signals::DiscIdSignal) -> Self {
         use bae_core::signals::DiscIdSignal;
         match signal {
@@ -74,21 +74,21 @@ impl AutomationDiscIdSignal {
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationCdProof = bae_core::signals::CdProof,
     from_core: pub(crate) fn,
     variants: { RipLog, AccurateRipReport, RipperSheet },
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationStoreMarker = bae_core::signals::StoreMarker,
     from_core: pub(crate) fn,
     variants: { ITunesPurchase, Bandcamp },
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationDownloadProof = bae_core::signals::DownloadProof,
     from_core: pub(crate) fn,
     variants: {
@@ -98,7 +98,7 @@ mirror_enum! {
 }
 
 impl AutomationAudioSource {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn from_core(source: bae_core::signals::AudioSource) -> Self {
         match source {
             bae_core::signals::AudioSource::CdRip { proof, file } => Self::CdRip {
@@ -113,7 +113,7 @@ impl AutomationAudioSource {
 }
 
 impl AutomationAudioOrigin {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn from_core(origin: bae_core::signals::AudioOrigin) -> Self {
         Self {
             source: origin.source.map(AutomationAudioSource::from_core),
@@ -124,7 +124,7 @@ impl AutomationAudioOrigin {
 
 impl AutomationSignals {
     /// Not a copy: the text pool does not cross.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn from_core(signals: bae_core::signals::Signals) -> Self {
         Self {
             origin: AutomationAudioOrigin::from_core(signals.origin),

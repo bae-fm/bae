@@ -184,7 +184,7 @@ impl LibraryManager {
 
     /// The library albums a parsed, non-blank query finds, as the album
     /// picker lists them: title, the album's credit line and year.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub async fn search_albums(
         &self,
         query: &crate::library::LibrarySearchQuery,

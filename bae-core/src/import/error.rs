@@ -6,7 +6,7 @@
 //! chain. `do_import`, the terminal consumer, is the only place that turns this
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use bae_catalogs::catalog::Catalog;
 
 /// Two exact provider identities that currently belong to different library
@@ -60,34 +60,34 @@ fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
 #[derive(Debug, thiserror::Error)]
 pub enum ImportError {
     /// Walking the candidate folder failed (I/O during the tree walk).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("folder scan failed: {0}")]
     Scan(#[from] crate::import::folder_scanner::FolderScanError),
 
     /// The folder is structurally unimportable (damaged audio, no valid
     /// audio). Typed reason reused from the scanner.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("folder cannot be imported: {0}")]
     InvalidFolder(#[from] crate::import::folder_scanner::InvalidReason),
 
     /// A track sheet is bound to audio that holds nothing bae can read.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("folder cannot be imported: {0}")]
     UnreadableAudio(#[from] crate::import::folder_scanner::UnreadableAudio),
 
     /// A MusicBrainz request failed. Network/Timeout/Provider{status}
     /// distinctions preserved from the wire.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("MusicBrainz request failed: {0}")]
     MusicBrainz(#[from] bae_catalogs::musicbrainz::MusicBrainzError),
 
     /// A Discogs request failed. InvalidApiKey/NotFound preserved.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("Discogs request failed: {0}")]
     Discogs(#[from] bae_catalogs::discogs::client::DiscogsError),
 
     /// A Discogs operation was requested but no API key is configured.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("Discogs API key not configured")]
     DiscogsNotConfigured,
 
@@ -97,13 +97,13 @@ pub enum ImportError {
     /// The field is `catalog`, not `source`: thiserror reserves a field
     /// literally named `source` for the error-chain source, which a `Catalog`
     /// (not an `Error`) can't be.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("{} release data cannot be mapped: {detail}", catalog.as_str())]
     SourceData { catalog: Catalog, detail: String },
 
     /// The release lists another number of tracks than the folder holds, so
     /// it cannot describe the folder's audio without adding or losing tracks.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("{folder_tracks} tracks in the folder, {release_tracks} on the release")]
     MetadataTrackCount {
         folder_tracks: u32,
@@ -114,20 +114,20 @@ pub enum ImportError {
     /// by Disc ID, carrier and lengths — and read as different tracks, so
     /// which of them the folder is a rip of is not known. `mediums` names
     /// every medium of those sets as the release numbers them, ascending.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("discs {mediums:?} of the release fit the folder's audio equally")]
     TiedMediums { mediums: Vec<u32> },
 
     /// Local file-tag evidence can't seed a file-metadata import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("file tags cannot be read: {detail}")]
     FileTags { detail: String },
 
     /// A file the import must read cannot be used: audio that will not decode,
     /// a codec bae can't play, bytes that could not be hashed, or audio a track
     /// named that is no longer in the folder.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("{detail}")]
     UnusableFile { detail: String },
 
@@ -140,12 +140,12 @@ pub enum ImportError {
     RemoteImage(#[from] bae_catalogs::remote_image::RemoteImageError),
 
     /// The selected local cover disappeared or could not be read.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("cover art failed: {detail}")]
     LocalCover { detail: String },
 
     /// verify_decode_on_import found tracks that would import but not play.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("decode verification failed for {} track(s): {}", broken.len(), broken.join("; "))]
     DecodeVerification { broken: Vec<String> },
 
@@ -154,7 +154,7 @@ pub enum ImportError {
     /// file, a full disk, a dropped network volume — and says nothing about
     /// the audio, unlike `DecodeVerification`: importing again once the source
     /// is readable is the remedy.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("the source audio for {track} could not be read: {error}")]
     SourceRead {
         track: String,
@@ -162,7 +162,7 @@ pub enum ImportError {
     },
 
     /// Candidate preparation is immutable from the moment import owns it.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("This release is being imported and can no longer be edited")]
     CandidateImportInProgress,
 
@@ -170,7 +170,7 @@ pub enum ImportError {
     /// run is queued for it, running, or writing what it found. The import
     /// would cancel the run and commit what the run is about to replace, so
     /// the candidate is left for the person to import once it is settled.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("This release is still being identified; import it once identification finishes")]
     CandidateBeingIdentified,
 
@@ -184,7 +184,7 @@ pub enum ImportError {
 
     /// A cancel reached an import that is already writing its release, which
     /// is one transaction and completes.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("This release is already being written to the library and can no longer be cancelled")]
     ImportWriting,
 
@@ -192,7 +192,7 @@ pub enum ImportError {
     /// or cannot be made: one of its folders changed or is gone, or the files
     /// of the folder they sit in go with another release or are still
     /// downloading.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("{reason}")]
     GroupingBlocked {
         reason: crate::import::grouping::GroupingBlock,
@@ -200,7 +200,7 @@ pub enum ImportError {
 
     /// The draft or edit does not shape into a savable one (the editor's
     /// typed error).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error(transparent)]
     Edit(#[from] crate::import::EditValidationError),
 
@@ -208,7 +208,7 @@ pub enum ImportError {
     /// the artist credits it resolves, upload_release). Never a library
     /// error that is itself an import error: that converts back to the
     /// import error it carries.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error(transparent)]
     Db(crate::library::LibraryError),
 
@@ -217,26 +217,26 @@ pub enum ImportError {
     /// offerable set that crosses to a UI is already filtered to what the sheet
     /// can use, so this is a folder that changed under the choice rather than a
     /// UI that offered something it should not have.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("that audio can no longer back this sheet: {detail}")]
     SheetBinding { detail: String },
 
     /// A watched root or a candidate path under one is spelled in a way the
     /// store refuses to key by: relative, climbing out of itself, or not the
     /// one canonical spelling.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("watched folder: {detail}")]
     WatchedFolder { detail: String },
 
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a
     /// broken invariant.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("folder watch failed: {detail}")]
     Watch { detail: String },
 
     /// Config/keyring plumbing failed (Discogs key store/read).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     #[error("configuration error: {detail}")]
     Config { detail: String },
 
@@ -249,7 +249,7 @@ pub enum ImportError {
 
 /// A write the import handle ran to completion on its own task did not report
 /// back: the task panicked, or the runtime is shutting down under it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl From<tokio::task::JoinError> for ImportError {
     fn from(error: tokio::task::JoinError) -> Self {
         Self::Internal {
@@ -258,7 +258,7 @@ impl From<tokio::task::JoinError> for ImportError {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl ImportError {
     /// A file-tag read that failed at the file itself, named by what was being
     /// done to it: `file_tags("open", path, error)` reads "failed to open
@@ -276,7 +276,7 @@ impl ImportError {
 
 /// A library error that is an import error is that import error again, so
 /// the two never wrap each other.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl From<crate::library::LibraryError> for ImportError {
     fn from(error: crate::library::LibraryError) -> Self {
         match error {
@@ -300,24 +300,24 @@ impl ImportError {
     /// has to say how it is shown.
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         use crate::ui::UiErrorCategory as C;
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         use bae_catalogs::discogs::client::DiscogsError;
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         use bae_catalogs::musicbrainz::MusicBrainzError;
         use bae_catalogs::remote_image::RemoteImageError;
         match self {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::Db(error) => error.category(),
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::ImportWriting => C::Import,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
             Self::FilesAlreadyImported { .. } => C::FilesAlreadyImported,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::MetadataTrackCount {
                 folder_tracks,
                 release_tracks,
@@ -325,14 +325,14 @@ impl ImportError {
                 folder_tracks: *folder_tracks,
                 release_tracks: *release_tracks,
             },
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::TiedMediums { mediums } => C::TiedMediums {
                 mediums: mediums.clone(),
             },
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::SourceData { .. } => C::ImportData,
             Self::CoverArt { .. } => C::ImportData,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::MusicBrainz(error) => match error {
                 MusicBrainzError::Other(_) => C::ImportData,
                 MusicBrainzError::Request(_) => C::Internal,
@@ -341,7 +341,7 @@ impl ImportError {
                 | MusicBrainzError::Timeout
                 | MusicBrainzError::Provider { .. } => C::Import,
             },
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::Discogs(error) => match error {
                 DiscogsError::Serialization(_) => C::ImportData,
                 DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
@@ -363,9 +363,9 @@ impl ImportError {
                 RemoteImageError::CacheTask { .. } => C::Internal,
             },
             Self::Internal { .. } => C::Internal,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::Config { .. } => C::Config,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             Self::Scan(_)
             | Self::InvalidFolder(_)
             | Self::UnreadableAudio(_)
@@ -383,7 +383,7 @@ impl ImportError {
     }
 }
 
-#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+#[cfg(all(test, desktop))]
 mod tests {
     use super::*;
     use bae_catalogs::musicbrainz::MusicBrainzError;

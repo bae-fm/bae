@@ -120,7 +120,7 @@ impl BridgeDiagnostics {
 
     /// [`Self::open_app`] with the fixture a debug UI test left at `fixture`
     /// written into the library before its services start.
-    #[cfg(all(debug_assertions, not(any(target_os = "ios", target_os = "android"))))]
+    #[cfg(all(debug_assertions, desktop))]
     pub(crate) fn open_app_on_fixture(
         &self,
         fixture: std::path::PathBuf,
@@ -483,7 +483,7 @@ fn install_logging(sinks: Vec<LogSink>) {
 /// The terminal sink of the desktop apps: every line printed to stdout when
 /// bae runs from a terminal, down to debug — a terminal run is someone
 /// watching everything, and `RUST_LOG` quiets it. Mobile has no terminal.
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(desktop)]
 fn terminal_log_sink() -> LogSink {
     LogSink::new(
         tracing_subscriber::fmt::layer()

@@ -6,14 +6,14 @@
 use super::*;
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationNotAskedReason = bae_core::identify::NotAskedReason,
     from_core: pub(crate) fn,
     variants: { LeftOut, NoCatalog },
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationLookupState = bae_core::identify::LookupView,
     from_core: pub(crate) fn,
     variants: {
@@ -27,14 +27,14 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationMediumConflict = bae_core::identify::MediumConflict,
     from_core: pub(crate) fn,
     variants: { CdRip, NotCdAudio },
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationFolderCheck = bae_core::identify::FolderCheck,
     from_core: pub(crate) fn,
     variants: {
@@ -44,14 +44,14 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationProviderCell = bae_core::identify::ProviderCell,
     from_core: pub(crate) fn,
     fields: { source: (into), lookup: (AutomationLookupState) },
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationSignalValueRow = bae_core::identify::SignalValueRow,
     from_core: pub(crate) fn,
     fields: {
@@ -62,7 +62,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationDiscIdStep = bae_core::identify::DiscIdStepView,
     from_core: pub(crate) fn,
     variants: {
@@ -74,7 +74,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationDiscIdRow = bae_core::identify::DiscIdRow,
     from_core: pub(crate) fn,
     fields: {
@@ -84,7 +84,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationBarcodeStep = bae_core::identify::BarcodeStepView,
     from_core: pub(crate) fn,
     variants: {
@@ -95,7 +95,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationIsrcStep = bae_core::identify::IsrcStepView,
     from_core: pub(crate) fn,
     variants: {
@@ -106,14 +106,14 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationCatalogCandidate = bae_core::identify::CatalogCandidateView,
     from_core: pub(crate) fn,
     fields: { value },
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationCatalogStep = bae_core::identify::CatalogStepView,
     from_core: pub(crate) fn,
     variants: {
@@ -127,7 +127,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationSearchStep = bae_core::identify::SearchStepView,
     from_core: pub(crate) fn,
     variants: {
@@ -139,7 +139,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     AutomationIdentifyRun = bae_core::identify::IdentifyRunView,
     from_core: pub(crate) fn,
     fields: {
@@ -154,7 +154,7 @@ mirror_struct! {
 
 impl AutomationIdentifyFailure {
     /// Names core's one `SourceFailure` payload as two fields.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn from_core(failure: bae_core::identify::IdentifyFailure) -> Self {
         use bae_core::identify::IdentifyFailure;
         match failure {
@@ -192,7 +192,7 @@ impl AutomationIdentifyFailure {
 }
 
 /// Moves each pair's release id inside its entry.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn automation_agreements(
     agreements: Vec<(String, bae_core::identify::RowAgreements)>,
 ) -> Vec<AutomationAgreements> {
@@ -227,7 +227,7 @@ fn automation_agreements(
 }
 
 /// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) fn automation_identify_state(
     state: bae_core::identify::IdentifyState,
 ) -> AutomationIdentifyState {

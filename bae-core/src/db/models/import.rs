@@ -149,7 +149,7 @@ pub struct DbCandidateImportPreparation {
 /// The exact candidate state a library import transaction is allowed to
 /// consume. The final write checks this inside the transaction before writing
 /// any library row.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub(crate) enum ImportCommitGuard {
     Candidate {
@@ -166,7 +166,7 @@ pub(crate) enum ImportCommitGuard {
     UncheckedTestSetup { content_hash: Option<String> },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl ImportCommitGuard {
     /// The folder hash of the candidate the import commits: what its artist
     /// decisions are stored under, and what this device records it imported.

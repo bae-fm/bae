@@ -1,7 +1,7 @@
 //! Where what extraction read came from: the surface a line of text was read
 //! off, and the file a barcode was read off.
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use super::candidate_text::Source;
 
 /// The surface a line of text was read off, which decides how ranking reads
@@ -57,7 +57,7 @@ impl std::str::FromStr for TextOrigin {
 }
 
 /// Extraction, which reads the sources, is desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl TextOrigin {
     /// The kind of surface `source` is, without its file.
     pub fn of_source(source: &Source) -> Self {

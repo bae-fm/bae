@@ -5,6 +5,9 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
 
 [lib]
 name = "bae_catalogs"
@@ -30,8 +33,8 @@ tracing = { workspace = true }
 tempfile = "3.8"
 
 # The catalog clients read releases into pressing values and compare their
-# words, and only the import pipeline asks a catalog anything; the predicate is
-# spelled as the code that gates the clients spells it.
+# words, and only the import pipeline asks a catalog anything; the predicate is the
+# `desktop` cfg's (bae-util/build.rs), which gates the clients.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 bae-types = { path = "../bae-types" }
 

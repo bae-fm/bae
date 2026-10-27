@@ -141,7 +141,7 @@ pub struct ReleaseEditTrackContext {
     pub position_text: String,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl ReleaseEditTrackContext {
     /// The file a CUE sheet carves this track from, when that one file is
     /// all it plays.
@@ -184,7 +184,7 @@ impl ReleaseEditTrackRun {
         }
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     fn into_tracks(self) -> Vec<ReleaseEditTrackContext> {
         match self {
             Self::Track(track) => vec![track],
@@ -197,7 +197,7 @@ impl ReleaseEditTrackSide {
     /// Lay out tracks in release order: a side per run of tracks on one side,
     /// and within it a run per file a sheet carves several consecutive tracks
     /// from; every other track is a run of its own.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn lay_out(
         tracks: impl IntoIterator<Item = (TrackSide, ReleaseEditTrackContext)>,
     ) -> Vec<Self> {
@@ -216,7 +216,7 @@ impl ReleaseEditTrackSide {
 
     /// Add the next track: onto the last run when a sheet carves both from
     /// the same file, else as a run of its own.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     fn append(&mut self, track: ReleaseEditTrackContext) {
         let carved_with = |source: &ReleaseEditTrackSource| {
             track
@@ -270,7 +270,7 @@ impl ReleaseEditDisplayContext {
 
     /// The same tracks at the places `positions` gives them, in release
     /// order, laid out again: what an applied catalog reads them as.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn placed(self, positions: impl IntoIterator<Item = TrackPosition>) -> Self {
         let tracks = self
             .sides
@@ -307,7 +307,7 @@ pub enum ReleaseEditLoadError {
 }
 
 impl ReleaseEditDisplayContext {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn from_raw(raw: &DbReleaseDetail) -> Result<Self, ReleaseEditLoadError> {
         let mut contexts = Vec::with_capacity(raw.tracks.len());
         for entry in &raw.tracks {

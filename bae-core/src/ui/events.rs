@@ -7,7 +7,7 @@ use super::*;
 /// runtime is when the subscriber looks.
 pub struct UiEvents {
     playback: tokio::sync::mpsc::UnboundedReceiver<crate::playback::PlaybackProgress>,
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     import_values: crate::import::candidate_runtime::RuntimeValuesWatch,
 }
 
@@ -15,7 +15,7 @@ impl UiEvents {
     pub(crate) fn of(app_services: &crate::library::AppServices) -> Self {
         Self {
             playback: app_services.subscribe_playback_progress(),
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             import_values: app_services.watch_import_runtime_values(),
         }
     }
@@ -24,12 +24,12 @@ impl UiEvents {
     /// is gone.
     pub async fn next(&mut self) -> Option<Vec<UiEvent>> {
         loop {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             let events: Vec<UiEvent> = tokio::select! {
                 progress = self.playback.recv() => playback_notice(progress?).into_iter().collect(),
                 values = self.import_values.next() => values?.into_iter().map(import_value).collect(),
             };
-            #[cfg(any(target_os = "ios", target_os = "android"))]
+            #[cfg(not(desktop))]
             let events: Vec<UiEvent> = playback_notice(self.playback.recv().await?)
                 .into_iter()
                 .collect();
@@ -51,7 +51,7 @@ fn playback_notice(progress: crate::playback::PlaybackProgress) -> Option<UiEven
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn import_value(value: crate::import::candidate_runtime::RuntimeValue) -> UiEvent {
     use crate::import::candidate_runtime::RuntimeValue;
     match value {

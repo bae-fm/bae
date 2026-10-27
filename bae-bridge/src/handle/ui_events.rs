@@ -26,10 +26,7 @@ pub(super) fn convert_ui_event(
         }
         #[cfg(feature = "desktop")]
         UiEvent::ImportsInFlight { count } => Some(BridgeUiEvent::ImportsInFlight { count }),
-        #[cfg(all(
-            not(feature = "desktop"),
-            not(any(target_os = "ios", target_os = "android"))
-        ))]
+        #[cfg(all(not(feature = "desktop"), desktop))]
         UiEvent::CandidateSignalsUpdated { .. }
         | UiEvent::ImportIdentificationProgress { .. }
         | UiEvent::ImportsInFlight { .. } => None,

@@ -228,7 +228,7 @@ pub enum UiEvent {
     /// which every row and both panes hold: OCR reports several times per
     /// candidate and nothing else on screen changes with it. `key` routes it to
     /// that candidate's form.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     CandidateSignalsUpdated {
         key: String,
         signals: crate::signals::Signals,
@@ -239,11 +239,11 @@ pub enum UiEvent {
     /// runtime's, not the list's — the sidebar is filtered, so a view counting
     /// the rows it holds would report a different, wrong total. `(0, 0)` is
     /// none running, which the header shows nothing for.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     ImportIdentificationProgress { identified: u32, total: u32 },
     /// How many imports are waiting or running, whoever started them. The
     /// sidebar header shows them, and a way to cancel them all, while there
     /// are any.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     ImportsInFlight { count: u32 },
 }

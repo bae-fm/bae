@@ -199,7 +199,7 @@ impl Database {
         self.inner.handle.set_host_secret(name, value)
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn delete_host_secret(&self, name: &str) -> Result<(), coven::KeyError> {
         self.inner.handle.delete_host_secret(name)
     }

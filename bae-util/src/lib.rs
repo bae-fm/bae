@@ -14,6 +14,6 @@ pub mod retry;
 pub mod server;
 pub mod session_cache;
 pub mod stored_image;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod text_encoding;
 pub mod worker_thread;

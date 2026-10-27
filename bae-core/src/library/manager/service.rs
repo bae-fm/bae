@@ -52,8 +52,7 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
         opening: impl Into<LibraryOpening>,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        providers: crate::providers::Providers,
+        #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
         let (max_uploads, max_downloads) = {
             let config = config_handle.config();
@@ -89,7 +88,7 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             remote_images,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             providers,
         ))
     }
@@ -106,8 +105,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        providers: crate::providers::Providers,
+        #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Self {
         Self::assemble(
             database,
@@ -118,7 +116,7 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             remote_images,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             providers,
         )
     }
@@ -134,21 +132,20 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        providers: crate::providers::Providers,
+        #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Self {
         let sync_status = SyncStatusState::new(&database);
         let sync = SyncController::new(database.clone(), diagnostics.clone(), clock.clone());
         let manager = LibraryManager {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             preparations: crate::import::CandidatePreparations::new(database.clone()),
             database,
             app_dir,
             config_handle,
             remote_images,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             providers,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             discogs_client: Arc::new(std::sync::Mutex::new(None)),
             clock,
             ids,
@@ -160,7 +157,7 @@ impl LibraryManager {
             sync_status,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
             downloads: crate::library::Downloads::new(),
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             outputs: crate::library::Outputs::new(),
             release_writes: Arc::default(),
             #[cfg(test)]
@@ -176,7 +173,7 @@ impl LibraryManager {
         self.spawn_queue_worker("download queue worker", |manager| async move {
             manager.run_download_worker().await;
         })?;
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         self.spawn_queue_worker("output queue worker", |manager| async move {
             manager.run_output_worker().await;
         })?;
@@ -280,7 +277,7 @@ impl LibraryManager {
     }
 
     /// Read the injected wall clock without handing its service to callers.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn now(&self) -> chrono::DateTime<chrono::Utc> {
         self.clock.now().into()
     }
@@ -299,7 +296,7 @@ impl LibraryManager {
         self.diagnostics.report_bug(operation, error);
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn search_musicbrainz(
         &self,
         params: bae_catalogs::musicbrainz::ReleaseSearchParams,
@@ -308,7 +305,7 @@ impl LibraryManager {
         self.providers.search_musicbrainz(params, priority).await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn lookup_musicbrainz_discid(
         &self,
         discid: &str,
@@ -325,7 +322,7 @@ impl LibraryManager {
             .await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn lookup_musicbrainz_isrcs(
         &self,
         isrcs: &[String],
@@ -338,7 +335,7 @@ impl LibraryManager {
 
     /// The Cover Art Archive's images of a MusicBrainz release, then of its
     /// group.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn musicbrainz_gallery(
         &self,
         release_id: &str,
@@ -352,7 +349,7 @@ impl LibraryManager {
             .await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn musicbrainz_group_gallery(
         &self,
         group_id: &str,
@@ -364,7 +361,7 @@ impl LibraryManager {
     }
 
     /// Every image one pick's releases offer, the primary's first.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn pick_gallery_covers(
         &self,
         primary: &crate::import::source_release::SourceRelease,
@@ -373,7 +370,7 @@ impl LibraryManager {
         self.providers.pick_gallery_covers(primary, partners).await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn fetch_remote_image(
         &self,
         url: &str,
@@ -384,7 +381,7 @@ impl LibraryManager {
         self.remote_images.fetch(url).await
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn fetch_required_remote_image(
         &self,
         url: &str,
@@ -504,12 +501,12 @@ impl LibraryManager {
     /// The export queue as it stands: each entry's state and whether the
     /// queue is paused. `AppServices::output_snapshot` and the storage
     /// inspector read it resolved against the library.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn output_queue(&self) -> crate::library::OutputQueueContents {
         self.outputs.contents()
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub fn subscribe_output_queue(
         &self,
     ) -> tokio::sync::watch::Receiver<crate::library::OutputQueueContents> {
@@ -572,10 +569,7 @@ mod tests {
 }
 
 /// The providers a library asks, for a test to seed their answers.
-#[cfg(all(
-    any(test, feature = "test-utils"),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils"), desktop))]
 mod test_access {
     impl super::LibraryManager {
         pub fn providers(&self) -> &crate::providers::Providers {

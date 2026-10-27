@@ -1,9 +1,9 @@
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use bae_catalogs::catalog::Catalog;
 
 /// Whether an import attaches its files for background upload. Every release's
 /// rows sync; a local import keeps its file paths only on this device.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportDestination {
     /// Files stay in place on this device; never uploaded.
@@ -16,7 +16,7 @@ pub enum ImportDestination {
 }
 
 /// User's cover art selection for an import.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CoverSelection {
     /// A catalog's image, and the catalog for attribution. The import
@@ -31,7 +31,7 @@ pub enum CoverSelection {
 }
 
 /// Progress updates during import
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub enum ImportProgress {
     /// A preparation step, before the running phases begin.
@@ -70,7 +70,7 @@ pub enum ImportProgress {
     },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl ImportProgress {
     /// The import this reports on.
     pub fn import_id(&self) -> &str {
@@ -89,7 +89,7 @@ impl ImportProgress {
 /// transition begins so the UI can name the work in progress. Every import is
 /// local-in-place: the source files are read and hashed where they sit, then
 /// each track is decoded to measure loudness, then the rows are written.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportPhase {
     /// Reading and hashing each source file before it is registered. Per-file
@@ -104,7 +104,7 @@ pub enum ImportPhase {
 
 /// Preparation steps, emitted by the import worker before the running phases
 /// ([`ImportPhase`]) begin, in this order.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrepareStep {
     /// Claimed, waiting for the worker.
@@ -118,7 +118,7 @@ pub enum PrepareStep {
 
 /// Which step of an import is in progress, for the candidate progress UI. The
 /// UI localizes each step; bae-core no longer renders display text for it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportStep {
     Preparing(PrepareStep),

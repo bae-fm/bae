@@ -9,7 +9,7 @@ use std::time::Duration;
 pub const USER_AGENT: &str = "bae/1.0 +https://github.com/bae-fm/bae";
 
 /// Total per-request ceiling for a bounded JSON API call.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub const API_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Bounded time to establish a TCP + TLS connection to any provider.
@@ -49,7 +49,7 @@ pub fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
 /// up to a second past the instant, never short of it. `None` when the
 /// response has no such header or one that says nothing readable; an instant
 /// already past asks for no wait.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub fn wait_until_epoch(headers: &reqwest::header::HeaderMap, header: &str) -> Option<Duration> {
     let epoch = headers
         .get(header)?
@@ -64,7 +64,7 @@ pub fn wait_until_epoch(headers: &reqwest::header::HeaderMap, header: &str) -> O
     wait_until_epoch_at(epoch, date, chrono::Utc::now())
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn wait_until_epoch_at(
     epoch: i64,
     date: Option<&str>,
@@ -101,21 +101,21 @@ fn http_date(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
 /// whole body. The MusicBrainz and Discogs clients hold these keyed by request
 /// URL, so asking a provider the same question twice in one session costs one
 /// round trip.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[derive(Clone)]
 pub struct CachedResponse {
     pub status: u16,
     pub body: String,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl CachedResponse {
     pub fn is_success(&self) -> bool {
         is_success(self.status)
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn is_success(status: u16) -> bool {
     (200..300).contains(&status)
 }
@@ -126,7 +126,7 @@ fn is_success(status: u16) -> bool {
 /// next caller asks again. A 401 answers a question about the key in the
 /// request's own headers, which no URL names, so it is not this URL's answer
 /// either.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub fn is_cacheable(status: u16) -> bool {
     is_success(status) || status == 404
 }
@@ -134,10 +134,7 @@ pub fn is_cacheable(status: u16) -> bool {
 /// A response's cache key: the request URL as reqwest renders it. A test puts a
 /// canned answer at this key and the request that looks for it computes the
 /// same one, so the two cannot drift apart over URL normalization.
-#[cfg(all(
-    any(test, feature = "test-utils"),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils"), desktop))]
 pub fn response_key(url: &str) -> String {
     reqwest::Url::parse(url)
         .expect("a provider request URL parses")
@@ -492,7 +489,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     fn a_wait_until_an_epoch_instant_is_measured_from_the_responses_clock() {
         let now = chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT")
             .unwrap()
