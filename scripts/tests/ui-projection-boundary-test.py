@@ -9,10 +9,15 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "scripts" / "ui-projection-boundary.py"
+# The check reads its sources through the module beside it, which a script run
+# from `scripts/` imports by name.
+sys.path.insert(0, str(MODULE_PATH.parent))
+import ui_view_sources as SOURCES  # noqa: E402
 SPEC = importlib.util.spec_from_file_location("ui_projection_boundary", MODULE_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"cannot load {MODULE_PATH}")
@@ -26,8 +31,8 @@ class UiProjectionBoundaryTests(unittest.TestCase):
         # The whole UI source trees: a row's children, and the views the
         # check holds open findings for, are declared all over them.
         for source_root, suffix in (
-            *((root, ".swift") for root in BOUNDARY.SWIFT_SOURCE_ROOTS),
-            (BOUNDARY.KOTLIN_SOURCE_ROOT, ".kt"),
+            *((root, ".swift") for root in SOURCES.SWIFT_SOURCE_ROOTS),
+            (SOURCES.KOTLIN_SOURCE_ROOT, ".kt"),
         ):
             for source in (ROOT / source_root).rglob(f"*{suffix}"):
                 target = destination / source.relative_to(ROOT)
@@ -404,6 +409,105 @@ struct FixtureScopedStoreReader: View {
                 [
                     f"{finding.path}: {finding.symbol} no longer reaches "
                     f"{finding.owner}; remove it from OPEN_CHILD_FINDINGS",
+                ],
+            )
+
+    KEYED_LIST = """
+import SwiftUI
+
+struct FixtureKeyedRow: View {
+    let row: FixtureProjection
+    var body: some View {
+        FixtureKeyedProgress(key: row.id)
+    }
+}
+
+struct FixtureKeyedList: View {
+    let rows: [FixtureProjection]
+    var body: some View {
+        ForEach(rows) { row in
+            FixtureKeyedRow(row: row)
+        }
+    }
+}
+
+struct FixtureKeyedProgress: View {
+    let key: String
+    @Environment(Importer.self)
+    private var importer: Importer?
+    @State private var runtime: BridgeCandidateRuntimeSnapshot?
+    var body: some View {
+        Text("")
+            .task(id: key) {
+                guard let importer else { return }
+                runtime = importer.candidateRuntime(key)
+            }
+    }
+}
+"""
+
+    def keyed_fixture(self, root: Path, source: str) -> Path:
+        relative = Path("bae-macos/bae/bae/Views/FixtureKeyedList.swift")
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source)
+        return relative
+
+    def keyed_findings(self, relative: Path, source: str) -> list[str]:
+        line = source.count("\n", 0, source.index("@Environment(Importer.self)")) + 1
+        under = "FixtureKeyedProgress (built under repeated FixtureKeyedRow)"
+        return [
+            f"{relative}:{line}: {under} reaches entity-data owner Importer",
+            f"{relative}:{line}: {under} takes Importer from the environment",
+        ]
+
+    def test_leaf_reading_its_own_keyed_stream_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            self.keyed_fixture(root, self.KEYED_LIST)
+            self.assertEqual(BOUNDARY.check(root), [])
+
+    def test_keyed_stream_read_by_a_key_not_passed_in_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            source = self.KEYED_LIST.replace(
+                "runtime = importer.candidateRuntime(key)",
+                'let other = "candidate"\n'
+                "                runtime = importer.candidateRuntime(other)",
+            )
+            relative = self.keyed_fixture(root, source)
+            self.assertEqual(
+                BOUNDARY.check(root), self.keyed_findings(relative, source)
+            )
+
+    def test_keyed_stream_owner_used_beyond_its_read_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            source = self.KEYED_LIST.replace(
+                "runtime = importer.candidateRuntime(key)",
+                "runtime = importer.candidateRuntime(key)\n"
+                "                _ = importer.candidateSignals(key)",
+            )
+            relative = self.keyed_fixture(root, source)
+            self.assertEqual(
+                BOUNDARY.check(root), self.keyed_findings(relative, source)
+            )
+
+    def test_keyed_stream_no_view_reads_fails(self) -> None:
+        unread = BOUNDARY.KeyedStream(
+            "Importer", "candidateSignals", "a stream no row's leaf reads"
+        )
+        with mock.patch.object(
+            BOUNDARY, "KEYED_STREAMS", (*BOUNDARY.KEYED_STREAMS, unread)
+        ):
+            self.assertEqual(
+                BOUNDARY.check(ROOT),
+                [
+                    "Importer.candidateSignals: no view under a repeated row "
+                    "reads it by its own key; remove it from KEYED_STREAMS"
                 ],
             )
 
