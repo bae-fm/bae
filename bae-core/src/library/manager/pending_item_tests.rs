@@ -34,38 +34,44 @@ fn subjects_name_what_they_are_before_a_library_opens() {
     );
 }
 
-/// A queued file is named by its release's album; once that release is gone
-/// it is a file of a deleted release, never a name made up for it.
+/// A file's record is named by the row it is the file of, as the library
+/// holds it now; a file no row here names is a file.
 #[test]
-fn an_upload_is_named_by_its_release_while_the_release_exists() {
-    let track = || UploadSubject::ReleaseFile {
-        release_id: "release".into(),
-        name: "01 Track.flac".into(),
-    };
-    let cover = || UploadSubject::Cover {
-        release_id: "release".into(),
+fn a_files_record_is_named_by_its_row() {
+    let named = |row| {
+        PendingItem::named(
+            coven::PendingRecord::new(
+                coven::PendingSubject::File {
+                    device: coven::DeviceId(2),
+                    file: coven::FileId(uuid::Uuid::from_u128(9)),
+                },
+                coven::PendingReason::NoStorage,
+            ),
+            row,
+        )
+        .subject
     };
     assert_eq!(
-        upload_name(track(), Some("Album Title".into())),
+        named(Some(FileRow::ReleaseFile {
+            file_name: "01 Track.flac".into(),
+            album_title: "Album Title".into(),
+        })),
         PendingSubjectName::ReleaseFile {
             file_name: "01 Track.flac".into(),
             album_title: "Album Title".into(),
         }
     );
     assert_eq!(
-        upload_name(cover(), Some("Album Title".into())),
+        named(Some(FileRow::Cover {
+            album_title: "Album Title".into()
+        })),
         PendingSubjectName::Cover {
             album_title: "Album Title".into()
         }
     );
-    for subject in [track(), cover()] {
-        assert_eq!(
-            upload_name(subject, None),
-            PendingSubjectName::DeletedReleaseFile
-        );
-    }
     assert_eq!(
-        upload_name(UploadSubject::ArtistImage, None),
-        PendingSubjectName::ArtistImage
+        named(Some(FileRow::DeletedReleaseFile)),
+        PendingSubjectName::DeletedReleaseFile
     );
+    assert_eq!(named(None), PendingSubjectName::File);
 }

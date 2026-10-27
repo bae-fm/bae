@@ -3,10 +3,10 @@
 
 use super::{BridgeError, BridgeMessage};
 
-/// coven's record of one abandoned attachment, opaque to the UI, which hands
-/// it back to `dismiss_abandoned_attachment`.
+/// The abandoned file, opaque to the UI, which hands it back to
+/// `dismiss_abandoned_attachment`.
 #[derive(Debug, uniffi::Object)]
-pub struct BridgeAbandonedRecord(pub(crate) coven::AbandonedAttachment);
+pub struct BridgeAbandonedRecord(pub(crate) coven::FileId);
 
 /// One upload that will never land: what it was and why, with the record
 /// dismissing it forgets.
@@ -24,10 +24,10 @@ pub struct BridgeAbandonedAttachment {
 impl BridgeAbandonedAttachment {
     fn from_core(item: bae_core::library::AbandonedItem) -> Self {
         Self {
-            id: item.record.file.0.to_string(),
+            id: item.file.0.to_string(),
             subject: super::subject_message(item.subject),
-            reason_key: bridge_abandon_reason_key(item.record.reason).to_string(),
-            record: std::sync::Arc::new(BridgeAbandonedRecord(item.record)),
+            reason_key: bridge_abandon_reason_key(item.reason).to_string(),
+            record: std::sync::Arc::new(BridgeAbandonedRecord(item.file)),
         }
     }
 }

@@ -1936,7 +1936,8 @@ Each one is listed under *Needs Attention* and marks the indicator, named as a
 pending record's file is (its file name and album, the cover of an album, an
 artist image or a profile picture, or a file of a deleted release), with why
 in plain words: replaced, removed, or deleted before its upload finished.
-*Dismiss* forgets it. The person's own change abandons too, when they cancel
+The list is one query over coven's abandoned attachments and the library's
+rows, in the order they were abandoned. *Dismiss* forgets it. The person's own change abandons too, when they cancel
 an upload, delete a release or album, merge an artist, or replace a cover,
 picture or avatar still uploading; bae dismisses those records as its write
 lands, since the person asked for it.
@@ -1953,14 +1954,20 @@ in plain words, with an action wherever the person can act. The error behind
 a record sits behind a disclosure, to copy: its text names every cause below
 it, with secrets and URLs already cut by coven. Only the process that met the
 failure holds that error, so a record read after a restart has no details and
-offers none. The details are never the record's internal debug text. This list
+offers none. The list follows those errors beside the records: a retry that
+fails for the same reason leaves its record as it was, and the list shows the
+error the retry met. The details are never the record's internal debug text. This list
 replaces any banner of blocked work: there is one place to look.
 
-Each record names what it is about in plain words. A file this device is
-uploading is named by its file name and album, read from the upload queue it
-is in; any other subject, such as an operation or the connection, by what it
-is. In the upload list itself a file's row already names it, so its record
-there says only why it waits.
+Each record names what it is about in plain words. A file is named by the row
+on this device whose file it is: a release file by its file name and album, a
+cover by its album, an artist image or a profile picture as such, and a file
+of a release that is gone as that; a file no row here names is a file. The
+list is one query over coven's pending records and the library's rows, so a
+record is named as its row stands in the same read. Any other subject, such as
+an operation or the connection, is named by what it is. In the upload list
+itself a file's row already names it, so its record there says only why it
+waits.
 
 **Files another device hasn't uploaded.** A row names its file only once
 storage holds it

@@ -280,6 +280,42 @@ async fn deleting_a_release_abandons_its_queued_uploads() {
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
 }
 
+/// An upload whose row a change this device didn't make deletes is listed as
+/// a file of a deleted release, and dismissing it forgets it.
+#[tokio::test]
+async fn an_upload_whose_row_is_gone_is_listed_until_dismissed() {
+    let (manager, _temp, _release, file_id) = queued_upload_fixture("gone").await;
+    manager.start().unwrap();
+    let mut values = manager.subscribe_sync_status_values();
+    manager
+        .database
+        .execute_for_test("DELETE FROM release_files WHERE id = ?1", vec![file_id])
+        .await
+        .unwrap();
+    let listed = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if !items.is_empty())),
+    )
+    .await
+    .expect("the abandoned upload is listed")
+    .unwrap()
+    .clone();
+    let Some(Ok(items)) = listed.abandoned else {
+        unreachable!("waited for a listed record");
+    };
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].subject, PendingSubjectName::DeletedReleaseFile);
+    assert_eq!(items[0].reason, coven::AbandonReason::RowGone);
+    manager.dismiss_abandoned_attachment(items[0].file).await.unwrap();
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if items.is_empty())),
+    )
+    .await
+    .expect("dismissing takes it off the list")
+    .unwrap();
+}
+
 /// An upload a change this device didn't make abandons is listed, named by
 /// its row and with why, until the person dismisses it.
 #[tokio::test]
@@ -307,8 +343,8 @@ async fn an_upload_abandoned_by_another_change_is_listed_until_dismissed() {
             album_title: "Test Album".into(),
         }
     );
-    assert_eq!(items[0].record.reason, coven::AbandonReason::Cleared);
-    manager.dismiss_abandoned_attachment(items[0].record.clone()).await.unwrap();
+    assert_eq!(items[0].reason, coven::AbandonReason::Cleared);
+    manager.dismiss_abandoned_attachment(items[0].file).await.unwrap();
     tokio::time::timeout(
         std::time::Duration::from_secs(10),
         values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if items.is_empty())),
@@ -852,27 +888,5 @@ async fn a_release_says_whether_this_device_can_play_it() {
     assert!(
         matches!(reason, PlaybackErrorReason::OriginalMissing),
         "got {reason:?}"
-    );
-}
-
-/// A file this device is uploading is named on the pending list by its file
-/// name and its album, not by coven's ids.
-#[tokio::test]
-async fn a_waiting_upload_is_named_by_its_file_and_album() {
-    let (manager, temp, _release, _file_id) = queued_upload_fixture("named").await;
-    // The upload can't read a source that moved, so it waits on the file.
-    std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-
-    let records = manager.pending().await.unwrap();
-    let items = manager.pending_items(records).await.unwrap();
-    assert!(
-        items.iter().any(|item| item.subject
-            == crate::library::PendingSubjectName::ReleaseFile {
-                file_name: "a.flac".into(),
-                album_title: "Test Album".into(),
-            }),
-        "the waiting upload is named by its file and album: {:?}",
-        items.iter().map(|item| &item.subject).collect::<Vec<_>>()
     );
 }

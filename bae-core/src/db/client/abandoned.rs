@@ -2,32 +2,46 @@
 //! rows took a newer change before their uploads completed, so no row ever
 //! named them.
 
+use super::file_row::{FileRowColumns, FILE_ROW_COLUMNS, FILE_ROW_JOINS};
 use super::*;
 
-/// What an abandoned attachment's row names, read when its record is listed.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum AbandonedRow {
-    /// A release file whose row is still in the library.
-    ReleaseFile {
-        file_name: String,
-        album_title: String,
-    },
-    /// A release's cover whose release is still in the library.
-    Cover { album_title: String },
-    /// A release file or cover whose release is gone.
-    DeletedReleaseFile,
-    /// An artist's image.
-    ArtistImage,
-    /// A person's profile picture.
-    Avatar,
+/// One abandoned attachment, read with the row it was attached to.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct AbandonedRow {
+    /// The file, which dismissing forgets.
+    pub(crate) file: coven::FileId,
+    pub(crate) reason: coven::AbandonReason,
+    /// The row it was attached to, as the library holds it now.
+    pub(crate) file_row: FileRow,
 }
 
 impl Database {
-    /// This device's abandoned attachments, live, oldest first.
-    pub(crate) fn subscribe_abandoned_attachments(
-        &self,
-    ) -> coven::LiveQuery<Vec<coven::AbandonedAttachment>> {
-        self.inner.handle.subscribe_abandoned_attachments()
+    /// This device's abandoned attachments, each with its row, live, in the
+    /// order they were abandoned.
+    pub(crate) fn subscribe_abandoned_rows(&self) -> coven::LiveQuery<Vec<AbandonedRow>> {
+        let query = abandoned_rows_query();
+        self.inner.handle.subscribe(move |sql| {
+            let rows = sql.query(&query, [], |row| {
+                Ok((
+                    row.get::<_, coven::FileId>(0)?,
+                    row.get::<_, coven::AbandonReason>(1)?,
+                    FileRowColumns::read(row, 2)?,
+                ))
+            })?;
+            rows.into_iter()
+                .map(|(file, reason, columns)| {
+                    let file_row = columns.file_row()?.ok_or_else(|| {
+                        DbError::Message(format!("abandoned file {file:?} names no row"))
+                    })?;
+                    Ok(AbandonedRow {
+                        file,
+                        reason,
+                        file_row,
+                    })
+                })
+                .collect::<Result<_, DbError>>()
+                .map_err(CovenError::from)
+        })
     }
 
     /// Forget the records of these abandoned files; ones already gone are
@@ -80,81 +94,12 @@ impl Database {
             tracing::error!(%error, ?files, "could not dismiss the abandonments a write of this device's made");
         }
     }
-
-    /// What each record's row names, in order. A table bae declares no file
-    /// on is a broken record.
-    pub(crate) async fn abandoned_rows(
-        &self,
-        records: &[coven::AbandonedAttachment],
-    ) -> Result<Vec<AbandonedRow>, DbError> {
-        let keys = records
-            .iter()
-            .map(|record| {
-                Ok((
-                    record.table.clone(),
-                    row_key_text(&record.table, &record.key)?,
-                ))
-            })
-            .collect::<Result<Vec<_>, DbError>>()?;
-        self.read(move |sql| {
-            keys.iter()
-                .map(|(table, key)| abandoned_row_on(&sql, table, key))
-                .collect()
-        })
-        .await
-    }
 }
 
-/// The text key of a row in one of bae's file tables, each keyed by one id.
-fn row_key_text(table: &str, key: &coven::RowKey) -> Result<String, DbError> {
-    match key.values() {
-        [rusqlite::types::Value::Text(id)] => Ok(id.clone()),
-        key => Err(DbError::Message(format!(
-            "abandoned attachment on {table} has unexpected key {key:?}"
-        ))),
-    }
-}
-
-fn abandoned_row_on(
-    sql: &SqlReadContext<'_>,
-    table: &str,
-    key: &str,
-) -> Result<AbandonedRow, DbError> {
-    Ok(match table {
-        "release_files" => sql
-            .query_row(
-                "SELECT f.original_filename, a.title FROM release_files f \
-                 JOIN releases r ON r.id = f.release_id \
-                 JOIN albums a ON a.id = r.album_id WHERE f.id = ?",
-                [key],
-                |row| {
-                    Ok(AbandonedRow::ReleaseFile {
-                        file_name: row.get(0)?,
-                        album_title: row.get(1)?,
-                    })
-                },
-            )
-            .optional()?
-            .unwrap_or(AbandonedRow::DeletedReleaseFile),
-        "covers" => sql
-            .query_row(
-                "SELECT a.title FROM releases r JOIN albums a ON a.id = r.album_id \
-                 WHERE r.id = ?",
-                [key],
-                |row| {
-                    Ok(AbandonedRow::Cover {
-                        album_title: row.get(0)?,
-                    })
-                },
-            )
-            .optional()?
-            .unwrap_or(AbandonedRow::DeletedReleaseFile),
-        "artist_images" => AbandonedRow::ArtistImage,
-        "people" => AbandonedRow::Avatar,
-        other => {
-            return Err(DbError::Message(format!(
-                "abandoned attachment on {other}, which carries no file"
-            )))
-        }
-    })
+/// Every abandoned attachment with the columns naming its row.
+pub(super) fn abandoned_rows_query() -> String {
+    format!(
+        "SELECT file.file, file.reason, {FILE_ROW_COLUMNS} \
+         FROM coven_abandoned AS file {FILE_ROW_JOINS} ORDER BY file.position"
+    )
 }

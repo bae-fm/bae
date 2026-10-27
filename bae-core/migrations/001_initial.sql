@@ -1311,6 +1311,11 @@ END;
 -- read joining coven's upload queue or pins reaches the file by its key.
 CREATE INDEX IF NOT EXISTS idx_release_files_coven_key ON release_files (coven_key(id));
 
+-- A release's key as coven's views name it, which is its cover's key too: a
+-- pending record or an abandoned attachment on a cover finds the cover's
+-- release by it.
+CREATE INDEX IF NOT EXISTS idx_releases_coven_key ON releases (coven_key(id));
+
 -- A pin beginning or ending on a release file moves its release's pinned
 -- count, in the transaction that changes the pin: this device's own write,
 -- another device's applied, or coven's own as a file is pinned, downloads,

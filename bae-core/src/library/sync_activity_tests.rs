@@ -116,12 +116,8 @@ fn failures_and_pending_records_need_attention() {
     let mut abandoned = status();
     abandoned.abandoned = Some(Ok(vec![crate::library::AbandonedItem {
         subject: crate::library::PendingSubjectName::ArtistImage,
-        record: coven::AbandonedAttachment {
-            table: "artist_images".into(),
-            key: coven::RowKey::from("artist"),
-            file: coven::FileId(uuid::Uuid::from_u128(1)),
-            reason: coven::AbandonReason::Replaced,
-        },
+        file: coven::FileId(uuid::Uuid::from_u128(1)),
+        reason: coven::AbandonReason::Replaced,
     }]));
     assert!(new(&abandoned).needs_attention());
     let mut abandoned_unread = status();

@@ -608,12 +608,9 @@ impl AppServices {
     /// list.
     pub async fn dismiss_abandoned_attachment(
         &self,
-        record: coven::AbandonedAttachment,
+        file: coven::FileId,
     ) -> Result<(), crate::library::LibraryError> {
-        self.inner
-            .manager
-            .dismiss_abandoned_attachment(record)
-            .await
+        self.inner.manager.dismiss_abandoned_attachment(file).await
     }
 
     /// Everything sync is doing now, live, for the activity indicator.

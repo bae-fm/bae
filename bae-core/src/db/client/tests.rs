@@ -259,6 +259,7 @@ mod artist_mode_tests;
 mod album_listing_tests;
 
 #[cfg(test)]
+mod file_row_tests;
 mod storage_listing_tests;
 
 #[cfg(test)]

@@ -2,27 +2,26 @@
 //! recognizes it, with why it waits and what they can do about it.
 
 use super::*;
-use crate::library::UploadSubject;
+use crate::db::{FileRow, PendingRow};
 
-/// What a pending record is about. A file this device is uploading is named
-/// by its place in the library; every other subject by what it is.
+/// What a pending record is about. A file is named by the row on this device
+/// whose file it is; every other subject by what it is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingSubjectName {
-    /// A file of a release this device is uploading.
+    /// A release file, by its name and its release's album.
     ReleaseFile {
         file_name: String,
         album_title: String,
     },
-    /// A release's cover this device is uploading.
+    /// A release's cover, by its release's album.
     Cover { album_title: String },
-    /// An artist's image this device is uploading.
+    /// An artist's image.
     ArtistImage,
-    /// A person's profile picture this device is uploading.
+    /// A person's profile picture.
     Avatar,
-    /// A file this device is uploading whose release was deleted.
+    /// A release file or cover whose row or release is gone.
     DeletedReleaseFile,
-    /// A file this device can't name: one another device uploads, which only
-    /// that device's queue knows.
+    /// A file no row on this device names.
     File,
     /// Edits made on this device, waiting to be sent.
     LocalChanges,
@@ -95,15 +94,19 @@ pub struct PendingItem {
 impl PendingItem {
     /// A record named before any library is open, as while restoring or
     /// joining: every subject but a file names itself, and a file is named
-    /// only by this device's upload queue, which doesn't exist yet.
+    /// only by its row, which no library holds yet.
     pub fn before_open(record: coven::PendingRecord) -> Self {
-        Self::named(record, |_, _| None)
+        Self::named(record, None)
     }
 
-    fn named(
-        record: coven::PendingRecord,
-        upload: impl Fn(coven::DeviceId, coven::FileId) -> Option<PendingSubjectName>,
-    ) -> Self {
+    /// A record as the library lists it: a file's named by its row.
+    fn listed(row: PendingRow, causes: &coven::PendingCauses) -> Self {
+        let mut record = row.record;
+        record.cause = causes.cause(&record);
+        Self::named(record, row.file_row)
+    }
+
+    fn named(record: coven::PendingRecord, file_row: Option<FileRow>) -> Self {
         use coven::PendingSubject as S;
         let wait = PendingWait::of(&record);
         let subject = match record.subject {
@@ -111,7 +114,7 @@ impl PendingItem {
             S::Slot(_) => PendingSubjectName::LibraryChanges,
             S::KeyCopy { .. } => PendingSubjectName::KeyCopy,
             S::Snapshot(_) => PendingSubjectName::Snapshot,
-            S::File { device, file } => upload(device, file).unwrap_or(PendingSubjectName::File),
+            S::File { .. } => file_row.map_or(PendingSubjectName::File, PendingSubjectName::from),
             S::Operation { kind, .. } => PendingSubjectName::Operation(kind),
             S::Retention { .. } => PendingSubjectName::Retention,
             S::Audience(coven::Audience::Store) => PendingSubjectName::LibraryData,
@@ -123,121 +126,70 @@ impl PendingItem {
     }
 }
 
-/// The name of a file in this device's upload queue, from what it is and the
-/// album title of the release it belongs to, when that release is still in the
-/// library.
-fn upload_name(subject: UploadSubject, album_title: Option<String>) -> PendingSubjectName {
-    match (subject, album_title) {
-        (UploadSubject::ReleaseFile { name, .. }, Some(album_title)) => {
-            PendingSubjectName::ReleaseFile {
-                file_name: name,
+/// A file named by the row it is the file of.
+impl From<FileRow> for PendingSubjectName {
+    fn from(row: FileRow) -> Self {
+        match row {
+            FileRow::ReleaseFile {
+                file_name,
                 album_title,
-            }
+            } => Self::ReleaseFile {
+                file_name,
+                album_title,
+            },
+            FileRow::Cover { album_title } => Self::Cover { album_title },
+            FileRow::DeletedReleaseFile => Self::DeletedReleaseFile,
+            FileRow::ArtistImage => Self::ArtistImage,
+            FileRow::Avatar => Self::Avatar,
         }
-        (UploadSubject::Cover { .. }, Some(album_title)) => {
-            PendingSubjectName::Cover { album_title }
-        }
-        (UploadSubject::ReleaseFile { .. } | UploadSubject::Cover { .. }, None)
-        | (UploadSubject::DeletedReleaseFile, _) => PendingSubjectName::DeletedReleaseFile,
-        (UploadSubject::ArtistImage, _) => PendingSubjectName::ArtistImage,
-        (UploadSubject::Avatar, _) => PendingSubjectName::Avatar,
     }
 }
 
 /// Keeps the sync status's pending list current: coven's pending records,
-/// named.
+/// each named by its row, with the error behind it while this process holds
+/// one. The records and the errors come apart: a retry that fails for the
+/// same reason holds a new error under an unchanged record.
 pub(super) struct PendingFollower {
     manager: LibraryManager,
-    records: coven::LiveQuery<Vec<coven::PendingRecord>>,
+    rows: coven::LiveQuery<Vec<PendingRow>>,
+    causes: tokio::sync::watch::Receiver<coven::PendingCauses>,
 }
 
 impl PendingFollower {
     pub(super) fn new(manager: LibraryManager) -> Self {
         Self {
-            records: manager.database.subscribe_pending(),
+            rows: manager.database.subscribe_pending_rows(),
+            causes: manager.database.subscribe_pending_causes(),
             manager,
         }
     }
 
     pub(super) async fn run(mut self) {
-        while let Some(records) = self.records.next().await {
-            let items = match records {
-                Ok(records) => self.manager.pending_items(records).await.map_err(|error| {
-                    warn!(%error, "could not name pending sync records");
-                    crate::ui::UiError::diagnostic(error.category(), error)
-                }),
-                Err(error) => {
-                    warn!(%error, "could not read pending sync records");
-                    let error = LibraryError::from(error);
-                    Err(crate::ui::UiError::diagnostic(error.category(), error))
+        let mut read: Option<Result<Vec<PendingRow>, crate::ui::UiError>> = None;
+        loop {
+            tokio::select! {
+                Some(rows) = self.rows.next() => {
+                    read = Some(rows.map_err(|error| {
+                        warn!(%error, "could not read pending sync records");
+                        let error = LibraryError::from(error);
+                        crate::ui::UiError::diagnostic(error.category(), error)
+                    }));
                 }
-            };
+                Ok(()) = self.causes.changed() => {}
+                else => return,
+            }
+            // Errors that change before the first records are read wait for
+            // them.
+            let Some(read) = &read else { continue };
+            let causes = self.causes.borrow_and_update();
+            let items = read.clone().map(|rows| {
+                rows.into_iter()
+                    .map(|row| PendingItem::listed(row, &causes))
+                    .collect()
+            });
+            drop(causes);
             self.manager.sync_status.set_pending(items);
         }
-    }
-}
-
-impl LibraryManager {
-    /// Each pending record, named. A file this device uploads is named from
-    /// its upload queue and its release's album; the queue is read only when
-    /// a record is about a file.
-    pub(crate) async fn pending_items(
-        &self,
-        records: Vec<coven::PendingRecord>,
-    ) -> Result<Vec<PendingItem>, LibraryError> {
-        let names_files = records
-            .iter()
-            .any(|record| matches!(record.subject, coven::PendingSubject::File { .. }));
-        let uploads = if names_files {
-            Some(self.upload_names().await?)
-        } else {
-            None
-        };
-        Ok(records
-            .into_iter()
-            .map(|record| {
-                PendingItem::named(record, |device, file| {
-                    uploads
-                        .as_ref()
-                        .expect("a file record reads the upload queue")
-                        .get(&(device, file))
-                        .cloned()
-                })
-            })
-            .collect())
-    }
-
-    /// Every file in this device's upload queue, by its uploader and id, with
-    /// its name.
-    async fn upload_names(
-        &self,
-    ) -> Result<HashMap<(coven::DeviceId, coven::FileId), PendingSubjectName>, LibraryError> {
-        let queue = self.database.outbox_queue().await?;
-        let releases = self
-            .database
-            .queued_releases(
-                queue
-                    .uploads
-                    .iter()
-                    .filter_map(|upload| upload.subject.release().map(str::to_string))
-                    .collect(),
-            )
-            .await?;
-        Ok(queue
-            .uploads
-            .into_iter()
-            .map(|upload| {
-                let album_title = upload
-                    .subject
-                    .release()
-                    .and_then(|release| releases.get(release))
-                    .map(|release| release.title.clone());
-                (
-                    (upload.upload.file.uploader(), upload.upload.file.id()),
-                    upload_name(upload.subject, album_title),
-                )
-            })
-            .collect())
     }
 }
 
