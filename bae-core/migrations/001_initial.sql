@@ -2397,6 +2397,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_standing (
     CHECK ((import IS NOT NULL) = (import_id IS NOT NULL))
 ) STRICT;
 
+-- The rows an import holds, which the count of imports in flight reads.
+CREATE INDEX IF NOT EXISTS idx_import_candidate_standing_import
+    ON import_candidate_standing (import) WHERE import IS NOT NULL;
+
 -- The identifications counted as one batch, for the count the import list
 -- draws: each candidate admitted since the batch opened, and whether its
 -- identification has ended. Every change to a candidate's identification

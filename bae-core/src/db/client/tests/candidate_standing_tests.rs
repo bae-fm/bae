@@ -265,3 +265,49 @@ async fn clearing_removes_every_standing() {
 
     assert!(db.load_candidate_standings().await.unwrap().is_empty());
 }
+
+/// How many imports the standings read counts in flight.
+async fn imports_in_flight(db: &super::super::Database) -> u32 {
+    db.subscribe_candidate_standings()
+        .next()
+        .await
+        .unwrap()
+        .imports_in_flight
+}
+
+/// The imports in flight are the rows an import holds, whatever it has
+/// reached: a candidate only being identified is not one, and an import's
+/// ending takes its row out.
+#[tokio::test]
+async fn the_imports_in_flight_are_the_rows_an_import_holds() {
+    let (db, _tmp) = empty_db().await;
+    for key in ["/music/One", "/music/Two", "/music/Three"] {
+        scanned(&db, key, &files_of(key)).await;
+        change(
+            &db,
+            key,
+            vec![IdentificationChange::Admit {
+                files: files_of(key),
+                admission: Admission::Automatic,
+            }],
+        )
+        .await;
+    }
+    assert_eq!(imports_in_flight(&db).await, 0);
+
+    db.claim_candidate_import("/music/One", "import-1", None)
+        .await
+        .unwrap();
+    db.claim_candidate_import("/music/Two", "import-2", None)
+        .await
+        .unwrap();
+    db.move_candidate_import("/music/Two", "import-2", Some(ImportStanding::Writing))
+        .await
+        .unwrap();
+    assert_eq!(imports_in_flight(&db).await, 2);
+
+    db.move_candidate_import("/music/One", "import-1", None)
+        .await
+        .unwrap();
+    assert_eq!(imports_in_flight(&db).await, 1);
+}

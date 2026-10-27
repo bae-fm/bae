@@ -201,17 +201,28 @@ fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32
     )?)
 }
 
-/// Every candidate's standing and the identification count, read together.
+/// How many candidates an import holds, whatever step it has reached.
+fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
+    Ok(sql.query_row(
+        "SELECT COUNT(*) FROM import_candidate_standing WHERE import IS NOT NULL",
+        [],
+        |row| row.get::<_, u32>(0),
+    )?)
+}
+
+/// Every candidate's standing and the two counts, read together.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct StandingsRead {
     pub(crate) standings: HashMap<String, StoredStanding>,
     pub(crate) identification_progress: (u32, u32),
+    pub(crate) imports_in_flight: u32,
 }
 
 fn load_standings_read_on(sql: &SqlReadContext<'_>) -> Result<StandingsRead, DbError> {
     Ok(StandingsRead {
         standings: load_standings_on(sql)?,
         identification_progress: load_identification_progress_on(sql)?,
+        imports_in_flight: load_imports_in_flight_on(sql)?,
     })
 }
 
@@ -483,7 +494,7 @@ impl Database {
         self.read(|sql| load_identification_progress_on(&sql)).await
     }
 
-    /// Every candidate's standing and the identification count, live.
+    /// Every candidate's standing and the two counts, live.
     pub(crate) fn subscribe_candidate_standings(&self) -> coven::LiveQuery<StandingsRead> {
         self.inner
             .handle
