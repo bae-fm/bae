@@ -42,7 +42,7 @@ impl QueryOne for Connection {
     }
 }
 
-#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+#[cfg(all(test, desktop))]
 impl QueryRows for Connection {
     fn query<T, P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>>(
         &self,

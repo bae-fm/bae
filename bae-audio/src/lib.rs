@@ -29,7 +29,7 @@ mod tests;
 pub const AVIO_BUFFER_SIZE: usize = 32768;
 
 pub use decode::byte_jump_keeps_place;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use decode::verification::decode_audio_to_verifying_sink;
 pub use decode::DecodeStart;
 pub use decode::{
@@ -38,7 +38,7 @@ pub use decode::{
 #[cfg(any(test, feature = "test-utils"))]
 pub use encode::encode_i32;
 pub use encode::{EncodeFormat, StreamEncodeFormat, StreamingEncoder, WriteSeek};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use probe::seek_landing_bytes;
 pub use probe::{probe_audio_from_path, ProbeResult};
 pub use resample::Resampler;

@@ -207,7 +207,7 @@ impl StreamDecodeParams {
         }
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn leading_silence_frames(&self) -> u64 {
         self.leading_silence_frames
     }
@@ -336,7 +336,7 @@ impl StreamDecodeParams {
     /// pass measures only stored audio. Blocking; run it off the async runtime.
     /// Each segment's decode announces its stream to `sink` before its packets
     /// (`DecodedSink::on_stream`), so a sink can tell the segments apart.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) fn verify_to_sink(
         &self,
         sink: &mut dyn bae_audio::DecodedSink,

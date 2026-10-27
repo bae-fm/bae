@@ -454,7 +454,7 @@ fn test_encode_mp3() {
 }
 
 #[test]
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 fn sink_decode_discards_an_invalid_terminal_mp3_packet_after_complete_audio() {
     init();
 

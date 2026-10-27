@@ -27,7 +27,7 @@ use seek::*;
 pub use seek::{byte_jump_keeps_place, DecodeStart};
 mod streaming;
 pub use streaming::decode_audio_streaming;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(super) mod verification;
 
 const CHANNEL_COUNT_ERROR: &str = "channel count must be greater than zero";
