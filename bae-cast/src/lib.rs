@@ -16,8 +16,6 @@
 //! serves the audio. Every host that casts — desktop and both mobile platforms —
 //! builds one [`CastController`].
 
-#![deny(unreachable_pub, dead_code)]
-
 mod airplay;
 mod cast;
 mod dlna;

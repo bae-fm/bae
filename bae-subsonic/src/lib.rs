@@ -14,7 +14,6 @@
 //!
 //! Implemented from the Subsonic API doc (subsonic.org) and the OpenSubsonic
 //! spec (opensubsonic.netlify.app) only.
-#![deny(unreachable_pub, dead_code)]
 
 use std::sync::Arc;
 

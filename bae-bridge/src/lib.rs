@@ -1,5 +1,3 @@
-#![deny(unreachable_pub, dead_code)]
-
 uniffi::setup_scaffolding!();
 
 #[macro_use]

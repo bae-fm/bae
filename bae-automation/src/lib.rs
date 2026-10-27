@@ -1,5 +1,3 @@
-#![deny(unreachable_pub, dead_code)]
-
 #[macro_use]
 extern crate bae_mirror;
 

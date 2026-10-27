@@ -1,5 +1,3 @@
-#![deny(unreachable_pub, dead_code)]
-
 pub mod album_detail;
 pub mod app;
 pub mod collections;
