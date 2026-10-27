@@ -125,9 +125,23 @@ pub(crate) fn changed_directories(
     )
 }
 
+/// The filesystem `path` is on, as `statfs` describes it, or `None` when the
+/// call fails.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn statfs(path: &Path) -> Option<libc::statfs> {
+    let c_path = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()).ok()?;
+    // SAFETY: `c_path` is a NUL-terminated path that outlives the call, and
+    // `stats` is a zeroed `statfs` the call fills in. Nothing is read from
+    // it unless the call reported success.
+    unsafe {
+        let mut stats: libc::statfs = std::mem::zeroed();
+        (libc::statfs(c_path.as_ptr(), &mut stats) == 0).then_some(stats)
+    }
+}
+
 #[cfg(target_os = "macos")]
 mod platform {
-    use super::VolumeKind;
+    use super::{statfs, VolumeKind};
     use std::path::Path;
 
     /// Darwin's `statfs` sets `MNT_LOCAL` for a volume on hardware attached to
@@ -144,22 +158,11 @@ mod platform {
             VolumeKind::Local
         }
     }
-
-    fn statfs(path: &Path) -> Option<libc::statfs> {
-        let c_path = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()).ok()?;
-        // SAFETY: `c_path` is a NUL-terminated path that outlives the call, and
-        // `stats` is a zeroed `statfs` the call fills in. Nothing is read from
-        // it unless the call reported success.
-        unsafe {
-            let mut stats: libc::statfs = std::mem::zeroed();
-            (libc::statfs(c_path.as_ptr(), &mut stats) == 0).then_some(stats)
-        }
-    }
 }
 
 #[cfg(target_os = "linux")]
 mod platform {
-    use super::VolumeKind;
+    use super::{statfs, VolumeKind};
     use std::path::Path;
 
     /// Linux has no "is this local" flag, so the filesystem's own magic number
@@ -189,15 +192,6 @@ mod platform {
             VolumeKind::Network
         } else {
             VolumeKind::Local
-        }
-    }
-
-    fn statfs(path: &Path) -> Option<libc::statfs> {
-        let c_path = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()).ok()?;
-        // SAFETY: as in the Darwin branch above.
-        unsafe {
-            let mut stats: libc::statfs = std::mem::zeroed();
-            (libc::statfs(c_path.as_ptr(), &mut stats) == 0).then_some(stats)
         }
     }
 }
