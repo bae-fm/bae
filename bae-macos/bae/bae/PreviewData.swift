@@ -76,6 +76,14 @@
         }
     }
 
+    /// A queue preview: the store the queue pane reads, and the `Queue` whose
+    /// commands and upcoming read answer out of an in-memory queue that pushes
+    /// into that store. Built by `PreviewData.echoingQueue`.
+    struct QueuePreviewFixture {
+        let store: PlaybackStore
+        let queue: Queue
+    }
+
     /// The in-memory queue behind `PreviewData.echoingQueue`: holds the two
     /// lanes, applies each command the way core would, and pushes the result
     /// into the store as a fresh snapshot. A dependency fake — the views under
@@ -380,7 +388,7 @@
             manualCount: Int,
             context: Bool = true,
             shuffled: Bool = false
-        ) -> (store: PlaybackStore, queue: Queue) {
+        ) -> QueuePreviewFixture {
             let store = PlaybackStore()
             let model = PreviewQueueModel(
                 store: store,
@@ -390,9 +398,9 @@
                 hasContext: context,
                 shuffled: shuffled
             )
-            return (
-                store,
-                Queue(
+            return QueuePreviewFixture(
+                store: store,
+                queue: Queue(
                     insertInQueue: { ids, index in
                         Task { @MainActor in
                             model.insert(trackIds: ids, at: Int(index))

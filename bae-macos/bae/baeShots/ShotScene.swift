@@ -151,12 +151,11 @@ struct ShotScene {
             id: "queue-pane-standard",
             size: CGSize(width: 420, height: 720)
         ) {
-            AnyView(
+            let fixture = QueueViewPreviewScene.fixture(for: .populated)
+            return AnyView(
                 QueueViewPreviewScene(width: 420)
-                    .environment(
-                        QueueViewPreviewScene.store(for: .populated)
-                    )
-                    .environment(Queue.stub())
+                    .environment(fixture.store)
+                    .environment(fixture.queue)
                     .environment(ImageStore.stub())
             )
         },
@@ -164,12 +163,11 @@ struct ShotScene {
             id: "queue-pane-narrow",
             size: CGSize(width: 320, height: 720)
         ) {
-            AnyView(
+            let fixture = QueueViewPreviewScene.fixture(for: .populated)
+            return AnyView(
                 QueueViewPreviewScene(width: 320)
-                    .environment(
-                        QueueViewPreviewScene.store(for: .populated)
-                    )
-                    .environment(Queue.stub())
+                    .environment(fixture.store)
+                    .environment(fixture.queue)
                     .environment(ImageStore.stub())
             )
         },

@@ -287,16 +287,16 @@ struct QueueView: View {
         @Environment(PlaybackStore.self)
         private var store
 
-        static func queue(for presentation: Presentation) -> (
-            store: PlaybackStore, queue: Queue
-        ) {
+        static func fixture(
+            for presentation: Presentation
+        ) -> QueuePreviewFixture {
             switch presentation {
             case .populated:
-                let (store, queue) = PreviewData.echoingQueue(
+                let fixture = PreviewData.echoingQueue(
                     manualCount: 2,
                     shuffled: true
                 )
-                store.play(
+                fixture.store.play(
                     track: BridgeNowPlayingTrack(
                         track: BridgePlayingTrack(
                             trackId: "preview-now-playing",
@@ -312,7 +312,7 @@ struct QueueView: View {
                         )
                     )
                 )
-                return (store, queue)
+                return fixture
             case .empty:
                 return PreviewData.echoingQueue(manualCount: 0, context: false)
             }
@@ -343,18 +343,18 @@ struct QueueView: View {
     }
 
     #Preview("With items") {
-        let (store, queue) = QueueViewPreviewScene.queue(for: .populated)
+        let fixture = QueueViewPreviewScene.fixture(for: .populated)
         QueueViewPreviewScene(width: 420)
-            .environment(store)
-            .environment(queue)
+            .environment(fixture.store)
+            .environment(fixture.queue)
             .environment(ImageStore.stub())
     }
 
     #Preview("Empty") {
-        let (store, queue) = QueueViewPreviewScene.queue(for: .empty)
+        let fixture = QueueViewPreviewScene.fixture(for: .empty)
         QueueViewPreviewScene(width: 420)
-            .environment(store)
-            .environment(queue)
+            .environment(fixture.store)
+            .environment(fixture.queue)
             .environment(ImageStore.stub())
     }
 #endif

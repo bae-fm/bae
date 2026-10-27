@@ -82,18 +82,17 @@ struct QueuePanel: View {
     /// next drag misbehaves.
     @MainActor
     private func queuePanelPreview(
-        store: PlaybackStore,
-        queue: Queue
+        _ fixture: QueuePreviewFixture
     ) -> some View {
         QueuePanel(
             onClose: {},
             onInsertTracks: { ids, index in
-                queue.insertInQueue(ids, UInt32(index))
+                fixture.queue.insertInQueue(ids, UInt32(index))
             }
         )
         .environment(Playback.stub())
-        .environment(store)
-        .environment(queue)
+        .environment(fixture.store)
+        .environment(fixture.queue)
         .environment(ImageStore.stub())
         .environment(UiStore())
         .environment(
@@ -115,11 +114,11 @@ struct QueuePanel: View {
     }
 
     #Preview("With items") {
-        let (store, queue) = PreviewData.echoingQueue(
+        let fixture = PreviewData.echoingQueue(
             manualCount: 2,
             shuffled: true
         )
-        store.play(
+        fixture.store.play(
             track: BridgeNowPlayingTrack(
                 track: BridgePlayingTrack(
                     trackId: "t-np",
@@ -135,14 +134,12 @@ struct QueuePanel: View {
                 )
             )
         )
-        return queuePanelPreview(store: store, queue: queue)
+        return queuePanelPreview(fixture)
     }
 
     #Preview("Empty") {
-        let (store, queue) = PreviewData.echoingQueue(
-            manualCount: 0,
-            context: false
+        queuePanelPreview(
+            PreviewData.echoingQueue(manualCount: 0, context: false)
         )
-        return queuePanelPreview(store: store, queue: queue)
     }
 #endif
