@@ -69,7 +69,7 @@ impl LibraryManager {
         initial: crate::library::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
         crate::library::LibraryPageWindows,
-        crate::library::QueueUpcomingSnapshot,
+        crate::db::QueueUpcomingRead,
     > {
         self.database.subscribe_queue_upcoming(initial)
     }

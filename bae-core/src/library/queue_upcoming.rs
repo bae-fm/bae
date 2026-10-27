@@ -19,6 +19,12 @@ pub struct QueueUpcomingSnapshot {
     /// The queue's revision the windows were read at. A UI shows them only
     /// while its queue value carries the same revision.
     pub revision: u64,
+    /// The length of the not-yet-played tail at the same read, so the windows
+    /// and the length the UI lays them out in always agree.
+    pub upcoming_total: u64,
+    /// Whether the queue changed since the read before: `false` when only the
+    /// windows moved, as when the UI scrolls.
+    pub queue_changed: bool,
     pub windows: Vec<QueueUpcomingWindow>,
 }
 

@@ -31,6 +31,7 @@
 pub(super) struct ReconfigurableLiveQueryEvents<Request, T> {
     events: tokio::sync::mpsc::UnboundedReceiver<(
         coven::LiveQueryRevision,
+        coven::LiveQueryCause,
         Result<T, crate::library::LibraryError>,
     )>,
     requests: coven::LiveQueryRequests<Request>,
@@ -47,10 +48,21 @@ where
 {
     /// The next result for the newest request, or `None` once the query ends.
     pub(super) async fn recv(&mut self) -> Option<Result<T, crate::library::LibraryError>> {
+        self.recv_with_cause().await.map(|(_, result)| result)
+    }
+
+    /// [`Self::recv`] with why the query ran: a new request, a write to what
+    /// it read, or both.
+    pub(super) async fn recv_with_cause(
+        &mut self,
+    ) -> Option<(
+        coven::LiveQueryCause,
+        Result<T, crate::library::LibraryError>,
+    )> {
         loop {
-            let (revision, result) = self.events.recv().await?;
+            let (revision, cause, result) = self.events.recv().await?;
             if self.newest.is_none_or(|newest| revision == newest) {
-                return Some(result);
+                return Some((cause, result));
             }
         }
     }
@@ -87,6 +99,7 @@ where
             if tx
                 .send((
                     revision,
+                    event.cause,
                     event.result.map_err(crate::library::LibraryError::from),
                 ))
                 .is_err()

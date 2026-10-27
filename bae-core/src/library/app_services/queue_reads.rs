@@ -28,8 +28,10 @@ impl AppServices {
     }
 
     /// The context's upcoming tail, read in the windows the subscription is
-    /// asked for — none until the first [`LiveRead::set`]. One query serves
-    /// every window; a new window set points it at the new windows.
+    /// asked for — none until the first [`LiveRead::set`] — with the tail's
+    /// length, and whether the queue changed since the value before or only
+    /// the windows moved. One query serves every window; a new window set
+    /// points it at the new windows.
     ///
     /// [`LiveRead::set`]: crate::library::LiveRead::set
     pub fn subscribe_queue_upcoming(&self) -> crate::library::QueueUpcomingSubscription {
@@ -48,9 +50,15 @@ impl AppServices {
                 );
                 loop {
                     tokio::select! {
-                        event = query.recv() => {
-                            let Some(result) = event else { return };
-                            if tx.send(result).is_err() { return; }
+                        event = query.recv_with_cause() => {
+                            let Some((cause, result)) = event else { return };
+                            let value = result.map(|read| crate::library::QueueUpcomingSnapshot {
+                                revision: read.revision,
+                                upcoming_total: read.upcoming_total,
+                                queue_changed: !matches!(cause, coven::LiveQueryCause::Request),
+                                windows: read.windows,
+                            });
+                            if tx.send(value).is_err() { return; }
                         }
                         changed = windows.changed() => {
                             if changed.is_err() { return; }

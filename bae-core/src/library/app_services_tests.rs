@@ -224,6 +224,8 @@ async fn queue_upcoming_moves_its_windows_in_place() {
         1,
         "the earlier window is no longer read"
     );
+    assert!(!moved.queue_changed, "only the windows moved");
+    assert_eq!(moved.upcoming_total, 11);
     assert_eq!(
         window_track_ids(&moved),
         vec![vec![track_ids[5].as_str(), track_ids[6].as_str()]]
@@ -249,6 +251,10 @@ async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
         restamped.windows, first.windows,
         "the windows' entries are unchanged"
     );
+    assert!(
+        restamped.queue_changed,
+        "the queue changed under the windows"
+    );
 
     // Dropping the context empties the tail the windows slice.
     services.playback_clear_playing_from();
@@ -257,6 +263,7 @@ async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
     })
     .await;
     assert!(cleared.revision > queue.revision);
+    assert_eq!(cleared.upcoming_total, 0);
 }
 
 /// A library release's re-identify session keeps its choices in core: each

@@ -36,7 +36,7 @@ pub(crate) use client::{
 pub use client::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
 };
-pub(crate) use client::{OutboxDisplayContext, OutboxDisplayRequest};
+pub(crate) use client::{OutboxDisplayContext, OutboxDisplayRequest, QueueUpcomingRead};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

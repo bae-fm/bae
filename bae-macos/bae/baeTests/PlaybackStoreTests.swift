@@ -123,6 +123,8 @@ private final class UpcomingFeed: @unchecked Sendable {
     func deliver(revision: UInt64, offset: UInt64, entryId: String) {
         let snapshot = BridgeQueueUpcomingSnapshot(
             revision: revision,
+            upcomingTotal: offset + 1,
+            queueChanged: false,
             windows: [
                 BridgeQueueUpcomingWindow(
                     window: BridgeLibraryPageWindow(offset: offset, limit: 1),

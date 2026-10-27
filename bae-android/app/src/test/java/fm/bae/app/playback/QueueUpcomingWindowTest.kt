@@ -129,7 +129,13 @@ class QueueUpcomingWindowTest {
     private class UpcomingFeed {
         private companion object {
             /** Wakes a waiting read so it can fail; never applied. */
-            val PLACEHOLDER = BridgeQueueUpcomingSnapshot(revision = 0uL, windows = emptyList())
+            val PLACEHOLDER =
+                BridgeQueueUpcomingSnapshot(
+                    revision = 0uL,
+                    upcomingTotal = 0uL,
+                    queueChanged = false,
+                    windows = emptyList(),
+                )
         }
 
         var opened = 0
@@ -175,6 +181,8 @@ class QueueUpcomingWindowTest {
             values.trySend(
                 BridgeQueueUpcomingSnapshot(
                     revision = revision,
+                    upcomingTotal = offset.toULong() + 1uL,
+                    queueChanged = false,
                     windows =
                         listOf(
                             BridgeQueueUpcomingWindow(

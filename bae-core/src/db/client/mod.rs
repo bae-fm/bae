@@ -106,6 +106,7 @@ mod playback_queue_reads;
 #[cfg(desktop)]
 mod source_releases;
 pub(crate) use files::{OutboxDisplayContext, OutboxDisplayRequest};
+pub(crate) use playback_queue_reads::QueueUpcomingRead;
 mod release;
 pub(crate) use release::ReleaseMetadataRows;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

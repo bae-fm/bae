@@ -30,10 +30,7 @@ impl Database {
     pub(crate) fn subscribe_queue_upcoming(
         &self,
         initial: crate::library::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
-        crate::library::QueueUpcomingSnapshot,
-    > {
+    ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, QueueUpcomingRead> {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, |windows, sql| {
@@ -134,12 +131,7 @@ fn queue_value_on(
                 "LIMIT ?2",
                 params![cursor, crate::queue::QUEUE_UPCOMING_WINDOW as i64],
             )?;
-            let upcoming_total: i64 = sql.query_row(
-                "SELECT count(*) FROM playback_queue_entries \
-                 WHERE lane = 'context' AND position > ?",
-                [cursor],
-                |row| row.get(0),
-            )?;
+            let upcoming_total = upcoming_total_on(sql, cursor)?;
             let has_previous: bool = sql.query_row(
                 "SELECT EXISTS (SELECT 1 FROM playback_queue_entries \
                  WHERE lane = 'context' AND position < ?)",
@@ -163,7 +155,7 @@ fn queue_value_on(
                     source_title,
                     shuffled,
                     upcoming,
-                    upcoming_total: upcoming_total as u64,
+                    upcoming_total,
                 }),
                 has_previous,
             )
@@ -186,7 +178,7 @@ fn queue_value_on(
 fn queue_upcoming_on(
     sql: &SqlReadContext<'_>,
     windows: &crate::library::LibraryPageWindows,
-) -> Result<crate::library::QueueUpcomingSnapshot, DbError> {
+) -> Result<QueueUpcomingRead, DbError> {
     let head = queue_head_on(sql)?;
     let windows = windows
         .iter()
@@ -210,8 +202,31 @@ fn queue_upcoming_on(
             })
         })
         .collect::<Result<_, DbError>>()?;
-    Ok(crate::library::QueueUpcomingSnapshot {
+    Ok(QueueUpcomingRead {
         revision: head.revision,
+        upcoming_total: match head.context {
+            None => 0,
+            Some((_, _, cursor)) => upcoming_total_on(sql, cursor)?,
+        },
         windows,
     })
+}
+
+/// How many of the context lane's tracks come after its playing one.
+fn upcoming_total_on(sql: &SqlReadContext<'_>, cursor: i64) -> Result<u64, DbError> {
+    let total: i64 = sql.query_row(
+        "SELECT count(*) FROM playback_queue_entries WHERE lane = 'context' AND position > ?",
+        [cursor],
+        |row| row.get(0),
+    )?;
+    Ok(total as u64)
+}
+
+/// One read of the context lane's upcoming windows: the queue revision it was
+/// read at, the tail's length then, and each window's entries.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct QueueUpcomingRead {
+    pub revision: u64,
+    pub upcoming_total: u64,
+    pub windows: Vec<crate::library::QueueUpcomingWindow>,
 }
