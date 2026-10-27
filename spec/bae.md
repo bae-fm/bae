@@ -1734,7 +1734,7 @@ and an approval would strand a person whose other devices are all lost. The
 tablet gets the code one of three ways:
 
 - **scanning** the QR code another of her devices shows, drawn large enough
-  for a phone's camera to read from a Mac's screen at 25 to 30 cm, and for a
+  for a phone's camera to read from a Mac's screen at 25 to 45 cm, and for a
   Mac's camera to read from a phone's at 20 to 25 cm, even when it carries
   her S3 key;
 - **iCloud Keychain**, on Apple devices: the first screen lists the restore
@@ -1778,9 +1778,10 @@ current code to save, and leaves the entry for her to delete
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 
 **The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
-also needs Carol's S3 access key. The QR code one of her own devices shows
-carries that key beside the code, so scanning it is enough. A typed code asks
-for the key separately.
+also needs Carol's S3 access key. The QR code one of her own devices shows is
+her restore code with that key inside it, so scanning it is enough
+([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
+The code to type holds no key, and asks for it separately.
 
 **Where the code shows.** The apps call the restore code the *recovery code*.
 Carol adds a device from **Add Device…** under her own row in People, shown

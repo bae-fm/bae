@@ -3,7 +3,6 @@ package fm.bae.app.ui.components
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.google.zxing.qrcode.encoder.Encoder
-import java.util.Base64
 import java.util.Random
 import kotlin.math.cos
 import kotlin.math.exp
@@ -145,12 +144,11 @@ internal data class MacQrDisplay(
 
 /**
  * Codes as dense as bae shows, from synthetic data: coven's frame layout with
- * random bytes, base32 encoded with its prefix, and an S3 location detected
- * at setup, which carries its full settings.
+ * random bytes, base32 encoded with its prefix, for an S3 location detected
+ * at setup, which carries its full settings, and the member's S3 key.
  */
 internal object DenseCodes {
     private const val BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-    private const val HEX = "0123456789abcdef"
 
     // Frame prefix (kind, format version, length), store id and the trailing CRC-32C.
     private const val FRAME_BYTES = 7 + 16 + 4
@@ -163,33 +161,23 @@ internal object DenseCodes {
     // id, inviting writer, read-through slot, storage length.
     private const val INVITE_MATERIAL_BYTES = 4 + 12 + 1 + 4 + 5 + 1 + 16 + 16 + 32 + 16 + 8 + 8 + 4
 
-    private const val LOCATION =
-        """{"S3":{"bucket":"music-library","region":"us-east-1","endpoint":"http://192.168.1.20:9000/",""" +
-            """"profile":{"Custom":{"signing":"AwsSigV4","single_put":"IfNoneMatch",""" +
-            """"copy_publication":{"Multipart":"CloudflareIfNoneMatch"},"multipart_timestamp":"Start",""" +
-            """"checksums":"Absent","listing":"V1","revision":"ETag","response_headers":"S3",""" +
-            """"request_checksums":false}},"prefix":""}}"""
+    // The location as coven packs it (coven format.md D13): the S3 tag, bucket
+    // "music-library", region "us-east-1", endpoint "http://192.168.1.20:9000/",
+    // custom settings in two bytes, and the bucket's root as base prefix.
+    private const val LOCATION_BYTES = 1 + (4 + 13) + (4 + 9) + (1 + 4 + 25) + (1 + 1 + 2) + 4
 
-    /** A restore code beside this device's S3 key, as the Add Device QR carries it. */
+    // An access key id of 32 characters and a secret of 64, each with its length.
+    private const val KEY_BYTES = 4 + 32 + 4 + 64
+
+    /** A restore code holding this device's S3 key, as the Add Device QR shows it. */
     fun restoreCodeWithKey(random: Random): String =
-        "CVR1-" + base32(random, FRAME_BYTES + RESTORE_MATERIAL_BYTES + LOCATION.length) + "." +
-            Base64.getUrlEncoder().withoutPadding().encodeToString(key(random).toByteArray())
+        "CVR1-" + base32(random, FRAME_BYTES + RESTORE_MATERIAL_BYTES + LOCATION_BYTES + 1 + KEY_BYTES)
 
     /** An in-person invite carrying the invitee's S3 key. */
-    fun inviteWithKey(random: Random): String {
-        val storage = """{"S3":{"invitation":{"location":$LOCATION,"acceptance":"Granted"},"credentials":${key(random)}}}"""
-        return "CVI1-" + base32(random, FRAME_BYTES + INVITE_MATERIAL_BYTES + storage.length)
-    }
-
-    private fun key(random: Random) = """{"access_key_id":"${hex(random, 32)}","secret_access_key":"${hex(random, 64)}"}"""
+    fun inviteWithKey(random: Random): String = "CVI1-" + base32(random, FRAME_BYTES + INVITE_MATERIAL_BYTES + LOCATION_BYTES + KEY_BYTES)
 
     private fun base32(
         random: Random,
         bytes: Int,
     ) = String(CharArray((bytes * 8 + 4) / 5) { BASE32[random.nextInt(BASE32.length)] })
-
-    private fun hex(
-        random: Random,
-        length: Int,
-    ) = String(CharArray(length) { HEX[random.nextInt(HEX.length)] })
 }

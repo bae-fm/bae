@@ -27,7 +27,6 @@ import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.decodeCodeInfo
-import uniffi.bae_bridge.readScannedCode
 
 private const val TAG = "bae.OnboardingFlow"
 private val logger = BaeLogger(TAG)
@@ -60,13 +59,12 @@ internal sealed interface OnboardingStep {
 
     /**
      * The person's own restore code, read; S3 asks for its access key before
-     * restoring unless [s3Credentials] came beside the code from the person's
-     * own device.
+     * restoring unless the code holds it, as one from the person's own device
+     * does.
      */
     data class Restore(
         val code: String,
         val metadata: BridgeCodeMetadata,
-        val s3Credentials: BridgeS3Credentials?,
         override val entry: CodeEntry,
     ) : CodeRead,
         OnboardingStep
@@ -104,25 +102,24 @@ internal sealed interface JoinStart {
 
 /**
  * What a code read for [entry] asks of the person: the person's own restore
- * code restores, with any S3 key that came beside it; an invite joins the
- * library it names. A restore over this device's copy takes no invite: the
- * code goes to the restore, and core says so.
+ * code restores; an invite joins the library it names. A restore over this
+ * device's copy takes no invite: the code goes to the restore, and core says
+ * so.
  */
 internal fun codeReadStep(
     code: String,
     info: BridgeCodeInfo,
-    s3Credentials: BridgeS3Credentials?,
     entry: CodeEntry,
 ): OnboardingStep.CodeRead =
     when (info) {
         is BridgeCodeInfo.Restore -> {
-            OnboardingStep.Restore(code, info.metadata, s3Credentials, entry)
+            OnboardingStep.Restore(code, info.metadata, entry)
         }
 
         is BridgeCodeInfo.Invite -> {
             when (entry) {
                 is RestoreOver -> {
-                    OnboardingStep.Restore(code, info.invite.metadata, s3Credentials, entry)
+                    OnboardingStep.Restore(code, info.invite.metadata, entry)
                 }
 
                 CodeEntry.NewDevice -> {
@@ -182,17 +179,16 @@ internal class OnboardingFlow(
 
     /**
      * Read [text], scanned or typed on [from], and move to what its code asks
-     * of the person. A scan from the person's own device can carry their S3
-     * key beside the code.
+     * of the person. A code from the person's own device holds their S3 key.
      */
     fun enter(
         from: OnboardingStep.EnterCode,
         text: String,
     ) {
-        val (scanned, info) =
+        val code = text.trim()
+        val info =
             try {
-                val scanned = readScannedCode(text)
-                scanned to decodeCodeInfo(scanned.code)
+                decodeCodeInfo(code)
             } catch (e: BridgeException) {
                 logger.warning("the entered code is neither a restore code nor an invite", e)
                 error = DisplayError(context.getString(R.string.onboarding_code_invalid))
@@ -210,7 +206,7 @@ internal class OnboardingFlow(
             return
         }
         error = null
-        when (val read = codeReadStep(scanned.code, info, scanned.s3Credentials, from.entry)) {
+        when (val read = codeReadStep(code, info, from.entry)) {
             // An invite joins at once: it carries the person's name.
             is OnboardingStep.Invite -> join(read)
 

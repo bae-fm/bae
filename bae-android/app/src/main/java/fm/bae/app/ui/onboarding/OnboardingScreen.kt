@@ -244,11 +244,12 @@ internal fun RestoreForm(
 ) {
     var accessKeyId by remember { mutableStateOf("") }
     var secretAccessKey by remember { mutableStateOf("") }
-    val needsKey = step.metadata.provider == BridgeCloudProvider.S3 && step.s3Credentials == null
+    val s3 = step.metadata.provider == BridgeCloudProvider.S3
+    val needsKey = s3 && !step.metadata.carriesS3Key
     val text = RestoreText.of(step.entry)
     OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
         LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))
-        if (step.s3Credentials != null) {
+        if (s3 && step.metadata.carriesS3Key) {
             Text(
                 text = stringResource(R.string.onboarding_s3_key_scanned),
                 style = ThemeText.detail.style,
@@ -270,9 +271,7 @@ internal fun RestoreForm(
         }
         PrimaryButton(
             onClick = {
-                onRestore(
-                    step.s3Credentials ?: if (needsKey) BridgeS3Credentials(accessKeyId, secretAccessKey) else null,
-                )
+                onRestore(if (needsKey) BridgeS3Credentials(accessKeyId, secretAccessKey) else null)
             },
             enabled = !needsKey || (accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty()),
             modifier = Modifier.width(actionWidth),
@@ -463,6 +462,7 @@ private fun OnboardingProgressWaitingPreview() {
                                                     accountLabel = "person@example.com",
                                                 ),
                                             oauthAccess = null,
+                                            carriesS3Key = false,
                                         ),
                                     libraryName = "Household",
                                     invitee = "Dan",

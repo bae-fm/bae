@@ -212,6 +212,9 @@ pub enum LibraryError {
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
+    /// The restore code coven made for the Add Device QR code doesn't decode.
+    #[error("the restore code for the QR code does not decode: {0}")]
+    TransferCode(#[source] coven::CodeError),
     /// An invite could no longer be cancelled: approval of its person has
     /// begun, and stopping would leave them half joined, or it has ended.
     #[error("the invite can no longer be cancelled: {0}")]
@@ -338,6 +341,7 @@ impl LibraryError {
             | LibraryError::ReleaseEditLoad(_)
             | LibraryError::Encryption(_)
             | LibraryError::Storage(_)
+            | LibraryError::TransferCode(_)
             | LibraryError::Playback(_)
             | LibraryError::Closed(_)
             | LibraryError::Internal(_) => C::Internal,

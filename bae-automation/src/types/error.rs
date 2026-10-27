@@ -89,6 +89,7 @@ impl From<LibraryError> for AutomationError {
             // its save; calling again works on what the library holds now.
             error @ LibraryError::ReleaseEditStale { .. } => Self::Import(error.to_string()),
             LibraryError::Internal(e) => Self::Internal(e),
+            error @ LibraryError::TransferCode(_) => Self::Internal(error.to_string()),
             LibraryError::Config(e) => Self::Internal(e.to_string()),
             LibraryError::Keyring(e) => Self::Unavailable(e.to_string()),
             LibraryError::CloudHome(e) => Self::Unavailable(e.to_string()),

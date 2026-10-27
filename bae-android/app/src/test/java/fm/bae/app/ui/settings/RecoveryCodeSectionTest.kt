@@ -170,7 +170,7 @@ class RecoveryCodeSectionTest {
         compose.setContent {
             BaeTheme {
                 AddDeviceDialogContent(
-                    share = BridgeRestoreCodeShare(code = CODE, qrText = "$CODE.key", qrCarriesS3Key = true),
+                    share = BridgeRestoreCodeShare(code = CODE, qrText = CODE_WITH_KEY, qrCarriesS3Key = true),
                     error = null,
                     onDismiss = {},
                 )
@@ -185,5 +185,8 @@ class RecoveryCodeSectionTest {
 
     private companion object {
         const val CODE = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+
+        /** The same restore code, longer for the S3 key it holds. */
+        const val CODE_WITH_KEY = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOP"
     }
 }

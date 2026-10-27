@@ -55,12 +55,29 @@ class QrFrameDecoderTest {
         assertReadsFromArmsLength(DenseCodes.inviteWithKey(Random(2)))
     }
 
-    // A phone held 25 or 30 cm from the Mac's screen, at a few tilts, frames
+    // Packed, a code with its S3 key is a QR code of version 12 or 13, whose
+    // modules a phone still resolves held back at 40 or 45 cm.
+    @Test
+    fun aRestoreCodeWithItsS3KeyReadsFromFartherBack() {
+        assertReadsFrom(DenseCodes.restoreCodeWithKey(Random(1)), FARTHER_BACK_CM)
+    }
+
+    @Test
+    fun anInviteWithItsS3KeyReadsFromFartherBack() {
+        assertReadsFrom(DenseCodes.inviteWithKey(Random(2)), FARTHER_BACK_CM)
+    }
+
+    private fun assertReadsFromArmsLength(text: String) = assertReadsFrom(text, ARMS_LENGTH_CM)
+
+    // A phone held [distancesCm] from the Mac's screen, at a few tilts, frames
     // the code as the scanner's camera delivers it. A live scan analyses
     // several frames a second, so most of them reading is a scan that lands.
-    private fun assertReadsFromArmsLength(text: String) {
+    private fun assertReadsFrom(
+        text: String,
+        distancesCm: List<Double>,
+    ) {
         val decoder = QrFrameDecoder()
-        for (distanceCm in ARMS_LENGTH_CM) {
+        for (distanceCm in distancesCm) {
             val read =
                 TILTS_DEGREES.count { tilt ->
                     val luma = MacQrScene(MAC_DISPLAY, distanceCm, tilt).luma(text, QR_ANALYSIS_WIDTH, QR_ANALYSIS_HEIGHT, ROW_STRIDE)
@@ -78,6 +95,7 @@ class QrFrameDecoderTest {
         /** As QRCode.swift draws a code. */
         val MAC_DISPLAY = MacQrDisplay(sidePoints = 360.0, quietZoneModules = 4, correction = ErrorCorrectionLevel.L)
         val ARMS_LENGTH_CM = listOf(25.0, 30.0)
+        val FARTHER_BACK_CM = listOf(40.0, 45.0)
         val TILTS_DEGREES = listOf(0.0, 2.0, 4.0, 7.0, 11.0, 17.0)
 
         // Camera rows are padded past the frame's width.

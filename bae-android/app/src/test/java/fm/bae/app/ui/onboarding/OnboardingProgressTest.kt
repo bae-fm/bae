@@ -43,6 +43,7 @@ class OnboardingProgressTest {
                                     accountLabel = "person@example.com",
                                 ),
                             oauthAccess = null,
+                            carriesS3Key = false,
                         ),
                     libraryName = "Household",
                     invitee = "Dan",

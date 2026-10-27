@@ -72,6 +72,9 @@ pub struct BridgeCodeMetadata {
     /// Where the code's library is stored, with the account it was made for.
     pub location: BridgeStorageLocation,
     pub oauth_access: Option<BridgeOAuthAccess>,
+    /// Whether the code holds an S3 key, so the device asks for none: every
+    /// S3 invite does, and the restore code the person's own device shows.
+    pub carries_s3_key: bool,
 }
 impl BridgeCodeMetadata {
     fn from_core(value: coven::CodeMetadata) -> Self {
@@ -81,6 +84,7 @@ impl BridgeCodeMetadata {
             provider: BridgeCloudProvider::from_core(&value.cloud_provider),
             location: BridgeStorageLocation::from_core(value.location),
             oauth_access: value.oauth_access.map(BridgeOAuthAccess::from_core),
+            carries_s3_key: value.carries_s3_key,
         }
     }
 }

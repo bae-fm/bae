@@ -22,20 +22,20 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     app.runtime.block_on(async {
         let share = app.clone().generate_restore_code().await.unwrap();
         assert!(share.qr_carries_s3_key);
-        let scanned = crate::types::read_scanned_code(share.qr_text).unwrap();
-        assert_eq!(scanned.code, share.code);
-        let key = scanned
-            .s3_credentials
-            .expect("an S3 device's QR carries its key");
-        assert_eq!(
-            (key.access_key_id.as_str(), key.secret_access_key.as_str()),
-            ("test-access", "test-secret")
-        );
+        // The QR's code holds the S3 key; the code to type holds none.
+        let crate::BridgeCodeInfo::Restore { metadata: scanned } =
+            crate::decode_code_info(share.qr_text).unwrap()
+        else {
+            panic!("the QR's code is a restore code");
+        };
+        assert!(scanned.carries_s3_key);
         let crate::BridgeCodeInfo::Restore { metadata } =
             crate::decode_code_info(share.code).unwrap()
         else {
             panic!("a restore code must not become a named invitation");
         };
+        assert!(!metadata.carries_s3_key);
+        assert_eq!(scanned.library_id, metadata.library_id);
         assert_eq!(metadata.library_id, app.get_config().library_id);
         assert_eq!(metadata.provider, BridgeCloudProvider::S3);
         assert_eq!(

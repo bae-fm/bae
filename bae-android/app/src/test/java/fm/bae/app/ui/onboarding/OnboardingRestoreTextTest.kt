@@ -33,12 +33,13 @@ class OnboardingRestoreTextTest {
                     accountLabel = "person@example.com",
                 ),
             oauthAccess = null,
+            carriesS3Key = false,
         )
 
     private val restoreOver =
         RestoreOver(libraryId = "library-1", title = "Restore this library", message = "Warning", onBack = {})
 
-    private fun restore(entry: CodeEntry) = OnboardingStep.Restore("restore-code", metadata, null, entry)
+    private fun restore(entry: CodeEntry) = OnboardingStep.Restore("restore-code", metadata, entry)
 
     @Test
     fun aRestoreCodeOnANewDeviceAddsThisDevice() {

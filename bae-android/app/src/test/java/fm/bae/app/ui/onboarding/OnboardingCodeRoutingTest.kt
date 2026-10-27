@@ -7,7 +7,6 @@ import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteInfo
-import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
 
 class OnboardingCodeRoutingTest {
@@ -23,18 +22,17 @@ class OnboardingCodeRoutingTest {
                     accountLabel = "person@example.com",
                 ),
             oauthAccess = null,
+            carriesS3Key = false,
         )
 
     private val restoreOver =
         RestoreOver(libraryId = "library-1", title = "Restore this library", message = "Warning", onBack = {})
 
     @Test
-    fun aRestoreCodeOpensTheRestoreFormWithTheKeyThatCameBesideIt() {
-        val key = BridgeS3Credentials(accessKeyId = "key-id", secretAccessKey = "secret")
+    fun aRestoreCodeOpensTheRestoreForm() {
+        val step = codeReadStep("restore-code", BridgeCodeInfo.Restore(metadata), CodeEntry.NewDevice)
 
-        val step = codeReadStep("restore-code", BridgeCodeInfo.Restore(metadata), key, CodeEntry.NewDevice)
-
-        assertEquals(OnboardingStep.Restore("restore-code", metadata, key, CodeEntry.NewDevice), step)
+        assertEquals(OnboardingStep.Restore("restore-code", metadata, CodeEntry.NewDevice), step)
     }
 
     private val invite =
@@ -47,15 +45,15 @@ class OnboardingCodeRoutingTest {
 
     @Test
     fun anInviteJoinsTheLibraryItNamesFromItsCode() {
-        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(invite), null, CodeEntry.NewDevice)
+        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(invite), CodeEntry.NewDevice)
 
         assertEquals(OnboardingStep.Invite(JoinStart.Code("invite-code"), invite, CodeEntry.NewDevice), step)
     }
 
     @Test
     fun anInviteEnteredToRestoreOverThisDevicesCopyGoesToTheRestore() {
-        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(invite), null, restoreOver)
+        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(invite), restoreOver)
 
-        assertEquals(OnboardingStep.Restore("invite-code", metadata, null, restoreOver), step)
+        assertEquals(OnboardingStep.Restore("invite-code", metadata, restoreOver), step)
     }
 }

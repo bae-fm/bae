@@ -111,8 +111,8 @@ internal fun AddDeviceDialogContent(
 }
 
 /**
- * The QR, which carries the S3 key beside the code when this device holds
- * one, then the code to type on the new device and copy.
+ * The QR, whose code holds the S3 key when this device has one, then the
+ * code to type on the new device and copy.
  */
 @Composable
 private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
@@ -159,7 +159,7 @@ private fun AddDeviceDialogContentReadyPreview() {
             share =
                 BridgeRestoreCodeShare(
                     code = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-                    qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567.key-preview",
+                    qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOP",
                     qrCarriesS3Key = true,
                 ),
             error = null,

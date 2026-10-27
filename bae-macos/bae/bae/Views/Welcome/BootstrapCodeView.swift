@@ -187,13 +187,13 @@ private struct AttemptDetailsSection: View {
             switch attempt {
             case .restoreSaved:
                 EmptyView()
-            case .restore(_, let metadata, let s3Key):
+            case .restore(_, let metadata):
                 LabeledContent(
                     "Stored in",
                     value: metadata.location.accountLine
                 )
                 signInNote(metadata)
-                if s3Key != nil {
+                if metadata.provider == .s3 && metadata.carriesS3Key {
                     Text("Your S3 access key came with the scanned code.")
                         .themeText(.detail)
                         .foregroundStyle(.secondary)
