@@ -119,6 +119,10 @@ pub(crate) fn insert_draft(
     }
     for (position, track) in draft.tracks.iter().enumerate() {
         let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(&track.edit.file);
+        let stated_length_ms = track
+            .stated_length_ms
+            .map(|length| to_i64(length, "a track's stated length"))
+            .transpose()?;
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_track ({TRACK_COLUMNS}) \
@@ -133,8 +137,7 @@ pub(crate) fn insert_draft(
                 track.place.medium,
                 track.place.side,
                 track.place.number,
-                track.stated_length_ms.map(|length| i64::try_from(length)
-                    .expect("a stated length fits SQLite's integer range")),
+                stated_length_ms,
                 file_kind,
                 file_id,
                 sheet_id,

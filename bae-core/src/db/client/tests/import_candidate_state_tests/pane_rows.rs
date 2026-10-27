@@ -807,6 +807,34 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     assert_eq!(preparation.draft, draft);
 }
 
+/// A track length a catalog states past what SQLite stores fails the
+/// preparation's save with an error, rather than stopping the import.
+#[tokio::test]
+async fn a_stated_length_past_sqlites_range_fails_the_save() {
+    let (db, _tmp) = empty_db().await;
+    fetched(&db, "release-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let mut draft = candidate_draft("Release Title", "Artist Name");
+    draft.tracks[0].stated_length_ms = Some(u64::MAX);
+
+    let saved = crate::import::CandidatePreparations::new(db.clone())
+        .apply_source(
+            &host_root("/music"),
+            &as_read(&hash, 0),
+            &pane_candidate_path(),
+            &crate::import::CandidateMetadataDraft {
+                draft,
+                provenance: Some(release_pick("release-1")),
+                cover: None,
+                cover_options: Vec::new(),
+                assets: crate::import::CandidatePreparedAssets::default(),
+            },
+        )
+        .await;
+
+    assert!(saved.is_err(), "{saved:?}");
+}
+
 /// The covers an applied release offers are stored with the draft, in their
 /// order and with their copies, and a draft applied from nowhere offers none.
 #[tokio::test]
