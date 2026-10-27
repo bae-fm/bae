@@ -61,9 +61,10 @@ impl Database {
     }
 
     /// The files a write changing these rows' files will abandon: this
-    /// device's uploads still queued on them. The abandonment is the person's
-    /// own change, which [`Self::dismiss_abandoned_attachments`] takes off
-    /// the list once the write commits.
+    /// device's uploads still queued on them, each found by its row in
+    /// coven's `coven_uploads`. The abandonment is the person's own change,
+    /// which [`Self::dismiss_abandoned_attachments`] takes off the list once
+    /// the write commits.
     pub(crate) async fn own_abandonments(
         &self,
         rows: &[(&str, String)],
@@ -71,19 +72,15 @@ impl Database {
         if rows.is_empty() {
             return Ok(Vec::new());
         }
-        Ok(self
-            .uploads()
-            .await?
-            .files
-            .into_iter()
-            .filter(|upload| {
-                rows.iter().any(|(table, key)| {
-                    upload.file.table() == *table
-                        && upload.file.key() == &coven::RowKey::from(key.as_str())
-                })
+        let rows = serde_json::to_string(rows)
+            .map_err(|error| DbError::Message(format!("abandoned rows {rows:?}: {error}")))?;
+        self.read(move |sql| {
+            sql.query(QUEUED_FILES_OF_ROWS, [rows], |row| {
+                row.get::<_, coven::FileId>(0)
             })
-            .map(|upload| upload.file.id())
-            .collect())
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// Dismiss the records a committed write of the person's own left. The
@@ -103,3 +100,10 @@ pub(super) fn abandoned_rows_query() -> String {
          FROM coven_abandoned AS file {FILE_ROW_JOINS} ORDER BY file.position"
     )
 }
+
+/// This device's queued uploads on the rows `?1` names, a JSON array of
+/// `[table, key]` pairs: each file's id.
+pub(super) const QUEUED_FILES_OF_ROWS: &str = "SELECT upload.file \
+     FROM json_each(?1) AS named \
+     JOIN coven_uploads AS upload \
+         ON upload.table_name = named.value ->> 0 AND upload.key = coven_key(named.value ->> 1)";

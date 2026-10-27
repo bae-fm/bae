@@ -39,3 +39,29 @@ async fn the_pending_and_abandoned_lists_find_each_row_by_index() {
         }
     }
 }
+
+/// The files a write of the person's own abandons are found by their rows in
+/// coven's upload queue, not by reading the queue whole.
+#[tokio::test]
+async fn own_abandonments_find_each_upload_by_its_row() {
+    let (db, _tmp) = super::temp_db().await;
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::abandoned::QUEUED_FILES_OF_ROWS
+                ),
+                [r#"[["release_files","id"]]"#],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(super::super::DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter()
+            .any(|step| step.starts_with("SEARCH") && step.contains("(table_name=? AND key=?)")),
+        "the queue is not searched by row: {plan:?}"
+    );
+}
