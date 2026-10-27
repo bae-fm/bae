@@ -240,6 +240,22 @@
 
         static let defaultUploadGroups = [uploadGroup, uploadGroupQueued]
 
+        /// What the rows of `defaultUploadGroups`' releases read of their
+        /// uploads: two files being sent with their bytes, and one waiting.
+        static let rowUploads: [String: BridgeReleaseUpload] = [
+            uploadGroup.releaseId: BridgeReleaseUpload(
+                progress: uploadGroup.progress,
+                bar: BridgeUploadBar(
+                    bytesDone: 22_400_000,
+                    bytesTotal: 57_100_000
+                )
+            ),
+            uploadGroupQueued.releaseId: BridgeReleaseUpload(
+                progress: uploadGroupQueued.progress,
+                bar: nil
+            ),
+        ]
+
         /// The upload queue's summary while `uploadGroups` are queued.
         static func outboxSnapshot(
             uploadGroups: [BridgeUploadReleaseGroup] = defaultUploadGroups,
@@ -322,6 +338,7 @@
             storageState: BridgeReleaseStorageState = .remote,
             pinned: Bool = false,
             transfer: BridgeReleaseStorageAction? = nil,
+            upload: BridgeReleaseUpload? = nil,
             fileCount: Int64 = 12,
             totalSize: Int64 = 367_000_000
         ) -> ReleaseSummary {
@@ -335,6 +352,8 @@
                     pinned: pinned,
                     storageActions: [],
                     transferAction: transfer,
+                    upload: upload,
+                    transitioning: upload != nil || transfer != nil,
                     fileCount: fileCount,
                     totalSize: totalSize,
                     cover: nil
@@ -395,6 +414,7 @@
                         storageState: isRemote ? .remote : .local,
                         pinned: isRemote && index % 4 == 0,
                         transfer: index == 5 ? .pin : nil,
+                        upload: rowUploads["rel-row-\(index)"],
                         fileCount: Int64(1 + index % 24),
                         totalSize: Int64(48_000_000 + index * 83_000_000)
                     )
@@ -411,6 +431,7 @@
             storageState: BridgeReleaseStorageState,
             pinned: Bool = false,
             transfer: BridgeReleaseStorageAction? = nil,
+            upload: BridgeReleaseUpload? = nil,
             fileCount: Int64 = 12,
             totalSize: Int64 = 210_000_000
         ) -> BridgeStorageRow {
@@ -424,6 +445,8 @@
                     pinned: pinned,
                     storageActions: [],
                     transferAction: transfer,
+                    upload: upload,
+                    transitioning: upload != nil || transfer != nil,
                     fileCount: fileCount,
                     totalSize: totalSize,
                     cover: nil
@@ -514,32 +537,44 @@
             )
         }
 
+        /// The format of every storage row release's audio file.
+        private static let storageAudioFormat = BridgeAudioFormat(
+            codec: "FLAC",
+            sampleRateHz: 44_100,
+            bitsPerSample: 16,
+            bitrateKbps: nil,
+            channels: 2
+        )
+
+        /// A storage row release's audio file and its cover.
+        private static func storageReleaseFiles(
+            for row: BridgeStorageRow
+        ) -> (audio: BridgeFile, image: BridgeFile) {
+            (
+                BridgeFile(
+                    id: "\(row.id)-audio",
+                    originalFilename: "01 Track Title.flac",
+                    fileSize: 34_000_000,
+                    contentType: "audio/flac",
+                    isImage: false,
+                    audioFormat: storageAudioFormat
+                ),
+                BridgeFile(
+                    id: "\(row.id)-image",
+                    originalFilename: "cover.jpg",
+                    fileSize: 2_400_000,
+                    contentType: "image/jpeg",
+                    isImage: true,
+                    audioFormat: nil
+                )
+            )
+        }
+
         private static func storageReleaseDetail(
             for row: BridgeStorageRow
         ) -> BridgeRelease {
-            let audioFormat = BridgeAudioFormat(
-                codec: "FLAC",
-                sampleRateHz: 44_100,
-                bitsPerSample: 16,
-                bitrateKbps: nil,
-                channels: 2
-            )
-            let audioFile = BridgeFile(
-                id: "\(row.id)-audio",
-                originalFilename: "01 Track Title.flac",
-                fileSize: 34_000_000,
-                contentType: "audio/flac",
-                isImage: false,
-                audioFormat: audioFormat
-            )
-            let imageFile = BridgeFile(
-                id: "\(row.id)-image",
-                originalFilename: "cover.jpg",
-                fileSize: 2_400_000,
-                contentType: "image/jpeg",
-                isImage: true,
-                audioFormat: nil
-            )
+            let audioFormat = storageAudioFormat
+            let (audioFile, imageFile) = storageReleaseFiles(for: row)
             let files = [audioFile, imageFile]
             let facts = PreviewData.pressingFacts(media: row.release.media)
             return BridgeRelease(
@@ -556,6 +591,8 @@
                 pinned: row.release.pinned,
                 storageActions: row.release.storageActions,
                 transferAction: row.release.transferAction,
+                upload: row.release.upload,
+                transitioning: row.release.transitioning,
                 tracks: [],
                 trackGroups: [],
                 files: files,

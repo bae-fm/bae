@@ -39,9 +39,23 @@ pub struct AutomationReleaseSummary {
     /// The transition currently in flight, if any — so a client can tell a release
     /// is mid-transfer rather than reading `storage_actions` and guessing.
     pub transfer_action: Option<AutomationReleaseStorageAction>,
+    /// How many of the release's files wait in this device's upload queue,
+    /// and how many of those are being sent now; `None` when none waits.
+    pub upload: Option<AutomationReleaseUpload>,
+    /// Whether an upload or a transfer is under way, which leaves
+    /// `storage_actions` empty.
+    pub transitioning: bool,
     pub file_count: i64,
     pub total_size: i64,
     pub cover: Option<AutomationImageRef>,
+}
+
+/// A release's files in this device's upload queue. Mirrors
+/// `bae_core::album_detail::ReleaseUpload`'s counts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct AutomationReleaseUpload {
+    pub queued: u32,
+    pub uploading: u32,
 }
 
 /// A release's storage state. Mirrors `bae_core::album_detail::ReleaseStorageState`.

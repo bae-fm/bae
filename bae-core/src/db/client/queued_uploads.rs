@@ -22,6 +22,60 @@ pub(super) const RELEASE_FILE_QUEUED: &str =
     "SELECT EXISTS (SELECT 1 FROM coven_uploads AS upload \
      WHERE upload.table_name = 'release_files' AND upload.key = coven_key(?1))";
 
+/// Each release with files this process is sending now: how many, and the
+/// bytes the provider confirmed of them so far and in all. One row per
+/// upload in flight is read, each found by its place in the queue.
+pub(super) const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files, \
+         COALESCE(SUM(upload.bytes_confirmed), 0) AS bytes_confirmed, \
+         COALESCE(SUM(upload.bytes_total), 0) AS bytes_total \
+     FROM coven_sending AS sending \
+     JOIN release_files AS f \
+         ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key \
+     JOIN coven_uploads AS upload ON upload.position = sending.position \
+     GROUP BY f.release_id";
+
+/// The columns a release's upload reads beside `release_listing listing`
+/// joined to [`RELEASES_SENDING`] as `sending`, which
+/// [`release_upload_in_row`] maps.
+pub(super) const RELEASE_UPLOAD_COLUMNS: &str = "listing.queued_count AS queued_count, \
+     COALESCE(sending.files, 0) AS sending_files, \
+     COALESCE(sending.bytes_confirmed, 0) AS sending_bytes_confirmed, \
+     COALESCE(sending.bytes_total, 0) AS sending_bytes_total";
+
+/// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
+/// none of its files waits.
+pub(super) fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbReleaseUpload>> {
+    let queued: i64 = row.get("queued_count")?;
+    if queued == 0 {
+        return Ok(None);
+    }
+    Ok(Some(DbReleaseUpload {
+        queued,
+        sending: row.get("sending_files")?,
+        bytes_confirmed: row.get("sending_bytes_confirmed")?,
+        bytes_total: row.get("sending_bytes_total")?,
+    }))
+}
+
+/// What of the release `release_id` waits in this device's upload queue.
+pub(super) fn release_upload_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Option<DbReleaseUpload>, DbError> {
+    Ok(sql
+        .query_row(
+            &format!(
+                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM release_listing listing \
+                 LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = listing.release_id \
+                 WHERE listing.release_id = ?1"
+            ),
+            [release_id],
+            release_upload_in_row,
+        )
+        .optional()?
+        .flatten())
+}
+
 impl Database {
     /// How many of the release's files still wait to upload from this device.
     pub async fn count_pending_uploads_for_release(

@@ -58,6 +58,8 @@ func makeBridgeRelease(
         pinned: pinned,
         storageActions: storageActions,
         transferAction: transferAction,
+        upload: nil,
+        transitioning: transferAction != nil,
         tracks: [],
         trackGroups: [],
         files: [],
@@ -95,6 +97,8 @@ private func makeBridgeReleaseSummary(
         pinned: pinned,
         storageActions: storageActions,
         transferAction: nil,
+        upload: nil,
+        transitioning: false,
         fileCount: fileCount,
         totalSize: totalSize,
         cover: cover

@@ -163,6 +163,8 @@ object PreviewData {
             pinned = false,
             storageActions = emptyList(),
             transferAction = null,
+            upload = null,
+            transitioning = false,
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,
             files = emptyList(),

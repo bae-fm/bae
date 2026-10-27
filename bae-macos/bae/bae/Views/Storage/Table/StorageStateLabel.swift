@@ -16,31 +16,21 @@ struct StorageStateLabel: View {
                 symbol: "arrow.down.circle"
             )
         }
-        else if let observation = outboxStore.storageUploadObservation(
-            forRelease: release.id
-        ) {
-            switch observation {
-            case .active(let progress, _):
-                if let bar = observation.progressBar {
-                    ProgressLine(
-                        progress: bar.fraction,
-                        detail: observation.throughputText
-                    ) {
-                        UploadActivityLabel(phaseOf: progress)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(observation.transitionStatusText)
-                    .accessibilityValue(observation.throughputText ?? "")
+        else if let observation = outboxStore.uploadObservation(of: release) {
+            if let fraction = observation.progressFraction {
+                ProgressLine(
+                    progress: fraction,
+                    detail: observation.throughputText
+                ) {
+                    UploadActivityLabel(phaseOf: observation.progress)
                 }
-                else {
-                    // Files only waiting: nothing is moving to measure.
-                    UploadActivityLabel(phaseOf: progress)
-                }
-            case .queueing, .awaiting:
-                StatusChip(
-                    verbatim: observation.transitionStatusText,
-                    symbol: "icloud.and.arrow.up"
-                )
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(observation.transitionStatusText)
+                .accessibilityValue(observation.throughputText ?? "")
+            }
+            else {
+                // Files only waiting: nothing is moving to measure.
+                UploadActivityLabel(phaseOf: observation.progress)
             }
         }
         else {
@@ -91,12 +81,14 @@ struct StorageStateLabel: View {
                     transfer: .pin
                 )
             )
-            // A queued upload in the preview outbox wins over the resting
-            // state.
+            // Files waiting or being sent win over the resting state.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
-                    id: "rel-up-1",
-                    storageState: .remote
+                    id: PreviewData.uploadGroup.releaseId,
+                    storageState: .local,
+                    upload: PreviewData.rowUploads[
+                        PreviewData.uploadGroup.releaseId
+                    ]
                 )
             )
         }

@@ -221,6 +221,8 @@
                 pinned: pinned,
                 storageActions: storageActions,
                 transferAction: nil,
+                upload: nil,
+                transitioning: false,
                 tracks: [],
                 trackGroups: [],
                 files: files,

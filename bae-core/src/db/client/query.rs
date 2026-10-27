@@ -526,6 +526,7 @@ pub(super) fn row_to_release_summary(
         media: super::pressing_columns::read_media(row, "release_media")?,
         remote: row.get("remote")?,
         pinned: row.get("pinned")?,
+        upload: super::queued_uploads::release_upload_in_row(row)?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,
     })
@@ -718,12 +719,16 @@ fn storage_row_select(filter: StorageFilter) -> String {
             listing.file_count, \
             listing.total_size, \
             {RELEASE_LISTING_PINNED} AS pinned, \
+            {upload_columns}, \
             {album_columns} \
         FROM release_listing listing \
         JOIN releases r ON r.id = listing.release_id \
         JOIN albums a ON a.id = listing.album_id \
+        LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
         {joins} \
-        {where_clause}"
+        {where_clause}",
+        upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
+        releases_sending = super::queued_uploads::RELEASES_SENDING,
     )
 }
 

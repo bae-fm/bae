@@ -1393,6 +1393,16 @@ queue, and the place of the first, are counts bae keeps the same way from
 coven's `coven_upload_queue`, in the transaction that queues or dequeues a
 file; the upload filter reads them in queue order.
 
+A release with files waiting to upload shows, in its row and in its album's
+storage band, how many wait and how many are being sent, and while any is
+being sent, the bytes the provider confirmed of those, all read in the same
+query as the row: which files are being sent comes from coven's
+`coven_sending`, a live view of the uploads in flight. Only how fast they
+go is kept beside the database. While its files wait, or a transfer runs,
+the release offers no storage action but cancelling, which would race it
+otherwise; moving a release to the cloud shows that transfer until its files
+are queued.
+
 ### 4.3 Pinning and the cache
 
 An uploaded release can be pinned to stay on a device; otherwise its files are

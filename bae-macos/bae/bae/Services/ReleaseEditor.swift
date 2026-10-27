@@ -14,7 +14,6 @@ final class ReleaseEditor: Observable {
     private let moveReleasesToCloudAction:
         @Sendable (_ releaseIds: [String]) async throws ->
             BridgeUploadReleasesOutcome
-    private let outboxStore: OutboxStore
     let makeReleaseLocal:
         @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
@@ -39,7 +38,6 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable ([String]) async throws ->
             BridgeUploadReleasesOutcome =
             { _ in throw StubError.notImplemented },
-        outboxStore: OutboxStore,
         makeReleaseLocal:
             @escaping @Sendable (String, String) async throws -> Void = {
                 _,
@@ -68,7 +66,6 @@ final class ReleaseEditor: Observable {
     ) {
         self.changeCover = changeCover
         moveReleasesToCloudAction = moveReleasesToCloud
-        self.outboxStore = outboxStore
         self.makeReleaseLocal = makeReleaseLocal
         self.deleteRelease = deleteRelease
         self.setPrimaryRelease = setPrimaryRelease
@@ -77,10 +74,7 @@ final class ReleaseEditor: Observable {
         self.fetchRemoteCovers = fetchRemoteCovers
     }
 
-    convenience init(
-        handle: any AppHandleProtocol,
-        outboxStore: OutboxStore
-    ) {
+    convenience init(handle: any AppHandleProtocol) {
         self.init(
             changeCover: {
                 try await handle.changeCover(
@@ -91,7 +85,6 @@ final class ReleaseEditor: Observable {
             moveReleasesToCloud: {
                 try await handle.uploadReleases(releaseIds: $0)
             },
-            outboxStore: outboxStore,
             makeReleaseLocal: {
                 try await handle.detachReleaseAudio(releaseId: $0, newPath: $1)
             },
@@ -131,28 +124,14 @@ final class ReleaseEditor: Observable {
         )
     }
 
-    /// Move a Local release to Cloud without a standing Local frame between
-    /// the foreground command and the retained outbox subscription. The bridge
-    /// returns the exact revision it published; `OutboxStore` owns the handoff
-    /// until that revision arrives or proves the upload already finished.
+    /// Move Local releases to Cloud. While core admits each, its row reads
+    /// the transfer running; once admitted, its files waiting in the queue.
     /// Core keeps the releases here as the stored import storage choice says.
     func moveReleasesToCloud(_ releaseIds: [String]) async throws {
-        let command = outboxStore.beginCloudUploads(
-            forReleases: releaseIds
-        )
-        let outcome: BridgeUploadReleasesOutcome
-        do {
-            outcome = try await moveReleasesToCloudAction(releaseIds)
-        }
-        catch {
-            outboxStore.finishCloudUploads(for: command, receipt: nil)
-            throw error
-        }
-        switch outcome {
-        case .complete(let receipt):
-            outboxStore.finishCloudUploads(for: command, receipt: receipt)
-        case .partial(let receipt, let failure):
-            outboxStore.finishCloudUploads(for: command, receipt: receipt)
+        switch try await moveReleasesToCloudAction(releaseIds) {
+        case .complete:
+            return
+        case .partial(_, let failure):
             throw failure.error
         }
     }
@@ -164,11 +143,7 @@ final class ReleaseEditor: Observable {
     #if DEBUG
         // periphery:ignore
         static func stub() -> ReleaseEditor {
-            ReleaseEditor(
-                outboxStore: OutboxStore(
-                    snapshot: OutboxStore.emptySnapshot
-                )
-            )
+            ReleaseEditor()
         }
     #endif
 }

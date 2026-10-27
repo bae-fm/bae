@@ -19,14 +19,18 @@ impl Database {
             r.media, \
             listing.stored AS remote, \
             {RELEASE_LISTING_PINNED} AS pinned, \
+            {upload_columns}, \
             {artist_names} AS artist_names, \
             listing.file_count, \
             listing.total_size \
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
         JOIN release_listing listing ON listing.release_id = r.id \
+        LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
         WHERE r.id = ?1",
-            artist_names = album_credits_json_sql()
+            artist_names = album_credits_json_sql(),
+            upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
+            releases_sending = super::queued_uploads::RELEASES_SENDING,
         )
     }
 

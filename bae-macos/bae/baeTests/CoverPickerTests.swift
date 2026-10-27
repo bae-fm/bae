@@ -97,6 +97,8 @@ struct CoverPickerTests {
             pinned: false,
             storageActions: [],
             transferAction: nil,
+            upload: nil,
+            transitioning: false,
             tracks: [],
             trackGroups: [],
             files: [file, bitmap],

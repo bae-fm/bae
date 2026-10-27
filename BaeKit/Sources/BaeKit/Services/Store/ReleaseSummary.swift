@@ -8,9 +8,8 @@ import Foundation
 /// Composed into [`ReleaseDetail`] — the detail wraps its summary so
 /// consumers that hold a detail treat it as a superset.
 ///
-/// Per-release UPLOAD progress is NOT a field here. The `OutboxStore`
-/// snapshot is the single source of truth for the queue; storage rows
-/// and storage-action gates read `outboxStore.progress(forRelease:)`.
+/// What of the release waits in the upload queue is `upload`, read with the
+/// row; how fast its files go is its transfer in `OutboxStore`.
 ///
 /// Per-release TRANSFER progress (the synchronous pin/unpin/cloud/local
 /// transition the user triggers) IS a field here: `transfer`. Core includes the
@@ -52,6 +51,12 @@ public struct ReleaseSummary: Identifiable, Sendable {
     /// the current action in release subscriptions, so later values carry it
     /// the same way they carry storage state.
     public let transfer: TransferState?
+    /// What of the release waits in this device's upload queue; `nil` when
+    /// nothing does.
+    public let upload: BridgeReleaseUpload?
+    /// Whether an upload or a transfer is under way: the release then offers
+    /// only cancelling, and `storageActions` is empty.
+    public let transitioning: Bool
 
     /// The media in the current locale's words: "2×CD", "Vinyl".
     public var mediaText: String {
@@ -76,6 +81,8 @@ public struct ReleaseSummary: Identifiable, Sendable {
         totalSize = bridge.totalSize
         cover = bridge.cover
         transfer = Self.transferState(from: bridge.transferAction)
+        upload = bridge.upload
+        transitioning = bridge.transitioning
     }
 
     /// Build a summary from the fat `BridgeRelease` wire type — the summary
@@ -92,6 +99,8 @@ public struct ReleaseSummary: Identifiable, Sendable {
         totalSize = bridge.totalSize
         cover = bridge.cover
         transfer = Self.transferState(from: bridge.transferAction)
+        upload = bridge.upload
+        transitioning = bridge.transitioning
     }
 
     private static func transferState(

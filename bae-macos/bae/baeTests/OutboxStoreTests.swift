@@ -13,13 +13,6 @@ private func cloudUploadReceipt(
     )
 }
 
-/// A release's upload counts with nothing waiting or being sent.
-private let idleProgress = BridgeUploadProgress(
-    queued: 0,
-    uploading: 0,
-    activity: nil
-)
-
 /// The Bridge* records are generated at build from `bae-bridge/src/types.rs`;
 /// these start from `OutboxStore.emptySnapshot`.
 @Suite("OutboxStore")
@@ -99,66 +92,35 @@ struct OutboxStoreTransferTests {
     }
 }
 
-@Suite("StorageStatusBand cloud-transition actions")
-@MainActor
-struct StorageStatusBandCloudTransitionTests {
-    @Test("only an upload coven has admitted can be cancelled")
-    func cancellationFollowsTheAdmittedUpload() {
-        var active = idleProgress
-        active.queued = 1
-        active.activity = .queued
-        #expect(
-            StorageUploadObservation.active(
-                progress: active,
-                transfer: nil
-            )
-            .canCancel
-        )
-        #expect(StorageUploadObservation.queueing.canCancel == false)
-        #expect(StorageUploadObservation.awaiting.canCancel == false)
-    }
-
-    @Test("an upload in progress suppresses storage actions")
-    func uploadSuppressesStorageActions() {
-        var progress = idleProgress
-        progress.queued = 1
-        progress.activity = .queued
-
-        #expect(
-            StorageStatusBand.showsTransferActions(
-                uploadObservation: .active(
-                    progress: progress,
-                    transfer: nil
-                )
-            )
-                == false
+@Suite("Storage upload presentation")
+struct StorageUploadPresentationTests {
+    private func upload(
+        queued: UInt32,
+        uploading: UInt32,
+        bar: BridgeUploadBar?
+    ) -> BridgeReleaseUpload {
+        BridgeReleaseUpload(
+            progress: BridgeUploadProgress(
+                queued: queued,
+                uploading: uploading,
+                activity: uploading > 0 ? .uploading : .queued
+            ),
+            bar: bar
         )
     }
 
-    @Test("a resting release shows its storage actions")
-    func restingReleaseShowsStorageActions() {
-        #expect(
-            StorageStatusBand.showsTransferActions(uploadObservation: nil)
-        )
-    }
-}
-
-@Suite("Cloud import queue presentation")
-struct CloudImportQueuePresentationTests {
-    @Test("an active storage row carries its release rate and progress")
-    func activeStorageRowCarriesRateAndProgress() {
-        var progress = idleProgress
-        progress.uploading = 1
-        progress.activity = .uploading
-        let observation = StorageUploadObservation.active(
-            progress: progress,
-            transfer: BridgeUploadTransfer(
-                bar: BridgeUploadBar(bytesDone: 32, bytesTotal: 100),
-                throughputBps: 3_200_000
-            )
+    @Test("a row being sent carries its release rate and progress")
+    func sendingRowCarriesRateAndProgress() {
+        let observation = StorageUploadObservation(
+            upload: upload(
+                queued: 0,
+                uploading: 1,
+                bar: BridgeUploadBar(bytesDone: 32, bytesTotal: 100)
+            ),
+            throughputBps: 3_200_000
         )
 
-        #expect(observation.progressBar?.fraction == 0.32)
+        #expect(observation.progressFraction == 0.32)
         #expect(
             observation.throughputText
                 == QueueSummary.throughputText(bytesPerSecond: 3_200_000)
@@ -169,17 +131,13 @@ struct CloudImportQueuePresentationTests {
     /// that phase belongs to the list of those files.
     @Test("an active upload line is its phase and encrypted bytes, no count")
     func activeUploadIncludesPhaseAndBytes() {
-        var progress = idleProgress
-        progress.uploading = 2
-        progress.queued = 3
-        progress.activity = .uploading
-
-        let observation = StorageUploadObservation.active(
-            progress: progress,
-            transfer: BridgeUploadTransfer(
-                bar: BridgeUploadBar(bytesDone: 600, bytesTotal: 1016),
-                throughputBps: 0
-            )
+        let observation = StorageUploadObservation(
+            upload: upload(
+                queued: 3,
+                uploading: 2,
+                bar: BridgeUploadBar(bytesDone: 600, bytesTotal: 1016)
+            ),
+            throughputBps: 0
         )
         let done = Int64(600).formatted(.byteCount(style: .file))
         let total = Int64(1016).formatted(.byteCount(style: .file))
@@ -187,269 +145,32 @@ struct CloudImportQueuePresentationTests {
         #expect(observation.transitionPhaseText == "Uploading")
         #expect(observation.progressDetailText?.contains(done) == true)
         #expect(observation.progressDetailText?.contains(total) == true)
-    }
-
-    @Test("a waiting upload is presented as queued")
-    func waitingUploadIsQueued() {
-        var progress = idleProgress
-        progress.queued = 2
-        progress.activity = .queued
-
-        #expect(UploadObservation.active(progress).phaseText == "Queued")
+        #expect(observation.throughputText == nil)
     }
 
     @Test("a release's file list summary counts the files in its phase")
     func fileListSummaryCountsFiles() {
-        var progress = idleProgress
-        progress.uploading = 2
-        progress.queued = 3
-        progress.activity = .uploading
+        let progress = BridgeUploadProgress(
+            queued: 3,
+            uploading: 2,
+            activity: .uploading
+        )
 
         #expect(progress.fileCountText == "2 uploading")
     }
 
-    @Test("waiting for the first retained queue value is still queued")
-    func awaitingQueueIsQueued() {
-        #expect(UploadObservation.awaiting.phaseText == "Queued")
-        #expect(
-            StorageUploadObservation.awaiting.transitionStatusText == "Queued"
-        )
-    }
-
     /// Queued files nothing is moving, as with no storage connected, would
     /// otherwise draw a bar that never ends.
-    @Test("files that are only waiting draw no bar")
+    @Test("files that are only waiting are queued and draw no bar")
     func waitingFilesDrawNoBar() {
-        var progress = idleProgress
-        progress.queued = 2
-        progress.activity = .queued
-
-        #expect(UploadObservation.active(progress).phaseText == "Queued")
-        #expect(
-            StorageUploadObservation.active(
-                progress: progress,
-                transfer: nil
-            )
-            .progressBar == nil
-        )
-        #expect(StorageUploadObservation.queueing.progressBar == .indeterminate)
-    }
-}
-
-@Suite("Storage cloud-upload handoff")
-@MainActor
-struct StorageCloudUploadHandoffTests {
-    @Test(
-        "the row remains in a cloud transition until its retained queue value arrives"
-    )
-    func commandHandsOffWithoutAStandingLocalFrame() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-
-        let command = store.beginCloudUploads(forReleases: ["release-a"])
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .queueing
+        let observation = StorageUploadObservation(
+            upload: upload(queued: 2, uploading: 0, bar: nil),
+            throughputBps: nil
         )
 
-        store.finishCloudUploads(
-            for: command,
-            receipt: cloudUploadReceipt(["release-a"])
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .awaiting
-        )
-
-        var active = OutboxStore.emptySnapshot
-        active.revision = 2
-        active.perRelease["release-a"] = idleProgress
-        store.applySnapshot(active)
-        guard
-            case .active = store.storageUploadObservation(
-                forRelease: "release-a"
-            )
-        else {
-            Issue.record("the retained queue owns the release after handoff")
-            return
-        }
-    }
-
-    @Test("a queue value that wins the callback race remains authoritative")
-    func queueValueMayArriveBeforeTheCommandReceipt() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        let command = store.beginCloudUploads(forReleases: ["release-a"])
-
-        var active = OutboxStore.emptySnapshot
-        active.revision = 2
-        active.perRelease["release-a"] = idleProgress
-        store.applySnapshot(active)
-        store.finishCloudUploads(
-            for: command,
-            receipt: cloudUploadReceipt(["release-a"])
-        )
-
-        guard
-            case .active = store.storageUploadObservation(
-                forRelease: "release-a"
-            )
-        else {
-            Issue.record("an older command receipt cannot replace queue state")
-            return
-        }
-    }
-
-    @Test("a refused enqueue returns the release to its resting state")
-    func failedCommandEndsItsLocalTransition() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        let command = store.beginCloudUploads(forReleases: ["release-a"])
-        store.finishCloudUploads(for: command, receipt: nil)
-
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a") == nil
-        )
-    }
-
-    @Test("an active target remains active while its sibling hands off")
-    func activeTargetDoesNotBlockItsSiblingHandoff() {
-        var snapshot = OutboxStore.emptySnapshot
-        snapshot.perRelease["release-b"] = idleProgress
-        let store = OutboxStore(snapshot: snapshot)
-
-        let command = store.beginCloudUploads(
-            forReleases: ["release-a", "release-b"]
-        )
-        store.finishCloudUploads(
-            for: command,
-            receipt: cloudUploadReceipt(["release-a"])
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .awaiting
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-b")
-                == .active(progress: idleProgress, transfer: nil)
-        )
-    }
-
-    @Test("a batch handoff covers every release until the queue arrives")
-    func batchHandoffCoversEveryRelease() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        let releaseIds = ["release-a", "release-b"]
-
-        let command = store.beginCloudUploads(forReleases: releaseIds)
-        for releaseId in releaseIds {
-            #expect(
-                store.storageUploadObservation(forRelease: releaseId)
-                    == .queueing
-            )
-        }
-
-        store.finishCloudUploads(
-            for: command,
-            receipt: cloudUploadReceipt(releaseIds)
-        )
-        for releaseId in releaseIds {
-            #expect(
-                store.storageUploadObservation(forRelease: releaseId)
-                    == .awaiting
-            )
-        }
-    }
-
-    @Test(
-        "a partial receipt hands off admitted releases and rests refused ones"
-    )
-    func partialReceiptOwnsOnlyAdmittedReleases() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        let command = store.beginCloudUploads(
-            forReleases: ["release-a", "release-b"]
-        )
-
-        store.finishCloudUploads(
-            for: command,
-            receipt: cloudUploadReceipt(["release-a"])
-        )
-
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .awaiting
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-b") == nil
-        )
-    }
-
-    @Test("an overlapping loser cannot clear the winning command's handoff")
-    func overlappingCommandsKeepTheWinningHandoff() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        let releaseIds = ["release-a"]
-
-        let first = store.beginCloudUploads(forReleases: releaseIds)
-        let second = store.beginCloudUploads(forReleases: releaseIds)
-        store.finishCloudUploads(for: first, receipt: nil)
-
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .queueing
-        )
-        store.finishCloudUploads(
-            for: second,
-            receipt: cloudUploadReceipt(releaseIds)
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .awaiting
-        )
-    }
-
-    @Test("a late loser cannot clear an already-published handoff")
-    func lateOverlappingFailureKeepsTheWinningHandoff() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        let first = store.beginCloudUploads(forReleases: ["release-a"])
-        let second = store.beginCloudUploads(forReleases: ["release-a"])
-
-        store.finishCloudUploads(
-            for: second,
-            receipt: cloudUploadReceipt(["release-a"])
-        )
-        store.finishCloudUploads(for: first, receipt: nil)
-
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .awaiting
-        )
-    }
-
-    @Test("a partial command leaves a refused release owned by its overlap")
-    func partialOverlapKeepsEachWinningCommand() {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        let batch = store.beginCloudUploads(
-            forReleases: ["release-a", "release-b"]
-        )
-        let overlapping = store.beginCloudUploads(forReleases: ["release-b"])
-
-        store.finishCloudUploads(
-            for: batch,
-            receipt: cloudUploadReceipt(["release-a"], revision: 2)
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .awaiting
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-b")
-                == .queueing
-        )
-
-        store.finishCloudUploads(
-            for: overlapping,
-            receipt: cloudUploadReceipt(["release-b"], revision: 3)
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-b")
-                == .awaiting
-        )
+        #expect(observation.transitionPhaseText == "Queued")
+        #expect(observation.transitionStatusText == "Queued")
+        #expect(observation.progressFraction == nil)
     }
 }
 
@@ -459,15 +180,13 @@ struct ReleaseEditorCloudBatchTests {
     @Test("the selected releases cross the bridge in one command")
     func selectionCrossesTheBridgeTogether() async throws {
         let recorder = CloudBatchRecorder()
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
         let editor = ReleaseEditor(
             moveReleasesToCloud: { releaseIds in
                 await recorder.append(releaseIds: releaseIds)
                 return .complete(
                     receipt: cloudUploadReceipt(releaseIds)
                 )
-            },
-            outboxStore: store
+            }
         )
 
         try await editor.moveReleasesToCloud(["release-a", "release-b"])
@@ -477,10 +196,9 @@ struct ReleaseEditorCloudBatchTests {
     }
 
     @Test(
-        "partial admission keeps the durable release and surfaces the refusal"
+        "a partial admission surfaces the refusal"
     )
-    func partialAdmissionPreservesItsReceipt() async {
-        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+    func partialAdmissionSurfacesItsRefusal() async {
         let refusal = BridgeError.Diagnostic(
             category: .internal,
             detail: "release release-b already has an active storage transition"
@@ -494,8 +212,7 @@ struct ReleaseEditorCloudBatchTests {
                         error: refusal
                     )
                 )
-            },
-            outboxStore: store
+            }
         )
 
         do {
@@ -513,14 +230,6 @@ struct ReleaseEditorCloudBatchTests {
         catch {
             Issue.record("the refusal must remain a BridgeError")
         }
-
-        #expect(
-            store.storageUploadObservation(forRelease: "release-a")
-                == .awaiting
-        )
-        #expect(
-            store.storageUploadObservation(forRelease: "release-b") == nil
-        )
     }
 }
 

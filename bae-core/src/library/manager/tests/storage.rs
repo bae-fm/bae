@@ -739,3 +739,120 @@ async fn upload_is_offered_only_where_this_device_holds_the_originals() {
     std::fs::remove_file(originals.join("track.flac")).unwrap();
     assert_eq!(offered(here.id.clone()).await, Vec::new());
 }
+
+/// The Storage Manager row of a release with files waiting to upload says
+/// how many wait, offers only cancelling, and reads as settled once they
+/// have uploaded.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("queued"),
+        "Album Title",
+        &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b")],
+    )
+    .await;
+    let row = |manager: LibraryManager, release_id: String| async move {
+        manager
+            .database
+            .get_storage_page(
+                &crate::db::StorageSortCriterion {
+                    field: crate::db::StorageSortField::AlbumTitle,
+                    direction: crate::db::SortDirection::Ascending,
+                },
+                crate::db::StorageFilter::All,
+                0,
+                50,
+            )
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|row| row.release.id == release_id)
+            .expect("the release is listed")
+    };
+    let summary = |row: crate::db::DbStorageRow| {
+        crate::album_detail::ReleaseSummary::from_raw(
+            row.release,
+            &crate::album_detail::ReleaseResolveCtx {
+                has_cloud_home: true,
+                originals: &crate::album_detail::OriginalsSeen::default(),
+                cover: None,
+                transfer_action: None,
+                is_compilation: false,
+            },
+        )
+    };
+    let queued = summary(row(manager.library.clone(), release.id.clone()).await);
+    assert_eq!(
+        queued.upload,
+        Some(crate::album_detail::ReleaseUpload {
+            progress: crate::library::UploadProgress {
+                queued: 2,
+                uploading: 0
+            },
+            bar: None,
+        })
+    );
+    assert!(queued.transitioning);
+    assert!(queued.storage_actions.is_empty());
+
+    manager.drain_uploads_expecting_work().await.unwrap();
+    let uploaded = summary(row(manager.library.clone(), release.id.clone()).await);
+    assert_eq!(uploaded.upload, None);
+    assert!(!uploaded.transitioning);
+}
+
+/// A file being sent counts as uploading in its release's row while its
+/// upload is in flight.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_storage_row_counts_the_file_being_sent() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("sending"),
+        "Album Title",
+        &[("a.flac", b"bytes-a")],
+    )
+    .await;
+    let mut browse = manager.database.subscribe_storage_browse(crate::db::StorageBrowseRequest {
+        sort: crate::db::StorageSortCriterion {
+            field: crate::db::StorageSortField::AlbumTitle,
+            direction: crate::db::SortDirection::Ascending,
+        },
+        filter: crate::db::StorageFilter::Uploading,
+        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
+            .into_iter()
+            .collect(),
+        selected: Default::default(),
+    });
+    home.set_faults(coven::Faults {
+        delay: std::time::Duration::from_secs(2),
+        ..coven::Faults::none()
+    })
+    .await;
+    let drain = tokio::spawn({
+        let manager = manager.library.clone();
+        async move { manager.drain_uploads_for_test().await }
+    });
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let event = browse.next().await.expect("the browse query answers");
+            let projection = event.result.unwrap();
+            let sending = projection.windows.iter().flat_map(|window| &window.rows).any(|row| {
+                row.release.id == release.id
+                    && row.release.upload.is_some_and(|upload| upload.sending == 1)
+            });
+            if sending {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("the row counts the file being sent");
+    drain.await.unwrap().unwrap();
+}

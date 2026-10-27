@@ -253,9 +253,6 @@
         @MainActor
         static func releaseEditor() -> ReleaseEditor {
             ReleaseEditor(
-                outboxStore: OutboxStore(
-                    snapshot: OutboxStore.emptySnapshot
-                ),
                 openReleaseEdit: { _ in
                     PreviewReleaseLibrary(seed: releaseEditSeed(trackCount: 5))
                         .opened()

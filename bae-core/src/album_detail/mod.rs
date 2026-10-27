@@ -140,10 +140,8 @@ pub enum ReleaseStorageAction {
 /// truthfully queued until a cycle can drain it, and does not remove the
 /// action. Pin / Unpin / DetachAudio gate on the connected cloud home alone.
 ///
-/// The in-flight-uploads gate lives in the UI, which suppresses
-/// these actions when the outbox snapshot has work for the release. That stays
-/// fresh on every queue mutation, where a core-side `has_pending_uploads` flag
-/// would bake a stale value into each cached `ReleaseDetail`.
+/// A release mid-transition offers none of these: its summary empties them
+/// while its files wait to upload or a transfer runs.
 pub fn available_storage_actions(
     state: ReleaseStorageState,
     playability: ReleasePlayability,

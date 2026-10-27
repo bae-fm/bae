@@ -15,11 +15,13 @@ struct StorageUploadSummary: View {
                 UploadActivityLabel(fileCountOf: group.progress)
                 Spacer()
                 Text(
-                    StorageUploadObservation.active(
-                        progress: group.progress,
-                        transfer: transfer
-                    )
-                    .throughputText ?? ""
+                    transfer.flatMap {
+                        // A zero reading stays absent, not a stalled speed.
+                        $0.throughputBps > 0
+                            ? QueueSummary.throughputText(
+                                bytesPerSecond: $0.throughputBps
+                            ) : nil
+                    } ?? ""
                 )
                 .monospacedDigit()
                 Button("Cancel", role: .destructive, action: onCancel)

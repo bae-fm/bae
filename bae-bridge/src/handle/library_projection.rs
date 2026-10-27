@@ -103,6 +103,8 @@ impl BridgeRelease {
             pinned,
             storage_actions,
             transfer_action,
+            upload,
+            transitioning,
             file_count,
             total_size,
             cover,
@@ -127,6 +129,8 @@ impl BridgeRelease {
             pinned,
             storage_actions,
             transfer_action,
+            upload,
+            transitioning,
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(crate::types::BridgeDurationUnits::from_core),
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
@@ -226,6 +230,8 @@ impl BridgeReleaseSummary {
             pinned,
             storage_actions,
             transfer_action,
+            upload,
+            transitioning,
             file_count,
             total_size,
             cover,
@@ -247,6 +253,11 @@ impl BridgeReleaseSummary {
                 .collect(),
             transfer_action: transfer_action
                 .map(crate::types::BridgeReleaseStorageAction::from_core),
+            upload: upload.map(|upload| crate::types::BridgeReleaseUpload {
+                progress: crate::types::BridgeUploadProgress::from_core(upload.progress),
+                bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
+            }),
+            transitioning,
             file_count,
             total_size,
             cover: cover.map(crate::types::BridgeImageRef::from_core),

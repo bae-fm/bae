@@ -333,18 +333,33 @@ pub struct BridgeReleaseSummary {
     /// `storage_state` is `Remote`. Kept separate from `storage_state` so the UI
     /// never conflates "in the cloud" with "kept offline".
     pub pinned: bool,
-    /// Storage transitions available right now, gated on cloud-home by the
-    /// core. The in-flight-uploads gate lives in the UI: it consults
-    /// per-release outbox progress before showing actions. The Storage
+    /// Storage transitions available right now, gated by the core on the
+    /// cloud home, and empty while the release is `transitioning`. The Storage
     /// Manager row context menu renders these.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub transfer_action: Option<BridgeReleaseStorageAction>,
+    /// What of the release waits in this device's upload queue; `None` when
+    /// nothing does.
+    pub upload: Option<BridgeReleaseUpload>,
+    /// Whether an upload or a transfer is under way, which offers only
+    /// cancelling.
+    pub transitioning: bool,
     pub file_count: i64,
     pub total_size: i64,
     /// Reference to this release's own cover (image id + version), or `None` when
     /// it has no cover. Keyed on the release id so each release renders its own
     /// art; the UI caches the bytes under `(id, version)`.
     pub cover: Option<BridgeImageRef>,
+}
+
+/// A release's files in this device's upload queue: how many wait and how
+/// many are being sent now, and, while any is, the bytes the provider
+/// confirmed of those being sent. Mirrors `ReleaseUpload`; how fast they go
+/// is the release's upload transfer.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeReleaseUpload {
+    pub progress: crate::types::BridgeUploadProgress,
+    pub bar: Option<crate::types::BridgeUploadBar>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -376,11 +391,16 @@ pub struct BridgeRelease {
     /// Whether coven keeps this release's files pinned (kept offline) on this
     /// device — the ORTHOGONAL coven-cache property, separate from `storage_state`.
     pub pinned: bool,
-    /// Storage transitions available right now, gated on cloud-home by the
-    /// core. The in-flight-uploads gate lives in the UI: it consults
-    /// per-release outbox progress before showing actions.
+    /// Storage transitions available right now, gated by the core on the
+    /// cloud home, and empty while the release is `transitioning`.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,
     pub transfer_action: Option<BridgeReleaseStorageAction>,
+    /// What of the release waits in this device's upload queue; `None` when
+    /// nothing does.
+    pub upload: Option<BridgeReleaseUpload>,
+    /// Whether an upload or a transfer is under way, which offers only
+    /// cancelling.
+    pub transitioning: bool,
     pub tracks: Vec<BridgeTrack>,
     pub track_groups: Vec<BridgeTrackGroup>,
     pub files: Vec<BridgeFile>,

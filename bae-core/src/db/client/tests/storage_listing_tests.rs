@@ -152,7 +152,9 @@ async fn the_uploading_filter_reads_the_listing_in_queue_order() {
     )
     .await;
     assert!(
-        page[0].starts_with("SEARCH listing USING INDEX idx_release_listing_uploading"),
+        page.iter().any(
+            |step| step.starts_with("SEARCH listing USING INDEX idx_release_listing_uploading")
+        ),
         "{page:?}"
     );
     assert!(

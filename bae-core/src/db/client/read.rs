@@ -173,6 +173,7 @@ pub(super) fn build_release_detail_on(
         |row| row.get(0),
     )?;
     let download = super::release_queues::download_phase_on(sql, &release.id)?;
+    let upload = super::queued_uploads::release_upload_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -184,6 +185,7 @@ pub(super) fn build_release_detail_on(
         records,
         unstored_audio,
         pinned,
+        upload,
         download,
     })
 }
@@ -243,6 +245,7 @@ pub(super) struct ReleaseDetailRows {
     records: Vec<crate::import::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
+    upload: Option<DbReleaseUpload>,
     download: Option<crate::library::DownloadPhase>,
 }
 
@@ -258,6 +261,7 @@ impl ReleaseDetailRows {
             records: self.records,
             unstored_audio: self.unstored_audio,
             pinned: self.pinned,
+            upload: self.upload,
             download: self.download,
         }
     }
@@ -757,6 +761,7 @@ pub(super) fn row_to_release_storage_summary(
         media: super::pressing_columns::read_media(row, "media")?,
         remote: row.get("remote")?,
         pinned: row.get("pinned")?,
+        upload: super::queued_uploads::release_upload_in_row(row)?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,
     })

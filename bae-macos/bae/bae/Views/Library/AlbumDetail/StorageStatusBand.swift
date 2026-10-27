@@ -11,11 +11,9 @@ struct StorageStatusBand: View {
     @Environment(OutboxStore.self)
     private var outboxStore
 
-    /// This release's outbox progress while its move to the cloud is
-    /// unfinished; transfer actions stay hidden meanwhile, since acting
-    /// mid-upload races the observer that completes the move.
+    /// This release's files waiting to upload, while any does.
     private var uploadObservation: StorageUploadObservation? {
-        outboxStore.storageUploadObservation(forRelease: release.summary.id)
+        outboxStore.uploadObservation(of: release.summary)
     }
 
     var body: some View {
@@ -23,18 +21,18 @@ struct StorageStatusBand: View {
             // A cloud transition in flight is the release's storage state
             // while it runs: its phase, bar, and count are one line.
             if let observation = uploadObservation {
-                if let bar = observation.progressBar {
+                if let fraction = observation.progressFraction {
                     ProgressLine(
-                        progress: bar.fraction,
+                        progress: fraction,
                         detail: observation.progressDetailText
                     ) {
-                        uploadLabel(observation)
+                        UploadActivityLabel(phaseOf: observation.progress)
                     }
                     .themeText(.body)
                 }
                 else {
                     // Files only waiting: nothing is moving to measure.
-                    uploadLabel(observation)
+                    UploadActivityLabel(phaseOf: observation.progress)
                         .themeText(.body)
                 }
             }
@@ -46,36 +44,12 @@ struct StorageStatusBand: View {
                 ProgressLine(transfer.label, progress: nil)
                     .themeText(.body)
             }
-            else if Self.showsTransferActions(
-                uploadObservation: uploadObservation
-            ) {
+            else if !release.summary.transitioning {
                 transferActions
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-    }
-
-    /// Storage actions are offered only while no cloud transition runs.
-    static func showsTransferActions(
-        uploadObservation: StorageUploadObservation?
-    ) -> Bool {
-        uploadObservation == nil
-    }
-
-    @ViewBuilder
-    private func uploadLabel(
-        _ observation: StorageUploadObservation
-    ) -> some View {
-        switch observation {
-        case .active(let progress, _):
-            UploadActivityLabel(phaseOf: progress)
-        case .queueing, .awaiting:
-            Label(
-                observation.transitionPhaseText,
-                systemImage: "icloud.and.arrow.up"
-            )
-        }
     }
 
     /// The resting storage state.

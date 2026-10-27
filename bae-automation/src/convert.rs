@@ -619,10 +619,23 @@ mirror_struct! {
         pinned,
         storage_actions: (each into),
         transfer_action: (opt into),
+        upload: (opt AutomationReleaseUpload),
+        transitioning,
         file_count,
         total_size,
         cover: (opt AutomationImageRef),
     },
+}
+
+impl AutomationReleaseUpload {
+    /// Drops core's bytes, which an automation client polls the release for
+    /// rather than follows.
+    pub(crate) fn from_core(upload: bae_core::album_detail::ReleaseUpload) -> Self {
+        Self {
+            queued: upload.progress.queued,
+            uploading: upload.progress.uploading,
+        }
+    }
 }
 
 impl AutomationImageRef {

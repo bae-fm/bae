@@ -40,12 +40,17 @@ impl ReleaseStorageSummary {
         originals: &OriginalsSeen,
     ) -> ReleaseStorageSummary {
         let storage_state = storage_state(raw.remote);
-        let storage_actions = available_storage_actions(
-            storage_state,
-            release_playability(&raw.unstored_audio, originals),
-            raw.pinned,
-            has_cloud_home,
-        );
+        // A release with files waiting to upload offers only cancelling.
+        let storage_actions = if raw.upload.is_some() {
+            Vec::new()
+        } else {
+            available_storage_actions(
+                storage_state,
+                release_playability(&raw.unstored_audio, originals),
+                raw.pinned,
+                has_cloud_home,
+            )
+        };
         ReleaseStorageSummary {
             storage_state,
             pinned: raw.pinned,

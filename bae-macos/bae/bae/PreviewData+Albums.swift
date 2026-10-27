@@ -183,6 +183,8 @@
                 pinned: false,
                 storageActions: [],
                 transferAction: nil,
+                upload: nil,
+                transitioning: false,
                 tracks: tracks,
                 trackGroups: groups,
                 files: [],

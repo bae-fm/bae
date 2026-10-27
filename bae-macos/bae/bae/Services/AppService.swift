@@ -105,10 +105,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         self.uiStore = uiStore
         self.importStore = importStore
         previewAudio = PreviewAudio(handle: appHandle)
-        releaseEditor = ReleaseEditor(
-            handle: appHandle,
-            outboxStore: outboxStore
-        )
+        releaseEditor = ReleaseEditor(handle: appHandle)
         artistEditor = ArtistEditor(handle: appHandle)
         self.importer = importer
         outputs = Outputs(handle: appHandle)

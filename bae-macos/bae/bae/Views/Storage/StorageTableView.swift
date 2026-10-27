@@ -543,31 +543,16 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
         // start another storage action (those race the transition), so the only
-        // action it offers is cancelling — in every tab. Uploads live in the
-        // outbox; foreground transfers (pin/unpin/make-local) set the row's
-        // `transferAction`.
-        let transitioning = targets.filter { target in
-            outboxStore.isTransitioning(forRelease: target.id)
-                || target.release.transferAction != nil
-        }
+        // action it offers is cancelling — in every tab.
+        let transitioning = targets.filter(\.release.transitioning)
         if !transitioning.isEmpty {
-            let cancellable = transitioning.filter { target in
-                if let observation = outboxStore.storageUploadObservation(
-                    forRelease: target.id
-                ) {
-                    return observation.canCancel
-                }
-                return target.release.transferAction != nil
-            }
-            if !cancellable.isEmpty {
-                addMenuItem(
-                    to: menu,
-                    title: String(localized: "Cancel"),
-                    action: #selector(cancelTransitionsAction(_:)),
-                    symbol: "xmark.circle",
-                    representedObject: cancellable.map(\.id)
-                )
-            }
+            addMenuItem(
+                to: menu,
+                title: String(localized: "Cancel"),
+                action: #selector(cancelTransitionsAction(_:)),
+                symbol: "xmark.circle",
+                representedObject: transitioning.map(\.id)
+            )
             return
         }
         for action in actions {

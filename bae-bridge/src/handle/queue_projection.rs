@@ -31,7 +31,7 @@ impl crate::types::BridgeUploadFileOp {
 }
 mirror_struct! {
     crate::types::BridgeUploadBar = bae_core::library::UploadBar,
-    from_core: fn,
+    from_core: pub(super) fn,
     fields: { bytes_done, bytes_total },
 }
 

@@ -39,9 +39,14 @@ final class StorageManagerLayoutTests: XCTestCase {
 
             try await SnapshotTestSupport.settle(host)
             let outboxStore = PreviewData.outboxStore()
+            let row = try XCTUnwrap(
+                PreviewData.storageRows.first {
+                    $0.release.id == PreviewData.uploadGroup.releaseId
+                }
+            )
             let observation = try XCTUnwrap(
-                outboxStore.storageUploadObservation(
-                    forRelease: PreviewData.uploadGroup.releaseId
+                outboxStore.uploadObservation(
+                    of: ReleaseSummary(from: row.release)
                 )
             )
             XCTAssertEqual(

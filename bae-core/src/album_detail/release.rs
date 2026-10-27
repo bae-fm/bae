@@ -44,10 +44,18 @@ pub struct ReleaseSummary {
     pub pinned: bool,
     /// The transitions available right now, derived by the core from
     /// `storage_state`, whether this device holds the originals an upload reads,
-    /// `pinned`, and whether a cloud home exists; empty without one. The UI renders these and never re-derives availability, but does apply
-    /// the in-flight-uploads gate from its outbox snapshot.
+    /// `pinned`, and whether a cloud home exists; empty without one, and while
+    /// the release is `transitioning`. The UI renders these and never
+    /// re-derives availability.
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub transfer_action: Option<ReleaseStorageAction>,
+    /// What of the release waits in this device's upload queue; `None` when
+    /// nothing does.
+    pub upload: Option<ReleaseUpload>,
+    /// Whether a transition is under way: files waiting to upload, or a
+    /// transfer running. It offers only cancelling; another storage action
+    /// would race it.
+    pub transitioning: bool,
     pub file_count: i64,
     pub total_size: i64,
     /// This release's *own* cover, or `None` when it has no cover row. Keyed on the
@@ -61,22 +69,56 @@ impl ReleaseSummary {
     /// projects its fat aggregate down to a slim row and routes through here too.
     pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx<'_>) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote);
+        let upload = raw.upload.map(ReleaseUpload::from_raw);
+        let transitioning = upload.is_some() || ctx.transfer_action.is_some();
         ReleaseSummary {
             id: raw.id,
             album_id: raw.album_id,
             media: raw.media,
             storage_state,
             pinned: raw.pinned,
-            storage_actions: available_storage_actions(
-                storage_state,
-                release_playability(&raw.unstored_audio, ctx.originals),
-                raw.pinned,
-                ctx.has_cloud_home,
-            ),
+            storage_actions: if transitioning {
+                Vec::new()
+            } else {
+                available_storage_actions(
+                    storage_state,
+                    release_playability(&raw.unstored_audio, ctx.originals),
+                    raw.pinned,
+                    ctx.has_cloud_home,
+                )
+            },
             transfer_action: ctx.transfer_action,
+            upload,
+            transitioning,
             file_count: raw.file_count,
             total_size: raw.total_size,
             cover: ctx.cover.clone(),
+        }
+    }
+}
+
+/// A release's files in this device's upload queue: how many wait and how
+/// many are being sent now, and, while any is, the bytes the provider
+/// confirmed of those being sent. How fast they go is the release's transfer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseUpload {
+    pub progress: crate::library::UploadProgress,
+    pub bar: Option<crate::library::UploadBar>,
+}
+
+impl ReleaseUpload {
+    fn from_raw(raw: crate::db::DbReleaseUpload) -> Self {
+        let count = |value: i64| u32::try_from(value).expect("a release's queued file count");
+        let bytes = |value: i64| u64::try_from(value).expect("an upload's confirmed bytes");
+        Self {
+            progress: crate::library::UploadProgress {
+                queued: count(raw.queued - raw.sending),
+                uploading: count(raw.sending),
+            },
+            bar: (raw.sending > 0).then(|| crate::library::UploadBar {
+                bytes_done: bytes(raw.bytes_confirmed),
+                bytes_total: bytes(raw.bytes_total),
+            }),
         }
     }
 }
@@ -514,6 +556,7 @@ impl ReleaseDetail {
                 media: release.pressing.facts.media.clone(),
                 remote,
                 pinned: raw.pinned,
+                upload: raw.upload,
                 file_count,
                 total_size,
                 unstored_audio: raw.unstored_audio,
@@ -725,6 +768,7 @@ mod release_edit_display_tests {
             records: Vec::new(),
             unstored_audio: Vec::new(),
             pinned: false,
+            upload: None,
             download: None,
         };
 

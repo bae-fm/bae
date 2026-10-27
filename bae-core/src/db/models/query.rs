@@ -132,8 +132,7 @@ pub struct DbWorkTrackSummary {
 /// Raw per-release storage summary, assembled in one SQL query (no N+1). No
 /// formatting, no derivation — the resolver in `LibraryManager` produces the
 /// display-ready `crate::album_detail::ReleaseStorageSummary` (deriving
-/// `storage_state` from `remote` and formatting `total_size`). Pending-upload
-/// counts are not here; `OutboxQueue` is the only source for those.
+/// `storage_state` from `remote` and formatting `total_size`).
 #[derive(Debug, Clone)]
 pub struct DbReleaseStorageSummary {
     pub release_id: String,
@@ -141,12 +140,13 @@ pub struct DbReleaseStorageSummary {
     pub album_title: String,
     pub artist_names: String,
     pub media: Vec<bae_types::pressing::MediaCount>,
-    /// Whether all audio files are attached for sharing. Pending uploads are
-    /// reported independently by the upload queue.
+    /// Whether all audio files are attached for sharing.
     pub remote: bool,
     /// Whether this device keeps every file of the release pinned, as the
     /// release's listing counts its pinned files.
     pub pinned: bool,
+    /// What of the release waits in this device's upload queue.
+    pub upload: Option<DbReleaseUpload>,
     pub file_count: i64,
     pub total_size: i64,
     /// What the library records this device holding for each audio file whose
@@ -245,6 +245,8 @@ pub struct DbReleaseDetail {
     /// Whether this device keeps every file of the release pinned, as the
     /// release's listing counts its pinned files.
     pub pinned: bool,
+    /// What of the release waits in this device's upload queue.
+    pub upload: Option<DbReleaseUpload>,
     /// The release's entry in this device's download queue, `None` when it
     /// has none.
     pub download: Option<crate::library::DownloadPhase>,
@@ -289,17 +291,30 @@ pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub media: Vec<bae_types::pressing::MediaCount>,
-    /// Whether all audio files are attached for sharing. Pending uploads are
-    /// reported independently by the upload queue.
+    /// Whether all audio files are attached for sharing.
     pub remote: bool,
     /// Whether this device keeps every file of the release pinned, as the
     /// release's listing counts its pinned files.
     pub pinned: bool,
+    /// What of the release waits in this device's upload queue; `None` when
+    /// nothing does.
+    pub upload: Option<DbReleaseUpload>,
     pub file_count: i64,
     pub total_size: i64,
     /// What the library records this device holding for each audio file whose
     /// row names no stored file.
     pub unstored_audio: Vec<DbUnstoredAudio>,
+}
+
+/// A release's files in this device's upload queue, as one read finds them:
+/// how many wait there, how many of those this process is sending now, and
+/// the bytes the provider confirmed of those being sent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DbReleaseUpload {
+    pub queued: i64,
+    pub sending: i64,
+    pub bytes_confirmed: i64,
+    pub bytes_total: i64,
 }
 
 /// Raw storage-page row: a release summary joined with its parent album summary,
