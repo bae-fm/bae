@@ -14,19 +14,19 @@ struct ImportListSelectionTests {
     @MainActor
     @Test("a click on a row reaches core as the selection")
     func candidateCanBeSelected() async throws {
-        try await assertCandidateCanBeSelected(isGroupMember: false)
+        try await assertCandidateCanBeSelected(grouped: false)
     }
 
     @MainActor
     @Test("a click on a group member reaches core as the selection")
     func groupedCandidateCanBeSelected() async throws {
-        try await assertCandidateCanBeSelected(isGroupMember: true)
+        try await assertCandidateCanBeSelected(grouped: true)
     }
 
+    /// A click on the release, alone or as the member of a group listed
+    /// under its header.
     @MainActor
-    private func assertCandidateCanBeSelected(
-        isGroupMember: Bool
-    ) async throws {
+    private func assertCandidateCanBeSelected(grouped: Bool) async throws {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
         let store = PreviewData.importTabScene().store
@@ -34,12 +34,13 @@ struct ImportListSelectionTests {
         let slot = ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
-            items: [
-                PreviewData.candidateItem(
-                    PreviewData.triageRowIdentified,
-                    isGroupMember: isGroupMember
-                )
-            ],
+            items: (grouped ? [Self.groupHeader] : [])
+                + [
+                    PreviewData.candidateItem(
+                        PreviewData.triageRowIdentified,
+                        headerPosition: grouped ? 0 : nil
+                    )
+                ],
             selection: ImportSelection(
                 operations: .stub(change: { change in
                     changes.record(change)
@@ -52,7 +53,8 @@ struct ImportListSelectionTests {
             slot: slot,
             uiStore: uiStore
         ) { table in
-            try ImportListHosting.press(row: 0, in: table)
+            let row = grouped ? 1 : 0
+            try ImportListHosting.press(row: row, in: table)
 
             try await Wait.until { !changes.all.isEmpty }
             #expect(
@@ -62,7 +64,7 @@ struct ImportListSelectionTests {
                     ])
                 ]
             )
-            #expect(table.selectedRowIndexes == [0])
+            #expect(table.selectedRowIndexes == [row])
         }
     }
 
@@ -190,7 +192,7 @@ struct ImportListSelectionTests {
                 header,
                 PreviewData.candidateItem(
                     PreviewData.triageRowUnidentified,
-                    isGroupMember: true
+                    headerPosition: 1
                 ),
             ],
             selection: ImportSelection(
@@ -273,6 +275,16 @@ struct ImportListSelectionTests {
         row.selected = selected
         return PreviewData.candidateItem(row)
     }
+
+    /// The header of a group, `Group`, under the library's folder.
+    private static let groupHeader = PreviewData.groupHeaderItem(
+        key: BridgeFolderReleaseDecisionKey(
+            watchedFolderPath: "/library",
+            relativeFolderPath: "Group"
+        ),
+        name: "Group",
+        entryCount: 1
+    )
 }
 
 /// The import list hosted the way the import view hosts it, for tests that

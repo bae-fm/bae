@@ -68,7 +68,6 @@ struct ImportCandidateTable: NSViewRepresentable {
         tableView.intercellSpacing = .zero
         tableView.rowHeight = ImportCandidateTableLayout.rowHeight
         tableView.usesAutomaticRowHeights = false
-        tableView.floatsGroupRows = true
         tableView.allowsMultipleSelection = true
         tableView.allowsEmptySelection = true
         tableView.allowsTypeSelect = true

@@ -650,7 +650,10 @@
                         )
                     ]
                     + triageGroupedRows.map {
-                        candidateItem($0, isGroupMember: true)
+                        candidateItem(
+                            $0,
+                            headerPosition: UInt64(importTabPendingRows.count)
+                        )
                     }
             case .done:
                 return importTabDoneRows.map(candidateItem)

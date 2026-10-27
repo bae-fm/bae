@@ -208,28 +208,150 @@ async fn every_group_folds_and_opens_at_once() {
     );
 }
 
+/// The position of the header each release is listed under, in a read's
+/// order: `None` for a release in no group, and for each header.
+fn header_positions(projection: &ImportListProjection) -> Vec<Option<u64>> {
+    projection
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .map(|item| match item {
+            ImportListItem::Candidate {
+                header_position, ..
+            } => *header_position,
+            ImportListItem::GroupHeader { .. } | ImportListItem::Invalid { .. } => None,
+        })
+        .collect()
+}
+
+/// A release in a group names where its group's header sits in the list,
+/// and one in no group names none.
 #[tokio::test]
-async fn only_entries_beneath_a_group_header_are_group_members() {
+async fn a_group_member_names_its_headers_position() {
     let lib = Library::new().await;
     lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Group/Release 1"),
-        lib.scan("Group/Release 2"),
-        lib.scan("Ungrouped")
+        "{}{}{}{}",
+        lib.scan("A/One"),
+        lib.scan("A/Two"),
+        lib.scan("B/Three"),
+        lib.scan("Loose")
     ))
     .await;
-    let read = lib.shown(view(TriageTab::Pending)).await;
-    let memberships: Vec<bool> = read.windows[0]
-        .items
-        .iter()
-        .filter_map(|item| match item {
-            ImportListItem::Candidate {
-                is_group_member, ..
-            } => Some(*is_group_member),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(memberships, [true, true, false]);
+    let read = lib
+        .shown(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+        .await;
+    assert_eq!(
+        sequence(&read),
+        [
+            "group A",
+            "candidate A/One",
+            "candidate A/Two",
+            "group B",
+            "candidate B/Three",
+            "candidate Loose"
+        ]
+    );
+    assert_eq!(
+        header_positions(&read),
+        [None, Some(0), Some(0), None, Some(3), None]
+    );
+}
+
+/// A window that starts among a group's members names the header before it,
+/// which it does not hold: the header the rows on top are listed under,
+/// whichever windows a surface has loaded.
+#[tokio::test]
+async fn a_window_starting_inside_a_group_names_the_header_before_it() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}{}",
+        lib.scan("A/Disc 1"),
+        lib.scan("A/Disc 2"),
+        lib.scan("A/Disc 3"),
+        lib.scan("Loose")
+    ))
+    .await;
+    let list = lib
+        .open(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+        .await;
+    let read = lib
+        .read_through(
+            list,
+            LibraryPageWindow {
+                offset: 2,
+                limit: 3,
+            },
+        )
+        .await;
+    assert_eq!(
+        sequence(&read),
+        [
+            "candidate A/Disc 2",
+            "candidate A/Disc 3",
+            "candidate Loose"
+        ]
+    );
+    assert_eq!(header_positions(&read), [Some(0), Some(0), None]);
+}
+
+/// A list that folds a group shut reads its windows past the folded members,
+/// and an open group's members still name where their header sits: its place
+/// among the items the list shows, the folded group's header counted and its
+/// members not.
+#[tokio::test]
+async fn a_folded_lists_members_name_their_headers_position() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}{}{}{}",
+        lib.scan("A/Disc 1"),
+        lib.scan("A/Disc 2"),
+        lib.scan("B/Disc 1"),
+        lib.scan("B/Disc 2"),
+        lib.scan("B/Disc 3"),
+        lib.scan("Loose")
+    ))
+    .await;
+    let list = lib
+        .open(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+        .await;
+    lib.db
+        .set_import_list_group_folded(list, lib.group_key("A"), true)
+        .await
+        .unwrap();
+    let read = lib.read(list).await;
+    assert_eq!(
+        sequence(&read),
+        [
+            "group A",
+            "group B",
+            "candidate B/Disc 1",
+            "candidate B/Disc 2",
+            "candidate B/Disc 3",
+            "candidate Loose"
+        ]
+    );
+    assert_eq!(
+        header_positions(&read),
+        [None, None, Some(1), Some(1), Some(1), None]
+    );
+    let window = lib
+        .read_through(
+            list,
+            LibraryPageWindow {
+                offset: 3,
+                limit: 3,
+            },
+        )
+        .await;
+    assert_eq!(
+        sequence(&window),
+        [
+            "candidate B/Disc 2",
+            "candidate B/Disc 3",
+            "candidate Loose"
+        ]
+    );
+    assert_eq!(header_positions(&window), [Some(1), Some(1), None]);
 }
 
 /// A group header asks how the folder under it is read, and offers to read it

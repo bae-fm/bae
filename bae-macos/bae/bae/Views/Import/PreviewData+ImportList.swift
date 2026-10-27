@@ -45,7 +45,7 @@
                         )
                     )
                     continue
-                case .candidate(_, _, true) where folding,
+                case .candidate(_, _, .some) where folding,
                     .invalid(_, _, _, true) where folding:
                     continue
                 default:
@@ -66,17 +66,19 @@
         static func candidateItem(
             _ row: BridgeTriageRow
         ) -> BridgeImportListItem {
-            candidateItem(row, isGroupMember: false)
+            candidateItem(row, headerPosition: nil)
         }
 
+        /// `row` listed under the group header at `headerPosition`, or in
+        /// no group.
         static func candidateItem(
             _ row: BridgeTriageRow,
-            isGroupMember: Bool
+            headerPosition: UInt64?
         ) -> BridgeImportListItem {
             .candidate(
                 stableKey: "candidate:\(row.candidateKey)",
                 row: row,
-                isGroupMember: isGroupMember
+                headerPosition: headerPosition
             )
         }
 

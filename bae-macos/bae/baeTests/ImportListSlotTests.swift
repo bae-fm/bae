@@ -131,7 +131,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             reading: .unidentified,
             selected: false
         ),
-        isGroupMember: false
+        headerPosition: nil
     )
 }
 

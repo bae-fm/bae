@@ -175,7 +175,7 @@ struct ImportListPageSourceTests {
         .candidate(
             stableKey: "candidate:\(key)",
             row: identifiedRow(key, title: key),
-            isGroupMember: false
+            headerPosition: nil
         )
     }
 
@@ -612,7 +612,7 @@ extension ImportListPageSourceTests {
                     )
                 )
             ),
-            isGroupMember: false
+            headerPosition: nil
         )
         store.ingest([rows[0], recovered])
         #expect(notified.isSet)

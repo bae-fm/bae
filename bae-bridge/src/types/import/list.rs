@@ -73,7 +73,9 @@ pub enum BridgeImportListItem {
     Candidate {
         stable_key: String,
         row: BridgeTriageRow,
-        is_group_member: bool,
+        /// Where the header of the group it is listed under sits in the
+        /// list, for a member of a group, whichever window holds the header.
+        header_position: Option<u64>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it.

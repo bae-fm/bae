@@ -37,6 +37,8 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private var pendingPlace: ImportListPlace?
     /// Core's answer for where the pending place's row is now.
     private var placeTask: Task<Void, Never>?
+    /// Where the header of the group on top is pinned.
+    let pinnedStrip = ImportListPinnedHeaderStrip()
 
     init(
         list: PaginatedList<BridgeImportListItem>,
@@ -73,6 +75,11 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         tableView.doubleAction = #selector(openClickedRow(_:))
         tableView.onSelectAll = { [weak self] in self?.selectAllShown() }
         pendingPlace = listSlot.place
+        scrollView.addSubview(
+            pinnedStrip,
+            positioned: .above,
+            relativeTo: scrollView.contentView
+        )
         let clipView = scrollView.contentView
         clipView.postsBoundsChangedNotifications = true
         clipView.postsFrameChangedNotifications = true
@@ -145,18 +152,25 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         load(rows)
         if environment.appearance != drawnAppearance {
             drawnAppearance = environment.appearance
-            tableView?.reloadData()
+            reloadRows()
         }
         scroll(for: read, revealing: revealing)
         highlight(shownSelected)
         holdRowsInView()
+        refreshPinnedHeader()
     }
 
     /// Load the table with `rows` when they are not the ones it shows.
     private func load(_ rows: ImportCandidateTableRows) {
         guard rows != shownRows else { return }
         shownRows = rows
+        reloadRows()
+    }
+
+    /// Draw every row anew, and the pinned header with them.
+    private func reloadRows() {
         tableView?.reloadData()
+        pinnedStrip.forget()
     }
 
     /// The rows of the list as it stands, whatever the last update loaded:
@@ -205,9 +219,11 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
             break
         }
     }
+}
 
-    // MARK: Rows
+// MARK: - Rows
 
+extension ImportCandidateTableCoordinator {
     func numberOfRows(in _: NSTableView) -> Int {
         rowCount
     }
@@ -228,6 +244,10 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         ImportCandidateTableLayout.rowHeight
     }
 
+    /// A header's row is drawn as a group row. The table does not float it:
+    /// it knows the header rows only of the pages that have landed, and
+    /// nothing of where a group ends, so the coordinator pins the header of
+    /// the group on top itself.
     func tableView(_: NSTableView, isGroupRow row: Int) -> Bool {
         if case .groupHeader = item(at: row) { return true }
         return false
@@ -335,7 +355,11 @@ extension ImportCandidateTableCoordinator {
         let range = tableView.rows(in: tableView.visibleRect)
         let lower = max(range.location - 1, 0)
         let upper = min(range.location + range.length + 1, count)
-        let inView = lower < upper ? Set(lower..<upper) : []
+        var inView = lower < upper ? Set(lower..<upper) : []
+        // The header pinned over the rows, wherever it sits in the list.
+        if let pinned = pinnedHeader() {
+            inView.insert(pinned.position)
+        }
         for (row, hold) in rowHolds where !inView.contains(row) {
             hold.cancel()
             rowHolds.removeValue(forKey: row)
@@ -359,11 +383,13 @@ extension ImportCandidateTableCoordinator {
 extension ImportCandidateTableCoordinator {
     private func clipViewScrolled() {
         holdRowsInView()
+        refreshPinnedHeader()
         recordPlace()
     }
 
     private func clipViewResized() {
         holdRowsInView()
+        refreshPinnedHeader()
         if let pendingPlace, placeTask == nil,
             let clipView = scrollView?.contentView, clipView.bounds.height > 0
         {
@@ -416,15 +442,10 @@ extension ImportCandidateTableCoordinator {
     /// scrolled, as the person's place.
     private func recordPlace() {
         guard !updating, pendingPlace == nil, let tableView,
-            let clipView = scrollView?.contentView, rowCount > 0,
+            let clipView = scrollView?.contentView, let row = topRow,
             let content
         else { return }
         let top = clipView.bounds.minY
-        // The row under the top edge, not the header floating over it.
-        let row = min(
-            Int(max(top, 0) / ImportCandidateTableLayout.rowHeight),
-            rowCount - 1
-        )
         listSlot.place = ImportListPlace(
             row: placeRow(at: row),
             position: row,
@@ -471,6 +492,61 @@ extension ImportCandidateTableCoordinator {
         guard origin != clipView.bounds.origin else { return }
         clipView.scroll(to: origin)
         scrollView.reflectScrolledClipView(clipView)
+    }
+}
+
+// MARK: - Pinned header
+
+extension ImportCandidateTableCoordinator {
+    /// The row under the table's top edge, not the header pinned over it:
+    /// every row is one height.
+    fileprivate var topRow: Int? {
+        guard let clipView = scrollView?.contentView, rowCount > 0 else {
+            return nil
+        }
+        return min(
+            Int(
+                max(clipView.bounds.minY, 0)
+                    / ImportCandidateTableLayout.rowHeight
+            ),
+            rowCount - 1
+        )
+    }
+
+    /// The header of the group the row on top is listed under, as the rows
+    /// that have landed say.
+    func pinnedHeader() -> ImportListPinnedHeader? {
+        guard let top = topRow else { return nil }
+        return ImportListPinnedHeader.over(top: top) { item(at: $0) }
+    }
+
+    /// Pin the header of the group on top over the rows, once its page has
+    /// landed: lifted with the row on top when that row ends its group, and
+    /// none over a release in no group.
+    fileprivate func refreshPinnedHeader() {
+        guard let tableView, let scrollView, let top = topRow,
+            let pinned = pinnedHeader(), let header = pinned.header
+        else {
+            pinnedStrip.hide()
+            return
+        }
+        let ends = pinned.ends(below: top) { item(at: $0) }
+        let lift =
+            ends
+            ? scrollView.contentView.bounds.minY
+                - tableView.rect(ofRow: top).minY
+            : 0
+        pinnedStrip.show(
+            ImportListEntry(
+                item: header,
+                coverContent: nil,
+                gapAbove: false,
+                actions: actions,
+                environment: environment
+            ),
+            lift: lift,
+            in: scrollView
+        )
     }
 }
 

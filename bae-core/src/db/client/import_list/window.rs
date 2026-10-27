@@ -28,11 +28,14 @@ use crate::import::triage::{
 use crate::import::{CoverSelection, FolderReleaseDecisionKey, PressingLink, ReleaseLink};
 use std::path::PathBuf;
 
-/// The items `keys` name, in their order, loaded whole for the list `list`.
+/// The items `keys` name, in their order, loaded whole for the list `list`,
+/// each release with the position of the header `header_positions` lists it
+/// under.
 pub(super) fn materialise(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
     keys: &[ItemKey],
+    header_positions: &[Option<u64>],
 ) -> Result<Vec<WindowItemRows>, DbError> {
     let mut headers = header_rows(sql, list, keys.iter().filter(|key| key.item == Item::Group))?;
     let mut releases = release_rows(
@@ -51,7 +54,8 @@ pub(super) fn materialise(
     let mut links = load_release_links_on(sql, current)?;
     let mut covers = load_covers_on(sql, current)?;
     keys.iter()
-        .map(|key| {
+        .zip(header_positions)
+        .map(|(key, &header_position)| {
             let missing = || {
                 DbError::Message(format!(
                     "the list's {:?} at {} vanished while its window was read",
@@ -80,7 +84,7 @@ pub(super) fn materialise(
             let provenance = hash.and_then(|hash| provenances.remove(hash));
             let link = hash.and_then(|hash| links.remove(hash));
             let cover = hash.and_then(|hash| covers.remove(hash));
-            candidate_item(sql, release, lead, provenance, link, cover)
+            candidate_item(sql, release, header_position, lead, provenance, link, cover)
         })
         .collect()
 }
@@ -166,7 +170,6 @@ struct ReleaseRows {
     watched_folder_path: String,
     key: String,
     display_path: String,
-    in_group: bool,
     /// What the row shows: its draft's title and artists while it shows its
     /// draft, else nothing past its folder's name.
     summary: Option<TriageMetadataSummary>,
@@ -199,7 +202,7 @@ fn release_rows<'a>(
     }
     let rows = sql.query(
         &format!(
-            "SELECT p.watched_folder_path, p.key, p.display_path, p.group_name IS NOT NULL, \
+            "SELECT p.watched_folder_path, p.key, p.display_path, \
                     p.has_summary, p.shown_title, p.shown_artists, {LISTED_COLUMNS}, \
                     c.name, c.content_hash, s.content_hash IS NOT NULL, \
                     origin.release_id, released.album_id, \
@@ -231,10 +234,10 @@ fn release_rows<'a>(
             ":list": list.0,
         },
         |row| {
-            let summary = match row.get::<_, Option<bool>>(4)? {
+            let summary = match row.get::<_, Option<bool>>(3)? {
                 Some(true) => Some(TriageMetadataSummary {
-                    album_title: row.get(5)?,
-                    album_artists: row.get(6)?,
+                    album_title: row.get(4)?,
+                    album_artists: row.get(5)?,
                 }),
                 Some(false) | None => None,
             };
@@ -243,25 +246,24 @@ fn release_rows<'a>(
                 watched_folder_path: row.get(0)?,
                 key: row.get(1)?,
                 display_path: row.get(2)?,
-                in_group: row.get(3)?,
                 summary,
-                listed: ListedColumns::read(row, 7)?,
-                name: row.get(18)?,
-                content_hash: row.get(19)?,
-                current: row.get(20)?,
-                imported: match row.get::<_, Option<String>>(21)? {
+                listed: ListedColumns::read(row, 6)?,
+                name: row.get(17)?,
+                content_hash: row.get(18)?,
+                current: row.get(19)?,
+                imported: match row.get::<_, Option<String>>(20)? {
                     Some(release_id) => Some(ImportedRelease {
                         release_id,
-                        album_id: row.get(22)?,
+                        album_id: row.get(21)?,
                     }),
                     None => None,
                 },
-                block: (row.get(23)?, row.get(24)?, row.get(25)?),
+                block: (row.get(22)?, row.get(23)?, row.get(24)?),
                 failure: match failed {
                     true => Some(failure_reason_from_row(row)?),
                     false => None,
                 },
-                facts: RuntimeFactColumns::read(row, 28)?,
+                facts: RuntimeFactColumns::read(row, 27)?,
                 settled: row.get("settled")?,
                 selected: row.get("selected")?,
             })
@@ -294,10 +296,12 @@ fn invalid_item(sql: &SqlReadContext<'_>, release: ReleaseRows) -> Result<Window
     }))
 }
 
-/// A release's row: its placement and the keyed rows beside it.
+/// A release's row: its placement and the keyed rows beside it, listed under
+/// the header at `header_position`.
 fn candidate_item(
     sql: &SqlReadContext<'_>,
     release: ReleaseRows,
+    header_position: Option<u64>,
     lead: Option<LeadMatch>,
     metadata_provenance: Option<crate::import::MetadataProvenance>,
     release_link: Option<ReleaseLink>,
@@ -363,7 +367,7 @@ fn candidate_item(
         live: crate::import::CandidateLiveState::of(&basis, facts, standing),
         picked,
         cover,
-        is_group_member: release.in_group,
+        header_position,
     })
 }
 
@@ -378,7 +382,7 @@ pub(super) enum WindowItemRows {
         /// Nothing stands in for an empty one: the row shows what the
         /// candidate would commit with.
         cover: Option<crate::import::CoverImageSource>,
-        is_group_member: bool,
+        header_position: Option<u64>,
     },
 }
 
@@ -391,7 +395,7 @@ impl WindowItemRows {
                 live,
                 picked,
                 cover,
-                is_group_member,
+                header_position,
             } => {
                 match picked {
                     Some(LinkedRows::Pressing(picked)) => {
@@ -421,7 +425,7 @@ impl WindowItemRows {
                 Ok(ImportListItem::Candidate {
                     row,
                     live,
-                    is_group_member,
+                    header_position,
                 })
             }
         }

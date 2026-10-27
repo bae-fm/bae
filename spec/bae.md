@@ -619,7 +619,11 @@ and folding or opening every group is one change. A header offers to read its
 folder as one release (§3.1) when a stored reading of the folder keeps its
 releases apart, or, with nothing stored, when the folder is the nearest one
 above some release that holds two releases or more, counting the releases of
-every tab.
+every tab. While the rows on top are a group's, that group's header stays
+pinned over the top of the list; over a release in no group no header is
+pinned. Each member is read with where its group's header sits in the list,
+so the pinned header is its own group's however far above it the header is
+and whichever rows have loaded.
 
 Each Pending row is in exactly one state. The first that applies wins:
 

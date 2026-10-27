@@ -51,28 +51,11 @@ final class ImportCandidateTableView: NSTableView {
     }
 }
 
-/// A folder group's header row. It tells the header's cell whether it is
-/// floating over the rows below, where the header draws without the gap
-/// above the group.
+/// A folder group's header row.
 final class ImportListGroupRowView: NSTableRowView {
-    override var isFloating: Bool {
-        didSet { tellCells() }
-    }
-
-    override func didAddSubview(_ subview: NSView) {
-        super.didAddSubview(subview)
-        tellCells()
-    }
-
     /// The header draws its own surface, inside its content and out of the
     /// gap above it.
     override func drawBackground(in dirtyRect: NSRect) {}
-
-    private func tellCells() {
-        for case let cell as ImportListEntryCell in subviews {
-            cell.floating = isFloating
-        }
-    }
 }
 
 /// A table cell hosting one row of the import list. A reused cell takes the
@@ -81,8 +64,8 @@ final class ImportListGroupRowView: NSTableRowView {
 final class ImportListEntryCell: NSTableCellView {
     private var hosting: NSHostingView<ImportListEntryView>?
     private var entry: ImportListEntry?
-    /// Whether the row floats over the rows below: a group header pinned to
-    /// the top of the table while its group scrolls under it.
+    /// Whether the row floats over the rows below: the group header pinned
+    /// over the top of the table while its group scrolls under it.
     var floating = false {
         didSet {
             guard floating != oldValue else { return }

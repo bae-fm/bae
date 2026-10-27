@@ -534,11 +534,11 @@ impl crate::types::BridgeImportListItem {
             bae_core::import::ImportListItem::Candidate {
                 row,
                 live,
-                is_group_member,
+                header_position,
             } => Self::Candidate {
                 stable_key,
                 row: crate::types::BridgeTriageRow::from_core(row, live),
-                is_group_member,
+                header_position,
             },
             bae_core::import::ImportListItem::Invalid {
                 candidate,

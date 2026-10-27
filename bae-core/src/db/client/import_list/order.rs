@@ -36,24 +36,29 @@ impl Item {
     }
 }
 
-/// One item of a list, by its placement row's key.
+/// One item of a list, by its placement row's key, and the group it is
+/// listed under: a header's own, a member's group, or none.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct ItemKey {
     pub(super) watched_folder_path: String,
     pub(super) item: Item,
     pub(super) key: String,
+    pub(super) group_name: Option<String>,
 }
 
+type ItemKeyColumns = (String, String, String, Option<String>);
+
 impl ItemKey {
-    fn read(row: &Row<'_>) -> rusqlite::Result<(String, String, String)> {
-        Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+    fn read(row: &Row<'_>) -> rusqlite::Result<ItemKeyColumns> {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
     }
 
-    fn of((watched_folder_path, item, key): (String, String, String)) -> Result<Self, DbError> {
+    fn of((watched_folder_path, item, key, group_name): ItemKeyColumns) -> Result<Self, DbError> {
         Ok(Self {
             watched_folder_path,
             item: Item::of(&item)?,
             key,
+            group_name,
         })
     }
 }
@@ -222,7 +227,7 @@ pub(super) fn order_terms(order: ImportListOrder, t: &str) -> String {
 /// index (`import_list_newest_first_unfolded`, `_headers` and `_members`,
 /// and their siblings): the headers and the rows outside every group, and
 /// each open group's members under its header. Each part selects the row's
-/// key and then the order's terms, the row's number breaking the tie after
+/// key and the group it is listed under, and then the order's terms, the row's number breaking the tie after
 /// its folder, which a group's members take from their header; SQLite merges
 /// the two parts in that sequence. Every row is one of the list's items
 /// (`import_list_item`), and only open groups' members are read.
@@ -237,26 +242,26 @@ fn folded_run(order: ImportListOrder) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     };
-    // Each term sorts its result column, the first three being the key; a
-    // column keeps its expression's collation.
+    // Each term sorts its result column, the first four being the key and
+    // its group; a column keeps its expression's collation.
     let ordering = prefix
         .iter()
         .chain(std::iter::once(&up("{t}.entry")))
         .chain(suffix)
         .enumerate()
         .map(|(at, term)| match term.descending {
-            true => format!("{} DESC", at + 4),
-            false => (at + 4).to_string(),
+            true => format!("{} DESC", at + 5),
+            false => (at + 5).to_string(),
         })
         .collect::<Vec<_>>()
         .join(", ");
     format!(
-        "SELECT p.watched_folder_path, p.item, p.key, {unfolded} \
+        "SELECT p.watched_folder_path, p.item, p.key, p.group_name, {unfolded} \
          FROM import_list_item AS p \
          WHERE p.list_id = :list AND p.tab = :tab \
            AND (p.item = 'group' OR p.group_name IS NULL) \
          UNION ALL \
-         SELECT m.watched_folder_path, m.item, m.key, {members} \
+         SELECT m.watched_folder_path, m.item, m.key, m.group_name, {members} \
          FROM import_list_judged AS h \
          CROSS JOIN import_list_item AS m \
              ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
@@ -463,7 +468,7 @@ impl<'a> Items<'a> {
         }
         let PartSql { with, from, order } = self.part(part);
         format!(
-            "{with} SELECT i.watched_folder_path, i.item, i.key FROM {from} \
+            "{with} SELECT i.watched_folder_path, i.item, i.key, i.group_name FROM {from} \
              ORDER BY {order} LIMIT :limit OFFSET :offset"
         )
     }
@@ -536,6 +541,52 @@ impl<'a> Items<'a> {
             }
         }
         Ok(items)
+    }
+
+    /// Where the header of the group each of `keys` is listed under sits in
+    /// the list, for the items of the window at `offset`: `None` for a header
+    /// and for an item in no group. A group's header leads its members, so a
+    /// member's header is the last header of its group in the window before
+    /// it, or, for the members a window starts with, the one before the
+    /// window, found by reading the items up to it.
+    pub(super) fn header_positions(
+        &self,
+        sql: &(impl QueryOne + QueryRows),
+        offset: u64,
+        keys: &[ItemKey],
+    ) -> Result<Vec<Option<u64>>, DbError> {
+        let mut leading: Option<(&str, &str, u64)> = None;
+        let mut positions = Vec::with_capacity(keys.len());
+        for (index, key) in (0_u64..).zip(keys) {
+            let Some(group) = key.group_name.as_deref() else {
+                positions.push(None);
+                continue;
+            };
+            let root = key.watched_folder_path.as_str();
+            if key.item == Item::Group {
+                leading = Some((root, group, offset + index));
+                positions.push(None);
+                continue;
+            }
+            let header = match leading {
+                Some((at_root, name, position)) if at_root == root && name == group => position,
+                _ => self
+                    .position_where(
+                        sql,
+                        "s.item = 'group' AND s.watched_folder_path = :root AND s.key = :group",
+                        &[(":root", &root), (":group", &group)],
+                    )?
+                    .ok_or_else(|| {
+                        DbError::Message(format!(
+                            "the header of the group {group} listing {} is not in the list",
+                            key.key
+                        ))
+                    })?,
+            };
+            leading = Some((root, group, header));
+            positions.push(Some(header));
+        }
+        Ok(positions)
     }
 
     /// Where the first item meeting `condition` (over the stream's columns

@@ -109,7 +109,12 @@ pub enum ImportListItem {
         /// What is running for the candidate, as the read found it, and the
         /// commands and state the row has with it.
         live: CandidateLiveState,
-        is_group_member: bool,
+        /// Where the header of the group it is listed under sits in the
+        /// list, for a member of a group: before it, and before every member
+        /// between them. Read with the row whichever window holds the
+        /// header, so the header the row sits under is known as soon as the
+        /// row is.
+        header_position: Option<u64>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it. It offers nothing to do, and nothing runs for it.

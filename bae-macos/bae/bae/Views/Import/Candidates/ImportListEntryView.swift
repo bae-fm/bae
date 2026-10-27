@@ -87,13 +87,13 @@ struct ImportListEntryView: View {
                 entry.gapAbove && !floating
                     ? ImportCandidateTableLayout.headerGap : 0
             )
-        case .candidate(_, let row, let isGroupMember):
+        case .candidate(_, let row, let headerPosition):
             // Every tab's row, drawn the same: a Done row is the row it was
             // in Found, and offers the release imported from it.
             TriageRowView(
                 row: row,
                 coverContent: entry.coverContent,
-                isGroupMember: isGroupMember,
+                isGroupMember: headerPosition != nil,
                 menuOffers: { actions.menuOffers(row) },
                 onPerform: actions.onPerform,
                 onShowInLibrary: row.importedRelease.map { release in

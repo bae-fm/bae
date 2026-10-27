@@ -161,8 +161,13 @@ fn load_import_list_on(
         .windows
         .iter()
         .map(|window| {
-            let keys = list.items(listed.shown(window)).window(sql, window)?;
-            Ok((window.clone(), window::materialise(sql, &list, &keys)?))
+            let items = list.items(listed.shown(window));
+            let keys = items.window(sql, window)?;
+            let headers = items.header_positions(sql, window.offset, &keys)?;
+            Ok((
+                window.clone(),
+                window::materialise(sql, &list, &keys, &headers)?,
+            ))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
     let watched_folders = sql

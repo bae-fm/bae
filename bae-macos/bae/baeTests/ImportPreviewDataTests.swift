@@ -14,7 +14,7 @@ struct ImportPreviewDataTests {
     }
 
     @MainActor
-    @Test("smoke preview marks every row below its group as a child")
+    @Test("smoke preview lists every row below its group under its header")
     func smokePreviewExercisesGroupHierarchy() throws {
         let items = PreviewData.importTabItems(.pending)
         let groupIndex = try #require(
@@ -24,16 +24,16 @@ struct ImportPreviewDataTests {
             }
         )
 
-        let childFlags = items[(groupIndex + 1)...]
+        let headerPositions = items[(groupIndex + 1)...]
             .compactMap { item in
-                if case .candidate(_, _, let isGroupMember) = item {
-                    return isGroupMember
+                if case .candidate(_, _, let headerPosition) = item {
+                    return headerPosition
                 }
                 return nil
             }
 
-        #expect(!childFlags.isEmpty)
-        #expect(childFlags.allSatisfy { $0 })
+        #expect(!headerPositions.isEmpty)
+        #expect(headerPositions.allSatisfy { $0 == UInt64(groupIndex) })
     }
 
     @MainActor
@@ -41,7 +41,7 @@ struct ImportPreviewDataTests {
     func smokePreviewExercisesPendingGroupMember() {
         let hasPendingGroupMember = PreviewData.importTabItems(.pending)
             .contains { item in
-                guard case .candidate(_, let row, true) = item else {
+                guard case .candidate(_, let row, .some) = item else {
                     return false
                 }
                 return row.placement == .pending
