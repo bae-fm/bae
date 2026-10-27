@@ -65,14 +65,6 @@ pub(crate) struct ReleaseMetadataRows {
     pub track_artists: Vec<DbTrackArtist>,
 }
 
-/// Write `metadata`: the album's title, year and compilation flag,
-/// the release's pressing fields, each named track's title,
-/// and the album's and those tracks' artist links, which are made exactly the
-/// edit's.
-///
-/// Deliberately untouched: the stored catalog release (what the source said,
-/// independent of a user edit) and the release's records and where the draft
-/// was read (a record is orthogonal to editable metadata).
 /// Whether a release's write writes its album's fields and credits too: not
 /// where the person moved the release into another album they picked, which
 /// keeps its own.
@@ -115,6 +107,14 @@ pub(super) fn update_release_pressing_on(
     Ok(())
 }
 
+/// Write `metadata`: the release's pressing fields, each named track's title
+/// and those tracks' artist links, and — unless `album_fields` keeps the
+/// album's own — the album's title, year, compilation flag and artist links.
+/// The links are made exactly the edit's.
+///
+/// Deliberately untouched: the stored catalog release (what the source said,
+/// independent of a user edit) and the release's records and where the draft
+/// was read (a record is orthogonal to editable metadata).
 pub(super) fn write_release_metadata_on(
     tx: &SqlContext<'_, '_>,
     metadata: &ReleaseMetadataRows,
