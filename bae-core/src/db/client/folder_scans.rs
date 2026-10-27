@@ -24,12 +24,10 @@ use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
-pub(super) use self::read::{
-    load_candidate_file_tag_snapshot, load_item_by_key, stored_entries, RowSources,
-};
+pub(super) use self::read::{load_candidate_file_tag_snapshot, load_item_by_key, RowSources};
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingStamp, FolderReadingWrite};
 pub(super) use self::sidecar::load_sidecar;
-pub(super) use self::write::{delete_entry, insert_candidate_files, StoredEntry};
+pub(super) use self::write::{delete_entry, insert_candidate_files};
 
 /// What finishing a scan generation removed: the entries it did not see, and
 /// the releases groupings rebuilt without them.
@@ -498,18 +496,26 @@ impl Database {
 /// files, since two readings of one folder cannot both stand. A tentative
 /// candidate replaces nothing; it is seen before the folders around it are
 /// read, and the reading that settles them does the replacing.
-fn superseded_keys(stored: &[StoredEntry], item: &ScanItem) -> Vec<String> {
+fn superseded_keys(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    entry_key: &str,
+    item: &ScanItem,
+) -> Result<Vec<String>, DbError> {
     let (ScanItem::Valid(_) | ScanItem::Invalid(_)) = item else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
-    let (Some(own_key), Some(coverage)) = (item.persisted_key(), item.coverage()) else {
-        return Vec::new();
+    let Some(coverage) = item.coverage() else {
+        return Err(DbError::Message(format!(
+            "{entry_key} is a release that reads no files"
+        )));
     };
-    stored
-        .iter()
-        .filter(|entry| entry.key != own_key && entry.coverage.overlaps(&coverage))
-        .map(|entry| entry.key.clone())
-        .collect()
+    read::entries_reading(
+        sql,
+        watched_folder_path,
+        &coverage,
+        read::Readers::Besides(entry_key),
+    )
 }
 
 /// One scan item as a pass hands it to the store.
@@ -678,7 +684,8 @@ pub(super) fn write_entry(
     // tentative candidate a walk reports is followed by the settled reading
     // of its files, and nothing seeded it to be stored.
     if let (ScanItem::Discovered(_), Some(coverage)) = (item, item.coverage()) {
-        let settled = read::settled_entries_reading(sql, watched_folder_path, &coverage)?;
+        let settled =
+            read::entries_reading(sql, watched_folder_path, &coverage, read::Readers::Settled)?;
         if !settled.is_empty() || matches!(seed, ScanItemSeed::AlreadySettled) {
             for key in &settled {
                 write::touch_candidate(sql, watched_folder_path, key, generation)?;
@@ -714,9 +721,7 @@ pub(super) fn write_entry(
             .filter(|snapshot| item_was_read_for(item, snapshot)),
     };
     let removed_keys = match source {
-        EntrySource::Scanned { .. } => {
-            superseded_keys(&stored_entries(sql, watched_folder_path)?, item)
-        }
+        EntrySource::Scanned { .. } => superseded_keys(sql, watched_folder_path, &entry_key, item)?,
         EntrySource::Grouping => Vec::new(),
     };
     // An item is written over its own stored row, everything below that row

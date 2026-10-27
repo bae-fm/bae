@@ -341,6 +341,28 @@ impl Database {
         .await
     }
 
+    /// Store `reading` for the folder `key` names, by its own author: how a
+    /// library holds a reading before a scan reads under it.
+    #[cfg(test)]
+    pub(crate) async fn store_folder_reading(
+        &self,
+        key: &FolderReleaseDecisionKey,
+        reading: &crate::import::folder_scanner::FolderReading,
+    ) -> Result<(), DbError> {
+        let key = key.clone();
+        let reading = reading.clone();
+        self.call(move |sql| {
+            super::folder_scans::store_folder_reading(
+                sql,
+                &key,
+                reading.decision,
+                reading.author,
+                &reading.grouping,
+            )
+        })
+        .await
+    }
+
     /// Each stored folder reading below one watched root, by path below it.
     pub async fn load_folder_release_decisions(
         &self,

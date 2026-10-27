@@ -17,15 +17,17 @@ pub(super) struct SheetKey {
 /// The audio each bound sheet describes, in the sheet's reference order.
 pub(super) fn load_sheet_audio_files(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<impl FnOnce() -> Result<AudioFilesBySheet, DbError> + Send + 'static, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, sheet_relative_path, file_reference, audio_relative_path \
-         FROM scan_sheet_audio_file \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
-         ORDER BY candidate_path, sheet_relative_path, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
+        &format!(
+            "SELECT candidate_path, sheet_relative_path, file_reference, audio_relative_path \
+             FROM scan_sheet_audio_file \
+             WHERE {} \
+             ORDER BY candidate_path, sheet_relative_path, position",
+            entries.condition("candidate_path")
+        ),
+        entries.params(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -62,15 +64,17 @@ struct TrackKey {
 
 pub(super) fn load_cue_sheets(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<impl FnOnce() -> Result<HashMap<SheetKey, CueSheet>, DbError> + Send + 'static, DbError>
 {
     let rows = sql.query(
-        "SELECT candidate_path, sheet_relative_path, title, performer, catalog, date, ripper \
-         FROM scan_cue_sheet \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only)",
-        named_params! { ":root": watched_folder_path, ":only": only },
+        &format!(
+            "SELECT candidate_path, sheet_relative_path, title, performer, catalog, date, ripper \
+             FROM scan_cue_sheet \
+             WHERE {}",
+            entries.condition("candidate_path")
+        ),
+        entries.params(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -97,7 +101,7 @@ pub(super) fn load_cue_sheets(
             ))
         },
     )?;
-    let tracks = load_cue_tracks(sql, watched_folder_path, only)?;
+    let tracks = load_cue_tracks(sql, entries)?;
     Ok(move || {
         let mut tracks = tracks()?;
         let mut sheets = HashMap::with_capacity(rows.len());
@@ -130,17 +134,19 @@ struct CueTrackRow {
 
 fn load_cue_tracks(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<impl FnOnce() -> Result<TracksBySheet, DbError> + Send + 'static, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, sheet_relative_path, position, number, mode, mode_other, \
-                title, performer, file_reference, start_cue_frames, end_cue_frames, \
-                generated_pregap_frames \
-         FROM scan_cue_track \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
-         ORDER BY candidate_path, sheet_relative_path, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
+        &format!(
+            "SELECT candidate_path, sheet_relative_path, position, number, mode, mode_other, \
+                    title, performer, file_reference, start_cue_frames, end_cue_frames, \
+                    generated_pregap_frames \
+             FROM scan_cue_track \
+             WHERE {} \
+             ORDER BY candidate_path, sheet_relative_path, position",
+            entries.condition("candidate_path")
+        ),
+        entries.params(),
         |row| {
             Ok(CueTrackRow {
                 candidate_path: row.get(0)?,
@@ -158,7 +164,7 @@ fn load_cue_tracks(
             })
         },
     )?;
-    let indexes = load_cue_indexes(sql, watched_folder_path, only)?;
+    let indexes = load_cue_indexes(sql, entries)?;
     Ok(move || {
         let mut indexes = indexes()?;
         let mut tracks: TracksBySheet = HashMap::new();
@@ -203,16 +209,18 @@ fn load_cue_tracks(
 
 fn load_cue_indexes(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<impl FnOnce() -> Result<IndexesByTrack, DbError> + Send + 'static, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, sheet_relative_path, track_position, number, frames, \
-                file_reference \
-         FROM scan_cue_index \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
-         ORDER BY candidate_path, sheet_relative_path, track_position, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
+        &format!(
+            "SELECT candidate_path, sheet_relative_path, track_position, number, frames, \
+                    file_reference \
+             FROM scan_cue_index \
+             WHERE {} \
+             ORDER BY candidate_path, sheet_relative_path, track_position, position",
+            entries.condition("candidate_path")
+        ),
+        entries.params(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,

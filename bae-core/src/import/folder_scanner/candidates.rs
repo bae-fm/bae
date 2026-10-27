@@ -518,17 +518,6 @@ pub(crate) struct Coverage {
     pub whole_subtree: bool,
 }
 
-#[cfg(desktop)]
-impl Coverage {
-    /// Whether two entries read any of the same files, and so cannot both
-    /// stand: one reading of a folder replaces the other.
-    pub(crate) fn overlaps(&self, other: &Coverage) -> bool {
-        (self.whole_subtree && other.folder.starts_with(&self.folder))
-            || (other.whole_subtree && self.folder.starts_with(&other.folder))
-            || self.folder == other.folder
-    }
-}
-
 /// How one folder reads, as stored: whether its releases are one, who said
 /// so, and the key of the grouping that says it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -551,6 +540,12 @@ impl FolderReleaseDecisions {
     /// How the folder at `relative_folder_path` reads, if anything is stored.
     pub(crate) fn get(&self, relative_folder_path: &str) -> Option<&FolderReading> {
         self.0.get(relative_folder_path)
+    }
+
+    /// Every folder's reading, by its root-relative path.
+    #[cfg(test)]
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&String, &FolderReading)> {
+        self.0.iter()
     }
 
     /// Read `relative_folder_path` as `reading`, whatever was stored for it —

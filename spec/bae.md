@@ -543,7 +543,9 @@ candidates, their files and the role each plays (audio, track sheet, artwork,
 damaged image, document, other), the parsed CUE sheets, the tags each audio file carried, and
 when each folder was first seen. A scan writes as it finds; completing removes
 what it didn't see, in the same transaction that marks it complete. A failed or
-interrupted scan keeps both old and new entries.
+interrupted scan keeps both old and new entries. Each write reads only the
+entry it writes and the entries reading the same files, which it finds by their
+folders, so a write costs the same however much else the watched folder holds.
 
 **What a scan reads.** A scan reads each file once. It opens a track twice:
 FFmpeg's probe, which says whether it plays, and one read of its tags, which
@@ -2839,7 +2841,7 @@ All sync (§5), except `local_history`.
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan and the directories it saw |
-| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders |
+| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, with an index on the folder each candidate reads its files from |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns |

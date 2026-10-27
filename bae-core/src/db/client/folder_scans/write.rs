@@ -8,16 +8,8 @@ use super::columns::*;
 use super::*;
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::{
-    CandidateFile, Coverage, FileRole, FolderCandidate, InvalidCandidate, ScanItem,
+    CandidateFile, FileRole, FolderCandidate, InvalidCandidate, ScanItem,
 };
-
-/// A stored entry's key and the files it reads, which is all a superseding
-/// write needs.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StoredEntry {
-    pub(crate) key: String,
-    pub(crate) coverage: Coverage,
-}
 
 /// Remove the entry at `key`: its candidate leaves the scan, and its
 /// identification ends with it.

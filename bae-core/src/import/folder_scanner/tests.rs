@@ -77,52 +77,91 @@ fn scan_projected_items_with_decisions(
     root: PathBuf,
     decisions: FolderReleaseDecisions,
 ) -> Vec<ScanItem> {
-    let watched_folder =
-        crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
-    // Stored the way the scan tables store them: each item written in turn,
-    // deleting what it supersedes, keyed by path.
-    let mut stored: std::collections::BTreeMap<String, ScanItem> = Default::default();
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(stored_scan(root, decisions))
+}
+
+/// What the scan tables hold after one scan of `root` under `decisions`: the
+/// readings stored first, as a library holds them before its scan, then each
+/// item the walk reports written in turn as a scan writes it, and the scan
+/// finished.
+async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<ScanItem> {
+    let store = tempfile::TempDir::new().unwrap();
+    let db = crate::db::Database::new_test(
+        store.path().join("test.db").to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
+    let root_key = root.to_string_lossy().into_owned();
+    db.add_watched_import_folder(&root_key).await.unwrap();
+    for (folder, reading) in decisions.iter() {
+        db.store_folder_reading(
+            &FolderReleaseDecisionKey {
+                watched_folder_path: root_key.clone(),
+                relative_folder_path: folder.clone(),
+            },
+            reading,
+        )
+        .await
+        .unwrap();
+    }
+    let decisions = db.load_folder_release_decisions(&root_key).await.unwrap();
+    let mut walked = Vec::new();
     scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
-        if matches!(
-            item,
-            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_)
-        ) {
-            return;
-        }
-        let coverage = item.coverage().expect("a scan entry reads files");
-        let own_key = item.persisted_key().expect("a scan entry has a key");
-        stored.retain(|key, stored| {
-            key == &own_key
-                || !stored
-                    .coverage()
-                    .is_some_and(|stored| stored.overlaps(&coverage))
-        });
-        stored.insert(item.persisted_key().expect("a scan entry has a key"), item);
+        walked.push(item)
     })
     .unwrap();
-    let _ = &watched_folder;
+    let generation = db
+        .begin_folder_scan(&root_key, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    for item in walked {
+        match item {
+            ScanItem::Decided {
+                key,
+                decision,
+                grouping,
+            } => db
+                .record_scanned_folder_release_decision(&key, decision, &grouping)
+                .await
+                .unwrap(),
+            item => {
+                db.save_folder_scan_item(&root_key, generation, &item)
+                    .await
+                    .unwrap()
+                    .expect("the scan generation is current");
+            }
+        }
+    }
+    db.finish_folder_scan(&root_key, generation, None)
+        .await
+        .unwrap()
+        .expect("the scan generation is current");
     // The order the import tab shows them in: valid releases first in natural
     // path order, then the folders that failed validation.
     let mut valid = Vec::new();
     let mut invalid = Vec::new();
-    for item in stored.into_values() {
+    for item in db.load_folder_scan_items(&root_key).await.unwrap() {
         match item {
-            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => valid.push(candidate),
-            ScanItem::Invalid(candidate) => invalid.push(candidate),
-            ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {}
+            ScanItem::Invalid(_) => invalid.push(item),
+            ScanItem::Discovered(_) | ScanItem::Valid(_) => valid.push(item),
+            ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
+                unreachable!("the scan tables load only releases: {item:?}")
+            }
         }
     }
-    valid.sort_by(|left, right| {
-        natord::compare_ignore_case(&left.display_path, &right.display_path)
-    });
-    invalid.sort_by(|left, right| {
-        natord::compare_ignore_case(&left.display_path, &right.display_path)
-    });
-    valid
-        .into_iter()
-        .map(ScanItem::Valid)
-        .chain(invalid.into_iter().map(ScanItem::Invalid))
-        .collect()
+    let shown = |item: &ScanItem| {
+        item.display_path()
+            .expect("a release shows a path")
+            .to_string()
+    };
+    valid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
+    invalid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
+    valid.into_iter().chain(invalid).collect()
 }
 
 /// How each folder named reads, under a grouping key of its own.

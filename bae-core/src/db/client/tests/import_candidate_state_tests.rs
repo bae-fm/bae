@@ -51,6 +51,7 @@ async fn store_user_folder_decision(
 
 include!("import_candidate_state_tests/verdicts_and_bindings.rs");
 include!("import_candidate_state_tests/folder_state.rs");
+include!("import_candidate_state_tests/superseding.rs");
 include!("import_candidate_state_tests/first_found.rs");
 include!("import_candidate_state_tests/watched_folder_removal.rs");
 include!("import_candidate_state_tests/pane_rows.rs");

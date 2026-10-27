@@ -8,7 +8,6 @@
 //! SQL implementation and its lifetime at the read boundary.
 
 use super::columns::*;
-use super::write::StoredEntry;
 use super::*;
 use crate::album_detail::AudioFormat;
 use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
@@ -17,8 +16,8 @@ use crate::import::file_tag_snapshot::{
 };
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, Coverage, FileRole, FileVersion, FolderCandidate,
-    InvalidCandidate, ReleaseFileScope, ReleasePart, ScanItem, ScannedAudio, ScannedFile,
-    SheetAudioFile, SkippedFile, SkippedTags,
+    InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
+    SkippedFile, SkippedTags,
 };
 use bae_util::content_type::ContentType;
 use track_sheets::{load_cue_sheets, load_sheet_audio_files, SheetKey};
@@ -45,6 +44,39 @@ impl RowSources {
             Self::Scanned => "source_kind = 'folder'",
             Self::Any => "1",
         }
+    }
+}
+
+/// Whose rows a read takes in: every entry's under a root, or the one entry's
+/// at a key, which each table's primary key reaches directly.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum EntryRows<'a> {
+    Root(&'a str),
+    Entry { root: &'a str, key: &'a str },
+}
+
+impl<'a> EntryRows<'a> {
+    fn root(self) -> &'a str {
+        match self {
+            Self::Root(root) | Self::Entry { root, .. } => root,
+        }
+    }
+
+    /// The condition keeping these rows in a table naming the entry in
+    /// `key_column`, binding the root as `?1` and the key as `?2`.
+    fn condition(self, key_column: &str) -> String {
+        match self {
+            Self::Root(_) => "watched_folder_path = ?1".to_string(),
+            Self::Entry { .. } => format!("watched_folder_path = ?1 AND {key_column} = ?2"),
+        }
+    }
+
+    /// What [`Self::condition`] binds.
+    fn params(self) -> rusqlite::ParamsFromIter<Vec<&'a str>> {
+        rusqlite::params_from_iter(match self {
+            Self::Root(root) => vec![root],
+            Self::Entry { root, key } => vec![root, key],
+        })
     }
 }
 
@@ -77,7 +109,7 @@ pub(super) fn load_items(
     watched_folder_path: &str,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
-    let items = load_candidate_items_rows(sql, watched_folder_path, None, sources)?;
+    let items = load_candidate_items_rows(sql, EntryRows::Root(watched_folder_path), sources)?;
     let root_generation = sql
         .query(
             "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
@@ -136,7 +168,14 @@ pub(crate) fn load_item_by_key_rows(
         )));
     }
     if let Some(root) = roots.into_iter().next() {
-        let items = load_candidate_items_rows(sql, &root, Some(entry_key), sources)?;
+        let items = load_candidate_items_rows(
+            sql,
+            EntryRows::Entry {
+                root: &root,
+                key: entry_key,
+            },
+            sources,
+        )?;
         let entry_key = entry_key.to_string();
         return Ok(Some(Box::new(move || {
             let mut items = items()?;
@@ -384,81 +423,92 @@ pub(crate) fn settled_entry_is_stored(
     Ok(matches!(kind.as_deref(), Some("valid" | "invalid")))
 }
 
-/// The keys of the settled entries — valid or invalid — the scans stored
-/// under the root that read any of the files `coverage` reads, by
-/// [`Coverage::overlaps`] as a superseding write deletes by. Only an entry
-/// whose folder is that folder, one above it, or one below it can, so only
-/// those rows are read.
-pub(crate) fn settled_entries_reading(
+/// Which of the entries reading a folder's files a write asks after.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Readers<'a> {
+    /// The settled ones, valid or invalid: what a tentative candidate stands
+    /// down for.
+    Settled,
+    /// Every one but the entry at this key: what a settled write replaces.
+    Besides(&'a str),
+}
+
+/// The keys of the entries the scans stored under the root that read any of
+/// the files `coverage` reads, in key order: an entry whose folder is
+/// `coverage`'s, one above it read whole, or — for `coverage` over a whole
+/// folder — one below it.
+///
+/// Each of those is a lookup by folder in `idx_scan_candidate_file_root`.
+/// With statistics on `scan_candidate` SQLite picks that index itself. The
+/// `+` is for a library whose `scan_candidate` has never been analyzed — its
+/// first scan, before coven's `PRAGMA optimize` at the next open or close
+/// gathers them: without statistics SQLite takes a root to hold few rows and
+/// would read every one of them in key order instead.
+pub(crate) fn entries_reading(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     coverage: &Coverage,
+    readers: Readers<'_>,
 ) -> Result<Vec<String>, DbError> {
     let folder = coverage.folder.to_string_lossy().into_owned();
-    sql.query(
-        "SELECT path, file_root, scope FROM scan_candidate \
-         WHERE watched_folder_path = ?1 AND source_kind = 'folder' \
-           AND kind IN ('valid', 'invalid') \
-           AND (substr(?2, 1, length(file_root)) = file_root \
-                OR substr(file_root, 1, length(?2)) = ?2) \
-         ORDER BY path",
-        params![watched_folder_path, folder],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )?
-    .into_iter()
-    .filter_map(|(key, file_root, scope)| {
-        scope_of(&scope)
-            .map(|scope| {
-                Coverage {
-                    folder: PathBuf::from(file_root),
-                    whole_subtree: scope == ReleaseFileScope::Recursive,
-                }
-                .overlaps(coverage)
-                .then_some(key)
-            })
-            .transpose()
-    })
-    .collect()
+    let above = serde_json::Value::from(
+        coverage
+            .folder
+            .ancestors()
+            .skip(1)
+            .take_while(|above| above.starts_with(watched_folder_path))
+            .map(|above| above.to_string_lossy().into_owned())
+            .collect::<Vec<_>>(),
+    )
+    .to_string();
+    let below = coverage.whole_subtree.then(|| paths_below(&folder));
+    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![
+        (":root", &watched_folder_path),
+        (":folder", &folder),
+        (":above", &above),
+    ];
+    let readers_clause = match &readers {
+        Readers::Settled => "kind IN ('valid', 'invalid')",
+        Readers::Besides(key) => {
+            params.push((":key", key));
+            "path != :key"
+        }
+    };
+    let below_clause = match &below {
+        Some((first, past)) => {
+            params.push((":below_first", first));
+            params.push((":below_past", past));
+            " OR (file_root >= :below_first AND file_root < :below_past)"
+        }
+        None => "",
+    };
+    Ok(sql.query(
+        &format!(
+            "SELECT path FROM scan_candidate \
+             WHERE +watched_folder_path = :root AND source_kind = 'folder' \
+               AND {readers_clause} \
+               AND (file_root = :folder \
+                    OR (scope = 'recursive' \
+                        AND file_root IN (SELECT value FROM json_each(:above))){below_clause}) \
+             ORDER BY path"
+        ),
+        params.as_slice(),
+        |row| row.get::<_, String>(0),
+    )?)
 }
 
-/// Every entry the scans stored under one root, as the key it is addressed
-/// by and the part of the root it reads — what a superseding write deletes by.
-pub(crate) fn stored_entries(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-) -> Result<Vec<StoredEntry>, DbError> {
-    let mut entries = sql
-        .query(
-            "SELECT path, file_root, scope FROM scan_candidate \
-             WHERE watched_folder_path = ? AND source_kind = 'folder'",
-            [watched_folder_path],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            },
-        )?
-        .into_iter()
-        .map(|(key, file_root, scope)| {
-            Ok(StoredEntry {
-                key,
-                coverage: Coverage {
-                    folder: PathBuf::from(file_root),
-                    whole_subtree: scope_of(&scope)? == ReleaseFileScope::Recursive,
-                },
-            })
-        })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    entries.sort_by(|left, right| left.key.cmp(&right.key));
-    Ok(entries)
+/// The range of paths below `folder`: from its path and a separator up to,
+/// not including, its path and the character after the separator.
+fn paths_below(folder: &str) -> (String, String) {
+    let separator = std::path::MAIN_SEPARATOR;
+    let first = match folder.ends_with(separator) {
+        true => folder.to_string(),
+        false => format!("{folder}{separator}"),
+    };
+    let mut past = first.clone();
+    past.pop();
+    past.push(char::from(separator as u8 + 1));
+    (first, past)
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────
@@ -478,8 +528,7 @@ struct CandidateRow {
 
 pub(crate) fn load_candidate_items_rows(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
     let rows = sql.query(
@@ -487,11 +536,12 @@ pub(crate) fn load_candidate_items_rows(
             "SELECT path, generation, kind, name, display_path, folder, file_root, scope, \
                     file_edit_revision, grouping_key \
              FROM scan_candidate \
-             WHERE watched_folder_path = :root AND {} AND (:only IS NULL OR path = :only) \
+             WHERE {} AND {} \
              ORDER BY path",
+            entries.condition("path"),
             sources.clause()
         ),
-        named_params! { ":root": watched_folder_path, ":only": only },
+        entries.params(),
         |row| {
             Ok(CandidateRow {
                 path: row.get(0)?,
@@ -507,11 +557,11 @@ pub(crate) fn load_candidate_items_rows(
             })
         },
     )?;
-    let files = load_files_rows(sql, watched_folder_path, only)?;
-    let parts = load_parts_rows(sql, watched_folder_path, only)?;
-    let mut skipped_files = load_skipped_files_rows(sql, watched_folder_path, only)?;
-    let mut skipped_tags = load_skipped_tags_rows(sql, watched_folder_path, only)?;
-    let watched_folder_path = watched_folder_path.to_string();
+    let files = load_files_rows(sql, entries)?;
+    let parts = load_parts_rows(sql, entries)?;
+    let mut skipped_files = load_skipped_files_rows(sql, entries)?;
+    let mut skipped_tags = load_skipped_tags_rows(sql, entries)?;
+    let watched_folder_path = entries.root().to_string();
     Ok(Box::new(move || {
         let mut files = files()?;
         let mut parts = parts;
@@ -587,19 +637,21 @@ struct FileRow {
 
 pub(crate) fn load_files_rows(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<impl FnOnce() -> Result<FilesByCandidate, DbError> + Send + 'static, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, \
-                audio_content_type, audio_duration_ms, audio_sample_rate_hz, \
-                audio_bits_per_sample, audio_bitrate_kbps, audio_channels, file_name, dir_prefix, \
-                role, sheet_binding, sheet_binding_codec, sheet_disc, \
-                sheet_disc_number \
-         FROM scan_candidate_file \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
-         ORDER BY candidate_path, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
+        &format!(
+            "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, \
+                    audio_content_type, audio_duration_ms, audio_sample_rate_hz, \
+                    audio_bits_per_sample, audio_bitrate_kbps, audio_channels, file_name, \
+                    dir_prefix, role, sheet_binding, sheet_binding_codec, sheet_disc, \
+                    sheet_disc_number \
+             FROM scan_candidate_file \
+             WHERE {} \
+             ORDER BY candidate_path, position",
+            entries.condition("candidate_path")
+        ),
+        entries.params(),
         |row| {
             Ok(FileRow {
                 candidate_path: row.get(0)?,
@@ -623,8 +675,8 @@ pub(crate) fn load_files_rows(
             })
         },
     )?;
-    let sheets = load_cue_sheets(sql, watched_folder_path, only)?;
-    let sheet_audio_files = load_sheet_audio_files(sql, watched_folder_path, only)?;
+    let sheets = load_cue_sheets(sql, entries)?;
+    let sheet_audio_files = load_sheet_audio_files(sql, entries)?;
     Ok(move || {
         let mut sheets = sheets()?;
         let mut sheet_audio_files = sheet_audio_files()?;
@@ -778,16 +830,18 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
 /// Every file of each release that failed validation, in name order.
 fn load_skipped_files_rows(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<SkippedFilesByCandidate, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, role, \
-                audio_damage \
-         FROM scan_skipped_file \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
-         ORDER BY candidate_path, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
+        &format!(
+            "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, role, \
+                    audio_damage \
+             FROM scan_skipped_file \
+             WHERE {} \
+             ORDER BY candidate_path, position",
+            entries.condition("candidate_path")
+        ),
+        entries.params(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -819,14 +873,15 @@ fn load_skipped_files_rows(
 /// whose tags name an album.
 fn load_skipped_tags_rows(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<SkippedTagsByCandidate, DbError> {
     Ok(sql
         .query(
-            "SELECT candidate_path, album_title, artist FROM scan_skipped_tags \
-             WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only)",
-            named_params! { ":root": watched_folder_path, ":only": only },
+            &format!(
+                "SELECT candidate_path, album_title, artist FROM scan_skipped_tags WHERE {}",
+                entries.condition("candidate_path")
+            ),
+            entries.params(),
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
@@ -844,14 +899,16 @@ fn load_skipped_tags_rows(
 /// The parts each release read from several is made of, in play order.
 fn load_parts_rows(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
+    entries: EntryRows<'_>,
 ) -> Result<PartsByCandidate, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, folder, prefix FROM scan_candidate_part \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
-         ORDER BY candidate_path, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
+        &format!(
+            "SELECT candidate_path, folder, prefix FROM scan_candidate_part \
+             WHERE {} \
+             ORDER BY candidate_path, position",
+            entries.condition("candidate_path")
+        ),
+        entries.params(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,

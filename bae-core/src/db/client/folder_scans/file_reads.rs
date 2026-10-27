@@ -92,7 +92,13 @@ impl Database {
         let watched_folder_path = watched_folder_path.to_string();
         let coverage = coverage.clone();
         self.read(move |sql| {
-            Ok(!read::settled_entries_reading(&sql, &watched_folder_path, &coverage)?.is_empty())
+            Ok(!read::entries_reading(
+                &sql,
+                &watched_folder_path,
+                &coverage,
+                read::Readers::Settled,
+            )?
+            .is_empty())
         })
         .await
     }
