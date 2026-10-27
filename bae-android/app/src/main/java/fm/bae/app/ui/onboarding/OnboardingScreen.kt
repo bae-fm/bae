@@ -116,7 +116,7 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
                 QRScannerScreen(
                     onScanned = { code ->
                         scanning = false
-                        flow.enter(step, code)
+                        flow.enter(step, code, CodeSource.SCANNED)
                     },
                     onDismiss = { scanning = false },
                 )
@@ -245,7 +245,7 @@ internal fun RestoreForm(
     var accessKeyId by remember { mutableStateOf("") }
     var secretAccessKey by remember { mutableStateOf("") }
     val s3 = step.metadata.provider == BridgeCloudProvider.S3
-    val needsKey = s3 && !step.metadata.carriesS3Key
+    val needsKey = step.needsS3Key
     val text = RestoreText.of(step.entry)
     OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
         LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))

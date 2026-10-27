@@ -3,8 +3,9 @@ import SwiftUI
 
 /// Restores a library from a restore code, or joins one by an invitation. The
 /// code is typed, pasted or scanned, or is one coven saved in iCloud Keychain;
-/// what it decodes to decides which, and an invite joins as soon as it reads.
-/// coven runs any provider sign-in in the browser. A join waiting for approval
+/// what it decodes to decides which. An invite joins as soon as it reads, and
+/// a scanned code starts as soon as it holds all it needs; a typed restore code
+/// waits for Add. coven runs any provider sign-in in the browser. A join waiting for approval
 /// shows its own screen, which has no cancel once its request may have been
 /// sent.
 struct BootstrapCodeView: View {

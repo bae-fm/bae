@@ -1687,7 +1687,12 @@ both lead to the same scan-or-type screen where the code decides the same way,
 and **Create new library**. A restore code's screens call that adding this
 device: the button is **Add**, and the running restore says it is adding this
 device. A code saved in iCloud Keychain, and a restore over this device's copy
-(§6.4), say **Restore**.
+(§6.4), say **Restore**. A scanned code starts at once, as an invite does, with
+no screen to confirm it: the person scanned it to add this device, so the
+running restore shows next. Only an S3 code without the key stops first, to ask
+for it. A typed restore code shows where its library is stored and waits for
+**Add**. A code that doesn't read says so on the code screen, and a restore
+that fails shows its error beside **Add**, to try again.
 
 Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
 and a role, then picks **In person** or **Send**. Her laptop shares the store's

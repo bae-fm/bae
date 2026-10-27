@@ -109,7 +109,7 @@ internal fun CodeScreen(
                 onCodeInputChange = { codeInput = it },
                 onEnterCode = { code ->
                     showCodeDialog = false
-                    flow.enter(step, code)
+                    flow.enter(step, code, CodeSource.TYPED)
                 },
                 onDismissCodeDialog = { showCodeDialog = false },
             ),

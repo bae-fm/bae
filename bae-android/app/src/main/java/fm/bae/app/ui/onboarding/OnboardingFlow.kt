@@ -18,6 +18,7 @@ import uniffi.bae_bridge.BootstrapCallback
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeException
@@ -52,7 +53,10 @@ internal sealed interface OnboardingStep {
         val entry: CodeEntry,
     ) : OnboardingStep
 
-    /** A code read for [entry]: a restore, which waits on its form, or an invite, which joins at once. */
+    /**
+     * A code read for [entry]: a restore, whose form waits on the person when
+     * the code was typed or lacks its S3 key, or an invite, which joins at once.
+     */
     sealed interface CodeRead {
         val entry: CodeEntry
     }
@@ -67,7 +71,11 @@ internal sealed interface OnboardingStep {
         val metadata: BridgeCodeMetadata,
         override val entry: CodeEntry,
     ) : CodeRead,
-        OnboardingStep
+        OnboardingStep {
+        /** Whether restoring needs the S3 access key typed in: an S3 code that doesn't hold it. */
+        val needsS3Key: Boolean
+            get() = metadata.provider == BridgeCloudProvider.S3 && !metadata.carriesS3Key
+    }
 
     /**
      * An invite, read or saved from a join under way: joining starts at once,
@@ -88,6 +96,13 @@ internal sealed interface OnboardingStep {
         val status: BridgeBootstrapStatus?,
     ) : OnboardingStep
 }
+
+/**
+ * How a code reached onboarding: a scanned code starts as soon as it holds all
+ * it needs, since the person scanned it to add this device; a typed restore
+ * code shows what it read before the person adds.
+ */
+internal enum class CodeSource { SCANNED, TYPED }
 
 /** Where a join starts: an invite's code, or a join this device has under way. */
 internal sealed interface JoinStart {
@@ -178,12 +193,14 @@ internal class OnboardingFlow(
     }
 
     /**
-     * Read [text], scanned or typed on [from], and move to what its code asks
-     * of the person. A code from the person's own device holds their S3 key.
+     * Read [text], scanned or typed on [from] as [source] says, and move to
+     * what its code asks of the person. A code from the person's own device
+     * holds their S3 key.
      */
     fun enter(
         from: OnboardingStep.EnterCode,
         text: String,
+        source: CodeSource,
     ) {
         val code = text.trim()
         val info =
@@ -194,6 +211,16 @@ internal class OnboardingFlow(
                 error = DisplayError(context.getString(R.string.onboarding_code_invalid))
                 return
             }
+        advance(from, code, info, source)
+    }
+
+    /** Move from [from] to what [code], which decodes to [info], asks of the person. */
+    internal fun advance(
+        from: OnboardingStep.EnterCode,
+        code: String,
+        info: BridgeCodeInfo,
+        source: CodeSource,
+    ) {
         val metadata =
             when (info) {
                 is BridgeCodeInfo.Restore -> info.metadata
@@ -208,9 +235,13 @@ internal class OnboardingFlow(
         error = null
         when (val read = codeReadStep(code, info, from.entry)) {
             // An invite joins at once: it carries the person's name.
-            is OnboardingStep.Invite -> join(read)
+            is OnboardingStep.Invite -> {
+                join(read)
+            }
 
-            is OnboardingStep.Restore -> step = read
+            is OnboardingStep.Restore -> {
+                if (source == CodeSource.SCANNED && !read.needsS3Key) restore(read, credentials = null) else step = read
+            }
         }
     }
 

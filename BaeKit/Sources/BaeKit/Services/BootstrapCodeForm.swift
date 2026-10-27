@@ -45,7 +45,9 @@ public enum BootstrapAttempt {
 /// One restore or join screen's state: the code typed, pasted or scanned (or
 /// the saved one it opened with), what that code decodes to, the S3 key a
 /// restore needs, and the running attempt. An invite joins as soon as its code
-/// reads. The apps' code screens render it and call its actions.
+/// reads, and a scanned code starts as soon as it holds all it needs; a typed
+/// restore code waits for the primary action. The apps' code screens render it
+/// and call its actions.
 @MainActor
 @Observable
 public final class BootstrapCodeForm {
@@ -82,6 +84,8 @@ public final class BootstrapCodeForm {
     @ObservationIgnored
     private var task: Task<Void, Never>?
     @ObservationIgnored
+    private let decoder: (String) throws -> BridgeCodeInfo
+    @ObservationIgnored
     private let makeBootstrap: @MainActor () -> LibraryBootstrap
     @ObservationIgnored
     private let unfinishedJoins:
@@ -89,10 +93,12 @@ public final class BootstrapCodeForm {
     @ObservationIgnored
     private let onLibraryReady: @MainActor (OpenedLibrary, BridgeError?) -> Void
 
-    /// `onLibraryReady` receives the restored or joined library's open store,
-    /// with the error a partly finished restore or join reported.
+    /// `decodeCode` reads what an entered code is. `onLibraryReady` receives
+    /// the restored or joined library's open store, with the error a partly
+    /// finished restore or join reported.
     public init(
         entry: Entry,
+        decodeCode: @escaping (String) throws -> BridgeCodeInfo,
         makeBootstrap: @escaping @MainActor () -> LibraryBootstrap,
         unfinishedJoins:
             @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
@@ -100,6 +106,7 @@ public final class BootstrapCodeForm {
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void
     ) {
         self.entry = entry
+        decoder = decodeCode
         self.makeBootstrap = makeBootstrap
         self.unfinishedJoins = unfinishedJoins
         self.onLibraryReady = onLibraryReady
@@ -159,11 +166,13 @@ public final class BootstrapCodeForm {
         return true
     }
 
-    /// Fill the code from a scanned QR code. A code from the person's own
-    /// device holds their S3 key, so the restore asks for none.
+    /// Fill the code from a scanned QR code and start at once: the person
+    /// scanned it to add this device. A code from the person's own device
+    /// holds their S3 key; an S3 code without it waits for the key.
     public func acceptScan(_ text: String) {
         codeInput = text.trimmingCharacters(in: .whitespacesAndNewlines)
         decodeCode()
+        if ready { start() }
     }
 
     /// Read what the entered code is. Called whenever the code changes.
@@ -174,7 +183,7 @@ public final class BootstrapCodeForm {
             decoded = nil
             return
         }
-        decoded = Result { try decodeCodeInfo(code: code) }
+        decoded = Result { try decoder(code) }
         // An invite carries everything joining needs, so it joins at once.
         if attempt?.invite != nil, !isRunning { start() }
     }

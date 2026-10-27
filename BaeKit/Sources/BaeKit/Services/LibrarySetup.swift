@@ -73,6 +73,7 @@ public final class LibrarySetup: Sendable, Observable {
     ) -> BootstrapCodeForm {
         BootstrapCodeForm(
             entry: entry,
+            decodeCode: { try decodeCodeInfo(code: $0) },
             makeBootstrap: makeBootstrap,
             unfinishedJoins: unfinishedJoins,
             onLibraryReady: onLibraryReady
