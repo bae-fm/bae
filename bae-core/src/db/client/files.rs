@@ -240,18 +240,19 @@ impl Database {
             }))
     }
 
-    /// The releases whose own files are queued, in upload queue order. Image
-    /// uploads, a release's cover among them, remain visible in the queue but
-    /// are no release uploading.
+    /// The releases whose own files are queued, in upload queue order
+    /// (`UPLOADING_RELEASES`). Image uploads, a release's cover among them,
+    /// remain visible in the queue but are no release uploading.
     pub async fn uploading_releases(&self) -> Result<Vec<String>, DbError> {
-        let queue = self.outbox_queue().await?;
-        let mut seen = HashSet::new();
-        Ok(queue
-            .uploads
-            .into_iter()
-            .filter_map(|entry| entry.subject.uploading_release().map(str::to_string))
-            .filter(|id| seen.insert(id.clone()))
-            .collect())
+        self.read(|sql| {
+            sql.query(
+                &format!("SELECT release_id FROM ({UPLOADING_RELEASES}) ORDER BY position"),
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .map_err(DbError::from)
+        })
+        .await
     }
 
     /// What coven's durable cloud queue is holding, joined to the bae context the

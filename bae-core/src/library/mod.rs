@@ -231,8 +231,8 @@ fn fold_case_value(text: Option<String>) -> Option<String> {
 }
 
 /// An in-memory database on bae's schema outside coven, with the SQL
-/// functions the schema's triggers call: for unit tests of SQL that runs on a
-/// bare connection.
+/// functions the schema calls: for unit tests of SQL that runs on a bare
+/// connection.
 #[cfg(test)]
 pub(crate) fn bare_library_connection() -> rusqlite::Connection {
     use rusqlite::functions::FunctionFlags;
@@ -246,6 +246,18 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
         |context| Ok(fold_case_value(context.get(0)?)),
     )
     .expect("bae_fold_case registers");
+    // The schema indexes coven's `coven_key`, which coven registers on its own
+    // connections. These tests read no coven state, so any deterministic
+    // stand-in lets the index exist: this one returns its one value.
+    conn.create_scalar_function(
+        "coven_key",
+        1,
+        FunctionFlags::SQLITE_UTF8
+            | FunctionFlags::SQLITE_DETERMINISTIC
+            | FunctionFlags::SQLITE_INNOCUOUS,
+        |context| context.get::<rusqlite::types::Value>(0),
+    )
+    .expect("coven_key registers");
     conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
         .expect("the schema applies");
     conn

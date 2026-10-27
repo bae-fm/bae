@@ -144,21 +144,6 @@ impl LibraryManager {
         }
     }
 
-    /// Whether each row of a Storage Manager page is pinned, in row order, in
-    /// one read. Both page paths — the direct query and the live-query
-    /// projection — resolve their pin markers through here, so neither can drift
-    /// into asking per row.
-    async fn page_pin_states(
-        &self,
-        rows: &[crate::db::DbStorageRow],
-    ) -> Result<Vec<bool>, LibraryError> {
-        let any_file_ids: Vec<Option<&str>> = rows
-            .iter()
-            .map(|row| row.release.any_file_id.as_deref())
-            .collect();
-        self.releases_pinned(&any_file_ids).await
-    }
-
     /// One page of the Storage Manager list, pre-sorted and pre-filtered.
     /// `total_count` counts the filtered subset, not the whole library.
     pub async fn get_storage_page(
@@ -183,19 +168,17 @@ impl LibraryManager {
             .flat_map(|r| [r.release.id.clone(), r.album.primary_release_id.clone()])
             .collect();
         let covers = self.cover_refs(&cover_ids).await?;
-        let pin_states = self.page_pin_states(&raw_rows).await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(
                 raw_rows.iter().flat_map(|row| &row.release.unstored_audio),
             ))
             .await?;
         let mut rows = Vec::with_capacity(raw_rows.len());
-        for (raw, pinned) in raw_rows.into_iter().zip(pin_states) {
+        for raw in raw_rows {
             let transfer_action = self.current_transfer_action(&raw.release.id);
             rows.push(StorageRow::from_raw(
                 raw,
                 has_cloud_home,
-                pinned,
                 transfer_action,
                 &originals,
                 |rid| covers.get(rid).cloned(),
@@ -226,17 +209,6 @@ impl LibraryManager {
             .chain(&projection.selected)
     }
 
-    /// Each row's representative file id, in the order
-    /// [`Self::storage_browse_rows`] lists them: what the list's pin markers
-    /// are watched by.
-    pub(crate) fn storage_browse_pin_files(
-        projection: &crate::db::StorageBrowseProjection,
-    ) -> Vec<Option<String>> {
-        Self::storage_browse_rows(projection)
-            .map(|row| row.release.any_file_id.clone())
-            .collect()
-    }
-
     /// The ids of the releases a Storage Manager delivery shows, one per row.
     pub(crate) fn storage_browse_release_ids(
         projection: &crate::db::StorageBrowseProjection,
@@ -256,25 +228,20 @@ impl LibraryManager {
         )
     }
 
-    /// Resolve a Storage Manager delivery with its rows' pin markers, one per
-    /// row in the order [`Self::storage_browse_pin_files`] lists them, and what
-    /// the disk has said of its originals (see
-    /// [`Self::storage_browse_originals`]).
+    /// Resolve a Storage Manager delivery with what the disk has said of its
+    /// originals (see [`Self::storage_browse_originals`]).
     pub(crate) fn resolve_storage_browse(
         &self,
         projection: crate::db::StorageBrowseProjection,
-        pin_states: Vec<bool>,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> crate::library::StorageBrowseSnapshot {
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let has_cloud_home = self.has_cloud_home();
-        let mut pin_states = pin_states.into_iter();
-        let mut resolve = |raw: crate::db::DbStorageRow| {
+        let resolve = |raw: crate::db::DbStorageRow| {
             let transfer_action = self.current_transfer_action(&raw.release.id);
             StorageRow::from_raw(
                 raw,
                 has_cloud_home,
-                pin_states.next().expect("one pin state per row"),
                 transfer_action,
                 originals,
                 |release_id| covers.get(release_id).cloned(),
@@ -285,10 +252,10 @@ impl LibraryManager {
             .into_iter()
             .map(|window| crate::library::LibraryBrowseWindow {
                 window: window.window,
-                rows: window.rows.into_iter().map(&mut resolve).collect(),
+                rows: window.rows.into_iter().map(&resolve).collect(),
             })
             .collect();
-        let selected: Vec<StorageRow> = projection.selected.into_iter().map(&mut resolve).collect();
+        let selected: Vec<StorageRow> = projection.selected.into_iter().map(&resolve).collect();
         crate::library::StorageBrowseSnapshot {
             sort: projection.sort,
             filter: projection.filter,

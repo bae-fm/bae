@@ -1332,6 +1332,17 @@ storage stays until nothing refers to it; coven then deletes it
   one to eight. The queue can be paused, and stays paused across restarts; a
   paused upload keeps its place.
 
+**The Storage Manager** lists every release with its album's title and
+credits, its media, its files' count and total size, whether it is uploaded,
+and whether this device keeps all its files pinned (§4.3). It filters to the
+uploaded releases, the local ones, or those with files in this device's upload
+queue, and shows the filtered list's count and total size. It sorts by album
+title (ignoring ASCII case), artist (§2.3), media (a release stating none
+last), file count or size, either way, ties going by album title, then when
+the release was added, then id; the upload filter lists its releases in the
+order their first files wait in the queue. The upload queue and the pins are
+coven's, which the list's query reads beside the library's rows.
+
 ### 4.3 Pinning and the cache
 
 An uploaded release can be pinned to stay on a device; otherwise its files are
@@ -2723,6 +2734,8 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
+| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter |
+| `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 

@@ -304,6 +304,8 @@ pub struct DbReleaseSummary {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
+    /// Whether this device keeps every file of the release pinned.
+    pub pinned: bool,
     pub album: DbAlbumSummary,
 }
 

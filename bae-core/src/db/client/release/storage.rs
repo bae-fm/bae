@@ -17,17 +17,14 @@ impl Database {
             r.album_id, \
             a.title AS album_title, \
             r.media, \
-            ({RELEASE_R_STORED}) AS remote, \
+            listing.stored AS remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             {artist_names} AS artist_names, \
-            COALESCE(( \
-                SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
-            ), 0) AS file_count, \
-            COALESCE(( \
-                SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id \
-            ), 0) AS total_size \
+            listing.file_count, \
+            listing.total_size \
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
+        JOIN release_listing listing ON listing.release_id = r.id \
         WHERE r.id = ?1",
             artist_names = album_credits_json_sql()
         )
@@ -89,8 +86,8 @@ impl Database {
     pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
         self.read(move |sql| {
             sql.query(
-                &format!("SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
-                     FROM releases r WHERE {RELEASE_R_STORED}"),
+                "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = listing.release_id LIMIT 1) \
+                     FROM release_listing listing WHERE listing.stored = 1",
                 [],
                 |row| row.get::<_, Option<String>>(0),
             )
@@ -99,38 +96,16 @@ impl Database {
         .await
     }
 
-    /// The releases coven currently has files queued to upload for, or empty for
-    /// any filter that does not ask about uploading.
-    ///
-    /// Which releases are mid-upload is coven's queue state, so the storage page
-    /// reads it from there and binds the ids into its own query rather than
-    /// joining across into coven's tables. Every upload carries the gated root it
-    /// belongs to, which for bae is always the release.
-    async fn uploading_release_ids(&self, filter: StorageFilter) -> Result<Vec<String>, DbError> {
-        if filter != StorageFilter::Uploading {
-            return Ok(Vec::new());
-        }
-        self.uploading_releases().await
-    }
-
-    /// Count storage rows matching `filter`, using the same filter logic as
-    /// `get_storage_page` so `total_count` describes the same set the page pages.
+    /// Count storage rows matching `filter`: the set `get_storage_page` pages.
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        let uploading = self.uploading_release_ids(filter).await?;
-        let where_clause = storage_filter_where(filter, uploading.len());
-        self.read(move |sql| storage_count_on(&sql, &where_clause, &uploading))
-            .await
+        self.read(move |sql| storage_count_on(&sql, filter)).await
     }
 
-    /// Sum of `total_size` over every storage row matching `filter` — the
+    /// The size of every file of the storage rows matching `filter` — the
     /// storage-manager footer's "Total:", independent of how many pages have
-    /// loaded. Same filter logic as `get_storage_page` / `get_storage_count`. A
-    /// release with no files contributes nothing through the inner join, matching a
-    /// page row's own `COALESCE(SUM(...), 0)`.
+    /// loaded.
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        let uploading = self.uploading_release_ids(filter).await?;
-        let where_clause = storage_filter_where(filter, uploading.len());
-        self.read(move |sql| storage_total_size_on(&sql, &where_clause, &uploading))
+        self.read(move |sql| storage_total_size_on(&sql, filter))
             .await
     }
 
@@ -141,23 +116,8 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbStorageRow>, DbError> {
-        let uploading = self.uploading_release_ids(filter).await?;
-        let queue_ordered = filter == StorageFilter::Uploading && !uploading.is_empty();
-        let order_by = if queue_ordered {
-            "upload_queue.position".to_string()
-        } else {
-            storage_order_by(sort)
-        };
-        let where_clause = storage_filter_where(filter, uploading.len());
-        let page_where = if queue_ordered { "" } else { &where_clause };
-
-        let query = storage_page_query(
-            &order_by,
-            page_where,
-            usize::from(queue_ordered) * uploading.len(),
-        );
-
-        self.read(move |sql| storage_page_on(&sql, &query, &uploading, offset, limit))
+        let query = storage_page_query(sort, filter);
+        self.read(move |sql| storage_page_on(&sql, &query, offset, limit))
             .process(super::release_projection::process_storage_rows)
             .await
     }
@@ -174,39 +134,24 @@ impl Database {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, move |request, sql| {
-                let uploading = request.uploading.as_slice();
-                let queue_ordered =
-                    request.filter == StorageFilter::Uploading && !uploading.is_empty();
-                let order_by = if queue_ordered {
-                    "upload_queue.position".to_string()
-                } else {
-                    storage_order_by(&request.sort)
-                };
-                let where_clause = storage_filter_where(request.filter, uploading.len());
-                let page_where = if queue_ordered { "" } else { &where_clause };
-                let query = storage_page_query(
-                    &order_by,
-                    page_where,
-                    usize::from(queue_ordered) * uploading.len(),
-                );
+                let query = storage_page_query(&request.sort, request.filter);
                 let windows = request
                     .windows
                     .iter()
                     .map(|window| {
                         Ok((
                             window.clone(),
-                            storage_page_on(&sql, &query, uploading, window.offset, window.limit)
+                            storage_page_on(&sql, &query, window.offset, window.limit)
                                 .map_err(CovenError::from)?,
                         ))
                     })
                     .collect::<Result<Vec<_>, CovenError>>()?;
                 let total_count =
-                    storage_count_on(&sql, &where_clause, uploading).map_err(CovenError::from)?;
-                let total_size = storage_total_size_on(&sql, &where_clause, uploading)
+                    storage_count_on(&sql, request.filter).map_err(CovenError::from)?;
+                let total_size =
+                    storage_total_size_on(&sql, request.filter).map_err(CovenError::from)?;
+                let selected = storage_selected_on(&sql, request.filter, &request.selected)
                     .map_err(CovenError::from)?;
-                let selected =
-                    storage_selected_on(&sql, &where_clause, uploading, &request.selected)
-                        .map_err(CovenError::from)?;
                 // A row shows its own release's cover and its album's; only
                 // those covers are read.
                 let rows = || {
@@ -216,10 +161,10 @@ impl Database {
                         .chain(selected.iter())
                 };
                 let album_ids = rows()
-                    .map(|(_, album)| album.id.clone())
+                    .map(|(_, _, album)| album.id.clone())
                     .collect::<Vec<_>>();
                 let release_ids = rows()
-                    .map(|(release, _)| release.id.clone())
+                    .map(|(release, _, _)| release.id.clone())
                     .collect::<Vec<_>>();
                 let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 cover_versions.extend(super::files::image_versions_on(

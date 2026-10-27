@@ -324,6 +324,8 @@ mod tests {
         "album_listing",
         "album_artist_link",
         "artist_listing",
+        "release_listing",
+        "release_listing_totals",
         // Library search's folded titles and names.
         "album_search",
         "track_search",

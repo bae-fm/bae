@@ -4,12 +4,11 @@ use super::*;
 
 impl AppServices {
     /// The Storage Manager list as it changes, read in the view the
-    /// subscription is asked for: its rows, the rows' pin markers coven
-    /// watches, the upload queue (which the Uploading filter lists, in queue
-    /// order), whether a cloud home is connected, and the transfers of the
-    /// releases shown — the state the rows are resolved against. One query
-    /// serves every window: a new view or upload queue points it at what that
-    /// reads.
+    /// subscription is asked for: its rows, whose pin markers and Uploading
+    /// filter the query reads from coven's state, whether a cloud home is
+    /// connected, and the transfers of the releases shown — the state the
+    /// rows are resolved against. One query serves every window: a new view
+    /// points it at what that reads.
     pub fn subscribe_storage_browse(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -20,106 +19,44 @@ impl AppServices {
         let services = self.clone();
         let manager = services.inner.manager.clone();
         let query_runtime = runtime_handle.clone();
-        let mut outbox = services.subscribe_outbox_values();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
-        let mut pins = manager.watch_release_pins();
         let mut originals = ShownOriginals::new(manager.clone());
         let task = runtime_handle.spawn(async move {
-            // The upload queue as the outbox holds it now, read only while
-            // the Uploading filter is shown.
-            let upload_queue = |outbox: &mut tokio::sync::watch::Receiver<
-                Option<Result<crate::library::OutboxState, String>>,
-            >| {
-                let current = outbox.borrow_and_update().clone();
-                let services = services.clone();
-                async move {
-                    match current {
-                        Some(Ok(state)) => Ok(state.queue.transitioning_release_ids()),
-                        Some(Err(error)) => Err(crate::library::LibraryError::Internal(error)),
-                        None => services
-                            .outbox_state()
-                            .await
-                            .map(|state| state.queue.transitioning_release_ids()),
-                    }
-                    .map(upload_queue_order)
-                }
+            let request_for = |view: &crate::library::StorageBrowseView| crate::db::StorageBrowseRequest {
+                sort: view.sort,
+                filter: view.filter,
+                windows: view.windows.clone(),
+                selected: view.selected.clone(),
             };
-            let mut view = views.borrow_and_update().clone();
-            let mut uploading = Vec::new();
-            if view.filter == crate::db::StorageFilter::Uploading {
-                match upload_queue(&mut outbox).await {
-                    Ok(ids) => uploading = ids,
-                    Err(error) => {
-                        if tx.send(Err(error)).is_err() {
-                            tracing::debug!("storage read failed after its reader went away");
-                        }
-                        return;
-                    }
-                }
-            }
-            let request_for = |view: &crate::library::StorageBrowseView, uploading: &[String]| {
-                crate::db::StorageBrowseRequest {
-                    sort: view.sort,
-                    filter: view.filter,
-                    uploading: uploading.to_vec(),
-                    windows: view.windows.clone(),
-                    selected: view.selected.clone(),
-                }
-            };
-            let mut request = request_for(&view, &uploading);
+            let mut request = request_for(&views.borrow_and_update());
             let mut query = reconfigurable_live_query_events(
                 &query_runtime,
                 manager.subscribe_storage_browse(request.clone()),
             );
-            let mut last: Option<(crate::db::StorageBrowseProjection, Vec<bool>)> = None;
+            let mut last: Option<crate::db::StorageBrowseProjection> = None;
             loop {
                 let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            match pins.watch(LibraryManager::storage_browse_pin_files(&projection)).await {
-                                Ok(pinned) => {
-                                    transfers.show(LibraryManager::storage_browse_release_ids(&projection));
-                                    originals.show(LibraryManager::storage_browse_originals(&projection));
-                                    last = Some((projection.clone(), pinned.clone()));
-                                    Ok(manager.resolve_storage_browse(projection, pinned, originals.seen()))
-                                }
-                                Err(error) => Err(error),
-                            }
+                            transfers.show(LibraryManager::storage_browse_release_ids(&projection));
+                            originals.show(LibraryManager::storage_browse_originals(&projection));
+                            last = Some(projection.clone());
+                            Ok(manager.resolve_storage_browse(projection, originals.seen()))
                         }
                         Some(Err(error)) => Err(error),
                     },
-                    answer = pins.changed() => match (answer, last.as_mut()) {
-                        (Ok(pinned), Some((projection, last_pinned))) => {
-                            *last_pinned = pinned.clone();
-                            Ok(manager.resolve_storage_browse(projection.clone(), pinned, originals.seen()))
-                        }
-                        (Ok(_), None) => continue,
-                        (Err(error), _) => Err(error),
-                    },
                     answer = originals.answered() => match (answer, last.clone()) {
-                        (Ok(true), Some((projection, pinned))) => {
-                            Ok(manager.resolve_storage_browse(projection, pinned, originals.seen()))
+                        (Ok(true), Some(projection)) => {
+                            Ok(manager.resolve_storage_browse(projection, originals.seen()))
                         }
                         (Ok(_), _) => continue,
                         (Err(error), _) => Err(error),
                     },
                     changed = views.changed() => {
                         if changed.is_err() { return; }
-                        view = views.borrow_and_update().clone();
-                        uploading = if view.filter == crate::db::StorageFilter::Uploading {
-                            match upload_queue(&mut outbox).await {
-                                Ok(ids) => ids,
-                                Err(error) => {
-                                    if tx.send(Err(error)).is_err() { return; }
-                                    continue;
-                                }
-                            }
-                        } else {
-                            Vec::new()
-                        };
-                        let next = request_for(&view, &uploading);
+                        let next = request_for(&views.borrow_and_update());
                         if next != request {
                             request = next;
                             last = None;
@@ -127,30 +64,11 @@ impl AppServices {
                         }
                         continue;
                     }
-                    changed = outbox.changed(), if view.filter == crate::db::StorageFilter::Uploading => {
-                        if changed.is_err() { return; }
-                        match outbox.borrow_and_update().clone() {
-                            // Byte progress leaves the queue as it was, and
-                            // reads nothing again.
-                            Some(Ok(state)) => {
-                                uploading = upload_queue_order(state.queue.transitioning_release_ids());
-                                let next = request_for(&view, &uploading);
-                                if next != request {
-                                    request = next;
-                                    last = None;
-                                    query.set(request.clone());
-                                }
-                                continue;
-                            }
-                            Some(Err(error)) => Err(crate::library::LibraryError::Internal(error)),
-                            None => continue,
-                        }
-                    }
                     changed = async { tokio::select! { value = cloud_home.changed() => value, value = transfers.changed() => value } } => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();
-                        let Some((projection, pinned)) = last.clone() else { continue };
-                        Ok(manager.resolve_storage_browse(projection, pinned, originals.seen()))
+                        let Some(projection) = last.clone() else { continue };
+                        Ok(manager.resolve_storage_browse(projection, originals.seen()))
                     }
                 };
                 if tx.send(value).is_err() {
@@ -159,32 +77,5 @@ impl AppServices {
             }
         });
         crate::library::StorageBrowseSubscription::new(view_tx, rx, task)
-    }
-}
-
-/// The releases the upload queue holds, once each, in queue order — the
-/// order the Storage Manager's Uploading filter lists them in.
-fn upload_queue_order(ids: Vec<String>) -> Vec<String> {
-    let mut seen = std::collections::HashSet::new();
-    ids.into_iter()
-        .filter(|id| seen.insert(id.clone()))
-        .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_upload_queue_keeps_its_order_and_names_each_release_once() {
-        assert_eq!(
-            upload_queue_order(vec![
-                "release-b".to_string(),
-                "release-a".to_string(),
-                "release-b".to_string(),
-            ]),
-            ["release-b", "release-a"],
-            "queue order is what the Uploading filter lists by, so it is kept"
-        );
     }
 }

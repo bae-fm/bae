@@ -573,136 +573,110 @@ pub(super) fn build_order_by(sort: &[AlbumSortCriterion], artist: ArtistOrder) -
     format!("{clause}, listing.album_id")
 }
 
-/// ORDER BY for `get_storage_page`.
+/// ORDER BY for the Storage Manager list over `release_listing listing`,
+/// under any filter but Uploading. Every clause ends with the album title,
+/// then `created_at` and the release id, which keep pagination deterministic
+/// when two releases share a title and a timestamp (bulk imports, tests). An
+/// index of `release_listing` serves each, alone and after `stored`.
 pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> String {
-    let dir = match sort.direction {
-        SortDirection::Ascending => "ASC",
-        SortDirection::Descending => "DESC",
-    };
-    // Every clause ends with `r.created_at, r.id`; the id keeps pagination
-    // deterministic when two releases share a timestamp (bulk imports, tests).
+    let dir = sort_direction_sql(sort.direction);
+    let tie = "listing.album_title COLLATE NOCASE, listing.created_at, listing.release_id";
     match sort.field {
-        StorageSortField::AlbumTitle => {
-            format!("a.title COLLATE NOCASE {dir}, r.created_at, r.id")
-        }
-        StorageSortField::ArtistNames => format!(
-            "listing.credit_sort_names COLLATE NOCASE {dir}, listing.credit_artist_ids {dir}, \
-             a.title COLLATE NOCASE, r.created_at, r.id"
+        StorageSortField::AlbumTitle => format!(
+            "listing.album_title COLLATE NOCASE {dir}, listing.created_at, listing.release_id"
         ),
+        StorageSortField::ArtistNames => format!(
+            "listing.credit_sort_names COLLATE NOCASE {dir}, listing.credit_artist_ids {dir}, {tie}"
+        ),
+        // A release stating no medium goes last either way.
         StorageSortField::Media => {
-            format!(
-                // Every stated medium in order, each with its count: the media
-                // the column shows, compared entry by entry.
-                "CASE WHEN json_array_length(r.media) = 0 THEN 1 ELSE 0 END, \
-                 (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'), \
-                     json_extract(entry.value, '$.count')), ',') \
-                  FROM json_each(r.media) AS entry) {dir}, \
-                 a.title COLLATE NOCASE, r.created_at, r.id"
-            )
+            format!("listing.media_empty, listing.media_key {dir}, {tie}")
         }
-        StorageSortField::FileCount => {
-            format!("file_count {dir}, a.title COLLATE NOCASE, r.created_at, r.id")
-        }
-        StorageSortField::TotalSize => {
-            format!("total_size {dir}, a.title COLLATE NOCASE, r.created_at, r.id")
-        }
+        StorageSortField::FileCount => format!("listing.file_count {dir}, {tie}"),
+        StorageSortField::TotalSize => format!("listing.total_size {dir}, {tie}"),
     }
 }
 
-/// Every file of a release is in storage: each row names its file, which a
-/// row does only once the file's upload completed. A release this device is
-/// still uploading isn't; coven's upload queue reports it.
-pub(super) const RELEASE_R_STORED: &str =
-    "EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) AND \
-     NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL)";
+/// Each release with files in coven's upload queue, and where its first
+/// queued file stands in it: the Uploading filter's rows, in queue order.
+/// Covers and other images in the queue are no release uploading.
+pub(super) const UPLOADING_RELEASES: &str =
+    "SELECT file.release_id, MIN(upload.position) AS position \
+     FROM coven_uploads upload \
+     JOIN release_files file ON coven_key(file.id) = upload.key \
+     WHERE upload.table_name = 'release_files' \
+     GROUP BY file.release_id";
 
-/// One Storage Manager row per release: releases × albums, both halves the
-/// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
-/// `joins` and `where_clause` follow the FROM.
-fn storage_row_select(joins: &str, where_clause: &str) -> String {
+/// Whether this device keeps every file of the release `r` pinned (coven's
+/// `coven_pins`); false for a release with no files.
+const RELEASE_R_PINNED: &str =
+    "EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) AND \
+     NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND NOT EXISTS ( \
+         SELECT 1 FROM coven_pins pin \
+         WHERE pin.table_name = 'release_files' AND pin.key = coven_key(f.id)))";
+
+/// What a Storage Manager filter keeps of `release_listing listing`: the
+/// joins and the WHERE clause that follow its FROM.
+pub(super) fn storage_filter(filter: StorageFilter) -> (String, &'static str) {
+    match filter {
+        StorageFilter::All => (String::new(), ""),
+        StorageFilter::Remote => (String::new(), "WHERE listing.stored = 1"),
+        StorageFilter::Local => (String::new(), "WHERE listing.stored = 0"),
+        StorageFilter::Uploading => (
+            format!("JOIN ({UPLOADING_RELEASES}) uploading ON uploading.release_id = listing.release_id"),
+            "",
+        ),
+    }
+}
+
+/// One Storage Manager row per release the filter keeps: the release's half
+/// and its album's, the raw aggregates the resolver maps to `ReleaseSummary` /
+/// `AlbumSummary`, and whether it is pinned.
+fn storage_row_select(filter: StorageFilter) -> String {
     let album_columns = album_summary_columns();
+    let (joins, where_clause) = storage_filter(filter);
     format!(
         "SELECT \
             r.id AS release_id, \
             r.album_id, \
             r.media AS release_media, \
-            ({RELEASE_R_STORED}) AS remote, \
+            listing.stored AS remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
-            COALESCE(( \
-                SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
-            ), 0) AS file_count, \
-            COALESCE(( \
-                SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id \
-            ), 0) AS total_size, \
+            listing.file_count, \
+            listing.total_size, \
+            ({RELEASE_R_PINNED}) AS pinned, \
             {album_columns} \
-        FROM releases r \
-        JOIN albums a ON a.id = r.album_id \
-        JOIN album_listing listing ON listing.album_id = a.id \
+        FROM release_listing listing \
+        JOIN releases r ON r.id = listing.release_id \
+        JOIN albums a ON a.id = listing.album_id \
         {joins} \
         {where_clause}"
     )
 }
 
-/// Paginated storage-page query: the rows `where_clause` keeps, in
-/// `order_by` order, one window at a time.
-pub(super) fn storage_page_query(
-    order_by: &str,
-    where_clause: &str,
-    uploading_count: usize,
-) -> String {
-    let (queue_cte, queue_join) = if uploading_count == 0 {
-        (String::new(), String::new())
-    } else {
-        let values = (0..uploading_count)
-            .map(|position| format!("(?, {position})"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        (
-            format!("WITH upload_queue(release_id, position) AS (VALUES {values}) "),
-            "JOIN upload_queue ON upload_queue.release_id = r.id".to_string(),
-        )
+/// One window of the Storage Manager list under `filter`, in `sort`'s order,
+/// or in upload queue order under the Uploading filter.
+pub(super) fn storage_page_query(sort: &StorageSortCriterion, filter: StorageFilter) -> String {
+    let order_by = match filter {
+        StorageFilter::Uploading => "uploading.position".to_string(),
+        _ => storage_order_by(sort),
     };
     format!(
-        "{queue_cte}{} ORDER BY {order_by} LIMIT ? OFFSET ?",
-        storage_row_select(&queue_join, where_clause)
+        "{} ORDER BY {order_by} LIMIT ? OFFSET ?",
+        storage_row_select(filter)
     )
 }
 
-/// The rows of `selected_count` bound release ids that the list
-/// `list_where` filters to holds, by release id. `list_where` binds first,
-/// as for the list's count. SQLite folds the outer id filter into the list's
-/// rows, so each selected release is looked up by its key rather than the
-/// list read whole.
-pub(super) fn storage_selected_query(list_where: &str, selected_count: usize) -> String {
+/// The rows of `selected_count` bound release ids that the list under
+/// `filter` holds, by release id. SQLite folds the outer id filter into the
+/// list's rows, so each selected release is looked up by its key rather than
+/// the list read whole.
+pub(super) fn storage_selected_query(filter: StorageFilter, selected_count: usize) -> String {
     format!(
         "SELECT * FROM ({}) WHERE release_id IN ({}) ORDER BY release_id",
-        storage_row_select("", list_where),
+        storage_row_select(filter),
         in_clause_placeholders(selected_count)
     )
-}
-
-/// Build a WHERE clause fragment for storage-page filtering. Returns the
-/// empty string for `StorageFilter::All`.
-/// The WHERE clause for a storage-page filter.
-///
-/// `Uploading` is the odd one: which releases are mid-upload is coven's queue
-/// state, not a bae column, so the caller asks coven for those release ids first
-/// and this renders a bound `IN` list of `uploading_count` placeholders. An empty
-/// set is `WHERE 0` — nothing is uploading, so the page is empty — rather than an
-/// `IN ()`, which SQLite rejects.
-pub(super) fn storage_filter_where(filter: StorageFilter, uploading_count: usize) -> String {
-    match filter {
-        StorageFilter::All => String::new(),
-        StorageFilter::Remote => format!("WHERE ({RELEASE_R_STORED})"),
-        StorageFilter::Local => format!("WHERE NOT ({RELEASE_R_STORED})"),
-        StorageFilter::Uploading if uploading_count == 0 => "WHERE 0".to_string(),
-        StorageFilter::Uploading => {
-            format!(
-                "WHERE r.id IN ({})",
-                in_clause_placeholders(uploading_count)
-            )
-        }
-    }
 }
 
 /// The credits of `owner_expr` in `table` (`album_artists` or

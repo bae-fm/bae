@@ -258,6 +258,9 @@ mod artist_mode_tests;
 mod album_listing_tests;
 
 #[cfg(test)]
+mod storage_listing_tests;
+
+#[cfg(test)]
 mod playback_state_load_tests;
 
 #[cfg(test)]

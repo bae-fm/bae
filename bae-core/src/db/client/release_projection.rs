@@ -1,21 +1,25 @@
 use super::*;
 
+/// One Storage Manager row as read: the release's half, whether it is
+/// pinned, and the album's half.
+pub(super) type StorageRowParts = (DbReleaseSummary, bool, AlbumSummaryRow);
+
+fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
+    Ok((
+        row_to_release_summary(sql, row)?,
+        row.get("pinned")?,
+        AlbumSummaryRow::read(row)?,
+    ))
+}
+
 pub(super) fn storage_page_on(
     sql: &SqlReadContext<'_>,
     query: &str,
-    uploading: &[String],
     offset: u64,
     limit: u64,
-) -> Result<Vec<(DbReleaseSummary, AlbumSummaryRow)>, DbError> {
-    let mut binds = uploading
-        .iter()
-        .map(|id| Box::new(id.clone()) as Box<dyn rusqlite::ToSql>)
-        .collect::<Vec<_>>();
-    binds.push(Box::new(limit as i64));
-    binds.push(Box::new(offset as i64));
-    sql.query(query, rusqlite::params_from_iter(binds.iter()), |row| {
-        let release = row_to_release_summary(sql, row)?;
-        Ok((release, AlbumSummaryRow::read(row)?))
+) -> Result<Vec<StorageRowParts>, DbError> {
+    sql.query(query, params![limit as i64, offset as i64], |row| {
+        storage_row_parts(sql, row)
     })
     .map_err(DbError::from)
 }
@@ -62,74 +66,86 @@ impl ReleaseContextRows {
 }
 
 pub(super) fn process_storage_rows(
-    rows: Vec<(DbReleaseSummary, AlbumSummaryRow)>,
+    rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter()
-        .map(|(release, album)| {
+        .map(|(release, pinned, album)| {
             Ok(DbStorageRow {
                 release,
+                pinned,
                 album: album.process()?,
             })
         })
         .collect()
 }
 
+/// How many releases the Storage Manager list holds under `filter`.
 pub(super) fn storage_count_on(
     sql: &SqlReadContext<'_>,
-    where_clause: &str,
-    uploading: &[String],
+    filter: StorageFilter,
 ) -> Result<u64, DbError> {
-    let query = format!("SELECT COUNT(*) FROM releases r {where_clause}");
-    sql.query_row(
-        &query,
-        rusqlite::params_from_iter(uploading.iter()),
-        |row| row.get::<_, i64>(0),
-    )
-    .map(|count| count as u64)
-    .map_err(DbError::from)
+    let query = match filter {
+        StorageFilter::All => {
+            "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals".to_string()
+        }
+        StorageFilter::Remote => {
+            "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals WHERE stored = 1"
+                .to_string()
+        }
+        StorageFilter::Local => {
+            "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals WHERE stored = 0"
+                .to_string()
+        }
+        StorageFilter::Uploading => format!("SELECT COUNT(*) FROM ({UPLOADING_RELEASES})"),
+    };
+    sql.query_row(&query, [], |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)
+        .map_err(DbError::from)
 }
 
+/// The total size of the files of the releases the Storage Manager list
+/// holds under `filter`.
 pub(super) fn storage_total_size_on(
     sql: &SqlReadContext<'_>,
-    where_clause: &str,
-    uploading: &[String],
+    filter: StorageFilter,
 ) -> Result<u64, DbError> {
-    let query = format!(
-        "SELECT COALESCE(SUM(rf.file_size), 0) \
-         FROM releases r JOIN release_files rf ON rf.release_id = r.id \
-         {where_clause}"
-    );
-    sql.query_row(
-        &query,
-        rusqlite::params_from_iter(uploading.iter()),
-        |row| row.get::<_, i64>(0),
-    )
-    .map(|size| size as u64)
-    .map_err(DbError::from)
+    let query = match filter {
+        StorageFilter::All => {
+            "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals".to_string()
+        }
+        StorageFilter::Remote => {
+            "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals WHERE stored = 1"
+                .to_string()
+        }
+        StorageFilter::Local => {
+            "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals WHERE stored = 0"
+                .to_string()
+        }
+        StorageFilter::Uploading => format!(
+            "SELECT COALESCE(SUM(listing.total_size), 0) FROM release_listing listing \
+             JOIN ({UPLOADING_RELEASES}) uploading ON uploading.release_id = listing.release_id"
+        ),
+    };
+    sql.query_row(&query, [], |row| row.get::<_, i64>(0))
+        .map(|size| size as u64)
+        .map_err(DbError::from)
 }
 
-/// The rows of the `release_ids` the list `where_clause` filters to holds,
-/// wherever in it they sit, by release id. `uploading` binds the clause's
-/// placeholders, as for the list's count.
+/// The rows of the `release_ids` the list under `filter` holds, wherever in
+/// it they sit, by release id.
 pub(super) fn storage_selected_on(
     sql: &SqlReadContext<'_>,
-    where_clause: &str,
-    uploading: &[String],
+    filter: StorageFilter,
     release_ids: &BTreeSet<String>,
-) -> Result<Vec<(DbReleaseSummary, AlbumSummaryRow)>, DbError> {
+) -> Result<Vec<StorageRowParts>, DbError> {
     let release_ids = release_ids.iter().collect::<Vec<_>>();
     let mut rows = Vec::new();
     for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
-        let query = storage_selected_query(where_clause, chunk.len());
+        let query = storage_selected_query(filter, chunk.len());
         rows.extend(
-            sql.query(
-                &query,
-                rusqlite::params_from_iter(uploading.iter().chain(chunk.iter().copied())),
-                |row| {
-                    let release = row_to_release_summary(sql, row)?;
-                    Ok((release, AlbumSummaryRow::read(row)?))
-                },
-            )
+            sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
+                storage_row_parts(sql, row)
+            })
             .map_err(DbError::from)?,
         );
     }
@@ -137,14 +153,11 @@ pub(super) fn storage_selected_on(
 }
 
 /// What the Storage Manager list reads: the sort and filter it shows, the
-/// windows of that list it holds, the releases selected in it, and — under the
-/// Uploading filter only — the releases the upload queue holds, in queue
-/// order, which order that list.
+/// windows of that list it holds, and the releases selected in it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageBrowseRequest {
     pub sort: StorageSortCriterion,
     pub filter: StorageFilter,
-    pub uploading: Vec<String>,
     pub windows: crate::library::LibraryPageWindows,
     pub selected: BTreeSet<String>,
 }
