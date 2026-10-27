@@ -63,7 +63,7 @@ impl Database {
         let state = state.clone();
         self.call(move |conn| {
             let (current_entry, current_track_id) = match &state.current {
-                Some(current) => (Some(current.id.0), Some(current.track_id.clone())),
+                Some(current) => (Some(current.id.to_string()), Some(current.track_id.clone())),
                 None => (None, None),
             };
             conn.execute(
@@ -93,17 +93,25 @@ impl Database {
                      FROM playback_state WHERE id = 'current'",
                     [],
                     |row| {
-                        let entry: Option<i64> = row.get("current_entry")?;
+                        let entry: Option<String> = row.get("current_entry")?;
                         let track_id: Option<String> = row.get("current_track_id")?;
                         // The schema keeps `position_ms` non-negative.
                         let position_ms: Option<i64> = row.get("position_ms")?;
-                        Ok(DbPlaybackState {
-                            current: entry.zip(track_id).map(|(entry, track_id)| {
-                                crate::playback::QueueEntry {
-                                    id: crate::playback::QueueEntryId(entry),
-                                    track_id,
-                                }
+                        let current = match entry.zip(track_id) {
+                            Some((entry, track_id)) => Some(crate::playback::QueueEntry {
+                                id: entry.parse().map_err(|e: String| {
+                                    rusqlite::Error::FromSqlConversionFailure(
+                                        0,
+                                        rusqlite::types::Type::Text,
+                                        e.into(),
+                                    )
+                                })?,
+                                track_id,
                             }),
+                            None => None,
+                        };
+                        Ok(DbPlaybackState {
+                            current,
                             position_ms: position_ms.map(|position| position as u64),
                             volume: row.get("volume")?,
                             is_muted: row.get("is_muted")?,

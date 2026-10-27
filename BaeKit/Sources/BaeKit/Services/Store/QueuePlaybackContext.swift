@@ -1,10 +1,10 @@
 import Foundation
 
-/// A queue row. `entryId` is per-instance: the same track queued twice yields
-/// two entries with two ids, so the row identity is stable and unique even for
-/// duplicates. `trackId` is what a cross-lane drag enqueues (a context row
-/// dropped into "Up Next" inserts the track; entry ids only ever address their
-/// own lane's instance).
+/// A queue row. `entryId` is unique across both lanes: each Up Next entry has
+/// its own id, so the same track queued twice there is two rows, and a context
+/// row is named by its track, which that lane holds once. `trackId` is what a
+/// cross-lane drag enqueues (a context row dropped into "Up Next" inserts the
+/// track; entry ids only ever address a row in their own lane).
 extension BridgeQueueEntry: Identifiable {
     public var id: String {
         entryId

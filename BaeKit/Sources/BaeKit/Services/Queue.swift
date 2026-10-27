@@ -23,7 +23,7 @@ public struct QueueUpcomingQuery: Sendable {
 }
 
 /// Queue mutations — appending, inserting, reordering, removing,
-/// jumping to a queue entry. Reorder/remove/skip target a per-instance
+/// jumping to a queue entry. Reorder/remove/skip target one row by its
 /// `entryId`. Narrow subset of `AppHandle`.
 public final class Queue: Sendable, Observable {
     public let addToQueue: @Sendable (_ trackIds: [String]) -> Void

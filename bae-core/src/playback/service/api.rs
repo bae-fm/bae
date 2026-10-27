@@ -205,7 +205,7 @@ pub(crate) enum PlaybackCommand {
     AddReleaseToQueue(String),
     AddReleaseNext(String),
     InsertInQueue(Vec<String>, usize),
-    /// Remove the queue entry with this per-instance id.
+    /// Remove the queue row with this id.
     RemoveFromQueue(QueueEntryId),
     /// Move `entry_id` to just before `before`, or to the end when it's `None`.
     ReorderQueue {
@@ -226,7 +226,7 @@ pub(crate) enum PlaybackCommand {
     /// time, so a next track already staged for gapless playback is held here if
     /// its boundary needs a pause.
     ReevaluateSidePauseStaging,
-    /// Skip to the queue entry with this per-instance id (manual, pregap skipped).
+    /// Skip to the queue row with this id (manual, pregap skipped).
     SkipTo(QueueEntryId),
     /// Preview a local source window (the same target stops; another switches).
     PreviewPlay(crate::playback::PreviewTarget),

@@ -8,23 +8,45 @@ use crate::db::{
 };
 use crate::playback::timeline::TrackTime;
 
-/// Per-instance identity for a queued track: the same track queued twice is
-/// two entries, each removable, reorderable and skippable on its own. The
-/// queue tables number them, and no number is used twice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct QueueEntryId(pub i64);
+/// What names a queued row to the screens and back. An Up Next entry is an
+/// instance of its own — the same track queued twice is two entries, each
+/// removable, reorderable and skippable on its own — numbered by the queue
+/// tables, which never use a number twice. A context row is named by its
+/// track, since a context lane never holds a track twice.
+///
+/// Its text, the id the screens carry, is `m` and the entry number, or `c`
+/// and the track id.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum QueueEntryId {
+    Manual(i64),
+    Context(String),
+}
 
 impl std::str::FromStr for QueueEntryId {
-    type Err = std::num::ParseIntError;
+    type Err = String;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        value.parse().map(QueueEntryId)
+        if let Some(entry) = value.strip_prefix('m') {
+            return entry
+                .parse()
+                .map(QueueEntryId::Manual)
+                .map_err(|e| format!("{value:?} names no Up Next entry: {e}"));
+        }
+        match value.strip_prefix('c') {
+            Some(track_id) if !track_id.is_empty() => {
+                Ok(QueueEntryId::Context(track_id.to_string()))
+            }
+            _ => Err(format!("{value:?} is not a queue entry id")),
+        }
     }
 }
 
 impl std::fmt::Display for QueueEntryId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        match self {
+            QueueEntryId::Manual(entry) => write!(f, "m{entry}"),
+            QueueEntryId::Context(track_id) => write!(f, "c{track_id}"),
+        }
     }
 }
 
@@ -155,7 +177,7 @@ impl PlaybackQueue {
     /// Take the entry out of whichever lane holds it. Removing the entry
     /// playing clears `current`. An unknown id logs and returns `None`.
     pub async fn remove(&mut self, id: QueueEntryId) -> Result<Option<QueueEntry>, DbError> {
-        let removed = self.tables.remove(id).await?;
+        let removed = self.tables.remove(id.clone()).await?;
         match &removed {
             Some(removed) => {
                 if self.current.as_ref().is_some_and(|c| c.id == removed.id) {
@@ -182,7 +204,7 @@ impl PlaybackQueue {
     /// context entry becomes the lane's playing track. An unknown id logs and
     /// returns `None`.
     pub async fn skip_to(&mut self, id: QueueEntryId) -> Result<Option<QueueEntry>, DbError> {
-        let entry = self.tables.skip_to(id).await?;
+        let entry = self.tables.skip_to(id.clone()).await?;
         match &entry {
             Some(entry) => self.current = Some(entry.clone()),
             None => warn!("skip_to: queue entry id not found: {id}"),
@@ -251,7 +273,7 @@ impl PlaybackQueue {
         if track_time >= RESTART_THRESHOLD {
             return Ok(PreviousAction::RestartCurrent);
         }
-        let current = self.current.as_ref().map(|current| current.id);
+        let current = self.current.as_ref().map(|current| current.id.clone());
         let Some(entry) = self.tables.step_back(current).await? else {
             return Ok(PreviousAction::RestartCurrent);
         };

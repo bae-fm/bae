@@ -138,7 +138,7 @@ async fn test_reorder_context_tail_keeps_cursor() {
 async fn test_reorder_of_the_playing_context_row_moves_the_cursor_with_it() {
     let mut f = release(&["t1", "t2", "t3", "t4"]).await;
     f.play_from("t2").await;
-    let playing = f.queue.current().unwrap().id;
+    let playing = f.queue.current().unwrap().id.clone();
     let t4 = f.entry("t4").await;
     f.queue.reorder(playing, Some(t4)).await.unwrap();
     assert_eq!(f.context_order().await, names(&["t1", "t3", "t2", "t4"]));
@@ -151,7 +151,7 @@ async fn test_reorder_cross_lane_is_noop() {
     let mut f = release_and_manual(&["t1", "t2"], &["m1"]).await;
     f.play_from("t1").await;
     f.add(&["m1"]).await;
-    let manual = f.manual_ids().await[0];
+    let manual = f.manual_ids().await[0].clone();
     let context = f.entry("t2").await;
     assert!(!f.queue.reorder(manual, Some(context)).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["m1", "t2"]));
@@ -179,7 +179,7 @@ async fn test_insert_at_beyond_end_clamps() {
 async fn test_removing_the_playing_context_row_keeps_the_next_one_upcoming() {
     let mut f = release(&["t1", "t2", "t3"]).await;
     f.play_from("t2").await;
-    let playing = f.queue.current().unwrap().id;
+    let playing = f.queue.current().unwrap().id.clone();
 
     f.queue.remove(playing).await.unwrap();
 

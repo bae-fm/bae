@@ -261,36 +261,113 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
     let int = |value: i64| rusqlite::types::Value::Integer(value);
     let window = plan(
         &db,
-        "SELECT e.entry, t.id FROM (SELECT entry, track_id, position FROM playback_queue_entries e \
-         WHERE e.lane = 'context' AND e.position > ? ORDER BY position LIMIT 100 OFFSET 10000) e \
+        "SELECT e.entry, t.id FROM (SELECT 'c' || track_id AS entry, track_id, position \
+         FROM playback_context WHERE position > ? ORDER BY position LIMIT 100 OFFSET 10000) e \
          JOIN tracks t ON t.id = e.track_id ORDER BY e.position",
         vec![int(1)],
     )
     .await;
     assert!(
-        window.contains("SEARCH e USING INDEX sqlite_autoindex_playback_queue_entries_1 (lane=? AND position>?)")
+        window.contains("SEARCH playback_context USING INTEGER PRIMARY KEY (rowid>?)")
             && window.contains("INDEX sqlite_autoindex_tracks_1 (id=?)")
             && !window.contains("TEMP B-TREE"),
         "{window}"
     );
     let count = plan(
         &db,
-        "SELECT count(*) FROM playback_queue_entries WHERE lane = 'context' AND position > ?",
+        "SELECT count(*) FROM playback_context WHERE position > ?",
         vec![int(1)],
     )
     .await;
     assert!(
-        count.contains("USING COVERING INDEX sqlite_autoindex_playback_queue_entries_1"),
+        count.contains("USING INTEGER PRIMARY KEY (rowid>?)"),
         "{count}"
     );
-    let by_track = plan(
-        &db,
-        "SELECT 1 FROM playback_queue_entries WHERE track_id = ?",
-        vec![rusqlite::types::Value::Text(String::new())],
-    )
-    .await;
+    let text = |value: &str| rusqlite::types::Value::Text(value.to_string());
+    for (table, index) in [
+        ("playback_context", "sqlite_autoindex_playback_context_1"),
+        ("playback_manual", "playback_manual_track"),
+    ] {
+        let by_track = plan(
+            &db,
+            &format!("SELECT 1 FROM {table} WHERE track_id = ?"),
+            vec![text("")],
+        )
+        .await;
+        assert!(
+            by_track.contains(&format!("USING COVERING INDEX {index}")),
+            "{by_track}"
+        );
+    }
+}
+
+/// A context row is named by its track: a lane never holds a track twice, so
+/// the id the screens show and send back is the track's, and the track's own
+/// index finds it.
+#[tokio::test]
+async fn a_context_row_is_named_by_its_track() {
+    let (db, _tmp, tracks) = release_db(3).await;
+    play(&db, ReleaseStart::First).await;
+
+    let upcoming = db.queue_upcoming().await.unwrap();
+    let ids: Vec<&str> = upcoming.iter().map(|item| item.entry_id.as_str()).collect();
+    let expected: Vec<String> = tracks[1..]
+        .iter()
+        .map(|track| format!("c{track}"))
+        .collect();
+    assert_eq!(ids, expected);
+
+    let skipped = db
+        .playback_queue_tables()
+        .skip_to(upcoming[1].entry_id.parse().unwrap())
+        .await
+        .unwrap()
+        .expect("the row its track names");
+    assert_eq!(skipped.track_id, tracks[2]);
+    assert!(db.queue_upcoming().await.unwrap().is_empty());
+}
+
+/// Up Next rows are entries of their own, so the same track queued twice is
+/// two rows the screens tell apart.
+#[tokio::test]
+async fn an_up_next_row_is_named_by_its_entry() {
+    let (db, _tmp, tracks) = release_db(1).await;
+    let items = super::queue_items(&db, &[&tracks[0], &tracks[0]]).await;
+    assert!(items.iter().all(|item| item.entry_id.starts_with('m')));
+    assert_ne!(items[0].entry_id, items[1].entry_id);
+    let removed = db
+        .playback_queue_tables()
+        .remove(items[1].entry_id.parse().unwrap())
+        .await
+        .unwrap();
+    assert!(removed.is_some());
+    assert_eq!(db.queue_value().await.unwrap().manual, items[..1].to_vec());
+}
+
+/// A deleted track leaves the queue through a trigger on `tracks`, not a
+/// foreign key, so filling the lane looks nothing up in `tracks` per row.
+#[tokio::test]
+async fn the_queue_tables_hold_no_foreign_key_and_a_deleted_track_still_leaves() {
+    let (db, _tmp, tracks) = release_db(3).await;
+    let definitions: Vec<String> = db
+        .read(|sql| {
+            Ok(sql.query(
+                "SELECT sql FROM sqlite_master \
+                 WHERE type = 'table' AND name IN ('playback_context', 'playback_manual')",
+                [],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(definitions.len(), 2);
     assert!(
-        by_track.contains("USING COVERING INDEX playback_queue_entries_track"),
-        "{by_track}"
+        definitions.iter().all(|sql| !sql.contains("REFERENCES")),
+        "{definitions:?}"
     );
+
+    play(&db, ReleaseStart::First).await;
+    super::queue_items(&db, &[&tracks[2]]).await;
+    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[2]]).await;
+    assert_eq!(upcoming(&db).await, vec![tracks[1].clone()]);
 }

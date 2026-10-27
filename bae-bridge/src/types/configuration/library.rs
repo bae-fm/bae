@@ -247,9 +247,10 @@ pub enum BridgeStorageFilter {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeQueueEntry {
-    /// Per-instance id: the same track queued twice yields two entries with two
-    /// ids, so the UI keys each row on a stable unique identity and targets
-    /// remove/reorder/skip at one instance.
+    /// The row's id, unique across both lanes: an Up Next entry has its own id,
+    /// so the same track queued twice there is two rows; a "playing from" row is
+    /// named by its track, which that lane holds once. The UI keys each row on it
+    /// and targets remove/reorder/skip at one row.
     pub entry_id: String,
     pub track_id: String,
     pub display: BridgeTrackDisplay,

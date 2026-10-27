@@ -369,7 +369,7 @@ async fn remove_entry_refreshes_preloaded_track_over_sparse_buffer() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.remove_entry(entries[0].id),
+        |h, entries| h.remove_entry(entries[0].id.clone()),
     )
     .await;
 }
@@ -387,7 +387,7 @@ async fn reorder_entry_displaces_preloaded_track_over_sparse_buffer() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.reorder_entry(entries[1].id, Some(entries[0].id)),
+        |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
     )
     .await;
 }
@@ -432,7 +432,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
         .iter()
         .find(|e| e.track_id == third)
         .expect("the third track is queued in the context");
-    playback.playback_handle.skip_to_entry(target.id);
+    playback.playback_handle.skip_to_entry(target.id.clone());
     wait_for_state_on(
         &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),

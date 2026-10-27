@@ -55,21 +55,19 @@ impl Database {
     }
 }
 
-/// The queue entries `filter` picks, each with its track as the queue rows
-/// show it, in lane order, cut to `page` (a `LIMIT …` clause) when given.
-/// The page is cut from the entries before the join, so the rows an offset
-/// passes over are never joined to their tracks.
+/// The rows `rows` picks — a `SELECT entry, track_id, position …` in lane
+/// order, already cut to the page asked for — each with its track as the
+/// queue rows show it. The page is cut before the join, so the rows an
+/// offset passes over are never joined to their tracks.
 fn queue_items_on(
     sql: &SqlReadContext<'_>,
-    filter: &str,
-    page: &str,
+    rows: &str,
     params: impl rusqlite::Params,
 ) -> Result<Vec<QueueItem>, DbError> {
     Ok(sql.query(
         &format!(
             "SELECT e.entry, {columns} \
-             FROM (SELECT entry, track_id, position FROM playback_queue_entries e \
-                   WHERE {filter} ORDER BY position {page}) e \
+             FROM ({rows}) e \
              JOIN tracks t ON t.id = e.track_id \
              {joins} \
              ORDER BY e.position",
@@ -80,7 +78,7 @@ fn queue_items_on(
         |row| {
             let meta = track_queue_meta_from_row(row)?;
             Ok(QueueItem {
-                entry_id: row.get::<_, i64>("entry")?.to_string(),
+                entry_id: row.get("entry")?,
                 track_id: row.get("track_id")?,
                 display: meta.display,
                 duration_ms: meta.duration_ms,
@@ -121,15 +119,20 @@ fn queue_value_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<crate::queue::ResolvedQueueSnapshot, DbError> {
     let head = queue_head_on(sql)?;
-    let manual = queue_items_on(sql, "e.lane = 'manual'", "", [])?;
+    // The entry ids are `QueueEntryId`'s text: 'm' and the entry number for
+    // Up Next, 'c' and the track for the context lane.
+    let manual = queue_items_on(
+        sql,
+        "SELECT 'm' || entry AS entry, track_id, position FROM playback_manual \
+         ORDER BY position",
+        [],
+    )?;
     let (context, has_upcoming, has_previous) = match head.context {
         None => (None, false, false),
         Some((source, shuffled, cursor)) => {
             let (has_upcoming, has_previous): (bool, bool) = sql.query_row(
-                "SELECT EXISTS (SELECT 1 FROM playback_queue_entries \
-                                WHERE lane = 'context' AND position > ?1), \
-                        EXISTS (SELECT 1 FROM playback_queue_entries \
-                                WHERE lane = 'context' AND position < ?1)",
+                "SELECT EXISTS (SELECT 1 FROM playback_context WHERE position > ?1), \
+                        EXISTS (SELECT 1 FROM playback_context WHERE position < ?1)",
                 [cursor],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )?;
@@ -176,8 +179,8 @@ fn queue_upcoming_on(
                 None => Vec::new(),
                 Some((_, _, cursor)) => queue_items_on(
                     sql,
-                    "e.lane = 'context' AND e.position > ?1",
-                    "LIMIT ?2 OFFSET ?3",
+                    "SELECT 'c' || track_id AS entry, track_id, position FROM playback_context \
+                     WHERE position > ?1 ORDER BY position LIMIT ?2 OFFSET ?3",
                     params![
                         cursor,
                         i64::try_from(window.limit).unwrap_or(i64::MAX),
@@ -203,7 +206,7 @@ fn queue_upcoming_on(
 /// How many of the context lane's tracks come after its playing one.
 fn upcoming_total_on(sql: &SqlReadContext<'_>, cursor: i64) -> Result<u64, DbError> {
     let total: i64 = sql.query_row(
-        "SELECT count(*) FROM playback_queue_entries WHERE lane = 'context' AND position > ?",
+        "SELECT count(*) FROM playback_context WHERE position > ?",
         [cursor],
         |row| row.get(0),
     )?;

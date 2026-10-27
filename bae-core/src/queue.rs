@@ -1,8 +1,8 @@
 //! Resolved types for the playback queue — the display-ready shapes the bridge
 //! and UI event payloads carry, read from the queue tables.
 
-/// Display-ready queue entry. `entry_id` is per-instance, so the UI keys each row
-/// on a stable identity even when the same track is queued twice.
+/// Display-ready queue entry. `entry_id` is unique across both lanes, so the UI
+/// keys each row on a stable identity even when Up Next holds a track twice.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueItem {
     pub entry_id: String,

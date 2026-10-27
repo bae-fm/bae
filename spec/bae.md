@@ -2139,9 +2139,11 @@ When track 3 ends, Up Next drains first, then the release continues at track
 
 What's playing from is a release, several releases in the order chosen, or the
 whole library. Its rows are filled once, when playing starts; after that they
-can be removed and reordered but never grow. Each row is its own entry, so the
-same track queued twice is two entries, each removable on its own. Removing
-the playing row leaves the track after it next.
+can be removed and reordered but never grow. It holds each track once: a
+release named twice among several plays once, where it is first named.
+Removing the playing row leaves the track after it next. Up Next entries are
+each their own, so the same track queued twice there is two entries, each
+removable on its own.
 
 | Command | Effect |
 |---|---|
@@ -2783,6 +2785,9 @@ All sync (§5), except `local_history`.
 
 | Table | Holds |
 |---|---|
+| `playback_queue` | the one row of this device's queue: repeat, what's playing from, whether it's shuffled and which of its rows is playing (§7.1) |
+| `playback_manual` | Up Next entry, in order: the track it plays |
+| `playback_context` | row of what's playing from, in play order: its track, held once, and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 
 ### A.4 Watched folders and scans

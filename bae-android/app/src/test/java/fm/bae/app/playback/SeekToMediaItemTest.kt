@@ -21,9 +21,9 @@ import uniffi.bae_bridge.BridgeTrackDisplay
 /**
  * Skip-to-queue-item ([BaeCorePlayer.handleSeek]'s COMMAND_SEEK_TO_MEDIA_ITEM
  * branch). The Media3 playlist is the now-playing track followed by the up-next
- * entries, so a tapped playlist index resolves to that entry's per-instance id
- * and core is told to skip to it. The now-playing slot has no queue-entry id, so
- * seeking to it is a no-op.
+ * entries, so a tapped playlist index resolves to that entry's id and core is
+ * told to skip to it. The now-playing slot has no queue-entry id, so seeking to
+ * it is a no-op.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

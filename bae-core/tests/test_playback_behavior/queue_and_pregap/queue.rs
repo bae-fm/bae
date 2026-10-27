@@ -293,7 +293,7 @@ async fn test_reorder_entry_displaces_preloaded_track() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.reorder_entry(entries[1].id, Some(entries[0].id)),
+        |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
     )
     .await;
 }
@@ -330,7 +330,7 @@ async fn test_remove_entry_refreshes_preloaded_track() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.remove_entry(entries[0].id),
+        |h, entries| h.remove_entry(entries[0].id.clone()),
     )
     .await;
 }
@@ -585,7 +585,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
         .iter()
         .find(|e| e.track_id == third)
         .expect("the third track is queued in the context");
-    fixture.playback_handle.skip_to_entry(target.id);
+    fixture.playback_handle.skip_to_entry(target.id.clone());
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
@@ -753,7 +753,7 @@ async fn remove_currently_playing_entry_stops_playback() {
         .find(|e| e.track_id == second)
         .expect("the second track is queued in the context")
         .clone();
-    fixture.playback_handle.skip_to_entry(entry.id);
+    fixture.playback_handle.skip_to_entry(entry.id.clone());
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
@@ -762,7 +762,7 @@ async fn remove_currently_playing_entry_stops_playback() {
         .await
         .expect("SkipTo makes the second track current");
 
-    fixture.playback_handle.remove_entry(entry.id);
+    fixture.playback_handle.remove_entry(entry.id.clone());
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Stopped),

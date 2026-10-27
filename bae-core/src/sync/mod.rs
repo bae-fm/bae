@@ -313,7 +313,8 @@ mod tests {
         "local_release_origin",
         "local_history",
         "playback_queue",
-        "playback_queue_entries",
+        "playback_manual",
+        "playback_context",
         "playback_state",
         // What library lists sort, filter and count by, kept from the synced
         // rows by local triggers.

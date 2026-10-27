@@ -11,7 +11,7 @@ async fn test_add_to_queue_gives_duplicates_distinct_ids() {
     f.add(&["a", "a"]).await;
     let ids = f.manual_ids().await;
     assert_eq!(ids.len(), 2);
-    assert_ne!(ids[0], ids[1], "duplicate tracks get distinct ids");
+    assert_ne!(ids[0].clone(), ids[1].clone(), "duplicate tracks get distinct ids");
 }
 
 /// A track the library does not hold is left out, and the count says so.
@@ -39,7 +39,7 @@ async fn test_add_next_preserves_order() {
 async fn test_remove_by_entry_id() {
     let mut f = release(&["a", "b", "c"]).await;
     f.add(&["a", "b", "c"]).await;
-    let b_id = f.manual_ids().await[1];
+    let b_id = f.manual_ids().await[1].clone();
     let removed = f.queue.remove(b_id).await.unwrap();
     assert_eq!(removed.map(|e| f.name(&e.track_id)), Some("b".into()));
     assert_eq!(f.upcoming().await, names(&["a", "c"]));
@@ -52,9 +52,9 @@ async fn test_remove_one_duplicate_keeps_the_other() {
     let mut f = release(&["dup"]).await;
     f.add(&["dup", "dup"]).await;
     let ids = f.manual_ids().await;
-    let removed = f.queue.remove(ids[0]).await.unwrap().expect("first instance removed");
-    assert_eq!(removed.id, ids[0]);
-    assert_eq!(f.manual_ids().await, vec![ids[1]], "the other instance's id survives");
+    let removed = f.queue.remove(ids[0].clone()).await.unwrap().expect("first instance removed");
+    assert_eq!(removed.id, ids[0].clone());
+    assert_eq!(f.manual_ids().await, vec![ids[1].clone()], "the other instance's id survives");
 }
 
 #[tokio::test]
@@ -62,7 +62,7 @@ async fn test_remove_unknown_id_is_noop() {
     let mut f = release(&["a"]).await;
     f.add(&["a"]).await;
     let before = f.shown().await;
-    assert_eq!(f.queue.remove(QueueEntryId(i64::MAX)).await.unwrap(), None);
+    assert_eq!(f.queue.remove(QueueEntryId::Manual(i64::MAX)).await.unwrap(), None);
     assert_eq!(f.upcoming().await, names(&["a"]));
     assert_eq!(f.shown().await, before, "an unknown id changes nothing");
 }
@@ -72,7 +72,7 @@ async fn test_reorder_forward() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    assert!(f.queue.reorder(ids[0], Some(ids[2])).await.unwrap());
+    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["b", "a", "c", "d"]));
 }
 
@@ -81,7 +81,7 @@ async fn test_reorder_to_end() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    f.queue.reorder(ids[0], None).await.unwrap();
+    f.queue.reorder(ids[0].clone(), None).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["b", "c", "d", "a"]));
 }
 
@@ -90,7 +90,7 @@ async fn test_reorder_backward() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    f.queue.reorder(ids[2], Some(ids[0])).await.unwrap();
+    f.queue.reorder(ids[2].clone(), Some(ids[0].clone())).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["c", "a", "b", "d"]));
 }
 
@@ -101,11 +101,11 @@ async fn test_reorder_across_gaps() {
     let mut f = release(&["a", "b", "c", "d", "e"]).await;
     f.add(&["a", "b", "c", "d", "e"]).await;
     let ids = f.manual_ids().await;
-    f.queue.remove(ids[1]).await.unwrap();
-    f.queue.remove(ids[3]).await.unwrap();
-    f.queue.reorder(ids[0], Some(ids[4])).await.unwrap();
+    f.queue.remove(ids[1].clone()).await.unwrap();
+    f.queue.remove(ids[3].clone()).await.unwrap();
+    f.queue.reorder(ids[0].clone(), Some(ids[4].clone())).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["c", "a", "e"]));
-    f.queue.reorder(ids[4], Some(ids[2])).await.unwrap();
+    f.queue.reorder(ids[4].clone(), Some(ids[2].clone())).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["e", "c", "a"]));
 }
 
@@ -114,7 +114,7 @@ async fn test_reorder_before_self_is_noop() {
     let mut f = release(&["a", "b", "c"]).await;
     f.add(&["a", "b", "c"]).await;
     let ids = f.manual_ids().await;
-    f.queue.reorder(ids[1], Some(ids[1])).await.unwrap();
+    f.queue.reorder(ids[1].clone(), Some(ids[1].clone())).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
 }
 
@@ -122,7 +122,7 @@ async fn test_reorder_before_self_is_noop() {
 async fn test_reorder_unknown_source_is_noop() {
     let mut f = release(&["a", "b"]).await;
     f.add(&["a", "b"]).await;
-    assert!(!f.queue.reorder(QueueEntryId(i64::MAX), None).await.unwrap());
+    assert!(!f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["a", "b"]));
 }
 
@@ -183,7 +183,7 @@ async fn test_clear_playing_from_with_no_context_is_noop() {
 async fn test_skip_to_manual_drains_prefix() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
-    let c_id = f.manual_ids().await[2];
+    let c_id = f.manual_ids().await[2].clone();
     let entry = f.queue.skip_to(c_id).await.unwrap();
     assert_eq!(entry.map(|e| f.name(&e.track_id)), Some("c".into()));
     assert_eq!(f.upcoming().await, names(&["d"]));
@@ -194,7 +194,7 @@ async fn test_skip_to_manual_drains_prefix() {
 async fn test_skip_to_unknown_id_is_noop() {
     let mut f = release(&["a"]).await;
     f.add(&["a"]).await;
-    assert_eq!(f.queue.skip_to(QueueEntryId(i64::MAX)).await.unwrap(), None);
+    assert_eq!(f.queue.skip_to(QueueEntryId::Manual(i64::MAX)).await.unwrap(), None);
     assert_eq!(f.upcoming().await, names(&["a"]));
 }
 
@@ -496,4 +496,18 @@ async fn test_shuffled_play_then_unshuffle_yields_source_order() {
         .filter(|t| *t != played_first)
         .collect();
     assert_eq!(f.upcoming().await, expected, "source order resumes");
+}
+
+/// A release named twice in a multi-release play plays once: a context lane
+/// never holds a track twice.
+#[tokio::test]
+async fn test_a_release_named_twice_plays_once() {
+    let mut f = fixture(&[("r1", &["a1", "a2"]), ("r2", &["b1"])]).await;
+    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r2"), f.id("r1")]))
+        .await;
+    assert_eq!(f.context_order().await, names(&["a1", "a2", "b1"]));
+    assert_eq!(
+        f.value().await.context.unwrap().source,
+        ContextSource::Releases(vec![f.id("r1"), f.id("r2")])
+    );
 }
