@@ -81,7 +81,14 @@ pub(super) fn storage_count_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
 ) -> Result<u64, DbError> {
-    let query = match filter {
+    sql.query_row(&storage_count_query(filter), [], |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)
+        .map_err(DbError::from)
+}
+
+/// The statement [`storage_count_on`] reads.
+pub(super) fn storage_count_query(filter: StorageFilter) -> String {
+    match filter {
         StorageFilter::All => {
             "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals".to_string()
         }
@@ -93,11 +100,10 @@ pub(super) fn storage_count_on(
             "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals WHERE stored = 0"
                 .to_string()
         }
-        StorageFilter::Uploading => format!("SELECT COUNT(*) FROM ({UPLOADING_RELEASES})"),
-    };
-    sql.query_row(&query, [], |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)
-        .map_err(DbError::from)
+        StorageFilter::Uploading => {
+            format!("SELECT COUNT(*) FROM release_listing listing {UPLOADING_WHERE}")
+        }
+    }
 }
 
 /// The total size of the files of the releases the Storage Manager list
@@ -106,7 +112,16 @@ pub(super) fn storage_total_size_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
 ) -> Result<u64, DbError> {
-    let query = match filter {
+    sql.query_row(&storage_total_size_query(filter), [], |row| {
+        row.get::<_, i64>(0)
+    })
+    .map(|size| size as u64)
+    .map_err(DbError::from)
+}
+
+/// The statement [`storage_total_size_on`] reads.
+pub(super) fn storage_total_size_query(filter: StorageFilter) -> String {
+    match filter {
         StorageFilter::All => {
             "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals".to_string()
         }
@@ -120,12 +135,9 @@ pub(super) fn storage_total_size_on(
         }
         StorageFilter::Uploading => format!(
             "SELECT COALESCE(SUM(listing.total_size), 0) FROM release_listing listing \
-             JOIN ({UPLOADING_RELEASES}) uploading ON uploading.release_id = listing.release_id"
+             {UPLOADING_WHERE}"
         ),
-    };
-    sql.query_row(&query, [], |row| row.get::<_, i64>(0))
-        .map(|size| size as u64)
-        .map_err(DbError::from)
+    }
 }
 
 /// The rows of the `release_ids` the list under `filter` holds, wherever in

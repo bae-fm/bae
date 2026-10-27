@@ -1384,7 +1384,10 @@ coven's, which the list's query reads beside the library's rows. Whether a
 release is pinned, here and in the album and release details, is read from
 how many of its files coven's `coven_pins` lists, a count bae keeps per
 release in the transaction that changes a pin, so each view's own query
-follows a pin as it lands.
+follows a pin as it lands. How many of a release's files wait in the upload
+queue, and the place of the first, are counts bae keeps the same way from
+coven's `coven_upload_queue`, in the transaction that queues or dequeues a
+file; the upload filter reads them in queue order.
 
 ### 4.3 Pinning and the cache
 
@@ -2824,7 +2827,7 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; and how many of its files this device keeps pinned, with an index of the uploaded releases not wholly pinned |
+| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |

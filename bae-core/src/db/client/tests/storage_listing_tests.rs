@@ -135,3 +135,40 @@ async fn the_cloud_only_count_reads_one_index_of_the_listing() {
         ]
     );
 }
+
+/// The Uploading filter reads the releases with queued files in queue order
+/// from an index of the listing, not from coven's queue grouped by release.
+#[tokio::test]
+async fn the_uploading_filter_reads_the_listing_in_queue_order() {
+    let (db, _tmp) = super::temp_db().await;
+    let sort = StorageSortCriterion {
+        field: StorageSortField::AlbumTitle,
+        direction: SortDirection::Ascending,
+    };
+    let page = plan(
+        &db,
+        super::super::query::storage_page_query(&sort, StorageFilter::Uploading)
+            .replace("LIMIT ? OFFSET ?", "LIMIT 50 OFFSET 0"),
+    )
+    .await;
+    assert!(
+        page[0].starts_with("SEARCH listing USING INDEX idx_release_listing_uploading"),
+        "{page:?}"
+    );
+    assert!(
+        !page
+            .iter()
+            .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+        "{page:?}"
+    );
+    for statement in [
+        super::super::release_projection::storage_count_query(StorageFilter::Uploading),
+        super::super::release_projection::storage_total_size_query(StorageFilter::Uploading),
+    ] {
+        assert_eq!(
+            plan(&db, statement.clone()).await,
+            vec!["SEARCH listing USING COVERING INDEX idx_release_listing_uploading (first_queued_position>?)".to_string()],
+            "{statement}"
+        );
+    }
+}

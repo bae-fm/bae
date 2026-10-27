@@ -1137,8 +1137,8 @@ END;
 
 -- The Storage Manager (§4.2) lists every release with its album's title and
 -- credits, its media, its files' count and size, whether they are stored and
--- whether this device keeps them all pinned, sorted and filtered by any of
--- them. `release_listing` holds those values, kept by the triggers below,
+-- whether this device keeps them all pinned, and how many of its files wait
+-- in this device's upload queue, sorted and filtered by any of them. `release_listing` holds those values, kept by the triggers below,
 -- with an index for each sort, alone and after `stored` for the Remote and
 -- Local filters.
 
@@ -1147,7 +1147,10 @@ END;
 -- row; `media_empty` (1 for a release stating no medium) and `media_key`
 -- (every stated medium with its count, in order); its files' count and total
 -- size; `stored`, 1 when it has files and every one names its stored file;
--- and `pinned_count`, how many of its files coven's `coven_pins` lists.
+-- `pinned_count`, how many of its files coven's `coven_pins` lists; and
+-- `queued_count` and `first_queued_position`, how many of its files coven's
+-- `coven_upload_queue` lists and the place of the first of them (NULL with
+-- none).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -1160,7 +1163,10 @@ CREATE TABLE IF NOT EXISTS release_listing (
     file_count INTEGER NOT NULL,
     total_size INTEGER NOT NULL,
     stored INTEGER NOT NULL,
-    pinned_count INTEGER NOT NULL
+    pinned_count INTEGER NOT NULL,
+    queued_count INTEGER NOT NULL,
+    first_queued_position INTEGER,
+    CHECK ((queued_count = 0) = (first_queued_position IS NULL))
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_album ON release_listing (album_id);
@@ -1192,6 +1198,12 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_desc ON release_listi
 -- names, so counting them reads this index alone.
 CREATE INDEX IF NOT EXISTS idx_release_listing_cloud_only ON release_listing (stored, pinned_count, file_count)
     WHERE stored = 1 AND pinned_count < file_count;
+
+-- The releases with files waiting in this device's upload queue, in the order
+-- their first files wait: the Storage Manager's Uploading filter, its count
+-- and its total size.
+CREATE INDEX IF NOT EXISTS idx_release_listing_uploading ON release_listing (first_queued_position, total_size)
+    WHERE first_queued_position IS NOT NULL;
 
 -- How many releases are stored and how many aren't, and their files' total
 -- size, for the Storage Manager's count and total: a row for each of `stored`
@@ -1238,7 +1250,8 @@ CREATE TRIGGER IF NOT EXISTS release_listing_refresh INSTEAD OF INSERT ON releas
 BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
-        media_empty, media_key, created_at, file_count, total_size, stored, pinned_count)
+        media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
+        queued_count, first_queued_position)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            json_array_length(r.media) = 0,
            (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'),
@@ -1251,6 +1264,14 @@ BEGIN
              AND NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL),
            (SELECT COUNT(*) FROM release_files f
             JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id)
+            WHERE f.release_id = r.id),
+           (SELECT COUNT(*) FROM release_files f
+            JOIN coven_upload_queue queued
+                ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
+            WHERE f.release_id = r.id),
+           (SELECT MIN(queued.position) FROM release_files f
+            JOIN coven_upload_queue queued
+                ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
             WHERE f.release_id = r.id)
     FROM releases r
     JOIN album_listing album ON album.album_id = r.album_id
@@ -1266,7 +1287,9 @@ BEGIN
         file_count = excluded.file_count,
         total_size = excluded.total_size,
         stored = excluded.stored,
-        pinned_count = excluded.pinned_count;
+        pinned_count = excluded.pinned_count,
+        queued_count = excluded.queued_count,
+        first_queued_position = excluded.first_queued_position;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_release_added AFTER INSERT ON releases
@@ -1335,6 +1358,34 @@ CREATE TRIGGER IF NOT EXISTS release_listing_file_unpinned AFTER DELETE ON coven
 WHEN OLD.table_name = 'release_files'
 BEGIN
     UPDATE release_listing SET pinned_count = pinned_count - 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = OLD.key);
+END;
+
+-- A release file joining or leaving this device's upload queue moves its
+-- release's queued count and first place, in the transaction that changes
+-- the queue: attaching the file, completing or abandoning its upload, or
+-- clearing it. A newer attachment to the same row leaves the queue and joins
+-- it again. A file whose row is gone, or whose release is not listed yet,
+-- moves nothing: the refresh above counts its release's queued files from
+-- `coven_upload_queue` as it writes the release's row.
+CREATE TRIGGER IF NOT EXISTS release_listing_file_queued AFTER INSERT ON coven_upload_queue
+WHEN NEW.table_name = 'release_files'
+BEGIN
+    UPDATE release_listing SET queued_count = queued_count + 1,
+        first_queued_position = MIN(COALESCE(first_queued_position, NEW.position), NEW.position)
+    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_file_unqueued AFTER DELETE ON coven_upload_queue
+WHEN OLD.table_name = 'release_files'
+BEGIN
+    UPDATE release_listing SET queued_count = queued_count - 1,
+        first_queued_position = CASE WHEN first_queued_position = OLD.position
+            THEN (SELECT MIN(queued.position) FROM release_files f
+                  JOIN coven_upload_queue queued
+                      ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
+                  WHERE f.release_id = release_listing.release_id)
+            ELSE first_queued_position END
     WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = OLD.key);
 END;
 

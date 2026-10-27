@@ -669,14 +669,12 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> String {
 }
 
 /// Each release with files in coven's upload queue, and where its first
-/// queued file stands in it: the Uploading filter's rows, in queue order.
-/// Covers and other images in the queue are no release uploading.
+/// queued file stands in it, as the listing keeps them. Covers and other
+/// images in the queue are no release uploading.
 pub(super) const UPLOADING_RELEASES: &str =
-    "SELECT file.release_id, MIN(upload.position) AS position \
-     FROM coven_uploads upload \
-     JOIN release_files file ON coven_key(file.id) = upload.key \
-     WHERE upload.table_name = 'release_files' \
-     GROUP BY file.release_id";
+    "SELECT uploading.release_id, uploading.first_queued_position AS position \
+     FROM release_listing uploading \
+     WHERE uploading.first_queued_position IS NOT NULL";
 
 /// How many uploaded releases this device doesn't keep wholly pinned, read
 /// from the listing's index of them.
@@ -697,12 +695,13 @@ pub(super) fn storage_filter(filter: StorageFilter) -> (String, &'static str) {
         StorageFilter::All => (String::new(), ""),
         StorageFilter::Remote => (String::new(), "WHERE listing.stored = 1"),
         StorageFilter::Local => (String::new(), "WHERE listing.stored = 0"),
-        StorageFilter::Uploading => (
-            format!("JOIN ({UPLOADING_RELEASES}) uploading ON uploading.release_id = listing.release_id"),
-            "",
-        ),
+        StorageFilter::Uploading => (String::new(), UPLOADING_WHERE),
     }
 }
+
+/// The Uploading filter's condition on `release_listing listing`, which its
+/// partial index serves.
+pub(super) const UPLOADING_WHERE: &str = "WHERE listing.first_queued_position IS NOT NULL";
 
 /// One Storage Manager row per release the filter keeps: the release's half
 /// and its album's, the raw aggregates the resolver maps to `ReleaseSummary` /
@@ -732,7 +731,7 @@ fn storage_row_select(filter: StorageFilter) -> String {
 /// or in upload queue order under the Uploading filter.
 pub(super) fn storage_page_query(sort: &StorageSortCriterion, filter: StorageFilter) -> String {
     let order_by = match filter {
-        StorageFilter::Uploading => "uploading.position".to_string(),
+        StorageFilter::Uploading => "listing.first_queued_position".to_string(),
         _ => storage_order_by(sort),
     };
     format!(
