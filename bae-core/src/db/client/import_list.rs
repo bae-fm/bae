@@ -38,6 +38,8 @@ struct ListRow {
     view: ImportListView,
     view_revision: u64,
     selection_revision: u64,
+    /// Where its view opened.
+    opened_at: u64,
     /// Whether the text filter or Found's filter entry narrows the tab.
     narrows: bool,
     /// Whether the text filter narrows it, which only a read of every row's
@@ -85,12 +87,12 @@ fn list_row(
 ) -> Result<ListRow, DbError> {
     let (
         (tab, pending_filter, filter_text, order),
-        (view_revision, selection_revision),
+        (view_revision, selection_revision, opened_at),
         (narrows, filters_text, keeps_all),
     ) = sql
         .query_row(
             "SELECT tab, pending_filter, filter_text, list_order, view_revision, \
-                    selection_revision, narrows, pattern IS NOT NULL, keeps_all \
+                    selection_revision, opened_at, narrows, pattern IS NOT NULL, keeps_all \
              FROM import_list_view WHERE id = ?",
             [id.0],
             |row| {
@@ -101,11 +103,15 @@ fn list_row(
                         row.get::<_, String>(2)?,
                         row.get::<_, String>(3)?,
                     ),
-                    (row.get::<_, i64>(4)?, row.get::<_, i64>(5)?),
                     (
-                        row.get::<_, bool>(6)?,
+                        row.get::<_, i64>(4)?,
+                        row.get::<_, i64>(5)?,
+                        row.get::<_, i64>(6)?,
+                    ),
+                    (
                         row.get::<_, bool>(7)?,
                         row.get::<_, bool>(8)?,
+                        row.get::<_, bool>(9)?,
                     ),
                 ))
             },
@@ -122,6 +128,7 @@ fn list_row(
         },
         view_revision: to_u64(view_revision, "a list's view revision")?,
         selection_revision: to_u64(selection_revision, "a list's selection revision")?,
+        opened_at: to_u64(opened_at, "where a list's view opened")?,
         narrows,
         filters_text,
         keeps_all,
@@ -167,7 +174,6 @@ fn load_import_list_on(
         .into_iter()
         .map(WatchedFolder::from_path)
         .collect();
-    let first_selected_position = summary::first_selected_position(sql, &list)?;
     let selection = summary::selection(sql, list.id)?;
     Ok(ImportListRows {
         windows,
@@ -182,7 +188,7 @@ fn load_import_list_on(
                 filter_text: list.view.filter_text.clone(),
                 pending_filter: list.view.pending_filter,
             },
-            first_selected_position,
+            opened_at: list.opened_at,
         },
         pending_filter_entries: counts.entries,
         selection,

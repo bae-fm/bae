@@ -1,10 +1,10 @@
 //! What the chrome around a list says, read beside its windows: the tab
 //! counts and Found's filter entries from the counts kept beside the
 //! placement, how many items the list holds and how many its filters keep
-//! (a search's from the rows its index finds), where its first
-//! selected row sits, and what its selection holds and offers. And the reads a
-//! surface makes of a list on its own: where a candidate would be revealed,
-//! the first one being identified, and the selected rows a bulk action takes.
+//! (a search's from the rows its index finds), and what its selection holds
+//! and offers. And the reads a surface makes of a list on its own: where a
+//! candidate would be revealed, the first one being identified, and the
+//! selected rows a bulk action takes.
 
 use super::super::import_state::{RuntimeFactColumns, RUNTIME_FACT_COLUMNS};
 use super::super::query::{QueryOne, QueryRows};
@@ -198,28 +198,6 @@ pub(super) fn listed(
         narrowed,
         searching: false,
     })
-}
-
-/// Where the first selected row sits in the list, reading the items before
-/// it; `None` with nothing selected.
-pub(super) fn first_selected_position(
-    sql: &SqlReadContext<'_>,
-    list: &ListRow,
-) -> Result<Option<u64>, DbError> {
-    let selects = sql.query_row(
-        "SELECT EXISTS (SELECT 1 FROM import_list_selection WHERE list_id = ?)",
-        [list.id.0],
-        |row| row.get::<_, bool>(0),
-    )?;
-    if !selects {
-        return Ok(None);
-    }
-    list.items(Shown::View).position_where(
-        sql,
-        "s.item <> 'group' AND EXISTS (SELECT 1 FROM import_list_selection AS chosen \
-                                       WHERE chosen.list_id = :list AND chosen.key = s.key)",
-        &[],
-    )
 }
 
 /// What the list's selection holds and offers. The offers are worked out

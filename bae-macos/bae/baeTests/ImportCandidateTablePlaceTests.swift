@@ -177,7 +177,7 @@ struct ImportCandidateTablePlaceTests {
         )
         #expect(
             content.take(
-                Self.read(3, pendingFilter: .needsYou, firstSelected: 4),
+                Self.read(3, pendingFilter: .needsYou, openedAt: 4),
                 revealing: false
             ) == .showOnTop(4)
         )
@@ -307,7 +307,7 @@ extension ImportCandidateTablePlaceTests {
                 filterText: filterText,
                 pendingFilter: .all
             ),
-            firstSelectedPosition: nil
+            openedAt: 0
         )
     }
 
@@ -317,7 +317,7 @@ extension ImportCandidateTablePlaceTests {
         tab: BridgeTriageTab = .pending,
         filterText: String = "",
         pendingFilter: BridgePendingFilter = .all,
-        firstSelected: Int? = nil
+        openedAt: Int = 0
     ) -> ImportCandidateListContentRead {
         ImportCandidateListContentRead(
             revision: revision,
@@ -326,7 +326,7 @@ extension ImportCandidateTablePlaceTests {
                 filterText: filterText,
                 pendingFilter: pendingFilter
             ),
-            firstSelected: firstSelected
+            openedAt: openedAt
         )
     }
 }

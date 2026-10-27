@@ -3,7 +3,7 @@
 //! is one write the list's live query answers, and each answers with the
 //! revision the read that reflects it carries.
 
-use super::order::{order_column, tab_column, Item};
+use super::order::{order_column, tab_column, Item, Shown};
 use super::*;
 use crate::import::selection::SelectionChange;
 use crate::import::FolderReleaseDecisionKey;
@@ -50,6 +50,21 @@ fn view_moved(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<(), DbErro
         [list.0],
     )?;
     Ok(())
+}
+
+/// Where the list's view opens: the position of its first selected row,
+/// reading the items before it, or its top with no selected row shown.
+fn opened_at(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u64, DbError> {
+    let row = list_row(sql, list)?;
+    Ok(row
+        .items(Shown::View)
+        .position_where(
+            sql,
+            "s.item <> 'group' AND EXISTS (SELECT 1 FROM import_list_selection AS chosen \
+                                           WHERE chosen.list_id = :list AND chosen.key = s.key)",
+            &[],
+        )?
+        .unwrap_or(0))
 }
 
 /// Insert every key of `keys` the list shows into its selection.
@@ -115,14 +130,15 @@ impl Database {
 
     /// Show `view` in `list`, and answer with the view revision the read
     /// that shows it carries. The rows it stops showing leave the selection
-    /// in the same write. The view it already shows changes nothing.
+    /// in the same write, and the view opens at its first selected row. The
+    /// view it already shows changes nothing.
     pub(crate) async fn set_import_list_view(
         &self,
         list: ImportListId,
         view: ImportListView,
     ) -> Result<u64, DbError> {
         self.call(move |sql| {
-            sql.execute(
+            let changed = sql.execute(
                 "UPDATE import_list \
                  SET tab = :tab, pending_filter = :filter, filter_text = :text, \
                      list_order = :order, view_revision = view_revision + 1 \
@@ -137,6 +153,18 @@ impl Database {
                     ":order": order_column(view.order),
                 },
             )?;
+            if changed > 0 {
+                let opened_at = i64::try_from(opened_at(sql, list)?).map_err(|error| {
+                    DbError::Message(format!(
+                        "import list {} opened past any position: {error}",
+                        list.0
+                    ))
+                })?;
+                sql.execute(
+                    "UPDATE import_list SET opened_at = ? WHERE id = ?",
+                    params![opened_at, list.0],
+                )?;
+            }
             view_revision(sql, list)
         })
         .await

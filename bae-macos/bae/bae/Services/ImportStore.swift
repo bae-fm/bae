@@ -53,7 +53,7 @@ class ImportStore {
             filterText: "",
             pendingFilter: .all
         ),
-        firstSelectedPosition: nil
+        openedAt: 0
     )
 
     /// Where each watched folder's scan stands, from the folder scans' own

@@ -598,7 +598,7 @@ impl crate::types::BridgeImportQueueSummary {
             has_groups,
             narrowed,
             narrowing,
-            first_selected_position,
+            opened_at,
         } = summary;
         Self {
             counts: crate::types::BridgeTriageTabCounts::from_core(counts),
@@ -609,7 +609,7 @@ impl crate::types::BridgeImportQueueSummary {
             has_groups,
             narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
             narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
-            first_selected_position,
+            opened_at,
         }
     }
 }

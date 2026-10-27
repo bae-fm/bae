@@ -119,8 +119,15 @@ async fn done_runs_the_releases_still_uploading_first() {
         )
         .await
         .unwrap();
+    manager
+        .set_import_list_view(list, done(crate::import::ImportListOrder::OldestFirst))
+        .await
+        .unwrap();
     let selected = read_list(&manager, list, 0, 0).await;
-    assert_eq!(selected.summary.first_selected_position, Some(1));
+    assert_eq!(
+        selected.summary.opened_at, 1,
+        "the view opens at B, still uploading, behind C"
+    );
     assert_eq!(
         manager
             .load_import_list_selected(list)

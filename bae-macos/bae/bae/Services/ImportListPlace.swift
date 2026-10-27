@@ -41,12 +41,12 @@ struct ImportListPlace: Equatable {
 }
 
 /// What a delivery of the list's content was read as: the revision it
-/// brought the list to, what the view narrowed it by, and where the first
-/// selected row sits in it.
+/// brought the list to, what the view narrowed it by, and the row its view
+/// opened at.
 struct ImportCandidateListContentRead: Equatable {
     let revision: UInt64
     let narrowing: BridgeImportListNarrowing
-    let firstSelected: Int?
+    let openedAt: Int
 }
 
 /// Where the table scrolls once the list's content changes.
@@ -71,9 +71,9 @@ struct ImportCandidateTableContent {
     /// Take `read`, and say where the table scrolls for it: nowhere while a
     /// reveal does the scrolling or the rows are the ones already shown.
     /// Narrowed anew — a different tab, filter text or filter entry — the
-    /// list shows its first selected row, or its top where no selected row
-    /// is in it: the row on top before may be gone, or anywhere. Otherwise
-    /// it keeps the person's place.
+    /// list shows the row its view opened at, its first selected row or its
+    /// top: the row on top before may be gone, or anywhere. Otherwise it
+    /// keeps the person's place.
     mutating func take(
         _ read: ImportCandidateListContentRead,
         revealing: Bool
@@ -81,7 +81,7 @@ struct ImportCandidateTableContent {
         defer { taken = read }
         guard !revealing, read.revision != taken.revision else { return nil }
         if read.narrowing != taken.narrowing {
-            return .showOnTop(read.firstSelected ?? 0)
+            return .showOnTop(read.openedAt)
         }
         return .keepPlace
     }

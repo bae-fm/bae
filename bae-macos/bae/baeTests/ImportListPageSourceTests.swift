@@ -207,7 +207,7 @@ struct ImportListPageSourceTests {
                     filterText: "",
                     pendingFilter: .all
                 ),
-                firstSelectedPosition: nil
+                openedAt: 0
             ),
             pendingFilterEntries: pendingFilterEntries,
             selectionRevision: 0,

@@ -68,7 +68,6 @@ async fn a_selection_holds_only_rows_the_list_shows() {
         revision > opened,
         "the change moves the selection's revision"
     );
-    assert_eq!(read.summary.first_selected_position, Some(0));
 
     let narrowed = lib
         .db
@@ -440,11 +439,12 @@ async fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
     );
 }
 
-/// The summary says where the first selected row sits in the list it shows,
-/// which a list narrowed anew keeps in view; none while no selected row is in
-/// it.
+/// A view opens at its first selected row: the write that sets it says where
+/// that row sits in the list it shows, and the list keeps that place until
+/// its view is set again, whatever is selected since. A view showing no
+/// selected row opens at its top.
 #[tokio::test]
-async fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
+async fn a_view_opens_at_its_first_selected_row() {
     let lib = Library::new().await;
     lib.run(&format!(
         "{}{}{}{}",
@@ -455,8 +455,13 @@ async fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
     ))
     .await;
     let list = lib
-        .open(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+        .open(ordered(TriageTab::Pending, ImportListOrder::PathDescending))
         .await;
+    assert_eq!(
+        lib.read(list).await.summary.opened_at,
+        0,
+        "a list opens at its top"
+    );
     lib.select(
         list,
         SelectionChange::Replace {
@@ -464,15 +469,42 @@ async fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
         },
     )
     .await;
-    let read = lib.read(list).await;
-    let position = read
-        .summary
-        .first_selected_position
-        .expect("a selected row is shown");
-    assert_eq!(position, 2, "the header, Box/1, then Box/2");
+    assert_eq!(
+        lib.read(list).await.summary.opened_at,
+        0,
+        "a selection moves no view"
+    );
+    lib.db
+        .set_import_list_view(
+            list,
+            ordered(TriageTab::Pending, ImportListOrder::PathAscending),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        lib.read(list).await.summary.opened_at,
+        2,
+        "the header, Box/1, then Box/2"
+    );
     lib.select(list, SelectionChange::Replace { keys: Vec::new() })
         .await;
-    assert_eq!(lib.read(list).await.summary.first_selected_position, None);
+    assert_eq!(
+        lib.read(list).await.summary.opened_at,
+        2,
+        "the view keeps the place it opened at"
+    );
+    lib.db
+        .set_import_list_view(
+            list,
+            ordered(TriageTab::Pending, ImportListOrder::PathDescending),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        lib.read(list).await.summary.opened_at,
+        0,
+        "a view showing no selected row opens at its top"
+    );
 }
 
 /// A release the scan writes again over its stored row — its files changed —

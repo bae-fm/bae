@@ -3711,7 +3711,11 @@ CREATE TABLE IF NOT EXISTS import_list (
     list_order         TEXT NOT NULL CHECK (list_order IN (
         'newest_first', 'oldest_first', 'path_ascending', 'path_descending')),
     view_revision      INTEGER NOT NULL DEFAULT 0 CHECK (view_revision >= 0),
-    selection_revision INTEGER NOT NULL DEFAULT 0 CHECK (selection_revision >= 0)
+    selection_revision INTEGER NOT NULL DEFAULT 0 CHECK (selection_revision >= 0),
+    -- Where the list's view opened: the position its first selected row had
+    -- in it when the view was set, or its top while it showed no selected
+    -- row. The write that sets the view writes it; nothing else moves it.
+    opened_at          INTEGER NOT NULL DEFAULT 0 CHECK (opened_at >= 0)
 ) STRICT;
 
 -- The groups a list shows folded shut: their members are not in it. A group

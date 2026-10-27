@@ -114,7 +114,7 @@ struct ImportCandidateTable: NSViewRepresentable {
             read: ImportCandidateListContentRead(
                 revision: rows.revision,
                 narrowing: summary.narrowing,
-                firstSelected: summary.firstSelectedPosition.map { Int($0) }
+                openedAt: Int(summary.openedAt)
             ),
             shownSelected: importStore.shownSelectedKeys,
             revealing: revealInProgress

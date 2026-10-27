@@ -156,7 +156,7 @@
                     filterText: filterText,
                     pendingFilter: .all
                 ),
-                firstSelectedPosition: nil
+                openedAt: 0
             )
         }
 

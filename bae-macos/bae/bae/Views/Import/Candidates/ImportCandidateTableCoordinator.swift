@@ -177,12 +177,12 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         guard var content else {
             // The first delivery a table takes is what it opens on: at the
             // place the person left the list, or, when the list was narrowed
-            // anew since, at its first selected row or its top.
+            // anew since, at the row its view opened at.
             content = ImportCandidateTableContent(read)
             if let place = pendingPlace, place.narrowing != read.narrowing {
                 pendingPlace = ImportListPlace(
                     row: .unloaded,
-                    position: read.firstSelected ?? 0,
+                    position: read.openedAt,
                     offset: 0,
                     narrowing: read.narrowing
                 )

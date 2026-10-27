@@ -180,10 +180,10 @@ pub struct ImportQueueSummary {
     /// made: what `narrowed` counts under, so a surface shows the count only
     /// beside the filter it is for.
     pub narrowing: ImportListNarrowing,
-    /// Where the first selected row sits in the list this read shows, or
-    /// `None` with no selected row in it: what a list narrowed anew keeps in
-    /// view, where it would otherwise open at its top.
-    pub first_selected_position: Option<u64>,
+    /// Where the list's view opened: the position its first selected row had
+    /// in it when the view was set, or its top (0) while it showed no
+    /// selected row. What a list narrowed anew shows on top.
+    pub opened_at: u64,
 }
 
 /// What a view narrows its rows by: the tab, the text filter and the filter

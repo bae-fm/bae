@@ -683,6 +683,13 @@ in core over the selected rows that offer it, in the order the list shows
 them. A broken folder offers no action, so selected among others it counts
 toward the selection but holds back combining it.
 
+A list narrowed anew — another tab, filter or search — shows on top the row
+its view opened at: its first selected row as it sat when the view was set,
+or its top while no selected row is shown. The write that sets the view
+works that place out and keeps it on the list, so no read of the list looks
+for the selected row; selecting rows since moves no place, and the list
+otherwise keeps the person's place as rows come and go.
+
 Revealing a candidate — the first one still being identified, or one the
 person asks for — shows it on the tab its placement puts it on, with the
 filters cleared and its group opened, the list's other folds kept.
@@ -2942,7 +2949,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order serves each tab's windows |
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
 | `import_list_tab_count`, `import_list_entry_count`, `import_list_group_entry_count` | how many placement rows each tab holds of each kind, how many of Found's releases each filter entry holds, and how many of each group's releases each entry holds, kept by triggers on the placement in the write that moves a row, so the list's counts read these and not the placement |
-| `import_list` | each import list a surface has open: its tab, filter entry, search text and order, and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
+| `import_list` | each import list a surface has open: its tab, filter entry, search text and order, where its view opened (its first selected row when the view was set, or its top), and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 | `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
 
