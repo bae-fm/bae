@@ -21,7 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +34,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocalBugReports
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -48,8 +53,12 @@ fun QRScannerScreen(
     instructions: String? = stringResource(R.string.qr_scanner_instructions),
 ) {
     val context = LocalContext.current
+    val bugs = LocalBugReports.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    var scanned = remember { false }
+    // The camera view is built once, so its callback reads the latest
+    // onScanned and the remembered flag rather than the first composition's.
+    val currentOnScanned by rememberUpdatedState(onScanned)
+    var scanned by remember { mutableStateOf(false) }
     // ZXing decodes synchronously, so frames are analyzed off the main thread;
     // only that thread touches the decoder.
     val analysisExecutor =
@@ -70,7 +79,7 @@ fun QRScannerScreen(
                 ) {
                     if (!scanned) {
                         scanned = true
-                        onScanned(it)
+                        currentOnScanned(it)
                     }
                 }
             },
@@ -85,9 +94,13 @@ fun QRScannerScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            // A failure here is a bug that leaves the camera bound: unbindAll()
+            // throws only off the main thread, and a provider that failed to
+            // start already failed the camera view's own get().
             try {
                 cameraProviderFuture.get().unbindAll()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                bugs.report("unbind the QR scanner's camera", e)
             }
             analysisExecutor.shutdown()
         }
