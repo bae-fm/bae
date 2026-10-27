@@ -1,6 +1,7 @@
 //! Watched folders, and the rules a watched root or folder path must meet
 //! before it is stored or compared.
 
+use super::folder_path::{validate_relative_path, WatchedPathError};
 use std::path::{Component, Path};
 use tracing::warn;
 
@@ -26,21 +27,9 @@ impl WatchedFolder {
     }
 }
 
-/// A watched root or folder path the store refuses to key by: relative,
-/// containing `..`, or not in canonical form.
-#[derive(Debug, thiserror::Error)]
-#[error("watched folder: {0}")]
-pub(crate) struct WatchedPathError(String);
-
 impl From<WatchedPathError> for crate::import::ImportError {
     fn from(error: WatchedPathError) -> Self {
         Self::WatchedFolder { detail: error.0 }
-    }
-}
-
-impl From<WatchedPathError> for crate::db::DbError {
-    fn from(error: WatchedPathError) -> Self {
-        Self::Message(error.to_string())
     }
 }
 
@@ -87,23 +76,6 @@ pub(crate) fn validate_absolute_root(path: &str) -> Result<(), WatchedPathError>
     Ok(())
 }
 
-pub(crate) fn validate_relative_path(path: &str) -> Result<(), WatchedPathError> {
-    let normalized = Path::new(path)
-        .components()
-        .map(|component| match component {
-            Component::Normal(value) => value.to_str().ok_or(()),
-            _ => Err(()),
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map(|components| components.join("/"));
-    if normalized.as_deref() != Ok(path) {
-        return Err(WatchedPathError(format!(
-            "candidate path must be normalized and root-relative: {path}"
-        )));
-    }
-    Ok(())
-}
-
 pub(crate) fn candidate_relative_path(
     watched_folder_path: &str,
     candidate_path: &Path,
@@ -142,20 +114,6 @@ pub(crate) fn candidate_relative_path(
 
 pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
     left.starts_with(right) || right.starts_with(left)
-}
-
-/// The absolute path of `relative` under `root`, spelled as a scan spells it,
-/// which is the key a decision about that folder is stored under.
-pub(crate) fn folder_below(root: &str, relative: &str) -> Result<String, WatchedPathError> {
-    validate_relative_path(relative)?;
-    let mut folder = std::path::PathBuf::from(root);
-    for component in relative
-        .split('/')
-        .filter(|component| !component.is_empty())
-    {
-        folder.push(component);
-    }
-    Ok(folder.to_string_lossy().into_owned())
 }
 
 /// Refuse a stored folder path that is not in canonical form: folder

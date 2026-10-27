@@ -165,7 +165,7 @@ pub fn compose(
             }
             None => {
                 let prefix = format!("{:02} - {}/", position + 1, member.name);
-                super::watched_folder::validate_relative_path(prefix.trim_end_matches('/'))?;
+                super::folder_path::validate_relative_path(prefix.trim_end_matches('/'))?;
                 prefix
             }
         };

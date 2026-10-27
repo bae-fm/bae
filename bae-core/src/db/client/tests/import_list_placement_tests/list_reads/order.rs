@@ -505,6 +505,62 @@ async fn a_folder_nothing_settled_over_several_releases_offers_to_combine() {
     assert_eq!(combinable(&read), [("Wrapper".to_string(), true)]);
 }
 
+/// Whether a header offers to combine follows every write that decides it: a
+/// reading stored, changed or removed at its folder or at one inside it, and
+/// a release of any tab placed below it or gone.
+#[tokio::test]
+async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
+    let lib = Library::new().await;
+    let offers = || async { combinable(&lib.shown(view(TriageTab::Pending)).await) };
+    let singles = |offered: bool| [("Singles".to_string(), offered)];
+    lib.run(&format!(
+        "{}{}",
+        lib.scan("Singles/Label/Series/One"),
+        lib.scan("Singles/Label/Series/Two")
+    ))
+    .await;
+    assert_eq!(offers().await, singles(false), "Series is nearer to both");
+    lib.run(&format!(
+        "{}{}",
+        lib.kept_apart("Singles/Label"),
+        lib.kept_apart("Singles/Label/Series")
+    ))
+    .await;
+    assert_eq!(
+        offers().await,
+        singles(true),
+        "every folder between is settled"
+    );
+    lib.run("DELETE FROM release_grouping WHERE key = 'reading Singles/Label';")
+        .await;
+    assert_eq!(offers().await, singles(false), "Label is nearer again");
+    lib.run(&lib.kept_apart("Singles")).await;
+    assert_eq!(offers().await, singles(true), "Singles keeps them apart");
+    lib.run("UPDATE release_grouping SET combined = 1 WHERE key = 'reading Singles';")
+        .await;
+    assert_eq!(offers().await, singles(false), "Singles is read as one");
+    lib.run("DELETE FROM release_grouping WHERE key = 'reading Singles';")
+        .await;
+    lib.run(&format!(
+        "{}{}{}",
+        lib.scan("Singles/Loose"),
+        lib.state("Singles/Loose"),
+        lib.imported("Singles/Loose", "2026-01-02T00:00:00Z")
+    ))
+    .await;
+    assert_eq!(
+        offers().await,
+        singles(true),
+        "a release on Done right below Singles is nearest to it"
+    );
+    lib.run(&format!(
+        "DELETE FROM scan_candidate WHERE path = '{}';",
+        lib.path("Singles/Loose")
+    ))
+    .await;
+    assert_eq!(offers().await, singles(false), "and gone, it is not");
+}
+
 /// Each header's group name and whether it offers to combine, in order.
 fn combinable(read: &ImportListProjection) -> Vec<(String, bool)> {
     read.windows[0]
@@ -594,5 +650,53 @@ async fn a_search_reads_the_rows_its_index_finds() {
                 "{tab:?} reads its tab: {plan:?}"
             );
         }
+    }
+}
+
+/// A list folding groups shut reads each order in runs off that order's
+/// indexes, in its order: the headers and the rows outside every group, and
+/// each open group's members, with no sort and no folded member passed, so a
+/// window costs about its offset and limit however many members are folded.
+#[tokio::test]
+async fn a_folded_list_reads_its_windows_off_its_runs() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}",
+        lib.scan("Box/1"),
+        lib.scan("Other/1"),
+        lib.scan("Loose")
+    ))
+    .await;
+    for (order, index) in [
+        (ImportListOrder::NewestFirst, "import_list_newest_first"),
+        (ImportListOrder::OldestFirst, "import_list_oldest_first"),
+        (ImportListOrder::PathAscending, "import_list_path_ascending"),
+        (
+            ImportListOrder::PathDescending,
+            "import_list_path_descending",
+        ),
+    ] {
+        let list = lib.open(ordered(TriageTab::Pending, order)).await;
+        lib.db
+            .set_import_list_group_folded(list, lib.group_key("Box"), true)
+            .await
+            .unwrap();
+        let plans = lib.db.import_list_folded_plans(list).await.unwrap();
+        let plan = plans.concat();
+        for run in ["_unfolded", "_headers", "_members"] {
+            assert!(
+                plan.iter()
+                    .any(|step| step.contains(&format!("{index}{run} "))),
+                "{order:?} reads {run}: {plan:?}"
+            );
+        }
+        assert!(
+            plan.iter().any(|step| step.contains("MERGE")),
+            "{order:?}: {plan:?}"
+        );
+        assert!(
+            !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+            "{order:?} sorts: {plan:?}"
+        );
     }
 }

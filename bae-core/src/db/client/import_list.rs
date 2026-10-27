@@ -277,14 +277,30 @@ impl Database {
         .await
     }
 
-    /// Every item a searching list shows, read from its tab's rows in order
-    /// and from the rows its search finds: the two reads a window may be read
-    /// by, which a test holds to agree.
+    /// The plan each run of a folded list's windows is read by, one line per
+    /// step: what a test holds the runs to their indexes with.
     #[cfg(test)]
-    pub(crate) async fn import_list_searched_both_ways(
+    pub(crate) async fn import_list_folded_plans(
         &self,
         list: ImportListId,
-    ) -> Result<(Vec<String>, Vec<String>), DbError> {
+    ) -> Result<Vec<Vec<String>>, DbError> {
+        self.read(move |sql| {
+            let row = list_row(&sql, list)?;
+            row.items(Shown::Folded).window_plans(&sql)
+        })
+        .await
+    }
+
+    /// Every item a list shows, read from its tab's rows in order and by the
+    /// read its windows may take instead — from the rows its search finds,
+    /// or, folding groups shut, in runs past them: the two reads, which a
+    /// test holds to agree. `None` for a list whose windows are only read in
+    /// order.
+    #[cfg(test)]
+    pub(crate) async fn import_list_read_both_ways(
+        &self,
+        list: ImportListId,
+    ) -> Result<Option<(Vec<String>, Vec<String>)>, DbError> {
         self.read(move |sql| {
             let row = list_row(&sql, list)?;
             let everything = crate::library::LibraryPageWindow {
@@ -299,7 +315,17 @@ impl Database {
                     .map(|item| format!("{:?} {}", item.item, item.key))
                     .collect())
             };
-            Ok((keys(Shown::View)?, keys(Shown::Found)?))
+            let folds = sql.query_row(
+                "SELECT folds FROM import_list_view WHERE id = ?",
+                [list.0],
+                |row| row.get::<_, bool>(0),
+            )?;
+            let other = match (row.filters_text, folds, row.view.tab) {
+                (true, _, _) => Shown::Found,
+                (false, true, crate::import::TriageTab::Pending) => Shown::Folded,
+                _ => return Ok(None),
+            };
+            Ok(Some((keys(Shown::View)?, keys(other)?)))
         })
         .await
     }

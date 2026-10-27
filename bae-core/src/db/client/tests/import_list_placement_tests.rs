@@ -348,7 +348,8 @@ impl Library {
     }
 
     /// Check the search index holds each release's folded shown text under
-    /// its placement row's number, and nothing else.
+    /// its placement row's number, and nothing else; and that every header
+    /// says whether its folder is offered to be read as one release.
     async fn searchable(&self, after: &str) {
         let (indexed, placed) = self
             .db
@@ -373,6 +374,22 @@ impl Library {
             .await
             .unwrap();
         assert_eq!(indexed, placed, "the search index after {after}");
+        let unjudged = self
+            .db
+            .read(|sql| {
+                Ok(sql.query(
+                    "SELECT key FROM import_list_placement \
+                     WHERE item = 'group' AND combinable IS NULL",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?)
+            })
+            .await
+            .unwrap();
+        assert!(
+            unjudged.is_empty(),
+            "headers saying nothing of combining after {after}: {unjudged:?}"
+        );
         exec_batch(
             &self.db,
             "INSERT INTO import_list_search (import_list_search, rank) VALUES ('integrity-check', 1);",

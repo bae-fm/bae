@@ -130,9 +130,10 @@ async fn scanned_at(runtime: &CandidateRuntime, key: &str, revision: u64) -> Can
              DELETE FROM scan_candidate WHERE path = '{key}';
              INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
                  display_path, folder, file_root, scope, content_hash, file_edit_revision)
-                 VALUES ('/watch', '{key}', 1, 'valid', 'Candidate', '{key}', '{key}', '{key}',
+                 VALUES ('/watch', '{key}', 1, 'valid', 'Candidate', '{display_path}', '{key}', '{key}',
                      'recursive', '{hash}', {revision});",
             hash = files.content_hash,
+            display_path = key.trim_start_matches('/'),
         ))
         .await;
     files

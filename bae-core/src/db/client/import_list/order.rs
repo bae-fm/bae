@@ -96,33 +96,176 @@ pub(super) fn order_of(column: &str) -> Result<ImportListOrder, DbError> {
     }
 }
 
+/// One term an order sorts placement rows by: a column or an expression over
+/// the row, and whether it runs in reverse.
+struct Term {
+    expression: &'static str,
+    descending: bool,
+}
+
+const fn up(expression: &'static str) -> Term {
+    Term {
+        expression,
+        descending: false,
+    }
+}
+
+const fn down(expression: &'static str) -> Term {
+    Term {
+        expression,
+        descending: true,
+    }
+}
+
+const NEWEST_FIRST: (&[Term], &[Term]) = (
+    &[
+        up("{t}.unit_date IS NULL"),
+        down("{t}.unit_date"),
+        up("{t}.root_position"),
+        up("{t}.watched_folder_path"),
+        up("{t}.unit_path"),
+    ],
+    &[
+        down("{t}.item = 'group'"),
+        up("{t}.own_date IS NULL"),
+        down("{t}.own_date"),
+        up("{t}.display_path COLLATE natural_order"),
+        up("{t}.key"),
+    ],
+);
+
+const OLDEST_FIRST: (&[Term], &[Term]) = (
+    &[
+        up("{t}.unit_date IS NULL"),
+        up("{t}.unit_date"),
+        up("{t}.root_position"),
+        up("{t}.watched_folder_path"),
+        up("{t}.unit_path"),
+    ],
+    &[
+        down("{t}.item = 'group'"),
+        up("{t}.own_date IS NULL"),
+        up("{t}.own_date"),
+        up("{t}.display_path COLLATE natural_order"),
+        up("{t}.key"),
+    ],
+);
+
+const PATH_ASCENDING: (&[Term], &[Term]) = (
+    &[
+        up("{t}.root_position"),
+        up("{t}.watched_folder_path"),
+        up("{t}.unit_path"),
+    ],
+    &[
+        down("{t}.item = 'group'"),
+        up("{t}.display_path COLLATE natural_order"),
+        up("{t}.key"),
+    ],
+);
+
+const PATH_DESCENDING: (&[Term], &[Term]) = (
+    &[
+        down("{t}.root_position"),
+        down("{t}.watched_folder_path"),
+        down("{t}.unit_path"),
+    ],
+    &[
+        down("{t}.item = 'group'"),
+        down("{t}.display_path COLLATE natural_order"),
+        down("{t}.key"),
+    ],
+);
+
+/// The terms `order` sorts by up to a row's folder, where only a header and
+/// its members tie, and the terms after it, which order a group's header
+/// before its members and the members among themselves. A term's expression
+/// names the row's columns as `{t}.`.
+fn terms(order: ImportListOrder) -> (&'static [Term], &'static [Term]) {
+    match order {
+        ImportListOrder::NewestFirst => NEWEST_FIRST,
+        ImportListOrder::OldestFirst => OLDEST_FIRST,
+        ImportListOrder::PathAscending => PATH_ASCENDING,
+        ImportListOrder::PathDescending => PATH_DESCENDING,
+    }
+}
+
+impl Term {
+    /// The term over the alias `t`, as an expression.
+    fn over(&self, t: &str) -> String {
+        self.expression.replace("{t}", t)
+    }
+
+    /// The term over the alias `t`, as an ORDER BY term.
+    fn ordering(&self, t: &str) -> String {
+        match self.descending {
+            true => format!("{} DESC", self.over(t)),
+            false => self.over(t),
+        }
+    }
+}
+
 /// The terms `order` sorts placement rows by, over the alias `t`: exactly the
 /// order index's (`import_list_newest_first` and its siblings), so SQLite
 /// reads the rows in order from it.
 pub(super) fn order_terms(order: ImportListOrder, t: &str) -> String {
-    match order {
-        ImportListOrder::NewestFirst => format!(
-            "{t}.unit_date IS NULL, {t}.unit_date DESC, {t}.root_position, \
-             {t}.watched_folder_path, {t}.unit_path, {t}.item = 'group' DESC, \
-             {t}.own_date IS NULL, {t}.own_date DESC, \
-             {t}.display_path COLLATE natural_order, {t}.key"
-        ),
-        ImportListOrder::OldestFirst => format!(
-            "{t}.unit_date IS NULL, {t}.unit_date, {t}.root_position, \
-             {t}.watched_folder_path, {t}.unit_path, {t}.item = 'group' DESC, \
-             {t}.own_date IS NULL, {t}.own_date, \
-             {t}.display_path COLLATE natural_order, {t}.key"
-        ),
-        ImportListOrder::PathAscending => format!(
-            "{t}.root_position, {t}.watched_folder_path, {t}.unit_path, \
-             {t}.item = 'group' DESC, {t}.display_path COLLATE natural_order, {t}.key"
-        ),
-        ImportListOrder::PathDescending => format!(
-            "{t}.root_position DESC, {t}.watched_folder_path DESC, {t}.unit_path DESC, \
-             {t}.item = 'group' DESC, {t}.display_path COLLATE natural_order DESC, \
-             {t}.key DESC"
-        ),
-    }
+    let (prefix, suffix) = terms(order);
+    prefix
+        .iter()
+        .chain(suffix)
+        .map(|term| term.ordering(t))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// A folded list's run of `order` in three parts, each read off its own
+/// index (`import_list_newest_first_unfolded`, `_headers` and `_members`,
+/// and their siblings): the headers and the rows outside every group, and
+/// each open group's members under its header. Each part selects the row's
+/// key and then the order's terms, the row's number breaking the tie after
+/// its folder, which a group's members take from their header; SQLite merges
+/// the two parts in that sequence. Every row is one of the list's items
+/// (`import_list_item`), and only open groups' members are read.
+fn folded_run(order: ImportListOrder) -> String {
+    let (prefix, suffix) = terms(order);
+    let columns = |head: &str, row: &str| {
+        prefix
+            .iter()
+            .map(|term| term.over(head))
+            .chain(std::iter::once(format!("{head}.entry")))
+            .chain(suffix.iter().map(|term| term.over(row)))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    // Each term sorts its result column, the first three being the key; a
+    // column keeps its expression's collation.
+    let ordering = prefix
+        .iter()
+        .chain(std::iter::once(&up("{t}.entry")))
+        .chain(suffix)
+        .enumerate()
+        .map(|(at, term)| match term.descending {
+            true => format!("{} DESC", at + 4),
+            false => (at + 4).to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "SELECT p.watched_folder_path, p.item, p.key, {unfolded} \
+         FROM import_list_item AS p \
+         WHERE p.list_id = :list AND p.tab = :tab \
+           AND (p.item = 'group' OR p.group_name IS NULL) \
+         UNION ALL \
+         SELECT m.watched_folder_path, m.item, m.key, {members} \
+         FROM import_list_judged AS h \
+         CROSS JOIN import_list_item AS m \
+             ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
+            AND m.group_name = h.key AND m.item <> 'group' \
+         WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded \
+         ORDER BY {ordering}",
+        unfolded = columns("p", "p"),
+        members = columns("h", "m"),
+    )
 }
 
 /// The releases with uploads coven still has queued, by key, and where the
@@ -150,6 +293,9 @@ pub(super) enum Shown<'a> {
     /// What a searching list shows, read from the rows its search finds and
     /// sorted: the same items as `View`.
     Found,
+    /// What a list that folds groups shut shows on Found, read in runs that
+    /// pass no folded group's members: the same items as `View`.
+    Folded,
     /// What `tab` shows with the filters cleared and the group `opened`
     /// folded open: the view a release is revealed in, its other folds kept.
     Revealing {
@@ -218,6 +364,12 @@ impl<'a> Items<'a> {
                 "import_list_found_item AS i",
                 "i.list_id = :list AND i.tab = :tab",
             ),
+            // Only a window is read in runs; a position or a part's count
+            // reads the folded list's items as `View` does.
+            Shown::Folded => (
+                "import_list_item AS i",
+                "i.list_id = :list AND i.tab = :tab",
+            ),
             Shown::Revealing { .. } => (
                 "import_list_placement AS i",
                 "i.tab = :tab \
@@ -270,7 +422,9 @@ impl<'a> Items<'a> {
                 Some(opened.watched_folder_path.as_str()),
                 Some(opened.relative_folder_path.as_str()),
             ),
-            Shown::Revealing { opened: None } | Shown::View | Shown::Found => (None, None),
+            Shown::Revealing { opened: None } | Shown::View | Shown::Found | Shown::Folded => {
+                (None, None)
+            }
         };
         let tab = tab_column(self.tab);
         let mut named: Vec<(&str, &dyn ToSql)> = vec![
@@ -304,6 +458,9 @@ impl<'a> Items<'a> {
 
     /// The statement reading a window of `part`.
     fn window_statement(&self, part: Part) -> String {
+        if let (Shown::Folded, Part::Whole) = (self.shown, part) {
+            return format!("{} LIMIT :limit OFFSET :offset", folded_run(self.order));
+        }
         let PartSql { with, from, order } = self.part(part);
         format!(
             "{with} SELECT i.watched_folder_path, i.item, i.key FROM {from} \

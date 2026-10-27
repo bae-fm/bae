@@ -6,7 +6,7 @@
 //! scan, its stored lookup's lead, its link, its draft's source, its cover
 //! and what is running for it. A group's header says how many of its
 //! releases the filters keep, whether the list folds it, and whether its
-//! folder is offered to be read as one release.
+//! folder is offered to be read as one release, as its placement holds it.
 
 use super::super::folder_scans;
 use super::super::import_state::{
@@ -87,7 +87,8 @@ pub(super) fn materialise(
 
 /// One group header's columns, read for the window that holds it. How many
 /// of its releases the filters keep is the counts kept beside the placement,
-/// unless a text filter reads the rows.
+/// unless a text filter reads the rows; whether its folder is offered to be
+/// read as one release is its placement's (`import_list_recombine`).
 fn header_rows<'a>(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
@@ -99,10 +100,6 @@ fn header_rows<'a>(
     if heads.is_empty() {
         return Ok(HashMap::new());
     }
-    // A folder is offered to be read as one release when a stored reading of
-    // it keeps its releases apart, or, with nothing stored, when it is the
-    // nearest folder above some release holding two releases or more: no
-    // folder between the two has nothing stored and two releases below it.
     let entry_count = match list.filters_text {
         true => {
             "(SELECT count(*) FROM import_list_matching AS m \
@@ -118,58 +115,20 @@ fn header_rows<'a>(
     };
     let rows = sql.query(
         &format!(
-            "WITH RECURSIVE \
-             heads (root, name) AS ( \
-                 SELECT value ->> 0, value ->> 1 FROM json_each(:heads)), \
-             below (root, name, display_path) AS ( \
-                 SELECT h.root, h.name, p.display_path FROM heads AS h \
-                 JOIN import_list_placement AS p \
-                     ON p.watched_folder_path = h.root \
-                    AND p.display_path > h.name || '/' AND p.display_path < h.name || '0'), \
-             inside (root, name, folder, rest) AS ( \
-                 SELECT root, name, name, substr(display_path, length(name) + 2) FROM below \
-                 UNION \
-                 SELECT root, name, folder || '/' || substr(rest, 1, instr(rest, '/') - 1), \
-                        substr(rest, instr(rest, '/') + 1) \
-                 FROM inside WHERE instr(rest, '/') > 0), \
-             nearer (root, name, folder) AS ( \
-                 SELECT DISTINCT b.root, b.name, b.folder FROM inside AS b \
-                 WHERE b.folder <> b.name \
-                   AND (SELECT count(*) FROM ( \
-                            SELECT 1 FROM import_list_placement AS q \
-                            WHERE q.watched_folder_path = b.root \
-                              AND q.display_path > b.folder || '/' \
-                              AND q.display_path < b.folder || '0' LIMIT 2)) = 2 \
-                   AND NOT EXISTS ( \
-                       SELECT 1 FROM release_grouping AS g \
-                       WHERE g.anchor_folder = \
-                           rtrim(b.root, :sep) || :sep || replace(b.folder, '/', :sep))) \
-         SELECT h.root, h.name, \
-                NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
-                            WHERE c.list_id = :list AND c.watched_folder_path = h.root \
-                              AND c.group_name = h.name) AS expanded, \
-                {entry_count} AS entry_count, \
-                COALESCE( \
-                    (SELECT g.combined = 0 FROM release_grouping AS g \
-                     WHERE g.anchor_folder = \
-                         rtrim(h.root, :sep) || :sep || replace(h.name, '/', :sep)), \
-                    (SELECT count(*) FROM (SELECT 1 FROM below AS b \
-                                           WHERE b.root = h.root AND b.name = h.name \
-                                           LIMIT 2)) = 2 \
-                    AND EXISTS ( \
-                        SELECT 1 FROM below AS b \
-                        WHERE b.root = h.root AND b.name = h.name \
-                          AND NOT EXISTS ( \
-                              SELECT 1 FROM nearer AS n \
-                              WHERE n.root = b.root AND n.name = b.name \
-                                AND b.display_path > n.folder || '/' \
-                                AND b.display_path < n.folder || '0'))) AS combinable \
-         FROM heads AS h"
+            "WITH heads (root, name) AS ( \
+                 SELECT value ->> 0, value ->> 1 FROM json_each(:heads)) \
+             SELECT h.root, h.name, \
+                    NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
+                                WHERE c.list_id = :list AND c.watched_folder_path = h.root \
+                                  AND c.group_name = h.name) AS expanded, \
+                    {entry_count} AS entry_count, p.combinable \
+             FROM heads AS h \
+             JOIN import_list_placement AS p \
+                 ON p.watched_folder_path = h.root AND p.item = 'group' AND p.key = h.name"
         ),
         named_params! {
             ":heads": serde_json::Value::Array(heads).to_string(),
             ":list": list.id.0,
-            ":sep": std::path::MAIN_SEPARATOR_STR,
         },
         |row| {
             Ok((

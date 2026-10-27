@@ -41,6 +41,7 @@ pub mod file_tag_mapper;
 pub(crate) mod file_tag_snapshot;
 #[cfg(desktop)]
 mod file_validation;
+pub(crate) mod folder_path;
 #[cfg(desktop)]
 pub mod folder_scanner;
 #[cfg(desktop)]

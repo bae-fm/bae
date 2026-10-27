@@ -92,7 +92,7 @@ impl Database {
             items,
             directories,
         } = commit;
-        crate::import::watched_folder::validate_relative_path(&folder)?;
+        crate::import::folder_path::validate_relative_path(&folder)?;
         if folder.contains('/') {
             return Err(DbError::Message(format!(
                 "{folder} is not a folder directly under {watched_folder_path}"

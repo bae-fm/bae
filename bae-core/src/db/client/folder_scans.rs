@@ -902,7 +902,7 @@ pub(super) fn store_folder_reading(
     author: crate::import::folder_scanner::FolderReleaseDecisionAuthor,
     grouping: &str,
 ) -> Result<(), DbError> {
-    crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)?;
+    crate::import::folder_path::validate_relative_path(&key.relative_folder_path)?;
     if key.relative_folder_path.is_empty() {
         return Err(DbError::Message(format!(
             "{} is never a release, so it has no reading to store",
@@ -917,7 +917,7 @@ pub(super) fn store_folder_reading(
         decision,
         crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease
     );
-    let anchor = crate::import::watched_folder::folder_below(
+    let anchor = crate::import::folder_path::folder_below(
         &key.watched_folder_path,
         &key.relative_folder_path,
     )?;
@@ -962,7 +962,7 @@ pub(super) fn validate_decision_key_ownership(
             key.watched_folder_path
         )));
     }
-    Ok(crate::import::watched_folder::validate_relative_path(
+    Ok(crate::import::folder_path::validate_relative_path(
         &key.relative_folder_path,
     )?)
 }

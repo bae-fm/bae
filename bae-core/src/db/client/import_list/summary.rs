@@ -74,9 +74,20 @@ pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
 pub(super) struct Listed {
     pub(super) total: u64,
     pub(super) narrowed: Option<NarrowedCount>,
-    /// Whether its search narrows it, which decides where its windows are
-    /// read from.
-    searching: bool,
+    /// What decides where its windows are read from.
+    reads: Reads,
+}
+
+/// What a list's windows are read by, as its counts say.
+#[derive(Clone, Copy)]
+enum Reads {
+    /// Its search narrows it.
+    Search,
+    /// It folds groups shut: `folded` of the releases its filters keep are
+    /// in them, which reading in order would pass.
+    Folds { folded: u64 },
+    /// Neither.
+    Order,
 }
 
 /// What a row read from a search's matches costs against a row the tab's
@@ -85,16 +96,29 @@ pub(super) struct Listed {
 /// row read in order and tested.
 const FOUND_ROW_COST: u128 = 3;
 
+/// What a row read in a folded list's runs costs against a row the tab's
+/// order passes, in halves: it is merged from two runs and its item worked
+/// out by its group, about one and a half times as much.
+const RUN_ROW_COST_HALVES: u64 = 3;
 impl Listed {
     /// The rows a window of the list is read from. A search's window is read
     /// from the rows the search finds, sorted, when reading them costs less
     /// than passing the rows the tab's order would pass to reach the window's
     /// end: about the window's end times the tab's releases over the releases
-    /// the search keeps. Otherwise, like every other list's, it is read from
-    /// the tab's rows in order, each tested.
+    /// the search keeps. A list folding groups reads its window in runs that
+    /// pass no folded member when the members it folds cost more to pass
+    /// than reading in runs costs over reading in order: when they outnumber
+    /// half its items. Otherwise it is read from the tab's rows in order,
+    /// each tested.
     pub(super) fn shown(&self, window: &crate::library::LibraryPageWindow) -> Shown<'static> {
-        let Some(narrowed) = self.narrowed.filter(|_| self.searching) else {
-            return Shown::View;
+        let narrowed = match (self.reads, self.narrowed) {
+            (Reads::Search, Some(narrowed)) => narrowed,
+            (Reads::Folds { folded }, _) if 2 * folded > (RUN_ROW_COST_HALVES - 2) * self.total => {
+                return Shown::Folded
+            }
+            (Reads::Search, None) | (Reads::Folds { .. }, _) | (Reads::Order, _) => {
+                return Shown::View
+            }
         };
         let kept = u128::from(narrowed.shown);
         let end = u128::from(window.offset.saturating_add(window.limit));
@@ -146,42 +170,51 @@ pub(super) fn listed(
         return Ok(Listed {
             total: total(items)?,
             narrowed: Some(narrowed(kept)?),
-            searching: true,
+            reads: Reads::Search,
         });
     }
-    let items = match list.keeps_all {
-        true => sql.query_row(
-            "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
-             JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?",
-            [list.id.0],
-            |row| row.get::<_, i64>(0),
-        )?,
-        false => sql.query_row(
-            "SELECT \
-                 CASE WHEN v.tab = 'pending' AND v.pending_filter <> 'all' \
-                      THEN COALESCE((SELECT e.count FROM import_list_entry_count AS e \
-                                     WHERE e.pending_entry = v.pending_filter), 0) \
-                      ELSE COALESCE((SELECT SUM(t.count) FROM import_list_tab_count AS t \
-                                     WHERE t.tab = v.tab AND t.item <> 'group'), 0) END \
-                 - CASE WHEN v.tab = 'pending' \
-                        THEN COALESCE((SELECT SUM(g.count) FROM import_list_collapsed AS c \
-                                       JOIN import_list_group_entry_count AS g \
-                                           ON g.watched_folder_path = c.watched_folder_path \
-                                          AND g.group_name = c.group_name \
-                                       WHERE c.list_id = v.id \
-                                         AND (v.pending_filter = 'all' \
-                                              OR g.pending_entry = v.pending_filter)), 0) \
-                        ELSE 0 END \
-                 + CASE WHEN v.tab <> 'pending' THEN 0 \
-                        WHEN v.pending_filter = 'all' \
-                        THEN COALESCE((SELECT t.count FROM import_list_tab_count AS t \
-                                       WHERE t.tab = 'pending' AND t.item = 'group'), 0) \
-                        ELSE (SELECT count(*) FROM import_list_group_entry_count AS g \
-                              WHERE g.pending_entry = v.pending_filter) END \
-             FROM import_list_view AS v WHERE v.id = ?",
-            [list.id.0],
-            |row| row.get::<_, i64>(0),
-        )?,
+    let (items, reads) = match list.keeps_all {
+        true => (
+            sql.query_row(
+                "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
+                 JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?",
+                [list.id.0],
+                |row| row.get::<_, i64>(0),
+            )?,
+            Reads::Order,
+        ),
+        false => {
+            let (items, folded) = sql.query_row(
+                "SELECT kept - folded + headers, folded FROM ( \
+                 SELECT \
+                     CASE WHEN v.tab = 'pending' AND v.pending_filter <> 'all' \
+                          THEN COALESCE((SELECT e.count FROM import_list_entry_count AS e \
+                                         WHERE e.pending_entry = v.pending_filter), 0) \
+                          ELSE COALESCE((SELECT SUM(t.count) FROM import_list_tab_count AS t \
+                                         WHERE t.tab = v.tab AND t.item <> 'group'), 0) END \
+                         AS kept, \
+                     CASE WHEN v.tab = 'pending' \
+                          THEN COALESCE((SELECT SUM(g.count) FROM import_list_collapsed AS c \
+                                         JOIN import_list_group_entry_count AS g \
+                                             ON g.watched_folder_path = c.watched_folder_path \
+                                            AND g.group_name = c.group_name \
+                                         WHERE c.list_id = v.id \
+                                           AND (v.pending_filter = 'all' \
+                                                OR g.pending_entry = v.pending_filter)), 0) \
+                          ELSE 0 END AS folded, \
+                     CASE WHEN v.tab <> 'pending' THEN 0 \
+                          WHEN v.pending_filter = 'all' \
+                          THEN COALESCE((SELECT t.count FROM import_list_tab_count AS t \
+                                         WHERE t.tab = 'pending' AND t.item = 'group'), 0) \
+                          ELSE (SELECT count(*) FROM import_list_group_entry_count AS g \
+                                WHERE g.pending_entry = v.pending_filter) END AS headers \
+                 FROM import_list_view AS v WHERE v.id = ?)",
+                [list.id.0],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+            )?;
+            let folded = to_u64(folded, "a list's folded releases")?;
+            (items, Reads::Folds { folded })
+        }
     };
     let narrowed = match list.narrows {
         true => Some(narrowed(sql.query_row(
@@ -196,7 +229,7 @@ pub(super) fn listed(
     Ok(Listed {
         total: total(items)?,
         narrowed,
-        searching: false,
+        reads,
     })
 }
 

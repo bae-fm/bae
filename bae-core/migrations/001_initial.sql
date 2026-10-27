@@ -3067,6 +3067,9 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     -- A group's date, its newest member's own date, on its header and its
     -- members; NULL off a group.
     group_date          INTEGER,
+    -- For a header: whether its folder is offered to be read as one release
+    -- (`import_list_recombine`). NULL off a header.
+    combinable          INTEGER CHECK (combinable IN (0, 1)),
     -- What the row sorts by first: its group's date, else its own.
     unit_date           INTEGER GENERATED ALWAYS AS (CASE
         WHEN group_name IS NULL THEN own_date ELSE group_date END) STORED,
@@ -3107,6 +3110,7 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     CHECK ((pending_state IS 'error') = (error_detail IS NOT NULL)),
     CHECK (holds_nested = 0 OR (item <> 'group' AND instr(display_path, '/') = 0)),
     CHECK (item <> 'group' OR tab = 'pending'),
+    CHECK (item = 'group' OR combinable IS NULL),
     CHECK ((item = 'group') = (display_path IS NULL)),
     CHECK ((item = 'group') = (shown_title IS NULL)),
     CHECK ((item = 'candidate') = (has_summary IS NOT NULL)),
@@ -3151,6 +3155,64 @@ CREATE INDEX IF NOT EXISTS import_list_path_ascending ON import_list_placement (
 CREATE INDEX IF NOT EXISTS import_list_path_descending ON import_list_placement (
     tab, root_position DESC, watched_folder_path DESC, unit_path DESC, item = 'group' DESC,
     display_path COLLATE natural_order DESC, key DESC);
+
+-- A list that folds groups shut reads each order in three runs instead, so
+-- no read passes a folded group's members: the headers and the rows outside
+-- every group (`_unfolded`), each open group's header (`_headers`), and that
+-- group's members in its order (`_members`). Within the order's terms up to
+-- the folder, only a header and its members tie, so the row's number breaks
+-- the tie in the first two and the members take their header's: the three
+-- runs then merge in the order's own sequence.
+CREATE INDEX IF NOT EXISTS import_list_newest_first_unfolded ON import_list_placement (
+    tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path, entry)
+    WHERE item = 'group' OR group_name IS NULL;
+
+CREATE INDEX IF NOT EXISTS import_list_newest_first_headers ON import_list_placement (
+    tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path, entry)
+    WHERE item = 'group';
+
+CREATE INDEX IF NOT EXISTS import_list_newest_first_members ON import_list_placement (
+    watched_folder_path, group_name, item = 'group' DESC, own_date IS NULL, own_date DESC,
+    display_path COLLATE natural_order, key)
+    WHERE item <> 'group' AND group_name IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS import_list_oldest_first_unfolded ON import_list_placement (
+    tab, unit_date IS NULL, unit_date, root_position, watched_folder_path, unit_path, entry)
+    WHERE item = 'group' OR group_name IS NULL;
+
+CREATE INDEX IF NOT EXISTS import_list_oldest_first_headers ON import_list_placement (
+    tab, unit_date IS NULL, unit_date, root_position, watched_folder_path, unit_path, entry)
+    WHERE item = 'group';
+
+CREATE INDEX IF NOT EXISTS import_list_oldest_first_members ON import_list_placement (
+    watched_folder_path, group_name, item = 'group' DESC, own_date IS NULL, own_date,
+    display_path COLLATE natural_order, key)
+    WHERE item <> 'group' AND group_name IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS import_list_path_ascending_unfolded ON import_list_placement (
+    tab, root_position, watched_folder_path, unit_path, entry)
+    WHERE item = 'group' OR group_name IS NULL;
+
+CREATE INDEX IF NOT EXISTS import_list_path_ascending_headers ON import_list_placement (
+    tab, root_position, watched_folder_path, unit_path, entry)
+    WHERE item = 'group';
+
+CREATE INDEX IF NOT EXISTS import_list_path_ascending_members ON import_list_placement (
+    watched_folder_path, group_name, item = 'group' DESC, display_path COLLATE natural_order, key)
+    WHERE item <> 'group' AND group_name IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS import_list_path_descending_unfolded ON import_list_placement (
+    tab, root_position DESC, watched_folder_path DESC, unit_path DESC, entry)
+    WHERE item = 'group' OR group_name IS NULL;
+
+CREATE INDEX IF NOT EXISTS import_list_path_descending_headers ON import_list_placement (
+    tab, root_position DESC, watched_folder_path DESC, unit_path DESC, entry)
+    WHERE item = 'group';
+
+CREATE INDEX IF NOT EXISTS import_list_path_descending_members ON import_list_placement (
+    watched_folder_path, group_name, item = 'group' DESC,
+    display_path COLLATE natural_order DESC, key DESC)
+    WHERE item <> 'group' AND group_name IS NOT NULL;
 
 -- What the triggers look a changed row's releases up by.
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_folder ON scan_candidate (folder);
@@ -3454,6 +3516,13 @@ BEGIN
                   WHERE member.watched_folder_path = NEW.watched_folder_path
                     AND member.group_name = NEW.group_name AND member.item <> 'group')
     ON CONFLICT (watched_folder_path, item, key) DO NOTHING;
+    -- A header just placed is told whether its folder reads as one release.
+    INSERT INTO import_list_recombine (watched_folder_path, group_name)
+    SELECT NEW.watched_folder_path, NEW.group_name
+    WHERE EXISTS (SELECT 1 FROM import_list_placement AS header
+                  WHERE header.watched_folder_path = NEW.watched_folder_path
+                    AND header.item = 'group' AND header.key = NEW.group_name
+                    AND header.combinable IS NULL);
     DELETE FROM import_list_placement
     WHERE watched_folder_path = NEW.watched_folder_path AND item = 'group' AND key = NEW.group_name
       AND NOT EXISTS (SELECT 1 FROM import_list_placement AS member
@@ -3470,6 +3539,101 @@ BEGIN
                                AND member.item <> 'group');
 END;
 
+
+-- Bring whether the folder of the group `group_name` under
+-- `watched_folder_path` is offered to be read as one release in line with
+-- the rows below it and the readings stored for it and the folders inside
+-- it, on its header. It is when a stored reading of the folder keeps its
+-- releases apart, or, with nothing stored, when it is the nearest folder
+-- above some release holding two releases or more: no folder between the
+-- two has nothing stored and two releases below it. Rows of every tab count.
+-- A procedure entry point that stores nothing, like `import_list_replace`.
+CREATE VIEW IF NOT EXISTS import_list_recombine AS
+SELECT watched_folder_path, group_name FROM import_list_placement WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS import_list_recombine_header
+INSTEAD OF INSERT ON import_list_recombine
+WHEN EXISTS (SELECT 1 FROM import_list_placement AS header
+             WHERE header.watched_folder_path = NEW.watched_folder_path
+               AND header.item = 'group' AND header.key = NEW.group_name)
+BEGIN
+    UPDATE import_list_placement SET combinable = judged.combinable
+    FROM (SELECT COALESCE(
+              (SELECT g.combined = 0 FROM release_grouping AS g
+               WHERE g.anchor_folder = bae_folder_below(NEW.watched_folder_path, NEW.group_name)),
+              (SELECT count(*) FROM (
+                   SELECT 1 FROM import_list_placement AS q
+                   WHERE q.watched_folder_path = NEW.watched_folder_path
+                     AND q.display_path > NEW.group_name || '/'
+                     AND q.display_path < NEW.group_name || '0' LIMIT 2)) = 2
+              AND EXISTS (
+                  SELECT 1 FROM import_list_placement AS b
+                  WHERE b.watched_folder_path = NEW.watched_folder_path
+                    AND b.display_path > NEW.group_name || '/'
+                    AND b.display_path < NEW.group_name || '0'
+                    AND NOT EXISTS (
+                        WITH RECURSIVE above (folder, rest) AS (
+                            SELECT NEW.group_name,
+                                   substr(b.display_path, length(NEW.group_name) + 2)
+                            UNION ALL
+                            SELECT folder || '/' || substr(rest, 1, instr(rest, '/') - 1),
+                                   substr(rest, instr(rest, '/') + 1)
+                            FROM above WHERE instr(rest, '/') > 0)
+                        SELECT 1 FROM above AS f
+                        WHERE f.folder <> NEW.group_name
+                          AND (SELECT count(*) FROM (
+                                   SELECT 1 FROM import_list_placement AS q
+                                   WHERE q.watched_folder_path = NEW.watched_folder_path
+                                     AND q.display_path > f.folder || '/'
+                                     AND q.display_path < f.folder || '0' LIMIT 2)) = 2
+                          AND NOT EXISTS (
+                              SELECT 1 FROM release_grouping AS g
+                              WHERE g.anchor_folder =
+                                  bae_folder_below(NEW.watched_folder_path, f.folder)))))
+              AS combinable) AS judged
+    WHERE import_list_placement.watched_folder_path = NEW.watched_folder_path
+      AND import_list_placement.item = 'group' AND import_list_placement.key = NEW.group_name
+      AND import_list_placement.combinable IS NOT judged.combinable;
+END;
+
+-- A stored reading of a folder, or of one inside it, changes whether the
+-- group holding it is offered to be read as one release.
+CREATE TRIGGER IF NOT EXISTS import_list_reading_added AFTER INSERT ON release_grouping
+WHEN NEW.anchor_folder IS NOT NULL
+BEGIN
+    INSERT INTO import_list_recombine (watched_folder_path, group_name)
+    SELECT r.root, CASE WHEN instr(r.folder, '/') > 0
+                        THEN substr(r.folder, 1, instr(r.folder, '/') - 1) ELSE r.folder END
+    FROM (SELECT w.path AS root, bae_folder_relative(w.path, NEW.anchor_folder) AS folder
+          FROM watched_import_folders AS w) AS r
+    WHERE r.folder <> '';
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_reading_removed AFTER DELETE ON release_grouping
+WHEN OLD.anchor_folder IS NOT NULL
+BEGIN
+    INSERT INTO import_list_recombine (watched_folder_path, group_name)
+    SELECT r.root, CASE WHEN instr(r.folder, '/') > 0
+                        THEN substr(r.folder, 1, instr(r.folder, '/') - 1) ELSE r.folder END
+    FROM (SELECT w.path AS root, bae_folder_relative(w.path, OLD.anchor_folder) AS folder
+          FROM watched_import_folders AS w) AS r
+    WHERE r.folder <> '';
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_reading_changed
+AFTER UPDATE OF anchor_folder, combined ON release_grouping
+WHEN (OLD.anchor_folder, OLD.combined) IS NOT (NEW.anchor_folder, NEW.combined)
+BEGIN
+    INSERT INTO import_list_recombine (watched_folder_path, group_name)
+    SELECT r.root, CASE WHEN instr(r.folder, '/') > 0
+                        THEN substr(r.folder, 1, instr(r.folder, '/') - 1) ELSE r.folder END
+    FROM (SELECT w.path AS root, bae_folder_relative(w.path, OLD.anchor_folder) AS folder
+          FROM watched_import_folders AS w
+          UNION
+          SELECT w.path, bae_folder_relative(w.path, NEW.anchor_folder)
+          FROM watched_import_folders AS w) AS r
+    WHERE r.folder <> '';
+END;
 
 -- Whether another release is listed below the folder of each row at a
 -- watched folder's top level: what puts that row under its folder's group.
@@ -3515,6 +3679,9 @@ BEGIN
                  ELSE NEW.display_path END);
     INSERT INTO import_list_regroup (watched_folder_path, group_name)
     SELECT NEW.watched_folder_path, NEW.group_name WHERE NEW.group_name IS NOT NULL;
+    INSERT INTO import_list_recombine (watched_folder_path, group_name)
+    SELECT NEW.watched_folder_path, substr(NEW.display_path, 1, instr(NEW.display_path, '/') - 1)
+    WHERE instr(NEW.display_path, '/') > 0;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_placement_removed AFTER DELETE ON import_list_placement
@@ -3526,6 +3693,9 @@ BEGIN
     WHERE instr(OLD.display_path, '/') > 0;
     INSERT INTO import_list_regroup (watched_folder_path, group_name)
     SELECT OLD.watched_folder_path, OLD.group_name WHERE OLD.group_name IS NOT NULL;
+    INSERT INTO import_list_recombine (watched_folder_path, group_name)
+    SELECT OLD.watched_folder_path, substr(OLD.display_path, 1, instr(OLD.display_path, '/') - 1)
+    WHERE instr(OLD.display_path, '/') > 0;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_placement_moved AFTER UPDATE ON import_list_placement
@@ -3540,6 +3710,12 @@ BEGIN
            CASE WHEN instr(NEW.display_path, '/') > 0
                 THEN substr(NEW.display_path, 1, instr(NEW.display_path, '/') - 1)
                 ELSE NEW.display_path END;
+    INSERT INTO import_list_recombine (watched_folder_path, group_name)
+    SELECT OLD.watched_folder_path, substr(OLD.display_path, 1, instr(OLD.display_path, '/') - 1)
+    WHERE instr(OLD.display_path, '/') > 0
+    UNION
+    SELECT NEW.watched_folder_path, substr(NEW.display_path, 1, instr(NEW.display_path, '/') - 1)
+    WHERE instr(NEW.display_path, '/') > 0;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_placement_regrouped AFTER UPDATE ON import_list_placement
@@ -3745,15 +3921,14 @@ CREATE TABLE IF NOT EXISTS import_list_selection (
 CREATE INDEX IF NOT EXISTS import_list_selection_by_key ON import_list_selection (key);
 
 -- Each list's view as the queries below read it: whether its filters
--- narrow its tab, by filter text or by a filter entry on Found, and whether
--- it keeps every row of its tab, its filters narrowing nothing and no group
--- folded shut.
+-- narrow its tab, by filter text or by a filter entry on Found, whether it
+-- folds any group shut, and whether it keeps every row of its tab, its
+-- filters narrowing nothing and no group folded shut.
 CREATE VIEW IF NOT EXISTS import_list_view AS
-SELECT l.*,
-       NOT l.narrows
-       AND NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c WHERE c.list_id = l.id)
-           AS keeps_all
-FROM (SELECT *, pattern IS NOT NULL OR (tab = 'pending' AND pending_filter <> 'all') AS narrows
+SELECT l.*, NOT l.narrows AND NOT l.folds AS keeps_all
+FROM (SELECT *, pattern IS NOT NULL OR (tab = 'pending' AND pending_filter <> 'all') AS narrows,
+             EXISTS (SELECT 1 FROM import_list_collapsed AS c WHERE c.list_id = import_list.id)
+                 AS folds
       FROM import_list) AS l;
 
 -- Each list's rows of its tab, each with whether its filters keep it: on

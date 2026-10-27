@@ -71,9 +71,9 @@ impl Library {
         self.db.open_import_list(view).await.unwrap()
     }
 
-    /// One read of `list` through `window`. A searching list's items read
-    /// from its tab's rows and from the rows its search finds must agree,
-    /// since its windows are read by either.
+    /// One read of `list` through `window`. A searching or folded list's
+    /// items read from its tab's rows and by its other read must agree, since
+    /// its windows are read by either.
     async fn read_through(
         &self,
         list: ImportListId,
@@ -87,12 +87,11 @@ impl Library {
             })
             .await
             .unwrap();
-        if !read.summary.narrowing.filter_text.is_empty() {
-            let (walked, found) = self.db.import_list_searched_both_ways(list).await.unwrap();
+        if let Some((walked, other)) = self.db.import_list_read_both_ways(list).await.unwrap() {
             assert_eq!(
-                walked, found,
-                "searching {:?}: the tab's rows in order against the rows the search finds",
-                read.summary.narrowing.filter_text
+                walked, other,
+                "{:?}: the tab's rows in order against its other read",
+                read.summary.narrowing
             );
         }
         read

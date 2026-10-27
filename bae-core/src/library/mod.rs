@@ -237,6 +237,18 @@ pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
             coven::Determinism::Deterministic,
             |arguments| Ok(search_pattern_value(arguments.get(0)?)),
         )
+        .function(
+            "bae_folder_below",
+            2,
+            coven::Determinism::Deterministic,
+            |arguments| folder_below_value(arguments.get(0)?, arguments.get(1)?),
+        )
+        .function(
+            "bae_folder_relative",
+            2,
+            coven::Determinism::Deterministic,
+            |arguments| folder_relative_value(arguments.get(0)?, arguments.get(1)?),
+        )
 }
 
 /// `bae_fold_case`: a text folded as library search folds it; NULL stays NULL.
@@ -248,6 +260,21 @@ fn fold_case_value(text: Option<String>) -> Option<String> {
 /// by; NULL stays NULL.
 fn search_pattern_value(query: Option<String>) -> Option<String> {
     query.map(|query| search::search_pattern(&query))
+}
+
+/// `bae_folder_below`: the absolute path of a `/`-separated folder below a
+/// watched folder, spelled as a scan spells it, which is how a stored
+/// reading names the folder it reads.
+fn folder_below_value(root: String, relative: String) -> rusqlite::Result<String> {
+    crate::import::folder_path::folder_below(&root, &relative)
+        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
+}
+
+/// `bae_folder_relative`: the `/`-separated path of a folder below a watched
+/// folder, empty for the watched folder itself, NULL for one outside it.
+fn folder_relative_value(root: String, folder: String) -> rusqlite::Result<Option<String>> {
+    crate::import::folder_path::folder_relative_below(&root, &folder)
+        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
 }
 
 /// An in-memory database on bae's schema outside coven, with the SQL
@@ -275,6 +302,17 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
         |context| Ok(search_pattern_value(context.get(0)?)),
     )
     .expect("bae_search_pattern registers");
+    let deterministic = FunctionFlags::SQLITE_UTF8
+        | FunctionFlags::SQLITE_DETERMINISTIC
+        | FunctionFlags::SQLITE_INNOCUOUS;
+    conn.create_scalar_function("bae_folder_below", 2, deterministic, |context| {
+        folder_below_value(context.get(0)?, context.get(1)?)
+    })
+    .expect("bae_folder_below registers");
+    conn.create_scalar_function("bae_folder_relative", 2, deterministic, |context| {
+        folder_relative_value(context.get(0)?, context.get(1)?)
+    })
+    .expect("bae_folder_relative registers");
     // The schema indexes coven's `coven_key`, which coven registers on its own
     // connections. These tests read no coven state, so any deterministic
     // stand-in lets the index exist: this one returns its one value.

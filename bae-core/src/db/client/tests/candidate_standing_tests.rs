@@ -19,10 +19,11 @@ async fn scanned(db: &super::super::Database, key: &str, files: &CandidateFiles)
              DELETE FROM scan_candidate WHERE path = '{key}';
              INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
                  display_path, folder, file_root, scope, content_hash, file_edit_revision)
-                 VALUES ('/music', '{key}', 1, 'valid', 'Album', '{key}', '{key}', '{key}',
+                 VALUES ('/music', '{key}', 1, 'valid', 'Album', '{display_path}', '{key}', '{key}',
                      'recursive', '{hash}', {revision});",
             hash = files.content_hash,
             revision = files.file_edit_revision,
+            display_path = key.trim_start_matches('/'),
         ),
     )
     .await;

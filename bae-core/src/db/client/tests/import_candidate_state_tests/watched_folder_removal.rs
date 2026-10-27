@@ -71,7 +71,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     db.add_watched_import_folder(root).await.unwrap();
     picked_grouping(&db, root, ["Volume A", "Volume B"], "grouping:picked").await;
     db.set_import_candidate_skipped(
-        &crate::import::watched_folder::folder_below(root, "Collection/Release").unwrap(),
+        &crate::import::folder_path::folder_below(root, "Collection/Release").unwrap(),
         true,
     )
     .await
@@ -187,7 +187,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
     .await
     .unwrap()
     .unwrap();
-    let skipped = crate::import::watched_folder::folder_below(&one, "Album").unwrap();
+    let skipped = crate::import::folder_path::folder_below(&one, "Album").unwrap();
     db.set_import_candidate_skipped(&skipped, true).await.unwrap();
     store_user_folder_decision(
         &db,
