@@ -32,8 +32,13 @@ impl crate::types::BridgeStorageInspectorTransfer {
                 operation: crate::types::BridgeOutputOp::from_core(operation),
                 paused,
             },
-            StorageInspectorTransfer::Upload { group, paused } => Self::Upload {
-                group: crate::types::BridgeUploadReleaseGroup::from_core(group),
+            StorageInspectorTransfer::Upload {
+                release_id,
+                upload,
+                paused,
+            } => Self::Upload {
+                release_id,
+                upload: crate::types::BridgeReleaseUpload::from_core(upload),
                 paused,
             },
         }
@@ -41,16 +46,21 @@ impl crate::types::BridgeStorageInspectorTransfer {
 }
 
 impl crate::types::BridgeStorageInspectorFile {
-    fn from_core(file: bae_core::library::storage_inspector::StorageInspectorFile) -> Self {
-        use bae_core::library::storage_inspector::StorageInspectorFile;
-        match file {
-            StorageInspectorFile::ReleaseFile { file, upload } => Self::ReleaseFile {
-                file: BridgeFile::from_core(file),
-                operation: upload.map(crate::types::BridgeUploadFileOp::from_core),
-            },
-            StorageInspectorFile::Upload { upload } => Self::Upload {
-                operation: crate::types::BridgeUploadFileOp::from_core(upload),
-            },
+    fn from_core(row: bae_core::library::storage_inspector::StorageInspectorFile) -> Self {
+        let bae_core::library::storage_inspector::StorageInspectorFile { file, upload } = row;
+        Self {
+            file: BridgeFile::from_core(file),
+            upload: upload.map(|upload| crate::types::BridgeFileUpload {
+                file_id: upload.file.to_string(),
+                state: match upload.phase {
+                    coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
+                    coven::UploadPhase::Uploading => crate::types::BridgeUploadFileState::Uploading,
+                },
+                pending: upload
+                    .pending
+                    .map(crate::types::BridgePendingWait::from_core),
+                bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
+            }),
         }
     }
 }

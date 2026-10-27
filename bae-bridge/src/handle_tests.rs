@@ -413,14 +413,6 @@ async fn upload_file_op_preserves_object_and_row_identity() {
             bytes_total: 116
         })
     );
-    let bridge = crate::types::BridgeUploadFileOp::from_core(bae_core::library::UploadFileOp {
-        file: upload.file,
-        phase: coven::UploadPhase::Uploading,
-        pending: None,
-        label: bae_core::library::UploadFileLabel::Filename("Track.flac".into()),
-    });
-    assert_eq!(bridge.file_id, id);
-    assert_eq!(bridge.state, crate::types::BridgeUploadFileState::Uploading);
     handle.close().await.unwrap();
 }
 

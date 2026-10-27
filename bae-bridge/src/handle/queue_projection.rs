@@ -1,45 +1,7 @@
-#[cfg(desktop)]
-mirror_struct! {
-    crate::types::BridgeUploadReleaseGroup = bae_core::library::UploadReleaseGroup,
-    from_core: pub(super) fn,
-    fields: {
-        release_id,
-        files: (each crate::types::BridgeUploadFileOp),
-        progress: (crate::types::BridgeUploadProgress),
-    },
-}
-
-#[cfg(desktop)]
-impl crate::types::BridgeUploadFileOp {
-    pub(super) fn from_core(file: bae_core::library::UploadFileOp) -> Self {
-        let bae_core::library::UploadFileOp {
-            file,
-            phase,
-            pending,
-            label,
-        } = file;
-        Self {
-            pending: pending.map(crate::types::BridgePendingWait::from_core),
-            file_id: file.id().to_string(),
-            label: crate::types::BridgeUploadFileLabel::from_core(label),
-            state: match phase {
-                coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
-                coven::UploadPhase::Uploading => crate::types::BridgeUploadFileState::Uploading,
-            },
-        }
-    }
-}
 mirror_struct! {
     crate::types::BridgeUploadBar = bae_core::library::UploadBar,
     from_core: pub(super) fn,
     fields: { bytes_done, bytes_total },
-}
-
-#[cfg(desktop)]
-mirror_enum! {
-    crate::types::BridgeUploadFileLabel = bae_core::library::UploadFileLabel,
-    from_core: fn,
-    variants: { Filename(name), Cover, ArtistImage, Avatar, DeletedReleaseFile },
 }
 
 mirror_struct! {

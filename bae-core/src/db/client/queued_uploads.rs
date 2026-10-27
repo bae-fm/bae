@@ -76,6 +76,34 @@ pub(super) fn release_upload_on(
         .flatten())
 }
 
+/// Each of the release `release_id`'s files waiting in this device's upload
+/// queue, in queue order.
+pub(super) fn release_file_uploads_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Vec<DbFileUpload>, DbError> {
+    Ok(sql.query(
+        "SELECT f.id, upload.file, upload.sending, upload.pending, \
+             upload.bytes_confirmed, upload.bytes_total \
+         FROM release_files AS f \
+         JOIN coven_uploads AS upload \
+             ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
+         WHERE f.release_id = ?1 \
+         ORDER BY upload.position",
+        [release_id],
+        |row| {
+            Ok(DbFileUpload {
+                release_file_id: row.get(0)?,
+                file: row.get(1)?,
+                sending: row.get(2)?,
+                pending: row.get(3)?,
+                bytes_confirmed: row.get(4)?,
+                bytes_total: row.get(5)?,
+            })
+        },
+    )?)
+}
+
 impl Database {
     /// How many of the release's files still wait to upload from this device.
     pub async fn count_pending_uploads_for_release(
@@ -99,6 +127,19 @@ impl Database {
                 .map_err(DbError::from)
         })
         .await
+    }
+
+    /// Whether the person paused uploads, live, whether or not anything is
+    /// queued.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
+        self.inner.handle.subscribe(|sql| {
+            Ok(
+                sql.query_row("SELECT paused FROM coven_upload_pause", [], |row| {
+                    row.get(0)
+                })?,
+            )
+        })
     }
 
     /// Whether an attached release file still waits to upload from this

@@ -281,7 +281,7 @@ pub struct TrackGroup {
 }
 
 /// A file with pre-computed display fields.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FileDetail {
     pub id: String,
     pub original_filename: String,
@@ -290,6 +290,46 @@ pub struct FileDetail {
     pub content_type: String,
     /// The scan's facts for this physical source file. `None` for non-audio.
     pub source_audio: Option<SourceAudioFile>,
+    /// The file's upload while it waits in this device's upload queue.
+    pub upload: Option<FileUpload>,
+}
+
+/// A release file's file waiting in this device's upload queue, read with the
+/// release: which file coven uploads, whether this process is sending it now,
+/// the record of what it waits for, and the bytes its upload session has had
+/// confirmed. How fast it goes is its transfer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FileUpload {
+    pub file: coven::FileId,
+    pub phase: crate::library::UploadState,
+    /// What it waits for, without the error behind it, which only this
+    /// process holds.
+    pub pending: Option<coven::PendingRecord>,
+    /// The bytes its resumable session has had confirmed; `None` with no
+    /// session, as a file sent in one request has none.
+    pub bar: Option<crate::library::UploadBar>,
+}
+
+impl FileUpload {
+    pub(crate) fn from_raw(raw: crate::db::DbFileUpload) -> Self {
+        let bytes = |value: i64| u64::try_from(value).expect("an upload session's bytes");
+        Self {
+            file: raw.file,
+            phase: if raw.sending {
+                crate::library::UploadState::Uploading
+            } else {
+                crate::library::UploadState::Waiting
+            },
+            pending: raw.pending,
+            bar: raw
+                .bytes_confirmed
+                .zip(raw.bytes_total)
+                .map(|(done, total)| crate::library::UploadBar {
+                    bytes_done: bytes(done),
+                    bytes_total: bytes(total),
+                }),
+        }
+    }
 }
 
 /// A library image's reference: kind, subject id, and content version. The id is a

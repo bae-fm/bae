@@ -66,9 +66,7 @@ struct StorageReleaseCell: View {
         .frame(width: 700)
         .padding(.vertical)
         .environment(
-            PreviewData.outboxStore(
-                PreviewData.outboxSnapshot(uploadGroups: [])
-            )
+            PreviewData.outboxStore()
         )
         .environment(ImageStore.stub())
     }

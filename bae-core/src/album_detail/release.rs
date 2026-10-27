@@ -486,6 +486,11 @@ impl ReleaseDetail {
         let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.stored);
         let playability = release_playability(&raw.unstored_audio, ctx.originals);
         let mut cover_files = Vec::new();
+        let mut file_uploads: std::collections::HashMap<String, FileUpload> = raw
+            .file_uploads
+            .into_iter()
+            .map(|upload| (upload.release_file_id.clone(), FileUpload::from_raw(upload)))
+            .collect();
         let files: Vec<FileDetail> = raw
             .files
             .into_iter()
@@ -495,6 +500,7 @@ impl ReleaseDetail {
                     is_image: f.content_type.is_image(),
                     content_type: f.content_type.to_string(),
                     source_audio: f.source_audio,
+                    upload: file_uploads.remove(&f.id),
                     id: f.id,
                     original_filename: f.original_filename,
                     file_size: f.file_size,
@@ -769,6 +775,7 @@ mod release_edit_display_tests {
             unstored_audio: Vec::new(),
             pinned: false,
             upload: None,
+            file_uploads: Vec::new(),
             download: None,
         };
 

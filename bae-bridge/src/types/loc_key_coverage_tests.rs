@@ -461,17 +461,6 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.push(bridge_provider_sign_out_key(instruction));
     }
-    for label in [
-        BridgeUploadFileLabel::Filename {
-            name: "track.flac".into(),
-        },
-        BridgeUploadFileLabel::Cover,
-        BridgeUploadFileLabel::ArtistImage,
-        BridgeUploadFileLabel::Avatar,
-        BridgeUploadFileLabel::DeletedReleaseFile,
-    ] {
-        keys.extend(bridge_upload_file_label_key(&label));
-    }
     // bridge_upload_activity_key and bridge_upload_file_state_key — each
     // variant carries a key, and the two enums share the phase words.
     for activity in [

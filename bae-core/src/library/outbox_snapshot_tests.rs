@@ -369,16 +369,7 @@ async fn a_confirmed_part_moves_the_transfers_and_not_the_queue() {
 
 #[tokio::test]
 async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
-    let (handle, _directory, initial_files) = queued_files().await;
-    let replaced = initial_files
-        .iter()
-        .find(|upload| {
-            upload.file.table() == "release_files"
-                && upload.file.key() == &coven::RowKey::from("first")
-        })
-        .unwrap()
-        .file
-        .id();
+    let (handle, _directory, _initial_files) = queued_files().await;
     handle
         .write_with_files(
             |batch| {
@@ -433,44 +424,6 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         .find(|file| file.label == UploadFileLabel::Cover)
         .unwrap();
     assert_ne!(cover.file.id(), release.files[0].file.id());
-    #[cfg(desktop)]
-    {
-        use crate::library::storage_inspector::{
-            StorageInspector, StorageInspectorFile, StorageInspectorTransfer,
-        };
-        let file = |id: &str, name: &str| crate::album_detail::FileDetail {
-            id: id.into(),
-            original_filename: name.into(),
-            file_size: 101,
-            is_image: false,
-            content_type: "audio/flac".into(),
-            source_audio: None,
-        };
-        let group = snapshot
-            .upload_groups
-            .into_iter()
-            .find(|group| group.release_id == "release")
-            .unwrap();
-        let inspector = StorageInspector::of(
-            vec![file("first", "First.flac"), file("second", "Renamed.flac")],
-            vec![StorageInspectorTransfer::Upload {
-                group,
-                paused: false,
-            }],
-        );
-        let StorageInspectorFile::ReleaseFile {
-            upload: Some(upload),
-            ..
-        } = &inspector.files[0]
-        else {
-            panic!("the release file retains its place with its upload")
-        };
-        assert_ne!(
-            upload.file.id(),
-            replaced,
-            "the row's upload is the file attached last"
-        );
-    }
     handle.close().await.unwrap();
 }
 

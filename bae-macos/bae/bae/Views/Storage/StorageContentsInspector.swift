@@ -54,13 +54,14 @@ struct StorageContentsInspector: View {
                 ContentUnavailableView { Text("No files") }
             }
             else {
-                List(rows, id: \.identity) { row in
+                List(rows, id: \.file.id) { row in
                     // Read for each row as it is placed, so a file's
-                    // moving bytes redraw its row alone.
+                    // changing rate redraws its row alone.
                     StorageInspectorFileRow(
                         row: row,
-                        transfer: row.operation.flatMap {
-                            outboxStore.transfer(forFile: $0.fileId)
+                        throughputBps: row.upload.flatMap {
+                            outboxStore.transfer(forFile: $0.fileId)?
+                                .throughputBps
                         }
                     )
                 }

@@ -2559,12 +2559,13 @@ Reads come two ways:
   or is deleted leaves the inspector and the actions' targets as it leaves the
   list, including while an action's confirmation or folder prompt is open.
   The inspector reads its release live by id: the release's files, each beside
-  the upload coven holds for it, and its entry in the download, export and
-  upload queues, worked out in core; the download and export entries are read
-  for that release alone. The upload queue's own subscription says
-  only which releases have uploads queued, how many, and whether it is paused;
-  the bytes each upload and download moves, and the percent each export
-  reaches, arrive apart, per file and per release.
+  its upload while one waits (whether it is being sent, what it waits for with
+  the error behind that while this process holds it, and the bytes its upload
+  session has had confirmed), and its entry in the download, export and
+  upload queues with whether each is paused, all read for that release alone.
+  The upload queue's own subscription says only whether it is paused; how
+  fast each upload goes, the bytes each download moves, and the percent each
+  export reaches arrive apart, per file and per release.
 
 What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A

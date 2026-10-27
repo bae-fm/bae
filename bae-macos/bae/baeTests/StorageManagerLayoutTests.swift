@@ -40,8 +40,12 @@ final class StorageManagerLayoutTests: XCTestCase {
             try await SnapshotTestSupport.settle(host)
             let outboxStore = PreviewData.outboxStore()
             let row = try XCTUnwrap(
-                PreviewData.storageRows.first {
-                    $0.release.id == PreviewData.uploadGroup.releaseId
+                PreviewData.storageRows(
+                    PreviewData.storageRows,
+                    uploading: PreviewData.defaultUploads
+                )
+                .first {
+                    $0.release.id == PreviewData.uploadingRelease.releaseId
                 }
             )
             let observation = try XCTUnwrap(
@@ -69,7 +73,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             StorageManagerPreviewScene(
                 downloads: [],
                 outputs: [],
-                uploadGroups: []
+                uploads: []
             )
             .frame(width: size.width, height: size.height),
             size: size
@@ -151,7 +155,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 inspectorPresented: true,
                 downloads: [],
                 outputs: [],
-                uploadGroups: []
+                uploads: []
             )
             .frame(width: size.width, height: size.height),
             size: size

@@ -13,8 +13,8 @@ struct StorageManagerPreviewScene: View {
         inspectorPresented: Bool = false,
         downloads: [BridgeDownloadOp] = PreviewData.downloadOps,
         outputs: [BridgeOutputOp] = PreviewData.outputOps,
-        uploadGroups: [BridgeUploadReleaseGroup] =
-            PreviewData.defaultUploadGroups
+        uploads: [PreviewData.PreviewReleaseUpload] =
+            PreviewData.defaultUploads
     ) {
         fixture = StorageManagerPreviewFixture(
             rows: rows,
@@ -22,7 +22,7 @@ struct StorageManagerPreviewScene: View {
             inspectorPresented: inspectorPresented,
             downloads: downloads,
             outputs: outputs,
-            uploadGroups: uploadGroups
+            uploads: uploads
         )
     }
 

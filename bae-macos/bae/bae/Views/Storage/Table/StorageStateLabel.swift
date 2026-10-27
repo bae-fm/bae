@@ -84,11 +84,9 @@ struct StorageStateLabel: View {
             // Files waiting or being sent win over the resting state.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
-                    id: PreviewData.uploadGroup.releaseId,
+                    id: PreviewData.uploadingRelease.releaseId,
                     storageState: .local,
-                    upload: PreviewData.rowUploads[
-                        PreviewData.uploadGroup.releaseId
-                    ]
+                    upload: PreviewData.uploadingRelease.upload
                 )
             )
         }

@@ -33,6 +33,7 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         unstored_audio: Vec::new(),
         pinned: false,
         upload: None,
+        file_uploads: Vec::new(),
         download: None,
     };
     let originals = OriginalsSeen::default();

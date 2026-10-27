@@ -169,3 +169,60 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         "{second:?} failed after the first"
     );
 }
+
+/// Follow the inspector until it shows a value `accept` takes.
+#[cfg(feature = "test-utils")]
+async fn inspector_until(
+    inspector: &crate::library::DetailSubscription<crate::library::storage_inspector::StorageInspector>,
+    accept: impl Fn(&crate::library::storage_inspector::StorageInspector) -> bool,
+) -> crate::library::storage_inspector::StorageInspector {
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let snapshot = inspector.next().await.expect("the inspector reads");
+            if let Some(value) = snapshot.value.filter(|value| accept(value)) {
+                break value;
+            }
+        }
+    })
+    .await
+    .expect("the inspector shows the expected value")
+}
+
+/// The Storage Manager inspector shows each of its release's files beside
+/// its upload while one waits, whether the queue is paused, and the error a
+/// failed upload met while this process holds it.
+#[cfg(feature = "test-utils")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_inspector_shows_each_files_upload_and_its_error() {
+    let (manager, temp, release, file_id) = queued_upload_fixture("inspected").await;
+    let services = crate::library::AppServices::for_test(manager.library.clone())
+        .await
+        .unwrap();
+    let inspector = services.subscribe_storage_inspector();
+    inspector.set(Some(release.id.clone())).unwrap();
+    use crate::library::storage_inspector::StorageInspectorTransfer;
+    let waiting = inspector_until(&inspector, |value| {
+        value.files.iter().any(|row| row.file.id == file_id && row.upload.is_some())
+    })
+    .await;
+    assert!(waiting.transfers.iter().any(|transfer| matches!(
+        transfer,
+        StorageInspectorTransfer::Upload { paused: true, .. }
+    )));
+
+    // The upload can't read a source that moved, so it waits on the file
+    // with the error it met.
+    std::fs::remove_file(temp.path().join("inspected/a.flac")).unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    inspector_until(&inspector, |value| {
+        value.files.iter().any(|row| {
+            row.file.id == file_id
+                && row
+                    .upload
+                    .as_ref()
+                    .and_then(|upload| upload.pending.as_ref())
+                    .is_some_and(|wait| wait.cause.is_some())
+        })
+    })
+    .await;
+}

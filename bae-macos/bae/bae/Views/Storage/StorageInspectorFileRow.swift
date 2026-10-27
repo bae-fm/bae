@@ -1,13 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// One file in the storage inspector: a release file with the upload coven
-/// holds for it, or an upload that belongs to no release file.
+/// One file in the storage inspector: a release file with its upload while
+/// one waits.
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
-    /// How far the row's upload has gone, and how fast; `nil` while none has
-    /// arrived for it, or when the row has no upload.
-    let transfer: BridgeUploadTransfer?
+    /// How fast the row's upload goes; `nil` while no rate has arrived for
+    /// it, or when the row has no upload.
+    let throughputBps: UInt64?
 
     /// The lines under the name start under it, past the icon column.
     private static let detailIndent = ThemeIcon.medium.size + ThemeSpace.related
@@ -15,44 +15,47 @@ struct StorageInspectorFileRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             HStack(spacing: ThemeSpace.related) {
-                Image(systemName: row.symbol)
+                Image(systemName: "doc")
                     .themeIcon(.medium)
                     .foregroundStyle(.secondary)
                     .frame(width: ThemeIcon.medium.size)
-                Text(row.name)
+                Text(row.file.originalFilename)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .help(row.name)
+                    .help(row.file.originalFilename)
                 Spacer(minLength: ThemeSpace.related)
-                Text(row.file?.fileSizeText ?? "")
+                Text(row.file.fileSizeText)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            Text(row.file?.audioFormat?.text ?? "")
+            Text(row.file.audioFormat?.text ?? "")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .padding(.leading, Self.detailIndent)
-            if let operation = row.operation {
-                UploadOperationLine(operation: operation, transfer: transfer)
-                    .padding(.leading, Self.detailIndent)
+            if let upload = row.upload {
+                UploadOperationLine(
+                    upload: upload,
+                    throughputBps: throughputBps
+                )
+                .padding(.leading, Self.detailIndent)
             }
         }
         .padding(.vertical, ThemeSpace.line)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(row.identity)
+        .accessibilityIdentifier("file:\(row.file.id)")
     }
 }
 
 /// One upload's state, its rate while bytes move, and its progress bar. A
 /// pending upload shows why coven is waiting instead of its state.
 private struct UploadOperationLine: View {
-    let operation: BridgeUploadFileOp
-    /// How far the file has gone, and how fast; `nil` while none has arrived.
-    let transfer: BridgeUploadTransfer?
+    let upload: BridgeFileUpload
+    /// How fast the file goes; `nil` while no rate has arrived for it.
+    let throughputBps: UInt64?
 
     var body: some View {
-        let bar = transfer?.bar
+        let bar = upload.bar
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             HStack(spacing: ThemeSpace.related) {
                 StatusChip(
@@ -77,83 +80,32 @@ private struct UploadOperationLine: View {
     }
 
     private var status: String {
-        if let pending = operation.pending {
+        if let pending = upload.pending {
             return localizedCoreString(pending.reason.key)
         }
         return localizedCoreString(
-            bridgeUploadFileStateKey(state: operation.state)
+            bridgeUploadFileStateKey(state: upload.state)
         )
     }
 
     private var symbol: String {
-        if operation.pending != nil { return "exclamationmark.triangle.fill" }
-        return switch operation.state {
+        if upload.pending != nil { return "exclamationmark.triangle.fill" }
+        return switch upload.state {
         case .waiting: "clock"
         case .uploading: "arrow.up.circle.fill"
         }
     }
 
     private var tone: StatusTone {
-        if operation.pending != nil { return .warning }
-        return switch operation.state {
+        if upload.pending != nil { return .warning }
+        return switch upload.state {
         case .waiting: .neutral
         case .uploading: .activity
         }
     }
 
     private var throughputText: String {
-        guard let throughputBps = transfer?.throughputBps, throughputBps > 0
-        else { return "" }
+        guard let throughputBps, throughputBps > 0 else { return "" }
         return QueueSummary.throughputText(bytesPerSecond: throughputBps)
-    }
-}
-
-extension BridgeStorageInspectorFile {
-    var identity: String {
-        switch self {
-        case .releaseFile(let file, _): "file:\(file.id)"
-        case .upload(let operation): "upload:\(operation.fileId)"
-        }
-    }
-
-    var file: BridgeFile? {
-        switch self {
-        case .releaseFile(let file, _): file
-        case .upload: nil
-        }
-    }
-
-    var operation: BridgeUploadFileOp? {
-        switch self {
-        case .releaseFile(_, let operation): operation
-        case .upload(let operation): operation
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .releaseFile: "doc"
-        case .upload(let operation):
-            switch operation.label {
-            case .filename: "doc"
-            case .cover: "photo"
-            case .artistImage: "person.crop.square"
-            case .avatar: "person.crop.circle"
-            case .deletedReleaseFile: "trash"
-            }
-        }
-    }
-
-    var name: String {
-        switch self {
-        case .releaseFile(let file, _): return file.originalFilename
-        case .upload(let operation):
-            if case .filename(let name) = operation.label { return name }
-            guard let key = bridgeUploadFileLabelKey(label: operation.label)
-            else {
-                preconditionFailure("only a file name has no catalog label")
-            }
-            return localizedCoreString(key)
-        }
     }
 }

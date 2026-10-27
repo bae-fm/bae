@@ -116,15 +116,6 @@ pub enum BridgeUploadFileState {
     Uploading,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeUploadFileLabel {
-    Filename { name: String },
-    Cover,
-    ArtistImage,
-    Avatar,
-    DeletedReleaseFile,
-}
-
 /// How many files wait and how many are being sent, and the phase that
 /// makes. How far they have gone is their transfer.
 #[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
@@ -360,24 +351,6 @@ pub struct BridgeOutputOp {
     pub kind: BridgeOutputKind,
 }
 
-/// One file in a release's upload group. Mirrors `UploadFileOp` with its state
-/// flattened; how far it has gone is the transfer keyed by its `file_id`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeUploadFileOp {
-    pub pending: Option<crate::types::BridgePendingWait>,
-    pub file_id: String,
-    pub label: BridgeUploadFileLabel,
-    pub state: BridgeUploadFileState,
-}
-
-/// A release's uploads, files in queue order. Mirrors `UploadReleaseGroup`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeUploadReleaseGroup {
-    pub release_id: String,
-    pub files: Vec<BridgeUploadFileOp>,
-    pub progress: BridgeUploadProgress,
-}
-
 /// Whether the upload queue is running or suspended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeOutboxPauseState {
@@ -420,18 +393,4 @@ pub fn bridge_upload_file_state_key(state: BridgeUploadFileState) -> String {
         BridgeUploadFileState::Waiting => "core.outbox.phase.queued",
     }
     .to_string()
-}
-
-#[uniffi::export]
-pub fn bridge_upload_file_label_key(label: &BridgeUploadFileLabel) -> Option<String> {
-    Some(
-        match label {
-            BridgeUploadFileLabel::Filename { .. } => return None,
-            BridgeUploadFileLabel::Cover => "core.import.role.cover",
-            BridgeUploadFileLabel::ArtistImage => "core.outbox.file.artist_image",
-            BridgeUploadFileLabel::Avatar => "core.outbox.file.avatar",
-            BridgeUploadFileLabel::DeletedReleaseFile => "core.outbox.file.deleted_release",
-        }
-        .to_string(),
-    )
 }

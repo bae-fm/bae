@@ -247,9 +247,26 @@ pub struct DbReleaseDetail {
     pub pinned: bool,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
+    /// Each of the release's files waiting in this device's upload queue, by
+    /// its row.
+    pub file_uploads: Vec<DbFileUpload>,
     /// The release's entry in this device's download queue, `None` when it
     /// has none.
     pub download: Option<crate::library::DownloadPhase>,
+}
+
+/// One release file waiting in this device's upload queue, read with its
+/// row: the file being uploaded, whether this process is sending it now,
+/// the record of what it waits for, and its session's confirmed bytes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbFileUpload {
+    /// The release file row whose file it is.
+    pub release_file_id: String,
+    pub file: coven::FileId,
+    pub sending: bool,
+    pub pending: Option<coven::PendingRecord>,
+    pub bytes_confirmed: Option<i64>,
+    pub bytes_total: Option<i64>,
 }
 
 /// What the library records this device holding for one of a release's audio

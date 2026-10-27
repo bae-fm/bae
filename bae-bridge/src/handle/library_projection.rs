@@ -9,6 +9,7 @@ impl BridgeFile {
             is_image,
             content_type,
             source_audio,
+            upload: _,
         } = f;
         BridgeFile {
             id,
@@ -253,10 +254,7 @@ impl BridgeReleaseSummary {
                 .collect(),
             transfer_action: transfer_action
                 .map(crate::types::BridgeReleaseStorageAction::from_core),
-            upload: upload.map(|upload| crate::types::BridgeReleaseUpload {
-                progress: crate::types::BridgeUploadProgress::from_core(upload.progress),
-                bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
-            }),
+            upload: upload.map(crate::types::BridgeReleaseUpload::from_core),
             transitioning,
             file_count,
             total_size,
@@ -607,4 +605,13 @@ mirror_struct! {
         releases: (each BridgeWorkReleaseSummary),
         tracks: (each BridgeWorkTrackSummary),
     },
+}
+
+impl crate::types::BridgeReleaseUpload {
+    pub(super) fn from_core(upload: bae_core::album_detail::ReleaseUpload) -> Self {
+        Self {
+            progress: crate::types::BridgeUploadProgress::from_core(upload.progress),
+            bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
+        }
+    }
 }

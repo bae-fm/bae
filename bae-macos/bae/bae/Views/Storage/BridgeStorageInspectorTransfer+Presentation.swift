@@ -39,7 +39,7 @@ extension BridgeStorageInspectorTransfer {
     var pauseRequested: Bool {
         switch self {
         case .download(_, let paused), .output(_, let paused),
-            .upload(_, let paused):
+            .upload(_, _, let paused):
             paused
         }
     }

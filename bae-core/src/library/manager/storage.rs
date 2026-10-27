@@ -36,6 +36,21 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Whether the person paused uploads, live.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
+        self.database.subscribe_uploads_paused()
+    }
+
+    /// The errors behind pending records while this process holds them, by
+    /// record.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_pending_causes(
+        &self,
+    ) -> tokio::sync::watch::Receiver<coven::PendingCauses> {
+        self.database.subscribe_pending_causes()
+    }
+
     /// Retry failed uploads now: clear coven's durable retry delay and run its
     /// upload drain immediately. Connection, queue-state, and provider failures
     /// are returned to the caller instead of reporting that a retry ran.

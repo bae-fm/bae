@@ -82,12 +82,13 @@ struct StorageTransferControls: View {
                 ) {
                     run { try await outputs.cancelOutput(operation.releaseId) }
                 }
-            case .upload(let group, _):
+            case .upload(let releaseId, let upload, _):
                 StorageUploadSummary(
-                    group: group,
-                    transfer: outboxStore.transfer(forRelease: group.releaseId)
+                    upload: upload,
+                    throughputBps: outboxStore.transfer(forRelease: releaseId)?
+                        .throughputBps
                 ) {
-                    cancelTransition(group.releaseId)
+                    cancelTransition(releaseId)
                 }
             }
         }

@@ -3,35 +3,33 @@ import SwiftUI
 
 /// Release-wide upload progress and controls above the shared file list.
 struct StorageUploadSummary: View {
-    let group: BridgeUploadReleaseGroup
-    /// How far the release's uploading files have gone together, and how
-    /// fast; `nil` while none has arrived for it.
-    let transfer: BridgeUploadTransfer?
+    let upload: BridgeReleaseUpload
+    /// How fast the release's files go; `nil` while no rate has arrived for
+    /// it.
+    let throughputBps: UInt64?
     let onCancel: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             HStack {
-                UploadActivityLabel(fileCountOf: group.progress)
+                UploadActivityLabel(fileCountOf: upload.progress)
                 Spacer()
                 Text(
-                    transfer.flatMap {
-                        // A zero reading stays absent, not a stalled speed.
-                        $0.throughputBps > 0
-                            ? QueueSummary.throughputText(
-                                bytesPerSecond: $0.throughputBps
-                            ) : nil
-                    } ?? ""
+                    StorageUploadObservation(
+                        upload: upload,
+                        throughputBps: throughputBps
+                    )
+                    .throughputText ?? ""
                 )
                 .monospacedDigit()
                 Button("Cancel", role: .destructive, action: onCancel)
                     .controlSize(.small)
             }
-            Text(transfer?.bar?.text ?? "")
+            Text(upload.bar?.text ?? "")
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
-            ProgressTrackBar(progress: transfer?.bar?.fraction ?? 0)
-                .opacity(transfer?.bar == nil ? 0 : 1)
+            ProgressTrackBar(progress: upload.bar?.fraction ?? 0)
+                .opacity(upload.bar == nil ? 0 : 1)
         }
         .themeText(.detail)
         .padding(.horizontal)

@@ -184,14 +184,14 @@ struct StorageManagerView: View {
             inspectorPresented: Bool = false,
             downloads: [BridgeDownloadOp] = PreviewData.downloadOps,
             outputs: [BridgeOutputOp] = PreviewData.outputOps,
-            uploadGroups: [BridgeUploadReleaseGroup] =
-                PreviewData.defaultUploadGroups
+            uploads: [PreviewData.PreviewReleaseUpload] =
+                PreviewData.defaultUploads
         ) {
             let library = PreviewData.storageLibrary(
                 rows: rows,
                 downloads: downloads,
                 outputs: outputs,
-                uploadGroups: uploadGroups
+                uploads: uploads
             )
             let uiStore = UiStore()
             self.library = library
@@ -204,9 +204,7 @@ struct StorageManagerView: View {
             initialInspectorPresented = inspectorPresented
             downloadStore = PreviewData.downloadStore()
             outputStore = PreviewData.outputStore()
-            outboxStore = PreviewData.outboxStore(
-                PreviewData.outboxSnapshot(uploadGroups: uploadGroups)
-            )
+            outboxStore = PreviewData.outboxStore()
         }
     }
 
@@ -298,7 +296,7 @@ struct StorageManagerView: View {
             selectedReleaseId: "rel-row-4",
             downloads: [],
             outputs: [],
-            uploadGroups: []
+            uploads: []
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
@@ -401,7 +399,7 @@ struct StorageManagerView: View {
             inspectorPresented: true,
             downloads: [],
             outputs: [],
-            uploadGroups: [PreviewData.uploadGroupQueued]
+            uploads: [PreviewData.queuedRelease]
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
@@ -432,7 +430,7 @@ struct StorageManagerView: View {
             inspectorPresented: true,
             downloads: [],
             outputs: [],
-            uploadGroups: [PreviewData.uploadGroupPending]
+            uploads: [PreviewData.pendingRelease]
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,

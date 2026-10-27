@@ -229,7 +229,7 @@ struct ShotScene {
                     inspectorPresented: true,
                     downloads: [],
                     outputs: [],
-                    uploadGroups: []
+                    uploads: []
                 )
             )
         },
@@ -244,7 +244,7 @@ struct ShotScene {
                     inspectorPresented: true,
                     downloads: [],
                     outputs: [],
-                    uploadGroups: [PreviewData.uploadGroupQueued]
+                    uploads: [PreviewData.queuedRelease]
                 )
             )
         },

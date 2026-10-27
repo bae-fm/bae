@@ -145,129 +145,117 @@
             action: .restoreFile
         )
 
-        /// Waiting and uploading files, a bar on each one moving bytes, and one
-        /// waiting on its missing source.
-        static let uploadFileOps: [BridgeUploadFileOp] = [
-            BridgeUploadFileOp(
-                pending: nil,
-                fileId: "covers:rel-row-1",
-                label: .cover,
-                state: .waiting
-            ),
-            BridgeUploadFileOp(
-                pending: nil,
-                fileId: "release_files:f-2",
-                label: .filename(name: "02 Track Title.flac"),
-                state: .uploading
-            ),
-            BridgeUploadFileOp(
-                pending: nil,
-                fileId: "release_files:f-3",
-                label: .filename(name: "03 Track Title.flac"),
-                state: .waiting
-            ),
-            BridgeUploadFileOp(
-                pending: nil,
-                fileId: "release_files:rel-row-1-audio",
-                label: .filename(name: "04 Track Title.flac"),
-                state: .uploading
-            ),
-            BridgeUploadFileOp(
-                pending: unavailableFilePending,
-                fileId: "release_files:f-5",
-                label: .filename(name: "05 Track Title.flac"),
-                state: .waiting
-            ),
-            BridgeUploadFileOp(
-                pending: nil,
-                fileId: "release_files:f-6",
-                label: .filename(name: "06 Track Title.flac"),
-                state: .waiting
-            ),
-        ]
-
-        static func uploadProgress(
-            activity: BridgeUploadActivity?
-        ) -> BridgeUploadProgress {
-            BridgeUploadProgress(
-                queued: 4,
-                uploading: 2,
-                activity: activity
-            )
+        /// A release with files in the previews' upload queue: what its row
+        /// reads of its upload, and each of its files' uploads by file id.
+        struct PreviewReleaseUpload {
+            let releaseId: String
+            let upload: BridgeReleaseUpload
+            let files: [String: BridgeFileUpload]
         }
 
-        static let uploadGroup = BridgeUploadReleaseGroup(
+        /// A release whose audio is being sent with its bytes, and whose
+        /// cover waits its turn.
+        static let uploadingRelease = PreviewReleaseUpload(
             releaseId: "rel-row-1",
-            files: uploadFileOps,
-            progress: uploadProgress(activity: .uploading)
-        )
-
-        /// A second group whose one file waits its turn.
-        static let uploadGroupQueued = BridgeUploadReleaseGroup(
-            releaseId: "rel-row-2",
-            files: [
-                BridgeUploadFileOp(
-                    pending: nil,
-                    fileId: "release_files:rel-row-2-audio",
-                    label: .filename(name: "01 Track Title.flac"),
-                    state: .waiting
-                )
-            ],
-            progress: BridgeUploadProgress(
-                queued: 1,
-                uploading: 0,
-                activity: .queued
-            )
-        )
-
-        /// A group whose only file is waiting on its missing source.
-        static let uploadGroupPending = BridgeUploadReleaseGroup(
-            releaseId: "rel-row-3",
-            files: [
-                BridgeUploadFileOp(
-                    pending: unavailableFilePending,
-                    fileId: "release_files:rel-row-3-audio",
-                    label: .filename(name: "01 Track Title.flac"),
-                    state: .waiting
-                )
-            ],
-            progress: BridgeUploadProgress(
-                queued: 1,
-                uploading: 0,
-                activity: .queued
-            )
-        )
-
-        static let defaultUploadGroups = [uploadGroup, uploadGroupQueued]
-
-        /// What the rows of `defaultUploadGroups`' releases read of their
-        /// uploads: two files being sent with their bytes, and one waiting.
-        static let rowUploads: [String: BridgeReleaseUpload] = [
-            uploadGroup.releaseId: BridgeReleaseUpload(
-                progress: uploadGroup.progress,
+            upload: BridgeReleaseUpload(
+                progress: BridgeUploadProgress(
+                    queued: 1,
+                    uploading: 1,
+                    activity: .uploading
+                ),
                 bar: BridgeUploadBar(
-                    bytesDone: 22_400_000,
-                    bytesTotal: 57_100_000
+                    bytesDone: 12_400_000,
+                    bytesTotal: 26_100_000
                 )
             ),
-            uploadGroupQueued.releaseId: BridgeReleaseUpload(
-                progress: uploadGroupQueued.progress,
+            files: [
+                "rel-row-1-audio": BridgeFileUpload(
+                    fileId: "upload-rel-row-1-audio",
+                    state: .uploading,
+                    pending: nil,
+                    bar: BridgeUploadBar(
+                        bytesDone: 12_400_000,
+                        bytesTotal: 26_100_000
+                    )
+                ),
+                "rel-row-1-image": BridgeFileUpload(
+                    fileId: "upload-rel-row-1-image",
+                    state: .waiting,
+                    pending: nil,
+                    bar: nil
+                ),
+            ]
+        )
+
+        /// A release whose one file waits its turn.
+        static let queuedRelease = PreviewReleaseUpload(
+            releaseId: "rel-row-2",
+            upload: BridgeReleaseUpload(
+                progress: BridgeUploadProgress(
+                    queued: 1,
+                    uploading: 0,
+                    activity: .queued
+                ),
                 bar: nil
             ),
-        ]
+            files: [
+                "rel-row-2-audio": BridgeFileUpload(
+                    fileId: "upload-rel-row-2-audio",
+                    state: .waiting,
+                    pending: nil,
+                    bar: nil
+                )
+            ]
+        )
 
-        /// The upload queue's summary while `uploadGroups` are queued.
+        /// A release whose only file waits on its missing source.
+        static let pendingRelease = PreviewReleaseUpload(
+            releaseId: "rel-row-3",
+            upload: BridgeReleaseUpload(
+                progress: BridgeUploadProgress(
+                    queued: 1,
+                    uploading: 0,
+                    activity: .queued
+                ),
+                bar: nil
+            ),
+            files: [
+                "rel-row-3-audio": BridgeFileUpload(
+                    fileId: "upload-rel-row-3-audio",
+                    state: .waiting,
+                    pending: unavailableFilePending,
+                    bar: nil
+                )
+            ]
+        )
+
+        static let defaultUploads = [uploadingRelease, queuedRelease]
+
+        /// `rows`, each release's row reading its upload among `uploads`.
+        static func storageRows(
+            _ rows: [BridgeStorageRow],
+            uploading uploads: [PreviewReleaseUpload]
+        ) -> [BridgeStorageRow] {
+            rows.map { row in
+                guard
+                    let upload = uploads.first(where: {
+                        $0.releaseId == row.id
+                    })
+                else { return row }
+                var row = row
+                row.release.upload = upload.upload
+                row.release.transitioning = true
+                return row
+            }
+        }
+
+        /// The upload queue's summary.
         static func outboxSnapshot(
-            uploadGroups: [BridgeUploadReleaseGroup] = defaultUploadGroups,
             pauseState: BridgeOutboxPauseState = .running
         ) -> BridgeOutboxSnapshot {
             BridgeOutboxSnapshot(
                 revision: 1,
-                perRelease: Dictionary(
-                    uniqueKeysWithValues: uploadGroups.map { group in
-                        (group.releaseId, group.progress)
-                    }
-                ),
+                perRelease: [:],
                 pauseState: pauseState
             )
         }
@@ -277,17 +265,7 @@
         static let uploadTransfers: BridgeOutboxTransferChange = .reset(
             transfers: [
                 BridgeKeyedUploadTransfer(
-                    key: .file(fileId: "release_files:f-2"),
-                    transfer: BridgeUploadTransfer(
-                        bar: BridgeUploadBar(
-                            bytesDone: 10_000_000,
-                            bytesTotal: 31_000_000
-                        ),
-                        throughputBps: 1_000_000
-                    )
-                ),
-                BridgeKeyedUploadTransfer(
-                    key: .file(fileId: "release_files:rel-row-1-audio"),
+                    key: .file(fileId: "upload-rel-row-1-audio"),
                     transfer: BridgeUploadTransfer(
                         bar: BridgeUploadBar(
                             bytesDone: 12_400_000,
@@ -414,7 +392,6 @@
                         storageState: isRemote ? .remote : .local,
                         pinned: isRemote && index % 4 == 0,
                         transfer: index == 5 ? .pin : nil,
-                        upload: rowUploads["rel-row-\(index)"],
                         fileCount: Int64(1 + index % 24),
                         totalSize: Int64(48_000_000 + index * 83_000_000)
                     )
@@ -475,20 +452,23 @@
                 pageSource: storageLibrary(rows: rows).storagePageSource,
                 onError: { _ in }
             )
-            list.preloadForPreview(rows: rows)
+            list.preloadForPreview(
+                rows: storageRows(rows, uploading: defaultUploads)
+            )
             return list
         }
 
         /// A `Library` whose storage reads serve the fixture rows and nothing
         /// else — enough for `StorageManagerView`'s own `rebuildList()` to
         /// populate the table — and whose inspector shows each row's release
-        /// with its entry in `downloads`, `outputs` and `uploadGroups`.
+        /// with its entry in `downloads`, `outputs` and `uploads`.
         static func storageLibrary(
             rows: [BridgeStorageRow] = storageRows,
             downloads: [BridgeDownloadOp] = downloadOps,
             outputs: [BridgeOutputOp] = outputOps,
-            uploadGroups: [BridgeUploadReleaseGroup] = defaultUploadGroups
+            uploads: [PreviewReleaseUpload] = defaultUploads
         ) -> Library {
+            let rows = storageRows(rows, uploading: uploads)
             let details = Dictionary(
                 uniqueKeysWithValues: rows.map { row in
                     (row.id, storageReleaseDetail(for: row))
@@ -499,7 +479,7 @@
                     release: detail,
                     download: downloads.first { $0.releaseId == detail.id },
                     output: outputs.first { $0.releaseId == detail.id },
-                    upload: uploadGroups.first { $0.releaseId == detail.id }
+                    upload: uploads.first { $0.releaseId == detail.id }
                 )
             }
             return Library(
@@ -516,7 +496,7 @@
             release: BridgeRelease,
             download: BridgeDownloadOp?,
             output: BridgeOutputOp?,
-            upload: BridgeUploadReleaseGroup?
+            upload: PreviewReleaseUpload?
         ) -> BridgeStorageInspector {
             var transfers: [BridgeStorageInspectorTransfer] = []
             if let download {
@@ -526,14 +506,22 @@
                 transfers.append(.output(operation: output, paused: false))
             }
             if let upload {
-                transfers.append(.upload(group: upload, paused: false))
+                transfers.append(
+                    .upload(
+                        releaseId: upload.releaseId,
+                        upload: upload.upload,
+                        paused: false
+                    )
+                )
             }
             return BridgeStorageInspector(
                 transfers: transfers,
                 files: release.files.map {
-                    .releaseFile(file: $0, operation: nil)
+                    BridgeStorageInspectorFile(
+                        file: $0,
+                        upload: upload?.files[$0.id]
+                    )
                 }
-                    + (upload?.files ?? []).map { .upload(operation: $0) }
             )
         }
 
