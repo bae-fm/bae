@@ -590,6 +590,19 @@ fn parse_duration_to_ms_handles_mm_ss_and_hh_mm_ss() {
     }
 }
 
+/// A duration whose milliseconds overflow a u64 states no length, rather
+/// than stopping the read on the catalog's data.
+#[test]
+fn a_duration_past_u64_milliseconds_states_no_length() {
+    for input in [
+        "307445734561825861:00",
+        "5124095576030432:00:00",
+        "0:18446744073709552",
+    ] {
+        assert_eq!(parse_duration_to_ms(input), None, "{input}");
+    }
+}
+
 /// A track whose position names no side is on the side before it.
 #[test]
 fn mb_values_put_an_unlettered_track_on_the_side_before_it() {

@@ -822,18 +822,19 @@ fn extract_base_position(position: &str) -> String {
 
 pub(crate) fn parse_duration_to_ms(duration: &str) -> Option<u64> {
     let parts: Vec<&str> = duration.split(':').collect();
-    match parts.as_slice() {
-        [minutes, seconds] => {
-            Some((minutes.parse::<u64>().ok()? * 60 + seconds.parse::<u64>().ok()?) * 1_000)
-        }
-        [hours, minutes, seconds] => Some(
-            (hours.parse::<u64>().ok()? * 3_600
-                + minutes.parse::<u64>().ok()? * 60
-                + seconds.parse::<u64>().ok()?)
-                * 1_000,
-        ),
-        _ => None,
-    }
+    let (hours, minutes, seconds) = match parts.as_slice() {
+        [minutes, seconds] => ("0", *minutes, *seconds),
+        [hours, minutes, seconds] => (*hours, *minutes, *seconds),
+        _ => return None,
+    };
+    hours
+        .parse::<u64>()
+        .ok()?
+        .checked_mul(60)?
+        .checked_add(minutes.parse::<u64>().ok()?)?
+        .checked_mul(60)?
+        .checked_add(seconds.parse::<u64>().ok()?)?
+        .checked_mul(1_000)
 }
 
 #[cfg(test)]
