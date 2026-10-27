@@ -6,20 +6,20 @@ import android.media.Image
 import androidx.camera.core.ImageInfo
 import androidx.camera.core.ImageProxy
 import com.google.zxing.BarcodeFormat
-import com.google.zxing.DecodeHintType
-import com.google.zxing.MultiFormatReader
 import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.ByteBuffer
+import java.util.Random
 
-class QRScannerScreenTest {
+class QrFrameDecoderTest {
     @Test
     fun successfulFrameScansAndCloses() {
         val imageProxy = qrImageProxy("qr-text")
 
-        val outcome = analyzeQrFrame(qrReader(), imageProxy)
+        val outcome = QrFrameDecoder().analyze(imageProxy)
 
         assertEquals(QrFrameOutcome.Found("qr-text"), outcome)
         assertTrue(imageProxy.closed)
@@ -29,7 +29,7 @@ class QRScannerScreenTest {
     fun missingCodeFrameClosesWithoutFailure() {
         val imageProxy = blankImageProxy(width = 128, height = 128, rowStride = 128)
 
-        val outcome = analyzeQrFrame(qrReader(), imageProxy)
+        val outcome = QrFrameDecoder().analyze(imageProxy)
 
         assertEquals(QrFrameOutcome.NotFound, outcome)
         assertTrue(imageProxy.closed)
@@ -39,17 +39,51 @@ class QRScannerScreenTest {
     fun malformedFrameReportsFailureAndCloses() {
         val imageProxy = blankImageProxy(width = 128, height = 128, rowStride = 64)
 
-        val outcome = analyzeQrFrame(qrReader(), imageProxy)
+        val outcome = QrFrameDecoder().analyze(imageProxy)
 
         assertTrue((outcome as QrFrameOutcome.Failed).error is IllegalArgumentException)
         assertTrue(imageProxy.closed)
     }
-}
 
-private fun qrReader(): MultiFormatReader =
-    MultiFormatReader().apply {
-        setHints(mapOf(DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE)))
+    @Test
+    fun aRestoreCodeWithItsS3KeyReadsFromArmsLength() {
+        assertReadsFromArmsLength(DenseCodes.restoreCodeWithKey(Random(1)))
     }
+
+    @Test
+    fun anInviteWithItsS3KeyReadsFromArmsLength() {
+        assertReadsFromArmsLength(DenseCodes.inviteWithKey(Random(2)))
+    }
+
+    // A phone held 25 or 30 cm from the Mac's screen, at a few tilts, frames
+    // the code as the scanner's camera delivers it. A live scan analyses
+    // several frames a second, so most of them reading is a scan that lands.
+    private fun assertReadsFromArmsLength(text: String) {
+        val decoder = QrFrameDecoder()
+        for (distanceCm in ARMS_LENGTH_CM) {
+            val read =
+                TILTS_DEGREES.count { tilt ->
+                    val luma = MacQrScene(MAC_DISPLAY, distanceCm, tilt).luma(text, QR_ANALYSIS_WIDTH, QR_ANALYSIS_HEIGHT, ROW_STRIDE)
+                    val frame = FakeImageProxy(QR_ANALYSIS_WIDTH, QR_ANALYSIS_HEIGHT, ROW_STRIDE, luma)
+                    decoder.analyze(frame) == QrFrameOutcome.Found(text)
+                }
+            assertTrue(
+                "${text.length}-char code read in $read of ${TILTS_DEGREES.size} frames from $distanceCm cm",
+                read >= TILTS_DEGREES.size * 2 / 3,
+            )
+        }
+    }
+
+    private companion object {
+        /** As QRCode.swift draws a code. */
+        val MAC_DISPLAY = MacQrDisplay(sidePoints = 360.0, quietZoneModules = 4, correction = ErrorCorrectionLevel.L)
+        val ARMS_LENGTH_CM = listOf(25.0, 30.0)
+        val TILTS_DEGREES = listOf(0.0, 2.0, 4.0, 7.0, 11.0, 17.0)
+
+        // Camera rows are padded past the frame's width.
+        const val ROW_STRIDE = QR_ANALYSIS_WIDTH + 64
+    }
+}
 
 private fun qrImageProxy(text: String): FakeImageProxy {
     val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 128, 128)

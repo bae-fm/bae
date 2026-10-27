@@ -1725,7 +1725,9 @@ tablet is hers
 and an approval would strand a person whose other devices are all lost. The
 tablet gets the code one of three ways:
 
-- **scanning** the QR code another of her devices shows;
+- **scanning** the QR code another of her devices shows, drawn large enough
+  for a phone's camera to read from 25 to 30 cm even when it carries her S3
+  key;
 - **iCloud Keychain**, on Apple devices: the first screen lists the restore
   codes coven saved there for libraries not already on this device, and Carol
   picks one; a library the device already holds is opened, not restored. A

@@ -46,19 +46,13 @@ struct AddDeviceSheet: View {
                 .padding()
             }
         }
-        .frame(width: 400, height: 480)
+        .frame(width: 400, height: 600)
     }
 
     private func shareContent(_ share: BridgeRestoreCodeShare) -> some View {
         VStack(spacing: ThemeSpace.edge) {
-            if let qrImage = QRCode.image(from: share.qrText) {
-                Image(nsImage: qrImage)
-                    .interpolation(.none)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 200, height: 200)
-                    .accessibilityLabel("Your recovery code")
-            }
+            QRCode(text: share.qrText)
+                .accessibilityLabel("Your recovery code")
 
             Text(
                 "On the new device, choose “Add device”, then scan this or type:"

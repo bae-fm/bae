@@ -7,6 +7,9 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -26,13 +29,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.DecodeHintType
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.NotFoundException
-import com.google.zxing.PlanarYUVLuminanceSource
-import com.google.zxing.common.HybridBinarizer
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
@@ -41,8 +37,6 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import java.util.concurrent.ExecutorService
 
-private const val ANALYSIS_WIDTH = 1280
-private const val ANALYSIS_HEIGHT = 720
 private const val TAG = "QRScannerScreen"
 private const val NANOS_PER_MILLI = 1_000_000L
 private const val SUMMARY_INTERVAL_NANOS = 1_000 * NANOS_PER_MILLI
@@ -57,18 +51,13 @@ fun QRScannerScreen(
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     var scanned = remember { false }
     // ZXing decodes synchronously, so frames are analyzed off the main thread;
-    // only that thread touches the reader.
+    // only that thread touches the decoder.
     val analysisExecutor =
         remember {
             java.util.concurrent.Executors
                 .newSingleThreadExecutor()
         }
-    val reader =
-        remember {
-            MultiFormatReader().apply {
-                setHints(mapOf(DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE)))
-            }
-        }
+    val decoder = remember { QrFrameDecoder() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -77,7 +66,7 @@ fun QRScannerScreen(
                     context = ctx,
                     cameraProviderFuture = cameraProviderFuture,
                     analysisExecutor = analysisExecutor,
-                    reader = reader,
+                    decoder = decoder,
                 ) {
                     if (!scanned) {
                         scanned = true
@@ -109,7 +98,7 @@ private fun createQRPreviewView(
     context: Context,
     cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
     analysisExecutor: ExecutorService,
-    reader: MultiFormatReader,
+    decoder: QrFrameDecoder,
     onScanned: (String) -> Unit,
 ): PreviewView {
     val previewView = PreviewView(context)
@@ -122,14 +111,25 @@ private fun createQRPreviewView(
         val analyzer =
             ImageAnalysis
                 .Builder()
-                .setTargetResolution(Size(ANALYSIS_WIDTH, ANALYSIS_HEIGHT))
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                // The bound size is a sensor output size, landscape whatever
+                // the phone's rotation.
+                .setResolutionSelector(
+                    ResolutionSelector
+                        .Builder()
+                        .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                        .setResolutionStrategy(
+                            ResolutionStrategy(
+                                Size(QR_ANALYSIS_WIDTH, QR_ANALYSIS_HEIGHT),
+                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+                            ),
+                        ).build(),
+                ).setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also { analysis ->
                     val tally = QrFrameTally(logger)
                     analysis.setAnalyzer(analysisExecutor) { imageProxy ->
                         tally.start(imageProxy)
-                        val outcome = analyzeQrFrame(reader, imageProxy)
+                        val outcome = decoder.analyze(imageProxy)
                         tally.record(outcome)
                         when (outcome) {
                             // onScanned touches Compose state, so run it on main.
@@ -137,7 +137,7 @@ private fun createQRPreviewView(
                                 mainExecutor.execute { onScanned(outcome.text) }
                             }
 
-                            QrFrameOutcome.NotFound -> {}
+                            QrFrameOutcome.NotFound, QrFrameOutcome.Unreadable -> {}
 
                             is QrFrameOutcome.Failed -> {
                                 logger.warning("QR analyzer failed to decode frame", outcome.error)
@@ -157,39 +157,6 @@ private fun createQRPreviewView(
     return previewView
 }
 
-/** What one analysis frame came to. */
-internal sealed interface QrFrameOutcome {
-    data class Found(
-        val text: String,
-    ) : QrFrameOutcome
-
-    /** The frame holds no code ZXing can read; scanning continues. */
-    data object NotFound : QrFrameOutcome
-
-    data class Failed(
-        val error: Exception,
-    ) : QrFrameOutcome
-}
-
-/** Decodes one frame and closes it. */
-internal fun analyzeQrFrame(
-    reader: MultiFormatReader,
-    imageProxy: ImageProxy,
-): QrFrameOutcome =
-    try {
-        QrFrameOutcome.Found(decodeQrFrame(reader, imageProxy))
-    } catch (_: NotFoundException) {
-        QrFrameOutcome.NotFound
-    } catch (e: Exception) {
-        QrFrameOutcome.Failed(e)
-    } finally {
-        try {
-            reader.reset()
-        } finally {
-            imageProxy.close()
-        }
-    }
-
 /**
  * Logs the frames the camera delivers: their shape once, when the first
  * arrives, and what they came to once a second after that, so a scan that
@@ -203,6 +170,7 @@ private class QrFrameTally(
     private var windowStart = 0L
     private var found = 0
     private var notFound = 0
+    private var unreadable = 0
     private var failed = 0
 
     fun start(imageProxy: ImageProxy) {
@@ -223,42 +191,22 @@ private class QrFrameTally(
         when (outcome) {
             is QrFrameOutcome.Found -> found++
             QrFrameOutcome.NotFound -> notFound++
+            QrFrameOutcome.Unreadable -> unreadable++
             is QrFrameOutcome.Failed -> failed++
         }
         val elapsed = System.nanoTime() - windowStart
         if (outcome is QrFrameOutcome.Found || elapsed >= SUMMARY_INTERVAL_NANOS) {
             logger.info(
-                "QR frames in ${elapsed / NANOS_PER_MILLI} ms: ${found + notFound + failed} analysed, " +
-                    "$found found, $notFound without a code, $failed failed",
+                "QR frames in ${elapsed / NANOS_PER_MILLI} ms: ${found + notFound + unreadable + failed} analysed, " +
+                    "$found read, $notFound without a code, $unreadable unreadable, $failed failed",
             )
             windowStart += elapsed
             found = 0
             notFound = 0
+            unreadable = 0
             failed = 0
         }
     }
-}
-
-private fun decodeQrFrame(
-    reader: MultiFormatReader,
-    imageProxy: ImageProxy,
-): String {
-    val plane = imageProxy.planes[0]
-    val data = ByteArray(plane.buffer.remaining())
-    plane.buffer.get(data)
-    val source =
-        PlanarYUVLuminanceSource(
-            data,
-            plane.rowStride,
-            imageProxy.height,
-            0,
-            0,
-            imageProxy.width,
-            imageProxy.height,
-            false,
-        )
-    val bitmap = BinaryBitmap(HybridBinarizer(source))
-    return reader.decode(bitmap).text
 }
 
 @Composable

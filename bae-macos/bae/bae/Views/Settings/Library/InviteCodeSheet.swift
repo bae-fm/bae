@@ -42,7 +42,7 @@ struct InviteCodeSheet: View {
                 code(invite)
             }
         }
-        .frame(width: 440, height: 520)
+        .frame(width: 440, height: 640)
         // An ended invite has nothing left to show.
         .onChange(of: invite == nil) { _, ended in
             if ended { onDismiss() }
@@ -71,13 +71,7 @@ struct InviteCodeSheet: View {
             Spacer()
             switch invite.delivery {
             case .inPerson:
-                if let qrImage = QRCode.image(from: invite.code) {
-                    Image(nsImage: qrImage)
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 200, height: 200)
-                }
+                QRCode(text: invite.code)
             case .sent:
                 Text(invite.code)
                     .themeText(.mono)
