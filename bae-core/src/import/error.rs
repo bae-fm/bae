@@ -81,6 +81,12 @@ pub enum ImportError {
     #[error("MusicBrainz request failed: {0}")]
     MusicBrainz(#[from] bae_catalogs::musicbrainz::MusicBrainzError),
 
+    /// A Wikidata request failed, with the same wire-level distinctions as
+    /// a MusicBrainz one.
+    #[cfg(desktop)]
+    #[error("Wikidata request failed: {0}")]
+    Wikidata(#[from] bae_catalogs::wikidata::WikidataError),
+
     /// A Discogs request failed. InvalidApiKey/NotFound preserved.
     #[cfg(desktop)]
     #[error("Discogs request failed: {0}")]
@@ -305,6 +311,8 @@ impl ImportError {
         #[cfg(desktop)]
         use bae_catalogs::musicbrainz::MusicBrainzError;
         use bae_catalogs::remote_image::RemoteImageError;
+        #[cfg(desktop)]
+        use bae_catalogs::wikidata::WikidataError;
         match self {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
@@ -340,6 +348,15 @@ impl ImportError {
                 | MusicBrainzError::Network(_)
                 | MusicBrainzError::Timeout
                 | MusicBrainzError::Provider { .. } => C::Import,
+            },
+            #[cfg(desktop)]
+            Self::Wikidata(error) => match error {
+                WikidataError::Other(_) => C::ImportData,
+                WikidataError::Request(_) => C::Internal,
+                WikidataError::NotFound(_)
+                | WikidataError::Network(_)
+                | WikidataError::Timeout
+                | WikidataError::Provider { .. } => C::Import,
             },
             #[cfg(desktop)]
             Self::Discogs(error) => match error {
@@ -411,6 +428,18 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    /// A Wikidata request that never got an answer is a provider failure,
+    /// as a MusicBrainz one is, not release data that could not be mapped.
+    #[test]
+    fn wikidata_error_is_a_provider_failure() {
+        let err: ImportError = bae_catalogs::wikidata::WikidataError::Timeout.into();
+        assert!(matches!(
+            err,
+            ImportError::Wikidata(bae_catalogs::wikidata::WikidataError::Timeout)
+        ));
+        assert_eq!(err.category(), crate::ui::UiErrorCategory::Import);
     }
 
     /// A Discogs server error likewise survives the conversion so a retry

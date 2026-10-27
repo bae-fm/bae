@@ -430,14 +430,7 @@ impl FetchDocuments<'_> {
             PayloadSource::MusicBrainzDiscogsXref | PayloadSource::MusicBrainzDiscogsMasterXref => {
                 unreachable!("a lookup by Discogs address is asked with the walk's others")
             }
-            PayloadSource::Wikidata => self
-                .wikidata
-                .fetch_entity(id, self.priority)
-                .await
-                .map_err(|error| ImportError::SourceData {
-                    catalog: Catalog::Wikidata,
-                    detail: error.to_string(),
-                })?,
+            PayloadSource::Wikidata => self.wikidata.fetch_entity(id, self.priority).await?,
         };
         self.documents.insert((source, id.to_owned()), json.clone());
         Ok(Fetched::Document(json))
