@@ -1,5 +1,6 @@
 use super::*;
 use crate::cue_flac::CueTrackMode;
+use std::sync::Arc;
 
 /// Valid FLAC fixture bytes.
 fn fake_flac() -> Vec<u8> {

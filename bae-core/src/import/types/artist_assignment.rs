@@ -67,6 +67,7 @@ impl Credited {
     }
 
     /// A list of `artists` that states no joins.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn plain_list(artists: impl IntoIterator<Item = ArtistAssignment>) -> Vec<Self> {
         artists.into_iter().map(Self::plain).collect()
     }

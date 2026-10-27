@@ -833,6 +833,7 @@ where
 /// Scan one watched root to completion, several of the folders directly under
 /// it at once, each a directory at a time. What each folder yields is said as
 /// soon as it is known, whatever the folders beside it are still reading.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn scan_for_candidates_with_decisions<F>(
     root: PathBuf,
     stored: &StoredCandidateEdits,
@@ -850,7 +851,7 @@ where
             decisions,
             new_grouping_key: &fresh_grouping_key,
         },
-        &FileReads::new(Arc::new(
+        &FileReads::new(std::sync::Arc::new(
             crate::import::file_tag_snapshot::LoftyFileTagReader,
         )),
         &ScanCancellation::new(),
@@ -927,7 +928,7 @@ pub fn collect_release_candidate_files_with_scope(
         stored,
         &[],
         &ScanCancellation::new(),
-        &FileReads::new(Arc::new(
+        &FileReads::new(std::sync::Arc::new(
             crate::import::file_tag_snapshot::LoftyFileTagReader,
         )),
     )? {

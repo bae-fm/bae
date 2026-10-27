@@ -362,6 +362,7 @@ pub fn row_count(rows: &[u32]) -> usize {
 /// Forming rows is what a run does with the whole of what it found. A reader
 /// of one of its lists reads the rows it recorded — [`group_formed_rows`] —
 /// because that list alone does not hold what the run decided them against.
+#[cfg(test)]
 pub fn form_rows(results: &[MetadataResult]) -> Vec<u32> {
     let mut grouped: std::collections::HashMap<(Catalog, String), usize> =
         std::collections::HashMap::new();

@@ -22,6 +22,7 @@ impl LibraryManager {
         Ok(self.database.get_artists_for_track(track_id).await?)
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_artist_by_id(
         &self,
         artist_id: &str,

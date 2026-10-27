@@ -131,6 +131,7 @@ impl LibraryManager {
         Ok(ResolvedImportWorks { ids, inserts })
     }
 
+    #[cfg(test)]
     pub async fn get_work_detail(&self, work_id: &str) -> Result<Option<WorkDetail>, LibraryError> {
         let Some(raw) = self.database.find_work_detail(work_id).await? else {
             return Ok(None);
