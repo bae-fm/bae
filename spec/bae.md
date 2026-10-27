@@ -2713,6 +2713,12 @@ The schema is `bae-core/migrations/001_initial.sql`, which coven applies as
 migration 1. Every table is `STRICT`. "Syncs" means coven syncs its rows
 (Appendix B); every other table stays on the device.
 
+bae gives coven the collation `natural_order`, which coven registers on every
+connection to a library: it orders text the way a person reads folder names
+("Disc 2" before "Disc 10", case aside, then by bytes, so two different
+strings never tie). It is part of the schema, so it gives the same answer on
+every device and in every version.
+
 ### A.1 The library
 
 All sync.

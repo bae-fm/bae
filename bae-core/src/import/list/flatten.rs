@@ -306,8 +306,10 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                 .get(left.watched_folder_path.as_str())
                 .cmp(&root_order.get(right.watched_folder_path.as_str()))
                 .then_with(|| left.watched_folder_path.cmp(&right.watched_folder_path));
-            let by_unit = by_root.then_with(|| natural_path(left_path, right_path));
-            let by_member = natural_path(&left.display_path, &right.display_path);
+            let by_unit =
+                by_root.then_with(|| crate::migrations::natural_order(left_path, right_path));
+            let by_member =
+                crate::migrations::natural_order(&left.display_path, &right.display_path);
             let chosen = match view.order {
                 ImportListOrder::PathAscending => by_unit.then(by_member),
                 ImportListOrder::PathDescending => by_unit.then(by_member).reverse(),
@@ -350,10 +352,6 @@ impl OrderedEntry {
     }
 }
 
-pub(super) fn natural_path(left: &str, right: &str) -> std::cmp::Ordering {
-    natord::compare_ignore_case(left, right).then_with(|| left.cmp(right))
-}
-
 /// The keys of the releases among `items` in path order: by watched folder
 /// path, then by each release's path below it — the order the list runs one
 /// watched folder's releases in when it orders by path. A folder's reading and
@@ -378,7 +376,8 @@ pub(crate) fn release_keys_in_path_order<'a>(
         })
         .collect();
     releases.sort_by(|left, right| {
-        natural_path(left.0, right.0).then_with(|| natural_path(left.1, right.1))
+        crate::migrations::natural_order(left.0, right.0)
+            .then_with(|| crate::migrations::natural_order(left.1, right.1))
     });
     releases.into_iter().map(|(_, _, key)| key).collect()
 }

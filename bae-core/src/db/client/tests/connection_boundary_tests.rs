@@ -55,3 +55,22 @@ async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
         DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)
     ));
 }
+
+/// Every connection to a library knows the natural order bae's schema names:
+/// numbers by value, letters without regard to case, then bytes.
+#[tokio::test]
+async fn coven_connection_orders_by_bae_natural_order() {
+    let (db, _tmp) = super::temp_db().await;
+    let ordered = db
+        .read(|sql| {
+            Ok(sql.query(
+                "SELECT column1 FROM (VALUES ('Disc 10'), ('disc 2'), ('Disc 2'), ('Disc 1'))
+                 ORDER BY column1 COLLATE natural_order",
+                [],
+                |row| row.get::<_, String>(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(ordered, ["Disc 1", "Disc 2", "disc 2", "Disc 10"]);
+}

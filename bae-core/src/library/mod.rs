@@ -212,11 +212,15 @@ impl Keychain {
 }
 
 /// bae's store as every handle opens it: its synced tables, its schema, and
-/// the SQL functions the schema's triggers call.
+/// the collation and SQL functions the schema names.
 pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
     builder
         .synced_tables(crate::sync::synced_tables())
         .migrations(crate::migrations::all())
+        .collation(
+            crate::migrations::NATURAL_ORDER,
+            crate::migrations::natural_order,
+        )
         .function(
             "bae_fold_case",
             1,
@@ -258,6 +262,11 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
         |context| context.get::<rusqlite::types::Value>(0),
     )
     .expect("coven_key registers");
+    conn.create_collation(
+        crate::migrations::NATURAL_ORDER,
+        crate::migrations::natural_order,
+    )
+    .expect("natural_order registers");
     conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
         .expect("the schema applies");
     conn
