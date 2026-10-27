@@ -160,9 +160,10 @@ pub(crate) fn load_standings_on(
     .collect()
 }
 
-/// Where `candidate_key` stands; nothing running when it has no row.
+/// Where `candidate_key` stands, as its row says, inside a write or outside
+/// one; nothing running when it has no row.
 pub(crate) fn load_standing_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl super::super::query::QueryOne,
     candidate_key: &str,
 ) -> Result<StoredStanding, DbError> {
     let columns = sql
@@ -260,22 +261,6 @@ fn count_on(
         )?;
     }
     Ok(())
-}
-
-/// The row as stored, whatever files the scan holds now: what a change is
-/// decided from.
-fn stored_on(sql: &SqlContext<'_, '_>, candidate_key: &str) -> Result<StoredStanding, DbError> {
-    let columns = sql
-        .query_row(
-            &format!("SELECT {COLUMNS} FROM import_candidate_standing WHERE candidate_key = ?"),
-            [candidate_key],
-            |row| StandingColumns::read(row, 0),
-        )
-        .optional()?;
-    match columns {
-        None => Ok(StoredStanding::default()),
-        Some(columns) => columns.standing(candidate_key),
-    }
 }
 
 /// Store `standing` as `candidate_key`'s row, or remove the row when nothing
@@ -385,7 +370,7 @@ pub(crate) fn change_identification_on(
     candidate_key: &str,
     change: &IdentificationChange,
 ) -> Result<IdentificationMove, DbError> {
-    let mut standing = stored_on(sql, candidate_key)?;
+    let mut standing = load_standing_on(sql, candidate_key)?;
     let before = standing.identification.take();
     let after = change.applied(before.as_ref());
     let moved = IdentificationMove { before, after };
@@ -404,7 +389,7 @@ fn claim_import_on(
     candidate_key: &str,
     import_id: &str,
 ) -> Result<bool, DbError> {
-    let mut standing = stored_on(sql, candidate_key)?;
+    let mut standing = load_standing_on(sql, candidate_key)?;
     if standing.import.is_some() {
         return Ok(false);
     }
@@ -425,7 +410,7 @@ pub(crate) fn move_import_on(
     import_id: &str,
     next: Option<ImportStanding>,
 ) -> Result<(), DbError> {
-    let mut standing = stored_on(sql, candidate_key)?;
+    let mut standing = load_standing_on(sql, candidate_key)?;
     if standing
         .import
         .as_ref()
