@@ -27,8 +27,8 @@ pub(super) struct LoudnessResult {
     pub album_loudness_lufs: Option<f64>,
     pub album_peak_linear: Option<f64>,
     pub broken: Vec<String>,
-    /// The frames a scrub jumps to, for every segment whose file is a FLAC
-    /// the demuxer can only binary-search.
+    /// The frames a scrub starts its decode at, for every segment whose file
+    /// is a FLAC the demuxer can only binary-search or an MP3.
     pub scrub_points: Vec<crate::db::DbScrubPoint>,
 }
 

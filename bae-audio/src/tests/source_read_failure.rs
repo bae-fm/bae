@@ -114,8 +114,7 @@ async fn verifying_decode_reports_a_first_read_failure_as_a_read_failure() {
     let result = tokio::task::spawn_blocking(move || {
         decode_audio_to_verifying_sink(
             buffer,
-            None,
-            Some(0),
+            DecodeStart::Sample(0),
             Some(0),
             None,
             &mut NullSink,
@@ -151,7 +150,15 @@ async fn streaming_decode_stops_on_a_read_failure_as_a_read_failure() {
     let result = tokio::task::spawn_blocking(move || {
         let (mut sink, _source, _ready) = create_track_stream_pair_with_capacity(44_100, 2, 1 << 22);
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token).map(|_| ())
+        decode_audio_streaming(
+            buffer,
+            &mut sink,
+            DecodeStart::StreamStart,
+            None,
+            None,
+            None,
+            token,
+        ).map(|_| ())
     })
     .await
     .expect("decode task");

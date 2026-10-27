@@ -15,7 +15,8 @@ use tracing::{debug, error, info};
 /// How much a fill fetches at a time: 64 of coven's chunks, 4 MiB. The buffer
 /// keeps one window ahead of a reader that hasn't set its ceiling and one
 /// behind the most-behind reader, and import spaces a FLAC's scrub points so a
-/// seek to one reads from a single window.
+/// seek to one reads from a single window (an MP3's 10 seconds fit in one at
+/// any bitrate).
 pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 
 /// Prioritizes audio byte fetches so the track the user is waiting to hear gets

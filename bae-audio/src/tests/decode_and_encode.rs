@@ -485,8 +485,7 @@ fn sink_decode_discards_an_invalid_terminal_mp3_packet_after_complete_audio() {
     let mut sink = CountingSink::default();
     let result = decode_audio_to_verifying_sink(
         buffer_from(&damaged),
-        None,
-        None,
+        DecodeStart::StreamStart,
         None,
         None,
         &mut sink,
@@ -508,8 +507,7 @@ fn streaming_decode_continues_after_an_invalid_terminal_mp3_packet() {
     let error_count = decode_audio_streaming(
         buffer_from(&damaged),
         &mut sink,
-        None,
-        None,
+        DecodeStart::StreamStart,
         None,
         None,
         None,
@@ -759,8 +757,7 @@ fn test_streaming_decode() {
         let result = decode_audio_streaming(
             decoder_buffer,
             &mut sink,
-            None,
-            None,
+            DecodeStart::StreamStart,
             None,
             None,
             None,
@@ -809,7 +806,15 @@ fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
     let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 4096);
     let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-    let result = decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token);
+    let result = decode_audio_streaming(
+        buffer,
+        &mut sink,
+        DecodeStart::StreamStart,
+        None,
+        None,
+        None,
+        token,
+    );
 
     assert!(
         matches!(result, Err(DecodeError::InputCancelled)),
@@ -834,7 +839,15 @@ fn streaming_decode_reports_truncated_flac_packet_stream() {
     let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     let error_count =
-        decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token)
+        decode_audio_streaming(
+        buffer,
+        &mut sink,
+        DecodeStart::StreamStart,
+        None,
+        None,
+        None,
+        token,
+    )
             .expect("playback keeps the decodable prefix");
 
     assert!(error_count > 0, "truncation must remain observable");

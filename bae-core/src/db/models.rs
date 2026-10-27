@@ -568,12 +568,18 @@ impl DbAudioSegment {
     }
 }
 
-/// A frame in a segment's file that a scrub can jump to by byte: the frame's
-/// first sample and the byte the frame begins at, both within the file.
+/// A frame in a segment's file that a scrub can start its decode at: the
+/// frame's first sample and the byte the frame begins at, both within the
+/// file, and the first sample a decode from it plays as a decode from the
+/// stream's start does. A FLAC frame stands alone, so that is its own first
+/// sample. An MP3 frame's audio depends on the frames before it (the bit
+/// reservoir, and the overlap with the frame before), so a decode from it
+/// plays exactly only some frames on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScrubPoint {
     pub sample: u64,
     pub byte: u64,
+    pub exact_from: u64,
 }
 
 /// One stored scrub point and the segment whose file it lies in.

@@ -31,6 +31,7 @@ pub const AVIO_BUFFER_SIZE: usize = 32768;
 pub use decode::byte_jump_keeps_place;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use decode::verification::decode_audio_to_verifying_sink;
+pub use decode::DecodeStart;
 pub use decode::{
     decode_audio, decode_audio_streaming, decode_audio_to_sink, decode_audio_to_sink_with_seek,
 };
@@ -129,10 +130,9 @@ pub struct DecodedStream {
     /// points gives one entry before the first sample, so its seek lands on
     /// the first frame and decodes everything up to the target.
     pub header_index_passes_start: bool,
-    /// Whether the decode starts at a frame start: it jumped by byte to a
-    /// recorded frame, or reads from the stream's first sample. After a jump
-    /// into the middle of a frame the first packets carry wrong positions.
-    pub starts_at_frame: bool,
+    /// Where the decode started reading the stream. A lossy stream's sink
+    /// decode starts at the stream's start whatever it was asked.
+    pub start: DecodeStart,
     pub sample_rate: u32,
     /// Where the decode's window ends: frames from here on belong to what
     /// follows it.
@@ -140,14 +140,16 @@ pub struct DecodedStream {
 }
 
 /// A packet the decoder accepted, as the demuxer placed it: one frame, for
-/// FLAC.
+/// FLAC and MP3.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DecodedPacket {
     /// The byte the packet begins at in the file; `None` when the demuxer
     /// doesn't know it.
     pub byte: Option<u64>,
-    /// The packet's first sample; `None` when it carries no timestamp.
-    pub sample: Option<u64>,
+    /// The packet's first sample on the stream's own count, which puts an
+    /// MP3's first frame before sample 0 (its encoder delay); `None` when the
+    /// packet carries no timestamp.
+    pub sample: Option<i64>,
     /// Its length in bytes.
     pub size: u64,
 }

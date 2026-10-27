@@ -1,9 +1,11 @@
 #![cfg(feature = "test-utils")]
-//! What import stores for a scrub to jump to in a FLAC the demuxer can only
+//! What import stores for a scrub to start at in a FLAC the demuxer can only
 //! binary-search: no SEEKTABLE, or one holding only placeholder points. Each
 //! segment gets its first frame, then the first frame each 10 seconds of audio
 //! on, every one an exact frame start the file's own packets confirm. A FLAC
-//! with a real seektable gets none.
+//! with a real seektable gets none. And in every MP3 (a whole file: bae binds
+//! no CUE sheet to lossy audio): for the first frame each 10 seconds of audio
+//! on, an earlier frame a decode can start at and play it exactly.
 
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::db::ScrubPoint;
@@ -59,15 +61,88 @@ fn with_placeholder_seektable(flac: &[u8], count: usize) -> Vec<u8> {
     out
 }
 
+/// `seconds` of 16-bit stereo noise, encoded as a 128 kbps MP3.
+fn noise_mp3(seconds: u32, seed: u32) -> Vec<u8> {
+    let mut state = seed | 1;
+    let samples: Vec<i32> = (0..SAMPLE_RATE * 2 * seconds)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            (state as i32 >> 18) << 16
+        })
+        .collect();
+    bae_audio::init();
+    bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 128 },
+        &samples,
+        SAMPLE_RATE,
+        2,
+    )
+    .expect("encode the noise MP3")
+}
+
+/// Every frame of the MP3 at `path`, as its demuxer reads it from the start:
+/// the frame's first sample, past the encoder delay its first frame begins
+/// before sample 0 by, and the byte it begins at.
+fn mp3_frames(path: &Path) -> Vec<(i64, u64)> {
+    let mut input = ffmpeg_next::format::input(&path).expect("open the MP3");
+    let stream = input.stream(0).expect("the MP3's stream");
+    let time_base = stream.time_base();
+    let start = stream.start_time();
+    let per_sample = i64::from(time_base.denominator()) / i64::from(SAMPLE_RATE);
+    input
+        .packets()
+        .map(|(_, packet)| {
+            let pts = packet.pts().expect("an MP3 packet's timestamp");
+            ((pts - start) / per_sample, packet.position() as u64)
+        })
+        .collect()
+}
+
+/// Check a whole-file MP3's `points` against its frames: for the first frame
+/// each 10 seconds of audio past the stream's first, a frame before it that
+/// plays it exactly, every one an exact frame start. The stream's first frame
+/// has none: a decode from the stream's start serves it.
+fn assert_mp3_points(points: &[ScrubPoint], frames: &[(i64, u64)]) {
+    let mut served = vec![frames[0].0];
+    for &(sample, _) in frames {
+        if sample >= served.last().unwrap() + TEN_SECONDS as i64 {
+            served.push(sample);
+        }
+    }
+    served.remove(0);
+    assert_eq!(
+        points.len(),
+        served.len(),
+        "points {points:?} for frames at {served:?}"
+    );
+    for (point, served) in points.iter().zip(served) {
+        assert!(
+            frames.contains(&(point.sample as i64, point.byte)),
+            "{point:?} is a frame start"
+        );
+        assert!(
+            point.sample < point.exact_from && point.exact_from as i64 <= served,
+            "{point:?} plays the frame at {served}"
+        );
+    }
+}
+
 /// Every frame of the FLAC at `path`, as its demuxer reads it from the start:
-/// the frame's first sample and the byte it begins at.
+/// the frame's first sample and the byte it begins at. A FLAC frame decodes
+/// alone, so a decode from it plays exactly from its own sample.
 fn frames(path: &Path) -> Vec<ScrubPoint> {
     let mut input = ffmpeg_next::format::input(&path).expect("open the FLAC");
     input
         .packets()
-        .map(|(_, packet)| ScrubPoint {
-            sample: packet.pts().expect("a FLAC packet's timestamp") as u64,
-            byte: packet.position() as u64,
+        .map(|(_, packet)| {
+            let sample = packet.pts().expect("a FLAC packet's timestamp") as u64;
+            ScrubPoint {
+                sample,
+                byte: packet.position() as u64,
+                exact_from: sample,
+            }
         })
         .collect()
 }
@@ -288,5 +363,33 @@ async fn a_file_with_a_seektable_stores_no_points() {
             "a segment at sample {} has points",
             segment.span.start_sample
         );
+    }
+}
+
+#[tokio::test]
+async fn per_track_mp3s_store_points() {
+    support::tracing_init();
+    let files = [noise_mp3(25, 11), noise_mp3(32, 13)];
+    let written = files.clone();
+    let imported = import(
+        release(
+            "scrub-points-per-track-mp3",
+            &[("Track One", "0:25"), ("Track Two", "0:32")],
+        ),
+        move |dir| {
+            std::fs::write(dir.join("01 Track One.mp3"), &written[0]).unwrap();
+            std::fs::write(dir.join("02 Track Two.mp3"), &written[1]).unwrap();
+        },
+    )
+    .await;
+    let names = ["01 Track One.mp3", "02 Track Two.mp3"];
+    assert_eq!(imported.tracks.len(), 2);
+    for (index, track) in imported.tracks.iter().enumerate() {
+        let frames = mp3_frames(&imported.album_dir.join(names[index]));
+        let points = track.segments[0].scrub_points.as_slice();
+        assert_mp3_points(points, &frames);
+        // The frames 10 and 20 seconds in, and 30 in the longer file; the
+        // first seconds decode from the stream's start.
+        assert_eq!(points.len(), [2, 3][index], "{points:?}");
     }
 }

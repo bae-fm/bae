@@ -45,8 +45,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
         let result = decode_audio_streaming(
             buffer,
             &mut sink,
-            None,
-            Some(seek_sample),
+            DecodeStart::Sample(seek_sample),
             None,
             None,
             None,
@@ -226,8 +225,7 @@ fn flac_seek_uses_seektable_not_binary_search() {
         let result = decode_audio_streaming(
             decode_buffer,
             &mut sink,
-            None,
-            Some(seek_sample),
+            DecodeStart::Sample(seek_sample),
             None,
             Some(stop_sample),
             None,
@@ -308,7 +306,7 @@ fn byte_seek_to_landing_is_sample_exact() {
 
     // Decode track 2 with a given by-byte seek target, trimming to `start` and
     // stopping ~0.1s later; return the interleaved output samples.
-    let decode_from = |seek_to_byte: Option<u64>| -> Vec<f32> {
+    let decode_from = |landing: u64| -> Vec<f32> {
         let buffer = create_sparse_buffer(flac.len() as u64);
         buffer.append_at(0, &flac);
         let (mut sink, mut source, _ready) =
@@ -319,8 +317,7 @@ fn byte_seek_to_landing_is_sample_exact() {
             let result = decode_audio_streaming(
                 decode_buffer,
                 &mut sink,
-                seek_to_byte,
-                None,                           // no sample seek
+                DecodeStart::Byte(landing),
                 Some(start),                    // trim lead-in to the start sample
                 Some(start + sample_rate / 10), // stop ~0.1s later
                 None,
@@ -363,7 +360,7 @@ fn byte_seek_to_landing_is_sample_exact() {
     let is_sample_exact = |out: &[f32]| out.len() > 200 && mse(out, target) < 1e-4;
 
     // Correct landing -> exact target sample.
-    let seeked = decode_from(Some(landing));
+    let seeked = decode_from(landing);
     assert!(
         is_sample_exact(&seeked),
         "the correct landing byte must land on start_sample (len {}, mse {:.6})",
@@ -384,7 +381,7 @@ fn byte_seek_to_landing_is_sample_exact() {
     // would be identical regardless of the byte. The seek is a valid in-file
     // offset (so it doesn't fail and fall back to decode-from-zero); it just lands
     // past the stop window, yielding empty/misaligned output.
-    let sabotaged = decode_from(Some(wrong_landing));
+    let sabotaged = decode_from(wrong_landing);
     assert!(
         !is_sample_exact(&sabotaged),
         "a wrong landing byte still produced the target sample (len {}, mse {:.6}) -- \
@@ -694,8 +691,7 @@ fn decode_from_landing(flac: &[u8], landing: u64, start: Option<u64>) -> Vec<i32
     let mut decoded = CollectedSamples::default();
     decode_audio_to_sink_with_seek(
         buffer_from(flac),
-        Some(landing),
-        None,
+        DecodeStart::Byte(landing),
         start,
         None,
         &mut decoded,

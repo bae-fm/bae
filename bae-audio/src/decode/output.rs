@@ -284,9 +284,7 @@ pub(super) unsafe fn run_decode_loop(
         }
         out.on_packet(crate::DecodedPacket {
             byte: u64::try_from(packet_position).ok(),
-            sample: (packet_pts != AV_NOPTS_VALUE)
-                .then(|| sample_clock.sample_at(packet_pts))
-                .and_then(|sample| u64::try_from(sample).ok()),
+            sample: (packet_pts != AV_NOPTS_VALUE).then(|| sample_clock.sample_at(packet_pts)),
             size: u64::try_from(packet_size).expect("a packet's size is never negative"),
         });
 

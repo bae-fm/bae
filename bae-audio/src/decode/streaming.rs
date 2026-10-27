@@ -4,11 +4,12 @@ use super::*;
 /// samples to a `TrackSink`. FFmpeg finds the frame boundaries itself; the buffer
 /// just serves the bytes it asks for, blocking until they land.
 ///
-/// The buffer holds the whole backing file. `seek_to_byte` jumps FFmpeg straight
-/// to a known frame offset (FLAC), or `seek_to_sample` seeks by sample through the
-/// demuxer's index (APE); `start_at_sample` trims the lead-in FFmpeg emits before
-/// the exact start (a frame may begin before it); `stop_at_sample` ends output at
-/// the track's end. `end_byte` is the track's end byte offset — the read-ahead
+/// The buffer holds the whole backing file. `start` says where the decode
+/// starts reading ([`DecodeStart`]): the stream's start, a known frame offset
+/// (FLAC), a recorded frame (FLAC, MP3), or a sample sought through the
+/// demuxer's index (APE); `start_at_sample` trims the lead-in FFmpeg emits
+/// before the exact start (a frame may begin before it); `stop_at_sample` ends
+/// output at the track's end. `end_byte` is the track's end byte offset — the read-ahead
 /// ceiling handed to the reader so the fill buffers the rest of this track;
 /// `None` keeps the whole file (a per-track file, or an album's last track).
 ///
@@ -19,8 +20,7 @@ use super::*;
 pub fn decode_audio_streaming(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
-    seek_to_byte: Option<u64>,
-    seek_to_sample: Option<u64>,
+    start: DecodeStart,
     start_at_sample: Option<u64>,
     stop_at_sample: Option<u64>,
     end_byte: Option<u64>,
@@ -33,8 +33,7 @@ pub fn decode_audio_streaming(
         decode_audio_streaming_impl(
             buffer,
             sink,
-            seek_to_byte,
-            seek_to_sample,
+            start,
             start_at_sample,
             stop_at_sample,
             end_byte,
@@ -46,8 +45,7 @@ pub fn decode_audio_streaming(
 unsafe fn decode_audio_streaming_impl(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
-    seek_to_byte: Option<u64>,
-    seek_to_sample: Option<u64>,
+    start: DecodeStart,
     start_at_sample: Option<u64>,
     stop_at_sample: Option<u64>,
     end_byte: Option<u64>,
@@ -106,14 +104,7 @@ unsafe fn decode_audio_streaming_impl(
     })?;
 
     let sample_clock = SampleClock::of_stream(audio.stream, sample_rate);
-    seek_input_or_warn(
-        fmt_ctx,
-        codec_ctx,
-        audio.stream_index,
-        &sample_clock,
-        seek_to_byte,
-        seek_to_sample,
-    );
+    seek_input_or_warn(fmt_ctx, codec_ctx, &audio, &sample_clock, start);
 
     // The reader now sits at the track's start. Set its read-ahead ceiling -- the
     // track's end byte, or the whole file when the track runs to EOF (a per-track

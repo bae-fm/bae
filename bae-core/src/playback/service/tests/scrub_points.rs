@@ -9,7 +9,7 @@ use crate::playback::data_source::FILL_WINDOW_SIZE;
 use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::ScrubPoints;
 use bae_audio::{encode_i32, EncodeFormat, AVIO_BUFFER_SIZE};
-use std::sync::atomic::AtomicBool;
+use bae_util::content_type::ContentType;
 
 const SAMPLE_RATE: u32 = 96_000;
 const CHANNELS: u32 = 2;
@@ -38,44 +38,9 @@ fn noise_flac(seconds: u32) -> Vec<u8> {
     .expect("encode the noise FLAC")
 }
 
-fn filled_buffer(bytes: &[u8]) -> SharedSparseBuffer {
-    let buffer = create_sparse_buffer(bytes.len() as u64);
-    buffer.append_at(0, bytes);
-    buffer
-}
-
-/// Takes a verifying decode's scrub points as import's sink does, and
-/// discards its samples.
-struct TakesScrubPoints(Option<crate::import::scrub_points::ScrubPointTaker>);
-
-impl bae_audio::DecodedSink for TakesScrubPoints {
-    fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
-    fn on_samples(&mut self, _samples: &[i32]) {}
-    fn on_stream(&mut self, stream: &bae_audio::DecodedStream) {
-        self.0 = crate::import::scrub_points::ScrubPointTaker::for_stream(stream);
-    }
-    fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {
-        if let Some(taker) = self.0.as_mut() {
-            taker.observe(packet);
-        }
-    }
-}
-
 /// The scrub points the import's verifying decode takes over `span` of `flac`.
 fn import_scrub_points(flac: &[u8], span: SegmentSpan) -> Vec<ScrubPoint> {
-    let decode = StreamDecodeParams::new(
-        vec![SegmentDecodeParams::new(filled_buffer(flac), span, 0)],
-        true,
-        0,
-        0,
-    );
-    let mut sink = TakesScrubPoints(None);
-    decode
-        .verify_to_sink(&mut sink, Arc::new(AtomicBool::new(false)))
-        .expect("the verifying decode reads the file");
-    sink.0
-        .expect("a FLAC with no seektable gets scrub points")
-        .finish()
+    super::import_scrub_points(flac, span, &ContentType::Flac)
 }
 
 /// Run `decode` to its end and return the samples it played.

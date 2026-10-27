@@ -852,9 +852,9 @@ fn assert_track_start_is_its_frame(name: &str, format: bae_audio::EncodeFormat) 
         .iter()
         .rev()
         .find(|packet| {
-            packet
-                .sample
-                .is_some_and(|sample| sample <= track2.start_sample)
+            packet.sample.is_some_and(|sample| {
+                sample <= i64::try_from(track2.start_sample).expect("a track start fits i64")
+            })
         })
         .expect("a frame at or before the track's start");
     assert_eq!(

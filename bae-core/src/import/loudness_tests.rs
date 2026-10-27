@@ -140,8 +140,7 @@ async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     let mut sink = sink_with(Some(total), 0, 0).await;
     let ok = bae_audio::decode_audio_to_verifying_sink(
         buffer_of(&clean),
-        None,
-        Some(start),
+        bae_audio::DecodeStart::Sample(start),
         Some(start),
         Some(end),
         &mut sink,
@@ -160,8 +159,7 @@ async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     let mut sink = sink_with(Some(total), 0, 0).await;
     let res = bae_audio::decode_audio_to_verifying_sink(
         buffer_of(truncated),
-        None,
-        Some(start),
+        bae_audio::DecodeStart::Sample(start),
         Some(start),
         Some(end),
         &mut sink,

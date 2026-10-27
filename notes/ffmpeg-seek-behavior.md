@@ -34,7 +34,7 @@ both seek via the MP4 demuxer; the codec is irrelevant to seeking.
 |--------|---------|----------------|------------------------------|------------------------------|
 | FLAC | `flacdec.c` | seektable → stream index | **Yes** (and a seektable must be present) | **Yes**, when flag unset or no seektable |
 | APE | `ape.c` | embedded seektable → stream index (always) | No | No — seektable is mandatory to even open |
-| MP3 | `mp3dec.c` | Xing TOC, or CBR byte-scaling | **Yes** (or `usetoc` opt); imprecise either way | **Yes**, when neither holds |
+| MP3 | `mp3dec.c` | Xing TOC, or CBR byte-scaling, with the flag; else the generic index | The flag turns on the estimates; bae leaves it off | No — no `read_timestamp`; without the flag a seek goes to the generic index |
 | ALAC / AAC | `mov.c` (MP4) | full sample table built at open | No | No — always fully indexed (but see *moov location*) |
 | WAV / PCM | `wavdec.c` → `pcm.c` | direct byte arithmetic | No | No — no index, no reads |
 
@@ -109,7 +109,7 @@ a mid-file seek jumped straight to the target frame's byte).
 
 ## MP3 — `mp3dec.c`
 
-MP3 mirrors FLAC: its index is also gated on `AVFMT_FLAG_FAST_SEEK`. `mp3_seek`
+MP3's header index is also gated on `AVFMT_FLAG_FAST_SEEK`. `mp3_seek`
 ([L552](https://github.com/FFmpeg/FFmpeg/blob/894da5ca7d742e4429ffb2af534fcda0103ef593/libavformat/mp3dec.c#L552)):
 
 ```c
@@ -118,7 +118,7 @@ if (mp3->xing_toc && (mp3->usetoc || (fast_seek && !mp3->is_cbr))) {
 } else if (fast_seek && st->duration > 0 && filesize > 0) {
     // CBR byte-rate scaling estimate
 } else {
-    return -1;                    // → generic binary search
+    return -1;                    // → the generic index
 }
 ```
 
@@ -127,13 +127,33 @@ if (mp3->xing_toc && (mp3->usetoc || (fast_seek && !mp3->is_cbr))) {
   ([L137–L138](https://github.com/FFmpeg/FFmpeg/blob/894da5ca7d742e4429ffb2af534fcda0103ef593/libavformat/mp3dec.c#L137)).
 - Both fast paths are **imprecise**: the TOC is a 100-point table (warns
   `"Using MP3 TOC to seek; may be imprecise."`), and CBR scaling assumes a
-  constant bitrate. Without the flag (and no `usetoc`), MP3 returns `-1` →
-  binary search.
+  constant bitrate. Without the flag (and no `usetoc`), MP3 returns `-1`.
 
-**Implication:** `AVFMT_FLAG_FAST_SEEK` helps MP3 too (avoids the binary search),
-but MP3 seeks are approximate by nature. MP3 is rarely a single-file CUE album in
-practice (MP3 rips are usually per-track), so the remote-seek cost mostly applies
-to long single MP3s, and the imprecision is the tradeoff for not binary-searching.
+- Neither path is a binary search: the MP3 demuxer registers no
+  `read_timestamp`, so when `mp3_seek` returns `-1` avformat seeks through
+  the stream's generic index (`AVFMT_GENERIC_INDEX`, `seek_frame_generic` in
+  `seek.c`), which holds the frames the demuxer has read and any entry added
+  with `av_add_index_entry`. A seek finds the last entry at or before the
+  timestamp, reads from its byte, and dates the frames from its timestamp
+  (`avpriv_update_cur_dts`). Past the last entry it reads forward from there
+  to the timestamp.
+- With the flag, the estimate is all a seek has. Measured on synthetic 60 s
+  files (n8.1.2, a one-frame pre-roll): a CBR 128 kbps seek 40 s in played
+  1,152 samples late; a VBR file with no Xing table, 5,976 late at 10 s and
+  27,687 late at 40 s; a VBR file with a Xing table, from 4,792 early to
+  5,000 late. A seek to before the first TOC entry fails, and its
+  `ff_read_frame_flush` drops the packets `avformat_find_stream_info` had
+  buffered: a VBR file with a Xing table started at sample 0 that way played
+  from 59,760 samples in.
+- A byte jump (`AVSEEK_FLAG_BYTE`) keeps no place: the demuxer restarts its
+  timestamps at 0, and `read_frame_internal` (`demux.c`) then puts the
+  encoder delay it drops at the stream's first frame (`start_skip_samples`,
+  for `pts == 0`) on the jumped-to frame, and computes the end padding it
+  drops from the restarted timestamps, so drops it nowhere.
+
+**Implication:** an MP3 seek is exact only through an index entry that is a
+real frame at its real timestamp. bae opens an MP3 without the flag and
+gives the demuxer that entry: a stored scrub point (see *What bae does*).
 
 ## ALAC / AAC — `mov.c` (MP4 / M4A container)
 
@@ -178,18 +198,18 @@ which computes the byte position directly from `block_align` and `byte_rate`:
 
 ## Cross-cutting summary
 
-- **`AVFMT_FLAG_FAST_SEEK` is the lever.** It turns on the seektable/TOC index for
-  **FLAC and MP3**; it's a no-op for APE, MP4, and WAV (already optimal). Setting
-  it before `avformat_open_input` is the general fix for slow remote seeks. It
-  does not hurt the formats that ignore it.
-- **The binary search is the enemy** and only FLAC (no flag or no seektable) and
-  MP3 (no flag/`usetoc`) ever hit it. APE/MP4/WAV never do.
-- **Two different remote-cost shapes:** FLAC/MP3 pay *per-seek* (binary search);
+- **`AVFMT_FLAG_FAST_SEEK` is the lever** for FLAC: it turns on the seektable
+  index. It's a no-op for APE, MP4, and WAV (already optimal). For MP3 it turns
+  on the TOC and bitrate estimates, which bae doesn't want.
+- **The binary search is the enemy** and only FLAC (no flag or no seektable)
+  ever hits it. APE/MP4/WAV/MP3 never do.
+- **Two different remote-cost shapes:** FLAC pays *per-seek* (binary search);
   MP4 pays *at-open* (non-faststart `moov` at end). APE pays a small at-open
   header read. WAV pays nothing extra.
 - **Accuracy:** FLAC/APE/MP4/WAV seeks land at or before the target frame and
   bae's trim loop (`start_at_sample`) makes the output sample-accurate. MP3's
-  fast paths (TOC/scaling) are inherently approximate.
+  fast paths (TOC/scaling) are inherently approximate; its generic index is
+  exact for the entries it holds.
 
 ## What bae does
 
@@ -208,11 +228,14 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   jump the WAV, AIFF and MP3 demuxers restart their timestamps at 0, MP4's
   can't jump by byte, and APE's packets state no byte. The recorded byte is
   still fetched ahead. Over a cloud home the header and the track's audio are
-  fetched in parallel.
+  fetched in parallel. An MP3 starts at a scrub point or its first frame,
+  below; bae binds no CUE sheet to lossy audio, so an MP3 track is its whole
+  file.
 - **In-track scrubs seek by sample** with `AVFMT_FLAG_FAST_SEEK` set
   (`bae-audio/src/decode.rs`), so a seektable-bearing FLAC (nearly
-  every rip) and MP3 use their index: one fetch. The exception is a FLAC with
-  scrub points, below.
+  every rip) uses its index: one fetch. The container is probed before
+  `avformat_open_input` so the flag is set for every demuxer but MP3's. The
+  exceptions are a FLAC with scrub points and every MP3, below.
 - **A FLAC without a usable seektable scrubs by byte, to a stored scrub
   point.** Left to FFmpeg, such a scrub is slow in one of two ways (FFmpeg
   n8.1.2, `flacdec.c`):
@@ -258,6 +281,38 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   its last track went from 26 jumps to 3, the middle of its first from 6 to 2;
   a 245 MB album's from 4 to 3 and 6 to 2; a per-track file's from 4 to 2 and
   8 to 2; the album with a seektable takes 3 and 2.
+- **An MP3 starts at a stored scrub point, or its first frame.** Its frames
+  state no position, and its audio leans on the frames before it: a frame's
+  main data begins up to 511 bytes back in the main data of earlier frames
+  (the bit reservoir, `main_data_begin`), and its output overlaps the frame
+  before. Import's loudness pass reads every MP3 from its first frame (a
+  lossy sink decode always does), and each packet gives its frame's byte,
+  size and first sample (`pkt->pts` on the stream's count, the first frame's
+  before sample 0 by the encoder delay). A frame decodes as from the start
+  once the decode has its main data and the frame before it whole, which
+  needs the frames from the start of the decode to two before it to hold 511
+  bytes of main data; counted as each frame's size less 38 (header, CRC,
+  MPEG-1 stereo side information), that gives the latest frame a decode can
+  start at for each frame. Measured against the least that played exactly
+  (n8.1.2's float decoder, pink noise and a noise/tone mix): 3 frames back at
+  128 kbps, where the count also says 3; 8 at 32 kbps, where it says 9; 2 to
+  3 in VBR quality 2 files. For the first frame each 10 seconds past the
+  stream's first, the point is that latest frame, with `exact_from`, the
+  first sample a decode from it plays exactly. Ten seconds are at most
+  400 KB (320 kbps), well inside one window.
+
+  The decoder opens the MP3 without `AVFMT_FLAG_FAST_SEEK`, adds the point's
+  frame to the stream's index (`av_add_index_entry`, replacing any entry at
+  its timestamp) and seeks to its timestamp: the generic index jumps to its
+  byte and dates the frames from there, so the encoder delay is dropped only
+  at the stream's first frame and the end padding at its last. A scrub takes
+  the last point whose `exact_from` is at or before its target; before the
+  first it reads from the stream's start. Every sample it plays equals a
+  decode from the stream's start, in CBR and VBR files with and without a
+  Xing table. An MP3 asked for a sample seek with no point (a preview of an
+  unimported file) reads from its start: without the flag a sample seek
+  would read forward from the first frames anyway, with a pre-roll short of
+  the reservoir.
 - **A lossy start is placed on the stream's own sample count.** Sample 0 is
   the stream's `start_time` (an MP3's LAME delay puts it 1,105 samples past
   the first packet), the decoder gets the stream's time base
@@ -271,9 +326,7 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   reads a lossy stream from its start rather than seeking, because a lossy
   decoder's output after a seek is not the decode from the start: Opus's
   float decoder still differed 8,000 samples past a target it landed 7,700
-  before, and with `AVFMT_FLAG_FAST_SEEK` an MP3 seek's landed timestamp is
-  estimated from the byte position (673 samples off 12 s into a CBR file).
-  Playback seeks, and so inherits that estimate for MP3.
+  before. Playback seeks; an MP3's seeks start at a scrub point, above.
 - **Probe read-ahead is one window.** Before the decoder has seeked to the
   track, the buffer keeps one window ahead of byte 0, not four, since the
   demuxer reads only the front metadata before it seeks away.

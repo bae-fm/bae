@@ -437,6 +437,56 @@ fn play_decode(
     played
 }
 
+/// A sparse buffer holding all of `bytes`.
+fn filled_buffer(bytes: &[u8]) -> SharedSparseBuffer {
+    let buffer = create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
+}
+
+/// Takes a verifying decode's scrub points as import's sink does, and
+/// discards its samples.
+struct TakesScrubPoints(Option<crate::import::scrub_points::ScrubPointTaker>);
+
+impl bae_audio::DecodedSink for TakesScrubPoints {
+    fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
+    fn on_samples(&mut self, _samples: &[i32]) {}
+    fn on_stream(&mut self, stream: &bae_audio::DecodedStream) {
+        self.0 = crate::import::scrub_points::ScrubPointTaker::for_stream(stream);
+    }
+    fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {
+        if let Some(taker) = self.0.as_mut() {
+            taker.observe(packet);
+        }
+    }
+}
+
+/// The scrub points the import's verifying decode takes over `span` of a
+/// `content_type` file holding `bytes`, which must be one that gets them.
+fn import_scrub_points(
+    bytes: &[u8],
+    span: crate::db::SegmentSpan,
+    content_type: &bae_util::content_type::ContentType,
+) -> Vec<crate::db::ScrubPoint> {
+    use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
+    let decode = StreamDecodeParams::new(
+        vec![SegmentDecodeParams::new(filled_buffer(bytes), span, 0)],
+        bae_audio::byte_jump_keeps_place(content_type),
+        0,
+        0,
+    );
+    let mut sink = TakesScrubPoints(None);
+    decode
+        .verify_to_sink(
+            &mut sink,
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+        .expect("the verifying decode reads the file");
+    sink.0
+        .expect("the file is one that gets scrub points")
+        .finish()
+}
+
 include!("tests/buffers_and_loading.rs");
 include!("tests/starvation_and_start.rs");
 include!("tests/queue_and_diagnostics.rs");
@@ -449,4 +499,5 @@ include!("tests/history.rs");
 include!("tests/audio_focus.rs");
 
 mod image_track_starts;
+mod mp3_scrub_points;
 mod scrub_points;

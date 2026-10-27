@@ -186,7 +186,7 @@ impl PlaybackPreparedTrack {
                     continue;
                 }
             }
-            segments.push(segment.decode_params(remaining_offset));
+            segments.push(segment.decode_params(remaining_offset, &self.content_type));
             remaining_offset = 0;
         }
 
@@ -221,20 +221,46 @@ struct PreparedAudioSegment {
     buffer: SharedSparseBuffer,
     /// Where this segment sits inside its backing file, in samples and bytes.
     span: crate::db::SegmentSpan,
-    /// The frames a scrub inside this segment jumps to by byte.
+    /// The frames a decode inside this segment starts at.
     scrub_points: crate::playback::ScrubPoints,
 }
 
 impl PreparedAudioSegment {
-    /// This segment's decoder window, starting `offset` samples in. A seek
-    /// into a segment with stored scrub points jumps by byte to the last one
-    /// at or before its target; any other start seeks as
+    /// This segment's decoder window, starting `offset` samples in, in a file
+    /// of `content_type`.
+    ///
+    /// An MP3's frames state no position and lean on the frames before them,
+    /// so neither a byte jump nor a sample seek puts out its own samples: any
+    /// start, a track's first included, decodes from the last stored point
+    /// that plays the target exactly, or, before the first such point, from
+    /// the stream's start.
+    ///
+    /// Any other seek into a segment with stored scrub points (a FLAC the
+    /// demuxer can only binary-search) jumps by byte to the last one at or
+    /// before its target; any other start seeks as
     /// [`SegmentDecodeParams::new`] says.
-    fn decode_params(&self, offset: u64) -> SegmentDecodeParams {
+    fn decode_params(
+        &self,
+        offset: u64,
+        content_type: &bae_util::content_type::ContentType,
+    ) -> SegmentDecodeParams {
+        let target = self.span.start_sample + offset;
+        if *content_type == bae_util::content_type::ContentType::Mp3 {
+            return match self.scrub_points.at_or_before(target) {
+                Some(point) => SegmentDecodeParams::from_scrub_point(
+                    self.buffer.clone(),
+                    self.span,
+                    offset,
+                    point,
+                ),
+                None => {
+                    SegmentDecodeParams::from_stream_start(self.buffer.clone(), self.span, offset)
+                }
+            };
+        }
         if offset == 0 || self.scrub_points.is_empty() {
             return SegmentDecodeParams::new(self.buffer.clone(), self.span, offset);
         }
-        let target = self.span.start_sample + offset;
         match self.scrub_points.at_or_before(target) {
             Some(point) => {
                 SegmentDecodeParams::from_scrub_point(self.buffer.clone(), self.span, offset, point)
@@ -267,8 +293,10 @@ struct PlaybackPreparedTrack {
     /// Where the track starts in its stream, past its pregap (stored audio or
     /// generated silence), and how long it runs from there when known.
     timeline: TrackTimeline,
-    /// Picks how a track start seeks: by byte to `start_byte`, except APE, which
-    /// seeks by sample.
+    /// Picks how a decode starts: a track start by byte to `start_byte` where
+    /// the codec's frames keep their place (`bae_audio::byte_jump_keeps_place`),
+    /// else by sample, and an MP3 always from a stored scrub point or the
+    /// stream's start.
     content_type: bae_util::content_type::ContentType,
     /// Replay gain the audio callback multiplies into the volume; `1.0` when off
     /// or unmeasured.

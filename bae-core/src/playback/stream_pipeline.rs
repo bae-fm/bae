@@ -92,20 +92,33 @@ pub(crate) struct StreamDecodeParams {
 
 /// One decoder window: the segment's span within its backing file, the buffer
 /// its bytes stream through, the sample offset into the segment where output
-/// starts (a mid-track seek; 0 for a natural start), and for a mid-track seek
-/// the stored scrub point it jumps to, if its file has them. The seek policy —
-/// byte jump vs sample seek, and the lead-in trim target — derives from these
-/// via [`Self::target_sample`] and [`Self::seek_to_byte`].
+/// starts (a mid-track seek; 0 for a natural start), and where the decode
+/// starts reading. The lead-in trim target derives from these via
+/// [`Self::target_sample`], the demuxer start via [`Self::decode_start`].
 #[derive(Clone)]
 pub(crate) struct SegmentDecodeParams {
     buffer: SharedSparseBuffer,
     span: crate::db::SegmentSpan,
     start_offset: u64,
-    scrub_point: Option<crate::db::ScrubPoint>,
+    start: SegmentStart,
+}
+
+/// Where a segment's decode starts reading its file.
+#[derive(Clone, Copy)]
+enum SegmentStart {
+    /// From what the span records: its landing byte at a natural start of a
+    /// codec whose frames keep their place after a byte jump, else a seek by
+    /// sample to the target.
+    Span,
+    /// A stored scrub point that plays the target exactly.
+    ScrubPoint(crate::db::ScrubPoint),
+    /// The stream's first frame: an MP3 target before every stored point's
+    /// exact start.
+    StreamStart,
 }
 
 impl SegmentDecodeParams {
-    /// A window with no scrub point to jump to: a natural start jumps to the
+    /// A window with no scrub point to start at: a natural start jumps to the
     /// span's landing byte, a mid-track seek seeks by sample.
     pub(crate) fn new(
         buffer: SharedSparseBuffer,
@@ -116,13 +129,13 @@ impl SegmentDecodeParams {
             buffer,
             span,
             start_offset,
-            scrub_point: None,
+            start: SegmentStart::Span,
         }
     }
 
-    /// A mid-track seek `start_offset` samples into the segment that jumps by
-    /// byte to `point`, a stored frame at or before the target, and decodes
-    /// forward from there.
+    /// A start `start_offset` samples into the segment that decodes from
+    /// `point`, a stored frame that plays the target exactly, forward to the
+    /// target.
     pub(crate) fn from_scrub_point(
         buffer: SharedSparseBuffer,
         span: crate::db::SegmentSpan,
@@ -133,7 +146,22 @@ impl SegmentDecodeParams {
             buffer,
             span,
             start_offset,
-            scrub_point: Some(point),
+            start: SegmentStart::ScrubPoint(point),
+        }
+    }
+
+    /// A start `start_offset` samples into the segment that decodes from the
+    /// stream's first frame forward to the target.
+    pub(crate) fn from_stream_start(
+        buffer: SharedSparseBuffer,
+        span: crate::db::SegmentSpan,
+        start_offset: u64,
+    ) -> Self {
+        Self {
+            buffer,
+            span,
+            start_offset,
+            start: SegmentStart::StreamStart,
         }
     }
 
@@ -144,15 +172,22 @@ impl SegmentDecodeParams {
         self.span.start_sample + self.start_offset
     }
 
-    /// The demuxer jump for this segment: a mid-track seek's scrub point, or
-    /// the recorded landing byte at a natural start (`start_offset == 0`) of a
-    /// byte-seekable codec. Any other mid-track seek, and APE, sample-seeks to
+    /// Where the demuxer starts: a scrub point's frame, the stream's start,
+    /// or the recorded landing byte at a natural start (`start_offset == 0`)
+    /// of a byte-seekable codec. Any other start, and APE, sample-seeks to
     /// [`Self::target_sample`] instead.
-    pub(crate) fn seek_to_byte(&self, byte_seekable: bool) -> Option<u64> {
-        match self.scrub_point {
-            Some(point) => Some(point.byte),
-            None if self.start_offset == 0 && byte_seekable => self.span.start_byte,
-            None => None,
+    pub(crate) fn decode_start(&self, byte_seekable: bool) -> bae_audio::DecodeStart {
+        use bae_audio::DecodeStart;
+        match self.start {
+            SegmentStart::ScrubPoint(point) => DecodeStart::Frame {
+                byte: point.byte,
+                sample: point.sample,
+            },
+            SegmentStart::StreamStart => DecodeStart::StreamStart,
+            SegmentStart::Span => match self.span.start_byte {
+                Some(byte) if self.start_offset == 0 && byte_seekable => DecodeStart::Byte(byte),
+                _ => DecodeStart::Sample(self.target_sample()),
+            },
         }
     }
 }
@@ -193,8 +228,8 @@ impl StreamDecodeParams {
     }
 
     #[cfg(test)]
-    pub(crate) fn segment_seek_to_byte(&self, index: usize) -> Option<u64> {
-        self.segments[index].seek_to_byte(self.byte_seekable)
+    pub(crate) fn segment_decode_start(&self, index: usize) -> bae_audio::DecodeStart {
+        self.segments[index].decode_start(self.byte_seekable)
     }
 
     /// Block until each segment's file has delivered its first bytes — the
@@ -228,17 +263,10 @@ impl StreamDecodeParams {
 
         let mut decode_errors = 0u32;
         for segment in &self.segments {
-            let seek_to_byte = segment.seek_to_byte(self.byte_seekable);
-            let seek_to_sample = if seek_to_byte.is_some() {
-                None
-            } else {
-                Some(segment.target_sample())
-            };
             decode_errors += bae_audio::decode_audio_streaming(
                 segment.buffer.clone(),
                 sink,
-                seek_to_byte,
-                seek_to_sample,
+                segment.decode_start(self.byte_seekable),
                 Some(segment.target_sample()),
                 segment.span.end_sample,
                 segment.span.end_byte,
@@ -285,16 +313,9 @@ impl StreamDecodeParams {
         sink.on_format(sample_rate, channels);
         push_silence_to_sink(sink, self.leading_silence_frames, channels, &cancel)?;
         for segment in &self.segments {
-            let seek_to_byte = segment.seek_to_byte(self.byte_seekable);
-            let seek_to_sample = if seek_to_byte.is_some() {
-                None
-            } else {
-                Some(segment.target_sample())
-            };
             bae_audio::decode_audio_to_sink_with_seek(
                 segment.buffer.clone(),
-                seek_to_byte,
-                seek_to_sample,
+                segment.decode_start(self.byte_seekable),
                 Some(segment.target_sample()),
                 segment.span.end_sample,
                 sink,
@@ -322,16 +343,9 @@ impl StreamDecodeParams {
         cancel: Arc<AtomicBool>,
     ) -> Result<(), DecodeError> {
         for segment in &self.segments {
-            let seek_to_byte = segment.seek_to_byte(self.byte_seekable);
-            let seek_to_sample = if seek_to_byte.is_some() {
-                None
-            } else {
-                Some(segment.target_sample())
-            };
             bae_audio::decode_audio_to_verifying_sink(
                 segment.buffer.clone(),
-                seek_to_byte,
-                seek_to_sample,
+                segment.decode_start(self.byte_seekable),
                 Some(segment.target_sample()),
                 segment.span.end_sample,
                 sink,

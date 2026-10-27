@@ -643,12 +643,13 @@ pub(super) fn insert_scrub_point_row(
     point: &DbScrubPoint,
 ) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO audio_segment_scrub_points (audio_format_segment_id, sample, byte) \
-         VALUES (?, ?, ?)",
+        "INSERT INTO audio_segment_scrub_points \
+         (audio_format_segment_id, sample, byte, exact_from) VALUES (?, ?, ?, ?)",
         params![
             point.audio_segment_id,
             sqlite_count(point.point.sample, "scrub point sample")?,
             sqlite_count(point.point.byte, "scrub point byte")?,
+            sqlite_count(point.point.exact_from, "scrub point exact_from")?,
         ],
     )
     .map(|_| ())

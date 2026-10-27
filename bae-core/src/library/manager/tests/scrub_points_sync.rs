@@ -41,14 +41,17 @@ async fn check_scrub_points_sync(devices: &crate::sync::test_devices::TwoDevices
         ScrubPoint {
             sample: 0,
             byte: 8_288,
+            exact_from: 0,
         },
         ScrubPoint {
             sample: 442_368,
             byte: 1_760_512,
+            exact_from: 442_368,
         },
         ScrubPoint {
             sample: 884_736,
             byte: 3_512_840,
+            exact_from: 884_736,
         },
     ];
     manager

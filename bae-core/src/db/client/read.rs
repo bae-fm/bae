@@ -734,6 +734,7 @@ pub(super) fn row_to_scrub_point(row: &Row) -> rusqlite::Result<DbScrubPoint> {
         point: ScrubPoint {
             sample: count_column(row, "sample")?,
             byte: count_column(row, "byte")?,
+            exact_from: count_column(row, "exact_from")?,
         },
     })
 }

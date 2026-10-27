@@ -484,7 +484,10 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
     assert_eq!(decode.segment_count(), 1);
     assert_eq!(decode.segment_buffer_id(0), main_buffer.id());
     assert_eq!(decode.segment_target_sample(0), 44_100);
-    assert_eq!(decode.segment_seek_to_byte(0), Some(2_000));
+    assert_eq!(
+        decode.segment_decode_start(0),
+        bae_audio::DecodeStart::Byte(2_000)
+    );
 }
 
 #[test]
@@ -497,5 +500,8 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
     assert_eq!(decode.segment_count(), 2);
     assert_eq!(decode.segment_buffer_id(0), pregap_buffer.id());
     assert_eq!(decode.segment_target_sample(0), 1_000);
-    assert_eq!(decode.segment_seek_to_byte(0), Some(100));
+    assert_eq!(
+        decode.segment_decode_start(0),
+        bae_audio::DecodeStart::Byte(100)
+    );
 }

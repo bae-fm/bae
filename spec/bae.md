@@ -1063,8 +1063,13 @@ Ana clicks Import. bae:
    scrub fetches (§7.6). A segment's last frame is never a point: a decode
    that jumps to a FLAC's last frame can't tell which sample it holds, so the
    frame before it stands in. Each point is a frame's first sample and the
-   byte it starts at, read from a decode that began on a frame. Any other file
-   gets none.
+   byte it starts at, read from a decode that began on a frame. Every MP3 gets
+   scrub points too: its frames state no position, and each depends on the
+   frames before it. For the first frame each 10 seconds of audio past the
+   file's first, its point is the latest earlier frame a decode can start at
+   and still play it exactly, with the first sample such a decode plays
+   exactly; the decode read the whole file from its first frame. Any other
+   file gets none.
 5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
@@ -2215,7 +2220,9 @@ that plays from it, so the eleven tracks of a disc image share one.
 
 A track start in a FLAC, WavPack, Opus or Vorbis file jumps to the byte
 import recorded for it, since those files' frames state their own position;
-in any other it seeks to its first sample, the recorded byte fetched ahead.
+in an MP3 it starts at the file's first frame, since an MP3 track is a whole
+file (a CUE sheet over lossy audio is not bound); in any other it seeks to its
+first sample, the recorded byte fetched ahead.
 The scan read every disc image, so import can always read where each of its
 tracks starts; an image where it can't is reported as a bug, and its tracks
 seek to their first sample with the whole file read ahead.
@@ -2225,11 +2232,13 @@ a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points
 (§3.7) has no index FFmpeg can use, so the seek jumps to the last point at or
 before the new position and decodes forward to it: one window fetched from
 the point, instead of a search across the file with one fetch per step.
-Either way the first sample played is the one asked for, except in an MP3:
-FFmpeg places a seek into an MP3 from the file's bitrate, so far into the
-file it can start a little off. A lossy track is seeked a little
-early and decoded up to the new position, so its decoder has the frames
-before it.
+An MP3 has no index FFmpeg seeks exactly (it would place the seek from the
+file's bitrate or its table of contents, an estimate), so the seek decodes
+from the last scrub point (§3.7) that plays the new position exactly, or from
+the file's start before the first, and plays the samples a play from the
+start plays there. In each case the first sample played is the one asked for.
+Any other lossy track is seeked a little early and decoded up to the new
+position, so its decoder has the frames before it.
 
 Offline, a track whose bytes aren't on the device stops playback with a typed
 reason the UI shows. A decoder that stops producing for good is caught and

@@ -67,8 +67,7 @@ fn stream_lossy(bytes: &[u8], sample_rate: u32, start: Option<u64>) -> Vec<f32> 
         let result = decode_audio_streaming(
             buffer,
             &mut sink,
-            None,
-            start,
+            start.map_or(DecodeStart::StreamStart, DecodeStart::Sample),
             start,
             None,
             None,
@@ -97,11 +96,10 @@ fn stream_lossy(bytes: &[u8], sample_rate: u32, start: Option<u64>) -> Vec<f32> 
 /// many samples as the stream holds from N on, placed where a decode from the
 /// start places them. Unlike a sink decode it seeks, so a lossy decoder starts
 /// on a pre-roll before N rather than at the stream's start, and its samples
-/// converge on the whole decode's within the pre-roll (AAC's, Opus's) or
-/// within a frame or two of N (an MP3's bit reservoir).
+/// converge on the whole decode's within the pre-roll (AAC's, Opus's).
 ///
-/// An MP3 seek far into the file lands where FFmpeg's fast MP3 seek estimates
-/// from the byte position, so it is checked only within the first seconds.
+/// An MP3 has no index to seek a sample by, so its decode reads from the
+/// stream's start and plays exactly the whole decode's samples from N.
 #[test]
 fn a_lossy_streaming_decode_from_a_sample_plays_from_it() {
     init();
@@ -112,9 +110,6 @@ fn a_lossy_streaming_decode_from_a_sample_plays_from_it() {
             .sample_rate;
         let whole = stream_lossy(&bytes, sample_rate, None);
         for target in lossy_targets(sample_rate) {
-            if name == "MP3" && target > u64::from(sample_rate) {
-                continue;
-            }
             let from = stream_lossy(&bytes, sample_rate, Some(target));
             let expected = &whole[target as usize * 2..];
             assert_eq!(
@@ -122,6 +117,12 @@ fn a_lossy_streaming_decode_from_a_sample_plays_from_it() {
                 expected.len(),
                 "{name} from {target}: sample count"
             );
+            if name == "MP3" {
+                assert!(
+                    from == expected,
+                    "{name} from {target}: the samples differ from the whole decode's"
+                );
+            }
         }
         // A start whose pre-roll reaches the stream's start decodes as the
         // whole decode does.
