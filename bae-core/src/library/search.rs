@@ -158,8 +158,8 @@ mod tests {
 
     #[test]
     fn a_query_is_trimmed() {
-        let query = LibrarySearchQuery::parse("  Abbey Road  ").expect("non-blank");
-        assert_eq!(query.as_str(), "Abbey Road");
+        let query = LibrarySearchQuery::parse("  Album Title  ").expect("non-blank");
+        assert_eq!(query.as_str(), "Album Title");
     }
 
     #[test]
