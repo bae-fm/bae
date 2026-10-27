@@ -857,26 +857,23 @@ async fn a_storage_row_counts_the_file_being_sent() {
     drain.await.unwrap().unwrap();
 }
 
-/// The sync activity counts the files being sent and those waiting behind
-/// them, from the upload queue.
+/// The sync activity counts the file being sent as its send starts, while
+/// nothing joins or leaves the queue, and drops it as the send ends.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn the_sync_activity_counts_the_files_being_sent() {
+async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
     insert_release_with_queued_uploads(
         &manager,
         &temp_dir.path().join("sending"),
         "Album Title",
-        &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b"), ("c.flac", b"bytes-c")],
+        &[("a.flac", b"bytes-a")],
     )
     .await;
-    manager.database.set_transfer_limits(coven::TransferLimits {
-        uploads: std::num::NonZeroUsize::new(1).unwrap(),
-        ..manager.database.transfer_limits()
-    });
     let mut activity = crate::library::SyncActivityStream::new(manager.library.clone());
     assert_eq!(activity.next().await.unwrap().uploads, None);
+    // Held in flight long enough that its start is read while it runs.
     home.set_faults(coven::Faults {
         delay: std::time::Duration::from_secs(2),
         ..coven::Faults::none()
@@ -886,18 +883,19 @@ async fn the_sync_activity_counts_the_files_being_sent() {
         let manager = manager.library.clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    // One file is sent at a time; until the last, others wait behind it.
-    let sending = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        loop {
-            if let Some(uploads) = activity.next().await.unwrap().uploads {
-                break uploads;
-            }
+    let sending = loop {
+        if let Some(uploads) = activity.next().await.unwrap().uploads {
+            break uploads;
         }
-    })
-    .await
-    .expect("the activity counts the file being sent");
-    assert_eq!(sending.sending, 1);
-    assert!((1..=2).contains(&sending.waiting), "{sending:?}");
+    };
+    assert_eq!(
+        sending,
+        crate::library::UploadsInFlight {
+            sending: 1,
+            waiting: 0,
+        }
+    );
+    while activity.next().await.unwrap().uploads.is_some() {}
     drain.await.unwrap().unwrap();
 }
 
