@@ -18,6 +18,12 @@ async fn report_background_task_exit(task_name: &'static str, task: tokio::task:
     }
 }
 
+/// A subscription opened while its library closes, from a task the close is
+/// ending, has nothing left to read.
+fn subscription_unstarted(error: &LibraryError) {
+    tracing::warn!(%error, "a subscription asked for as its library closed ends unstarted");
+}
+
 /// The manager's background tasks, and the signal that ends them.
 #[derive(Clone, Default)]
 pub(super) struct BackgroundTasks {
@@ -217,6 +223,51 @@ impl LibraryManager {
             &self.runtime_handle,
         );
         Ok(())
+    }
+
+    /// [`Self::spawn_supervised_task`] for a task its owner stops too: it
+    /// runs until it ends, `stop` is cancelled, or the manager closes.
+    pub(crate) fn spawn_stoppable_task<F>(
+        &self,
+        task_name: &'static str,
+        stop: crate::library::CancellationToken,
+        task: F,
+    ) -> Result<(), LibraryError>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.spawn_supervised_task(task_name, async move {
+            stop.run_until_cancelled(task).await;
+        })
+    }
+
+    /// Start the task behind a subscription to the library as one of the
+    /// manager's tasks, which closing the library ends before the store
+    /// closes; otherwise it runs until it ends. One asked for while the library
+    /// closes starts nothing: the task and the sender it holds are dropped, so
+    /// the subscription ends at once.
+    pub(crate) fn spawn_subscription_task<F>(&self, task_name: &'static str, task: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        if let Err(error) = self.spawn_supervised_task(task_name, task) {
+            subscription_unstarted(&error);
+        }
+    }
+
+    /// [`Self::spawn_subscription_task`] for a task its subscription stops
+    /// too, by cancelling `stop`.
+    pub(crate) fn spawn_stoppable_subscription_task<F>(
+        &self,
+        task_name: &'static str,
+        stop: crate::library::CancellationToken,
+        task: F,
+    ) where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        if let Err(error) = self.spawn_stoppable_task(task_name, stop, task) {
+            subscription_unstarted(&error);
+        }
     }
 
     /// A file operation owns its rollback even when its caller disappears.

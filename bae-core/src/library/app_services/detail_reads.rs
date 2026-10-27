@@ -13,22 +13,21 @@ impl AppServices {
     /// on the same read.
     pub fn subscribe_album_detail(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<crate::album_detail::AlbumDetail> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
-        let query_runtime = runtime_handle.clone();
         let mut pins = manager.watch_release_pins();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut downloads = ShownDownloads::new(manager.subscribe_download_queue());
         let mut originals = ShownOriginals::new(manager.clone());
-        let task = runtime_handle.spawn(async move {
+        let task = crate::library::CancellationToken::new();
+        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), async move {
             let mut id = ids.borrow_and_update().clone();
             let mut query = reconfigurable_live_query_events(
-                &query_runtime,
+                &manager,
                 manager.subscribe_album_detail(id.clone()),
             );
             let mut last: Option<(crate::db::AlbumDetailProjection, Vec<bool>)> = None;
@@ -100,22 +99,21 @@ impl AppServices {
     /// the state it is resolved against. Another release is a new id on the same read.
     pub fn subscribe_release_detail(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<crate::album_detail::ReleaseDetail> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
-        let query_runtime = runtime_handle.clone();
         let mut pins = manager.watch_release_pins();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut downloads = ShownDownloads::new(manager.subscribe_download_queue());
         let mut originals = ShownOriginals::new(manager.clone());
-        let task = runtime_handle.spawn(async move {
+        let task = crate::library::CancellationToken::new();
+        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), async move {
             let mut id = ids.borrow_and_update().clone();
             let mut query = reconfigurable_live_query_events(
-                &query_runtime,
+                &manager,
                 manager.subscribe_release_detail(id.clone()),
             );
             let mut last: Option<(crate::db::ReleaseDetailProjection, bool)> = None;
@@ -194,11 +192,10 @@ impl AppServices {
     /// new id on the same read.
     pub fn subscribe_artist_detail(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<crate::album_detail::ArtistDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
-            runtime_handle,
+            manager.clone(),
             {
                 let manager = manager.clone();
                 move |id| manager.subscribe_artist_detail(id)
@@ -211,11 +208,10 @@ impl AppServices {
     /// is a new id on the same read.
     pub fn subscribe_composer_detail(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<crate::album_detail::ComposerDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
-            runtime_handle,
+            manager.clone(),
             {
                 let manager = manager.clone();
                 move |id| manager.subscribe_composer_detail(id)
@@ -229,11 +225,10 @@ impl AppServices {
     #[cfg(desktop)]
     pub fn subscribe_invalid_candidate(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<crate::import::InvalidCandidateDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
-            runtime_handle,
+            manager.clone(),
             move |key| manager.subscribe_invalid_candidate(key),
             |detail| detail,
         )
@@ -243,11 +238,10 @@ impl AppServices {
     /// on the same read.
     pub fn subscribe_work_detail(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<crate::album_detail::WorkDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
-            runtime_handle,
+            manager.clone(),
             {
                 let manager = manager.clone();
                 move |id| manager.subscribe_work_detail(id)
@@ -261,7 +255,7 @@ impl AppServices {
 /// set first, each value resolved for the id it was read for. A new id points
 /// the same query at it.
 fn detail_read<Projection, Value>(
-    runtime_handle: &tokio::runtime::Handle,
+    manager: LibraryManager,
     open: impl FnOnce(Option<String>) -> coven::ReconfigurableLiveQuery<Option<String>, Projection>
         + Send
         + 'static,
@@ -273,31 +267,33 @@ where
 {
     let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let query_runtime = runtime_handle.clone();
-    let task = runtime_handle.spawn(async move {
-        let mut id = ids.borrow_and_update().clone();
-        let mut query = reconfigurable_live_query_events(&query_runtime, open(id.clone()));
-        loop {
-            tokio::select! {
-                event = query.recv() => {
-                    let Some(result) = event else { return };
-                    let value = result.map(|projection| crate::library::DetailSnapshot {
-                        id: id.clone(),
-                        value: resolve(projection),
-                    });
-                    if tx.send(value).is_err() {
-                        return;
+    let task = crate::library::CancellationToken::new();
+    manager
+        .clone()
+        .spawn_stoppable_subscription_task("detail", task.clone(), async move {
+            let mut id = ids.borrow_and_update().clone();
+            let mut query = reconfigurable_live_query_events(&manager, open(id.clone()));
+            loop {
+                tokio::select! {
+                    event = query.recv() => {
+                        let Some(result) = event else { return };
+                        let value = result.map(|projection| crate::library::DetailSnapshot {
+                            id: id.clone(),
+                            value: resolve(projection),
+                        });
+                        if tx.send(value).is_err() {
+                            return;
+                        }
                     }
-                }
-                changed = ids.changed() => {
-                    if changed.is_err() {
-                        return;
+                    changed = ids.changed() => {
+                        if changed.is_err() {
+                            return;
+                        }
+                        id = ids.borrow_and_update().clone();
+                        query.set(id.clone());
                     }
-                    id = ids.borrow_and_update().clone();
-                    query.set(id.clone());
                 }
             }
-        }
-    });
+        });
     crate::library::DetailSubscription::new(id_tx, rx, task)
 }

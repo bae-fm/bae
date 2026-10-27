@@ -365,16 +365,15 @@ impl AppServices {
     /// selection. Another candidate is a new key on the same read.
     pub fn subscribe_import_candidate(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<ImportCandidateDetail> {
         let (key_tx, mut keys) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let manager = self.inner.manager.clone();
-        let query_runtime = runtime_handle.clone();
-        let task = runtime_handle.spawn(async move {
+        let task = crate::library::CancellationToken::new();
+        self.inner.manager.spawn_stoppable_subscription_task("import candidate", task.clone(), async move {
             let mut key = keys.borrow_and_update().clone();
             let mut query = reconfigurable_live_query_events(
-                &query_runtime,
+                &manager,
                 manager.subscribe_import_candidate(key.clone()),
             );
             loop {

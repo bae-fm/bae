@@ -481,23 +481,20 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
     let services = AppServices::for_test(mgr.clone()).await.unwrap();
-    let values = services.subscribe_storage_browse(
-        &tokio::runtime::Handle::current(),
-        StorageBrowseView {
-            sort: StorageSortCriterion {
-                field: StorageSortField::AlbumTitle,
-                direction: SortDirection::Ascending,
-            },
-            filter: StorageFilter::All,
-            windows: [bae_core::library::LibraryPageWindow {
-                offset: 0,
-                limit: 50,
-            }]
-            .into_iter()
-            .collect(),
-            selected: Default::default(),
+    let values = services.subscribe_storage_browse(StorageBrowseView {
+        sort: StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
         },
-    );
+        filter: StorageFilter::All,
+        windows: [bae_core::library::LibraryPageWindow {
+            offset: 0,
+            limit: 50,
+        }]
+        .into_iter()
+        .collect(),
+        selected: Default::default(),
+    });
     let before = next_storage_release(&values, &release_id).await;
     assert!(
         before.storage_actions.is_empty(),

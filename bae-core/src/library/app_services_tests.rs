@@ -101,7 +101,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
 }
 
 async fn queue_value_with_context(services: &AppServices) -> crate::queue::ResolvedQueueSnapshot {
-    let mut values = services.subscribe_queue_values(&tokio::runtime::Handle::current());
+    let mut values = services.subscribe_queue_values();
     loop {
         let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
             .await
@@ -160,7 +160,7 @@ fn window_track_ids(snapshot: &crate::library::QueueUpcomingSnapshot) -> Vec<Vec
 async fn queue_upcoming_reads_every_window_of_a_live_context_tail_in_one_value() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
     let queue = queue_value_with_context(&services).await;
-    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
+    let subscription = services.subscribe_queue_upcoming();
 
     subscription.set(windows(&[(2, 3), (7, 2)])).unwrap();
     let value = upcoming_until(&subscription, |value| value.windows.len() == 2).await;
@@ -189,7 +189,7 @@ async fn queue_upcoming_reads_every_window_of_a_live_context_tail_in_one_value()
 async fn queue_upcoming_clamps_windows_to_the_live_tails_end() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
     queue_value_with_context(&services).await;
-    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
+    let subscription = services.subscribe_queue_upcoming();
 
     // The tail has 11 entries (track_ids[1..12]).
     subscription.set(windows(&[(9, 100), (50, 10)])).unwrap();
@@ -207,7 +207,7 @@ async fn queue_upcoming_clamps_windows_to_the_live_tails_end() {
 async fn queue_upcoming_moves_its_windows_in_place() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
     queue_value_with_context(&services).await;
-    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
+    let subscription = services.subscribe_queue_upcoming();
 
     subscription.set(windows(&[(0, 2)])).unwrap();
     upcoming_until(&subscription, |value| value.windows.len() == 1).await;
@@ -236,7 +236,7 @@ async fn queue_upcoming_moves_its_windows_in_place() {
 async fn queue_upcoming_follows_queue_revisions_without_resubscribing() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
     let queue = queue_value_with_context(&services).await;
-    let subscription = services.subscribe_queue_upcoming(&tokio::runtime::Handle::current());
+    let subscription = services.subscribe_queue_upcoming();
     subscription.set(windows(&[(2, 3)])).unwrap();
     let first = upcoming_until(&subscription, |value| value.windows.len() == 1).await;
 
@@ -332,7 +332,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
         .await
         .unwrap();
 
-    let mut values = services.subscribe_output_values(&tokio::runtime::Handle::current());
+    let mut values = services.subscribe_output_values();
     let queued = output_value_until(&mut values, |row| row.release.is_some()).await;
     let release = queued.rows[0].release.as_ref().unwrap();
     assert_eq!(release.title, "Album Title");
@@ -403,7 +403,7 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
         .await
         .unwrap();
 
-    let inspector = services.subscribe_storage_inspector(&tokio::runtime::Handle::current());
+    let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release_id.to_string())).unwrap();
     let next = || async {
         tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())
@@ -435,4 +435,63 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
     let gone = next().await;
     assert_eq!(gone.id.as_deref(), Some(missing));
     assert!(gone.value.is_none(), "no such release");
+}
+
+/// Closing the library ends the task behind a subscription its holder still
+/// keeps before the store closes: the subscription ends, and never hears from
+/// the closed store.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_closes() {
+    let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
+    let mut values = services.subscribe_download_values();
+    tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+        .await
+        .expect("the download queue subscription delivers")
+        .expect("the download queue subscription stays open")
+        .expect("the download queue resolves");
+
+    services.close().await.unwrap();
+
+    // Values sent before the close may still be waiting to be read.
+    loop {
+        match tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+            .await
+            .expect("the subscription ends")
+        {
+            Some(Ok(_)) => {}
+            Some(Err(error)) => panic!("the subscription heard from the closed store: {error}"),
+            None => break,
+        }
+    }
+}
+
+/// A live read its holder still keeps ends with the library the same way,
+/// before the store closes.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes() {
+    let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
+    let release = services.subscribe_release_detail();
+    release
+        .set(Some("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string()))
+        .unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(5), release.next())
+        .await
+        .expect("the release detail delivers")
+        .expect("the release detail resolves");
+
+    services.close().await.unwrap();
+
+    // Values sent before the close may still be waiting to be read.
+    loop {
+        match tokio::time::timeout(std::time::Duration::from_secs(5), release.next())
+            .await
+            .expect("the live read ends")
+        {
+            Ok(_) => {}
+            Err(crate::library::LiveReadError::Query(error)) => {
+                panic!("the live read heard from the closed store: {error}")
+            }
+            Err(crate::library::LiveReadError::Cancelled) => break,
+        }
+    }
 }

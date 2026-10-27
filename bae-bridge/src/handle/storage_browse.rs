@@ -42,15 +42,14 @@ impl AppHandle {
         filter: BridgeStorageFilter,
     ) -> std::sync::Arc<StorageBrowseSubscription> {
         std::sync::Arc::new(StorageBrowseSubscription {
-            inner: self.services.subscribe_storage_browse(
-                &self.runtime,
-                bae_core::library::StorageBrowseView {
+            inner: self
+                .services
+                .subscribe_storage_browse(bae_core::library::StorageBrowseView {
                     sort: sort.into_core(),
                     filter: filter.into_core(),
                     windows: Default::default(),
                     selected: Default::default(),
-                },
-            ),
+                }),
             runtime: self.runtime.clone(),
         })
     }

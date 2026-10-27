@@ -19,7 +19,7 @@ impl AppHandle {
         callback: Box<dyn crate::types::QueueCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         self.subscribe_channel(
-            |services, runtime| services.subscribe_queue_values(runtime),
+            |services| services.subscribe_queue_values(),
             move |value| match value {
                 Ok(value) => callback.on_value(BridgeQueueSnapshot::from_core(value)),
                 Err(error) => callback.on_error(BridgeError::internal(error)),
@@ -32,7 +32,7 @@ impl AppHandle {
         callback: Box<dyn crate::types::PlaybackValuesCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         self.subscribe_channel(
-            |services, runtime| services.subscribe_playback_values(runtime),
+            |services| services.subscribe_playback_values(),
             move |value| match value {
                 Ok(value) => callback.on_value(BridgePlaybackValues::from_core(value)),
                 Err(error) => callback.on_error(BridgeError::internal(error)),
@@ -60,7 +60,7 @@ impl AppHandle {
         callback: Box<dyn crate::types::DownloadCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         self.subscribe_channel(
-            |services, runtime| services.subscribe_download_values(runtime),
+            |services| services.subscribe_download_values(),
             move |value| match value {
                 Ok(value) => {
                     callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(value))
@@ -76,7 +76,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::DownloadTransfersCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
+        self.live_subscription(move |services| async move {
             let mut transfers = services.watch_download_transfers();
             while let Some(changes) = transfers.next().await {
                 callback.on_changes(

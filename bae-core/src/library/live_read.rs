@@ -20,16 +20,17 @@ pub struct LiveRead<Request, Value> {
     request: tokio::sync::watch::Sender<Request>,
     values: tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<Result<Value, LibraryError>>>,
     cancellation: CancellationToken,
-    task: tokio::task::JoinHandle<()>,
+    /// Stops the task that produces the values.
+    task: CancellationToken,
 }
 
 impl<Request: PartialEq, Value> LiveRead<Request, Value> {
-    /// Owns `task`, which reads the request `request` holds and sends each
-    /// value on `values`.
+    /// Owns the task `task` stops, which reads the request `request` holds
+    /// and sends each value on `values`.
     pub(crate) fn new(
         request: tokio::sync::watch::Sender<Request>,
         values: tokio::sync::mpsc::UnboundedReceiver<Result<Value, LibraryError>>,
-        task: tokio::task::JoinHandle<()>,
+        task: CancellationToken,
     ) -> Self {
         Self {
             request,
@@ -71,13 +72,13 @@ impl<Request: PartialEq, Value> LiveRead<Request, Value> {
     /// Stop reading and settle a waiting [`next`](Self::next).
     pub fn cancel(&self) {
         self.cancellation.cancel();
-        self.task.abort();
+        self.task.cancel();
     }
 }
 
 impl<Request, Value> Drop for LiveRead<Request, Value> {
     fn drop(&mut self) {
         self.cancellation.cancel();
-        self.task.abort();
+        self.task.cancel();
     }
 }

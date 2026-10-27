@@ -37,7 +37,7 @@ fn waiting_delivery(
 ) {
     let (started_tx, started) = mpsc::channel();
     let (ended_tx, ended) = mpsc::channel();
-    let subscription = app.live_subscription(move |_, _| async move {
+    let subscription = app.live_subscription(move |_| async move {
         let _ended = DropSignal(ended_tx);
         started_tx.send(()).expect("the test waits for the start");
         std::future::pending::<()>().await;

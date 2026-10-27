@@ -94,7 +94,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         .await
         .expect("the import reaches its measurement");
 
-    let values = services.subscribe_album_detail(&tokio::runtime::Handle::current());
+    let values = services.subscribe_album_detail();
     values.set(Some(shown_album.clone())).unwrap();
     let shown = next_for(
         &values,

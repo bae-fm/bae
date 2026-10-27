@@ -148,16 +148,20 @@ impl AppServices {
         self.inner.manager.report_bug(operation, error);
     }
 
-    /// Run `task` as the library's own work until it ends or the library
-    /// closes. Closing or removing the library ends it with the manager's
-    /// other tasks, before the store closes, so it never reads a closed store.
-    /// A library that has closed starts nothing and says so.
+    /// Run `task` as the library's own work until it ends, `stop` is
+    /// cancelled, or the library closes. Closing or removing the library ends
+    /// it with the manager's other tasks, before the store closes, so it never
+    /// reads a closed store. A library that has closed starts nothing and says
+    /// so.
     pub fn spawn_library_task(
         &self,
         task_name: &'static str,
+        stop: crate::library::CancellationToken,
         task: impl std::future::Future<Output = ()> + Send + 'static,
     ) -> Result<(), crate::library::LibraryError> {
-        self.inner.manager.spawn_supervised_task(task_name, task)
+        self.inner
+            .manager
+            .spawn_stoppable_task(task_name, stop, task)
     }
 
     async fn stop_workers(&self) {

@@ -715,7 +715,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutputTransfersCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
+        self.live_subscription(move |services| async move {
             let mut transfers = services.watch_output_transfers();
             while let Some(changes) = transfers.next().await {
                 callback.on_changes(

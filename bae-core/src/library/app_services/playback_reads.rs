@@ -12,61 +12,61 @@ impl AppServices {
     /// [`subscribe_playback_positions`](Self::subscribe_playback_positions).
     pub fn subscribe_playback_values(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> tokio::sync::mpsc::UnboundedReceiver<
         Result<crate::playback::NowPlayingValues, crate::library::LibraryError>,
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
-        let query_runtime = runtime_handle.clone();
-        runtime_handle.spawn(async move {
-            let mut values = services.inner.playback.subscribe_values();
-            let mut current = values.borrow_and_update().clone();
-            let mut request = current.state.track_id().map(str::to_string);
-            let mut display_query = reconfigurable_live_query_events(
-                &query_runtime,
-                services
-                    .inner
-                    .manager
-                    .subscribe_track_display(request.clone()),
-            );
-            // The display read for `request`; `None` until that read arrives.
-            let mut display: Option<Option<crate::playback::TrackDisplay>> = None;
-            let mut sent = SentValues(None);
-            loop {
-                tokio::select! {
-                    event = display_query.recv() => {
-                        let Some(result) = event else { return };
-                        let read = match result {
-                            Ok(read) => read,
-                            Err(error) => {
-                                if !sent.send_error(&tx, error) { return; }
-                                continue;
-                            }
-                        };
-                        let resolved = now_playing_values(&current, read.as_ref());
-                        display = Some(read);
-                        if let Some(value) = resolved {
-                            if !sent.send_changed(&tx, value) { return; }
-                        }
-                    }
-                    changed = values.changed() => {
-                        if changed.is_err() { return; }
-                        current = values.borrow_and_update().clone();
-                        let next = current.state.track_id().map(str::to_string);
-                        if next != request {
-                            request = next;
-                            display = None;
-                            display_query.set(request.clone());
-                        } else if let Some(read) = &display {
-                            if let Some(value) = now_playing_values(&current, read.as_ref()) {
+        self.inner
+            .manager
+            .spawn_subscription_task("playback values", async move {
+                let mut values = services.inner.playback.subscribe_values();
+                let mut current = values.borrow_and_update().clone();
+                let mut request = current.state.track_id().map(str::to_string);
+                let mut display_query = reconfigurable_live_query_events(
+                    &services.inner.manager,
+                    services
+                        .inner
+                        .manager
+                        .subscribe_track_display(request.clone()),
+                );
+                // The display read for `request`; `None` until that read arrives.
+                let mut display: Option<Option<crate::playback::TrackDisplay>> = None;
+                let mut sent = SentValues(None);
+                loop {
+                    tokio::select! {
+                        event = display_query.recv() => {
+                            let Some(result) = event else { return };
+                            let read = match result {
+                                Ok(read) => read,
+                                Err(error) => {
+                                    if !sent.send_error(&tx, error) { return; }
+                                    continue;
+                                }
+                            };
+                            let resolved = now_playing_values(&current, read.as_ref());
+                            display = Some(read);
+                            if let Some(value) = resolved {
                                 if !sent.send_changed(&tx, value) { return; }
+                            }
+                        }
+                        changed = values.changed() => {
+                            if changed.is_err() { return; }
+                            current = values.borrow_and_update().clone();
+                            let next = current.state.track_id().map(str::to_string);
+                            if next != request {
+                                request = next;
+                                display = None;
+                                display_query.set(request.clone());
+                            } else if let Some(read) = &display {
+                                if let Some(value) = now_playing_values(&current, read.as_ref()) {
+                                    if !sent.send_changed(&tx, value) { return; }
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
         rx
     }
 

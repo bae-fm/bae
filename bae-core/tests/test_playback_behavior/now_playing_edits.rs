@@ -115,8 +115,8 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let fixture = PlaybackTestFixture::new().await;
     let (services, release_id) = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let mut values = services.subscribe_playback_values(&tokio::runtime::Handle::current());
-    let mut queue = services.subscribe_queue_values(&tokio::runtime::Handle::current());
+    let mut values = services.subscribe_playback_values();
+    let mut queue = services.subscribe_queue_values();
     let before = now_playing_until(&mut values, &track_id, "the paused track", |_| true)
         .await
         .cover_image;
@@ -173,8 +173,8 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
     let fixture = PlaybackTestFixture::new().await;
     let (services, release_id) = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let mut values = services.subscribe_playback_values(&tokio::runtime::Handle::current());
-    let mut queue = services.subscribe_queue_values(&tokio::runtime::Handle::current());
+    let mut values = services.subscribe_playback_values();
+    let mut queue = services.subscribe_queue_values();
     now_playing_until(&mut values, &track_id, "the paused track", |_| true).await;
     first_upcoming_until(&mut queue, |_| true).await;
 
@@ -210,7 +210,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
     let fixture = PlaybackTestFixture::new().await;
     let (services, _) = playing_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let mut values = services.subscribe_playback_values(&tokio::runtime::Handle::current());
+    let mut values = services.subscribe_playback_values();
     let mut positions = services.subscribe_playback_positions();
     let value = tokio::time::timeout(Duration::from_secs(10), values.recv())
         .await

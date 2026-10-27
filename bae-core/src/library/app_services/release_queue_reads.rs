@@ -24,15 +24,10 @@ impl AppServices {
     /// it: an entry coming, going, starting or failing, the queue pausing, or
     /// a library change to a release it names. The bytes the active entry
     /// moves are [`watch_download_transfers`](Self::watch_download_transfers).
-    pub fn subscribe_download_values(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> QueueValues<(), ()> {
-        self.subscribe_release_queue(
-            runtime_handle,
-            self.inner.manager.subscribe_download_queue(),
-            |contents| contents.phases(),
-        )
+    pub fn subscribe_download_values(&self) -> QueueValues<(), ()> {
+        self.subscribe_release_queue(self.inner.manager.subscribe_download_queue(), |contents| {
+            contents.phases()
+        })
     }
 
     /// The bytes each downloading release has moved, sent as they move.
@@ -55,13 +50,10 @@ impl AppServices {
     #[cfg(desktop)]
     pub fn subscribe_output_values(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> QueueValues<crate::library::output_snapshot::OutputRequest, ()> {
-        self.subscribe_release_queue(
-            runtime_handle,
-            self.inner.manager.subscribe_output_queue(),
-            |contents| contents.phases(),
-        )
+        self.subscribe_release_queue(self.inner.manager.subscribe_output_queue(), |contents| {
+            contents.phases()
+        })
     }
 
     /// The percent each exporting release has reached, sent as it moves.
@@ -91,7 +83,6 @@ impl AppServices {
     /// `shown` leaves out moves nothing a reader holds.
     fn subscribe_release_queue<Extra, Progress, Shown>(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
         mut contents: tokio::sync::watch::Receiver<ReleaseQueueContents<Extra, Progress>>,
         shown: impl Fn(&ReleaseQueueContents<Extra, Progress>) -> ReleaseQueueContents<Extra, Shown>
             + Send
@@ -104,58 +95,59 @@ impl AppServices {
     {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let manager = self.inner.manager.clone();
-        let query_runtime = runtime_handle.clone();
-        runtime_handle.spawn(async move {
-            let mut queue = shown(&contents.borrow_and_update());
-            let mut request = queue.release_ids();
-            // The value last sent, which an equal one is not sent over.
-            let mut sent: Option<ReleaseQueueSnapshot<Extra, Shown>> = None;
-            let mut releases = reconfigurable_live_query_events(
-                &query_runtime,
-                manager.subscribe_queued_releases(request.clone()),
-            );
-            // The releases last read for `request`.
-            let mut current = None;
-            loop {
-                tokio::select! {
-                    event = releases.recv() => {
-                        let Some(result) = event else { return };
-                        let value = match result {
-                            Ok(read) => {
-                                let value = queue.resolve(&read);
-                                current = Some(read);
+        self.inner
+            .manager
+            .spawn_subscription_task("release queue values", async move {
+                let mut queue = shown(&contents.borrow_and_update());
+                let mut request = queue.release_ids();
+                // The value last sent, which an equal one is not sent over.
+                let mut sent: Option<ReleaseQueueSnapshot<Extra, Shown>> = None;
+                let mut releases = reconfigurable_live_query_events(
+                    &manager,
+                    manager.subscribe_queued_releases(request.clone()),
+                );
+                // The releases last read for `request`.
+                let mut current = None;
+                loop {
+                    tokio::select! {
+                        event = releases.recv() => {
+                            let Some(result) = event else { return };
+                            let value = match result {
+                                Ok(read) => {
+                                    let value = queue.resolve(&read);
+                                    current = Some(read);
+                                    if sent.as_ref() == Some(&value) { continue; }
+                                    sent = Some(value.clone());
+                                    Ok(value)
+                                }
+                                Err(error) => {
+                                    // The next value after a failure is what says
+                                    // the read recovered, even when it equals the
+                                    // one before.
+                                    sent = None;
+                                    Err(error)
+                                }
+                            };
+                            if tx.send(value).is_err() { return; }
+                        }
+                        changed = contents.changed() => {
+                            if changed.is_err() { return; }
+                            queue = shown(&contents.borrow_and_update());
+                            let next = queue.release_ids();
+                            if next != request {
+                                request = next;
+                                current = None;
+                                releases.set(request.clone());
+                            } else if let Some(read) = current.as_ref() {
+                                let value = queue.resolve(read);
                                 if sent.as_ref() == Some(&value) { continue; }
                                 sent = Some(value.clone());
-                                Ok(value)
+                                if tx.send(Ok(value)).is_err() { return; }
                             }
-                            Err(error) => {
-                                // The next value after a failure is what says
-                                // the read recovered, even when it equals the
-                                // one before.
-                                sent = None;
-                                Err(error)
-                            }
-                        };
-                        if tx.send(value).is_err() { return; }
-                    }
-                    changed = contents.changed() => {
-                        if changed.is_err() { return; }
-                        queue = shown(&contents.borrow_and_update());
-                        let next = queue.release_ids();
-                        if next != request {
-                            request = next;
-                            current = None;
-                            releases.set(request.clone());
-                        } else if let Some(read) = current.as_ref() {
-                            let value = queue.resolve(read);
-                            if sent.as_ref() == Some(&value) { continue; }
-                            sent = Some(value.clone());
-                            if tx.send(Ok(value)).is_err() { return; }
                         }
                     }
                 }
-            }
-        });
+            });
         rx
     }
 }

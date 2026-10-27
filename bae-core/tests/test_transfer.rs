@@ -488,23 +488,20 @@ async fn transition_completions_deliver_storage_values() {
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
     let services = AppServices::for_test(mgr.clone()).await.unwrap();
-    let values = services.subscribe_storage_browse(
-        &tokio::runtime::Handle::current(),
-        StorageBrowseView {
-            sort: StorageSortCriterion {
-                field: StorageSortField::AlbumTitle,
-                direction: SortDirection::Ascending,
-            },
-            filter: StorageFilter::All,
-            windows: [bae_core::library::LibraryPageWindow {
-                offset: 0,
-                limit: 50,
-            }]
-            .into_iter()
-            .collect(),
-            selected: Default::default(),
+    let values = services.subscribe_storage_browse(StorageBrowseView {
+        sort: StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
         },
-    );
+        filter: StorageFilter::All,
+        windows: [bae_core::library::LibraryPageWindow {
+            offset: 0,
+            limit: 50,
+        }]
+        .into_iter()
+        .collect(),
+        selected: Default::default(),
+    });
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 
     mgr.upload_release(&release_id, false).await.unwrap();
@@ -542,24 +539,21 @@ async fn selected_releases_leave_the_uploading_list_with_their_upload() {
     let services = AppServices::for_test(mgr.clone()).await.unwrap();
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
-    let values = services.subscribe_storage_browse(
-        &tokio::runtime::Handle::current(),
-        StorageBrowseView {
-            sort: StorageSortCriterion {
-                field: StorageSortField::AlbumTitle,
-                direction: SortDirection::Ascending,
-            },
-            filter: StorageFilter::Uploading,
-            // One row on screen, so one selected release sits outside it.
-            windows: [bae_core::library::LibraryPageWindow {
-                offset: 0,
-                limit: 1,
-            }]
-            .into_iter()
-            .collect(),
-            selected: selected.clone(),
+    let values = services.subscribe_storage_browse(StorageBrowseView {
+        sort: StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
         },
-    );
+        filter: StorageFilter::Uploading,
+        // One row on screen, so one selected release sits outside it.
+        windows: [bae_core::library::LibraryPageWindow {
+            offset: 0,
+            limit: 1,
+        }]
+        .into_iter()
+        .collect(),
+        selected: selected.clone(),
+    });
     let next = || async {
         tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
             .await
@@ -643,10 +637,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         .collect(),
         selected: selected.iter().map(|id| (*id).clone()).collect(),
     };
-    let values = services.subscribe_storage_browse(
-        &tokio::runtime::Handle::current(),
-        view(&[&pinned, &unpinned]),
-    );
+    let values = services.subscribe_storage_browse(view(&[&pinned, &unpinned]));
     let next = || async {
         tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
             .await

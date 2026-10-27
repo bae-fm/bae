@@ -17,7 +17,9 @@
 /// a value nor an error. Owning the query in its own task puts its read out of
 /// reach of the merge loop, whose only query branch is then a channel receive,
 /// which loses nothing when it is dropped and polled again. Dropping this stops
-/// that task, so a subscription that ends takes its query down too.
+/// that task, so a subscription that ends takes its query down too. The task
+/// is one of the library's, so closing the library ends it before the store
+/// closes.
 ///
 /// Every subscriber through here shows only the newest request, so
 /// [`recv`](Self::recv) hands over only events that answer the request last
@@ -35,7 +37,8 @@ pub(super) struct ReconfigurableLiveQueryEvents<Request, T> {
     /// The revision of the request last set; events answering an older one
     /// are not delivered. `None` while the initial request is the only one.
     newest: Option<coven::LiveQueryRevision>,
-    task: tokio::task::JoinHandle<()>,
+    /// Stops the task that owns the query.
+    task: crate::library::CancellationToken,
 }
 
 impl<Request, T> ReconfigurableLiveQueryEvents<Request, T>
@@ -63,12 +66,12 @@ where
 
 impl<Request, T> Drop for ReconfigurableLiveQueryEvents<Request, T> {
     fn drop(&mut self) {
-        self.task.abort();
+        self.task.cancel();
     }
 }
 
 pub(super) fn reconfigurable_live_query_events<Request, T>(
-    runtime_handle: &tokio::runtime::Handle,
+    manager: &crate::library::LibraryManager,
     mut query: coven::ReconfigurableLiveQuery<Request, T>,
 ) -> ReconfigurableLiveQueryEvents<Request, T>
 where
@@ -77,7 +80,8 @@ where
 {
     let requests = query.requests();
     let (tx, events) = tokio::sync::mpsc::unbounded_channel();
-    let task = runtime_handle.spawn(async move {
+    let task = crate::library::CancellationToken::new();
+    manager.spawn_stoppable_subscription_task("live query events", task.clone(), async move {
         loop {
             let event = query.next().await;
             let revision = event.revision;

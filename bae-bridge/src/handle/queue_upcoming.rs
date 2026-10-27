@@ -31,7 +31,7 @@ impl AppHandle {
     /// A subscription that reads no windows until `set_windows`.
     pub fn subscribe_queue_upcoming(&self) -> std::sync::Arc<QueueUpcomingSubscription> {
         std::sync::Arc::new(QueueUpcomingSubscription {
-            inner: self.services.subscribe_queue_upcoming(&self.runtime),
+            inner: self.services.subscribe_queue_upcoming(),
             runtime: self.runtime.clone(),
         })
     }

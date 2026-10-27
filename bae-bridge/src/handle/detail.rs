@@ -31,7 +31,7 @@ macro_rules! detail_subscription {
             /// A read that shows nothing until `set_id` names an item.
             pub fn $subscribe(&self) -> std::sync::Arc<$object> {
                 std::sync::Arc::new($object {
-                    inner: self.services.$subscribe(&self.runtime),
+                    inner: self.services.$subscribe(),
                     runtime: self.runtime.clone(),
                 })
             }

@@ -463,9 +463,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let services = crate::library::AppServices::for_test(manager.clone())
         .await
         .unwrap();
-    let values = services.subscribe_storage_browse(
-        &tokio::runtime::Handle::current(),
-        crate::library::StorageBrowseView {
+    let values = services.subscribe_storage_browse(crate::library::StorageBrowseView {
             sort: crate::db::StorageSortCriterion {
                 field: crate::db::StorageSortField::AlbumTitle,
                 direction: crate::db::SortDirection::Ascending,
@@ -644,9 +642,7 @@ async fn the_storage_view_moves_one_subscription() {
     };
     let ascending = crate::db::SortDirection::Ascending;
     let all = crate::db::StorageFilter::All;
-    let values = services.subscribe_storage_browse(
-        &tokio::runtime::Handle::current(),
-        view(ascending, all, &[window(0, 2)]),
+    let values = services.subscribe_storage_browse(view(ascending, all, &[window(0, 2)]),
     );
 
     let first = next_storage_value(&values).await;

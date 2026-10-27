@@ -49,16 +49,16 @@ impl AppServices {
     /// transfers. Another release is a new id on the same read.
     pub fn subscribe_storage_inspector(
         &self,
-        runtime_handle: &tokio::runtime::Handle,
     ) -> crate::library::DetailSubscription<StorageInspector> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
-        let release_detail = self.subscribe_release_detail(runtime_handle);
-        let mut downloads = self.subscribe_download_values(runtime_handle);
-        let mut outputs = self.subscribe_output_values(runtime_handle);
+        let release_detail = self.subscribe_release_detail();
+        let mut downloads = self.subscribe_download_values();
+        let mut outputs = self.subscribe_output_values();
         let mut outbox = self.subscribe_outbox_values();
-        let task = runtime_handle.spawn(async move {
+        let task = crate::library::CancellationToken::new();
+        self.inner.manager.spawn_stoppable_subscription_task("storage inspector", task.clone(), async move {
             let mut id: Option<String> = None;
             // The shown release's files as last read: `None` until they are,
             // `Some(None)` once no such release exists.

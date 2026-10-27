@@ -2580,9 +2580,10 @@ to compile in the bridge until it is carried across.
   library started closes it the same way before its runtime ends.
 - **Subscriptions** take a callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery. Each runs
-  as one of the library's tasks, so closing or removing the library stops it
-  before the store closes, and it never hears from a closed store. One opened
-  on a closed library delivers nothing and is reported as a bug.
+  as one of the library's tasks, and so does every task core starts to read
+  and merge its values, so closing or removing the library stops them all
+  before the store closes, and none hears from a closed store. One opened on
+  a closed library delivers nothing and is reported as a bug.
 - **Callbacks the app provides**: UI events, the artwork reader, and on phones
   the sign-in presenter, which shows the provider's page and returns where it
   redirected. Desktops sign in through coven's own browser flow; iCloud runs in

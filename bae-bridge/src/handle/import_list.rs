@@ -110,7 +110,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::CandidateRuntimeCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
+        self.live_subscription(move |services| async move {
             let mut runtimes = services.watch_candidate_runtimes();
             while let Some(changes) = runtimes.next().await {
                 callback.on_changes(

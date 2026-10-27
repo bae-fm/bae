@@ -31,7 +31,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::SyncActivityCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
+        self.live_subscription(move |services| async move {
             let mut activity = services.subscribe_sync_activity();
             loop {
                 match activity.next().await {
@@ -49,7 +49,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutboxCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
+        self.live_subscription(move |services| async move {
             let mut queue = services.watch_outbox_queue();
             while let Some(value) = queue.next().await {
                 match value {
@@ -67,7 +67,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutboxTransfersCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
+        self.live_subscription(move |services| async move {
             let mut transfers = services.watch_outbox_transfers();
             while let Some(changes) = transfers.next().await {
                 callback.on_changes(
@@ -86,7 +86,7 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutboxTotalTransferCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
+        self.live_subscription(move |services| async move {
             let mut total = services.watch_outbox_total_transfer();
             while let Some(transfer) = total.next().await {
                 callback.on_value(crate::types::BridgeUploadTransfer::from_core(transfer));
