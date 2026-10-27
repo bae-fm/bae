@@ -171,12 +171,10 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
     assert!(f.db.find_release_by_id(&release_id).await.unwrap().is_some());
     // Each row names its file only once its upload completes.
     assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
-    let outbox = f.library_manager.outbox_state().await.unwrap();
     assert!(
-        outbox
-            .queue.upload_groups
-            .iter()
-            .any(|group| group.release_id == release_id),
-        "its uploads wait in the outbox"
+        f.db.has_pending_uploads_for_release(&release_id)
+            .await
+            .unwrap(),
+        "its uploads wait in the queue"
     );
 }

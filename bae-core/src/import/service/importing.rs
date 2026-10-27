@@ -864,7 +864,7 @@ impl ImportService {
             import_id: import_id.to_string(),
         };
         // Attaching the originals queues their uploads in the import transaction.
-        let outbox_revision = library_manager
+        library_manager
             .finalize_import_atomic(
                 commit_guard,
                 new_album,
@@ -901,8 +901,6 @@ impl ImportService {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
                 album_id: album_id.to_string(),
-                outbox_revision: outbox_revision
-                    .expect("a Remote import publishes its queued outbox revision"),
             },
             ImportDestination::Local => ImportProgress::Complete {
                 id: db_release.id.to_string(),

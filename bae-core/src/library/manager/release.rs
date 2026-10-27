@@ -553,7 +553,6 @@ impl LibraryManager {
         // Deletion is a local transaction. It abandons the attachment of each
         // file still queued here, which takes its upload off the queue.
         self.database.delete_release_with_cleanup(deletion).await?;
-        self.emit_outbox_changed().await;
 
         if !track_ids.is_empty() {
             self.tracks_deleted(track_ids);

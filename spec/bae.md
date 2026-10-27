@@ -1417,7 +1417,11 @@ storage band, how many wait and how many are being sent, and while any is
 being sent, the bytes the provider confirmed of those, all read in the same
 query as the row: which files are being sent comes from coven's
 `coven_sending`, a live view of the uploads in flight. Only how fast they
-go is kept beside the database. While its files wait, or a transfer runs,
+go is kept beside the database, measured from the bytes a live query of the
+files being sent reads as each part is confirmed: a rate for each file being
+sent, for its release as its files' together, and for every file being sent
+together, beside the bytes those have moved. A file that only waits has no
+rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
 otherwise; moving a release to the cloud shows that transfer until its files
 are queued.

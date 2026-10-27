@@ -269,6 +269,28 @@ pub struct DbFileUpload {
     pub bytes_total: Option<i64>,
 }
 
+/// One file this process is sending now: its release, when it is one of a
+/// release's files, and the bytes its upload session has had confirmed, while
+/// it is sent in parts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbSendingFile {
+    pub file: coven::FileId,
+    pub release_id: Option<String>,
+    pub bytes_confirmed: Option<i64>,
+    pub bytes_total: Option<i64>,
+}
+
+/// The files this process is sending now, the bytes confirmed of them
+/// together and in all, and whether uploads are paused, as one read finds
+/// them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbSendingUploads {
+    pub files: Vec<DbSendingFile>,
+    pub bytes_confirmed: i64,
+    pub bytes_total: i64,
+    pub paused: bool,
+}
+
 /// What the library records this device holding for one of a release's audio
 /// files whose row names no stored file yet. Whether that original is still on
 /// the disk is the disk's to say, not the database's.
@@ -301,8 +323,7 @@ pub struct DbTrackWithArtists {
 /// Raw per-release slim aggregate for summary views (storage rows, release
 /// pickers): `DbReleaseStorageSummary` minus the album-level joins. The resolver
 /// in `LibraryManager` produces the display-ready
-/// `crate::album_detail::ReleaseSummary`. Pending-upload counts are not here;
-/// `OutboxQueue` is the only source for those.
+/// `crate::album_detail::ReleaseSummary`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseSummary {
     pub id: String,
@@ -368,18 +389,4 @@ pub enum StorageFilter {
     Remote,
     Local,
     Uploading,
-}
-
-/// Coven's committed upload queue with each file's bae display context.
-#[derive(Debug, Clone, Default)]
-pub struct DbOutboxQueue {
-    pub paused: bool,
-    pub uploads: Vec<DbOutboxUpload>,
-}
-
-/// One queued file and what it is.
-#[derive(Debug, Clone)]
-pub struct DbOutboxUpload {
-    pub upload: coven::QueuedUpload,
-    pub subject: crate::library::UploadSubject,
 }

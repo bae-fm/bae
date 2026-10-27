@@ -598,8 +598,7 @@ impl LibraryManager {
 
     /// Insert all of an import's data in one transaction, so the release exists
     /// complete or not at all. A Remote import (`destination`) records its
-    /// upload in the same write and gets back the outbox revision that
-    /// shows its uploads queued.
+    /// upload in the same write.
     ///
     /// The pictures of the artists the import creates are staged from
     /// `artist_images`, the ones fetched for [`Self::new_discogs_artists`],
@@ -617,7 +616,7 @@ impl LibraryManager {
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: &[crate::import::DiscogsArtistImage],
         destination: crate::import::ImportDestination,
-    ) -> Result<Option<u64>, LibraryError> {
+    ) -> Result<(), LibraryError> {
         let expected = self
             .database
             .resolve_artists(
@@ -658,15 +657,7 @@ impl LibraryManager {
             self.enqueue_attached_release_pin(release.id.clone())
                 .await?;
         }
-        let remote = matches!(destination, crate::import::ImportDestination::Remote { .. });
-        // A Remote import returns this revision, which already shows its
-        // uploads queued.
-        let outbox_revision = if remote {
-            Some(self.emit_outbox_changed().await)
-        } else {
-            None
-        };
-        Ok(outbox_revision)
+        Ok(())
     }
 
     /// Every stored candidate row, keyed by content hash, for the tests that

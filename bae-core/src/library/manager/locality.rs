@@ -4,7 +4,7 @@ use super::*;
 
 impl LibraryManager {
     /// Attach every local file in one write, then keep the requested offline copies.
-    pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<u64, LibraryError> {
+    pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
         let manager = self.clone();
         let release_id = release_id.to_string();
         let guard = self.admit_transfer_values(
@@ -15,12 +15,11 @@ impl LibraryManager {
         // copy has its own Downloads outcome and retry, never a second attachment.
         self.run_file_operation("attach release", move |_closing| async move {
             manager.database.attach_release_files(&release_id).await?;
-            let revision = manager.emit_outbox_changed().await;
             drop(guard);
             if pin {
                 manager.enqueue_attached_release_pin(release_id).await?;
             }
-            Ok(revision)
+            Ok(())
         })
         .await
     }
@@ -280,7 +279,6 @@ impl LibraryManager {
 
         let pin = self.get_config().prefs.import_storage.pinned;
         let mut admitted_release_ids = Vec::with_capacity(release_ids.len());
-        let mut last_revision = None;
         let mut failures = Vec::new();
         for release_id in release_ids {
             // This release's transfer, from its precondition check to whichever
@@ -293,16 +291,15 @@ impl LibraryManager {
             );
             let admission = async {
                 let file_count = transfer.start().await?;
-                let revision = self.upload_release(release_id, pin).await?;
-                Ok::<_, LibraryError>((revision, file_count))
+                self.upload_release(release_id, pin).await?;
+                Ok::<_, LibraryError>(file_count)
             }
             .await;
 
             match admission {
-                Ok((revision, file_count)) => {
+                Ok(file_count) => {
                     transfer.complete(file_count);
                     admitted_release_ids.push(release_id.clone());
-                    last_revision = Some(revision);
                 }
                 Err(error) => {
                     transfer.fail(&error);
@@ -311,8 +308,7 @@ impl LibraryManager {
             }
         }
 
-        let receipt = last_revision.map(|outbox_revision| UploadReceipt {
-            outbox_revision,
+        let receipt = (!admitted_release_ids.is_empty()).then_some(UploadReceipt {
             release_ids: admitted_release_ids,
         });
         if failures.is_empty() {

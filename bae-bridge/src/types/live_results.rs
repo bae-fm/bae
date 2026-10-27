@@ -50,12 +50,12 @@ pub enum BridgeLiveQueryCause {
 callbacks! {
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
     UploadsPausedCallback: on_value(paused: bool) + on_error;
-    /// Every upload transfer as a `Reset` when the subscription opens, then
-    /// each batch of the ones that moved or left, in one call.
-    OutboxTransfersCallback: on_changes(changes: Vec<super::BridgeOutboxTransferChange>);
-    /// The whole upload queue's transfer when the subscription opens, then
-    /// each time it moves.
-    OutboxTotalTransferCallback: on_value(transfer: super::BridgeUploadTransfer);
+    /// Every upload rate and the total as a `Reset` when the subscription
+    /// opens, then each batch of the ones that moved or left, in one call.
+    OutboxTransfersCallback: on_changes(changes: Vec<super::BridgeOutboxTransferChange>) + on_error;
+    /// The files being sent together when the subscription opens, then each
+    /// time they move.
+    OutboxTotalTransferCallback: on_value(transfer: super::BridgeUploadTransfer) + on_error;
 
     #[cfg(feature = "cast")]
     CastDevicesCallback: on_value(devices: Vec<super::BridgeCastDevice>);

@@ -282,7 +282,6 @@ impl From<crate::import::ArtistIdentityConflict> for LibraryError {
 
 #[derive(Debug)]
 pub struct UploadReceipt {
-    pub outbox_revision: u64,
     pub release_ids: Vec<String>,
 }
 
@@ -723,15 +722,15 @@ pub struct LibraryManager {
     /// services read it back off this manager for their own events.
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
-    /// The manager's own background tasks (queue workers, the sync status and
-    /// outbox subscriptions, startup sync), which each hold a clone of it and
+    /// The manager's own background tasks (queue workers, the sync status,
+    /// pending and abandoned subscriptions, startup sync), which each hold a clone of it and
     /// so of the store. [`LibraryManager::close`] ends them all.
     tasks: service::BackgroundTasks,
     /// The readers of every deletion of tracks, each hearing all of them in
     /// order, as the ids deleted: the player drops them from its queue.
     track_deletions: Arc<std::sync::Mutex<Vec<tokio::sync::mpsc::UnboundedSender<Vec<String>>>>>,
-    /// The cloud-sync responsibility: the outbox projection over the live
-    /// upload state, provider connection, and membership.
+    /// The cloud-sync responsibility: the provider connection and the
+    /// upload pause.
     sync: SyncController,
     /// The sync banner's state and the stream the front-ends read it from.
     sync_status: SyncStatusState,

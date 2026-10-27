@@ -257,7 +257,6 @@ impl LibraryManager {
         self.database
             .delete_album_with_cleanup(album_id, deletions)
             .await?;
-        self.emit_outbox_changed().await;
 
         if !all_track_ids.is_empty() {
             self.tracks_deleted(all_track_ids);

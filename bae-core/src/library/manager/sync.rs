@@ -178,8 +178,9 @@ impl LibraryManager {
     }
 
     /// Start sync for a returning user without withholding local library
-    /// services. [`Self::start`] must already have installed the status and
-    /// outbox subscriptions so the connection's first events have consumers.
+    /// services. [`Self::start`] must already have installed the status,
+    /// pending and abandoned subscriptions so the connection's first events
+    /// have consumers.
     /// The task runs on the runtime retained by the app and is supervised like
     /// the manager's other background workers.
     pub fn start_sync_at_startup(&self) -> Result<(), LibraryError> {

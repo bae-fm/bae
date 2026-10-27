@@ -775,11 +775,9 @@ pub struct ReleaseStorageActionInput {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationStorageActionOutcome {
-    /// The uploads are queued at `outbox_revision`; poll the release to see
-    /// them land.
+    /// The uploads are queued; poll the release to see them land.
     UploadQueued {
         release_id: String,
-        outbox_revision: u64,
     },
     /// The pin is queued; the files are not offline yet.
     PinQueued {

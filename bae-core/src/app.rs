@@ -413,7 +413,7 @@ where
             })
             .map_err(|e| BootstrapError::Database(e.to_string()))?;
 
-        // Install the sync-status and outbox subscriptions before connection starts.
+        // Install the sync-status, pending and abandoned subscriptions before connection starts.
         // coven's status receiver may be subscribed before a provider connects, so the
         // attachment's first events cannot race the library/UI observers.
         timing

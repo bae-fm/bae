@@ -287,6 +287,13 @@ class OpenLibrary internal constructor(
                     override fun onValue(transfer: uniffi.bae_bridge.BridgeUploadTransfer) {
                         scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.setTotalTransfer(transfer) }
                     }
+
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            subscriptionFailed("upload transfer", error)
+                            stores.transfers.outbox.forgetTotalTransfer()
+                        }
+                    }
                 },
             )
         valueSubscriptions +=

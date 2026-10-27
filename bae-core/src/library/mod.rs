@@ -9,7 +9,6 @@ mod library_status;
 mod live_read;
 mod local_lifecycle;
 pub mod manager;
-pub mod outbox_snapshot;
 mod outbox_watch;
 pub mod output_snapshot;
 mod queue_upcoming;
@@ -25,6 +24,7 @@ pub mod storage_inspector;
 pub(crate) mod storage_transitions;
 mod sync_activity;
 pub(crate) mod sync_controller;
+mod upload_progress;
 mod upload_throughput;
 pub use album_selection::{
     AlbumSelectionSnapshot, AlbumSelectionSubscription, AlbumSelectionSubscriptionError,
@@ -46,12 +46,10 @@ pub use local_lifecycle::{
     LibraryRemovalError, UnfinishedRemoval,
 };
 pub use manager::*;
-pub use outbox_snapshot::{
-    OutboxPauseState, OutboxQueue, OutboxState, OutboxTransfers, UploadActivity, UploadBar,
-    UploadFileLabel, UploadFileOp, UploadProgress, UploadReleaseGroup, UploadState, UploadSubject,
+pub use outbox_watch::{
+    OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,
     UploadTransfer, UploadTransferKey,
 };
-pub use outbox_watch::{OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfersWatch};
 pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
     OutputProgress, OutputRow, OutputSnapshot, OutputState,
@@ -73,6 +71,7 @@ pub use storage_browse::{StorageBrowseSnapshot, StorageBrowseSubscription, Stora
 pub use sync_activity::{
     DownloadsInFlight, SyncActivity, SyncActivityStream, UploadQueueCounts, UploadsInFlight,
 };
+pub use upload_progress::{UploadActivity, UploadBar, UploadProgress, UploadState};
 
 #[cfg(test)]
 mod creation_tests;

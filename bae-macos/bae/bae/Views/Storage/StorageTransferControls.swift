@@ -85,8 +85,7 @@ struct StorageTransferControls: View {
             case .upload(let releaseId, let upload, _):
                 StorageUploadSummary(
                     upload: upload,
-                    throughputBps: outboxStore.transfer(forRelease: releaseId)?
-                        .throughputBps
+                    throughputBps: outboxStore.throughput(forRelease: releaseId)
                 ) {
                     cancelTransition(releaseId)
                 }

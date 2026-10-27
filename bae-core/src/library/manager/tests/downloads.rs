@@ -266,9 +266,6 @@ async fn download_bytes_send_no_new_sync_activity() {
     let progress = |bytes_done| {
         crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
     };
-    // A published upload queue lets each value be read without the database,
-    // so one poll shows whether a change sends one.
-    manager.emit_outbox_changed().await;
     let mut activity = crate::library::SyncActivityStream::new(manager.library.clone());
     assert_eq!(activity.next().await.unwrap().downloads, None);
 

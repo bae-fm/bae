@@ -389,10 +389,8 @@ impl Automation {
                     .services
                     .upload_releases(std::slice::from_ref(&release_id))
                     .await?;
-                let outbox_revision = match outcome {
-                    bae_core::library::UploadReleasesOutcome::Complete { receipt } => {
-                        receipt.outbox_revision
-                    }
+                match outcome {
+                    bae_core::library::UploadReleasesOutcome::Complete { .. } => {}
                     bae_core::library::UploadReleasesOutcome::Partial {
                         receipt: None,
                         failure,
@@ -400,11 +398,8 @@ impl Automation {
                     bae_core::library::UploadReleasesOutcome::Partial {
                         receipt: Some(_), ..
                     } => unreachable!("one release cannot be both admitted and refused"),
-                };
-                Ok(AutomationStorageActionOutcome::UploadQueued {
-                    release_id,
-                    outbox_revision,
-                })
+                }
+                Ok(AutomationStorageActionOutcome::UploadQueued { release_id })
             }
             AutomationStorageAction::Pin => {
                 require_action(&summary, AutomationReleaseStorageAction::Pin, "pin")?;

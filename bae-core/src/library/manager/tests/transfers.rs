@@ -235,16 +235,13 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
 #[tokio::test]
 async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
     let (manager, temp, release, file_id) = queued_upload_fixture("queued").await;
-    let snapshot = manager.outbox_state().await.unwrap();
-    assert_eq!(snapshot.queue.total.queued, 1);
-    assert_eq!(snapshot.queue.upload_groups[0].files[0].file.plaintext_size(), 1000);
-    assert_eq!(snapshot.queue.upload_groups[0].files[0].label, crate::library::UploadFileLabel::Filename("a.flac".into()));
+    assert_eq!(manager.count_pending_uploads_for_release(&release.id).await.unwrap(), 1);
     std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
     assert!(!manager.pending().await.unwrap().is_empty());
     manager.cancel_release_upload(&release.id).await.expect_err("the missing original prevents restoring local playback");
     assert!(manager.database.current_file("release_files", &file_id).await.unwrap().is_some(), "the attachment stays pending");
-    assert_eq!(manager.outbox_state().await.unwrap().queue.total.queued, 1);
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 1);
 }
 
 #[tokio::test]
@@ -254,7 +251,7 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     manager.cancel_all_release_uploads().await.unwrap();
     // Clearing a pending attachment abandons it, so its upload leaves the
     // queue, and the person's own cancel leaves no record listed.
-    assert_eq!(manager.outbox_state().await.unwrap().queue.total.queued, 0);
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.database.abandoned_attachments_for_test().await.unwrap().is_empty());
     for release in [first, second] {
         for file in release_files(&manager, &release.id).await {
@@ -271,10 +268,7 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
 async fn deleting_a_release_abandons_its_queued_uploads() {
     let (manager, temp, release, _) = queued_upload_fixture("queued").await;
     manager.delete_release(&release.id).await.unwrap();
-    let snapshot = manager.outbox_state().await.unwrap();
-    assert_eq!(snapshot.queue.total.queued, 0);
-    assert!(snapshot.queue.other_files.is_empty());
-    assert!(snapshot.queue.upload_groups.is_empty());
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.database.abandoned_attachments_for_test().await.unwrap().is_empty(),
         "the person's own deletion leaves no record listed");
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
@@ -388,42 +382,12 @@ async fn an_upload_missing_its_original_is_listed_by_name() {
     assert_eq!(item.wait.action, crate::library::PendingAction::RestoreFile);
 }
 
-/// Every queue the outbox subscription publishes carries the records its
-/// pending query delivered: a queued file whose original vanished shows why it
-/// waits.
-#[tokio::test]
-async fn the_outbox_publishes_each_file_with_the_pending_records_it_was_delivered() {
-    let (manager, temp, release, _file_id) = queued_upload_fixture("waiting").await;
-    std::fs::remove_file(temp.path().join("waiting/a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-    let waits = |value: &Option<Result<crate::library::OutboxState, String>>| {
-        matches!(value, Some(Ok(state)) if state.queue.upload_groups.iter().any(|group| {
-            group.release_id == release.id
-                && group.files.iter().any(|file| {
-                    file.pending
-                        .as_ref()
-                        .is_some_and(|wait| wait.action == crate::library::PendingAction::RestoreFile)
-                })
-        }))
-    };
-    let mut values = manager.subscribe_outbox_values();
-    // What commands published before the subscription ran was read before
-    // the file went, so a wait shown below came through the subscription.
-    assert!(!waits(&values.borrow()));
-    manager.start().unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(10), values.wait_for(waits))
-        .await
-        .expect("the queue shows why the file waits")
-        .unwrap();
-}
-
-/// A cover upload is carried by the `covers` row whose primary key is the
-/// release id, while its immutable cloud file has a distinct id. The queue must
-/// identify and size the file itself rather than mistaking the release id for
-/// an audio-file id.
+/// A release's cover waits to upload beside its files, carried by the
+/// `covers` row whose key is the release id; it is no file of the release's
+/// upload.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn outbox_snapshot_identifies_the_cover_file() {
+async fn a_releases_cover_is_no_file_of_its_upload() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_local_release_with_files(
@@ -448,38 +412,28 @@ async fn outbox_snapshot_identifies_the_cover_file() {
         .unwrap();
     manager.upload_release(&release.id, false).await.unwrap();
 
-    let snapshot = manager.outbox_state().await.unwrap();
-    let group = snapshot
-        .queue.upload_groups
-        .iter()
-        .find(|group| group.release_id == release.id)
-        .expect("the release upload group");
-    assert!(
-        group
-            .files
-            .iter()
-            .all(|file| file.label != crate::library::UploadFileLabel::Cover),
-        "the release's upload is its own files"
-    );
-    let cover_upload = snapshot
-        .queue.other_files
-        .iter()
-        .find(|file| file.label == crate::library::UploadFileLabel::Cover)
-        .expect("the cover is a typed upload row");
     assert_eq!(
-        cover_upload.file,
-        manager.database.file_ref("covers", &release.id).await.unwrap()
+        manager.count_pending_uploads_for_release(&release.id).await.unwrap(),
+        1,
+        "the release's upload is its own file"
     );
-    assert_eq!(cover_upload.file.plaintext_size(), cover_bytes.len() as u64);
+    assert_eq!(
+        manager
+            .database
+            .queued_upload_count_in_table_for_test("covers")
+            .await
+            .unwrap(),
+        1,
+        "the cover waits beside it"
+    );
 }
 
-/// A successful upload command must publish the canonical durable queue
-/// snapshot before it returns. The foreground transfer and Import status both
-/// finish immediately after this call; without this ordering the UI briefly
-/// falls back to Local/Imported while the live query catches up.
+/// An upload command has queued every release it admitted before it
+/// returns, so the release's row reads its upload as the command's caller
+/// finishes.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn upload_publishes_its_durable_queue_before_returning() {
+async fn an_upload_queues_each_release_before_returning() {
     let (manager, temp_dir) = setup_test_manager().await;
     // A caller-driven connection: no sync loop drains the queue behind the test.
     connect_test_cloud(&manager).await;
@@ -497,8 +451,6 @@ async fn upload_publishes_its_durable_queue_before_returning() {
         &[("second.flac", b"second-track-bytes")],
     )
     .await;
-    let mut values = manager.subscribe_outbox_values();
-    assert!(values.borrow_and_update().is_none());
 
     let outcome = manager
         .upload_releases(
@@ -512,21 +464,9 @@ async fn upload_publishes_its_durable_queue_before_returning() {
         receipt.release_ids,
         vec![release.id.clone(), second_release.id.clone()]
     );
-
-    let snapshot = values
-        .borrow_and_update()
-        .clone()
-        .expect("upload publishes an outbox value")
-        .expect("the durable queue projects");
-    assert_eq!(snapshot.revision, receipt.outbox_revision);
-    assert!(snapshot
-        .queue.upload_groups
-        .iter()
-        .any(|group| group.release_id == release.id));
-    assert!(snapshot
-        .queue.upload_groups
-        .iter()
-        .any(|group| group.release_id == second_release.id));
+    for release in [release, second_release] {
+        assert!(has_pending_uploads(&manager, &release.id).await);
+    }
 }
 
 #[cfg(feature = "test-utils")]
@@ -615,82 +555,6 @@ async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
     assert_eq!(attached_file_count(&manager, &release.id).await, 0);
 }
 
-/// The queue names each queued file by its row's current original filename,
-/// and a rename of that file wakes it.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn outbox_subscription_reacts_to_release_display_context_changes() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    manager.start().unwrap();
-    let mut values = manager.subscribe_outbox_values();
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("reactive-outbox-context"),
-        "Album Title",
-        &[("track.flac", b"track-bytes")],
-    )
-    .await;
-
-    tokio::time::timeout(std::time::Duration::from_secs(2), async {
-        loop {
-            values.changed().await.expect("outbox value stream");
-            let current = values.borrow_and_update();
-            let snapshot = current
-                .as_ref()
-                .expect("outbox subscription published a value")
-                .as_ref()
-                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
-            if snapshot
-                .queue.upload_groups
-                .iter()
-                .any(|group| group.release_id == release.id)
-            {
-                break;
-            }
-        }
-    })
-    .await
-    .expect("durable enqueue reaches the outbox subscription");
-
-    let file = release_files(&manager, &release.id)
-        .await
-        .into_iter()
-        .next()
-        .expect("release file");
-    manager
-        .database
-        .set_original_filename_for_test(&file.id, "renamed-track.flac")
-        .await
-        .unwrap();
-
-    let renamed_file = tokio::time::timeout(std::time::Duration::from_secs(2), async {
-        loop {
-            values.changed().await.expect("outbox value stream");
-            let current = values.borrow_and_update();
-            let snapshot = current
-                .as_ref()
-                .expect("outbox subscription published a value")
-                .as_ref()
-                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
-            let label = &snapshot.queue.upload_groups[0].files[0].label;
-            if label
-                == &crate::library::UploadFileLabel::Filename(
-                    "renamed-track.flac".to_string(),
-                )
-            {
-                break label.clone();
-            }
-        }
-    })
-    .await
-    .expect("original filename changes wake outbox enrichment");
-    assert_eq!(
-        renamed_file,
-        crate::library::UploadFileLabel::Filename("renamed-track.flac".to_string())
-    );
-}
-
 /// A user retry without a connected cloud must report the refusal to its
 /// caller; returning success would leave the failed queue unchanged while the
 /// Storage Manager claims the retry ran.
@@ -713,10 +577,10 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     let before = manager.storage.request_count();
     assert!(matches!(manager.database.retry_uploads_now().await.unwrap(), coven::DrainOutcome::Paused));
     assert_eq!(manager.storage.request_count(), before);
-    assert_eq!(manager.outbox_state().await.unwrap().queue.pause_state, crate::library::OutboxPauseState::Paused);
+    assert!(manager.is_sync_paused().await.unwrap());
     manager.set_sync_paused(false).await.unwrap();
     manager.retry_outbox_now().await.unwrap();
-    assert_eq!(manager.outbox_state().await.unwrap().queue.total.queued, 0);
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -726,10 +590,10 @@ async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
     manager.set_sync_paused(false).await.unwrap();
     manager.retry_outbox_now().await.unwrap();
     assert!(!manager.pending().await.unwrap().is_empty());
-    assert_eq!(manager.outbox_state().await.unwrap().queue.total.queued, 1);
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 1);
     manager.storage.set_online(true);
     manager.retry_outbox_now().await.unwrap();
-    assert_eq!(manager.outbox_state().await.unwrap().queue.total.queued, 0);
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
 }
 
 /// The concurrency settings reach the open store when they are written, not

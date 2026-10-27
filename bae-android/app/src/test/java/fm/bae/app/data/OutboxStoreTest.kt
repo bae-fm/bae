@@ -39,7 +39,7 @@ class OutboxStoreTest {
         assertEquals(LiveValue.Current(false), store.uploadsPaused.value)
     }
 
-    /** The whole queue's transfer is absent until the total subscription delivers one, then follows it. */
+    /** The files being sent together are absent until the total subscription delivers them, then follow it until a read fails. */
     @Test
     fun theQueuesTransferFollowsEachTotal() {
         val store = OutboxStore(initialUploadsPaused = false)
@@ -51,5 +51,8 @@ class OutboxStoreTest {
 
         store.setTotalTransfer(transfer(20uL))
         assertEquals(transfer(20uL), store.totalTransfer.value)
+
+        store.forgetTotalTransfer()
+        assertNull("a failed read draws no transfer", store.totalTransfer.value)
     }
 }

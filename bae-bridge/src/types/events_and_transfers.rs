@@ -53,11 +53,9 @@ pub enum BridgeUploadActivity {
     Queued,
 }
 
-/// The releases one upload command queued, and the outbox revision
-/// published before it returned.
+/// The releases one upload command queued.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadReceipt {
-    pub outbox_revision: u64,
     pub release_ids: Vec<String>,
 }
 
@@ -83,7 +81,7 @@ pub enum BridgeUploadReleasesOutcome {
 mirror_struct! {
     BridgeUploadReceipt = bae_core::library::UploadReceipt,
     from_core: fn,
-    fields: { outbox_revision, release_ids },
+    fields: { release_ids },
 }
 
 mirror_struct! {
@@ -125,8 +123,8 @@ pub struct BridgeUploadProgress {
     pub activity: Option<BridgeUploadActivity>,
 }
 
-/// How far an upload has gone and how fast it goes now. Mirrors
-/// `UploadTransfer`.
+/// How far the files being sent have gone together and how fast they go.
+/// Mirrors `UploadTransfer`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadTransfer {
     pub bar: Option<BridgeUploadBar>,
@@ -134,8 +132,8 @@ pub struct BridgeUploadTransfer {
     pub throughput_bps: u64,
 }
 
-/// What a transfer is of: one queued file, by its `file_id`, or a release's
-/// files together.
+/// What a rate is of: one file being sent, by its `file_id`, or a release's
+/// files being sent together.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeUploadTransferKey {
     File { file_id: String },
@@ -143,26 +141,27 @@ pub enum BridgeUploadTransferKey {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeKeyedUploadTransfer {
+pub struct BridgeKeyedUploadRate {
     pub key: BridgeUploadTransferKey,
-    pub transfer: BridgeUploadTransfer,
+    /// Bytes per second.
+    pub throughput_bps: u64,
 }
 
-/// A change to one transfer, or every transfer. Mirrors
+/// A change to one rate, or every transfer. Mirrors
 /// `OutboxTransferChange`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeOutboxTransferChange {
     Updated {
         key: BridgeUploadTransferKey,
-        transfer: BridgeUploadTransfer,
+        throughput_bps: u64,
     },
-    /// The file or release left the queue.
+    /// The file or release has nothing being sent any more.
     Removed { key: BridgeUploadTransferKey },
-    /// The whole queue's transfer.
+    /// The files being sent together.
     TotalUpdated { transfer: BridgeUploadTransfer },
-    /// Every transfer; a key not listed has none.
+    /// Every rate and the total; a key not listed has nothing being sent.
     Reset {
-        transfers: Vec<BridgeKeyedUploadTransfer>,
+        rates: Vec<BridgeKeyedUploadRate>,
         total: BridgeUploadTransfer,
     },
 }

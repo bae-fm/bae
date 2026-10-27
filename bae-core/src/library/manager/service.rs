@@ -142,7 +142,7 @@ impl LibraryManager {
         #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Self {
         let sync_status = SyncStatusState::new(&database);
-        let sync = SyncController::new(database.clone(), diagnostics.clone(), clock.clone());
+        let sync = SyncController::new(database.clone(), diagnostics.clone());
         let downloads = crate::library::Downloads::new(database.clone());
         #[cfg(desktop)]
         let outputs = crate::library::Outputs::new(database.clone());
@@ -468,12 +468,6 @@ impl LibraryManager {
     /// line value. Call once after construction, with a tokio runtime
     /// available.
     pub fn start(&self) -> Result<(), LibraryError> {
-        let outbox = self.database.subscribe_cloud_outbox();
-        let sync = self.sync.clone();
-        self.spawn_supervised_task("cloud outbox subscription", async move {
-            sync.run_cloud_outbox_subscription(outbox).await;
-        })?;
-
         let mut rx = self.database.subscribe_sync_status();
         let lm = self.clone();
         self.spawn_supervised_task("sync status subscription", async move {
@@ -528,16 +522,21 @@ impl LibraryManager {
             .retain(|reader| reader.send(track_ids.clone()).is_ok());
     }
 
-    /// Build and publish the current outbox snapshot. Called by durable outbox
-    /// and display-row subscriptions and by each upload lifecycle callback.
-    pub(crate) async fn emit_outbox_changed(&self) -> u64 {
-        self.sync.emit_outbox_changed().await
+    /// How fast each file being sent and each release with files being sent
+    /// goes, and the files being sent together, told as each one moves.
+    pub fn watch_outbox_transfers(&self) -> crate::library::OutboxTransfersWatch {
+        crate::library::OutboxTransfersWatch::of(
+            self.database.subscribe_sending_uploads(),
+            self.clock.clone(),
+        )
     }
 
-    pub fn subscribe_outbox_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxState, String>>> {
-        self.sync.subscribe_outbox_values()
+    /// The files being sent together, told each time they move.
+    pub fn watch_outbox_total_transfer(&self) -> crate::library::OutboxTotalTransferWatch {
+        crate::library::OutboxTotalTransferWatch::of(
+            self.database.subscribe_sending_uploads(),
+            self.clock.clone(),
+        )
     }
 
     /// Every entry of the download queue now, for a test that reads the
@@ -655,13 +654,6 @@ impl LibraryManager {
             &format!("read or write the {queue} queue's table"),
             &bae_util::error_text::CauseChain(error),
         );
-    }
-
-    /// The upload queue and its transfers as the durable queue holds them
-    /// now. Seeds the Storage Manager panel before the first value arrives on
-    /// the outbox stream.
-    pub async fn outbox_state(&self) -> Result<crate::library::OutboxState, LibraryError> {
-        self.sync.outbox_state().await
     }
 }
 

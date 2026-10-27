@@ -145,7 +145,7 @@ async fn has_pending_uploads(manager: &LibraryManager, release_id: &str) -> bool
         .unwrap()
 }
 
-async fn queued_upload_count(manager: &LibraryManager) -> usize {
+async fn queued_upload_count(manager: &LibraryManager) -> i64 {
     manager
         .database
         .queued_upload_count_for_test()
@@ -272,6 +272,7 @@ include!("tests/upload_pin.rs");
 include!("tests/pin_count_upkeep.rs");
 include!("tests/queue_count_upkeep.rs");
 include!("tests/pending_list.rs");
+include!("tests/upload_transfers.rs");
 include!("tests/downloads.rs");
 include!("tests/output.rs");
 include!("tests/identity.rs");

@@ -28,7 +28,7 @@ async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryS
 }
 
 /// An attached release whose files are queued in coven and have not uploaded.
-/// The Uploading filter and outbox snapshot render this committed queue.
+/// The Uploading filter and each release's upload read this committed queue.
 /// The manager must already be connected via [`connect_test_cloud`].
 #[cfg(feature = "test-utils")]
 async fn insert_release_with_queued_uploads(
@@ -74,14 +74,13 @@ impl ReleaseRef {
 /// Wait for the current file's upload to leave coven's durable queue.
 #[cfg(feature = "test-utils")]
 async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
-    let reference = manager.database.file_ref(table, row_id).await.unwrap();
-    let mut uploads = manager.database.subscribe_cloud_outbox();
+    let mut queued = manager.database.subscribe_row_file_queued_for_test(table, row_id);
     manager.database.sync_now();
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
-        loop {
-            if !uploads.next().await.expect("the query stays open").unwrap().files.iter().any(|file| file.file == reference) { return; }
-        }
-    }).await.expect("file uploaded");
+        while queued.next().await.expect("the query stays open").unwrap() {}
+    })
+    .await
+    .expect("file uploaded");
 }
 
 /// Create a Remote release the real way: a Local release with one source file

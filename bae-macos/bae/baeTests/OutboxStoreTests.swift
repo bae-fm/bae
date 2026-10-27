@@ -3,14 +3,8 @@ import Testing
 
 @testable import bae
 
-private func cloudUploadReceipt(
-    _ releaseIds: [String],
-    revision: UInt64 = 2
-) -> BridgeUploadReceipt {
-    BridgeUploadReceipt(
-        outboxRevision: revision,
-        releaseIds: releaseIds
-    )
+private func cloudUploadReceipt(_ releaseIds: [String]) -> BridgeUploadReceipt {
+    BridgeUploadReceipt(releaseIds: releaseIds)
 }
 
 @Suite("OutboxStore")
@@ -40,29 +34,24 @@ struct OutboxStoreTransferTests {
         )
     }
 
-    @Test("a release's transfer follows each change that names it")
-    func releaseTransferFollowsItsChanges() {
+    @Test("a release's rate follows each change that names it")
+    func releaseRateFollowsItsChanges() {
         let store = OutboxStore(uploadsPaused: false)
         store.applyTransferChange(
             .reset(
-                transfers: [
-                    BridgeKeyedUploadTransfer(
-                        key: release,
-                        transfer: transfer(10)
-                    )
+                rates: [
+                    BridgeKeyedUploadRate(key: release, throughputBps: 10)
                 ],
                 total: transfer(10)
             )
         )
-        #expect(store.transfer(forRelease: "release-a") == transfer(10))
+        #expect(store.throughput(forRelease: "release-a") == 10)
 
-        store.applyTransferChange(
-            .updated(key: release, transfer: transfer(40))
-        )
-        #expect(store.transfer(forRelease: "release-a") == transfer(40))
+        store.applyTransferChange(.updated(key: release, throughputBps: 40))
+        #expect(store.throughput(forRelease: "release-a") == 40)
 
         store.applyTransferChange(.removed(key: release))
-        #expect(store.transfer(forRelease: "release-a") == nil)
+        #expect(store.throughput(forRelease: "release-a") == nil)
     }
 
     @Test("the queue's rate shows only while bytes move")

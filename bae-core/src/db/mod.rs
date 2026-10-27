@@ -11,6 +11,7 @@ pub(crate) use client::AbandonedRow;
 pub(crate) use client::ArtistCredits;
 pub(crate) use client::FileRow;
 pub(crate) use client::PendingRow;
+pub(crate) use client::QueueUpcomingRead;
 pub(crate) use client::QueuedPayload;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::RecordsChange;
@@ -39,7 +40,6 @@ pub use client::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{FinishedScan, GroupingChanges, ScanItemWrite};
-pub(crate) use client::{OutboxDisplayContext, OutboxDisplayRequest, QueueUpcomingRead};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

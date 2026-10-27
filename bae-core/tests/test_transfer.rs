@@ -166,16 +166,15 @@ async fn expect_storage_state(
 }
 
 // ---------------------------------------------------------------------------
-// The upload enqueue is visible in the outbox snapshot before the drain
+// The upload enqueue is counted before the drain
 // ---------------------------------------------------------------------------
 
-/// A Cloud import attaches its files and queues their uploads. The uploads are
-/// enqueued through coven, and the Storage Manager / import-progress UI reads
-/// them from `outbox_snapshot`. Assert they are visible the instant upload
-/// returns — before any byte drains — so the upload shows up immediately rather
-/// than only after it finishes.
+/// An upload attaches the release's files and queues their uploads, which
+/// the release's queue count reads the instant the upload returns — before
+/// any byte drains — so the upload shows up at once rather than only after
+/// it finishes.
 #[tokio::test]
-async fn uploads_are_visible_in_snapshot_before_drain() {
+async fn uploads_are_counted_before_drain() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
@@ -190,53 +189,13 @@ async fn uploads_are_visible_in_snapshot_before_drain() {
     // Enqueue upload through the real coven path; do NOT drain.
     mgr.upload_release(&release_id, false).await.unwrap();
 
-    let snap = mgr.outbox_state().await.unwrap();
     assert_eq!(
-        snap.queue.total.queued,
-        named.len() as u32,
-        "every file is queued in the snapshot immediately after upload"
-    );
-    let group = snap
-        .queue
-        .upload_groups
-        .iter()
-        .find(|group| group.release_id == release_id)
-        .expect("the uploading release is present in upload_groups");
-    assert_eq!(group.progress.queued, named.len() as u32);
-}
-
-#[tokio::test]
-async fn durable_outbox_subscription_emits_enqueue_without_a_sync_cycle() {
-    tracing_init();
-    let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_cloud(&tmp).await;
-    let mut values = mgr.subscribe_outbox_values();
-    let source = tmp.path().join("live-outbox");
-    let (_album_id, release_id, _) =
-        create_local_release(&mgr, &source, &[("track.flac", b"audio")]).await;
-
-    mgr.upload_release(&release_id, false).await.unwrap();
-
-    loop {
-        tokio::time::timeout(std::time::Duration::from_secs(5), values.changed())
+        mgr.count_pending_uploads_for_release(&release_id)
             .await
-            .expect("durable outbox commit wakes the subscription")
-            .expect("outbox subscription remains open");
-        let current = values.borrow_and_update();
-        let snapshot = current
-            .as_ref()
-            .expect("outbox subscription published a value")
-            .as_ref()
-            .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
-        if snapshot
-            .queue
-            .upload_groups
-            .iter()
-            .any(|group| group.release_id == release_id)
-        {
-            break;
-        }
-    }
+            .unwrap(),
+        named.len() as i64,
+        "every file is queued immediately after upload"
+    );
 }
 
 // ---------------------------------------------------------------------------

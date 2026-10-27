@@ -27,9 +27,12 @@ impl crate::types::BridgeOutboxTransferChange {
     pub(super) fn from_core(change: bae_core::library::OutboxTransferChange) -> Self {
         use bae_core::library::OutboxTransferChange;
         match change {
-            OutboxTransferChange::Updated { key, transfer } => Self::Updated {
+            OutboxTransferChange::Updated {
+                key,
+                throughput_bps,
+            } => Self::Updated {
                 key: crate::types::BridgeUploadTransferKey::from_core(key),
-                transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
+                throughput_bps,
             },
             OutboxTransferChange::Removed { key } => Self::Removed {
                 key: crate::types::BridgeUploadTransferKey::from_core(key),
@@ -38,13 +41,15 @@ impl crate::types::BridgeOutboxTransferChange {
                 transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
             },
             OutboxTransferChange::Reset(transfers) => Self::Reset {
-                transfers: transfers
-                    .keyed
+                rates: transfers
+                    .rates
                     .into_iter()
-                    .map(|(key, transfer)| crate::types::BridgeKeyedUploadTransfer {
-                        key: crate::types::BridgeUploadTransferKey::from_core(key),
-                        transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
-                    })
+                    .map(
+                        |(key, throughput_bps)| crate::types::BridgeKeyedUploadRate {
+                            key: crate::types::BridgeUploadTransferKey::from_core(key),
+                            throughput_bps,
+                        },
+                    )
                     .collect(),
                 total: crate::types::BridgeUploadTransfer::from_core(transfers.total),
             },

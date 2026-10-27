@@ -136,17 +136,24 @@ private final class OutboxTransfersSink: OutboxTransfersCallback,
     @unchecked Sendable
 {
     private let apply: @MainActor @Sendable (BridgeOutboxTransferChange) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
 
     init(
         apply:
-            @escaping @MainActor @Sendable (BridgeOutboxTransferChange) -> Void
+            @escaping @MainActor @Sendable (BridgeOutboxTransferChange) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         self.apply = apply
+        self.fail = fail
     }
 
     /// One batch lands in one main-actor turn, applied in order.
     func onChanges(changes: [BridgeOutboxTransferChange]) {
         Task { @MainActor in changes.forEach(apply) }
+    }
+
+    func onError(error: BridgeError) {
+        Task { @MainActor in fail(error) }
     }
 }
 
@@ -251,9 +258,12 @@ final class CommonSubscriptions {
                     )
                 ),
                 appHandle.subscribeOutboxTransfers(
-                    callback: OutboxTransfersSink { [outboxStore] change in
-                        outboxStore.applyTransferChange(change)
-                    }
+                    callback: OutboxTransfersSink(
+                        apply: { [outboxStore] change in
+                            outboxStore.applyTransferChange(change)
+                        },
+                        fail: onError
+                    )
                 ),
                 appHandle.subscribeDownloadTransfers(
                     callback: DownloadTransfersSink { [downloadStore] change in

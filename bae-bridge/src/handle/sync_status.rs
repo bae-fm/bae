@@ -58,7 +58,9 @@ impl AppHandle {
         )
     }
 
-    /// Every upload transfer now, then each one as it moves or leaves.
+    /// How fast each file being sent and each release with files being sent
+    /// goes, and the files being sent together: all of it now, then each one
+    /// as it moves or leaves.
     pub fn subscribe_outbox_transfers(
         &self,
         callback: Box<dyn crate::types::OutboxTransfersCallback>,
@@ -66,17 +68,20 @@ impl AppHandle {
         self.live_subscription(move |services| async move {
             let mut transfers = services.watch_outbox_transfers();
             while let Some(changes) = transfers.next().await {
-                callback.on_changes(
-                    changes
-                        .into_iter()
-                        .map(crate::types::BridgeOutboxTransferChange::from_core)
-                        .collect(),
-                );
+                match changes {
+                    Ok(changes) => callback.on_changes(
+                        changes
+                            .into_iter()
+                            .map(crate::types::BridgeOutboxTransferChange::from_core)
+                            .collect(),
+                    ),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+                }
             }
         })
     }
 
-    /// The whole upload queue's transfer now, then each time it moves, for a
+    /// The files being sent together now, then each time they move, for a
     /// surface that draws only that.
     pub fn subscribe_outbox_total_transfer(
         &self,
@@ -85,7 +90,12 @@ impl AppHandle {
         self.live_subscription(move |services| async move {
             let mut total = services.watch_outbox_total_transfer();
             while let Some(transfer) = total.next().await {
-                callback.on_value(crate::types::BridgeUploadTransfer::from_core(transfer));
+                match transfer {
+                    Ok(transfer) => {
+                        callback.on_value(crate::types::BridgeUploadTransfer::from_core(transfer))
+                    }
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+                }
             }
         })
     }

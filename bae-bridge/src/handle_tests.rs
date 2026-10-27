@@ -362,7 +362,7 @@ fn extracted_signals_cross_with_their_key() {
 }
 
 #[tokio::test]
-async fn upload_file_op_preserves_object_and_row_identity() {
+async fn a_file_rate_is_keyed_by_its_file_id() {
     let directory = tempfile::tempdir().unwrap();
     let handle=coven::TestCoven::new().builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout())
         .synced_tables(vec![coven::SyncedTable::new("release_files",coven::RowIdentity::SharedKey)
@@ -387,16 +387,14 @@ async fn upload_file_op_preserves_object_and_row_identity() {
     let change = crate::types::BridgeOutboxTransferChange::from_core(
         bae_core::library::OutboxTransferChange::Updated {
             key: bae_core::library::UploadTransferKey::File(upload.file.id()),
-            transfer: bae_core::library::UploadTransfer {
-                bar: Some(bae_core::library::UploadBar {
-                    bytes_done: 40,
-                    bytes_total: 116,
-                }),
-                throughput_bps: 20,
-            },
+            throughput_bps: 20,
         },
     );
-    let crate::types::BridgeOutboxTransferChange::Updated { key, transfer } = change else {
+    let crate::types::BridgeOutboxTransferChange::Updated {
+        key,
+        throughput_bps,
+    } = change
+    else {
         panic!("an update stays an update");
     };
     assert_eq!(
@@ -404,15 +402,9 @@ async fn upload_file_op_preserves_object_and_row_identity() {
         crate::types::BridgeUploadTransferKey::File {
             file_id: id.clone()
         },
-        "a file's transfer is keyed by the file id its queue row names"
+        "a file's rate is keyed by the file id its queue row names"
     );
-    assert_eq!(
-        transfer.bar,
-        Some(crate::types::BridgeUploadBar {
-            bytes_done: 40,
-            bytes_total: 116
-        })
-    );
+    assert_eq!(throughput_bps, 20);
     handle.close().await.unwrap();
 }
 

@@ -452,7 +452,6 @@ impl AppServices {
     delegate_async!(manager, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), crate::library::LibraryError>);
 
-    delegate_async!(manager, outbox_state => outbox_state() -> Result<crate::library::OutboxState, crate::library::LibraryError>);
     delegate_async!(manager, retry_outbox_now => retry_outbox_now() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_release_transition => cancel_release_transition(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_all_release_uploads => cancel_all_release_uploads() -> Result<(), crate::library::LibraryError>);
@@ -639,22 +638,8 @@ impl AppServices {
     delegate_sync!(manager, subscribe_uploads_paused => subscribe_uploads_paused() -> coven::LiveQuery<bool>);
     delegate_async!(manager, is_sync_paused => is_sync_paused() -> Result<bool, crate::library::LibraryError>);
 
-    pub fn subscribe_outbox_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxState, String>>> {
-        self.inner.manager.subscribe_outbox_values()
-    }
-
-    /// The bytes each queued upload has moved and how fast, sent as each one
-    /// moves.
-    pub fn watch_outbox_transfers(&self) -> crate::library::OutboxTransfersWatch {
-        crate::library::OutboxTransfersWatch::of(self.inner.manager.clone())
-    }
-
-    /// The whole queue's transfer, sent each time it moves.
-    pub fn watch_outbox_total_transfer(&self) -> crate::library::OutboxTotalTransferWatch {
-        crate::library::OutboxTotalTransferWatch::of(self.inner.manager.clone())
-    }
+    delegate_sync!(manager, watch_outbox_transfers => watch_outbox_transfers() -> crate::library::OutboxTransfersWatch);
+    delegate_sync!(manager, watch_outbox_total_transfer => watch_outbox_total_transfer() -> crate::library::OutboxTotalTransferWatch);
 
     pub fn subscribe_transfer_values(
         &self,

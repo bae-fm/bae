@@ -249,29 +249,17 @@
             }
         }
 
-        /// The bytes the preview's uploading files and release have moved, and
-        /// how fast.
+        /// How fast the preview's uploading file and release go, and the
+        /// bytes the files being sent have moved together.
         static let uploadTransfers: BridgeOutboxTransferChange = .reset(
-            transfers: [
-                BridgeKeyedUploadTransfer(
+            rates: [
+                BridgeKeyedUploadRate(
                     key: .file(fileId: "upload-rel-row-1-audio"),
-                    transfer: BridgeUploadTransfer(
-                        bar: BridgeUploadBar(
-                            bytesDone: 12_400_000,
-                            bytesTotal: 26_100_000
-                        ),
-                        throughputBps: 2_200_000
-                    )
+                    throughputBps: 2_200_000
                 ),
-                BridgeKeyedUploadTransfer(
+                BridgeKeyedUploadRate(
                     key: .release(releaseId: "rel-row-1"),
-                    transfer: BridgeUploadTransfer(
-                        bar: BridgeUploadBar(
-                            bytesDone: 22_400_000,
-                            bytesTotal: 57_100_000
-                        ),
-                        throughputBps: 3_200_000
-                    )
+                    throughputBps: 3_200_000
                 ),
             ],
             total: BridgeUploadTransfer(

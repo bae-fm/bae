@@ -34,7 +34,6 @@ async fn pure_reads_use_the_read_connection() {
     queue.front().await.unwrap();
     queue.next_in_order().await.unwrap();
     db.has_pending_cloud_upload("missing").await.unwrap();
-    db.outbox_queue().await.unwrap();
 
     // The tables the pane writes read back the same way.
     db.load_import_candidate_state("missing").await.unwrap();

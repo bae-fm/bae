@@ -116,8 +116,48 @@ impl Database {
             .writes)
     }
 
-    pub async fn queued_upload_count_for_test(&self) -> Result<usize, DbError> {
-        Ok(self.inner.handle.uploads().await?.files.len())
+    /// How many files wait in this device's upload queue.
+    pub async fn queued_upload_count_for_test(&self) -> Result<i64, DbError> {
+        self.read(|sql| {
+            Ok(
+                sql.query_row("SELECT COUNT(*) FROM coven_upload_queue", [], |row| {
+                    row.get(0)
+                })?,
+            )
+        })
+        .await
+    }
+
+    /// Whether the file of `table`'s row `row_id` waits in this device's
+    /// upload queue, live.
+    pub fn subscribe_row_file_queued_for_test(
+        &self,
+        table: &str,
+        row_id: &str,
+    ) -> coven::LiveQuery<bool> {
+        let (table, row_id) = (table.to_string(), row_id.to_string());
+        self.inner.handle.subscribe(move |sql| {
+            Ok(sql.query_row(
+                "SELECT EXISTS (SELECT 1 FROM coven_uploads \
+                 WHERE table_name = ?1 AND key = coven_key(?2))",
+                [&table, &row_id],
+                |row| row.get(0),
+            )?)
+        })
+    }
+
+    /// How many of the files waiting in this device's upload queue are
+    /// declared by `table`'s rows.
+    pub async fn queued_upload_count_in_table_for_test(&self, table: &str) -> Result<i64, DbError> {
+        let table = table.to_string();
+        self.read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT COUNT(*) FROM coven_uploads WHERE table_name = ?1",
+                [table],
+                |row| row.get(0),
+            )?)
+        })
+        .await
     }
 
     pub async fn queued_upload_count_for_root_for_test(
@@ -141,18 +181,23 @@ impl Database {
                 "unknown upload root {root_table}"
             )));
         }
-        self.outbox_queue()
-            .await?
-            .uploads
-            .into_iter()
-            .filter(|entry| entry.subject.release() == Some(root_id))
-            .map(|entry| {
-                Ok((
-                    entry.upload.file.table().to_string(),
-                    super::files::file_row_id(&entry.upload.file)?.to_string(),
-                ))
-            })
-            .collect()
+        // The release's own files and its cover, whose row the release's id
+        // keys.
+        let root_id = root_id.to_string();
+        self.read(move |sql| {
+            Ok(sql.query(
+                "SELECT upload.table_name, f.id FROM release_files AS f \
+                 JOIN coven_uploads AS upload \
+                     ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
+                 WHERE f.release_id = ?1 \
+                 UNION ALL \
+                 SELECT upload.table_name, ?1 FROM coven_uploads AS upload \
+                 WHERE upload.table_name = 'covers' AND upload.key = coven_key(?1)",
+                [root_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?)
+        })
+        .await
     }
 
     /// Write rows into this device's local-only tables — state no sync ever

@@ -296,7 +296,6 @@ async fn a_finished_import_leaves_nothing_in_flight() {
             id: "rel1".to_string(),
             import_id: "imp-1".to_string(),
             album_id: "alb".to_string(),
-            outbox_revision: 7,
         },
         ImportProgress::Failed {
             error: "no space left".to_string(),

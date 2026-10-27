@@ -61,7 +61,6 @@ impl LibraryManager {
         }
         let outcome = self.database.retry_uploads_now().await?;
         self.trigger_sync();
-        self.emit_outbox_changed().await;
         match outcome {
             coven::DrainOutcome::Paused => Err(LibraryError::Storage(
                 "cloud upload pipeline paused after the retry began".to_string(),
@@ -89,7 +88,6 @@ impl LibraryManager {
             for release in detached {
                 manager.cancel_download(&release).await?;
             }
-            manager.emit_outbox_changed().await;
             Ok(())
         })
         .await

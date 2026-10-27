@@ -114,6 +114,24 @@ pub(super) const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
 /// Whether the person paused uploads, as coven's one row says.
 const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 
+/// Each file this process is sending now, its release when it is one of a
+/// release's files, and the bytes its upload session has had confirmed. One
+/// row per upload in flight is read, each found by its place in the queue.
+const FILES_SENDING: &str = "SELECT sending.file, f.release_id, \
+         upload.bytes_confirmed, upload.bytes_total \
+     FROM coven_sending AS sending \
+     JOIN coven_uploads AS upload ON upload.position = sending.position \
+     LEFT JOIN release_files AS f \
+         ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key";
+
+/// The bytes confirmed of the files this process is sending now, together
+/// and in all, and whether uploads are paused.
+const SENDING_TOTAL: &str = "SELECT \
+         COALESCE(SUM(upload.bytes_confirmed), 0), COALESCE(SUM(upload.bytes_total), 0), \
+         (SELECT paused FROM coven_upload_pause) \
+     FROM coven_sending AS sending \
+     JOIN coven_uploads AS upload ON upload.position = sending.position";
+
 impl Database {
     /// How many of the release's files still wait to upload from this device.
     pub async fn count_pending_uploads_for_release(
@@ -150,6 +168,30 @@ impl Database {
                 Ok(crate::library::UploadQueueCounts {
                     queued: row.get(0)?,
                     sending: row.get(1)?,
+                    paused: row.get(2)?,
+                })
+            })?)
+        })
+    }
+
+    /// The files this process is sending now and the bytes confirmed of
+    /// them, live: it reruns with each part a provider confirms, and as files
+    /// start and stop being sent or the person pauses uploads.
+    pub(crate) fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads> {
+        self.inner.handle.subscribe(|sql| {
+            let files = sql.query(FILES_SENDING, [], |row| {
+                Ok(DbSendingFile {
+                    file: row.get(0)?,
+                    release_id: row.get(1)?,
+                    bytes_confirmed: row.get(2)?,
+                    bytes_total: row.get(3)?,
+                })
+            })?;
+            Ok(sql.query_row(SENDING_TOTAL, [], |row| {
+                Ok(DbSendingUploads {
+                    files,
+                    bytes_confirmed: row.get(0)?,
+                    bytes_total: row.get(1)?,
                     paused: row.get(2)?,
                 })
             })?)

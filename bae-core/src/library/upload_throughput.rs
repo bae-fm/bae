@@ -1,5 +1,6 @@
 //! Transfer rates from provider-confirmed upload counters.
-use coven::{FileId, UploadPhase, UploadQueue};
+use crate::db::DbSendingUploads;
+use coven::FileId;
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
@@ -17,25 +18,26 @@ pub(crate) struct UploadThroughput {
 }
 
 impl UploadThroughput {
-    pub(crate) fn observe(&mut self, queue: &UploadQueue, now: Duration) {
-        if queue.paused {
+    /// Measure the files being sent at `now` from the bytes confirmed of
+    /// them. A file no longer sent, or sent in one request, has no rate; a
+    /// pause ends every measurement.
+    pub(crate) fn observe(&mut self, sending: &DbSendingUploads, now: Duration) {
+        if sending.paused {
             self.files.clear();
             return;
         }
-        // Only a file being sent in parts has confirmed bytes to measure.
+        let bytes = |value: i64| u64::try_from(value).expect("an upload session's bytes");
         let measured = || {
-            queue
-                .files
-                .iter()
-                .filter_map(|upload| match (&upload.phase, &upload.progress) {
-                    (UploadPhase::Uploading, Some(progress)) => Some((upload.file.id(), progress)),
-                    (UploadPhase::Uploading, None) | (UploadPhase::Waiting, _) => None,
-                })
+            sending.files.iter().filter_map(|file| {
+                file.bytes_confirmed
+                    .zip(file.bytes_total)
+                    .map(|(confirmed, total)| (file.file, bytes(confirmed), bytes(total)))
+            })
         };
         self.files
-            .retain(|id, _| measured().any(|(file, _)| file == *id));
-        for (file, progress) in measured() {
-            self.record(file, progress.bytes_confirmed, progress.bytes_total, now);
+            .retain(|id, _| measured().any(|(file, _, _)| file == *id));
+        for (file, confirmed, total) in measured() {
+            self.record(file, confirmed, total, now);
         }
     }
     fn record(&mut self, id: FileId, confirmed: u64, total: u64, now: Duration) {

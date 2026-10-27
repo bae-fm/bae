@@ -109,7 +109,6 @@ pub use playback_queue::{
 mod playback_queue_reads;
 #[cfg(desktop)]
 mod source_releases;
-pub(crate) use files::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback_queue_reads::QueueUpcomingRead;
 mod release;
 pub(crate) use release::ReleaseMetadataRows;

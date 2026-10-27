@@ -1,9 +1,13 @@
 use super::*;
-use std::collections::HashMap;
+use crate::db::DbSendingFile;
 
-fn transfer(bytes_done: u64, throughput_bps: u64) -> UploadTransfer {
+fn file(n: u128) -> coven::FileId {
+    coven::FileId(uuid::Uuid::from_u128(n))
+}
+
+fn total(bytes_done: u64, throughput_bps: u64) -> UploadTransfer {
     UploadTransfer {
-        bar: Some(crate::library::UploadBar {
+        bar: Some(UploadBar {
             bytes_done,
             bytes_total: 100,
         }),
@@ -11,28 +15,28 @@ fn transfer(bytes_done: u64, throughput_bps: u64) -> UploadTransfer {
     }
 }
 
-fn transfers(
-    keyed: Vec<(UploadTransferKey, UploadTransfer)>,
-    total: UploadTransfer,
-) -> OutboxTransfers {
+fn transfers(rates: Vec<(UploadTransferKey, u64)>, total: UploadTransfer) -> OutboxTransfers {
     OutboxTransfers {
-        keyed: keyed.into_iter().collect::<HashMap<_, _>>(),
+        rates: rates.into_iter().collect(),
         total,
     }
 }
 
+fn sending(file: coven::FileId, release_id: Option<&str>) -> DbSendingFile {
+    DbSendingFile {
+        file,
+        release_id: release_id.map(str::to_string),
+        bytes_confirmed: Some(10),
+        bytes_total: Some(100),
+    }
+}
+
 #[test]
-fn a_reader_hears_each_transfer_that_moved_and_each_that_left() {
+fn a_reader_hears_each_rate_that_moved_and_each_that_left() {
     let first = UploadTransferKey::Release("release-1".into());
     let second = UploadTransferKey::Release("release-2".into());
-    let told = transfers(
-        vec![
-            (first.clone(), transfer(10, 5)),
-            (second.clone(), transfer(20, 5)),
-        ],
-        transfer(30, 10),
-    );
-    let next = transfers(vec![(first.clone(), transfer(40, 5))], transfer(40, 5));
+    let told = transfers(vec![(first.clone(), 5), (second.clone(), 5)], total(30, 10));
+    let next = transfers(vec![(first.clone(), 8)], total(40, 8));
 
     let changes = changes_between(&told, &next);
 
@@ -40,114 +44,99 @@ fn a_reader_hears_each_transfer_that_moved_and_each_that_left() {
     assert!(changes.contains(&OutboxTransferChange::Removed { key: second }));
     assert!(changes.contains(&OutboxTransferChange::Updated {
         key: first,
-        transfer: transfer(40, 5),
+        throughput_bps: 8,
     }));
-    assert!(changes.contains(&OutboxTransferChange::TotalUpdated(transfer(40, 5))));
+    assert!(changes.contains(&OutboxTransferChange::TotalUpdated(total(40, 8))));
 }
 
 #[test]
 fn transfers_that_did_not_move_say_nothing() {
     let key = UploadTransferKey::Release("release-1".into());
-    let told = transfers(vec![(key, transfer(10, 5))], transfer(10, 5));
+    let told = transfers(vec![(key, 5)], total(10, 5));
 
     assert!(changes_between(&told, &told.clone()).is_empty());
 }
 
-/// The upload total's watch over a queue this test publishes itself.
-mod total_transfer {
-    use super::*;
-    use crate::library::{OutboxPauseState, OutboxQueue, UploadProgress};
-    use std::sync::Arc;
-    use std::time::Duration;
+/// Each file being sent has its rate, a release goes at its files' rates
+/// together, and the total at every file's; an image no release owns counts
+/// only in the total. The total's bytes are the ones read for the files
+/// being sent.
+#[test]
+fn a_release_goes_at_its_files_rates_together() {
+    let (a, b, cover) = (file(1), file(2), file(3));
+    let sending = DbSendingUploads {
+        files: vec![
+            sending(a, Some("release-1")),
+            sending(b, Some("release-1")),
+            sending(cover, None),
+        ],
+        bytes_confirmed: 30,
+        bytes_total: 300,
+        paused: false,
+    };
+    let rates = [(a, 10), (b, 20), (cover, 5)].into_iter().collect();
 
-    /// A queue at `revision` whose keyed transfers stand at `keyed` and whose
-    /// files together moved `total`.
-    fn published(
-        revision: u64,
-        keyed: Vec<(UploadTransferKey, UploadTransfer)>,
-        total: UploadTransfer,
-    ) -> Option<Result<OutboxState, String>> {
-        Some(Ok(OutboxState {
-            revision,
-            queue: OutboxQueue {
-                upload_groups: Vec::new(),
-                other_files: Vec::new(),
-                total: UploadProgress::default(),
-                pause_state: OutboxPauseState::Running,
-            },
-            transfers: transfers(keyed, total),
-        }))
-    }
+    let measured = OutboxTransfers::of(&sending, &rates);
 
-    /// A watch over `values`, with a library behind it it never reads: the
-    /// test publishes before the first read.
-    async fn watch(
-        values: watch::Receiver<Option<Result<OutboxState, String>>>,
-        temp_dir: &tempfile::TempDir,
-    ) -> OutboxTotalTransferWatch {
-        let database = crate::db::Database::new_test(
-            temp_dir.path().join("test.db").to_str().unwrap(),
-            Arc::new(coven::SystemClock),
-        )
-        .await
-        .unwrap();
-        let config = crate::config::Config::with_defaults(
-            database.store_id(),
-            temp_dir.path().join("preferences"),
-        );
-        let manager = LibraryManager::new(
-            database,
-            crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-            Arc::new(crate::config::ConfigHandle::new(config)),
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidIds),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::providers::Providers::offline(),
-        );
-        OutboxTotalTransferWatch {
-            manager,
-            values,
-            told: None,
+    assert_eq!(
+        measured.rates,
+        [
+            (UploadTransferKey::File(a), 10),
+            (UploadTransferKey::File(b), 20),
+            (UploadTransferKey::File(cover), 5),
+            (UploadTransferKey::Release("release-1".into()), 30),
+        ]
+        .into_iter()
+        .collect()
+    );
+    assert_eq!(
+        measured.total,
+        UploadTransfer {
+            bar: Some(UploadBar {
+                bytes_done: 30,
+                bytes_total: 300,
+            }),
+            throughput_bps: 35,
         }
-    }
+    );
+}
 
-    /// Whether the watch has a value to give now, without waiting for one.
-    async fn gives_now(watch: &mut OutboxTotalTransferWatch) -> Option<UploadTransfer> {
-        tokio::time::timeout(Duration::from_millis(100), watch.next())
-            .await
-            .ok()
-            .flatten()
-    }
+/// A file no rate was measured for goes at none yet, and with nothing being
+/// sent there is no rate and no bar.
+#[test]
+fn a_file_with_no_measured_rate_goes_at_none() {
+    let a = file(1);
+    let one = DbSendingUploads {
+        files: vec![sending(a, Some("release-1"))],
+        bytes_confirmed: 0,
+        bytes_total: 0,
+        paused: false,
+    };
+    let measured = OutboxTransfers::of(&one, &HashMap::new());
+    assert_eq!(measured.rates[&UploadTransferKey::File(a)], 0);
+    assert_eq!(
+        measured.total.bar,
+        Some(UploadBar {
+            bytes_done: 0,
+            bytes_total: 0,
+        }),
+        "a file sent in one request is being sent with no bytes to count"
+    );
 
-    #[tokio::test]
-    async fn the_total_is_told_first_and_then_only_as_it_moves() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let release = UploadTransferKey::Release("release-1".into());
-        let (values, receiver) = watch::channel(published(
-            1,
-            vec![(release.clone(), transfer(10, 5))],
-            transfer(10, 5),
-        ));
-        let mut watch = watch(receiver, &temp_dir).await;
-
-        assert_eq!(gives_now(&mut watch).await, Some(transfer(10, 5)));
-
-        // A release's transfer moving while the total holds tells nothing.
-        values.send_replace(published(
-            1,
-            vec![(release.clone(), transfer(20, 5))],
-            transfer(10, 5),
-        ));
-        assert_eq!(gives_now(&mut watch).await, None);
-
-        values.send_replace(published(
-            1,
-            vec![(release, transfer(30, 5))],
-            transfer(30, 5),
-        ));
-        assert_eq!(gives_now(&mut watch).await, Some(transfer(30, 5)));
-        assert_eq!(gives_now(&mut watch).await, None);
-    }
+    let none = DbSendingUploads {
+        files: Vec::new(),
+        bytes_confirmed: 0,
+        bytes_total: 0,
+        paused: false,
+    };
+    assert_eq!(
+        OutboxTransfers::of(&none, &HashMap::new()),
+        transfers(
+            Vec::new(),
+            UploadTransfer {
+                bar: None,
+                throughput_bps: 0,
+            }
+        )
+    );
 }

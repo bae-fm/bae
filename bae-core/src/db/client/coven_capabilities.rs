@@ -52,10 +52,6 @@ impl Database {
         self.inner.handle.subscribe_sync_status()
     }
 
-    pub(crate) fn subscribe_pending(&self) -> coven::LiveQuery<Vec<coven::PendingRecord>> {
-        self.inner.handle.subscribe_pending()
-    }
-
     pub(crate) async fn pending(&self) -> Result<Vec<coven::PendingRecord>, DbError> {
         self.inner.handle.pending().await.map_err(DbError::from)
     }

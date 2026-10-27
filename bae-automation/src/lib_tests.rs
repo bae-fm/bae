@@ -807,17 +807,15 @@ mod release_storage_action {
         );
     }
 
-    /// An upload reports the revision its uploads were queued at.
+    /// An upload reports the release whose uploads it queued.
     #[test]
     fn the_outcome_carries_what_the_transition_produced() {
         let json = serde_json::to_value(AutomationStorageActionOutcome::UploadQueued {
             release_id: "release-1".to_string(),
-            outbox_revision: 42,
         })
         .unwrap();
         assert_eq!(json["kind"], "upload_queued");
         assert_eq!(json["release_id"], "release-1");
-        assert_eq!(json["outbox_revision"], 42);
 
         let json = serde_json::to_value(AutomationStorageActionOutcome::PinQueued {
             release_id: "release-1".to_string(),

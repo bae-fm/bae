@@ -1,7 +1,18 @@
 import SwiftUI
 
-/// One upload transfer, observed on its own: a part the provider confirms
+/// One upload rate, observed on its own: a part the provider confirms
 /// changes only this value, so only a view that draws it redraws.
+@Observable
+public final class UploadRateValue {
+    /// Bytes per second.
+    public internal(set) var throughputBps: UInt64
+
+    init(_ throughputBps: UInt64) {
+        self.throughputBps = throughputBps
+    }
+}
+
+/// The files being sent together, observed on their own.
 @Observable
 public final class UploadTransferValue {
     public internal(set) var transfer: BridgeUploadTransfer
@@ -11,21 +22,22 @@ public final class UploadTransferValue {
     }
 }
 
-/// Whether uploads are paused, which the pause control reads, and the upload
-/// queue's transfers. The retained subscription lands the pause each time it
-/// changes. What of a release waits to
-/// upload is its row's `upload`, read with the row. The transfer subscription
-/// lands each file's and release's rate into that key's own value, so a rate
-/// change redraws only what draws that key. Views read both at the leaf.
+/// Whether uploads are paused, which the pause control reads, and how fast
+/// the uploads go. The retained subscription lands the pause each time it
+/// changes. What of a release waits to upload, and the bytes its files being
+/// sent have moved, are its row's `upload`, read with the row. The transfer
+/// subscription lands each file's and release's rate into that key's own
+/// value, so a rate change redraws only what draws that key. Views read both
+/// at the leaf.
 @Observable
 public class OutboxStore {
     /// Whether the person paused uploads, as the retained subscription last
     /// said.
     public private(set) var uploadsPaused: Bool
-    /// Each queued file's and uploading release's transfer, one value per
-    /// key; the map changes only as keys come and go.
-    private var transfers: [BridgeUploadTransferKey: UploadTransferValue] = [:]
-    /// The whole queue's transfer; `nil` until the transfers first arrive.
+    /// Each file being sent and each release with files being sent, its rate;
+    /// the map changes only as keys come and go.
+    private var rates: [BridgeUploadTransferKey: UploadRateValue] = [:]
+    /// The files being sent together; `nil` until the transfers first arrive.
     private var totalTransfer: UploadTransferValue?
 
     public init(uploadsPaused: Bool) {
@@ -39,21 +51,21 @@ public class OutboxStore {
     /// Apply one change the transfer subscription delivered.
     public func applyTransferChange(_ change: BridgeOutboxTransferChange) {
         switch change {
-        case .updated(let key, let transfer):
-            if let value = transfers[key] {
-                value.transfer = transfer
+        case .updated(let key, let throughputBps):
+            if let value = rates[key] {
+                value.throughputBps = throughputBps
             }
             else {
-                transfers[key] = UploadTransferValue(transfer)
+                rates[key] = UploadRateValue(throughputBps)
             }
         case .removed(let key):
-            transfers.removeValue(forKey: key)
+            rates.removeValue(forKey: key)
         case .totalUpdated(let transfer):
             setTotal(transfer)
         case .reset(let keyed, let total):
-            transfers = Dictionary(
+            rates = Dictionary(
                 uniqueKeysWithValues: keyed.map {
-                    ($0.key, UploadTransferValue($0.transfer))
+                    ($0.key, UploadRateValue($0.throughputBps))
                 }
             )
             setTotal(total)
@@ -69,27 +81,25 @@ public class OutboxStore {
         }
     }
 
-    /// How far a release's uploading files have gone together, and how fast;
-    /// `nil` while none has arrived for it.
-    public func transfer(forRelease releaseId: String) -> BridgeUploadTransfer?
-    {
-        transfers[.release(releaseId: releaseId)]?.transfer
+    /// How fast a release's files being sent go together; `nil` while none
+    /// of them is being sent.
+    public func throughput(forRelease releaseId: String) -> UInt64? {
+        rates[.release(releaseId: releaseId)]?.throughputBps
     }
 
-    /// How far one queued file has gone, and how fast; `nil` while none has
-    /// arrived for it.
-    public func transfer(forFile fileId: String) -> BridgeUploadTransfer? {
-        transfers[.file(fileId: fileId)]?.transfer
+    /// How fast one file being sent goes; `nil` while it is not being sent.
+    public func throughput(forFile fileId: String) -> UInt64? {
+        rates[.file(fileId: fileId)]?.throughputBps
     }
 
     /// How far the files being sent have gone together; `nil` until the
-    /// transfers first arrive, or while no file is sent in parts.
+    /// transfers first arrive, or while no file is being sent.
     public var totalBar: BridgeUploadBar? {
         totalTransfer?.transfer.bar
     }
 
-    /// The whole queue's upload rate. A zero reading stays absent instead of
-    /// presenting a stalled speed.
+    /// The upload rate of every file being sent. A zero reading stays absent
+    /// instead of presenting a stalled speed.
     public var throughputText: String? {
         guard let throughputBps = totalTransfer?.transfer.throughputBps,
             throughputBps > 0
@@ -106,7 +116,7 @@ public class OutboxStore {
         release.upload.map {
             StorageUploadObservation(
                 upload: $0,
-                throughputBps: transfer(forRelease: release.id)?.throughputBps
+                throughputBps: throughput(forRelease: release.id)
             )
         }
     }
@@ -118,7 +128,8 @@ public class OutboxStore {
 /// fast they go.
 public struct StorageUploadObservation: Equatable {
     public let upload: BridgeReleaseUpload
-    /// The release's upload rate; `nil` until its transfer arrives.
+    /// The release's upload rate; `nil` while none of its files is being
+    /// sent.
     public let throughputBps: UInt64?
 
     public init(upload: BridgeReleaseUpload, throughputBps: UInt64?) {

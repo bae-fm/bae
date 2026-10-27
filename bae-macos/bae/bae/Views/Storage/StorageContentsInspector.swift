@@ -60,8 +60,7 @@ struct StorageContentsInspector: View {
                     StorageInspectorFileRow(
                         row: row,
                         throughputBps: row.upload.flatMap {
-                            outboxStore.transfer(forFile: $0.fileId)?
-                                .throughputBps
+                            outboxStore.throughput(forFile: $0.fileId)
                         }
                     )
                 }

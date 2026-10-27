@@ -53,14 +53,14 @@ async fn a_profile_names_its_avatar_once_the_upload_completes() {
         manager.avatar(profile.id).await.unwrap().unwrap(),
         b"first avatar"
     );
-    assert!(manager
-        .outbox_state()
-        .await
-        .unwrap()
-        .queue
-        .other_files
-        .iter()
-        .any(|file| matches!(file.label, bae_core::library::UploadFileLabel::Avatar)));
+    assert_eq!(
+        database
+            .queued_upload_count_in_table_for_test("people")
+            .await
+            .unwrap(),
+        1,
+        "the avatar waits to upload"
+    );
     manager
         .set_avatar(Some(b"second avatar".to_vec()))
         .await
