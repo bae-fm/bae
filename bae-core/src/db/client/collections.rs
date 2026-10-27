@@ -228,23 +228,31 @@ fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
     )
 }
 
+/// Every playlist, by name; `playlists_name` serves the order.
+pub(super) const PLAYLISTS_SQL: &str =
+    "SELECT id, person_id, name, audience FROM playlists ORDER BY name, id";
+
+/// One playlist's entries, in order; `playlist_entries_position` serves the
+/// lookup and the order.
+pub(super) const PLAYLIST_ENTRIES_SQL: &str = "SELECT position_id, track_id FROM playlist_entries \
+     WHERE playlist_id = ? ORDER BY position, position_id";
+
 fn playlists(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Playlist>> {
-    sql.query(
-        "SELECT id, person_id, name, audience FROM playlists ORDER BY name, id",
-        [],
-        |row| {
-            Ok(Playlist {
-                id: uuid_column(row, 0)?,
-                person: coven::MemberId(uuid_column(row, 1)?),
-                name: row.get(2)?,
-                audience: row.get(3)?,
-            })
-        },
-    )
+    sql.query(PLAYLISTS_SQL, [], |row| {
+        Ok(Playlist {
+            id: uuid_column(row, 0)?,
+            person: coven::MemberId(uuid_column(row, 1)?),
+            name: row.get(2)?,
+            audience: row.get(3)?,
+        })
+    })
 }
 
 fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> rusqlite::Result<Vec<PlaylistEntry>> {
-    sql.query("SELECT position_id, track_id FROM playlist_entries WHERE playlist_id = ? ORDER BY position, position_id", [playlist.to_string()], |row| {
-        Ok(PlaylistEntry { position_id: uuid_column(row, 0)?, track_id: row.get(1)? })
+    sql.query(PLAYLIST_ENTRIES_SQL, [playlist.to_string()], |row| {
+        Ok(PlaylistEntry {
+            position_id: uuid_column(row, 0)?,
+            track_id: row.get(1)?,
+        })
     })
 }

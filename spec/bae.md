@@ -1512,6 +1512,7 @@ them.
 household, each playlist on its own. Its entries are rows keyed by the playlist
 and a *position id*, a fresh id per entry, so the same track can sit in a
 playlist twice. Each entry also has a position number that orders it.
+Playlists list by name, and profiles list by name too.
 
 Ben's phone and laptop each add a track to his party playlist while offline.
 Both take the next position, 7. When they sync, both entries stay; equal

@@ -2636,6 +2636,8 @@ CREATE TABLE people (
     hash BLOB,
     location TEXT
 ) STRICT;
+-- Profiles list by name.
+CREATE INDEX people_name ON people(name, id);
 
 -- Ratings identify one person's judgment of an album or one release's track.
 CREATE TABLE ratings (
@@ -2655,6 +2657,8 @@ CREATE TABLE playlists (
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     audience TEXT NOT NULL
 ) STRICT;
+-- Playlists list by name.
+CREATE INDEX playlists_name ON playlists(name, id);
 
 -- The position id distinguishes repeated tracks and concurrent insertions.
 -- Integer order is not unique: ties retain both entries, ordered by position id.
@@ -2665,6 +2669,9 @@ CREATE TABLE playlist_entries (
     position INTEGER NOT NULL CHECK (position >= 0),
     PRIMARY KEY (playlist_id, position_id)
 ) STRICT;
+-- A playlist's entries read in order, and its last position found for an
+-- append, along the playlist's own run of this index.
+CREATE INDEX playlist_entries_position ON playlist_entries(playlist_id, position, position_id);
 
 CREATE TABLE history (
     id TEXT PRIMARY KEY NOT NULL,

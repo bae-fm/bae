@@ -234,6 +234,9 @@ fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), cra
 mod queue_ordering_tests;
 
 #[cfg(test)]
+mod personal_order_tests;
+
+#[cfg(test)]
 mod in_clause_chunking_tests;
 
 #[cfg(test)]

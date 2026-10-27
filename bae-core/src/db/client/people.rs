@@ -1,7 +1,13 @@
 use super::*;
 use crate::people::{PersonProfile, ProfileError, Sharing};
 
-const PROFILE_COLUMNS: &str = "id, name, private_circle, history_sharing, avatar_id";
+macro_rules! profile_columns {
+    () => {
+        "id, name, private_circle, history_sharing, avatar_id"
+    };
+}
+
+const PROFILE_COLUMNS: &str = profile_columns!();
 
 impl Database {
     pub(crate) async fn current_member(&self) -> Result<Option<coven::MemberId>, DbError> {
@@ -230,12 +236,15 @@ fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
     })
 }
 
+/// Every profile, by name; `people_name` serves the order.
+pub(super) const PROFILES_SQL: &str = concat!(
+    "SELECT ",
+    profile_columns!(),
+    " FROM people ORDER BY name, id"
+);
+
 fn profile_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<PersonProfile>> {
-    sql.query(
-        &format!("SELECT {PROFILE_COLUMNS} FROM people ORDER BY name, id"),
-        [],
-        profile_row,
-    )
+    sql.query(PROFILES_SQL, [], profile_row)
 }
 
 fn update_profile(
