@@ -228,6 +228,16 @@ check "xcodebuild test (baeTests)" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution test
 
+# The Screenshots workflow compiles the scene registry in baeShots, which no
+# other macOS gate builds.
+check "xcodebuild build-for-testing (baeShots)" \
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop \
+  xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme baeShots -configuration Debug \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+    -derivedDataPath bae-macos/bae/.build/derivedData \
+    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+    -disableAutomaticPackageResolution build-for-testing
+
 check "swift-format lint" _swift_format_lint bae-macos/bae/bae
 # BaeKit is linted once for both apps.
 check "swift-format lint (BaeKit)" _swift_format_lint BaeKit/Sources/BaeKit
