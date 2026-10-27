@@ -73,7 +73,7 @@ impl LibraryManager {
         self.run_file_operation("cancel release uploads", move |_closing| async move {
             let detached = manager.database.cancel_release_uploads(releases).await?;
             for release in detached {
-                manager.cancel_download(&release);
+                manager.cancel_download(&release).await?;
             }
             manager.emit_outbox_changed().await;
             Ok(())

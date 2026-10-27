@@ -68,8 +68,14 @@ internal fun DownloadsScreen(
             hasDownloads = snapshot?.downloads?.isNotEmpty() == true,
             hasFailures = snapshot != null && snapshot.total.failed > 0u,
             onBack = onBack,
-            onPauseToggle = { snapshot?.let { session.appHandle.setDownloadsPaused(!it.paused) } },
-            onRetry = { session.appHandle.retryDownloads() },
+            onPauseToggle = {
+                snapshot?.let {
+                    session.messages.perform("pause or resume downloads") {
+                        session.appHandle.setDownloadsPaused(!it.paused)
+                    }
+                }
+            },
+            onRetry = { session.messages.perform("retry downloads") { session.appHandle.retryDownloads() } },
         )
         DownloadConcurrencyRow(
             session = session,
@@ -96,7 +102,11 @@ internal fun DownloadsScreen(
                         DownloadsList(
                             snapshot = current.value,
                             downloads = session.downloadStore,
-                            onCancel = { releaseId -> session.appHandle.cancelDownload(releaseId) },
+                            onCancel = { releaseId ->
+                                session.messages.perform("cancel download") {
+                                    session.appHandle.cancelDownload(releaseId)
+                                }
+                            },
                         )
                     }
                 }

@@ -4,7 +4,7 @@
 use crate::library::release_queue::ReleaseQueueProgress;
 use crate::library::CountLabel;
 use crate::library::{
-    AbandonedItem, DownloadQueueContents, OutboxPauseState, OutboxState, PendingItem,
+    AbandonedItem, OutboxPauseState, OutboxState, PendingItem, ReleaseQueueCounts,
     SyncStatusSnapshot,
 };
 use crate::ui::UiError;
@@ -80,7 +80,7 @@ impl SyncActivity {
     pub fn new(
         status: &SyncStatusSnapshot,
         outbox: &OutboxState,
-        downloads: &DownloadQueueContents,
+        downloads: &ReleaseQueueCounts,
     ) -> Self {
         let total = &outbox.queue.total;
         let uploads = (total.uploading > 0).then_some(UploadsInFlight {
@@ -90,7 +90,7 @@ impl SyncActivity {
                 OutboxPauseState::Paused => 0,
             },
         });
-        let download_total = downloads.total();
+        let download_total = &downloads.total;
         let downloads = (download_total.active > 0).then_some(DownloadsInFlight {
             active: download_total.active,
             queued: if downloads.paused {
@@ -135,7 +135,10 @@ pub struct SyncActivityStream {
     manager: crate::library::LibraryManager,
     status: tokio::sync::watch::Receiver<SyncStatusSnapshot>,
     outbox: tokio::sync::watch::Receiver<Option<Result<OutboxState, String>>>,
-    downloads: tokio::sync::watch::Receiver<DownloadQueueContents>,
+    downloads: coven::LiveQuery<ReleaseQueueCounts>,
+    /// The download queue's counts as last read; `None` before the first
+    /// read and after a failed one.
+    download_counts: Option<ReleaseQueueCounts>,
     /// The first value was returned; later ones wait for a change.
     started: bool,
     /// The value last returned; `None` before the first and after a failure.
@@ -147,7 +150,8 @@ impl SyncActivityStream {
         Self {
             status: manager.subscribe_sync_status_values(),
             outbox: manager.subscribe_outbox_values(),
-            downloads: manager.subscribe_download_queue(),
+            downloads: manager.subscribe_download_counts(),
+            download_counts: None,
             started: false,
             returned: None,
             manager,
@@ -159,12 +163,15 @@ impl SyncActivityStream {
     /// change reads it again.
     pub async fn next(&mut self) -> Result<SyncActivity, UiError> {
         loop {
-            if self.started {
+            if self.started && self.download_counts.is_some() {
                 tokio::select! {
                     changed = self.status.changed() => changed.expect("the sync status outlives its readers"),
                     changed = self.outbox.changed() => changed.expect("the upload queue outlives its readers"),
-                    changed = self.downloads.changed() => changed.expect("the download queue outlives its readers"),
+                    counts = self.downloads.next() => self.take_download_counts(counts)?,
                 }
+            } else {
+                let counts = self.downloads.next().await;
+                self.take_download_counts(counts)?;
             }
             self.started = true;
             let activity = match self.read().await {
@@ -181,14 +188,42 @@ impl SyncActivityStream {
         }
     }
 
+    /// Hold the download queue's counts as its live read delivered them; a
+    /// failed read fails the value, and so does the read ending with the
+    /// library.
+    fn take_download_counts(
+        &mut self,
+        counts: Option<coven::CovenResult<ReleaseQueueCounts>>,
+    ) -> Result<(), UiError> {
+        match counts {
+            Some(Ok(counts)) => {
+                self.download_counts = Some(counts);
+                Ok(())
+            }
+            Some(Err(error)) => {
+                self.download_counts = None;
+                self.returned = None;
+                let error = crate::library::LibraryError::from(error);
+                Err(UiError::diagnostic(error.category(), error))
+            }
+            None => {
+                self.download_counts = None;
+                self.returned = None;
+                Err(UiError::internal(
+                    "the download queue's read ended with its library".to_string(),
+                ))
+            }
+        }
+    }
+
     /// The activity the sources hold now, read in place.
     async fn read(&mut self) -> Result<SyncActivity, UiError> {
+        let downloads = self
+            .download_counts
+            .clone()
+            .expect("the download counts are read before the activity");
         let published = match &*self.outbox.borrow_and_update() {
-            Some(Ok(outbox)) => Some(Ok(Self::activity(
-                &mut self.status,
-                &mut self.downloads,
-                outbox,
-            ))),
+            Some(Ok(outbox)) => Some(Ok(Self::activity(&mut self.status, &downloads, outbox))),
             Some(Err(error)) => Some(Err(UiError::internal(error.clone()))),
             None => None,
         };
@@ -202,25 +237,17 @@ impl SyncActivityStream {
                     .outbox_state()
                     .await
                     .map_err(|error| UiError::diagnostic(error.category(), error))?;
-                Ok(Self::activity(
-                    &mut self.status,
-                    &mut self.downloads,
-                    &outbox,
-                ))
+                Ok(Self::activity(&mut self.status, &downloads, &outbox))
             }
         }
     }
 
     fn activity(
         status: &mut tokio::sync::watch::Receiver<SyncStatusSnapshot>,
-        downloads: &mut tokio::sync::watch::Receiver<DownloadQueueContents>,
+        downloads: &ReleaseQueueCounts,
         outbox: &OutboxState,
     ) -> SyncActivity {
-        SyncActivity::new(
-            &status.borrow_and_update(),
-            outbox,
-            &downloads.borrow_and_update(),
-        )
+        SyncActivity::new(&status.borrow_and_update(), outbox, downloads)
     }
 }
 

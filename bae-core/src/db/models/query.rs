@@ -245,6 +245,9 @@ pub struct DbReleaseDetail {
     /// Whether this device keeps every file of the release pinned, as the
     /// release's listing counts its pinned files.
     pub pinned: bool,
+    /// The release's entry in this device's download queue, `None` when it
+    /// has none.
+    pub download: Option<crate::library::DownloadPhase>,
 }
 
 /// What the library records this device holding for one of a release's audio

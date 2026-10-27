@@ -189,11 +189,11 @@ pub enum ReleaseDownloadStatus {
 /// The control's state for one release, or `None` when there is no control to
 /// show at all — no cloud home, or a release whose audio is already local.
 ///
-/// **A live queue entry outranks `pinned`.** On pin success the release
-/// subscription value (which flips `pinned`) and the queue-drop snapshot arrive in
-/// either order, so honoring the queue entry keeps the control offering Cancel
-/// until the download has actually left the queue — instead of flickering to
-/// Downloaded and back.
+/// **A live queue entry outranks `pinned`.** On pin success the pin marker
+/// coven watches (which flips `pinned`) and the entry leaving the download
+/// queue arrive in either order, so honoring the queue entry keeps the control
+/// offering Cancel until the download has actually left the queue — instead of
+/// flickering to Downloaded and back.
 ///
 /// **Available means exactly "core offers Pin".** Deriving it from `pinned` alone
 /// would re-answer a question [`available_storage_actions`] has already answered,
@@ -204,13 +204,11 @@ pub enum ReleaseDownloadStatus {
 pub fn release_download_status(
     pinned: bool,
     storage_actions: &[ReleaseStorageAction],
-    downloads: &[crate::library::QueuedDownload],
-    release_id: &str,
+    download: Option<&crate::library::DownloadPhase>,
 ) -> Option<ReleaseDownloadStatus> {
     use crate::library::DownloadPhase;
 
-    let queued = downloads.iter().find(|op| op.release_id == release_id);
-    match queued.map(|op| &op.state) {
+    match download {
         Some(DownloadPhase::Queued) => Some(ReleaseDownloadStatus::Queued),
         Some(DownloadPhase::Active { progress: () }) => Some(ReleaseDownloadStatus::Downloading),
         Some(DownloadPhase::Failed { error }) => Some(ReleaseDownloadStatus::Failed {
@@ -448,18 +446,6 @@ mod tests {
         );
     }
 
-    fn download(
-        release_id: &str,
-        state: crate::library::DownloadPhase,
-    ) -> crate::library::QueuedDownload {
-        crate::library::QueuedDownload {
-            release_id: release_id.to_string(),
-            created_at: 0,
-            payload: (),
-            state,
-        }
-    }
-
     /// The whole point of the join: on pin success the release value and
     /// the queue-drop snapshot arrive in either order, so while an entry is still
     /// in the queue it decides the control — even once `pinned` has flipped.
@@ -484,15 +470,7 @@ mod tests {
         for (state, expected) in cases {
             for pinned in [false, true] {
                 assert_eq!(
-                    release_download_status(
-                        pinned,
-                        &[Unpin, DetachAudio],
-                        &[download(
-                            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-                            state.clone()
-                        )],
-                        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-                    ),
+                    release_download_status(pinned, &[Unpin, DetachAudio], Some(&state),),
                     Some(expected.clone()),
                     "a {state:?} entry decides the control (pinned={pinned})"
                 );
@@ -504,12 +482,7 @@ mod tests {
     #[test]
     fn pinned_with_an_empty_queue_is_downloaded() {
         assert_eq!(
-            release_download_status(
-                true,
-                &[Unpin, DetachAudio],
-                &[],
-                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
-            ),
+            release_download_status(true, &[Unpin, DetachAudio], None,),
             Some(ReleaseDownloadStatus::Downloaded),
         );
     }
@@ -518,12 +491,7 @@ mod tests {
     #[test]
     fn unpinned_with_pin_offered_is_available() {
         assert_eq!(
-            release_download_status(
-                false,
-                &[Pin, DetachAudio],
-                &[],
-                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
-            ),
+            release_download_status(false, &[Pin, DetachAudio], None,),
             Some(ReleaseDownloadStatus::Available),
         );
     }
@@ -532,35 +500,7 @@ mod tests {
     /// release's audio is already local.
     #[test]
     fn no_pin_on_offer_means_no_control() {
-        assert_eq!(
-            release_download_status(false, &[], &[], "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"),
-            None
-        );
-        assert_eq!(
-            release_download_status(
-                false,
-                &[Upload],
-                &[],
-                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
-            ),
-            None,
-        );
-    }
-
-    /// Another release's download says nothing about this one.
-    #[test]
-    fn a_queue_entry_for_another_release_does_not_leak() {
-        assert_eq!(
-            release_download_status(
-                false,
-                &[Pin, DetachAudio],
-                &[download(
-                    "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
-                    crate::library::DownloadPhase::Queued
-                )],
-                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-            ),
-            Some(ReleaseDownloadStatus::Available),
-        );
+        assert_eq!(release_download_status(false, &[], None), None);
+        assert_eq!(release_download_status(false, &[Upload], None,), None,);
     }
 }

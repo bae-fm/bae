@@ -1,5 +1,5 @@
 use super::*;
-use crate::library::CountLabel;
+use crate::library::{CountLabel, ReleaseQueueCounts};
 use crate::library::{
     OutboxQueue, OutboxState, OutboxTransfers, UploadBar, UploadProgress, UploadTransfer,
 };
@@ -38,7 +38,7 @@ fn status() -> SyncStatusSnapshot {
 /// Nothing moving and nothing to fix: the indicator is absent.
 #[test]
 fn a_settled_library_is_quiet() {
-    let activity = SyncActivity::new(&status(), &idle_outbox(), &DownloadQueueContents::default());
+    let activity = SyncActivity::new(&status(), &idle_outbox(), &ReleaseQueueCounts::default());
     assert!(!activity.moving());
     assert!(!activity.needs_attention());
 }
@@ -49,7 +49,7 @@ fn a_settled_library_is_quiet() {
 fn a_pass_alone_is_not_movement() {
     let mut syncing = status();
     syncing.status = coven::SyncStatus::Syncing;
-    let activity = SyncActivity::new(&syncing, &idle_outbox(), &DownloadQueueContents::default());
+    let activity = SyncActivity::new(&syncing, &idle_outbox(), &ReleaseQueueCounts::default());
     assert!(activity.syncing);
     assert!(!activity.moving());
 }
@@ -67,7 +67,7 @@ fn transfers_are_movement() {
         bytes_done: 10,
         bytes_total: 40,
     });
-    let uploading = SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default());
+    let uploading = SyncActivity::new(&status(), &outbox, &ReleaseQueueCounts::default());
     assert!(uploading.moving());
     assert_eq!(
         uploading.uploads,
@@ -81,12 +81,12 @@ fn transfers_are_movement() {
         bytes_total: 40,
     });
     assert_eq!(
-        SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default()),
+        SyncActivity::new(&status(), &outbox, &ReleaseQueueCounts::default()),
         uploading
     );
     outbox.queue.pause_state = OutboxPauseState::Paused;
     outbox.queue.total.uploading = 0;
-    let paused = SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default());
+    let paused = SyncActivity::new(&status(), &outbox, &ReleaseQueueCounts::default());
     assert_eq!(paused.uploads, None);
 }
 
@@ -99,7 +99,7 @@ fn failures_and_pending_records_need_attention() {
         error: std::sync::Arc::new(coven::StorageFailure::Network.into()),
     };
     let new = |status: &SyncStatusSnapshot| {
-        SyncActivity::new(status, &idle_outbox(), &DownloadQueueContents::default())
+        SyncActivity::new(status, &idle_outbox(), &ReleaseQueueCounts::default())
     };
     assert!(new(&failed).needs_attention());
     let mut waiting = status();

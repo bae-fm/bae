@@ -6,11 +6,10 @@ use super::*;
 
 impl AppServices {
     /// The detail view's album as it changes, read for the id the
-    /// subscription is set to: its rows, with each release's pin marker,
-    /// whether a cloud home is connected, and the transfers and
-    /// download-queue entries of its releases — the state it is resolved
-    /// against. Another album is a new id
-    /// on the same read.
+    /// subscription is set to: its rows, with each release's pin marker and
+    /// download-queue entry, whether a cloud home is connected, and the
+    /// transfers of its releases — the state it is resolved against. Another
+    /// album is a new id on the same read.
     pub fn subscribe_album_detail(
         &self,
     ) -> crate::library::DetailSubscription<crate::album_detail::AlbumDetail> {
@@ -20,7 +19,6 @@ impl AppServices {
         let manager = services.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
-        let mut downloads = ShownDownloads::new(manager.subscribe_download_queue());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), async move {
@@ -35,9 +33,7 @@ impl AppServices {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            let release_ids = LibraryManager::album_detail_release_ids(&projection);
-                            downloads.show(release_ids.clone());
-                            transfers.show(release_ids);
+                            transfers.show(LibraryManager::album_detail_release_ids(&projection));
                             originals.show(LibraryManager::album_detail_originals(&projection));
                             last = Some(projection.clone());
                             manager.resolve_album_detail_projection(projection, originals.seen())
@@ -61,7 +57,6 @@ impl AppServices {
                     changed = async { tokio::select! {
                         value = cloud_home.changed() => value,
                         value = transfers.changed() => value,
-                        value = downloads.changed() => value,
                     }} => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();
@@ -80,9 +75,10 @@ impl AppServices {
     }
 
     /// The detail view's release as it changes, read for the id the
-    /// subscription is set to: its rows, with its pin marker, whether
-    /// a cloud home is connected, and its transfer and download-queue entry —
-    /// the state it is resolved against. Another release is a new id on the same read.
+    /// subscription is set to: its rows, with its pin marker and
+    /// download-queue entry, whether a cloud home is connected, and its
+    /// transfer — the state it is resolved against. Another release is a new
+    /// id on the same read.
     pub fn subscribe_release_detail(
         &self,
     ) -> crate::library::DetailSubscription<crate::album_detail::ReleaseDetail> {
@@ -92,7 +88,6 @@ impl AppServices {
         let manager = services.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
-        let mut downloads = ShownDownloads::new(manager.subscribe_download_queue());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), async move {
@@ -115,7 +110,6 @@ impl AppServices {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(projection)) => {
-                            downloads.show(id.iter().cloned().collect());
                             transfers.show(id.iter().cloned().collect());
                             originals.show(LibraryManager::release_detail_originals(&projection));
                             last = Some(projection.clone());
@@ -140,7 +134,6 @@ impl AppServices {
                     changed = async { tokio::select! {
                         value = cloud_home.changed() => value,
                         value = transfers.changed() => value,
-                        value = downloads.changed() => value,
                     }} => {
                         if changed.is_err() { return; }
                         cloud_home.borrow_and_update();

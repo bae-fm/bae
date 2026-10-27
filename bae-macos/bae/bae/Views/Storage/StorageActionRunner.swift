@@ -122,7 +122,7 @@ final class StorageActionRunner {
         case .detachAudio:
             detachAudio(releaseIds: releaseIds)
         case .pin:
-            // Pinning routes through the in-memory download queue, which
+            // Pinning routes through the download queue, which
             // serializes the batch and reports progress via the Downloads pane
             // and per-release transfer events — not an awaited per-release loop.
             let releaseIds = listed(releaseIds)

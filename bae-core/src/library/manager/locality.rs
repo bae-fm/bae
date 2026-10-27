@@ -18,7 +18,7 @@ impl LibraryManager {
             let revision = manager.emit_outbox_changed().await;
             drop(guard);
             if pin {
-                manager.enqueue_attached_release_pin(release_id);
+                manager.enqueue_attached_release_pin(release_id).await?;
             }
             Ok(revision)
         })
@@ -87,20 +87,27 @@ impl LibraryManager {
 
     // ── Download (pin) queue ─────────────────────────────────────────
     //
-    // Pinning routes through an in-memory serial queue rather than an ephemeral
+    // Pinning routes through a serial queue rather than an ephemeral
     // per-release task: one release downloads at a time, the rest wait, and the
-    // user can pause/cancel/retry. The queue is transient — empty after a restart,
-    // and any release that wasn't fully pinned stays cloud-only, since a pin flips
-    // a release to pinned only once every file lands.
+    // user can pause/cancel/retry. The queue is the `download_queue` table, which
+    // the library empties as it opens: after a restart it is empty, and any
+    // release that wasn't fully pinned stays cloud-only, since a pin flips a
+    // release to pinned only once every file lands.
 
     /// Attachment has committed; retrying this queue item only keeps its bytes offline.
-    pub(super) fn enqueue_attached_release_pin(&self, release_id: String) {
-        self.downloads.enqueue_all([crate::library::DownloadOp {
-            release_id,
-            created_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis(),
-            payload: (),
-            state: crate::library::DownloadState::Queued,
-        }]);
+    pub(super) async fn enqueue_attached_release_pin(
+        &self,
+        release_id: String,
+    ) -> Result<(), LibraryError> {
+        self.downloads
+            .enqueue_all(vec![crate::library::DownloadEntry {
+                release_id,
+                created_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now())
+                    .timestamp_millis(),
+                payload: (),
+            }])
+            .await?;
+        Ok(())
     }
 
     /// Enqueue releases to pin for offline. Skips ids already in the queue (in any
@@ -109,14 +116,14 @@ impl LibraryManager {
     /// before anything is queued, reported as a bug: the library's own rows
     /// failed to read. The entry names the release by id only; the Downloads
     /// pane reads its title, file count, and size from the library as it shows
-    /// the row. Wakes the parked worker and publishes the queue's new contents.
+    /// the row. Wakes the parked worker.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
         // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at =
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis();
-        let mut ops = Vec::with_capacity(release_ids.len());
+        let mut entries = Vec::with_capacity(release_ids.len());
         for release_id in release_ids {
-            if self.downloads.contains(&release_id) {
+            if self.downloads.contains(&release_id).await? {
                 debug!("enqueue_pins: {release_id} already queued, skipping");
                 continue;
             }
@@ -147,48 +154,50 @@ impl LibraryManager {
                 continue;
             }
 
-            ops.push(crate::library::DownloadOp {
+            entries.push(crate::library::DownloadEntry {
                 release_id: release_id.clone(),
                 created_at: enqueued_at,
                 payload: (),
-                state: crate::library::DownloadState::Queued,
             });
         }
-        self.downloads.enqueue_all(ops);
+        self.downloads.enqueue_all(entries).await?;
         Ok(())
     }
 
     /// Pause or resume the download queue. While paused the worker parks instead
     /// of starting the next release; the in-flight one runs to completion.
-    /// Resuming wakes the worker. Emits a fresh snapshot.
-    pub fn set_downloads_paused(&self, paused: bool) {
-        self.downloads.set_paused(paused);
+    /// Resuming wakes the worker.
+    pub async fn set_downloads_paused(&self, paused: bool) -> Result<(), LibraryError> {
+        self.downloads.set_paused(paused).await
     }
 
     /// Cancel a release's download. Drops a queued or failed entry; cancelling
     /// an active pin signals its worker to restore the previous pin state.
-    pub fn cancel_download(&self, release_id: &str) {
+    pub async fn cancel_download(&self, release_id: &str) -> Result<(), LibraryError> {
         // An active entry needs no follow-up here: the aborted pin task closes its
         // progress channel, and the worker's drain clears the streamed transfer
-        // action, sees the entry is gone, leaves the queue alone, and re-parks.
-        self.downloads.cancel(release_id);
+        // action, finds the entry gone, leaves the queue alone, and re-parks.
+        self.downloads.cancel(release_id).await
     }
 
     /// Cancel every download — queued, failed, and the one in flight — as
-    /// [`Self::cancel_download`] cancels one. Emits a fresh snapshot.
-    pub fn cancel_all_downloads(&self) {
-        self.downloads.cancel_all();
+    /// [`Self::cancel_download`] cancels one.
+    pub async fn cancel_all_downloads(&self) -> Result<(), LibraryError> {
+        self.downloads.cancel_all().await
     }
 
     /// Flip every failed download back to queued and wake the worker to retry
-    /// them. Emits a fresh snapshot.
-    pub fn retry_downloads(&self) {
-        self.downloads.retry_failed();
+    /// them.
+    pub async fn retry_downloads(&self) -> Result<(), LibraryError> {
+        self.downloads.retry_failed().await
     }
 
     /// The serial download worker: drains the pin queue one release at a time
-    /// through [`run_serial_worker`], which owns the queue protocol (the
-    /// activate/cancel race, cancel-is-not-a-failure, remove vs mark-failed).
+    /// through [`QueuedReleases::run_serial`], which owns the queue protocol
+    /// (the activate/cancel race, cancel-is-not-a-failure, remove vs
+    /// mark-failed).
+    ///
+    /// [`QueuedReleases::run_serial`]: crate::library::QueuedReleases::run_serial
     ///
     /// All this supplies is how a pin runs: resolve the release's byte totals,
     /// ask `TransferService` to compose the pin task with this worker's progress
@@ -227,6 +236,7 @@ impl LibraryManager {
                     Ok((initial_progress, running))
                 },
                 |_release_id, _result| {},
+                |label, error| self.report_queue_store_failure(label, error),
             )
             .await
     }
@@ -356,12 +366,12 @@ impl LibraryManager {
         match self.transitions.cancel(release_id) {
             Some(ReleaseStorageAction::DetachAudio) => return Ok(()),
             Some(ReleaseStorageAction::Pin) => {
-                self.cancel_download(release_id);
+                self.cancel_download(release_id).await?;
             }
             Some(ReleaseStorageAction::Upload | ReleaseStorageAction::Unpin) | None => {}
         }
-        if self.downloads.contains(release_id) {
-            self.cancel_download(release_id);
+        if self.downloads.contains(release_id).await? {
+            self.cancel_download(release_id).await?;
         }
         if self
             .database

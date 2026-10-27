@@ -9,7 +9,7 @@ import uniffi.bae_bridge.BridgeDownloadTransferChange
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 
 /**
- * Mirror of core's in-memory download queue: its entries, phases and pause,
+ * Mirror of core's download queue: its entries, phases and pause,
  * which core sends each time they change, or the failure of the last read in
  * their place; and each downloading release's bytes, kept in that release's
  * own flow so bytes arriving recompose only what collects that release.

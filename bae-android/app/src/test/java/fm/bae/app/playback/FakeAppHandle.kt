@@ -265,11 +265,11 @@ internal open class FakeAppHandle(
         unfaked("addToQueue")
     }
 
-    override fun cancelAllDownloads() {
+    override suspend fun cancelAllDownloads() {
         unfaked("cancelAllDownloads")
     }
 
-    override fun cancelDownload(releaseId: String) {
+    override suspend fun cancelDownload(releaseId: String) {
         unfaked("cancelDownload")
     }
 
@@ -377,7 +377,7 @@ internal open class FakeAppHandle(
 
     override suspend fun resolveToTrackIds(ids: List<String>): List<String> = unfaked("resolveToTrackIds")
 
-    override fun retryDownloads() {
+    override suspend fun retryDownloads() {
         unfaked("retryDownloads")
     }
 
@@ -392,7 +392,7 @@ internal open class FakeAppHandle(
         unfaked("seekByRatio")
     }
 
-    override fun setDownloadsPaused(paused: Boolean) {
+    override suspend fun setDownloadsPaused(paused: Boolean) {
         unfaked("setDownloadsPaused")
     }
 

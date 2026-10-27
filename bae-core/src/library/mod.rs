@@ -33,8 +33,8 @@ pub use app_services::*;
 pub use browse::*;
 pub use detail::{DetailSnapshot, DetailSubscription};
 pub use download_snapshot::{
-    DownloadOp, DownloadPhase, DownloadProgress, DownloadQueueContents, DownloadRow,
-    DownloadSnapshot, DownloadState, DownloadTransferProgress, QueuedDownload,
+    DownloadEntry, DownloadPhase, DownloadProgress, DownloadRow, DownloadSnapshot,
+    DownloadTransferProgress, QueuedDownload,
 };
 pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
@@ -55,12 +55,12 @@ pub use outbox_watch::{
     OutboxQueueWatch, OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfersWatch,
 };
 pub use output_snapshot::{
-    OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot, OutputProgress,
-    OutputQueueContents, OutputRow, OutputSnapshot, OutputState,
+    OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
+    OutputProgress, OutputRow, OutputSnapshot, OutputState,
 };
 pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
-pub use queued_releases::QueuedReleases;
-pub use release_queue::{CountLabel, QueuedRelease, ReleaseQueue};
+pub(crate) use queued_releases::QueuedReleases;
+pub use release_queue::{CountLabel, QueuedRelease, ReleaseQueueCounts};
 pub use release_transfers::{
     DownloadTransferChange, DownloadTransfersWatch, OutputTransferChange, OutputTransfersWatch,
     ReleaseTransferChange, ReleaseTransfersWatch,
@@ -82,10 +82,12 @@ use tokio::sync::watch;
 
 pub use tokio_util::sync::CancellationToken;
 
-/// The pin queue with the stream of its contents.
-pub type Downloads = QueuedReleases<(), DownloadTransferProgress>;
-/// The export and save queue with the stream of its contents.
-pub type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8>;
+/// The pin queue: its table, and the bytes its active download has moved.
+pub(crate) type Downloads = QueuedReleases<(), DownloadTransferProgress>;
+/// The export and save queue: its table, and the percent its active one has
+/// reached.
+#[cfg(desktop)]
+pub(crate) type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8>;
 
 /// One track of a save: its tags, its stored audio, and which of its audio
 /// the saved file carries. Holds no open source; a save opens the files a

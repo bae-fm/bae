@@ -335,21 +335,15 @@ async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) ->
 
 #[cfg(feature = "test-utils")]
 async fn wait_for_offline_copy_request(manager: &LibraryManager, release: &str) {
-    let mut values = manager.subscribe_download_queue();
-    let queue = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        values.wait_for(|queue| {
-            queue.ops.iter().all(|op| {
-                op.release_id != release
-                    || matches!(op.state, crate::library::DownloadState::Failed { .. })
-            })
-        }),
-    )
-    .await
-    .expect("offline copy request finishes")
-    .unwrap();
+    let queue = download_queue_until(manager, |queue| {
+        queue.rows.iter().all(|row| {
+            row.op.release_id != release
+                || matches!(row.op.state, crate::library::DownloadPhase::Failed { .. })
+        })
+    })
+    .await;
     assert!(
-        !queue.ops.iter().any(|op| op.release_id == release),
+        !queue.rows.iter().any(|row| row.op.release_id == release),
         "offline copy failed: {queue:?}"
     );
 }

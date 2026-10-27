@@ -105,8 +105,10 @@ private fun PlayableReleaseDownloadControl(
                     session.appHandle.queuePinReleases(listOf(release.id))
                 }
             },
-            onCancel = { session.appHandle.cancelDownload(release.id) },
-            onRetry = { session.appHandle.retryDownloads() },
+            onCancel = {
+                session.messages.perform("cancel download") { session.appHandle.cancelDownload(release.id) }
+            },
+            onRetry = { session.messages.perform("retry downloads") { session.appHandle.retryDownloads() } },
             onRemove = {
                 unpinError = null
                 unpinning = true

@@ -1,19 +1,19 @@
-//! The in-memory export queue's types. Its snapshot is the single source of
-//! truth for a release's export in the Storage Manager's inspector and for
-//! the automation surface's export status while a release is being copied out
-//! to a user directory.
+//! The export and save queue's types. The queue is the `output_queue` table:
+//! the Storage Manager's inspector and the automation surface's export status
+//! read it while a release is copied or saved out to a folder, and the
+//! percent the active one has reached travels apart, keyed by release.
 
 use super::release_queue::{
-    ReleaseQueueContents, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow,
-    ReleaseQueueSnapshot, ReleaseQueueState,
+    ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot,
+    ReleaseQueueState,
 };
 use std::path::PathBuf;
 
 pub type OutputState = ReleaseQueueState<u8>;
 pub type OutputOp = ReleaseQueueOp<OutputRequest, u8>;
+/// A release to queue for export or save.
+pub type OutputEntry = ReleaseQueueEntry<OutputRequest>;
 pub type OutputProgress = ReleaseQueueProgress;
-/// The export queue as it stands, before its releases are read.
-pub type OutputQueueContents = ReleaseQueueContents<OutputRequest, u8>;
 pub type OutputRow = ReleaseQueueRow<OutputRequest, u8>;
 pub type OutputSnapshot = ReleaseQueueSnapshot<OutputRequest, u8>;
 /// An export's phase without its percent, which travels as its transfer.

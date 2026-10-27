@@ -1,10 +1,10 @@
-//! The in-memory download (pin) queue's types. Its snapshot is the single
-//! source of truth for the Downloads pane and the per-release
-//! "Downloading..." badge when a pin is queued or in flight.
+//! The download (pin) queue's types. The queue is the `download_queue`
+//! table: the Downloads pane and a release's download status read it, and the
+//! bytes the active download moves travel apart, keyed by release.
 
 use super::release_queue::{
-    ReleaseQueueContents, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow,
-    ReleaseQueueSnapshot, ReleaseQueueState,
+    ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot,
+    ReleaseQueueState,
 };
 
 use super::LibraryError;
@@ -41,11 +41,9 @@ impl DownloadTransferProgress {
     }
 }
 
-pub type DownloadState = ReleaseQueueState<DownloadTransferProgress>;
-pub type DownloadOp = ReleaseQueueOp<(), DownloadTransferProgress>;
+/// A release to queue for download.
+pub type DownloadEntry = ReleaseQueueEntry<()>;
 pub type DownloadProgress = ReleaseQueueProgress;
-/// The download queue as it stands, before its releases are read.
-pub type DownloadQueueContents = ReleaseQueueContents<(), DownloadTransferProgress>;
 /// A download as the Downloads pane lists it: its phase without the active
 /// one's bytes, which travel apart, keyed by release
 /// ([`DownloadTransfersWatch`](super::DownloadTransfersWatch)).

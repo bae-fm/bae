@@ -655,7 +655,8 @@ impl LibraryManager {
             destination,
             crate::import::ImportDestination::Remote { pin: true }
         ) {
-            self.enqueue_attached_release_pin(release.id.clone());
+            self.enqueue_attached_release_pin(release.id.clone())
+                .await?;
         }
         let remote = matches!(destination, crate::import::ImportDestination::Remote { .. });
         // A Remote import returns this revision, which already shows its

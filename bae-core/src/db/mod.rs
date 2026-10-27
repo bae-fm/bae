@@ -11,6 +11,7 @@ pub(crate) use client::AbandonedRow;
 pub(crate) use client::ArtistCredits;
 pub(crate) use client::FileRow;
 pub(crate) use client::PendingRow;
+pub(crate) use client::QueuedPayload;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseFileStream;

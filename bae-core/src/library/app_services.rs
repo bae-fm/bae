@@ -379,10 +379,10 @@ impl AppServices {
     delegate_sync!(manager, retry_now => retry_now() -> impl std::future::Future<Output = crate::library::SyncRetryOutcome> + Send + 'static);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);
-    delegate_sync!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> ());
-    delegate_sync!(manager, cancel_download => cancel_download(release_id: &str) -> ());
-    delegate_sync!(manager, cancel_all_downloads => cancel_all_downloads() -> ());
-    delegate_sync!(manager, retry_downloads => retry_downloads() -> ());
+    delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, cancel_all_downloads => cancel_all_downloads() -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, get_artist_count => get_artist_count() -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_detail => get_artist_detail(artist_id: &str) -> Result<Option<crate::album_detail::ArtistDetail>, crate::library::LibraryError>);
@@ -479,13 +479,13 @@ impl AppServices {
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &crate::import::ReleaseUserEdit) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, search_library => search_library(query: &crate::library::LibrarySearchQuery) -> Result<crate::album_detail::SearchResults, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> ());
+    delegate_async!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(manager, cancel_output => cancel_output(release_id: &str) -> ());
+    delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(manager, cancel_all_outputs => cancel_all_outputs() -> ());
+    delegate_async!(manager, cancel_all_outputs => cancel_all_outputs() -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(manager, retry_outputs => retry_outputs() -> ());
+    delegate_async!(manager, retry_outputs => retry_outputs() -> Result<(), crate::library::LibraryError>);
 
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(manager, has_cloud_home => has_cloud_home() -> bool);
@@ -690,7 +690,7 @@ mod storage_inspector_reads;
 mod storage_reads;
 use live_query_events::reconfigurable_live_query_events;
 use shown_originals::ShownOriginals;
-use shown_transfers::{ShownDownloads, ShownTransfers};
+use shown_transfers::ShownTransfers;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

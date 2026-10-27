@@ -189,21 +189,27 @@ async fn test_multiple_releases_independent_completion() {
         0
     );
 
-    let mut downloads = mgr.subscribe_download_queue();
-    let settled = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        downloads.wait_for(|queue| {
-            queue
-                .ops
-                .iter()
-                .all(|op| matches!(op.state, bae_core::library::DownloadState::Failed { .. }))
-        }),
-    )
+    let mut downloads = mgr.subscribe_download_snapshot();
+    let settled = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let queue = downloads
+                .next()
+                .await
+                .expect("the query stays open")
+                .unwrap();
+            if queue.rows.iter().all(|row| {
+                matches!(
+                    row.op.state,
+                    bae_core::library::DownloadPhase::Failed { .. }
+                )
+            }) {
+                return queue;
+            }
+        }
+    })
     .await
-    .expect("both offline copies finish")
-    .unwrap();
-    assert!(settled.ops.is_empty(), "offline copy failed: {settled:?}");
-    drop(settled);
+    .expect("both offline copies finish");
+    assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
 
     assert_eq!(
         storage(&mgr, &release_a).await,

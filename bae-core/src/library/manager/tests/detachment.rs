@@ -161,7 +161,7 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
 async fn cancelling_upload_with_a_queued_offline_copy_detaches_audio() {
     let (manager, temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    manager.set_downloads_paused(true);
+    manager.set_downloads_paused(true).await.unwrap();
     let release = insert_local_release_with_files(
         &manager,
         temp.path(),
@@ -170,12 +170,12 @@ async fn cancelling_upload_with_a_queued_offline_copy_detaches_audio() {
     )
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
-    assert_eq!(manager.download_queue().ops.len(), 1);
+    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
     manager
         .cancel_release_transition(&release.id)
         .await
         .unwrap();
-    assert!(manager.download_queue().ops.is_empty());
+    assert!(download_queue_now(&manager).await.rows.is_empty());
     let files = release_files(&manager, &release.id).await;
     assert_eq!(attached_file_count(&manager, &release.id).await, 0);
     assert_eq!(
@@ -225,15 +225,15 @@ async fn cancelling_uploads_with_a_missing_original_changes_no_release() {
 async fn cancelling_a_cover_upload_preserves_completed_audio_and_its_download() {
     let (manager, _temp, release, _) = queued_upload_fixture("completed").await;
     manager.drain_uploads_expecting_work().await.unwrap();
-    manager.set_downloads_paused(true);
+    manager.set_downloads_paused(true).await.unwrap();
     manager
         .enqueue_pins(vec![release.id.clone()])
         .await
         .unwrap();
     store_test_cover(&manager, &release.id, b"cover").await;
-    assert_eq!(manager.download_queue().ops.len(), 1);
+    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
     manager.cancel_all_release_uploads().await.unwrap();
-    assert_eq!(manager.download_queue().ops.len(), 1);
+    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
     assert!(release_files(&manager, &release.id)
         .await
         .iter()

@@ -68,7 +68,9 @@ struct StorageTransferControls: View {
                         forRelease: operation.releaseId
                     )
                 ) {
-                    downloads.cancelDownload(operation.releaseId)
+                    run {
+                        try await downloads.cancelDownload(operation.releaseId)
+                    }
                 }
             case .output(let operation, _):
                 // The row alone reads the percent the export reaches.
@@ -78,7 +80,7 @@ struct StorageTransferControls: View {
                         forRelease: operation.releaseId
                     )
                 ) {
-                    outputs.cancelOutput(operation.releaseId)
+                    run { try await outputs.cancelOutput(operation.releaseId) }
                 }
             case .upload(let group, _):
                 StorageUploadSummary(
@@ -97,14 +99,11 @@ struct StorageTransferControls: View {
     ) {
         switch item {
         case .download:
-            downloads.setDownloadsPaused(paused)
+            run { try await downloads.setDownloadsPaused(paused) }
         case .output:
-            outputs.setOutputsPaused(paused)
+            run { try await outputs.setOutputsPaused(paused) }
         case .upload:
-            Task {
-                do { try await sync.setSyncPaused(paused) }
-                catch { uiStore.showError(error) }
-            }
+            run { try await sync.setSyncPaused(paused) }
         }
     }
 
@@ -113,22 +112,26 @@ struct StorageTransferControls: View {
     private func cancelAll(_ item: BridgeStorageInspectorTransfer) {
         switch item {
         case .download:
-            downloads.cancelAllDownloads()
+            run { try await downloads.cancelAllDownloads() }
         case .output:
-            outputs.cancelAllOutputs()
+            run { try await outputs.cancelAllOutputs() }
         case .upload:
             preconditionFailure("uploads have no queue-wide cancel")
+        }
+    }
+
+    /// Run a queue command, surfacing its failure in the Storage Manager
+    /// window.
+    private func run(_ command: @escaping @Sendable () async throws -> Void) {
+        Task {
+            do { try await command() }
+            catch { uiStore.showError(error) }
         }
     }
 
     /// Cancel a selected release's in-progress cloud transition, surfacing any
     /// failure in the Storage Manager window.
     private func cancelTransition(_ releaseId: String) {
-        Task {
-            do { try await sync.cancelReleaseTransition(releaseId) }
-            catch {
-                uiStore.showError(error)
-            }
-        }
+        run { try await sync.cancelReleaseTransition(releaseId) }
     }
 }

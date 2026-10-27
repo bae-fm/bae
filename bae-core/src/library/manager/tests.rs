@@ -155,6 +155,54 @@ async fn queued_upload_count(manager: &LibraryManager) -> usize {
 
 /// Insert `release` with its first medium, one CD side, which
 /// [`DbTrack::new_test`] tracks sit on.
+/// The download queue as its table holds it now.
+async fn download_queue_now(manager: &LibraryManager) -> crate::library::DownloadSnapshot {
+    manager.download_snapshot().await.unwrap()
+}
+
+/// Wait until the download queue's live read holds what `done` looks for.
+async fn download_queue_until(
+    manager: &LibraryManager,
+    done: impl Fn(&crate::library::DownloadSnapshot) -> bool,
+) -> crate::library::DownloadSnapshot {
+    let mut values = manager.subscribe_download_snapshot();
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let queue = values.next().await.expect("the query stays open").unwrap();
+            if done(&queue) {
+                return queue;
+            }
+        }
+    })
+    .await
+    .expect("the download queue reaches the state waited for")
+}
+
+/// The export queue as its table holds it now.
+#[cfg(desktop)]
+async fn output_queue_now(manager: &LibraryManager) -> crate::library::OutputPhaseSnapshot {
+    manager.outputs.snapshot().await.unwrap()
+}
+
+/// Wait until the export queue's live read holds what `done` looks for.
+#[cfg(desktop)]
+async fn output_queue_until(
+    manager: &LibraryManager,
+    done: impl Fn(&crate::library::OutputPhaseSnapshot) -> bool,
+) -> crate::library::OutputPhaseSnapshot {
+    let mut values = manager.subscribe_output_snapshot();
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let queue = values.next().await.expect("the query stays open").unwrap();
+            if done(&queue) {
+                return queue;
+            }
+        }
+    })
+    .await
+    .expect("the export queue reaches the state waited for")
+}
+
 async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
     manager.database.insert_release(release).await.unwrap();
     manager

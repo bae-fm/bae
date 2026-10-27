@@ -13,10 +13,10 @@ impl LibraryManager {
     // ── Export queue ─────────────────────────────────────────────────
     //
     // Exporting a release copies its whole file set out verbatim to a
-    // user-chosen directory, routed through an in-memory serial queue (mirroring
-    // the download/pin queue): one release copies out at a time, the rest wait,
-    // and the user can pause/cancel/retry. The queue is transient — on restart
-    // it's empty. Export changes no release state: it only reads (through coven's
+    // user-chosen directory, routed through a serial queue (mirroring the
+    // download/pin queue): one release copies out at a time, the rest wait,
+    // and the user can pause/cancel/retry. The queue is the `output_queue`
+    // table, which the library empties as it opens: on restart it's empty. Export changes no release state: it only reads (through coven's
     // file reader) and writes to a user directory. Its attachments and local
     // source paths remain unchanged.
 
@@ -62,8 +62,7 @@ impl LibraryManager {
     /// the queue (any state) and fails for a release the library does not
     /// hold. The entry names the release by id only; a reader of the queue
     /// reads its title, file count, and size from the library as it shows the
-    /// row.
-    /// Wakes the parked worker and publishes the queue's new contents.
+    /// row. Wakes the parked worker.
     async fn enqueue_output(
         &self,
         release_id: &str,
@@ -81,7 +80,7 @@ impl LibraryManager {
             ))
         })?;
 
-        if self.outputs.contains(release_id) {
+        if self.outputs.contains(release_id).await? {
             debug!("enqueue_output: {release_id} already queued, skipping");
             return Ok(());
         }
@@ -89,54 +88,55 @@ impl LibraryManager {
             LibraryError::Export(format!("cannot export release {release_id}: not found"))
         })?;
 
-        let op = crate::library::OutputOp {
+        let entry = crate::library::OutputEntry {
             release_id: release_id.to_string(),
             created_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis(),
             payload: crate::library::output_snapshot::OutputRequest { target_dir, kind },
-            state: crate::library::OutputState::Queued,
         };
-        self.outputs.enqueue_all([op]);
+        self.outputs.enqueue_all(vec![entry]).await?;
         Ok(())
     }
 
     /// Pause or resume the export queue. While paused the worker parks instead of
     /// starting the next release; the in-flight one runs to completion. Resuming
-    /// wakes the worker. Emits a fresh snapshot.
-    pub fn set_outputs_paused(&self, paused: bool) {
-        self.outputs.set_paused(paused);
+    /// wakes the worker.
+    pub async fn set_outputs_paused(&self, paused: bool) -> Result<(), LibraryError> {
+        self.outputs.set_paused(paused).await
     }
 
     /// Cancel a release's export. Drops a queued/failed entry; for the active one,
     /// aborts its in-flight copy task. The copy writes every file into a hidden
     /// staging directory and renames it into place only after all files succeed, so
     /// the abort leaves no output at the final path — the staging directory is
-    /// removed when the aborted task's future drops. Emits a fresh snapshot.
-    pub fn cancel_output(&self, release_id: &str) {
-        self.outputs.cancel(release_id);
+    /// removed when the aborted task's future drops.
+    pub async fn cancel_output(&self, release_id: &str) -> Result<(), LibraryError> {
+        self.outputs.cancel(release_id).await
     }
 
     /// Cancel every export — queued, failed, and the one in flight — as
-    /// [`Self::cancel_output`] cancels one. Emits a fresh snapshot.
-    pub fn cancel_all_outputs(&self) {
-        self.outputs.cancel_all();
+    /// [`Self::cancel_output`] cancels one.
+    pub async fn cancel_all_outputs(&self) -> Result<(), LibraryError> {
+        self.outputs.cancel_all().await
     }
 
     /// Flip every failed export back to queued and wake the worker to retry them.
-    /// Emits a fresh snapshot.
-    pub fn retry_outputs(&self) {
-        self.outputs.retry_failed();
+    pub async fn retry_outputs(&self) -> Result<(), LibraryError> {
+        self.outputs.retry_failed().await
     }
 
     /// The serial export worker: drains the export queue one release at a time
-    /// through [`run_serial_worker`], which owns the queue protocol (the
-    /// activate/cancel race, cancel-is-not-a-failure, remove vs mark-failed).
+    /// through [`QueuedReleases::run_serial`], which owns the queue protocol
+    /// (the activate/cancel race, cancel-is-not-a-failure, remove vs
+    /// mark-failed).
+    ///
+    /// [`QueuedReleases::run_serial`]: crate::library::QueuedReleases::run_serial
     ///
     /// All this supplies is how an export runs — spawn the copy task and yield its
     /// outcome, mapping a panicked task to a failure that names the panic — and the
-    /// diagnostics event for the outcome. The copy itself updates the queue's
-    /// per-release percent and re-emits the snapshot as it writes each file.
+    /// diagnostics event for the outcome. The copy itself updates the active
+    /// export's percent as it writes each file.
     pub(super) async fn run_output_worker(&self) {
-        use crate::library::release_queue::RunningOp;
+        use crate::library::queued_releases::RunningOp;
         use crate::library::OutputKind;
         use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -193,6 +193,7 @@ impl LibraryManager {
                         (true, Err(_)) => TelemetryEvent::SaveFailed { release_id },
                     });
                 },
+                |label, error| self.report_queue_store_failure(label, error),
             )
             .await
     }
@@ -204,8 +205,8 @@ impl LibraryManager {
     /// only after all files succeed is the staging directory renamed into place. Any
     /// read/write error, cancel, or panic drops the [`StagingDir`] guard, which
     /// removes the staging directory — so a failed or cancelled export never leaves
-    /// partial output at the final path. Updates the queue's per-release percent (by
-    /// file index) and re-emits the snapshot after each file. Fails loudly when the
+    /// partial output at the final path. Updates the active export's percent (by
+    /// file index) after each file. Fails loudly when the
     /// release has no source folder name.
     async fn export_release_to_dir(
         &self,

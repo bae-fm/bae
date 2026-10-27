@@ -762,7 +762,7 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
 async fn attachment_commits_before_its_offline_copy_runs_in_downloads() {
     let (manager, temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    manager.set_downloads_paused(true);
+    manager.set_downloads_paused(true).await.unwrap();
     let release = insert_local_release_with_files(
         &manager,
         &temp.path().join("pin-after-attachment"),
@@ -772,22 +772,15 @@ async fn attachment_commits_before_its_offline_copy_runs_in_downloads() {
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
     assert_eq!(attached_file_count(&manager, &release.id).await, 1);
-    let queue = manager.download_queue();
-    assert_eq!(queue.ops.len(), 1);
-    assert_eq!(queue.ops[0].release_id, release.id);
+    let queue = download_queue_now(&manager).await;
+    assert_eq!(queue.rows.len(), 1);
+    assert_eq!(queue.rows[0].op.release_id, release.id);
     assert!(matches!(
-        queue.ops[0].state,
-        crate::library::DownloadState::Queued
+        queue.rows[0].op.state,
+        crate::library::DownloadPhase::Queued
     ));
-    manager.set_downloads_paused(false);
-    let mut changes = manager.subscribe_download_queue();
-    tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        changes.wait_for(|queue| queue.ops.is_empty()),
-    )
-    .await
-    .unwrap()
-    .unwrap();
+    manager.set_downloads_paused(false).await.unwrap();
+    download_queue_until(&manager, |queue| queue.rows.is_empty()).await;
     assert!(
         manager
             .find_release_storage_summary(&release.id)

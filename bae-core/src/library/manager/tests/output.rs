@@ -113,7 +113,7 @@ enum PoisonedFragment<'a> {
     SourceFolderName(&'a str),
 }
 
-/// Pausing before the first enqueue parks the worker, so the queue's in-memory
+/// Pausing before the first enqueue parks the worker, so the queue's
 /// state (enqueue, dedup, target_dir, cancel) is observable deterministically
 /// without the export path racing the assertions.
 #[tokio::test]
@@ -121,18 +121,18 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
     let (manager, temp_dir) = setup_test_manager().await;
     let release_id = insert_pinnable_release(&manager).await;
 
-    manager.set_outputs_paused(true);
+    manager.set_outputs_paused(true).await.unwrap();
 
     let target = temp_dir.path().join("export-out");
     manager
         .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
-    let snap = manager.output_queue();
-    assert_eq!(snap.total().queued, 1);
-    assert_eq!(snap.ops.len(), 1);
-    assert_eq!(snap.ops[0].payload.target_dir, target);
-    assert_eq!(snap.ops[0].state, crate::library::OutputState::Queued);
+    let snap = output_queue_now(&manager).await;
+    assert_eq!(snap.total.queued, 1);
+    assert_eq!(snap.rows.len(), 1);
+    assert_eq!(snap.rows[0].op.payload.target_dir, target);
+    assert_eq!(snap.rows[0].op.state, crate::library::OutputPhase::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
@@ -140,11 +140,11 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
         .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
-    assert_eq!(manager.output_queue().ops.len(), 1);
+    assert_eq!(output_queue_now(&manager).await.rows.len(), 1);
 
     // Cancel drops the entry.
-    manager.cancel_output(&release_id);
-    assert!(manager.output_queue().ops.is_empty());
+    manager.cancel_output(&release_id).await.unwrap();
+    assert!(output_queue_now(&manager).await.rows.is_empty());
 }
 
 /// The verbatim copy-out: exported bytes equal the source bytes, laid out at
@@ -176,8 +176,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         .unwrap();
 
     // Success removes the entry from the queue.
-    let done = wait_for(|| manager.output_queue().ops.is_empty()).await;
-    assert!(done, "the export should complete and clear the queue");
+    output_queue_until(&manager, |queue| queue.rows.is_empty()).await;
 
     // Byte-accuracy + folder layout.
     for (name, bytes) in files {
@@ -356,32 +355,34 @@ async fn export_write_error_marks_failed_and_retries() {
         .await
         .unwrap();
 
-    let failed = wait_for(|| {
+    // An unwritable target marks the export Failed.
+    let failed = output_queue_until(&manager, |queue| {
         matches!(
-            manager.output_queue().ops.first().map(|op| &op.state),
-            Some(crate::library::OutputState::Failed { .. })
+            queue.rows.first().map(|row| &row.op.state),
+            Some(crate::library::OutputPhase::Failed { .. })
         )
     })
     .await;
-    assert!(failed, "an unwritable target marks the export Failed");
-    assert_eq!(manager.output_queue().total().failed, 1);
+    assert_eq!(failed.total.failed, 1);
 
     // Retry flips it back to Queued (it'll fail again, but stays tracked).
-    manager.retry_outputs();
-    assert!(manager
-        .output_queue()
-        .ops
+    manager.retry_outputs().await.unwrap();
+    assert!(output_queue_now(&manager)
+        .await
+        .rows
         .first()
-        .is_some_and(|op| matches!(
-            op.state,
-            crate::library::OutputState::Queued
-                | crate::library::OutputState::Active { .. }
-                | crate::library::OutputState::Failed { .. }
+        .is_some_and(|row| matches!(
+            row.op.state,
+            crate::library::OutputPhase::Queued
+                | crate::library::OutputPhase::Active { .. }
+                | crate::library::OutputPhase::Failed { .. }
         )));
 
-    manager.cancel_output(&release_id);
-    let cleared = wait_for(|| manager.output_queue().ops.is_empty()).await;
-    assert!(cleared, "cancel removes the entry");
+    manager.cancel_output(&release_id).await.unwrap();
+    assert!(
+        output_queue_now(&manager).await.rows.is_empty(),
+        "cancel removes the entry"
+    );
 }
 
 /// A failure partway through the export (a read error on a later file, after an
@@ -424,7 +425,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 
     // Pause so the source file can be deleted before the worker runs, making the
     // later read fail deterministically rather than racing the copy.
-    manager.set_outputs_paused(true);
+    manager.set_outputs_paused(true).await.unwrap();
     let target = temp_dir.path().join("export-out");
     std::fs::create_dir_all(&target).unwrap();
     manager
@@ -432,19 +433,16 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
         .await
         .unwrap();
     std::fs::remove_file(source_dir.join("02.flac")).unwrap();
-    manager.set_outputs_paused(false);
+    manager.set_outputs_paused(false).await.unwrap();
 
-    let failed = wait_for(|| {
+    // A read error on a later file marks the export Failed.
+    output_queue_until(&manager, |queue| {
         matches!(
-            manager.output_queue().ops.first().map(|op| &op.state),
-            Some(crate::library::OutputState::Failed { .. })
+            queue.rows.first().map(|row| &row.op.state),
+            Some(crate::library::OutputPhase::Failed { .. })
         )
     })
     .await;
-    assert!(
-        failed,
-        "a read error on a later file marks the export Failed"
-    );
 
     // The all-or-nothing guarantee: nothing at the final path, and the staging
     // directory was removed — the target holds no export output at all.
@@ -457,16 +455,4 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
         0,
         "staging directory cleaned up; target left empty"
     );
-}
-
-/// Poll `predicate` up to ~2s (40 × 50ms), returning whether it became true.
-/// Used by the async download-worker tests instead of a fixed sleep.
-async fn wait_for(predicate: impl Fn() -> bool) -> bool {
-    for _ in 0..40 {
-        if predicate() {
-            return true;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    }
-    predicate()
 }

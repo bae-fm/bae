@@ -407,9 +407,9 @@ impl ReleaseDetail {
         album_artists: &[crate::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx<'_>,
-        downloads: &[crate::library::QueuedDownload],
     ) -> (ReleaseDetail, u32) {
         let release = raw.release;
+        let download = raw.download;
         let audio_format_orphans = 0u32;
 
         let tracks: Vec<TrackDetail> = raw
@@ -521,12 +521,8 @@ impl ReleaseDetail {
             ctx,
         );
 
-        let download_status = release_download_status(
-            summary.pinned,
-            &summary.storage_actions,
-            downloads,
-            &summary.id,
-        );
+        let download_status =
+            release_download_status(summary.pinned, &summary.storage_actions, download.as_ref());
         let detail = ReleaseDetail {
             download_status,
             summary,
@@ -729,6 +725,7 @@ mod release_edit_display_tests {
             records: Vec::new(),
             unstored_audio: Vec::new(),
             pinned: false,
+            download: None,
         };
 
         assert!(matches!(

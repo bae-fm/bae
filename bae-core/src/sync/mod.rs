@@ -316,6 +316,11 @@ mod tests {
         "playback_manual",
         "playback_context",
         "playback_state",
+        // The releases this device is downloading, exporting or saving, one
+        // at a time.
+        "release_queues",
+        "download_queue",
+        "output_queue",
         // What library lists sort, filter and count by, kept from the synced
         // rows by local triggers.
         "artist_shown_as",

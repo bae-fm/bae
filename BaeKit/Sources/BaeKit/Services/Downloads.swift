@@ -1,6 +1,6 @@
 import Foundation
 
-/// Controls for the in-memory download (pin) queue: enqueue releases to pin,
+/// Controls for the download (pin) queue: enqueue releases to pin,
 /// pause/resume the queue, and cancel downloads.
 /// Mirrors the outbox controls on `Sync`, wrapping the corresponding
 /// `handle.*` methods. The queue itself lives in bae-core; the Storage
@@ -8,8 +8,8 @@ import Foundation
 /// holds the bytes each download has moved.
 public final class Downloads: Sendable, Observable {
     /// Enqueue releases to pin locally. They join the serial download
-    /// queue; the worker drains them one at a time. Fire-and-forget — progress
-    /// and queue state arrive via `downloadQueueChanged` events.
+    /// queue; the worker drains them one at a time. The queue arrives through
+    /// its live read, and the bytes each download moves through its transfers.
     public let queuePins:
         @Sendable (_ releaseIds: [String]) async throws -> Void
     /// Unpin a release: coven moves its files from storage/pinned/ to the
@@ -18,12 +18,14 @@ public final class Downloads: Sendable, Observable {
         @Sendable (_ releaseId: String) async throws -> Void
     /// Pause or resume the download queue. In-flight downloads finish; the
     /// queue stops starting new ones until resumed.
-    public let setDownloadsPaused: @Sendable (_ paused: Bool) -> Void
+    public let setDownloadsPaused:
+        @Sendable (_ paused: Bool) async throws -> Void
     /// Cancel a release's download — drops a queued/failed entry or aborts the
     /// in-flight one (the release stays cloud-only).
-    public let cancelDownload: @Sendable (_ releaseId: String) -> Void
+    public let cancelDownload:
+        @Sendable (_ releaseId: String) async throws -> Void
     /// Cancel every download — queued, failed, and the one in flight.
-    public let cancelAllDownloads: @Sendable () -> Void
+    public let cancelAllDownloads: @Sendable () async throws -> Void
     /// How many downloads a pin fetches at once (1...8). A persisted device-local
     /// config write, unlike the runtime pause/cancel controls: it throws on an
     /// out-of-range value or a failed write, so the picker can snap back. Takes
@@ -37,9 +39,13 @@ public final class Downloads: Sendable, Observable {
         unpinRelease: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
-        setDownloadsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
-        cancelDownload: @escaping @Sendable (String) -> Void = { _ in },
-        cancelAllDownloads: @escaping @Sendable () -> Void = {},
+        setDownloadsPaused: @escaping @Sendable (Bool) async throws -> Void = {
+            _ in
+        },
+        cancelDownload: @escaping @Sendable (String) async throws -> Void = {
+            _ in
+        },
+        cancelAllDownloads: @escaping @Sendable () async throws -> Void = {},
         setMaxConcurrentDownloads:
             @escaping @Sendable (UInt32) async throws -> Void =
             {
@@ -58,9 +64,11 @@ public final class Downloads: Sendable, Observable {
         self.init(
             queuePins: { try await handle.queuePinReleases(releaseIds: $0) },
             unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
-            setDownloadsPaused: { handle.setDownloadsPaused(paused: $0) },
-            cancelDownload: { handle.cancelDownload(releaseId: $0) },
-            cancelAllDownloads: { handle.cancelAllDownloads() },
+            setDownloadsPaused: {
+                try await handle.setDownloadsPaused(paused: $0)
+            },
+            cancelDownload: { try await handle.cancelDownload(releaseId: $0) },
+            cancelAllDownloads: { try await handle.cancelAllDownloads() },
             setMaxConcurrentDownloads: {
                 try await handle.setMaxConcurrentDownloads(n: $0)
             }

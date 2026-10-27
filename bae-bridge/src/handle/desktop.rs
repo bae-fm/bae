@@ -731,37 +731,32 @@ impl AppHandle {
 
 forward! {
     #[cfg(desktop)]
-    sync this => {
+    async this => {
         /// Pause or resume the export queue. The in-flight export finishes; the queue
         /// stops starting new ones until resumed.
-        fn set_outputs_paused(paused: bool) {
-            this.services.set_outputs_paused(paused);
+        fn set_outputs_paused(paused: bool) -> () {
+            Ok(this.services.set_outputs_paused(paused).await?)
         }
 
         /// Cancel a release's export — drops a queued/failed entry or aborts the
         /// in-flight one (a partial copy never lands its destination file).
-        fn cancel_output(release_id: String) {
-            this.services.cancel_output(&release_id);
+        fn cancel_output(release_id: String) -> () {
+            Ok(this.services.cancel_output(&release_id).await?)
         }
 
         /// Cancel every export — queued, failed, and the one in flight.
-        fn cancel_all_outputs() {
-            this.services.cancel_all_outputs();
+        fn cancel_all_outputs() -> () {
+            Ok(this.services.cancel_all_outputs().await?)
         }
 
         /// Retry every failed export now (flips them back to queued and wakes the
         /// worker).
-        fn retry_outputs() {
-            this.services.retry_outputs();
+        fn retry_outputs() -> () {
+            Ok(this.services.retry_outputs().await?)
         }
-    }
-}
 
-forward! {
-    #[cfg(desktop)]
-    async this => {
-        /// Enqueue a verbatim release export to `target_dir`. It joins the in-memory
-        /// serial output queue; the worker drains it one release at a time. The
+        /// Enqueue a verbatim release export to `target_dir`. It joins the serial
+        /// output queue; the worker drains it one release at a time. The
         /// storage-summary lookup (resolving the pane row's title/size) happens here;
         /// the deep cloud read + copy runs on the queue worker.
         fn enqueue_export(release_id: String, target_dir: String) -> () {

@@ -84,8 +84,12 @@ impl LibraryManager {
                 handle
             }
         };
+        let database = Database::from_handle(handle, clock.clone());
+        // No transfer outlives the process that ran it, so the library opens
+        // with its transfer queues empty, before their workers start.
+        database.clear_release_queues().await?;
         Ok(Self::assemble(
-            Database::from_handle(handle, clock.clone()),
+            database,
             app_dir,
             config_handle,
             clock,
@@ -139,6 +143,9 @@ impl LibraryManager {
     ) -> Self {
         let sync_status = SyncStatusState::new(&database);
         let sync = SyncController::new(database.clone(), diagnostics.clone(), clock.clone());
+        let downloads = crate::library::Downloads::new(database.clone());
+        #[cfg(desktop)]
+        let outputs = crate::library::Outputs::new(database.clone());
         let manager = LibraryManager {
             #[cfg(desktop)]
             preparations: crate::import::CandidatePreparations::new(database.clone()),
@@ -159,9 +166,9 @@ impl LibraryManager {
             sync,
             sync_status,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
-            downloads: crate::library::Downloads::new(),
+            downloads,
             #[cfg(desktop)]
-            outputs: crate::library::Outputs::new(),
+            outputs,
             release_writes: Arc::default(),
             #[cfg(test)]
             disk_hold: Arc::default(),
@@ -533,55 +540,79 @@ impl LibraryManager {
         self.sync.subscribe_outbox_values()
     }
 
-    /// The download queue as it stands: each entry's state and whether the
-    /// queue is paused. The Downloads pane reads it resolved against the
-    /// library, through `AppServices::download_snapshot`.
-    pub fn download_queue(&self) -> crate::library::DownloadQueueContents {
-        self.downloads.contents()
+    /// The download queue as the Downloads pane shows it now.
+    pub async fn download_snapshot(
+        &self,
+    ) -> Result<crate::library::DownloadSnapshot, LibraryError> {
+        self.downloads.snapshot().await
     }
 
-    pub fn subscribe_download_queue(
+    /// Follow the download queue as the Downloads pane shows it.
+    pub fn subscribe_download_snapshot(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::DownloadQueueContents> {
+    ) -> coven::LiveQuery<crate::library::DownloadSnapshot> {
         self.downloads.subscribe()
     }
 
-    /// The export queue as it stands: each entry's state and whether the
-    /// queue is paused. `AppServices::output_snapshot` and the storage
-    /// inspector read it resolved against the library.
-    #[cfg(desktop)]
-    pub fn output_queue(&self) -> crate::library::OutputQueueContents {
-        self.outputs.contents()
+    /// Follow how many downloads are in each phase, and whether the queue is
+    /// paused: what the sync activity shows of them.
+    pub(crate) fn subscribe_download_counts(
+        &self,
+    ) -> coven::LiveQuery<crate::library::ReleaseQueueCounts> {
+        self.downloads.subscribe_counts()
     }
 
-    #[cfg(desktop)]
-    pub fn subscribe_output_queue(
+    /// The bytes the active download has moved, by release, and each change
+    /// to them.
+    pub(crate) fn subscribe_download_transfers(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::OutputQueueContents> {
+    ) -> tokio::sync::watch::Receiver<
+        std::collections::BTreeMap<String, crate::library::DownloadTransferProgress>,
+    > {
+        self.downloads.subscribe_transfers()
+    }
+
+    /// The export queue as it stands now, each entry beside its release, the
+    /// active one with the percent it has reached.
+    #[cfg(desktop)]
+    pub async fn output_snapshot(&self) -> Result<crate::library::OutputSnapshot, LibraryError> {
+        // The table first: every export it reads as active has its percent
+        // held from before it started until after it stops.
+        let snapshot = self.outputs.snapshot().await?;
+        snapshot
+            .with_progress(&self.outputs.active_progress())
+            .ok_or_else(|| {
+                LibraryError::Internal(
+                    "an export the queue reads as active has no percent".to_string(),
+                )
+            })
+    }
+
+    /// Follow the export queue as the storage inspector shows it, without
+    /// each export's percent.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_output_snapshot(
+        &self,
+    ) -> coven::LiveQuery<crate::library::OutputPhaseSnapshot> {
         self.outputs.subscribe()
     }
 
-    /// What the library holds now for each of `release_ids` it still has:
-    /// the title, file count, and size a queue row shows.
-    pub(crate) async fn queued_releases(
+    /// The percent the active export has reached, by release, and each
+    /// change to it.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_output_transfers(
         &self,
-        release_ids: std::collections::BTreeSet<String>,
-    ) -> Result<std::collections::BTreeMap<String, crate::library::QueuedRelease>, LibraryError>
-    {
-        Ok(self.database.queued_releases(release_ids).await?)
+    ) -> tokio::sync::watch::Receiver<std::collections::BTreeMap<String, u8>> {
+        self.outputs.subscribe_transfers()
     }
 
-    /// Follow [`Self::queued_releases`] for the releases `initial` names; a
-    /// queue that gains or loses a release points the same query at its new
-    /// set.
-    pub(crate) fn subscribe_queued_releases(
-        &self,
-        initial: std::collections::BTreeSet<String>,
-    ) -> coven::ReconfigurableLiveQuery<
-        std::collections::BTreeSet<String>,
-        std::collections::BTreeMap<String, crate::library::QueuedRelease>,
-    > {
-        self.database.subscribe_queued_releases(initial)
+    /// A transfer queue's own table failed to read or write in its worker,
+    /// which has nobody to tell: the worker waits for the next command.
+    pub(super) fn report_queue_store_failure(&self, queue: &str, error: &LibraryError) {
+        self.diagnostics.report_bug(
+            &format!("read or write the {queue} queue's table"),
+            &bae_util::error_text::CauseChain(error),
+        );
     }
 
     /// The upload queue and its transfers as the durable queue holds them

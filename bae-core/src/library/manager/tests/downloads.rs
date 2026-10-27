@@ -12,7 +12,7 @@ async fn insert_pinnable_release(manager: &TestManager) -> String {
 }
 
 /// Pausing before the first enqueue parks the worker, so the queue's
-/// in-memory state (enqueue, dedup, snapshot counts, cancel) is observable
+/// state (enqueue, dedup, snapshot counts, cancel) is observable
 /// deterministically without the download path racing the assertions.
 #[tokio::test]
 async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
@@ -20,25 +20,25 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     let release_id = insert_pinnable_release(&manager).await;
 
     // Park the worker up front so nothing drains while we inspect state.
-    manager.set_downloads_paused(true);
+    manager.set_downloads_paused(true).await.unwrap();
 
     manager.enqueue_pins(vec![release_id.clone()]).await
         .unwrap();
-    let snap = manager.download_queue();
-    assert_eq!(snap.total().queued, 1);
-    assert_eq!(snap.ops.len(), 1);
-    assert_eq!(snap.ops[0].state, crate::library::DownloadState::Queued);
+    let snap = download_queue_now(&manager).await;
+    assert_eq!(snap.total.queued, 1);
+    assert_eq!(snap.rows.len(), 1);
+    assert_eq!(snap.rows[0].op.state, crate::library::DownloadPhase::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
     manager.enqueue_pins(vec![release_id.clone()]).await
         .unwrap();
-    assert_eq!(manager.download_queue().ops.len(), 1);
+    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
 
     // Cancel drops the entry.
-    manager.cancel_download(&release_id);
-    let snap = manager.download_queue();
-    assert!(snap.ops.is_empty());
+    manager.cancel_download(&release_id).await.unwrap();
+    let snap = download_queue_now(&manager).await;
+    assert!(snap.rows.is_empty());
 }
 
 /// An already-pinned release is skipped at enqueue rather than re-downloaded.
@@ -71,10 +71,10 @@ async fn download_queue_skips_already_pinned() {
         "the offline-cached file makes it read as pinned"
     );
 
-    manager.set_downloads_paused(true);
+    manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![release_id.clone()]).await
         .unwrap();
-    assert!(manager.download_queue().ops.is_empty());
+    assert!(download_queue_now(&manager).await.rows.is_empty());
 }
 
 /// A release whose storage can't be read fails the whole pin request before
@@ -85,7 +85,7 @@ async fn a_failed_release_read_fails_the_whole_pin_request() {
     let readable = insert_pinnable_release(&manager).await;
     let source = manager.get_config().library_path().join("unreadable-source");
     let unreadable = uploaded_release(&manager, &source, "Album Title", false).await;
-    manager.set_downloads_paused(true);
+    manager.set_downloads_paused(true).await.unwrap();
     manager
         .database
         .set_release_media_text_for_test(&unreadable, r#"[{"medium":"not-a-medium","count":1}]"#)
@@ -99,7 +99,7 @@ async fn a_failed_release_read_fails_the_whole_pin_request() {
 
     assert!(error.to_string().contains("not-a-medium"), "{error}");
     assert!(
-        manager.download_queue().ops.is_empty(),
+        download_queue_now(&manager).await.rows.is_empty(),
         "nothing is queued when the request fails"
     );
 }
@@ -111,7 +111,7 @@ async fn a_failed_release_read_fails_the_whole_pin_request() {
 #[tokio::test]
 async fn download_queue_skips_local_release() {
     let (manager, temp_dir) = setup_test_manager().await;
-    manager.set_downloads_paused(true);
+    manager.set_downloads_paused(true).await.unwrap();
 
     let release = insert_local_release_with_files(
         &manager,
@@ -133,7 +133,7 @@ async fn download_queue_skips_local_release() {
     manager.enqueue_pins(vec![release.id.clone()]).await
         .unwrap();
     assert!(
-        manager.download_queue().ops.is_empty(),
+        download_queue_now(&manager).await.rows.is_empty(),
         "a local release is not enqueued for pinning"
     );
 }
@@ -150,75 +150,80 @@ async fn download_queue_failed_pin_retries() {
     manager.enqueue_pins(vec![release_id.clone()]).await
         .unwrap();
 
-    // Let the worker pick it up, fail, and mark it Failed. Poll the snapshot
-    // rather than sleeping a fixed interval.
-    let failed = wait_for(|| {
+    // Let the worker pick it up, fail, and mark it Failed.
+    let failed = download_queue_until(&manager, |queue| {
         matches!(
-            manager.download_queue().ops.first().map(|op| &op.state),
-            Some(crate::library::DownloadState::Failed { .. })
+            queue.rows.first().map(|row| &row.op.state),
+            Some(crate::library::DownloadPhase::Failed { .. })
         )
     })
     .await;
-    assert!(
-        failed,
-        "the pin should land Failed while storage is offline"
-    );
-    assert_eq!(manager.download_queue().total().failed, 1);
+    assert_eq!(failed.total.failed, 1, "the pin lands Failed while storage is offline");
 
     // Retry flips it back to Queued; while storage is offline it will fail again,
     // but the immediate post-retry state is Queued (or already re-failed).
-    manager.retry_downloads();
-    let snap = manager.download_queue();
+    manager.retry_downloads().await.unwrap();
+    let snap = download_queue_now(&manager).await;
     assert!(
-        snap.ops.first().is_some_and(|op| matches!(
-            op.state,
-            crate::library::DownloadState::Queued
-                | crate::library::DownloadState::Active { .. }
-                | crate::library::DownloadState::Failed { .. }
+        snap.rows.first().is_some_and(|row| matches!(
+            row.op.state,
+            crate::library::DownloadPhase::Queued
+                | crate::library::DownloadPhase::Active { .. }
+                | crate::library::DownloadPhase::Failed { .. }
         )),
         "after retry the release is still tracked"
     );
 
     // Cancelling clears it regardless of the in-flight retry.
-    manager.cancel_download(&release_id);
-    let cleared = wait_for(|| manager.download_queue().ops.is_empty()).await;
-    assert!(cleared, "cancel removes the entry");
+    manager.cancel_download(&release_id).await.unwrap();
+    assert!(
+        download_queue_now(&manager).await.rows.is_empty(),
+        "cancel removes the entry"
+    );
 }
 
+/// Each step of bytes a pin drives reaches the active download's progress,
+/// read apart from the queue's table.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn download_queue_values_report_each_driven_file_progress() {
+async fn download_transfers_report_each_driven_file_progress() {
     use crate::storage::transfer::TransferProgress;
 
     let (manager, _temp_dir) = setup_test_manager().await;
     let release_id = "release-progress".to_string();
-    let mut values = manager.subscribe_download_queue();
-    values.borrow_and_update();
-    assert!(manager.downloads.enqueue_all([crate::library::DownloadOp {
-        release_id: release_id.clone(),
-        created_at: 0,
-        payload: (),
-        state: crate::library::DownloadState::Queued,
-    }]));
+    // The manager's own worker leaves the entry to this test.
+    manager.set_downloads_paused(true).await.unwrap();
+    assert!(manager
+        .downloads
+        .enqueue_all(vec![crate::library::DownloadEntry {
+            release_id: release_id.clone(),
+            created_at: 0,
+            payload: (),
+        }])
+        .await
+        .unwrap());
     let pending = tokio::spawn(std::future::pending::<()>());
-    assert!(manager.downloads.activate(
-        &release_id,
-        pending.abort_handle(),
-        crate::library::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
-    ));
+    assert!(manager
+        .downloads
+        .activate_for_test(
+            &release_id,
+            pending.abort_handle(),
+            crate::library::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
+        )
+        .await
+        .unwrap());
 
-    let active_progress = |snapshot: &crate::library::DownloadQueueContents| {
-        let op = snapshot
-            .ops
-            .first()
-            .expect("the active download remains queued");
-        let crate::library::DownloadState::Active { progress } = &op.state else {
-            panic!("the download is active")
-        };
-        progress.clone()
+    let mut transfers = manager.downloads.subscribe_transfers();
+    let bytes_done = |transfers: &std::collections::BTreeMap<
+        String,
+        crate::library::DownloadTransferProgress,
+    >| {
+        transfers
+            .get("release-progress")
+            .expect("the active download has progress")
+            .clone()
     };
-    values.changed().await.expect("initial active value");
-    assert_eq!(active_progress(&values.borrow_and_update()).bytes_done, 0);
+    assert_eq!(bytes_done(&transfers.borrow_and_update()).bytes_done, 0);
 
     let (progress_tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
     let driver = {
@@ -230,18 +235,18 @@ async fn download_queue_values_report_each_driven_file_progress() {
                 .await
         })
     };
-    for bytes_done in [3, 7] {
+    for done in [3, 7] {
         progress_tx
             .send(TransferProgress::Progress {
-                progress: crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7)
+                progress: crate::library::DownloadTransferProgress::new(&release_id, done, 7)
                     .unwrap(),
             })
             .expect("the transfer driver is listening");
-        values.changed().await.expect("file progress value");
-        let progress = active_progress(&values.borrow_and_update());
-        assert_eq!(progress.bytes_done, bytes_done);
+        transfers.changed().await.expect("file progress value");
+        let progress = bytes_done(&transfers.borrow_and_update());
+        assert_eq!(progress.bytes_done, done);
         assert_eq!(progress.bytes_total, 7);
-        assert_eq!(progress.fraction, bytes_done as f64 / 7.0);
+        assert_eq!(progress.fraction, done as f64 / 7.0);
     }
     progress_tx
         .send(TransferProgress::Complete {
@@ -267,16 +272,23 @@ async fn download_bytes_send_no_new_sync_activity() {
     let mut activity = crate::library::SyncActivityStream::new(manager.library.clone());
     assert_eq!(activity.next().await.unwrap().downloads, None);
 
-    assert!(manager.downloads.enqueue_all([crate::library::DownloadOp {
-        release_id: release_id.clone(),
-        created_at: 0,
-        payload: (),
-        state: crate::library::DownloadState::Queued,
-    }]));
+    // The manager's own worker leaves the entry to this test.
+    manager.set_downloads_paused(true).await.unwrap();
+    assert!(manager
+        .downloads
+        .enqueue_all(vec![crate::library::DownloadEntry {
+            release_id: release_id.clone(),
+            created_at: 0,
+            payload: (),
+        }])
+        .await
+        .unwrap());
     let pending = tokio::spawn(std::future::pending::<()>());
     assert!(manager
         .downloads
-        .activate(&release_id, pending.abort_handle(), progress(0)));
+        .activate_for_test(&release_id, pending.abort_handle(), progress(0))
+        .await
+        .unwrap());
     assert_eq!(
         activity.next().await.unwrap().downloads,
         Some(crate::library::DownloadsInFlight {
@@ -297,7 +309,54 @@ async fn download_bytes_send_no_new_sync_activity() {
         .await;
         assert!(polled.is_pending(), "{bytes_done} bytes sent an activity");
     }
-    manager.cancel_download(&release_id);
+    manager.cancel_download(&release_id).await.unwrap();
     assert_eq!(next.await.unwrap().downloads, None);
     pending.abort();
+}
+
+/// No transfer outlives the process that ran it: a library opened over a
+/// store whose queues still hold entries opens with both empty and running.
+#[tokio::test]
+async fn opening_a_library_empties_its_transfer_queues() {
+    let temp_dir = TempDir::new().unwrap();
+    let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
+    let installation = coven::TestCoven::new();
+    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+    let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+        .clock(clock.clone())
+        .storage_connector(Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap()))
+        .create_store("Test Library")
+        .await
+        .unwrap();
+    let left = Database::from_handle(handle.clone(), clock.clone());
+    left.enqueue_releases(vec![crate::library::DownloadEntry {
+        release_id: REL_1.to_string(),
+        created_at: 0,
+        payload: (),
+    }])
+    .await
+    .unwrap();
+    left.set_release_queue_paused::<()>(true).await.unwrap();
+
+    let config = Config::with_defaults(
+        handle.store_id(),
+        app_dir.registered_library(&handle.store_id().to_string()),
+    );
+    let manager = LibraryManager::open(
+        app_dir,
+        Arc::new(ConfigHandle::new(config)),
+        clock,
+        Arc::new(coven::UuidIds),
+        crate::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+        crate::library::LibraryOpening::Open(handle),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        crate::providers::Providers::offline(),
+    )
+    .await
+    .unwrap();
+
+    let queue = manager.download_snapshot().await.unwrap();
+    assert!(queue.rows.is_empty(), "{queue:?}");
+    assert!(!queue.paused);
 }

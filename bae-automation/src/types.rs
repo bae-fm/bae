@@ -855,7 +855,7 @@ pub struct AutomationOutputProgress {
     pub failed: u32,
 }
 
-/// The in-memory export queue snapshot returned by `output_status`.
+/// The export queue snapshot returned by `output_status`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationOutputSnapshot {
     pub outputs: Vec<AutomationOutputOp>,

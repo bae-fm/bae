@@ -1406,8 +1406,9 @@ never pinned; an evicted one is fetched again the next time it is shown.
 
 Pins download one release at a time from a queue that can be paused,
 cancelled and retried. A release becomes pinned only once every file lands. The
-queue lives in memory: after a restart it is empty, and a release that wasn't
-fully pinned stays as it was. Unpinning moves the files into the cache, still
+queue is kept on the device and emptied as the library opens: after a restart
+it is empty and running, and a release that wasn't fully pinned stays as it
+was. How far the release downloading has got is not kept. Unpinning moves the files into the cache, still
 readable, now evictable.
 
 Asking to pin several releases queues each that can be: one already queued,
@@ -1461,8 +1462,10 @@ Two ways put a release back on disk, from desktop:
   write a release as one image with a CUE sheet. FLAC and MP3 presets come
   built in (Appendix C).
 
-Both run from a queue that can be paused, cancelled and retried. Either reads
-files from wherever they are: the person's own path, the cache, or storage.
+Both run from a queue that can be paused, cancelled and retried, kept and
+emptied as the pin queue is (§4.3). A save keeps the preset it was queued
+with, so editing the preset changes nothing already queued. Either reads files
+from wherever they are: the person's own path, the cache, or storage.
 
 **Edge cases.**
 
@@ -2927,6 +2930,17 @@ under it.
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
 | `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, Discogs had no key, or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |
 
+### A.9 Transfer queues
+
+| Table | Holds |
+|---|---|
+| `release_queues` | whether the pin queue and the export and save queue are paused |
+| `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
+| `output_queue` | release queued to export or save, in the order queued: its folder, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
+
+No transfer outlives the process that ran it, so the library opens with every
+queue empty and running.
+
 ---
 
 ## Appendix B. Synced tables
@@ -2936,9 +2950,9 @@ from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). `local_release_files`,
-`local_release_origin`, `local_history` and the import tables (A.4–A.8),
-`import_candidate_standing` and `import_identification_batch` among them, are
-not declared, so they never sync.
+`local_release_origin`, `local_history`, the import tables (A.4–A.8),
+`import_candidate_standing` and `import_identification_batch` among them, and
+the transfer queues (A.9) are not declared, so they never sync.
 
 | Table | Identity | Audience | Owner | File |
 |---|---|---|---|---|

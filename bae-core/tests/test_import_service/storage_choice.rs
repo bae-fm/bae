@@ -46,38 +46,44 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
 
     f.library_manager.set_import_to_cloud(true).await.unwrap();
     f.library_manager.set_import_pinned(true).await.unwrap();
-    f.library_manager.set_downloads_paused(true);
+    f.library_manager.set_downloads_paused(true).await.unwrap();
     let outcome = import_outcome(&f, &keys[0]).await;
     let bae_core::import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
     };
     assert!(
         f.library_manager
-            .download_queue()
-            .ops
+            .download_snapshot()
+            .await
+            .unwrap()
+            .rows
             .iter()
-            .any(|op| op.release_id == id),
+            .any(|row| row.op.release_id == id),
         "the committed import queues its selected offline copy"
     );
-    f.library_manager.set_downloads_paused(false);
-    let mut downloads = f.library_manager.subscribe_download_queue();
-    let settled = tokio::time::timeout(
-        HANG_GUARD,
-        downloads.wait_for(|queue| {
-            queue.ops.iter().all(|op| {
-                op.release_id != id
-                    || matches!(op.state, bae_core::library::DownloadState::Failed { .. })
-            })
-        }),
-    )
+    f.library_manager.set_downloads_paused(false).await.unwrap();
+    let mut downloads = f.library_manager.subscribe_download_snapshot();
+    let settled = tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            let queue = downloads
+                .next()
+                .await
+                .expect("the query stays open")
+                .unwrap();
+            if queue.rows.iter().all(|row| {
+                row.op.release_id != id
+                    || matches!(row.op.state, bae_core::library::DownloadPhase::Failed { .. })
+            }) {
+                return queue;
+            }
+        }
+    })
     .await
-    .expect("the selected offline copy finishes")
-    .unwrap();
+    .expect("the selected offline copy finishes");
     assert!(
-        !settled.ops.iter().any(|op| op.release_id == id),
+        !settled.rows.iter().any(|row| row.op.release_id == id),
         "offline copy failed: {settled:?}"
     );
-    drop(settled);
     let storage = f
         .library_manager
         .find_release_storage_summary(&id)

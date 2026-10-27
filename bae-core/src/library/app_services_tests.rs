@@ -340,7 +340,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
     let (services, _track_ids, temp_dir) = playing_app_services(1).await;
     let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
     let manager = &services.inner.manager;
-    manager.set_outputs_paused(true);
+    manager.set_outputs_paused(true).await.unwrap();
     manager
         .enqueue_export(release_id, temp_dir.path().join("export-out"))
         .await
@@ -411,7 +411,7 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
     let (services, _track_ids, temp_dir) = playing_app_services(1).await;
     let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
     let manager = &services.inner.manager;
-    manager.set_outputs_paused(true);
+    manager.set_outputs_paused(true).await.unwrap();
     manager
         .enqueue_export(release_id, temp_dir.path().join("export-out"))
         .await

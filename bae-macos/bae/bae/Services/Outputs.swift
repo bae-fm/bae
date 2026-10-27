@@ -1,15 +1,16 @@
 import BaeKit
 import Foundation
 
-/// Controls for the in-memory export queue: enqueue a release export
+/// Controls for the export queue: enqueue a release export
 /// out to a folder, pause/resume the queue, cancel a release's export, and retry
 /// failed ones. Mirrors `Downloads`, wrapping the corresponding `handle.*`
 /// methods. The queue itself lives in bae-core; the Storage Manager's
 /// inspector reads a release's entry in it.
 final class Outputs: Sendable, Observable {
     /// Enqueue a verbatim release export to `targetDir`. It joins the serial
-    /// output queue; the worker drains it one release at a time. Fire-and-forget
-    /// — progress and queue state arrive via `outputQueueChanged` events.
+    /// output queue; the worker drains it one release at a time. The queue
+    /// arrives through its live read, and each export's percent through its
+    /// transfers.
     let enqueueExport:
         @Sendable (_ releaseId: String, _ targetDir: String) async throws ->
             Void
@@ -21,12 +22,12 @@ final class Outputs: Sendable, Observable {
         ) async throws -> Void
     /// Pause or resume the output queue. In-flight work finishes; the queue
     /// stops starting new operations until resumed.
-    let setOutputsPaused: @Sendable (_ paused: Bool) -> Void
+    let setOutputsPaused: @Sendable (_ paused: Bool) async throws -> Void
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
-    let cancelOutput: @Sendable (_ releaseId: String) -> Void
+    let cancelOutput: @Sendable (_ releaseId: String) async throws -> Void
     /// Cancel every export — queued, failed, and the one in flight.
-    let cancelAllOutputs: @Sendable () -> Void
+    let cancelAllOutputs: @Sendable () async throws -> Void
     /// Replace configured export presets.
     let setSavePresets:
         @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
@@ -46,9 +47,13 @@ final class Outputs: Sendable, Observable {
             async throws -> Void =
             { _, _, _ in
             },
-        setOutputsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
-        cancelOutput: @escaping @Sendable (String) -> Void = { _ in },
-        cancelAllOutputs: @escaping @Sendable () -> Void = {},
+        setOutputsPaused: @escaping @Sendable (Bool) async throws -> Void = {
+            _ in
+        },
+        cancelOutput: @escaping @Sendable (String) async throws -> Void = {
+            _ in
+        },
+        cancelAllOutputs: @escaping @Sendable () async throws -> Void = {},
         setSavePresets:
             @escaping @Sendable ([BridgeSavePreset]) async throws -> Void = {
                 _ in
@@ -82,9 +87,9 @@ final class Outputs: Sendable, Observable {
                     presetId: $2
                 )
             },
-            setOutputsPaused: { handle.setOutputsPaused(paused: $0) },
-            cancelOutput: { handle.cancelOutput(releaseId: $0) },
-            cancelAllOutputs: { handle.cancelAllOutputs() },
+            setOutputsPaused: { try await handle.setOutputsPaused(paused: $0) },
+            cancelOutput: { try await handle.cancelOutput(releaseId: $0) },
+            cancelAllOutputs: { try await handle.cancelAllOutputs() },
             setSavePresets: { try await handle.setSavePresets(presets: $0) },
             setDefaultTrackSavePreset: {
                 try await handle.setDefaultTrackSavePreset(presetId: $0)

@@ -50,31 +50,14 @@ impl Database {
     }
 
     /// What the library holds now for each of `release_ids` it still has: the
-    /// title, file count, and size a transfer queue row shows.
+    /// title, file count, and size, as the names of the files it is uploading
+    /// read them.
     pub async fn queued_releases(
         &self,
         release_ids: BTreeSet<String>,
     ) -> Result<std::collections::BTreeMap<String, crate::library::QueuedRelease>, DbError> {
         self.read(move |sql| queued_releases_on(&sql, &release_ids))
             .await
-    }
-
-    /// Follow [`Self::queued_releases`] for the releases `initial` names. A
-    /// queue that gains or loses a release points the same query at its new
-    /// set through the request handle, not a new query.
-    pub(crate) fn subscribe_queued_releases(
-        &self,
-        initial: BTreeSet<String>,
-    ) -> coven::ReconfigurableLiveQuery<
-        BTreeSet<String>,
-        std::collections::BTreeMap<String, crate::library::QueuedRelease>,
-    > {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |release_ids, sql| {
-                queued_releases_on(&sql, release_ids).map_err(CovenError::from)
-            })
-            .process(Ok)
     }
 
     /// How many uploaded releases this device doesn't keep pinned: those with

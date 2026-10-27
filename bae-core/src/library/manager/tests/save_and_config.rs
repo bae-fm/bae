@@ -94,7 +94,7 @@ async fn save_track_rejects_release_only_preset() {
 async fn enqueue_release_save_captures_the_preset() {
     let (manager, temp_dir) = setup_test_manager().await;
     let release_id = insert_pinnable_release(&manager).await;
-    manager.set_outputs_paused(true);
+    manager.set_outputs_paused(true).await.unwrap();
 
     let target = temp_dir.path().join("save-out");
     manager
@@ -115,8 +115,8 @@ async fn enqueue_release_save_captures_the_preset() {
         .collect();
     manager.set_save_presets(edited).await.unwrap();
 
-    let snap = manager.output_queue();
-    let crate::library::OutputKind::Save { preset } = &snap.ops[0].payload.kind else {
+    let snap = output_queue_now(&manager).await;
+    let crate::library::OutputKind::Save { preset } = &snap.rows[0].op.payload.kind else {
         panic!("expected a queued save op");
     };
     assert_eq!(

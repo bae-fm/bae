@@ -14,7 +14,7 @@ use std::future::Future;
 use crate::album_detail::ReleaseStorageAction;
 use crate::db::DbFile;
 use crate::diagnostics::{LocalId, TelemetryEvent};
-use crate::library::release_queue::RunningOp;
+use crate::library::queued_releases::RunningOp;
 use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};

@@ -433,7 +433,7 @@ extension AlbumDetailView {
     }
 
     private func pinRelease(releaseId: String) {
-        // Pinning enqueues on the in-memory download queue rather than awaiting
+        // Pinning enqueues on the download queue rather than awaiting
         // a per-release transition. The sheet's existing `release.summary.transfer`
         // bar tracks the action from subscribed release values; the storage state
         // flips when the live album detail delivers the worker's database commit.

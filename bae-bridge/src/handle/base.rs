@@ -241,12 +241,38 @@ forward! { async this => {
         Ok(crate::types::BridgeRestoreCodeShare::from_core(this.services.generate_restore_code().await?))
     }
 
-    /// Enqueue releases to pin for offline. They join the in-memory serial
-    /// download queue; the worker drains them one at a time. Fails, queueing
-    /// none of them, when a release's storage can't be read; the deep cloud
-    /// download runs on the queue worker.
+    /// Enqueue releases to pin for offline. They join the serial download
+    /// queue; the worker drains them one at a time. Fails, queueing none of
+    /// them, when a release's storage can't be read; the deep cloud download
+    /// runs on the queue worker.
     fn queue_pin_releases(release_ids: Vec<String>) -> () {
         Ok(this.services.enqueue_pins(release_ids).await?)
+    }
+
+    // ── Download (pin) queue ─────────────────────────────────────────
+
+    /// Pause or resume the download queue. In-flight downloads finish; the queue
+    /// stops starting new ones until resumed.
+    fn set_downloads_paused(paused: bool) -> () {
+        Ok(this.services.set_downloads_paused(paused).await?)
+    }
+
+    /// Cancel a release's download — drops a queued/failed entry or aborts the
+    /// in-flight one (a partial download never lands, so the release stays
+    /// cloud-only).
+    fn cancel_download(release_id: String) -> () {
+        Ok(this.services.cancel_download(&release_id).await?)
+    }
+
+    /// Cancel every download — queued, failed, and the one in flight.
+    fn cancel_all_downloads() -> () {
+        Ok(this.services.cancel_all_downloads().await?)
+    }
+
+    /// Retry every failed download now (flips them back to queued and wakes the
+    /// worker).
+    fn retry_downloads() -> () {
+        Ok(this.services.retry_downloads().await?)
     }
 } }
 
@@ -392,31 +418,6 @@ forward! { sync this => {
         }
     }
 
-    // ── Download (pin) queue ─────────────────────────────────────────
-
-    /// Pause or resume the download queue. In-flight downloads finish; the queue
-    /// stops starting new ones until resumed.
-    fn set_downloads_paused(paused: bool) {
-        this.services.set_downloads_paused(paused);
-    }
-
-    /// Cancel a release's download — drops a queued/failed entry or aborts the
-    /// in-flight one (a partial download never lands, so the release stays
-    /// cloud-only).
-    fn cancel_download(release_id: String) {
-        this.services.cancel_download(&release_id);
-    }
-
-    /// Cancel every download — queued, failed, and the one in flight.
-    fn cancel_all_downloads() {
-        this.services.cancel_all_downloads();
-    }
-
-    /// Retry every failed download now (flips them back to queued and wakes the
-    /// worker).
-    fn retry_downloads() {
-        this.services.retry_downloads();
-    }
 } }
 
 /// The queue entry a UI names by the id its queue rows carry. Every id the

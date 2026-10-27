@@ -734,15 +734,18 @@ pub struct LibraryManager {
     /// Every storage transition in flight, and the stream the storage rows
     /// read them from.
     transitions: crate::library::storage_transitions::StorageTransitions,
-    /// The "Pin for offline" queue and the Downloads pane's stream. A single
-    /// serial worker drains it one release at a time. Shared across manager
-    /// clones; transient (empty after a restart — a release that wasn't fully
-    /// pinned stays cloud-only).
+    /// The "Pin for offline" queue: its table, which the Downloads pane and
+    /// the detail views read, and the bytes its active download has moved. A
+    /// single serial worker drains it one release at a time. Shared across
+    /// manager clones; emptied as the library opens (a release that wasn't
+    /// fully pinned stays cloud-only).
     downloads: crate::library::Downloads,
-    /// The "Export…" and save queue and the stream the inspector reads. A single
-    /// serial worker drains it one release at a time. Shared across manager
-    /// clones; transient. An output changes no release state — it only reads,
-    /// and writes to a user directory. Desktop-only: see the `output` module.
+    /// The "Export…" and save queue: its table, which the inspector reads, and
+    /// the percent its active output has reached. A single serial worker
+    /// drains it one release at a time. Shared across manager clones; emptied
+    /// as the library opens. An output changes no release state — it only
+    /// reads, and writes to a user directory. Desktop-only: see the `output`
+    /// module.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     outputs: crate::library::Outputs,
     /// Session cache of provider image responses, keyed by URL. Candidate

@@ -357,7 +357,7 @@ async fn a_release_detail_says_where_its_download_stands() {
         Some(ReleaseDownloadStatus::Available)
     );
 
-    mgr.set_downloads_paused(true);
+    mgr.set_downloads_paused(true).await.unwrap();
     mgr.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     assert_eq!(
         status(mgr.clone(), release_id.clone()).await,
