@@ -2566,8 +2566,8 @@ to compile in the bridge until it is carried across.
   mid-call cancels the Rust work it started.
 - **Closing a library** ends it before its runtime: playback saves where it
   was and stops, the desktop servers, identification, import and sync stop,
-  the library's tasks end and its store closes, and only then does the runtime
-  shut down. Releasing the handle closes it the same way; the app closes it
+  the library's tasks, its live subscriptions among them, end and its store
+  closes, and only then does the runtime shut down. Releasing the handle closes it the same way; the app closes it
   first, off the main thread, to wait for it and hear a failure, which a
   release reports as a bug. A handle released on the library's own runtime
   closes it on a thread of its own, and opening, resetting, restoring or
@@ -2575,7 +2575,10 @@ to compile in the bridge until it is carried across.
   the store, only the runtime is left to end. An open that fails after the
   library started closes it the same way before its runtime ends.
 - **Subscriptions** take a callback object the app implements, and return a
-  `LiveSubscription`; cancelling or dropping it stops the delivery.
+  `LiveSubscription`; cancelling or dropping it stops the delivery. Each runs
+  as one of the library's tasks, so closing or removing the library stops it
+  before the store closes, and it never hears from a closed store. One opened
+  on a closed library delivers nothing and is reported as a bug.
 - **Callbacks the app provides**: UI events, the artwork reader, and on phones
   the sign-in presenter, which shows the provider's page and returns where it
   redirected. Desktops sign in through coven's own browser flow; iCloud runs in

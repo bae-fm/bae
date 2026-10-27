@@ -5,9 +5,11 @@
 use super::*;
 
 impl AppHandle {
-    /// Spawn a subscription's delivery loop on the app runtime and hand back the
-    /// object the host cancels it with. `body` receives the services and a
-    /// runtime handle, and is built on the runtime rather than on the caller.
+    /// Run a subscription's delivery loop as the library's own work and hand
+    /// back the object the host cancels it with. Closing the library ends the
+    /// loop before its store closes, as it ends the library's other tasks.
+    /// `body` receives the services and a runtime handle, and is built on the
+    /// runtime rather than on the caller.
     pub(super) fn live_subscription<Fut>(
         &self,
         body: impl FnOnce(AppServices, tokio::runtime::Handle) -> Fut + Send + 'static,
@@ -17,9 +19,19 @@ impl AppHandle {
     {
         let services = self.services.clone();
         let runtime = self.runtime.clone();
-        let body_runtime = runtime.clone();
-        let task = crate::operation_runtime::spawn(runtime, move || body(services, body_runtime));
-        std::sync::Arc::new(crate::LiveSubscription::new(task))
+        let stop = bae_core::library::CancellationToken::new();
+        let stopped = stop.clone();
+        let delivery = async move {
+            stopped.run_until_cancelled(body(services, runtime)).await;
+        };
+        // A host subscribes only while the library is open.
+        if let Err(error) = self
+            .services
+            .spawn_library_task("live subscription", delivery)
+        {
+            self.services.report_bug("open a live subscription", &error);
+        }
+        std::sync::Arc::new(crate::LiveSubscription::new(stop))
     }
 
     /// Hand `deliver` every value core sends on a subscription channel. The loop
@@ -80,3 +92,7 @@ impl AppHandle {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "live_tests.rs"]
+mod tests;
