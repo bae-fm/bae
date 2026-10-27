@@ -37,3 +37,35 @@ async fn upload_pins_as_the_stored_choice_says() {
     assert!(manager.release_pinned(Some(&kept_file)).await.unwrap());
     assert!(!manager.release_pinned(Some(&evictable_file)).await.unwrap());
 }
+
+/// What disconnecting would cost counts the uploaded releases this device
+/// doesn't keep pinned, and no local one.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_cloud_only_count_is_the_uploaded_releases_not_pinned() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud_with_sync_loop(&manager).await;
+    upload_release_under_sync_loop(
+        &manager,
+        &temp_dir.path().join("pinned"),
+        "Pinned Album",
+        true,
+    )
+    .await;
+    upload_release_under_sync_loop(
+        &manager,
+        &temp_dir.path().join("cloud"),
+        "Cloud Album",
+        false,
+    )
+    .await;
+    insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("local"),
+        "Local Album",
+        &[("track.flac", b"local-bytes")],
+    )
+    .await;
+
+    assert_eq!(manager.cloud_only_release_count().await.unwrap(), 1);
+}

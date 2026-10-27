@@ -77,19 +77,24 @@ impl Database {
             .process(Ok)
     }
 
-    /// A representative file id for every remote release — one per release, `None`
-    /// for a remote release with no files. Pin/unpin act on all a release's files
-    /// together, so one file stands for the release. The disconnect flow asks
-    /// coven's cache whether each is pinned, to count the releases that become
-    /// unreachable when the cloud provider is removed: an unpinned remote release
-    /// is reachable only through the cloud.
-    pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
-        self.read(move |sql| {
-            sql.query(
-                "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = listing.release_id LIMIT 1) \
-                     FROM release_listing listing WHERE listing.stored = 1",
-                [],
-                |row| row.get::<_, Option<String>>(0),
+    /// How many uploaded releases this device doesn't keep pinned: a remote
+    /// release with no files, or with a file coven's `coven_pins` doesn't
+    /// list. Each is reachable only through the cloud, so disconnecting would
+    /// leave it unplayable here.
+    pub async fn cloud_only_release_count(&self) -> Result<u64, DbError> {
+        self.read(|sql| {
+            sql.query_row(
+                "SELECT COUNT(*) FROM release_listing AS listing \
+                 WHERE listing.stored = 1 \
+                   AND (NOT EXISTS (SELECT 1 FROM release_files AS f \
+                                    WHERE f.release_id = listing.release_id) \
+                        OR EXISTS (SELECT 1 FROM release_files AS f \
+                                   WHERE f.release_id = listing.release_id \
+                                     AND NOT EXISTS (SELECT 1 FROM coven_pins AS p \
+                                                     WHERE p.table_name = ?1 \
+                                                       AND p.key = coven_key(f.id))))",
+                [crate::sync::RELEASE_FILES_NAMESPACE],
+                |row| row.get::<_, u64>(0),
             )
             .map_err(DbError::from)
         })

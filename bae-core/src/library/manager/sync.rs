@@ -162,17 +162,11 @@ impl LibraryManager {
     /// with its own locale's plural rules from the `core.sync.cloud_only_releases`
     /// catalog key.
     ///
-    /// A representative file identifies each release, then every file must be
-    /// pinned. Pin state belongs to coven, never a bae column.
+    /// A release counts as pinned only when every one of its files is. Pin
+    /// state belongs to coven, never a bae column: the count reads coven's
+    /// `coven_pins` view.
     pub async fn cloud_only_release_count(&self) -> Result<u64, LibraryError> {
-        let remote_file_ids = self.database.get_remote_release_file_ids().await?;
-        let mut count: u64 = 0;
-        for any_file_id in &remote_file_ids {
-            if !self.release_pinned(any_file_id.as_deref()).await? {
-                count += 1;
-            }
-        }
-        Ok(count)
+        Ok(self.database.cloud_only_release_count().await?)
     }
 
     /// Start coven's sync loop with the store keys this session unlocked. Its
