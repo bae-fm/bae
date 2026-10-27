@@ -2838,7 +2838,10 @@ rows. A release's pinned count follows coven's `coven_pins` the same way, in
 the transaction that changes a pin, whether this device's own write, another
 device's applied, or coven's as a file is pinned, downloads, uploads or is
 unpinned. A write applied from another device can hold a row before a row it
-references; the triggers count a row once what it references is there.
+references; the triggers count a row once what it references is there. An
+album's listing row is written only when one of its values changes, and its
+releases' rows only when its title or credits do, so a release added to an
+album, even a box set of thousands, rewrites no other release's row.
 
 Whether a release is local or uploaded is not a column: it is whether its files
 are attached.

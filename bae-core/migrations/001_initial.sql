@@ -1013,7 +1013,9 @@ END;
 
 -- Inserting an album id into `album_listing_refresh` rewrites that album's
 -- row of `album_listing` and its links from the album, its releases and its
--- credits, adding and removing only the links that differ.
+-- credits, writing the row only where a value differs and adding and removing
+-- only the links that differ: a release added to an album of many changes
+-- none of its other releases' listing rows.
 CREATE VIEW IF NOT EXISTS album_listing_refresh AS SELECT NULL AS album_id WHERE 0;
 
 CREATE TRIGGER IF NOT EXISTS album_listing_refresh INSTEAD OF INSERT ON album_listing_refresh
@@ -1039,7 +1041,12 @@ BEGIN
         year = excluded.year,
         created_at = excluded.created_at,
         credit_sort_names = excluded.credit_sort_names,
-        credit_artist_ids = excluded.credit_artist_ids;
+        credit_artist_ids = excluded.credit_artist_ids
+    WHERE album_listing.title IS NOT excluded.title
+       OR album_listing.year IS NOT excluded.year
+       OR album_listing.created_at IS NOT excluded.created_at
+       OR album_listing.credit_sort_names IS NOT excluded.credit_sort_names
+       OR album_listing.credit_artist_ids IS NOT excluded.credit_artist_ids;
     DELETE FROM album_artist_link WHERE album_id = NEW.album_id
         AND artist_id NOT IN (
             SELECT shown.shown_artist_id FROM album_artists credit
@@ -1325,6 +1332,9 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_album_changed AFTER UPDATE OF title, credit_sort_names, credit_artist_ids ON album_listing
+WHEN OLD.title IS NOT NEW.title
+  OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
+  OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
 BEGIN
     INSERT INTO release_listing_refresh (release_id)
     SELECT id FROM releases WHERE album_id = NEW.album_id;
