@@ -23,14 +23,24 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let mut live = db.subscribe_library_statuses(BTreeSet::new());
     let requests = live.requests();
     assert!(
-        live.next().await.result.unwrap().is_empty(),
+        live.next()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap()
+            .is_empty(),
         "no offers check nothing"
     );
 
     requests
         .set([offered.clone(), other.clone()].into_iter().collect())
         .unwrap();
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(initial.len(), 2);
     assert!(initial.iter().all(|status| !status.album_in_library()));
 
@@ -44,6 +54,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("identity write wakes the library statuses")
+        .expect("the query stays open")
         .result
         .unwrap();
     let status = |statuses: &[LibraryStatus], release_id: &str| {
@@ -66,6 +77,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let album_only = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("identity kind change wakes the library statuses")
+        .expect("the query stays open")
         .result
         .unwrap();
     let held = status(&album_only, "source-release-1");
@@ -73,7 +85,12 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     assert!(held.album_in_library());
 
     requests.set([other].into_iter().collect()).unwrap();
-    let narrowed = live.next().await.result.unwrap();
+    let narrowed = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(
         narrowed
             .iter()
@@ -92,7 +109,13 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_selection(BTreeSet::new());
     let requests = live.requests();
-    assert!(live.next().await.result.unwrap().is_empty());
+    assert!(live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
+        .is_empty());
 
     requests
         .set(
@@ -101,7 +124,7 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
                 .collect(),
         )
         .unwrap();
-    let selected = live.next().await;
+    let selected = live.next().await.expect("the query stays open");
     assert_eq!(selected.request.len(), 2);
     assert_eq!(selected.result.unwrap(), vec!["missing-album"]);
 
@@ -109,6 +132,7 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("deleting a selected album wakes the selection")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(deleted, vec![ALBUM_ID, "missing-album"]);

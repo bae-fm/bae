@@ -351,17 +351,23 @@ impl ReleasePinWatch {
         self.changed().await
     }
 
+    /// The pin markers once they next change. A query that has ended, after
+    /// the error that ended it was returned, reads nothing more, so nothing
+    /// changes again.
     pub(crate) async fn changed(&mut self) -> Result<Vec<bool>, LibraryError> {
         if self.file_query.is_none() {
             return std::future::pending().await;
         }
         if self.query.is_none() {
-            let event = self
+            let Some(event) = self
                 .file_query
                 .as_mut()
                 .expect("file query installed")
                 .next()
-                .await;
+                .await
+            else {
+                return std::future::pending().await;
+            };
             self.install_groups(event.result?);
         }
         if self.answers.is_none() {
@@ -370,14 +376,15 @@ impl ReleasePinWatch {
         let file_query = self.file_query.as_mut().expect("file query installed");
         let query = self.query.as_mut().expect("pin query installed");
         tokio::select! {
-            event = file_query.next() => {
+            Some(event) = file_query.next() => {
                 self.install_groups(event.result?);
                 self.read_answers().await
             }
-            answers = query.next() => {
+            Some(answers) = query.next() => {
                 self.answers = Some(answers?);
                 Ok(self.markers())
             }
+            else => std::future::pending().await,
         }
     }
 
@@ -392,13 +399,16 @@ impl ReleasePinWatch {
     }
 
     async fn read_answers(&mut self) -> Result<Vec<bool>, LibraryError> {
-        self.answers = Some(
-            self.query
-                .as_mut()
-                .expect("pin query installed")
-                .next()
-                .await?,
-        );
+        let Some(answers) = self
+            .query
+            .as_mut()
+            .expect("pin query installed")
+            .next()
+            .await
+        else {
+            return std::future::pending().await;
+        };
+        self.answers = Some(answers?);
         Ok(self.markers())
     }
 

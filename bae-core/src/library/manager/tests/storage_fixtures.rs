@@ -79,7 +79,7 @@ async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: 
     manager.database.sync_now();
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
         loop {
-            if !uploads.next().await.unwrap().files.iter().any(|file| file.file == reference) { return; }
+            if !uploads.next().await.expect("the query stays open").unwrap().files.iter().any(|file| file.file == reference) { return; }
         }
     }).await.expect("file uploaded");
 }

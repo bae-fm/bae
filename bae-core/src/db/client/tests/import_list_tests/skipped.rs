@@ -91,6 +91,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     let read = detail
         .next()
         .await
+        .expect("the query stays open")
         .result
         .unwrap()
         .expect("the key names a folder that failed validation");

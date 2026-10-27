@@ -2449,6 +2449,9 @@ Reads come two ways:
 - **Live subscriptions** deliver a value, then a new one each time the rows it
   read change. The album grid, the artist and composer lists, a search, the
   import list, sync status, uploads, downloads and the queue are all live. A
+  read that fails is delivered as a value and the subscription goes on, but
+  one that fails because the store closed, or because the library can no
+  longer read or write it, is delivered once and ends the subscription. A
   subscription that shows a window of a long list is pointed at a new window
   in place as the person scrolls. The Storage Manager's list is also told
   which releases are selected in it, and each of its values carries the row

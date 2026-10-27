@@ -448,7 +448,7 @@ async fn resolve_queue(
         .subscribe_queue_catalog(crate::library::manager::queue_catalog_request(&projection))
         .next()
         .await
-        .result
+        .expect("the query stays open").result
         .unwrap();
     manager.resolve_queue_catalog(projection, catalog)
 }
@@ -605,7 +605,7 @@ async fn a_reordered_queue_reads_the_same_tracks_and_resolves_from_one_read() {
         .subscribe_queue_catalog(request)
         .next()
         .await
-        .result
+        .expect("the query stays open").result
         .unwrap();
     let resolved = manager.resolve_queue_catalog(reordered, read);
     let shown: Vec<(&str, &str)> = resolved

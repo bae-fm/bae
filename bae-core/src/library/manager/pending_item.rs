@@ -160,8 +160,8 @@ impl PendingFollower {
     }
 
     pub(super) async fn run(mut self) {
-        loop {
-            let items = match self.records.next().await {
+        while let Some(records) = self.records.next().await {
+            let items = match records {
                 Ok(records) => self.manager.pending_items(records).await.map_err(|error| {
                     warn!(%error, "could not name pending sync records");
                     crate::ui::UiError::diagnostic(error.category(), error)

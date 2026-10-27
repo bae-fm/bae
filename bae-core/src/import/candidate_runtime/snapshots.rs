@@ -183,11 +183,12 @@ impl CandidateRuntime {
     /// Keep the view current: the standings table read live, each key whose
     /// standing a read moved composed again with what the runtime holds. A
     /// change to what the runtime holds composes its own key
-    /// ([`Self::recompose`]). Runs for the library's lifetime.
+    /// ([`Self::recompose`]). Runs for the library's lifetime, until the
+    /// query ends with its store.
     pub(crate) async fn keep_view_current(self) {
         let mut query = self.database.subscribe_candidate_standings();
-        loop {
-            match query.next().await {
+        while let Some(read) = query.next().await {
+            match read {
                 Ok(read) => {
                     self.view.send_if_modified(|view| {
                         let inner = self.inner.lock().unwrap();

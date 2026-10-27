@@ -743,7 +743,11 @@ impl ImportServiceHandle {
     ) -> crate::import::FolderScanProgress {
         let mut scans = self.library_manager.subscribe_folder_scan_progress();
         loop {
-            let progress = scans.next().await.expect("the folder scan query reads");
+            let progress = scans
+                .next()
+                .await
+                .expect("the folder scan query stays open")
+                .expect("the folder scan query reads");
             if accept(&progress) {
                 return progress;
             }

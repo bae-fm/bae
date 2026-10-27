@@ -21,7 +21,12 @@ async fn import_list_wakes_on_a_scan_item() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
     db.save_folder_scan_item(root, generation, &scan_candidate(root, "second"))
@@ -30,6 +35,7 @@ async fn import_list_wakes_on_a_scan_item() {
     let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a scan item wakes the list")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(
@@ -58,6 +64,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     let initial = live
         .next()
         .await
+        .expect("the query stays open")
         .unwrap()
         .activity
         .expect("the open generation projects scan activity");
@@ -70,6 +77,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a scan item wakes the scan progress")
+        .expect("the query stays open")
         .unwrap()
         .activity
         .expect("the scan activity updates with the current generation");
@@ -80,6 +88,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     let complete = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("finishing the scan wakes the scan progress")
+        .expect("the query stays open")
         .unwrap();
     assert_eq!(complete.activity, None);
     assert!(matches!(
@@ -103,7 +112,12 @@ async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
         .unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
-    let progress = db.subscribe_folder_scan_progress().next().await.unwrap();
+    let progress = db
+        .subscribe_folder_scan_progress()
+        .next()
+        .await
+        .expect("the query stays open")
+        .unwrap();
 
     assert!(progress.statuses[0].on_network_volume);
 }
@@ -144,6 +158,7 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
         .subscribe_folder_scan_progress()
         .next()
         .await
+        .expect("the query stays open")
         .unwrap()
         .activity
         .expect("the rescan projects activity");
@@ -178,7 +193,12 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(
         candidate_names(&initial),
         vec!["first".to_string(), "second".to_string()]
@@ -240,7 +260,10 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
             .expect("the rescan is in flight")
             .found_count
     };
-    assert_eq!(found(scans.next().await.unwrap()), 0);
+    assert_eq!(
+        found(scans.next().await.expect("the query stays open").unwrap()),
+        0
+    );
 
     db.save_folder_scan_item(root, rescan, &scan_candidate(root, "first"))
         .await
@@ -248,6 +271,7 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     let progressed = tokio::time::timeout(Duration::from_secs(2), scans.next())
         .await
         .expect("the re-confirmed folder moves the scan progress")
+        .expect("the query stays open")
         .unwrap();
     assert_eq!(found(progressed), 1);
 

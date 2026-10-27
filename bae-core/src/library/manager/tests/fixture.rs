@@ -97,7 +97,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         }]
         .into(),
     );
-    let grouped = browse.next().await.result.unwrap();
+    let grouped = browse.next().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.windows[0].rows;
     let sections: Vec<(String, Vec<String>)> = grouped
         .sections

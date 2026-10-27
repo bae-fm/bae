@@ -51,7 +51,10 @@ impl LibraryManager {
                             result.map_err(|error| LibraryError::file_read(format!("pin release {release}"), error))?;
                             (manager.database.pin_progress(files.clone()).await?, true)
                         }
-                        next = progress.next() => (next?, false),
+                        next = progress.next() => (
+                            next.expect("a progress query reports why it ended, which returns first")?,
+                            false,
+                        ),
                     };
                     let next = crate::library::DownloadTransferProgress::new(
                         &release, next.bytes_cached, next.bytes_total,

@@ -271,6 +271,7 @@ async fn imports_in_flight(db: &super::super::Database) -> u32 {
     db.subscribe_candidate_standings()
         .next()
         .await
+        .expect("the query stays open")
         .unwrap()
         .imports_in_flight
 }

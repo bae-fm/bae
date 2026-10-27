@@ -8,7 +8,8 @@
 
 use tokio_util::sync::CancellationToken;
 
-/// The subscription is over: it was cancelled, or its query is gone.
+/// The subscription is over: it was cancelled, or its query is gone or has
+/// ended.
 pub(crate) struct LiveQueryCancelled;
 
 /// A reconfigurable live query and the cancellation that ends it.
@@ -62,7 +63,7 @@ where
             event = async {
                 let mut query = self.query.lock().await;
                 let query = query.as_mut().ok_or(LiveQueryCancelled)?;
-                Ok(query.next().await)
+                query.next().await.ok_or(LiveQueryCancelled)
             } => event,
         }
     }

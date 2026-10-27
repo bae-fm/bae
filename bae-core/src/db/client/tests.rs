@@ -151,7 +151,12 @@ async fn queue_items(
 ) -> Vec<crate::queue::QueueItem> {
     let mut live =
         db.subscribe_queue_catalog(super::QueueCatalogRequest::for_entries(entries, None));
-    live.next().await.result.unwrap().items(entries)
+    live.next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
+        .items(entries)
 }
 
 /// Run one statement against the test database, panicking if it fails.

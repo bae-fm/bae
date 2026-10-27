@@ -100,7 +100,7 @@ fn audio_folder(root: &Path, name: &str) {
 /// that takes.
 async fn retitle(handle: &ImportServiceHandle, key: &str) {
     let mut pane_query = handle.subscribe_candidate_pane(key);
-    pane_query.next().await.result.unwrap();
+    pane_query.next().await.expect("the query stays open").result.unwrap();
     handle
         .set_candidate_edit_field(
             key,
@@ -115,7 +115,7 @@ async fn retitle(handle: &ImportServiceHandle, key: &str) {
         let projection = pane_query
             .next()
             .await
-            .result
+            .expect("the query stays open").result
             .unwrap()
             .expect("the candidate is still stored");
         if projection.metadata_draft.album_title == "Retitled" {

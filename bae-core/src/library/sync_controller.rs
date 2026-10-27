@@ -162,20 +162,27 @@ impl SyncController {
         self.outbox.lock().await.display_requests = Some(display.requests());
         // Hold the records before the first queue is built, so every queue
         // this subscription publishes carries the records it delivered.
-        self.pending_delivered(pending.next().await).await;
+        let records = pending
+            .next()
+            .await
+            .expect("a new query answers before it ends");
+        self.pending_delivered(records).await;
         // Keep this marker until the durable query delivers: cancellation of
         // next() retains its run, which may have begun before a direct read.
         let mut reads_before = self.outbox_reads.load(Ordering::Acquire);
+        // A query that has ended, with its store, reads nothing more; once
+        // all three have, the subscription is over.
         loop {
             tokio::select! {
-                records = pending.next() => self.pending_delivered(records).await,
-                delivered = subscription.next() => {
+                Some(records) = pending.next() => self.pending_delivered(records).await,
+                Some(delivered) = subscription.next() => {
                     self.durable_delivered(reads_before, delivered).await;
                     reads_before = self.outbox_reads.load(Ordering::Acquire);
                 }
-                event = display.next() => {
+                Some(event) = display.next() => {
                     self.names_answered(event.request, event.result).await;
                 }
+                else => return,
             }
         }
     }

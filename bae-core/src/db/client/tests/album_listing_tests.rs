@@ -72,7 +72,12 @@ async fn grouped(db: &Database) -> (Vec<(String, u64, u64)>, Vec<String>) {
     .into_iter()
     .collect::<BTreeSet<_>>();
     let mut live = db.subscribe_album_browse(&[], true, windows);
-    let shown = live.next().await.result.unwrap();
+    let shown = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     (
         shown
             .sections

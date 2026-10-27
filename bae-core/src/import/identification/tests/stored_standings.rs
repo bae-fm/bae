@@ -91,13 +91,13 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     // imported it in one read; it is followed beside the list so no read of
     // it is passed over.
     let mut pane = fixture.import.subscribe_candidate_pane(&key);
-    pane.next().await.result.unwrap();
+    pane.next().await.expect("the query stays open").result.unwrap();
     let pane_saw_both = tokio::spawn(async move {
         loop {
             let detail = pane
                 .next()
                 .await
-                .result
+                .expect("the query stays open").result
                 .unwrap()
                 .expect("the candidate stays stored")
                 .resolve();

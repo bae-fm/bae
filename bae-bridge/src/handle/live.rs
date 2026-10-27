@@ -79,8 +79,7 @@ impl AppHandle {
     {
         self.live_subscription(move |services| async move {
             let mut values = open(&services);
-            loop {
-                let result = values.next().await;
+            while let Some(result) = values.next().await {
                 deliver(result);
             }
         })

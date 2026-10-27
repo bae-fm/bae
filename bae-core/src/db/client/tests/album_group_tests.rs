@@ -65,7 +65,12 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
             }]
             .into(),
         );
-        let value = browse.next().await.result.unwrap();
+        let value = browse
+            .next()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap();
         assert_eq!(value.windows[0].rows.len(), 1);
         assert_eq!(value.total_count, 5);
         assert_eq!(value.sections.len(), 3);
@@ -99,7 +104,12 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         direction: SortDirection::Ascending,
     }];
     let mut browse = db.subscribe_album_browse(&sort, true, BTreeSet::new());
-    let initial = browse.next().await.result.unwrap();
+    let initial = browse
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(initial.sections[0].id, ARTIST_C);
     exec(
         &db,
@@ -107,7 +117,12 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         &[ARTIST_C],
     )
     .await;
-    let renamed = browse.next().await.result.unwrap();
+    let renamed = browse
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(renamed.sections[2].title, "Renamed Artist");
     assert_eq!(renamed.sections[2].window.offset, 4);
     exec(
@@ -116,7 +131,12 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         &[ARTIST_C],
     )
     .await;
-    let removed = browse.next().await.result.unwrap();
+    let removed = browse
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(removed.total_count, 4);
     assert_eq!(removed.sections.len(), 2);
     assert!(!removed
@@ -124,7 +144,14 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         .iter()
         .any(|section| section.id == ARTIST_C));
     let mut flat = db.subscribe_album_browse(&sort, false, BTreeSet::new());
-    assert!(flat.next().await.result.unwrap().sections.is_empty());
+    assert!(flat
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
+        .sections
+        .is_empty());
 }
 
 #[tokio::test]
@@ -150,7 +177,12 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         }]
         .into(),
     );
-    let value = browse.next().await.result.unwrap();
+    let value = browse
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(value.total_count, 5);
     assert_eq!(value.row_count, 6);
     let rows = &value.windows[0].rows;
@@ -183,7 +215,12 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         }]
         .into(),
     );
-    let flat = flat.next().await.result.unwrap();
+    let flat = flat
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(flat.row_count, 5);
     assert!(flat.sections.is_empty());
     assert_eq!(
@@ -200,7 +237,12 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         &[album_id],
     )
     .await;
-    let removed = browse.next().await.result.unwrap();
+    let removed = browse
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(removed.row_count, 5);
     assert_eq!(removed.total_count, 5);
 }
@@ -226,7 +268,12 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
         }]
         .into(),
     );
-    let initial = browse.next().await.result.unwrap();
+    let initial = browse
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(initial.row_count, 6);
     exec(
         &db,
@@ -234,7 +281,12 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
         &[ARTIST_B, ARTIST_A],
     )
     .await;
-    let merged = browse.next().await.result.unwrap();
+    let merged = browse
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(merged.total_count, 5);
     assert_eq!(merged.row_count, 5);
     assert_eq!(merged.sections.len(), 2);

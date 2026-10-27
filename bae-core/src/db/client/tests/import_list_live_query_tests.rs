@@ -98,7 +98,12 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(initial.total_count, 1);
     assert_eq!(initial.summary.counts.pending, 1);
     assert_eq!(initial.summary.counts.done, 0);
@@ -108,6 +113,7 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the recorded import wakes the list")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(imported.total_count, 0, "Pending no longer holds the row");
@@ -218,12 +224,21 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]));
-    assert_eq!(live.next().await.result.unwrap().total_count, 1);
+    assert_eq!(
+        live.next()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap()
+            .total_count,
+        1
+    );
 
     exec(&db, "DELETE FROM releases WHERE id = ?1", &[RELEASE_ID]).await;
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("deleting the release wakes the list")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(deleted.total_count, 0, "Done no longer holds the row");
@@ -319,7 +334,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     let live = db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
     let requests = live.requests();
     let mut live = live;
-    let initial = live.next().await;
+    let initial = live.next().await.expect("the query stays open");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     assert_eq!(
         candidate_names(&initial.result.unwrap()),
@@ -331,7 +346,8 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
         .unwrap();
     let moved = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("the window change reruns the query");
+        .expect("the window change reruns the query")
+        .expect("the query stays open");
     assert_eq!(moved.cause, coven::LiveQueryCause::Request);
     assert_eq!(
         candidate_names(&moved.result.unwrap()),
@@ -359,7 +375,12 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
     // What a walk records about the directories it read: the list projects
@@ -409,18 +430,29 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     let mut live = db.subscribe_import_candidate(None);
     let requests = live.requests();
     assert!(
-        live.next().await.result.unwrap().is_none(),
+        live.next()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap()
+            .is_none(),
         "no key reads nothing"
     );
 
     for (key, name) in keys.iter().zip(["first", "second"]) {
         requests.set(Some(key.clone())).unwrap();
-        let read = live.next().await;
+        let read = live.next().await.expect("the query stays open");
         assert_eq!(read.request.as_deref(), Some(key.as_str()));
         let detail = read.result.unwrap().expect("the candidate reads");
         assert_eq!(detail.candidate.name, name);
     }
 
     requests.set(None).unwrap();
-    assert!(live.next().await.result.unwrap().is_none());
+    assert!(live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
+        .is_none());
 }

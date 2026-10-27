@@ -31,8 +31,7 @@ where
         let requests = query.requests();
         let (tx, reads) = tokio::sync::mpsc::unbounded_channel();
         let task = tokio::spawn(async move {
-            loop {
-                let event = query.next().await;
+            while let Some(event) = query.next().await {
                 let request = event.request.clone();
                 match event.result {
                     Ok(value) => {
@@ -79,5 +78,33 @@ where
 impl<Request, Value> Drop for LibraryFollow<Request, Value> {
     fn drop(&mut self) {
         self.task.abort();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A follow whose store closes hears why and then ends: its task stops
+    /// instead of reading the closed store again and again.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_follow_ends_once_its_store_closes() {
+        let directory = tempfile::TempDir::new().unwrap();
+        let path = directory.path().join("library.db");
+        let database = crate::db::Database::new_test(
+            path.to_str().unwrap(),
+            std::sync::Arc::new(coven::SystemClock),
+        )
+        .await
+        .unwrap();
+        let mut follow =
+            LibraryFollow::new(database.subscribe_album_detail(None), None, "the album");
+
+        database.close().await.unwrap();
+
+        tokio::time::timeout(std::time::Duration::from_secs(10), &mut follow.task)
+            .await
+            .expect("the follow's task ends")
+            .expect("the follow's task does not fail");
     }
 }

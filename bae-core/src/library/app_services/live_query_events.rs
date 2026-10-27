@@ -82,8 +82,7 @@ where
     let (tx, events) = tokio::sync::mpsc::unbounded_channel();
     let task = crate::library::CancellationToken::new();
     manager.spawn_stoppable_subscription_task("live query events", task.clone(), async move {
-        loop {
-            let event = query.next().await;
+        while let Some(event) = query.next().await {
             let revision = event.revision;
             if tx
                 .send((

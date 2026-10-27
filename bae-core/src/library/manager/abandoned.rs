@@ -31,8 +31,8 @@ impl AbandonedFollower {
     }
 
     pub(super) async fn run(mut self) {
-        loop {
-            let items = match self.records.next().await {
+        while let Some(records) = self.records.next().await {
+            let items = match records {
                 Ok(records) => self
                     .manager
                     .abandoned_items(records)

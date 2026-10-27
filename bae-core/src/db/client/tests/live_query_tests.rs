@@ -77,7 +77,8 @@ where
         .expect("the subscription is open");
     let event = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("a new request reruns the query");
+        .expect("a new request reruns the query")
+        .expect("the query stays open");
     assert_eq!(event.revision, revision);
     assert_eq!(
         event.cause,
@@ -110,6 +111,7 @@ async fn next_album_page_is_only_a_rename(
     let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("renaming the shown album wakes album browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     let mut expected = shown;
@@ -139,6 +141,7 @@ async fn next_composer_page_is_only_a_rename(
     let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("renaming the shown composer wakes composer browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     let mut expected = shown;
@@ -162,7 +165,12 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_browse(&[], false, first_page());
 
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(initial.total_count, 1);
     assert_eq!(initial.windows[0].rows[0].title, "Album Title");
     assert!(initial.cover_versions.is_empty());
@@ -172,6 +180,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("cover write wakes album browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(
@@ -193,13 +202,18 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
     )
     .await;
     let mut live = db.subscribe_album_browse(&[], false, first_page());
-    live.next().await.result.unwrap();
+    live.next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
 
     super::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
     super::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the primary release's cover wakes the browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(
@@ -217,7 +231,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     }];
     let mut live = db.subscribe_album_browse(&sort, false, BTreeSet::new());
     let requests = live.requests();
-    let initial_event = live.next().await;
+    let initial_event = live.next().await.expect("the query stays open");
     assert_eq!(initial_event.revision.0, 0);
     let initial = initial_event.result.unwrap();
     assert_eq!(initial.total_count, 1);
@@ -232,7 +246,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         ),
     )
     .await;
-    let inserted = live.next().await.result.unwrap();
+    let inserted = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(inserted.total_count, 2);
     assert!(inserted.windows.is_empty());
 
@@ -248,7 +267,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         .into_iter()
         .collect::<BTreeSet<_>>();
     let pages_revision = requests.set(requested.clone()).unwrap();
-    let pages_event = live.next().await;
+    let pages_event = live.next().await.expect("the query stays open");
     assert_eq!(pages_event.request, requested);
     assert_eq!(pages_event.revision, pages_revision);
     let pages = pages_event.result.unwrap();
@@ -266,7 +285,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
 
     let second_page = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
     let second_page_revision = requests.set(second_page.clone()).unwrap();
-    let second_page_event = live.next().await;
+    let second_page_event = live.next().await.expect("the query stays open");
     assert_eq!(second_page_event.request, second_page);
     assert_eq!(second_page_event.revision, second_page_revision);
     let second_page_initial = second_page_event.result.unwrap();
@@ -280,7 +299,8 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     .await;
     let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("non-first album metadata wakes album browse");
+        .expect("non-first album metadata wakes album browse")
+        .expect("the query stays open");
     assert_eq!(renamed_event.revision, second_page_revision);
     let renamed = renamed_event.result.unwrap();
     assert_eq!(renamed.windows[0].rows[0].title, "Album Title Renamed");
@@ -294,19 +314,30 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let reordered = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("non-first album ordering field wakes album browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(reordered.windows[0].rows[0].id, ALBUM_ID);
 
     let first_page = [first_window].into_iter().collect::<BTreeSet<_>>();
     requests.set(first_page).unwrap();
-    let reordered_first = live.next().await.result.unwrap();
+    let reordered_first = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(reordered_first.windows[0].rows[0].id, OTHER_ALBUM_ID);
 
     requests
         .set([second_window].into_iter().collect::<BTreeSet<_>>())
         .unwrap();
-    let hidden_other_album = live.next().await.result.unwrap();
+    let hidden_other_album = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(hidden_other_album.windows[0].rows[0].id, ALBUM_ID);
 
     // The edited album is outside the requested window, so its metadata
@@ -351,7 +382,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     .into_iter()
     .collect::<BTreeSet<_>>();
     requests.set(other_album_page).unwrap();
-    let covered = live.next().await.result.unwrap();
+    let covered = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(covered.windows[0].rows[0].id, OTHER_ALBUM_ID);
     assert_eq!(
         covered
@@ -366,6 +402,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let cover_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a requested album's cover version wakes album browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(
@@ -386,9 +423,18 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
             .collect::<BTreeSet<_>>(),
         )
         .unwrap();
-    live.next().await.result.unwrap();
+    live.next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[OTHER_ALBUM_ID]).await;
-    let deleted = live.next().await.result.unwrap();
+    let deleted = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(deleted.total_count, 1);
     assert!(deleted.windows[0].rows.is_empty());
 }
@@ -419,7 +465,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     let initial_request = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
     let mut live = db.subscribe_composer_browse(&sort, initial_request.clone());
     let requests = live.requests();
-    let initial_event = live.next().await;
+    let initial_event = live.next().await.expect("the query stays open");
     assert_eq!(initial_event.request, initial_request);
     assert_eq!(initial_event.revision.0, 0);
     let initial = initial_event.result.unwrap();
@@ -436,7 +482,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     .into_iter()
     .collect::<BTreeSet<_>>();
     let both_pages_revision = requests.set(both_pages.clone()).unwrap();
-    let both_event = live.next().await;
+    let both_event = live.next().await.expect("the query stays open");
     assert_eq!(both_event.revision, both_pages_revision);
     let both = both_event.result.unwrap();
     assert_eq!(both.windows.len(), 2);
@@ -451,7 +497,8 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     .await;
     let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("non-first composer metadata wakes composer browse");
+        .expect("non-first composer metadata wakes composer browse")
+        .expect("the query stays open");
     assert_eq!(renamed_event.revision, both_pages_revision);
     let renamed = renamed_event.result.unwrap();
     assert_eq!(
@@ -470,7 +517,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     requests
         .set([second_window].into_iter().collect::<BTreeSet<_>>())
         .unwrap();
-    let hidden_other_composer = live.next().await.result.unwrap();
+    let hidden_other_composer = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(
         hidden_other_composer.windows[0].rows[0].artist.id,
         COMPOSER_ID
@@ -503,7 +555,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     .into_iter()
     .collect::<BTreeSet<_>>();
     requests.set(other_composer_page).unwrap();
-    let imaged = live.next().await.result.unwrap();
+    let imaged = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(imaged.windows[0].rows[0].artist.id, OTHER_COMPOSER_ID);
     assert_eq!(
         imaged
@@ -518,6 +575,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     let image_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a requested composer's image version wakes composer browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(
@@ -529,7 +587,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     );
 
     requests.set(BTreeSet::new()).unwrap();
-    let count_only = live.next().await.result.unwrap();
+    let count_only = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(count_only.total_count, 2);
     assert!(count_only.windows.is_empty());
 
@@ -542,7 +605,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         ),
     )
     .await;
-    let inserted = live.next().await.result.unwrap();
+    let inserted = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(inserted.total_count, 3);
     assert!(inserted.windows.is_empty());
 
@@ -552,7 +620,12 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         &[INSERTED_COMPOSER_LINK_ID],
     )
     .await;
-    let deleted = live.next().await.result.unwrap();
+    let deleted = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(deleted.total_count, 2);
     assert!(deleted.windows.is_empty());
 }
@@ -565,7 +638,12 @@ async fn artist_browse_reads_its_windows_and_their_images() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_artist_browse(&[], first_page());
 
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(initial.total_count, 1);
     assert_eq!(initial.windows[0].rows[0].artist.id, ARTIST_ID);
     assert!(initial.image_versions.is_empty());
@@ -574,6 +652,7 @@ async fn artist_browse_reads_its_windows_and_their_images() {
     let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("an image on a listed artist wakes artist browse")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(
@@ -582,7 +661,12 @@ async fn artist_browse_reads_its_windows_and_their_images() {
     );
 
     live.requests().set(BTreeSet::new()).unwrap();
-    let count_only = live.next().await.result.unwrap();
+    let count_only = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert_eq!(count_only.total_count, 1);
     assert!(count_only.windows.is_empty());
     assert!(count_only.image_versions.is_empty());
@@ -597,13 +681,18 @@ async fn library_search_moves_between_queries_on_one_subscription() {
     let mut live = db.subscribe_library_search(None, 50);
     let requests = live.requests();
 
-    let idle = live.next().await.result.unwrap();
+    let idle = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert!(idle.results.albums.is_empty(), "no query finds nothing");
 
     requests
         .set(crate::library::LibrarySearchQuery::parse("Album Title"))
         .unwrap();
-    let found = live.next().await;
+    let found = live.next().await.expect("the query stays open");
     assert_eq!(
         found.request.as_ref().map(|query| query.as_str()),
         Some("Album Title")
@@ -621,6 +710,7 @@ async fn library_search_moves_between_queries_on_one_subscription() {
     let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a found album's edit wakes the search")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(renamed.results.albums[0].title, "Album Title Renamed");
@@ -628,7 +718,12 @@ async fn library_search_moves_between_queries_on_one_subscription() {
     requests
         .set(crate::library::LibrarySearchQuery::parse("   "))
         .unwrap();
-    let cleared = live.next().await.result.unwrap();
+    let cleared = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
     assert!(
         cleared.results.albums.is_empty(),
         "a blank query is no search"
@@ -639,7 +734,12 @@ async fn library_search_moves_between_queries_on_one_subscription() {
 async fn album_browse_ignores_an_unread_table() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_browse(&[], false, first_page());
-    let initial = live.next().await.result.unwrap();
+    let initial = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
 
     exec(
         &db,
@@ -666,7 +766,11 @@ async fn album_detail_subscription_ignores_an_unread_column() {
     let (db, _temp) = live_db().await;
     super::write_cover(&db, RELEASE_ID, "cover bytes").await;
     let mut live = db.subscribe_album_detail(Some(ALBUM_ID.to_string()));
-    live.next().await.result.unwrap();
+    live.next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
 
     exec(
         &db,
@@ -698,7 +802,14 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
         )
         .map_err(CovenError::from)
     });
-    assert_eq!(live.next().await.result.unwrap(), "Album Title");
+    assert_eq!(
+        live.next()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap(),
+        "Album Title"
+    );
 
     exec(
         &db,
@@ -715,187 +826,27 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
 async fn album_detail_subscription_delivers_absence_after_deletion() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_detail(Some(ALBUM_ID.to_string()));
-    assert!(live.next().await.result.unwrap().detail.is_some());
+    assert!(live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
+        .detail
+        .is_some());
 
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[ALBUM_ID]).await;
 
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("album deletion wakes album detail")
+        .expect("the query stays open")
         .result
         .unwrap();
     assert!(deleted.detail.is_none());
 }
 
-#[test]
-fn album_page_subscription_delivers_a_write_materialized_by_sync() {
-    crate::sync::test_devices::run_two_device_test(async |devices| {
-        let writer = devices.a().database();
-        let reader = devices.b().database();
-        let mut live = reader.subscribe_album_browse(&[], false, first_page());
-        assert_eq!(live.next().await.result.unwrap().total_count, 0);
-        exec_batch(writer, &format!(
-            "INSERT INTO artists (id, name, name_key, created_at)
-             VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-             INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Synced Album', 0, '2026-01-01T00:00:00Z');
-            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('ec0d8e00-2141-4bae-8618-9d7ca8af03c4', '{ALBUM_ID}', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
-        )).await;
-        devices
-            .settle("the remote album", |_, db| async move {
-                db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
-            })
-            .await;
-        let updated = tokio::time::timeout(Duration::from_secs(20), live.next())
-            .await
-            .unwrap()
-            .result
-            .unwrap();
-        assert_eq!(updated.windows[0].rows[0].title, "Synced Album");
-    });
-}
-
-/// The composer list on B is a local table B's triggers keep from the synced
-/// rows: applying A's writes runs them, and B's live query delivers what they
-/// wrote. A's work credit lists its composer; A's merge then lists the work
-/// under the survivor alone.
-#[test]
-fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
-    crate::sync::test_devices::run_two_device_test(async |devices| {
-        let writer = devices.a().database();
-        let reader = devices.b().database();
-        let sort = [ComposerSortCriterion {
-            field: ComposerSortField::Name,
-            direction: SortDirection::Ascending,
-        }];
-        let mut live = reader.subscribe_composer_browse(&sort, first_page());
-        assert_eq!(live.next().await.result.unwrap().total_count, 0);
-        let listed = async |live: &mut coven::ReconfigurableLiveQuery<
-            crate::library::LibraryPageWindows,
-            ComposerBrowseProjection,
-        >,
-                            expected: Vec<(&str, i64)>| {
-            tokio::time::timeout(Duration::from_secs(20), async {
-                loop {
-                    let shown = live.next().await.result.unwrap();
-                    let rows = shown.windows[0]
-                        .rows
-                        .iter()
-                        .map(|row| (row.artist.id.clone(), row.work_count))
-                        .collect::<Vec<_>>();
-                    if rows
-                        == expected
-                            .iter()
-                            .map(|(id, works)| (id.to_string(), *works))
-                            .collect::<Vec<_>>()
-                    {
-                        return shown;
-                    }
-                }
-            })
-            .await
-            .expect("B's composer browse delivers the listing A's write makes")
-        };
-
-        exec_batch(writer, &format!(
-            "INSERT INTO artists (id, name, name_key, created_at) VALUES
-                ('{COMPOSER_ID}', 'Composer Name First', 'composer name first', '2026-01-01T00:00:00Z'),
-                ('{OTHER_COMPOSER_ID}', 'Composer Name Second', 'composer name second', '2026-01-01T00:00:00Z');
-             INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES
-                ('{COMPOSER_WORK_ID}', 'Work Title First', 'work', 'work-first', '2026-01-01T00:00:00Z'),
-                ('{OTHER_COMPOSER_WORK_ID}', 'Work Title Second', 'work', 'work-second', '2026-01-01T00:00:00Z');
-             INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) VALUES
-                ('{COMPOSER_LINK_ID}', '{COMPOSER_WORK_ID}', '{COMPOSER_ID}', 0, 'file_tags', '2026-01-01T00:00:00Z'),
-                ('{OTHER_COMPOSER_LINK_ID}', '{OTHER_COMPOSER_WORK_ID}', '{OTHER_COMPOSER_ID}', 0, 'file_tags', '2026-01-01T00:00:00Z');"
-        )).await;
-        devices
-            .settle("the remote work credits", |_, db| async move {
-                db.find_composer_detail(OTHER_COMPOSER_ID)
-                    .await
-                    .unwrap()
-                    .is_some()
-            })
-            .await;
-        let credited = listed(&mut live, vec![(COMPOSER_ID, 1), (OTHER_COMPOSER_ID, 1)]).await;
-        assert_eq!(credited.total_count, 2);
-
-        exec(
-            writer,
-            "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?1, ?2, '2026-01-01T00:00:00Z')",
-            &[OTHER_COMPOSER_ID, COMPOSER_ID],
-        )
-        .await;
-        devices
-            .settle("the remote merge", |_, db| async move {
-                db.find_composer_detail(OTHER_COMPOSER_ID)
-                    .await
-                    .unwrap()
-                    .is_none()
-            })
-            .await;
-        let merged = listed(&mut live, vec![(COMPOSER_ID, 2)]).await;
-        assert_eq!(merged.total_count, 1);
-    });
-}
-
-/// B's search tables are local, written by B's triggers as it applies A's
-/// writes: an album A writes, then renames, is found on B by each title in
-/// turn.
-#[test]
-fn library_search_finds_rows_applied_from_another_device() {
-    crate::sync::test_devices::run_two_device_test(async |devices| {
-        let writer = devices.a().database();
-        let reader = devices.b().database();
-        exec_batch(writer, &format!(
-            "INSERT INTO artists (id, name, name_key, created_at)
-             VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-             INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Écrin Album Title', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('b416679d-8454-4a3b-abc6-db8b32a35731', '{ALBUM_ID}', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
-        )).await;
-        devices
-            .settle("the remote album", |_, db| async move {
-                db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
-            })
-            .await;
-        let found = reader.search_library("écrin", 10).await.unwrap();
-        assert_eq!(
-            found
-                .albums
-                .iter()
-                .map(|album| album.id.as_str())
-                .collect::<Vec<_>>(),
-            vec![ALBUM_ID]
-        );
-
-        exec(
-            writer,
-            "UPDATE albums SET title = 'Renamed Album Title' WHERE id = ?1",
-            &[ALBUM_ID],
-        )
-        .await;
-        devices
-            .settle("the remote rename", |_, db| async move {
-                db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap().title == "Renamed Album Title"
-            })
-            .await;
-        assert!(reader
-            .search_library("écrin", 10)
-            .await
-            .unwrap()
-            .albums
-            .is_empty());
-        assert_eq!(
-            reader
-                .search_library("renamed album", 10)
-                .await
-                .unwrap()
-                .albums
-                .len(),
-            1
-        );
-    });
-}
-
+#[path = "live_query_tests/applied_writes.rs"]
+mod applied_writes;
 #[path = "live_query_tests/id_sets.rs"]
 mod id_sets;
