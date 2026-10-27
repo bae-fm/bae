@@ -150,13 +150,7 @@ async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one()
     const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
     let (_home, mut service, mut progress) =
         seeded_playback_service(&[(RELEASE, &[TRACK_A, TRACK_B])]).await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release(RELEASE.into()),
-            vec![TRACK_A.into(), TRACK_B.into()],
-            ContextStart::Index(0),
-        )
-    });
+    fill_test_release(&mut service, RELEASE).await;
     let prepared = |id: &str| {
         let mut track = test_prepared_track(id, create_sparse_buffer(1024));
         track.release_id = RELEASE.into();

@@ -15,7 +15,7 @@ async fn playing_first_track(
     );
     let release_id = fixture
         .library_manager
-        .get_play_context(&fixture.track_ids[0])
+        .get_track_display(&fixture.track_ids[0])
         .await
         .expect("read the first track's release")
         .release_id;

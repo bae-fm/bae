@@ -189,24 +189,30 @@ impl LibraryManager {
     }
 
     /// Have playback resume `release_id` at `track_id`, `position_ms` into
-    /// its stream, as playback leaves its resume row when it pauses there.
-    pub(super) async fn write_fixture_resume_row(
+    /// its stream, as playback leaves its queue and resume row when it pauses
+    /// there: the release fills the queue from that track.
+    pub async fn write_resume_point(
         &self,
         release_id: &str,
         track_id: String,
-        position_ms: u64,
+        position_ms: Option<u64>,
     ) -> Result<(), LibraryFixtureError> {
+        let filled = self
+            .playback_queue_tables()
+            .fill(crate::db::ContextFill::Release {
+                release_id: release_id.to_string(),
+                start: crate::db::ReleaseStart::Track(track_id.clone()),
+            })
+            .await
+            .map_err(LibraryError::from)?;
+        let crate::db::ContextFilled::Playing { current, .. } = filled else {
+            return Err(LibraryFixtureError::Invalid(format!(
+                "the playing track {track_id} on release {release_id}"
+            )));
+        };
         let row = crate::db::DbPlaybackState {
-            context: Some(crate::db::DbPlaybackContext {
-                source: crate::playback::source_to_str(&crate::playback::ContextSource::Release(
-                    release_id.to_string(),
-                )),
-                shuffled: false,
-            }),
-            manual: "[]".to_string(),
-            repeat: crate::playback::repeat_to_str(crate::playback::RepeatMode::Off),
-            current_track_id: Some(track_id),
-            position_ms: Some(position_ms as i64),
+            current: Some(current),
+            position_ms,
             volume: 1.0,
             is_muted: false,
         };

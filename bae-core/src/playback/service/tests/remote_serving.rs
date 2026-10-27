@@ -29,13 +29,7 @@ async fn served_whole_file_then_window(
         None,
     )
     .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release(RELEASE.to_string()),
-            vec![WHOLE_FILE.to_string(), IMAGE_WINDOW.to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    fill_test_release(&mut service, RELEASE).await;
     service.slot = active_slot(
         test_prepared_track(WHOLE_FILE, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
@@ -150,13 +144,7 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
     let (mut service, _rx) = playback_service_over(library_manager);
     // Two seconds of generated silence at 44.1 kHz.
     seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(88_200)).await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release(RELEASE.to_string()),
-            vec![TRACK.to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    fill_test_release(&mut service, RELEASE).await;
     service.slot = active_slot(
         test_prepared_track(TRACK, create_sparse_buffer(1_024)),
         TrackPhase::Playing,

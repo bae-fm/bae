@@ -1,6 +1,5 @@
 use super::super::*;
 use super::*;
-use crate::playback::QueueEntryId;
 
 /// One album holds one release; the other holds two, and the queued track is
 /// on the one that is NOT its primary.
@@ -38,14 +37,8 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
 }
 
 async fn cover_of(db: &Database, track_id: &str) -> Option<crate::album_detail::ImageRef> {
-    let items = super::queue_items(
-        db,
-        &[QueueEntry {
-            id: QueueEntryId(format!("entry-{track_id}")),
-            track_id: track_id.to_string(),
-        }],
-    )
-    .await;
+    db.playback_queue_tables().clear_manual().await.unwrap();
+    let items = super::queue_items(db, &[track_id]).await;
     assert_eq!(items.len(), 1);
     items[0].display.cover_image.clone()
 }

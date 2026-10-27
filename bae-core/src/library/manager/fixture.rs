@@ -113,7 +113,7 @@ impl LibraryManager {
         self.write_fixture_watched_folders(&fixture.watched_folders)
             .await?;
         if let Some((release_id, track_id, position_ms)) = resume {
-            self.write_fixture_resume_row(&release_id, track_id, position_ms)
+            self.write_resume_point(&release_id, track_id, Some(position_ms))
                 .await?;
         }
         Ok(())

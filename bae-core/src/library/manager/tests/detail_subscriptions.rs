@@ -53,7 +53,9 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         false,
         // No hardware behind it: this test never plays anything.
         Box::new(crate::playback::audio_output::FailingAudioDevice),
-    );
+    )
+    .await
+    .expect("start playback");
     let import = manager
         .start_import_service(tokio::runtime::Handle::current())
         .await

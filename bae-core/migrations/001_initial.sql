@@ -1467,18 +1467,73 @@ END;
 
 -- ── Playback ──────────────────────────────────────────────────────────────────
 
--- The one row saying what this device was playing, so a restart resumes it.
--- Never synced.
+-- What this device plays next, and how. One row; never synced. The queued
+-- tracks are `playback_queue_entries`.
+CREATE TABLE IF NOT EXISTS playback_queue (
+    singleton  INTEGER PRIMARY KEY CHECK (singleton = 1),
+    repeat     TEXT NOT NULL CHECK (repeat IN ('off', 'track', 'context')),
+    -- Counts the changes to the queue, so a window read of it can be told
+    -- from one of the queue before.
+    revision   INTEGER NOT NULL,
+    -- The entry number the next queued track gets: no two entries ever share
+    -- one.
+    next_entry INTEGER NOT NULL,
+    -- What the context lane plays from (a release id, a JSON array of release
+    -- ids, or 'library'), whether it plays shuffled, and the position of its
+    -- track playing or last played: the lane's upcoming tracks are the ones
+    -- after it. NULL together exactly while the lane is empty.
+    source     TEXT,
+    shuffled   INTEGER CHECK (shuffled IN (0, 1)),
+    cursor     INTEGER,
+    CHECK ((source IS NULL) = (shuffled IS NULL) AND (source IS NULL) = (cursor IS NULL))
+) STRICT;
+
+INSERT OR IGNORE INTO playback_queue (singleton, repeat, revision, next_entry)
+VALUES (1, 'off', 0, 1);
+
+-- The queued tracks: Up Next (`manual`), drained first, and the context lane
+-- a play fills, each in position order. Positions are only an order: a lane
+-- has gaps where entries left it. A deleted track leaves the queue with its
+-- rows. Never synced.
+CREATE TABLE IF NOT EXISTS playback_queue_entries (
+    entry      INTEGER PRIMARY KEY,
+    lane       TEXT NOT NULL CHECK (lane IN ('manual', 'context')),
+    position   INTEGER NOT NULL,
+    track_id   TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    -- A context entry's position in the order unshuffling puts the lane back
+    -- in: its order when shuffle turned on, or the source's order for a
+    -- shuffled play. Read only while the lane is shuffled.
+    unshuffled INTEGER,
+    CHECK ((lane = 'context') = (unshuffled IS NOT NULL)),
+    UNIQUE (lane, position)
+) STRICT;
+-- A deleted track's rows are found by its id.
+CREATE INDEX IF NOT EXISTS playback_queue_entries_track ON playback_queue_entries(track_id);
+
+-- The context lane's last entry leaving takes what it played from with it.
+CREATE TRIGGER IF NOT EXISTS playback_context_emptied AFTER DELETE ON playback_queue_entries
+WHEN OLD.lane = 'context'
+ AND NOT EXISTS (SELECT 1 FROM playback_queue_entries WHERE lane = 'context')
+BEGIN
+    UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL;
+END;
+
+-- Deleting a queued track changes the queue, though no queue write does it.
+CREATE TRIGGER IF NOT EXISTS tracks_leave_playback_queue BEFORE DELETE ON tracks
+WHEN EXISTS (SELECT 1 FROM playback_queue_entries WHERE track_id = OLD.id)
+BEGIN
+    UPDATE playback_queue SET revision = revision + 1;
+END;
+
+-- Where this device's playback stood, so a restart resumes it: the queue
+-- entry playing, how far into its stream, and the volume. Present while a
+-- track is loaded; never synced.
 CREATE TABLE IF NOT EXISTS playback_state (
     id               TEXT PRIMARY KEY,
-    source           TEXT,
-    -- Whether playback from `source` was shuffled; NULL exactly when `source`
-    -- is. The order is not stored: a restore shuffles again.
-    shuffled         INTEGER,
-    manual           TEXT NOT NULL,
-    repeat           TEXT NOT NULL,
-    current_track_id TEXT,
-    position_ms      INTEGER,
+    -- Read only with its track: a deleted track leaves nothing to resume.
+    current_entry    INTEGER,
+    current_track_id TEXT REFERENCES tracks(id) ON DELETE SET NULL,
+    position_ms      INTEGER CHECK (position_ms >= 0),
     volume           REAL NOT NULL,
     is_muted         INTEGER NOT NULL
 );

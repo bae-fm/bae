@@ -124,7 +124,7 @@ impl MultiWindowPlayback {
         let runtime_handle = tokio::runtime::Handle::current();
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager.clone(), runtime_handle.clone());
+            start_capture_service(library_manager.clone(), runtime_handle.clone()).await;
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
@@ -635,7 +635,7 @@ async fn stopping_playback_closes_the_files_it_streamed() {
     .await
     .expect("import the release to play");
     let (playback_handle, _capture) =
-        start_capture_service(library_manager, tokio::runtime::Handle::current());
+        start_capture_service(library_manager, tokio::runtime::Handle::current()).await;
     let mut progress_rx = playback_handle.subscribe_progress();
 
     playback_handle.play(imported.track_ids[0].clone());

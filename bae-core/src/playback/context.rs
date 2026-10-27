@@ -1,17 +1,10 @@
-use crate::playback::queue::{QueueEntry, QueueEntryId};
-
-/// What the queue is playing from: a single release (its track order), several
-/// releases concatenated in the order they were chosen, or the whole library. A
-/// `Release` carries the id its tracks are fetched by; `Releases` carries the
-/// ordered ids of a multi-album play; `Library` has no id — its tracks are every
-/// track in the library. The service dispatches the track re-fetch on this
-/// (release → `get_track_ids`, releases → each release's `get_track_ids`
-/// concatenated, library → `get_all_track_ids`) and persistence encodes it in the
-/// resume cache's `source` column.
+/// What the context lane plays from: a single release, several releases one
+/// after another in the order they were chosen, or the whole library. The
+/// queue screens label the lane by it; the lane's tracks are in the queue
+/// tables, filled once when it starts playing.
 ///
 /// `Releases` always holds at least two ids: a single-release play collapses to
-/// `Release` (see [`ContextSource::releases`]) so it is byte-identical to
-/// `play_release`.
+/// `Release` (see [`ContextSource::releases`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContextSource {
     Release(String),
@@ -19,11 +12,15 @@ pub enum ContextSource {
     Library,
 }
 
+/// The `playback_queue.source` value standing for the library. A release id is
+/// a UUID, which can never equal this literal, so the two are unambiguous in
+/// the column.
+const LIBRARY_SOURCE: &str = "library";
+
 impl ContextSource {
     /// Build a source from an ordered, non-empty set of release ids, collapsing a
     /// single id to [`ContextSource::Release`] so a one-album play behaves exactly
-    /// like `play_release`. The caller guarantees a non-empty list — an empty set
-    /// of releases is a no-op decided upstream, never a source.
+    /// like playing that release. The caller guarantees a non-empty list.
     pub fn releases(mut ids: Vec<String>) -> ContextSource {
         debug_assert!(!ids.is_empty(), "a release source needs at least one id");
         if ids.len() == 1 {
@@ -32,78 +29,40 @@ impl ContextSource {
             ContextSource::Releases(ids)
         }
     }
-}
 
-/// The lane's shuffle state, present exactly while the lane is shuffled — its
-/// absence is what "sequential" means.
-pub(crate) struct ShuffleState {
-    /// Every row's id in the order the lane had at the moment shuffle turned on.
-    /// Unshuffling rearranges the upcoming rows into their relative positions
-    /// here. Recorded for the whole lane, not just the upcoming tail, so it stays
-    /// well-defined after a repeat wrap moves played rows back into upcoming.
-    pub restore_order: Vec<QueueEntryId>,
-    /// Seed for the next in-place permutation of the lane. A repeat wrap
-    /// re-permutes; taking the seed advances it, so each pass differs.
-    pub next_seed: u64,
-}
-
-/// How a release becomes the playing context: at a chosen track in source order,
-/// or shuffled by a seed the caller generated.
-pub enum ContextStart {
-    /// Start at this index into the release's track order (validated in range by
-    /// the caller).
-    Index(usize),
-    /// Permute the release's tracks with this seed and start at the front.
-    Shuffled { seed: u64 },
-}
-
-/// The thing playback is "playing from": the rows a source filled the lane with,
-/// traversed by a cursor.
-///
-/// The rows are the single authority over what plays: every operation — shuffle,
-/// removal, reorder, a repeat wrap — is surgery on `entries` themselves, and
-/// nothing consults `source` again during a session. The tracks are held as
-/// per-instance [`QueueEntry`]s so the cursor walks forward (advance) and
-/// backward (Previous) over stable row ids. The whole lane is held expanded — a
-/// release is small, and the library materializes to cheap track-id strings.
-pub(crate) struct PlaybackContext {
-    /// What filled this lane (a release, several, or the whole library). Read for
-    /// exactly two things: the UI's section label, and the restart recipe.
-    pub source: ContextSource,
-    /// The lane's rows in play order, each with a stable per-instance id.
-    pub entries: Vec<QueueEntry>,
-    /// Index into `entries` of the context track currently playing.
-    pub cursor: usize,
-    /// Present exactly while the lane is shuffled; `None` is sequential.
-    pub shuffle: Option<ShuffleState>,
-}
-
-impl PlaybackContext {
-    /// The entry currently under the cursor. A present context is non-empty with
-    /// a valid cursor (the queue only builds one from a non-empty release and
-    /// keeps the cursor in range), so this is always a real entry.
-    pub(crate) fn current(&self) -> &QueueEntry {
-        &self.entries[self.cursor]
+    /// Encode the source for the `playback_queue.source` column: a release
+    /// stores its id, several releases a JSON array of their ids, the library
+    /// the `LIBRARY_SOURCE` word. The three are mutually unambiguous — a
+    /// release id is a UUID (never `[…]`, never the word), and a JSON array
+    /// always starts with `[`.
+    pub(crate) fn to_column(&self) -> String {
+        match self {
+            ContextSource::Release(id) => id.clone(),
+            ContextSource::Releases(ids) => {
+                serde_json::to_string(ids).expect("release ids serialize to a JSON array")
+            }
+            ContextSource::Library => LIBRARY_SOURCE.to_string(),
+        }
     }
 
-    /// The not-yet-played tail of the context: everything after the cursor. The
-    /// cursor is `< entries.len()`, so `cursor + 1 <= entries.len()` is always a
-    /// valid slice bound (empty when the cursor is on the last entry).
-    pub(crate) fn upcoming(&self) -> &[QueueEntry] {
-        &self.entries[self.cursor + 1..]
+    /// Decode the `playback_queue.source` column. A value that opens like a
+    /// JSON array but isn't one, or is an empty one, is not something
+    /// [`Self::to_column`] writes.
+    pub(crate) fn from_column(value: &str) -> Result<ContextSource, String> {
+        if value == LIBRARY_SOURCE {
+            return Ok(ContextSource::Library);
+        }
+        if value.starts_with('[') {
+            let ids: Vec<String> = serde_json::from_str(value).map_err(|e| {
+                format!("the queue's source {value:?} is not a JSON array of release ids: {e}")
+            })?;
+            if ids.is_empty() {
+                return Err("the queue's source is an empty array of release ids".to_string());
+            }
+            return Ok(ContextSource::releases(ids));
+        }
+        Ok(ContextSource::Release(value.to_string()))
     }
-}
-
-/// Permute `items` in place from `seed`. The queue permutes a slice of the lane
-/// (the upcoming tail, when shuffle turns on) or the whole lane (a fill, or a
-/// repeat wrap's fresh pass). The permutation is stable for a seed, so a shuffled
-/// order does not change until something permutes it again — which is what lets
-/// Previous step back over the exact order that was played.
-pub(crate) fn permute<T>(items: &mut [T], seed: u64) {
-    use rand::seq::SliceRandom;
-    use rand::SeedableRng;
-    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    items.shuffle(&mut rng);
 }
 
 #[cfg(test)]
@@ -124,5 +83,37 @@ mod tests {
             ContextSource::releases(vec!["a".into(), "b".into(), "c".into()]),
             ContextSource::Releases(vec!["a".into(), "b".into(), "c".into()])
         );
+    }
+
+    /// Every source kind survives the column's encode and decode, and none is
+    /// mistaken for another.
+    #[test]
+    fn source_column_round_trips() {
+        for source in [
+            ContextSource::Release("550e8400-e29b-41d4-a716-446655440000".into()),
+            ContextSource::Releases(vec![
+                "550e8400-e29b-41d4-a716-446655440000".into(),
+                "6ba7b810-9dad-11d1-80b4-00c04fd430c8".into(),
+            ]),
+            ContextSource::Library,
+        ] {
+            assert_eq!(ContextSource::from_column(&source.to_column()), Ok(source));
+        }
+    }
+
+    /// A one-element array decodes as the release, as `releases` builds it.
+    #[test]
+    fn single_element_release_array_decodes_as_release() {
+        let encoded = serde_json::to_string(&["only-one"]).unwrap();
+        assert_eq!(
+            ContextSource::from_column(&encoded),
+            Ok(ContextSource::Release("only-one".into()))
+        );
+    }
+
+    #[test]
+    fn malformed_or_empty_source_array_is_refused() {
+        assert!(ContextSource::from_column("[not valid json").is_err());
+        assert!(ContextSource::from_column("[]").is_err());
     }
 }

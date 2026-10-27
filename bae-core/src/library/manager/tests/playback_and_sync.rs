@@ -259,8 +259,7 @@ async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) 
 }
 
 /// `get_all_track_ids` returns every library track in the deterministic base
-/// order — by release, then side, track number, id — so a shuffle seed
-/// permutes a stable list.
+/// order — by release, then side, track number, id.
 #[tokio::test]
 async fn test_get_all_track_ids_returns_library_in_base_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -277,74 +276,36 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
     );
 }
 
-/// The two track-id queries the service's source dispatcher routes between:
-/// a release's own ordered tracks (`get_track_ids`) vs the whole library
-/// (`get_all_track_ids`). The library is the union of the releases, so a
-/// release's tracks are a strict subset of it.
+/// A library play's lane holds every library track; unshuffled, the tracks
+/// after the playing one are in the library's own order — by release, then
+/// position — the order a release plays its own tracks in.
 #[tokio::test]
-async fn test_release_and_library_track_id_queries_return_their_sets() {
+async fn test_library_play_unshuffles_into_the_library_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let (rel1, _rel2) = seed_two_release_library(&manager).await;
-    let release_tracks = manager.get_track_ids(&rel1).await.unwrap();
-    assert_eq!(
-        release_tracks,
-        vec![
-            "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
-            "48ae03a1-d7a5-4955-8240-fc99fc4de4e5"
-        ]
-    );
-    let library_tracks = manager.get_all_track_ids().await.unwrap();
-    assert_eq!(
-        library_tracks,
-        vec![
-            "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
-            "48ae03a1-d7a5-4955-8240-fc99fc4de4e5",
-            "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
-            "cc4181bc-58f5-4722-8116-fab2099f5d32"
-        ]
-    );
-    assert!(release_tracks.iter().all(|t| library_tracks.contains(t)));
-}
+    let tables = manager.playback_queue_tables();
+    let library_order = [
+        "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
+        "48ae03a1-d7a5-4955-8240-fc99fc4de4e5",
+        "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
+        "cc4181bc-58f5-4722-8116-fab2099f5d32",
+    ];
 
-/// A `playback_state` row carrying a library source survives save → load: the
-/// `source` column stores the library sentinel and reads back unchanged, and a
-/// release row stores/reads its id. (Decoding the sentinel back to the source
-/// enum is covered in `playback::persisted`.)
-#[tokio::test]
-async fn test_playback_state_source_column_round_trips_both_kinds() {
-    use crate::db::{DbPlaybackContext, DbPlaybackState};
-    use crate::playback::source_to_str;
-    use crate::playback::ContextSource;
-    let (manager, _temp_dir) = setup_test_manager().await;
+    tables
+        .fill(crate::db::ContextFill::Release {
+            release_id: rel1,
+            start: crate::db::ReleaseStart::First,
+        })
+        .await
+        .unwrap();
+    assert_eq!(tables.context_order().await.unwrap(), library_order[..2]);
 
-    for source in [
-        ContextSource::Library,
-        ContextSource::Release(REL_1.to_string()),
-    ] {
-        let row = DbPlaybackState {
-            context: Some(DbPlaybackContext {
-                source: source_to_str(&source),
-                shuffled: true,
-            }),
-            manual: "[]".to_string(),
-            repeat: "off".to_string(),
-            current_track_id: None,
-            position_ms: None,
-            volume: 1.0,
-            is_muted: false,
-        };
-        manager.save_playback_state(&row).await.unwrap();
-        let crate::db::LoadedPlaybackState::Present(loaded) =
-            manager.load_playback_state().await.unwrap()
-        else {
-            panic!("a saved row loads");
-        };
-        assert_eq!(
-            loaded.context.unwrap().source,
-            source_to_str(&source),
-            "the source column round-trips for {source:?}"
-        );
-    }
+    tables.fill(crate::db::ContextFill::LibraryShuffled).await.unwrap();
+    tables.set_shuffle(false).await.unwrap();
+    let lane = tables.context_order().await.unwrap();
+    let playing = lane[0].clone();
+    let rest: Vec<&str> = library_order.iter().copied().filter(|t| *t != playing).collect();
+    assert_eq!(lane[1..], rest[..]);
 }
 
 #[test]
@@ -438,81 +399,48 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
     track_ids
 }
 
-/// `projection` resolved the way the live queue value resolves it: the queue
-/// catalog query's first read for what it shows, joined onto it.
-async fn resolve_queue(
-    manager: &LibraryManager,
-    projection: crate::playback::PlaybackQueueProjection,
-) -> crate::queue::ResolvedQueueSnapshot {
-    let catalog = manager
-        .subscribe_queue_catalog(crate::library::manager::queue_catalog_request(&projection))
-        .next()
+/// Play the seeded release from its first track.
+async fn play_seeded(manager: &LibraryManager, first_track: &str) {
+    let tables = manager.playback_queue_tables();
+    let release_id = manager
+        .database
+        .find_track_by_id(first_track)
         .await
-        .expect("the query stays open").result
+        .unwrap()
+        .unwrap()
+        .release_id;
+    tables
+        .fill(crate::db::ContextFill::Release {
+            release_id,
+            start: crate::db::ReleaseStart::First,
+        })
+        .await
         .unwrap();
-    manager.resolve_queue_catalog(projection, catalog)
 }
 
-/// A `Library`-source context projection whose upcoming tail is `track_ids`,
-/// in order, each wrapped in a freshly-minted per-instance entry id.
-fn context_projection_over(track_ids: &[String]) -> crate::playback::ContextProjection {
-    crate::playback::ContextProjection {
-        source: crate::playback::ContextSource::Library,
-        shuffled: false,
-        upcoming: track_ids
-            .iter()
-            .enumerate()
-            .map(|(i, t)| crate::playback::QueueEntry {
-                id: crate::playback::QueueEntryId(format!("ctx-{i}")),
-                track_id: t.clone(),
-            })
-            .collect(),
-    }
-}
-
-/// The queue value resolves only the first `QUEUE_UPCOMING_WINDOW`
-/// entries of a library-scaled context tail, not the whole thing — the
-/// windowing this feature exists for — while still reporting the tail's real
-/// length via `upcoming_total` and preserving order.
+/// The queue value resolves only the first `QUEUE_UPCOMING_WINDOW` entries
+/// of a library-scaled context tail, not the whole thing, while still
+/// reporting the tail's real length via `upcoming_total` and preserving order.
 #[tokio::test]
 async fn queue_value_windows_a_library_scaled_context_tail() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 50).await;
+    let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 51).await;
+    play_seeded(&manager, &track_ids[0]).await;
 
-    let projection = crate::playback::PlaybackQueueProjection {
-        manual: Vec::new(),
-        context: Some(context_projection_over(&track_ids)),
-        has_next: true,
-        has_previous: false,
-        revision: 7,
-    };
-    let snapshot = resolve_queue(&manager, projection).await;
+    let snapshot = manager.queue_value().await.unwrap();
     let context = snapshot.context.expect("a context was set");
-
     assert_eq!(
         context.upcoming.len(),
         crate::queue::QUEUE_UPCOMING_WINDOW,
         "only the window is resolved, not the whole library-scaled tail"
     );
-    assert_eq!(
-        context.upcoming_total,
-        track_ids.len() as u64,
-        "upcoming_total reports the full tail length"
-    );
-    let resolved_track_ids: Vec<&str> = context
-        .upcoming
-        .iter()
-        .map(|i| i.track_id.as_str())
-        .collect();
-    let expected: Vec<&str> = track_ids[..crate::queue::QUEUE_UPCOMING_WINDOW]
+    assert_eq!(context.upcoming_total, track_ids.len() as u64 - 1);
+    let resolved: Vec<&str> = context.upcoming.iter().map(|i| i.track_id.as_str()).collect();
+    let expected: Vec<&str> = track_ids[1..=crate::queue::QUEUE_UPCOMING_WINDOW]
         .iter()
         .map(String::as_str)
         .collect();
-    assert_eq!(resolved_track_ids, expected, "the window preserves order");
-    assert_eq!(
-        snapshot.revision, 7,
-        "the snapshot carries the projection's revision"
-    );
+    assert_eq!(resolved, expected, "the window preserves order");
 }
 
 /// A context tail shorter than the window resolves in full, and
@@ -520,17 +448,10 @@ async fn queue_value_windows_a_library_scaled_context_tail() {
 #[tokio::test]
 async fn queue_value_shorter_than_window_resolves_it_all() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let track_ids = seed_release_tracks(&manager, 5).await;
+    let track_ids = seed_release_tracks(&manager, 6).await;
+    play_seeded(&manager, &track_ids[0]).await;
 
-    let projection = crate::playback::PlaybackQueueProjection {
-        manual: Vec::new(),
-        context: Some(context_projection_over(&track_ids)),
-        has_next: false,
-        has_previous: false,
-        revision: 1,
-    };
-    let snapshot = resolve_queue(&manager, projection).await;
-    let context = snapshot.context.expect("a context was set");
+    let context = manager.queue_value().await.unwrap().context.expect("a context was set");
     assert_eq!(context.upcoming.len(), 5);
     assert_eq!(context.upcoming_total, 5);
 }
@@ -541,89 +462,61 @@ async fn queue_value_shorter_than_window_resolves_it_all() {
 async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, crate::queue::QUEUE_UPCOMING_WINDOW + 10).await;
-
     let manual_count = crate::queue::QUEUE_UPCOMING_WINDOW + 3;
-    let manual: Vec<crate::playback::QueueEntry> = track_ids[..manual_count]
-        .iter()
-        .enumerate()
-        .map(|(i, t)| crate::playback::QueueEntry {
-            id: crate::playback::QueueEntryId(format!("m{i}")),
-            track_id: t.clone(),
-        })
-        .collect();
+    manager
+        .playback_queue_tables()
+        .add_manual(track_ids[..manual_count].to_vec(), crate::db::ManualPlace::End)
+        .await
+        .unwrap();
 
-    let projection = crate::playback::PlaybackQueueProjection {
-        manual,
-        context: None,
-        has_next: false,
-        has_previous: false,
-        revision: 0,
-    };
-    let snapshot = resolve_queue(&manager, projection).await;
     assert_eq!(
-        snapshot.manual.len(),
+        manager.queue_value().await.unwrap().manual.len(),
         manual_count,
         "the manual lane is never windowed"
     );
 }
 
-/// The catalog read asks for tracks, not entries: a queue that shows the same
-/// tracks in another order — a manual-lane reorder, a track queued twice —
-/// makes the same request, and the one read it already has resolves the new
-/// order with each entry in its place.
+/// A reordered Up Next shows the new order with each entry in its place, a
+/// repeated track once per entry.
 #[tokio::test]
-async fn a_reordered_queue_reads_the_same_tracks_and_resolves_from_one_read() {
+async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 3).await;
-    let entry = |id: &str, track: usize| crate::playback::QueueEntry {
-        id: crate::playback::QueueEntryId(id.to_string()),
-        track_id: track_ids[track].clone(),
-    };
-    let queue = |manual: Vec<crate::playback::QueueEntry>, revision| {
-        crate::playback::PlaybackQueueProjection {
-            manual,
-            context: None,
-            has_next: true,
-            has_previous: false,
-            revision,
-        }
-    };
-    let first = queue(vec![entry("m0", 0), entry("m1", 1), entry("m2", 2)], 1);
-    let reordered = queue(
-        vec![entry("m2", 2), entry("m0", 0), entry("m3", 0), entry("m1", 1)],
-        2,
-    );
-
-    let request = crate::library::manager::queue_catalog_request(&first);
-    assert_eq!(
-        crate::library::manager::queue_catalog_request(&reordered),
-        request,
-        "the same tracks in another order are the same request"
-    );
-
-    let read = manager
-        .subscribe_queue_catalog(request)
-        .next()
+    let tables = manager.playback_queue_tables();
+    let mut queued = track_ids.clone();
+    queued.push(track_ids[0].clone());
+    tables
+        .add_manual(queued, crate::db::ManualPlace::End)
         .await
-        .expect("the query stays open").result
         .unwrap();
-    let resolved = manager.resolve_queue_catalog(reordered, read);
-    let shown: Vec<(&str, &str)> = resolved
+    let entries: Vec<String> = manager
+        .queue_value()
+        .await
+        .unwrap()
         .manual
         .iter()
-        .map(|item| (item.entry_id.as_str(), item.track_id.as_str()))
+        .map(|item| item.entry_id.clone())
+        .collect();
+    let id = |index: usize| entries[index].parse::<crate::playback::QueueEntryId>().unwrap();
+    tables.reorder(id(2), Some(id(0))).await.unwrap();
+
+    let shown: Vec<(String, String)> = manager
+        .queue_value()
+        .await
+        .unwrap()
+        .manual
+        .into_iter()
+        .map(|item| (item.entry_id, item.track_id))
         .collect();
     assert_eq!(
         shown,
         vec![
-            ("m2", track_ids[2].as_str()),
-            ("m0", track_ids[0].as_str()),
-            ("m3", track_ids[0].as_str()),
-            ("m1", track_ids[1].as_str()),
-        ],
-        "the read is joined onto the new order, a repeated track once per entry"
+            (entries[2].clone(), track_ids[2].clone()),
+            (entries[0].clone(), track_ids[0].clone()),
+            (entries[1].clone(), track_ids[1].clone()),
+            (entries[3].clone(), track_ids[0].clone()),
+        ]
     );
-    assert_eq!(resolved.revision, 2);
 }
 
 #[tokio::test]

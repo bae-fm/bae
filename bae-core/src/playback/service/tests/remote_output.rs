@@ -146,13 +146,7 @@ async fn remote_fixture_from(
 ) {
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     let (home, mut service, rx) = remote_service(&[(RELEASE, tracks)]).await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release(RELEASE.to_string()),
-            tracks.iter().map(|t| (*t).to_string()).collect(),
-            ContextStart::Index(0),
-        )
-    });
+    fill_test_release(&mut service, RELEASE).await;
     service.slot = active_slot(
         test_prepared_track(tracks[0], create_sparse_buffer(1_024)),
         phase,

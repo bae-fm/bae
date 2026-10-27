@@ -1,6 +1,5 @@
 use super::super::*;
 use super::*;
-use crate::playback::QueueEntryId;
 
 async fn aggregate_db() -> (Database, tempfile::TempDir) {
     let (db, tmp) = super::temp_db().await;
@@ -181,14 +180,7 @@ async fn queue_db() -> (Database, tempfile::TempDir) {
 #[tokio::test]
 async fn queue_items_order_track_artist_names_inside_the_aggregate() {
     let (db, _tmp) = queue_db().await;
-    let items = super::queue_items(
-        &db,
-        &[QueueEntry {
-            id: QueueEntryId(ENTRY_A.to_string()),
-            track_id: TRACK_A.to_string(),
-        }],
-    )
-    .await;
+    let items = super::queue_items(&db, &[TRACK_A]).await;
 
     assert_eq!(items.len(), 1);
     assert_eq!(

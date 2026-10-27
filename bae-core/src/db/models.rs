@@ -289,48 +289,16 @@ pub struct DbRelease {
     pub created_at: DateTime<Utc>,
 }
 
-/// The playing context of a saved `playback_state` row: the recipe to refill the
-/// lane on restart — what it played from, and whether it was shuffled. A
-/// substruct so "no context playing" (a single track, or nothing) is one `None`
-/// instead of two columns that are only ever both-present or both-absent — see
-/// `many-fields-none-together-means-a-missing-type`. The SQLite columns stay flat
-/// (`source`, `shuffled`); the DB client splits this apart on save and
-/// reassembles it on load.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbPlaybackContext {
-    /// What the context plays from, encoded for the flat column: a release id, a
-    /// JSON array of release ids, or the library sentinel. See
-    /// `source_to_str`/`source_from_str` in `playback::persisted`.
-    pub source: String,
-    /// Whether the lane was shuffled. Restore permutes the refilled lane afresh
-    /// — the session's shuffled order is deliberately not persisted.
-    pub shuffled: bool,
-}
-
-/// The single device-local `playback_state` row. Mirrors the table columns; the
-/// playback service maps this to and from its queue snapshot + live
-/// position/volume/mute.
+/// The single device-local `playback_state` row: where playback stood, so a
+/// restart resumes it. The queue it plays from is in the queue tables.
 #[derive(Debug, Clone)]
 pub struct DbPlaybackState {
-    /// The playing context, or `None` for a single track / nothing playing.
-    pub context: Option<DbPlaybackContext>,
-    pub manual: String,
-    pub repeat: String,
-    pub current_track_id: Option<String>,
-    pub position_ms: Option<i64>,
+    /// The queue entry playing, `None` when its track was deleted.
+    pub current: Option<crate::playback::QueueEntry>,
+    /// How far into the current track's stream it had played.
+    pub position_ms: Option<u64>,
     pub volume: f32,
     pub is_muted: bool,
-}
-
-/// The outcome of reading the device-local `playback_state` resume cache. The
-/// row is bae's own write, so a structurally-impossible row (a `source` present
-/// without a `shuffled`, or vice versa) is corruption — kept distinct from an
-/// absent row so the caller can count it and clear it rather than silently
-/// starting fresh over a masked failure.
-pub enum LoadedPlaybackState {
-    Absent,
-    Corrupt,
-    Present(DbPlaybackState),
 }
 
 /// A single track on a specific release, not on the logical album — track

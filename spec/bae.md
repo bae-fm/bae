@@ -2140,7 +2140,8 @@ When track 3 ends, Up Next drains first, then the release continues at track
 What's playing from is a release, several releases in the order chosen, or the
 whole library. Its rows are filled once, when playing starts; after that they
 can be removed and reordered but never grow. Each row is its own entry, so the
-same track queued twice is two entries, each removable on its own.
+same track queued twice is two entries, each removable on its own. Removing
+the playing row leaves the track after it next.
 
 | Command | Effect |
 |---|---|
@@ -2344,15 +2345,19 @@ ends or the session closes.
 
 ### 7.8 What a device remembers
 
-The queue and position are per device. A device saves what it was playing:
-the source of what's playing from, whether it was shuffled, Up Next, repeat,
-the current track and position, volume and mute.
+The queue and position are per device. The queue is stored as it changes: Up
+Next, what's playing from in its play order — shuffled or not, with the
+session's removals and reorders — which track of it is playing, and repeat.
+Beside it a device saves the entry playing and its position, volume and mute,
+while a track is loaded.
 
-A restart rebuilds what's playing from by its source, in source order with
-the cursor on the saved track, or shuffled afresh around it. Removals and
-reorders made during the session are not saved. A saved state with any value
-out of range is discarded whole. Desktop apps restore on launch as a setting;
-mobile apps always do, and save as they go to the background.
+A restart takes the queue up as it stood: the same order, the same history
+before the playing track, and the saved entry loaded paused at its position.
+Nothing is shuffled again. A deleted track leaves the stored queue with the
+library; when it was the one playing, nothing is resumed. Desktop apps restore
+on launch as a setting; off, the library opens with an empty queue and forgets
+what it played. Mobile apps always restore, and save as they go to the
+background.
 
 ---
 

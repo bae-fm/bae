@@ -760,7 +760,9 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
             100,
             true,
             Box::new(capture_device),
-        );
+        )
+    .await
+    .expect("start playback");
     let mut progress_rx = handle.subscribe_progress();
 
     handle.play(first.clone());

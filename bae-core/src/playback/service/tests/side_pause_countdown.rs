@@ -1,12 +1,21 @@
 /// A side-pause phase resuming into `next`, with `resumes_at` as its countdown.
 fn side_paused_slot(resumes_at: Option<chrono::DateTime<chrono::Utc>>) -> PlaybackSlot {
+    side_paused_between("t", "next", resumes_at)
+}
+
+/// `current` paused at the end of its side, resuming into `next`.
+fn side_paused_between(
+    current: &str,
+    next: &str,
+    resumes_at: Option<chrono::DateTime<chrono::Utc>>,
+) -> PlaybackSlot {
     let buffer = create_sparse_buffer(1_024);
     active_slot(
-        test_prepared_track("t", buffer),
+        test_prepared_track(current, buffer),
         TrackPhase::Paused(PausePhase::SideEnded(SidePauseDecision {
-            track_id: "next".to_string(),
+            track_id: next.to_string(),
             boundary: SideBoundary {
-                id: "next:1:Vinyl".to_string(),
+                id: format!("{next}:1:Vinyl"),
                 kind: PlaybackPauseBoundary::Side,
                 side_label: "A".to_string(),
             },

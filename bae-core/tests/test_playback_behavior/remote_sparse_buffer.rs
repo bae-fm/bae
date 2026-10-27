@@ -33,7 +33,7 @@ impl RemoteMultiWindowPlayback {
         }
         std::fs::remove_dir_all(album_dir)?;
         let track_ids = library_manager.get_tracks_for_release(&release_id).await?.into_iter().map(|track| track.id).collect();
-        let (playback_handle, capture_stream_rx) = start_capture_service(library_manager, tokio::runtime::Handle::current());
+        let (playback_handle, capture_stream_rx) = start_capture_service(library_manager, tokio::runtime::Handle::current()).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self { playback_handle, progress_rx, track_ids, cloud, _capture_stream_rx: capture_stream_rx, _temp_dir: temp_dir })
     }

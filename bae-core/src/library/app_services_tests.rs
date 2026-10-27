@@ -7,9 +7,8 @@ use tempfile::TempDir;
 /// and (natively) the import/identify/extraction trio — wired up exactly
 /// as `bootstrap` does for desktop, seeded with one release of
 /// `track_count` tracks. Starts playing the release from its first track,
-/// so by the time this returns the queue's context is a real,
-/// actor-resolved tail — not a hand-built `PlaybackQueueProjection` — for
-/// the upcoming-page subscription to project. The seeded tracks have no
+/// so the queue's context lane is the one a real play fills, for the
+/// upcoming-window subscription to read. The seeded tracks have no
 /// backing audio file, so preparing the first track for playback fails
 /// fast (a DB lookup, no I/O); that failure only stops playback, it
 /// doesn't touch the queue the `PlayRelease` command already set.
@@ -77,12 +76,15 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     // device enumerator is left dangling once the first actor thread that made
     // it exits (the enumerator dies with that thread's COM apartment), and the
     // test builds one player per case.
-    let playback = manager.start_playback_service_with_audio_device(
-        tokio::runtime::Handle::current(),
-        50,
-        false,
-        Box::new(crate::playback::audio_output::FailingAudioDevice),
-    );
+    let playback = manager
+        .start_playback_service_with_audio_device(
+            tokio::runtime::Handle::current(),
+            50,
+            false,
+            Box::new(crate::playback::audio_output::FailingAudioDevice),
+        )
+        .await
+        .expect("start playback");
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let services = {

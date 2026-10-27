@@ -11,8 +11,8 @@ pub struct BridgeQueueUpcomingWindow {
 /// Every requested window of the upcoming tail as of one queue revision.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeQueueUpcomingSnapshot {
-    /// The queue revision the windows were sliced from. The UI shows them
-    /// only while its queue snapshot carries the same revision.
+    /// The queue revision the windows were read at. The UI shows them only
+    /// while its queue snapshot carries the same revision.
     pub revision: u64,
     pub windows: Vec<BridgeQueueUpcomingWindow>,
 }

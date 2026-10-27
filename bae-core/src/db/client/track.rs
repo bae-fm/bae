@@ -56,9 +56,9 @@ impl Database {
     }
 
     /// Every track id in the library, in a deterministic base order (the same
-    /// order across calls so a shuffle seed permutes a stable list). Ordered to
-    /// match the per-release order — by release, then stored position, id — so
-    /// the library and a single release agree on what "source order" means.
+    /// order across calls, so a listing pages through a stable list): by
+    /// release, then stored position, id — the order the playback queue's
+    /// library play unshuffles into.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
         self.read(move |sql| {
             sql.query(

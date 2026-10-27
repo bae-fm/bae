@@ -244,7 +244,7 @@ pub(crate) enum PlaybackCommand {
     GetVolume(oneshot::Sender<f32>),
     /// Test-only: replies with the queue once every earlier command has finished.
     #[cfg(any(test, feature = "test-utils"))]
-    GetQueueProjection(oneshot::Sender<PlaybackQueueProjection>),
+    GetQueue(oneshot::Sender<Result<crate::queue::ResolvedQueueSnapshot, String>>),
     /// Save state, reply, then stop the loop.
     Shutdown(oneshot::Sender<()>),
     /// Save state without stopping playback, for a mobile app going to the
@@ -377,18 +377,15 @@ pub struct PlaybackHandle {
     /// `Shutdown` ends it. Clones share one take-once join handle.
     worker: WorkerThread<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
-    queue_values: tokio::sync::watch::Receiver<PlaybackQueueProjection>,
 }
 impl PlaybackHandle {
     pub(super) fn new(
         worker: WorkerThread<PlaybackCommand>,
         progress_handle: PlaybackProgressHandle,
-        queue_values: tokio::sync::watch::Receiver<PlaybackQueueProjection>,
     ) -> Self {
         Self {
             worker,
             progress_handle,
-            queue_values,
         }
     }
 
@@ -493,16 +490,14 @@ impl PlaybackHandle {
         self.progress_handle.subscribe_positions()
     }
 
-    pub fn subscribe_queue_values(&self) -> tokio::sync::watch::Receiver<PlaybackQueueProjection> {
-        self.queue_values.clone()
-    }
-
+    /// The queue as its screens show it, read after every command sent before
+    /// this one has changed it.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn queue_projection(&self) -> Result<PlaybackQueueProjection, String> {
+    pub async fn queue_value(&self) -> Result<crate::queue::ResolvedQueueSnapshot, String> {
         let (tx, rx) = oneshot::channel();
-        self.dispatch(PlaybackCommand::GetQueueProjection(tx));
+        self.dispatch(PlaybackCommand::GetQueue(tx));
         rx.await
-            .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))
+            .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))?
     }
     pub fn add_to_queue(&self, track_ids: Vec<String>) {
         self.dispatch(PlaybackCommand::AddToQueue(track_ids));

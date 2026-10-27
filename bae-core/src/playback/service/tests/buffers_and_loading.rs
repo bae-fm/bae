@@ -1,3 +1,9 @@
+/// The release the loading tests play, and the tracks on it.
+const LOADING_RELEASE: &str = "0c9b6d3e-2f41-4e8a-9b57-3d1a6e8f2c40";
+const FINISHED_TRACK: &str = "1d8e4a72-93b5-4c06-8f21-7a3c5e9d0b18";
+const INCOMING_TRACK: &str = "2e7f5b83-a4c6-4d17-9032-8b4d6fa01c29";
+const NEXT_TRACK: &str = "3f806c94-b5d7-4e28-a143-9c5e70b12d3a";
+
 #[tokio::test]
 async fn retiring_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
     let (_home, mut service, _progress) = test_playback_service().await;
@@ -7,7 +13,7 @@ async fn retiring_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
     service.preloaded_next = Some(PreloadedNext {
         cancel_token: cancel_token.clone(),
         ..test_preloaded_next(
-            test_prepared_track("next-track", buffer.clone()),
+            test_prepared_track(NEXT_TRACK, buffer.clone()),
             PreloadedNextSource::Held(source),
         )
     });
@@ -17,7 +23,7 @@ async fn retiring_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
     assert!(service.preloaded_next.is_none());
     assert_eq!(
         service.file_buffers.retired_track_ids(),
-        ["next-track"],
+        [NEXT_TRACK],
         "the prepared track is retained until buffer release"
     );
     assert!(cancel_token.load(std::sync::atomic::Ordering::Acquire));
@@ -38,11 +44,11 @@ async fn retiring_preloaded_next_removes_staged_source() {
     gapless
         .lock()
         .unwrap()
-        .stage_next(next_source, test_track_fmt("next-track"));
+        .stage_next(next_source, test_track_fmt(NEXT_TRACK));
 
     let buffer = create_sparse_buffer(1_024);
     service.preloaded_next = Some(test_preloaded_next(
-        test_prepared_track("next-track", buffer.clone()),
+        test_prepared_track(NEXT_TRACK, buffer.clone()),
         PreloadedNextSource::Staged,
     ));
 
@@ -51,7 +57,7 @@ async fn retiring_preloaded_next_removes_staged_source() {
     assert!(service.retire_preloaded_track());
 
     assert!(service.preloaded_next.is_none());
-    assert_eq!(service.file_buffers.retired_track_ids(), ["next-track"]);
+    assert_eq!(service.file_buffers.retired_track_ids(), [NEXT_TRACK]);
     assert!(!gapless.lock().unwrap().has_next());
     assert!(!buffer.is_cancelled());
 }
@@ -90,7 +96,7 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
     );
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
     service.preloaded_next = Some(test_preloaded_next(
-        test_prepared_track_with_file("next-track", "preload-file", preload_buffer.clone()),
+        test_prepared_track_with_file(NEXT_TRACK, "preload-file", preload_buffer.clone()),
         PreloadedNextSource::Held(next_source),
     ));
 
@@ -183,50 +189,44 @@ async fn read_failure_on_a_buffer_out_of_play_is_ignored() {
 
 #[tokio::test]
 async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
-    let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("release-id".to_string()),
-            vec!["finished-track".to_string(), "incoming-track".to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    let (_home, mut service, mut progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
     let (mut audio_tx, audio_rx) = audio_event_channel();
     audio_tx.push_required(AudioEvent::TrackCrossing(TrackCrossing {
-        finished_fmt: Arc::new(test_track_fmt("finished-track")),
+        finished_fmt: Arc::new(test_track_fmt(FINISHED_TRACK)),
         decode_error_count: 0,
         samples_decoded: 44_100,
-        incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
+        incoming_fmt: Arc::new(test_track_fmt(INCOMING_TRACK)),
     }));
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(
         source,
-        test_track_fmt("finished-track"),
+        test_track_fmt(FINISHED_TRACK),
     )));
     // The crossing event lives in the persistent output's audio-events receiver;
     // the source and receiver survive the track transition.
     service.output = Some(test_output(source, audio_rx));
     service.slot = PlaybackSlot::Active(CurrentTrack {
-        prepared: test_prepared_track("finished-track", finished_buffer.clone()),
+        prepared: test_prepared_track(FINISHED_TRACK, finished_buffer.clone()),
         decoder: test_decoder(),
         phase: TrackPhase::Playing,
         position: StreamPosition::START,
     });
     service.preloaded_next = Some(test_preloaded_next(
-        test_prepared_track("incoming-track", incoming_buffer),
+        test_prepared_track(INCOMING_TRACK, incoming_buffer),
         PreloadedNextSource::Staged,
     ));
 
     service.seek(StreamPosition::from_duration(std::time::Duration::ZERO)).await;
 
-    assert_eq!(service.slot.current_track_id().unwrap(), "incoming-track");
+    assert_eq!(service.slot.current_track_id().unwrap(), INCOMING_TRACK);
     let mut saw_incoming_seek = false;
     while let Ok(progress) = progress_rx.try_recv() {
         if let PlaybackProgress::Seeked { track_id, .. } = progress {
-            saw_incoming_seek = track_id == "incoming-track";
+            saw_incoming_seek = track_id == INCOMING_TRACK;
         }
     }
     assert!(
@@ -243,20 +243,14 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
 /// rebuild a stream that stays silent because the atomic is still `Stopped`.
 #[tokio::test]
 async fn seek_after_natural_completion_resumes_audibly() {
-    let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("release-id".to_string()),
-            vec!["finished-track".to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let buffer = create_sparse_buffer(1_024);
     // The track drained: phase is Completed with its bookkeeping retained, and
     // the audio callback already flipped the atomic to Stopped.
     service.slot = active_slot(
-        test_prepared_track("finished-track", buffer.clone()),
+        test_prepared_track(FINISHED_TRACK, buffer.clone()),
         TrackPhase::Completed,
     );
     service
@@ -281,20 +275,14 @@ async fn seek_after_natural_completion_resumes_audibly() {
 /// to a paused/stopped target turns the atomic assertion red.
 #[tokio::test]
 async fn next_after_natural_completion_resumes_audibly() {
-    let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("release-id".to_string()),
-            vec!["finished-track".to_string(), "next-track".to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, NEXT_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
 
     // The current track drained naturally: phase Completed, and the audio
     // callback already flipped the atomic to Stopped.
     let finished_buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
-        test_prepared_track("finished-track", finished_buffer),
+        test_prepared_track(FINISHED_TRACK, finished_buffer),
         TrackPhase::Completed,
     );
     service
@@ -305,7 +293,7 @@ async fn next_after_natural_completion_resumes_audibly() {
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
     let next_buffer = create_sparse_buffer(1_024);
     service.preloaded_next = Some(test_preloaded_next(
-        test_prepared_track("next-track", next_buffer),
+        test_prepared_track(NEXT_TRACK, next_buffer),
         PreloadedNextSource::Held(next_source),
     ));
 
@@ -320,7 +308,7 @@ async fn next_after_natural_completion_resumes_audibly() {
         matches!(
             &service.slot,
             PlaybackSlot::Active(cur)
-                if cur.prepared.track_id == "next-track"
+                if cur.prepared.track_id == NEXT_TRACK
                     && matches!(cur.phase, TrackPhase::Playing)
         ),
         "the next track should be current and Playing"
@@ -329,14 +317,8 @@ async fn next_after_natural_completion_resumes_audibly() {
 
 #[tokio::test]
 async fn gapless_crossing_evicts_finished_track_file_buffer() {
-    let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("release-id".to_string()),
-            vec!["finished-track".to_string(), "incoming-track".to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
@@ -347,20 +329,20 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
         .file_buffers
         .cache_for_test("incoming-file", incoming_buffer.clone());
     service.slot = active_slot(
-        test_prepared_track_with_file("finished-track", "finished-file", finished_buffer.clone()),
+        test_prepared_track_with_file(FINISHED_TRACK, "finished-file", finished_buffer.clone()),
         TrackPhase::Playing,
     );
     service.preloaded_next = Some(test_preloaded_next(
-        test_prepared_track_with_file("incoming-track", "incoming-file", incoming_buffer),
+        test_prepared_track_with_file(INCOMING_TRACK, "incoming-file", incoming_buffer),
         PreloadedNextSource::Staged,
     ));
 
     service
         .handle_track_crossed(TrackCrossing {
-            finished_fmt: Arc::new(test_track_fmt("finished-track")),
+            finished_fmt: Arc::new(test_track_fmt(FINISHED_TRACK)),
             decode_error_count: 0,
             samples_decoded: 44_100,
-            incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
+            incoming_fmt: Arc::new(test_track_fmt(INCOMING_TRACK)),
         })
         .await;
 
@@ -371,34 +353,28 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
 
 #[tokio::test]
 async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
-    let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("release-id".to_string()),
-            vec!["finished-track".to_string(), "incoming-track".to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let shared_buffer = create_sparse_buffer(1_024);
     service
         .file_buffers
         .cache_for_test("shared-file", shared_buffer.clone());
     service.slot = active_slot(
-        test_prepared_track_with_file("finished-track", "shared-file", shared_buffer.clone()),
+        test_prepared_track_with_file(FINISHED_TRACK, "shared-file", shared_buffer.clone()),
         TrackPhase::Playing,
     );
     service.preloaded_next = Some(test_preloaded_next(
-        test_prepared_track_with_file("incoming-track", "shared-file", shared_buffer.clone()),
+        test_prepared_track_with_file(INCOMING_TRACK, "shared-file", shared_buffer.clone()),
         PreloadedNextSource::Staged,
     ));
 
     service
         .handle_track_crossed(TrackCrossing {
-            finished_fmt: Arc::new(test_track_fmt("finished-track")),
+            finished_fmt: Arc::new(test_track_fmt(FINISHED_TRACK)),
             decode_error_count: 0,
             samples_decoded: 44_100,
-            incoming_fmt: Arc::new(test_track_fmt("incoming-track")),
+            incoming_fmt: Arc::new(test_track_fmt(INCOMING_TRACK)),
         })
         .await;
 

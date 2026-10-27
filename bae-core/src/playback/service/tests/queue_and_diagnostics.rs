@@ -1,141 +1,116 @@
+const RELEASE_TWO_TRACKS: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+const RELEASE_ONE_TRACK: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
+
+/// What a multi-release play put in the context lane: its source and every
+/// track of the lane in order.
+async fn context_lane(service: &PlaybackService) -> (ContextSource, Vec<String>) {
+    let value = service.library_manager.queue_value().await.unwrap();
+    let source = value.context.expect("a context lane").source;
+    let order = service
+        .library_manager
+        .playback_queue_tables()
+        .context_order()
+        .await
+        .unwrap();
+    (source, order)
+}
+
 /// A multi-release play concatenates each release's tracks in the input order the
 /// releases were chosen, and reports the releases that contributed as the source.
 #[tokio::test]
 async fn play_releases_concatenates_tracks_in_input_order() {
-    let (_home, service, _rx) = seeded_playback_service(&[
+    let (_home, mut service, _rx) = seeded_playback_service(&[
         (
-            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            RELEASE_TWO_TRACKS,
             &[
                 "5634d119-43be-4435-8432-575baddc4705",
                 "5634ce19-43be-4f1c-8432-545baddc41ec",
             ],
         ),
-        (
-            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
-            &["5630a919-43ba-4766-842e-6f5badd886f6"],
-        ),
+        (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6"]),
     ])
     .await;
 
-    let (playable, tracks) = service
-        .load_release_set_tracks(vec![
-            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b".to_string(),
-            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string(),
-        ])
-        .await;
+    service
+        .playback_queue
+        .play(ContextFill::Releases(vec![
+            RELEASE_ONE_TRACK.to_string(),
+            RELEASE_TWO_TRACKS.to_string(),
+        ]))
+        .await
+        .unwrap();
 
     assert_eq!(
-        playable,
-        vec![
-            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
-            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
-        ]
-    );
-    assert_eq!(
-        tracks,
-        vec![
-            "5630a919-43ba-4766-842e-6f5badd886f6",
-            "5634d119-43be-4435-8432-575baddc4705",
-            "5634ce19-43be-4f1c-8432-545baddc41ec"
-        ]
+        context_lane(&service).await,
+        (
+            ContextSource::Releases(vec![
+                RELEASE_ONE_TRACK.to_string(),
+                RELEASE_TWO_TRACKS.to_string()
+            ]),
+            vec![
+                "5630a919-43ba-4766-842e-6f5badd886f6".to_string(),
+                "5634d119-43be-4435-8432-575baddc4705".to_string(),
+                "5634ce19-43be-4f1c-8432-545baddc41ec".to_string()
+            ]
+        )
     );
 }
 
 /// A release with no tracks (deleted, or never existed) is skipped; the remaining
-/// releases still play in order.
+/// releases still play in order, and only they name the source.
 #[tokio::test]
 async fn play_releases_skips_a_release_without_tracks() {
-    let (_home, service, _rx) = seeded_playback_service(&[
+    let (_home, mut service, _rx) = seeded_playback_service(&[
         (
-            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            RELEASE_TWO_TRACKS,
             &["5634d119-43be-4435-8432-575baddc4705"],
         ),
         (
-            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+            RELEASE_ONE_TRACK,
             &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B],
         ),
     ])
     .await;
 
-    let (playable, tracks) = service
-        .load_release_set_tracks(vec![
-            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string(),
-            "rel-gone".to_string(),
-            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b".to_string(),
-        ])
-        .await;
+    service
+        .playback_queue
+        .play(ContextFill::Releases(vec![
+            RELEASE_TWO_TRACKS.to_string(),
+            "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string(),
+            RELEASE_ONE_TRACK.to_string(),
+        ]))
+        .await
+        .unwrap();
 
     assert_eq!(
-        playable,
-        vec![
-            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
-        ]
-    );
-    assert_eq!(
-        tracks,
-        vec![
-            "5634d119-43be-4435-8432-575baddc4705",
-            "5630a919-43ba-4766-842e-6f5badd886f6",
-            TRACK_T2B
-        ]
-    );
-}
-
-/// The shuffle/restore re-fetch of a multi-release source concatenates each
-/// release's current tracks in source order — the same order the initial play
-/// built, so a shuffle toggle re-derives over the whole multi-album order.
-#[tokio::test]
-async fn fetch_source_tracks_concatenates_a_releases_source() {
-    let (_home, service, _rx) = seeded_playback_service(&[
+        context_lane(&service).await,
         (
-            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
-            &[
-                "5634d119-43be-4435-8432-575baddc4705",
-                "5634ce19-43be-4f1c-8432-545baddc41ec",
-            ],
-        ),
-        (
-            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
-            &["5630a919-43ba-4766-842e-6f5badd886f6"],
-        ),
-    ])
-    .await;
-
-    let source = ContextSource::Releases(vec![
-        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string(),
-        "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b".to_string(),
-    ]);
-    let tracks = service.fetch_source_tracks(&source).await.unwrap();
-
-    assert_eq!(
-        tracks,
-        vec![
-            "5634d119-43be-4435-8432-575baddc4705",
-            "5634ce19-43be-4f1c-8432-545baddc41ec",
-            "5630a919-43ba-4766-842e-6f5badd886f6"
-        ]
+            ContextSource::Releases(vec![
+                RELEASE_TWO_TRACKS.to_string(),
+                RELEASE_ONE_TRACK.to_string()
+            ]),
+            vec![
+                "5634d119-43be-4435-8432-575baddc4705".to_string(),
+                "5630a919-43ba-4766-842e-6f5badd886f6".to_string(),
+                TRACK_T2B.to_string()
+            ]
+        )
     );
 }
 
 /// A `Play` whose context load fails (here: the track doesn't exist) must
 /// fail loud — a `PlaybackError` and nothing else — rather than silently
-/// falling back to a single-track queue. `get_play_context`'s `Err` covers
-/// only DB failures and data-inconsistency (a track missing, or absent from
-/// its own release's track list — `release_id` is a required column, so
-/// there is no legitimate "track with no context" case), so there is no
-/// absence value to preserve a fallback for.
-///
-/// The discriminator from the old silently-degrading behavior: the old code
-/// unconditionally changed the queue after the match (mutating it to a
-/// queue to a bogus single-track entry even on failure); the fix returns
-/// before ever touching the queue.
+/// falling back to a single-track queue. `release_id` is a required column,
+/// so there is no legitimate "track with no context" case to preserve a
+/// fallback for.
 #[tokio::test]
 async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    let queue_revision = service.playback_queue.revision();
+    let queue_before = service.library_manager.queue_value().await.unwrap();
 
-    service.handle_play("missing-track".to_string()).await;
+    service
+        .handle_play("4b6f0e2a-91c3-4d58-b7e6-0a2f3c4d5e6f".to_string())
+        .await;
 
     let mut saw_error = false;
     let mut saw_playing = false;
@@ -152,8 +127,9 @@ async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
         saw_error,
         "a failed context load must surface a PlaybackError"
     );
-    assert!(
-        service.playback_queue.revision() == queue_revision,
+    assert_eq!(
+        service.library_manager.queue_value().await.unwrap(),
+        queue_before,
         "a failed context load must not mutate the queue with a fallback single-track entry"
     );
     assert!(
@@ -646,16 +622,14 @@ async fn previous_ships_track_started() {
     let (mut service, _progress_rx) = playback_service_over(manager);
 
     // A two-track context playing from t1, so Previous steps back to t0.
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string()),
-            vec![
-                "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string(),
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
-            ],
-            ContextStart::Index(1),
-        )
-    });
+    service
+        .playback_queue
+        .play(ContextFill::Release {
+            release_id: "c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string(),
+            start: ReleaseStart::Track("08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()),
+        })
+        .await
+        .unwrap();
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
@@ -739,57 +713,6 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
     assert_eq!(
         completed.fields["track_id"],
         serde_json::json!("08c80007-b56a-4fc9-8df6-af2967fa09b9")
-    );
-}
-
-/// A corrupt resume row, driven through the real restore path, ships
-/// `anomaly{resume_cache_corrupt}` and clears the row. A negative `position_ms`
-/// is an out-of-domain value `from_row` rejects — the row is our own write, so
-/// out of range means a corrupted local cache.
-#[tokio::test]
-async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
-    let (diagnostics, transport) = recording_diagnostics();
-    let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[(
-            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
-            &["08c80007-b56a-4fc9-8df6-af2967fa09b9"],
-        )],
-        diagnostics.clone(),
-    )
-    .await;
-
-    // Persist a row whose position is out of domain; `from_row` discards it.
-    manager
-        .save_playback_state(&crate::db::DbPlaybackState {
-            context: None,
-            manual: "[]".to_string(),
-            repeat: "off".to_string(),
-            current_track_id: Some("08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()),
-            position_ms: Some(-1),
-            volume: 1.0,
-            is_muted: false,
-        })
-        .await
-        .expect("save the corrupt row");
-
-    let (mut service, _progress_rx) = playback_service_over(manager);
-    service.restore_from_cache().await;
-
-    diagnostics.flush().await.expect("flush succeeds");
-    let events: Vec<crate::diagnostics::DiagnosticEvent> = transport
-        .requests()
-        .iter()
-        .flat_map(|r| {
-            serde_json::from_slice::<Vec<crate::diagnostics::DiagnosticEvent>>(&r.body).unwrap()
-        })
-        .collect();
-    let anomaly = events
-        .iter()
-        .find(|e| e.name == "anomaly")
-        .expect("a corrupt resume row ships an anomaly");
-    assert_eq!(
-        anomaly.fields["kind"],
-        serde_json::json!("resume_cache_corrupt")
     );
 }
 

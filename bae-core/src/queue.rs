@@ -1,6 +1,5 @@
 //! Resolved types for the playback queue — the display-ready shapes the bridge
-//! and UI event payloads carry. The queue catalog read builds a [`QueueItem`]
-//! directly from a SQL aggregate.
+//! and UI event payloads carry, read from the queue tables.
 
 /// How much of the context's not-yet-played tail the queue value
 /// resolves eagerly. The tail is library-scaled (a `Library` source's tail is
@@ -22,10 +21,9 @@ pub struct QueueItem {
 /// The context lane resolved for display: what it plays from (so the UI labels
 /// the section — a release vs the library), the first [`QUEUE_UPCOMING_WINDOW`]
 /// entries of the not-yet-played tail, the tail's full length, and whether it was
-/// ordered by shuffle. The display-ready counterpart of
-/// [`crate::playback::ContextProjection`], carried separately from the manual lane
-/// so each UI renders the two as distinct sections.
-#[derive(Debug, Clone)]
+/// ordered by shuffle. Carried separately from the manual lane so each UI
+/// renders the two as distinct sections.
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedContext {
     pub source: crate::playback::ContextSource,
     /// The display title of what the context plays from — the album title when
@@ -44,104 +42,16 @@ pub struct ResolvedContext {
 }
 
 /// The display-ready playback queue: manual entries, the current context lane,
-/// and whether the transport can step forward/back. Produced by resolving the
-/// playback loop's queue projection through the library metadata layer.
-#[derive(Debug, Clone)]
+/// and whether the transport can step forward/back.
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedQueueSnapshot {
     pub manual: Vec<QueueItem>,
     pub context: Option<ResolvedContext>,
     pub has_next: bool,
     pub has_previous: bool,
-    /// The `PlaybackQueue` revision this snapshot was resolved from. A UI
-    /// shows the upcoming windows past the first only while they carry this
-    /// same revision, since their offsets count from this queue's tail.
+    /// The queue's revision (`playback_queue.revision`) this snapshot was read
+    /// at. A UI shows the upcoming windows past the first only while they
+    /// carry this same revision, since their offsets count from this queue's
+    /// tail.
     pub revision: u64,
-}
-
-/// Clamp an offset/limit page request against `tail`'s bounds: an offset past
-/// the end yields an empty slice, and a limit extending past the end is
-/// clamped to what remains. Offset 0 is the first not-yet-played entry after
-/// the current track — the same coordinate space as `ResolvedContext.upcoming`.
-pub fn clamp_upcoming_page(
-    tail: &[crate::playback::QueueEntry],
-    offset: u64,
-    limit: u64,
-) -> &[crate::playback::QueueEntry] {
-    let start = usize::try_from(offset)
-        .unwrap_or(usize::MAX)
-        .min(tail.len());
-    let end = start
-        .saturating_add(usize::try_from(limit).unwrap_or(usize::MAX))
-        .min(tail.len());
-    &tail[start..end]
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::playback::QueueEntryId;
-
-    fn entries(track_ids: &[&str]) -> Vec<crate::playback::QueueEntry> {
-        track_ids
-            .iter()
-            .enumerate()
-            .map(|(i, t)| crate::playback::QueueEntry {
-                id: QueueEntryId(format!("e{i}")),
-                track_id: t.to_string(),
-            })
-            .collect()
-    }
-
-    fn track_ids(page: &[crate::playback::QueueEntry]) -> Vec<&str> {
-        page.iter().map(|e| e.track_id.as_str()).collect()
-    }
-
-    #[test]
-    fn clamp_upcoming_page_slices_the_requested_range_in_order() {
-        let tail = entries(&[
-            "08c80007-b56a-4fc9-8df6-af2967fa09b9",
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-            "t3",
-            "t4",
-        ]);
-        assert_eq!(
-            track_ids(clamp_upcoming_page(&tail, 1, 2)),
-            vec![
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-                "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
-            ]
-        );
-    }
-
-    #[test]
-    fn clamp_upcoming_page_offset_past_end_is_empty() {
-        let tail = entries(&[
-            "08c80007-b56a-4fc9-8df6-af2967fa09b9",
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-        ]);
-        assert!(clamp_upcoming_page(&tail, 5, 10).is_empty());
-    }
-
-    #[test]
-    fn clamp_upcoming_page_limit_past_end_clamps_to_what_remains() {
-        let tail = entries(&[
-            "08c80007-b56a-4fc9-8df6-af2967fa09b9",
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ]);
-        assert_eq!(
-            track_ids(clamp_upcoming_page(&tail, 1, 100)),
-            vec![
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-                "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
-            ]
-        );
-    }
-
-    #[test]
-    fn clamp_upcoming_page_empty_tail_is_empty() {
-        let tail: Vec<crate::playback::QueueEntry> = Vec::new();
-        assert!(clamp_upcoming_page(&tail, 0, 10).is_empty());
-    }
 }

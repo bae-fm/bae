@@ -55,7 +55,7 @@ impl HighSampleRateTestFixture {
         );
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager.clone(), runtime_handle);
+            start_capture_service(library_manager.clone(), runtime_handle).await;
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
@@ -376,20 +376,14 @@ async fn test_restore_emits_seeked_at_saved_position() {
 
     // Write a snapshot before the service starts, so no one can consume it
     // before our test service starts.
-    let state = bae_core::db::DbPlaybackState {
-        context: None,
-        manual: "[]".to_string(),
-        repeat: "off".to_string(),
-        current_track_id: Some(track_id.clone()),
-        position_ms: Some(0),
-        volume: 0.8,
-        is_muted: false,
-    };
-    library_manager.save_playback_state(&state).await.unwrap();
+    library_manager
+        .write_resume_point(&releases[0].id, track_id.clone(), Some(0))
+        .await
+        .unwrap();
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
-    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle);
+    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle).await;
     let mut progress_rx = handle.subscribe_progress();
 
     let landed = wait_for_seeked_on(&mut progress_rx, Duration::from_secs(20)).await;
@@ -426,36 +420,42 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .id
         .clone();
 
-    let (handle, _capture_rx) = start_capture_service(library_manager.clone(), runtime_handle);
+    let (handle, _capture_rx) = start_capture_service(library_manager.clone(), runtime_handle).await;
 
-    // Playing a release persists the row: source is the release, current is the
-    // first track.
+    // Playing a release persists the row: current is the first track, and the
+    // queue plays from the release.
     handle.play_release(release_id.clone(), None, false);
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {
-        if let bae_core::db::LoadedPlaybackState::Present(row) =
-            library_manager.load_playback_state().await.unwrap()
-        {
+        if let Some(row) = library_manager.load_playback_state().await.unwrap() {
             persisted = Some(row);
             break;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
     let row = persisted.expect("playing a release should persist the playback_state row");
-    let context = row.context.expect("playing a release persists its context");
-    assert_eq!(context.source, release_id);
-    assert_eq!(row.current_track_id.as_deref(), Some(first_track.as_str()));
+    assert_eq!(
+        row.current.map(|current| current.track_id).as_deref(),
+        Some(first_track.as_str())
+    );
+    let context = handle
+        .queue_value()
+        .await
+        .expect("queue value")
+        .context
+        .expect("playing a release fills the context lane");
+    assert_eq!(
+        context.source,
+        bae_core::playback::ContextSource::Release(release_id.clone())
+    );
 
     // Stopping clears it, so a restart wouldn't re-cue a finished session.
     handle.stop();
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut cleared = false;
     while Instant::now() < deadline {
-        if matches!(
-            library_manager.load_playback_state().await.unwrap(),
-            bae_core::db::LoadedPlaybackState::Absent
-        ) {
+        if library_manager.load_playback_state().await.unwrap().is_none() {
             cleared = true;
             break;
         }
@@ -497,7 +497,7 @@ async fn test_position_persists_periodically_while_playing() {
 
 /// The `playback_state` row's position once it passes `floor_ms`, read again
 /// after each position update. Panics if it hasn't within `POSITION_BACKSTOP`.
-async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: i64) -> i64 {
+async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u64) -> u64 {
     let deadline = Instant::now() + POSITION_BACKSTOP;
     loop {
         let remaining = deadline.saturating_duration_since(Instant::now());
@@ -514,10 +514,8 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: i6
             .load_playback_state()
             .await
             .expect("load_playback_state should succeed");
-        if let bae_core::db::LoadedPlaybackState::Present(row) = state {
-            if let Some(persisted_ms) = row.position_ms.filter(|ms| *ms > floor_ms) {
-                return persisted_ms;
-            }
+        if let Some(persisted_ms) = state.and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms) {
+            return persisted_ms;
         }
     }
 }

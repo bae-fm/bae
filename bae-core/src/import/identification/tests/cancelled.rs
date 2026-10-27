@@ -247,7 +247,9 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
             50,
             false,
             Box::new(crate::playback::audio_output::FailingAudioDevice),
-        ),
+        )
+    .await
+    .expect("start playback"),
         fixture.import.clone(),
     );
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;

@@ -74,7 +74,9 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         false,
         // No hardware behind it: this test never plays anything.
         Box::new(crate::playback::audio_output::FailingAudioDevice),
-    );
+    )
+    .await
+    .expect("start playback");
     let services = crate::library::AppServices::new(manager.clone(), playback, handle.clone());
     importable(&handle, &shown_key).await;
     importable(&handle, &importing_key).await;

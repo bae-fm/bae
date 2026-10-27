@@ -16,13 +16,13 @@ pub struct QueueUpcomingWindow {
 /// the tail's end holds what remains of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueUpcomingSnapshot {
-    /// The `PlaybackQueue` revision the windows were sliced from. A UI shows
-    /// them only while its queue value carries the same revision.
+    /// The queue's revision the windows were read at. A UI shows them only
+    /// while its queue value carries the same revision.
     pub revision: u64,
     pub windows: Vec<QueueUpcomingWindow>,
 }
 
 /// A live read of the upcoming tail's requested windows. The windows change
-/// in place through [`super::LiveRead::set`] and the queue's own revisions move the
-/// same read: neither opens another query.
+/// in place through [`super::LiveRead::set`], and a change to the queue reads
+/// them again: neither opens another query.
 pub type QueueUpcomingSubscription = super::LiveRead<LibraryPageWindows, QueueUpcomingSnapshot>;

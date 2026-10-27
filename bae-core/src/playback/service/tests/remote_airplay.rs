@@ -222,13 +222,7 @@ async fn airplay_advance_on_local_end_stays_on_airplay() {
     let (_home, mut service, _progress_rx) =
         seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_A, TRACK_B])])
             .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("af63ef4c-8602-4cd5-82c0-3d334b916305".to_string()),
-            vec![TRACK_A.to_string(), TRACK_B.to_string()],
-            ContextStart::Index(0),
-        )
-    });
+    fill_test_release(&mut service, "af63ef4c-8602-4cd5-82c0-3d334b916305").await;
     service.slot = active_slot(
         test_prepared_track(TRACK_A, create_sparse_buffer(1_024)),
         TrackPhase::Playing,

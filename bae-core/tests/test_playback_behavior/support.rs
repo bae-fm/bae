@@ -1,6 +1,3 @@
-// coven requires every synced row's primary key to be a v4 UUID.
-const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769";
-
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
@@ -216,22 +213,30 @@ async fn wait_for_playing_capturing_queue_on(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
-    let entries = support::next_matching(progress_rx, timeout_duration, |event| {
-        let PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing { .. },
-        } = event
-        else {
-            return None;
-        };
-        let mut projection = playback_handle.subscribe_queue_values().borrow().clone();
-        let mut entries = projection.manual;
-        if let Some(ctx) = projection.context.take() {
-            entries.extend(ctx.upcoming);
-        }
-        Some(entries)
+    let playing = support::next_matching(progress_rx, timeout_duration, |event| {
+        matches!(
+            event,
+            PlaybackProgress::StateChanged {
+                state: PlaybackState::Playing { .. },
+            }
+        )
+        .then_some(())
     })
     .await;
-    (entries.is_some(), entries.unwrap_or_default())
+    if playing.is_none() {
+        return (false, Vec::new());
+    }
+    let value = playback_handle.queue_value().await.expect("queue value");
+    let entries = value
+        .manual
+        .into_iter()
+        .chain(value.context.map(|context| context.upcoming).unwrap_or_default())
+        .map(|item| bae_core::playback::QueueEntry {
+            id: item.entry_id.parse().expect("a queue entry id"),
+            track_id: item.track_id,
+        })
+        .collect();
+    (true, entries)
 }
 
 /// Assert that the playing position advances. This catches a stalled audio
@@ -353,18 +358,16 @@ async fn observe_boundary(
 /// Start a playback service on a capture sink paced to wall-clock time, so no
 /// audio device is needed. Hold the returned receiver for the service's
 /// lifetime.
-#[must_use]
-fn start_capture_service(
+async fn start_capture_service(
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
 ) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
-    start_capture_service_with_restore(library_manager, runtime_handle, true)
+    start_capture_service_with_restore(library_manager, runtime_handle, true).await
 }
 
 /// `start_capture_service` with the platform's "Restore on launch" preference
 /// explicit, for tests that cover the restore-off launch path.
-#[must_use]
-fn start_capture_service_with_restore(
+async fn start_capture_service_with_restore(
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
     restore_playback: bool,
@@ -376,7 +379,9 @@ fn start_capture_service_with_restore(
         100,
         restore_playback,
         Box::new(capture_device),
-    );
+    )
+    .await
+    .expect("start playback");
     (handle, capture_stream_rx)
 }
 
@@ -410,7 +415,9 @@ impl PlaybackTestFixture {
             100,
             true,
             Box::new(capture_device),
-        );
+        )
+    .await
+    .expect("start playback");
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,

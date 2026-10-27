@@ -27,11 +27,8 @@
 //! every reader shares.
 
 use super::RepeatMode;
-use super::{
-    repeat_to_str, source_to_str, ContextSource, ContextStart, NextEntry, PersistedPlayback,
-    PreviousAction, PublishedQueue, QueueEntryId, QueueSnapshot,
-};
-use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
+use super::{NextEntry, PlaybackQueue, PreviousAction, QueueEntryId};
+use crate::db::{ContextFill, ContextFilled, DbAudioSegmentRole, DbPlaybackState, ReleaseStart};
 use crate::diagnostics::{
     AnomalyKind, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
     TelemetryEvent, TrackTransition,
@@ -45,9 +42,7 @@ use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::preview_player::PreviewPlayer;
 use crate::playback::progress::emit_progress;
-use crate::playback::progress::{
-    PlaybackProgress, PlaybackProgressHandle, PlaybackQueueProjection,
-};
+use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 use bae_audio::DecodeError;
 // Imported by path so the sample feed reads `source::PlaybackSource`, apart
 // from the queue's `ContextSource`.
@@ -407,9 +402,9 @@ pub struct PlaybackService {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     command_rx: tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    /// The queue and the projection stream the UIs read, as one owner: every
-    /// mutation goes through `apply`, which republishes.
-    playback_queue: PublishedQueue,
+    /// The queue: its tables, which the queue screens read, and the entry
+    /// playing.
+    playback_queue: PlaybackQueue,
     /// Whether the system lets bae make sound; asked before every start and
     /// released when playback stops.
     audio_focus: crate::playback::AudioFocus,
@@ -625,7 +620,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         #[cfg(target_os = "macos")]
         PlaybackCommand::OutputDeviceChanged => None,
         #[cfg(any(test, feature = "test-utils"))]
-        PlaybackCommand::GetQueueProjection(_) => None,
+        PlaybackCommand::GetQueue(_) => None,
     }
 }
 
@@ -682,6 +677,6 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         #[cfg(target_os = "macos")]
         PlaybackCommand::OutputDeviceChanged => false,
         #[cfg(any(test, feature = "test-utils"))]
-        PlaybackCommand::GetQueueProjection(_) => false,
+        PlaybackCommand::GetQueue(_) => false,
     }
 }

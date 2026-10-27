@@ -33,9 +33,10 @@ pub(crate) use client::{
     ImportRows, NewArtistImages, RunVerdictSaved, ScanItemSeed, ScanItemToWrite,
     ScannedCandidateKey, StandingsRead,
 };
-pub(crate) use client::{
-    OutboxDisplayContext, OutboxDisplayRequest, QueueCatalogProjection, QueueCatalogRequest,
+pub use client::{
+    ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
 };
+pub(crate) use client::{OutboxDisplayContext, OutboxDisplayRequest};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

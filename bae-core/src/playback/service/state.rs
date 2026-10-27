@@ -186,118 +186,35 @@ impl PlaybackService {
         }
     }
 
-    /// Restore playback from the validated device-local resume cache.
-    ///
-    /// Atomic: every fallible step (fetching the context's tracks, validating the
-    /// queue against library deletions) runs *before* anything touches the queue
-    /// or audio. A DB error abandons the whole restore — the queue is left empty
-    /// (a fresh start), never half-populated. Only once all fetches succeed does
-    /// the commit run, and the commit is infallible — `parsed` is already
-    /// fully-valid, so no field needs defaulting.
-    pub(super) async fn restore(&mut self, parsed: PersistedPlayback) {
-        info!(
-            "Restoring playback state: track={:?}",
-            parsed.queue.current_track_id
-        );
-
-        // -- All fallible work first; the queue is untouched until it succeeds. --
-
-        // Refill the context lane from its source's current tracks (deleted tracks
-        // fall out of the re-fetch). A fetch error abandons the restore; an empty
-        // result means the source is gone (the release was deleted, or the library
-        // is now empty), so the context drops and the manual lane restores alone.
-        // The queue makes the same call for a recipe it can't resume (no current
-        // track, or one the source no longer holds).
-        let (context, context_tracks) = match &parsed.queue.context {
-            Some(cs) => match self.fetch_source_tracks(&cs.source).await {
-                Ok(tracks) if tracks.is_empty() => {
-                    debug!(
-                        "resume context source {:?} is gone; restoring the manual lane only",
-                        cs.source
-                    );
-                    (None, Vec::new())
-                }
-                Ok(tracks) => (parsed.queue.context, tracks),
-                Err(e) => {
-                    warn!(
-                        "couldn't load the resume context tracks for {:?}: {e}; starting fresh",
-                        cs.source
-                    );
-                    return;
-                }
-            },
-            None => (None, Vec::new()),
-        };
-
-        // Drop manual-lane tracks and a current track that were deleted from the
-        // library between sessions (deleted context tracks already fell out of the
-        // re-fetch above). A validation error abandons the restore.
-        let mut to_check = parsed.queue.manual.clone();
-        to_check.extend(parsed.queue.current_track_id.clone());
-        let existing = match self
-            .library_manager
-            .filter_existing_track_ids(&to_check)
-            .await
-        {
-            Ok(existing) => existing,
-            Err(e) => {
-                warn!(
-                    "couldn't validate restored tracks {to_check:?} against deletions: {e}; \
-                     starting fresh"
-                );
-                return;
-            }
-        };
-        let dropped: Vec<&String> = to_check.iter().filter(|t| !existing.contains(*t)).collect();
-        if !dropped.is_empty() {
-            warn!("dropping playback tracks deleted from the library: {dropped:?}");
+    /// Resume playback from the device-local resume row over the queue the
+    /// tables hold: the repeat mode, the volume, and the entry playing, loaded
+    /// paused at its saved position. A deleted track left no entry to resume.
+    /// A failed read of the queue resumes nothing.
+    pub(super) async fn restore(&mut self, state: DbPlaybackState) {
+        info!("Restoring playback state: entry={:?}", state.current);
+        if let Err(e) = self.playback_queue.restore(state.current).await {
+            warn!("couldn't read the queue to resume: {e}; resuming nothing");
+            return;
         }
-        let manual: Vec<String> = parsed
-            .queue
-            .manual
-            .into_iter()
-            .filter(|t| existing.contains(t))
-            .collect();
-        let current_track_id = parsed
-            .queue
-            .current_track_id
-            .filter(|t| existing.contains(t));
-        let repeat = parsed.queue.repeat;
-
-        // -- Commit (infallible): everything below applies validated state. --
-
-        let restored_context_track_count = context_tracks.len();
-        self.playback_queue.apply(|queue| {
-            queue.restore(
-                QueueSnapshot {
-                    context,
-                    manual,
-                    current_track_id,
-                    repeat,
-                },
-                context_tracks,
-                // A shuffled lane comes back freshly permuted — the session's
-                // shuffled order was never stored.
-                rand::random(),
-            )
-        });
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RepeatModeChanged { mode: repeat },
+            PlaybackProgress::RepeatModeChanged {
+                mode: self.playback_queue.repeat_mode(),
+            },
         );
 
         // The saved level is what the UI shows even when the session was muted —
         // that is the level unmuting puts back — so `VolumeChanged` carries it
         // either way, and the mute is announced on top.
         self.volume
-            .restore(parsed.volume, parsed.is_muted, self.audio_output.as_ref());
+            .restore(state.volume, state.is_muted, self.audio_output.as_ref());
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::VolumeChanged {
-                volume: parsed.volume,
+                volume: state.volume,
             },
         );
-        if parsed.is_muted {
+        if state.is_muted {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::MuteChanged { is_muted: true },
@@ -306,14 +223,10 @@ impl PlaybackService {
 
         // Start the current track paused at the saved position, or at its start
         // without one; loading it paused shows that position.
-        if let Some(track_id) = self
-            .playback_queue
-            .current_track_id()
-            .map(|s| s.to_string())
-        {
-            let start = parsed
-                .position
-                .map(TrackStart::Position)
+        if let Some(track_id) = self.playback_queue.current_track_id().map(str::to_string) {
+            let start = state
+                .position_ms
+                .map(|position| TrackStart::Position(StreamPosition::from_millis(position)))
                 .unwrap_or(TrackStart::Direct);
             // Paused target: `play_track` ships no `TrackStarted`, so the
             // transition here is unused — a manual restore into pause.
@@ -326,75 +239,20 @@ impl PlaybackService {
             .await;
         }
 
-        // Dropping a dead context or library-deleted tracks corrected the in-memory
-        // queue: make that correction durable now (or clear the row if nothing is
-        // playing) rather than leaving the saved row stale until the next change.
+        // A resume with nothing left to play clears the row now rather than
+        // leaving it until the next change.
         self.persist_playback_state().await;
 
         info!("Playback state restored");
-        self.telemetry_playback_started(
-            PlaybackStartSource::Restored,
-            restored_context_track_count,
-        );
-    }
-
-    /// Fetch a context's tracks in source order for the source it plays from:
-    /// a release's ordered track ids, several releases' track ids concatenated in
-    /// input order, or every library track. The one place the service turns a
-    /// source into tracks, so a fill and a restore agree on what it holds. A
-    /// missing release fails the whole fetch — the caller leaves the queue
-    /// unchanged rather than silently dropping tracks from a live order.
-    pub(super) async fn fetch_source_tracks(
-        &self,
-        source: &ContextSource,
-    ) -> Result<Vec<String>, crate::library::LibraryError> {
-        match source {
-            ContextSource::Release(id) => self.library_manager.get_track_ids(id).await,
-            ContextSource::Releases(ids) => {
-                let mut track_ids = Vec::new();
-                for id in ids {
-                    track_ids.extend(self.library_manager.get_track_ids(id).await?);
-                }
-                Ok(track_ids)
-            }
-            ContextSource::Library => self.library_manager.get_all_track_ids().await,
+        match self.playback_queue.context_track_count().await {
+            Ok(count) => self.telemetry_playback_started(PlaybackStartSource::Restored, count),
+            Err(e) => warn!("couldn't count the resumed context lane: {e}"),
         }
     }
 
-    /// Load the tracks for a set of releases in input order, concatenated,
-    /// skipping (with a log) any release whose tracks fail to load or that has
-    /// none — the per-release form of `PlayRelease`'s log-and-continue, so one bad
-    /// album doesn't sink the rest of a multi-album play. Returns the releases that
-    /// contributed and their concatenated track ids; an empty track list means
-    /// nothing was playable.
-    pub(super) async fn load_release_set_tracks(
-        &self,
-        release_ids: Vec<String>,
-    ) -> (Vec<String>, Vec<String>) {
-        let mut playable_ids = Vec::new();
-        let mut track_ids = Vec::new();
-        for release_id in release_ids {
-            match self.library_manager.get_track_ids(&release_id).await {
-                Ok(ids) if ids.is_empty() => {
-                    warn!("PlayReleases: release {release_id} has no tracks; skipping");
-                }
-                Ok(ids) => {
-                    playable_ids.push(release_id);
-                    track_ids.extend(ids);
-                }
-                Err(e) => {
-                    warn!(
-                        "PlayReleases: couldn't load tracks for release {release_id}: {e}; skipping"
-                    );
-                }
-            }
-        }
-        (playable_ids, track_ids)
-    }
-
-    /// Build the device-local `playback_state` row from the current queue and
-    /// playback state, and save it — or clear it when playback has stopped. The
-    /// queue is device-local; this never syncs.
+    /// Build the device-local `playback_state` row from the entry playing and
+    /// where it stands, and save it — or clear it when playback has stopped.
+    /// The queue itself is in its own tables; none of this syncs.
     ///
     /// The write is logged-best-effort, not propagated as fatal: a failed
     /// resume-cache write only costs the resume point; playback is unaffected.
@@ -420,29 +278,20 @@ impl PlaybackService {
             }
             return;
         }
-        let snap = self.playback_queue.snapshot();
-        let context = snap.context.map(|ctx| DbPlaybackContext {
-            source: source_to_str(&ctx.source),
-            shuffled: ctx.shuffled,
-        });
         let position_ms = match &self.slot {
-            PlaybackSlot::Active(cur) => Some(cur.position.as_millis() as i64),
+            PlaybackSlot::Active(cur) => Some(cur.position.as_millis()),
             _ => None,
         };
         let row = DbPlaybackState {
-            context,
-            manual: serde_json::to_string(&snap.manual)
-                .expect("serializing a Vec<String> to JSON cannot fail"),
-            repeat: repeat_to_str(snap.repeat),
-            current_track_id: snap.current_track_id,
+            current: self.playback_queue.current().cloned(),
             position_ms,
             volume: self.volume.level(self.audio_output.as_ref()),
             is_muted: self.volume.is_muted(),
         };
         if let Err(e) = self.library_manager.save_playback_state(&row).await {
             warn!(
-                "couldn't persist playback state (current track {:?}): {e}",
-                row.current_track_id
+                "couldn't persist playback state (current entry {:?}): {e}",
+                row.current
             );
             self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
         }

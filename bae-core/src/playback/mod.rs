@@ -10,10 +10,8 @@ pub mod cpal_output;
 pub mod data_source;
 mod error;
 mod now_playing;
-mod persisted;
 mod preview_player;
 pub mod progress;
-mod published_queue;
 mod queue;
 mod repeat_mode;
 mod scrub_points;
@@ -39,21 +37,15 @@ pub use audio_output::{
 pub use clock::ManualPlaybackClock;
 pub(crate) use clock::WallPlaybackClock;
 pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
-pub use context::{ContextSource, ContextStart};
+pub use context::ContextSource;
 pub use error::PlaybackError;
 pub use now_playing::{NowPlayingTrack, NowPlayingValues, PlayingTrack, TrackDisplay};
-pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
 pub use preview_player::PreviewTarget;
 pub use progress::{
     MediaControlPlayback, MediaControlPosition, PlaybackPosition, PlaybackPositions,
-    PlaybackProgress, PlaybackQueueProjection, PlaybackValues, PreviewPosition, PreviewState,
-    RemoteDevice, RemotePlayback,
+    PlaybackProgress, PlaybackValues, PreviewPosition, PreviewState, RemoteDevice, RemotePlayback,
 };
-pub use published_queue::PublishedQueue;
-pub use queue::{
-    ContextProjection, ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry,
-    QueueEntryId, QueueSnapshot,
-};
+pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use repeat_mode::RepeatMode;
 pub use scrub_points::ScrubPoints;
 pub use service::{

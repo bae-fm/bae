@@ -1,561 +1,499 @@
-#[test]
-fn test_add_to_queue_fills_manual_lane() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b", "c"]));
-    assert_eq!(upcoming_tracks(&q), vec!["a", "b", "c"]);
+#[tokio::test]
+async fn test_add_to_queue_fills_manual_lane() {
+    let mut f = release(&["a", "b", "c"]).await;
+    f.add(&["a", "b", "c"]).await;
+    assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
 }
 
-#[test]
-fn test_add_to_queue_mints_distinct_ids() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "a"]));
-    let ids = manual_ids(&q);
+#[tokio::test]
+async fn test_add_to_queue_gives_duplicates_distinct_ids() {
+    let mut f = release(&["a"]).await;
+    f.add(&["a", "a"]).await;
+    let ids = f.manual_ids().await;
     assert_eq!(ids.len(), 2);
     assert_ne!(ids[0], ids[1], "duplicate tracks get distinct ids");
 }
 
-#[test]
-fn test_add_next_preserves_order() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["x"]));
-    q.add_next(rel(&["a", "b"]));
-    assert_eq!(upcoming_tracks(&q), vec!["a", "b", "x"]);
+/// A track the library does not hold is left out, and the count says so.
+#[tokio::test]
+async fn test_add_to_queue_leaves_out_tracks_the_library_lacks() {
+    let mut f = release(&["a"]).await;
+    let added = f
+        .queue
+        .add_to_queue(vec![f.id("a"), uuid::Uuid::new_v4().to_string()])
+        .await
+        .unwrap();
+    assert_eq!(added, 1);
+    assert_eq!(f.upcoming().await, names(&["a"]));
 }
 
-#[test]
-fn test_remove_by_entry_id() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b", "c"]));
-    let b_id = manual_ids(&q)[1].clone();
-    let removed = q.remove(&b_id);
-    assert_eq!(removed.map(|e| e.track_id), Some("b".into()));
-    assert_eq!(upcoming_tracks(&q), vec!["a", "c"]);
+#[tokio::test]
+async fn test_add_next_preserves_order() {
+    let mut f = release(&["a", "b", "x"]).await;
+    f.add(&["x"]).await;
+    f.queue.add_next(f.ids(&["a", "b"])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["a", "b", "x"]));
 }
 
-/// The load-bearing dup test: the same track enqueued twice, removing one
-/// instance by its id leaves the other instance — and its id — intact.
-#[test]
-fn test_remove_one_duplicate_keeps_the_other() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["dup", "dup"]));
-    let ids = manual_ids(&q);
-    let removed = q.remove(&ids[0]).expect("first instance removed");
+#[tokio::test]
+async fn test_remove_by_entry_id() {
+    let mut f = release(&["a", "b", "c"]).await;
+    f.add(&["a", "b", "c"]).await;
+    let b_id = f.manual_ids().await[1];
+    let removed = f.queue.remove(b_id).await.unwrap();
+    assert_eq!(removed.map(|e| f.name(&e.track_id)), Some("b".into()));
+    assert_eq!(f.upcoming().await, names(&["a", "c"]));
+}
+
+/// The same track enqueued twice, removing one instance by its id leaves the
+/// other instance — and its id — intact.
+#[tokio::test]
+async fn test_remove_one_duplicate_keeps_the_other() {
+    let mut f = release(&["dup"]).await;
+    f.add(&["dup", "dup"]).await;
+    let ids = f.manual_ids().await;
+    let removed = f.queue.remove(ids[0]).await.unwrap().expect("first instance removed");
     assert_eq!(removed.id, ids[0]);
-
-    let remaining = manual_ids(&q);
-    assert_eq!(remaining.len(), 1, "exactly one instance remains");
-    assert_eq!(remaining[0], ids[1], "the other instance's id survives");
+    assert_eq!(f.manual_ids().await, vec![ids[1]], "the other instance's id survives");
 }
 
-#[test]
-fn test_remove_unknown_id_is_noop() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a"]));
-    assert_eq!(q.remove(&QueueEntryId("nope".into())), None);
-    assert_eq!(upcoming_tracks(&q), vec!["a"]);
+#[tokio::test]
+async fn test_remove_unknown_id_is_noop() {
+    let mut f = release(&["a"]).await;
+    f.add(&["a"]).await;
+    let revision = f.revision().await;
+    assert_eq!(f.queue.remove(QueueEntryId(i64::MAX)).await.unwrap(), None);
+    assert_eq!(f.upcoming().await, names(&["a"]));
+    assert_eq!(f.revision().await, revision, "an unknown id changes nothing");
 }
 
-#[test]
-fn test_reorder_forward() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b", "c", "d"]));
-    let ids = manual_ids(&q);
-    q.reorder(&ids[0], Some(&ids[2]));
-    assert_eq!(upcoming_tracks(&q), vec!["b", "a", "c", "d"]);
+#[tokio::test]
+async fn test_reorder_forward() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let ids = f.manual_ids().await;
+    assert!(f.queue.reorder(ids[0], Some(ids[2])).await.unwrap());
+    assert_eq!(f.upcoming().await, names(&["b", "a", "c", "d"]));
 }
 
-#[test]
-fn test_reorder_to_end() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b", "c", "d"]));
-    let ids = manual_ids(&q);
-    q.reorder(&ids[0], None);
-    assert_eq!(upcoming_tracks(&q), vec!["b", "c", "d", "a"]);
+#[tokio::test]
+async fn test_reorder_to_end() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.reorder(ids[0], None).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["b", "c", "d", "a"]));
 }
 
-#[test]
-fn test_reorder_backward() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b", "c", "d"]));
-    let ids = manual_ids(&q);
-    q.reorder(&ids[2], Some(&ids[0]));
-    assert_eq!(upcoming_tracks(&q), vec!["c", "a", "b", "d"]);
+#[tokio::test]
+async fn test_reorder_backward() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.reorder(ids[2], Some(ids[0])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["c", "a", "b", "d"]));
 }
 
-#[test]
-fn test_reorder_before_self_is_noop() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b", "c"]));
-    let ids = manual_ids(&q);
-    q.reorder(&ids[1], Some(&ids[1]));
-    assert_eq!(upcoming_tracks(&q), vec!["a", "b", "c"]);
+/// A reorder over a lane with gaps — entries removed from between — keeps
+/// every survivor's place.
+#[tokio::test]
+async fn test_reorder_across_gaps() {
+    let mut f = release(&["a", "b", "c", "d", "e"]).await;
+    f.add(&["a", "b", "c", "d", "e"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.remove(ids[1]).await.unwrap();
+    f.queue.remove(ids[3]).await.unwrap();
+    f.queue.reorder(ids[0], Some(ids[4])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["c", "a", "e"]));
+    f.queue.reorder(ids[4], Some(ids[2])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["e", "c", "a"]));
 }
 
-#[test]
-fn test_reorder_unknown_source_is_noop() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b"]));
-    q.reorder(&QueueEntryId("nope".into()), None);
-    assert_eq!(upcoming_tracks(&q), vec!["a", "b"]);
+#[tokio::test]
+async fn test_reorder_before_self_is_noop() {
+    let mut f = release(&["a", "b", "c"]).await;
+    f.add(&["a", "b", "c"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.reorder(ids[1], Some(ids[1])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
 }
 
-#[test]
-fn test_clear_up_next_empties_manual_keeps_context() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
-    q.add_to_queue(rel(&["m1", "m2"]));
-    q.clear_up_next();
-    // Manual gone; context tail (t2, t3) survives.
-    assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
+#[tokio::test]
+async fn test_reorder_unknown_source_is_noop() {
+    let mut f = release(&["a", "b"]).await;
+    f.add(&["a", "b"]).await;
+    assert!(!f.queue.reorder(QueueEntryId(i64::MAX), None).await.unwrap());
+    assert_eq!(f.upcoming().await, names(&["a", "b"]));
+}
+
+#[tokio::test]
+async fn test_clear_up_next_empties_manual_keeps_context() {
+    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1", "m2"]).await;
+    f.play_from("t1").await;
+    f.add(&["m1", "m2"]).await;
+    f.queue.clear_up_next().await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["t2", "t3"]));
 }
 
 /// Clearing the context lane drops its rows, its history, and its label
 /// while the playing track keeps playing — the lane it came from is gone,
 /// not the audio.
-#[test]
-fn test_clear_playing_from_drops_the_context_keeping_the_current_track() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(1));
-    assert!(q.has_previous(), "t1 sits behind the cursor");
+#[tokio::test]
+async fn test_clear_playing_from_drops_the_context_keeping_the_current_track() {
+    let mut f = release(&["t1", "t2", "t3"]).await;
+    f.play_from("t2").await;
+    assert!(f.value().await.has_previous, "t1 sits behind the cursor");
 
-    q.clear_playing_from();
+    f.queue.clear_playing_from().await.unwrap();
 
-    assert_eq!(q.current_track_id(), Some("t2"), "the playing track keeps playing");
-    assert!(
-        q.context_projection().is_none(),
-        "the context section is gone"
-    );
-    assert!(!q.has_previous(), "its history went with it");
-    assert!(upcoming_tracks(&q).is_empty());
+    assert_eq!(f.current(), "t2", "the playing track keeps playing");
+    let value = f.value().await;
+    assert!(value.context.is_none(), "the context section is gone");
+    assert!(!value.has_previous, "its history went with it");
+    assert!(f.upcoming().await.is_empty());
 }
 
 /// After clearing the context lane, Up Next drains and then playback stops —
 /// there is no lane left to fall through to.
-#[test]
-fn test_clear_playing_from_then_up_next_drains_and_stops() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
-    q.add_to_queue(rel(&["m1"]));
+#[tokio::test]
+async fn test_clear_playing_from_then_up_next_drains_and_stops() {
+    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1"]).await;
+    f.play_from("t1").await;
+    f.add(&["m1"]).await;
 
-    q.clear_playing_from();
+    f.queue.clear_playing_from().await.unwrap();
 
-    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
-    assert!(matches!(q.next_entry(), NextEntry::Stop));
+    assert_eq!(f.next().await, Some("m1".into()));
+    assert_eq!(f.next().await, None);
 }
 
-#[test]
-fn test_clear_playing_from_with_no_context_is_noop() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["m1"]));
-    let revision = q.revision();
+#[tokio::test]
+async fn test_clear_playing_from_with_no_context_is_noop() {
+    let mut f = release(&["m1"]).await;
+    f.add(&["m1"]).await;
+    let revision = f.revision().await;
 
-    q.clear_playing_from();
+    f.queue.clear_playing_from().await.unwrap();
 
-    assert_eq!(
-        q.revision(),
-        revision,
-        "nothing to clear, so the projection didn't change"
-    );
-    assert_eq!(upcoming_tracks(&q), vec!["m1"]);
+    assert_eq!(f.revision().await, revision, "nothing to clear");
+    assert_eq!(f.upcoming().await, names(&["m1"]));
 }
 
-#[test]
-fn test_skip_to_manual_drains_prefix() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a", "b", "c", "d"]));
-    let c_id = manual_ids(&q)[2].clone();
-    let entry = q.skip_to(&c_id);
-    assert_eq!(entry.map(|e| e.track_id), Some("c".into()));
-    assert_eq!(upcoming_tracks(&q), vec!["d"]);
-    assert_eq!(q.current_track_id(), Some("c"));
+#[tokio::test]
+async fn test_skip_to_manual_drains_prefix() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let c_id = f.manual_ids().await[2];
+    let entry = f.queue.skip_to(c_id).await.unwrap();
+    assert_eq!(entry.map(|e| f.name(&e.track_id)), Some("c".into()));
+    assert_eq!(f.upcoming().await, names(&["d"]));
+    assert_eq!(f.current(), "c");
 }
 
-#[test]
-fn test_skip_to_unknown_id_is_noop() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["a"]));
-    assert_eq!(q.skip_to(&QueueEntryId("nope".into())), None);
-    assert_eq!(upcoming_tracks(&q), vec!["a"]);
+#[tokio::test]
+async fn test_skip_to_unknown_id_is_noop() {
+    let mut f = release(&["a"]).await;
+    f.add(&["a"]).await;
+    assert_eq!(f.queue.skip_to(QueueEntryId(i64::MAX)).await.unwrap(), None);
+    assert_eq!(f.upcoming().await, names(&["a"]));
 }
 
 // -- context ---------------------------------------------------------------
 
-#[test]
-fn test_play_release_sets_current_and_upcoming() {
-    let mut q = queue();
-    let first = q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
-    assert_eq!(first, "t1");
-    assert_eq!(q.current_track_id(), Some("t1"));
-    assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
+#[tokio::test]
+async fn test_play_release_sets_current_and_upcoming() {
+    let mut f = release(&["t1", "t2", "t3"]).await;
+    assert_eq!(f.play(ReleaseStart::First).await, "t1");
+    assert_eq!(f.current(), "t1");
+    assert_eq!(f.upcoming().await, names(&["t2", "t3"]));
 }
 
-#[test]
-fn test_play_release_start_index() {
-    let mut q = queue();
-    let first = q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(1));
-    assert_eq!(first, "t2");
-    assert_eq!(upcoming_tracks(&q), vec!["t3"]);
+#[tokio::test]
+async fn test_play_release_from_a_track() {
+    let mut f = release(&["t1", "t2", "t3"]).await;
+    assert_eq!(f.play_from("t2").await, "t2");
+    assert_eq!(f.upcoming().await, names(&["t3"]));
+}
+
+/// A track the release does not hold, and a release with no tracks, play
+/// nothing and leave the queue as it was.
+#[tokio::test]
+async fn test_play_that_names_nothing_leaves_the_queue() {
+    let mut f = fixture(&[("r1", &["t1", "t2"]), ("r2", &["other"])]).await;
+    f.play_from("t1").await;
+    let before = f.value().await;
+
+    let missing = f
+        .queue
+        .play(ContextFill::Release {
+            release_id: f.id("r1"),
+            start: ReleaseStart::Track(f.id("other")),
+        })
+        .await
+        .unwrap();
+    assert_eq!(missing, crate::db::ContextFilled::StartMissing);
+    let empty = f
+        .queue
+        .play(ContextFill::Release {
+            release_id: uuid::Uuid::new_v4().to_string(),
+            start: ReleaseStart::First,
+        })
+        .await
+        .unwrap();
+    assert_eq!(empty, crate::db::ContextFilled::NoTracks);
+
+    assert_eq!(f.value().await, before);
+    assert_eq!(f.current(), "t1");
 }
 
 /// Starting playback from a release replaces the active playback context, so
 /// manually queued entries from the previous context do not carry into it.
-#[test]
-fn test_play_release_clears_up_next() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["m1", "m2"]));
+#[tokio::test]
+async fn test_play_release_clears_up_next() {
+    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1", "m2"]).await;
+    f.add(&["m1", "m2"]).await;
 
-    let first = q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
+    assert_eq!(f.play(ReleaseStart::First).await, "t1");
 
-    assert_eq!(first, "t1");
     assert_eq!(
-        upcoming_tracks(&q),
-        vec!["t2", "t3"],
+        f.upcoming().await,
+        names(&["t2", "t3"]),
         "the new context replaces the old Up Next lane"
     );
-    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+    assert_eq!(f.next().await, Some("t2".into()));
 }
 
-#[test]
-fn test_play_single_leaves_up_next_intact() {
-    let mut q = queue();
-    q.add_to_queue(rel(&["m1", "m2"]));
-
-    q.play_single("solo".into());
-
-    assert_eq!(q.current_track_id(), Some("solo"));
-    assert_eq!(upcoming_tracks(&q), vec!["m1", "m2"]);
-    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
+#[tokio::test]
+async fn test_play_release_shuffled_keeps_all_tracks() {
+    let mut f = release(&["t1", "t2", "t3", "t4"]).await;
+    f.play(ReleaseStart::Shuffled).await;
+    assert_eq!(sorted(f.full_order().await), names(&["t1", "t2", "t3", "t4"]));
+    assert!(f.value().await.context.unwrap().shuffled);
 }
 
-#[test]
-fn test_play_release_shuffled_keeps_all_tracks() {
-    let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&["t1", "t2", "t3", "t4"]),
-        ContextStart::Shuffled { seed: 7 },
-    );
-    let mut all = full_order(&q);
-    all.sort();
-    // Sorted, so the ids come out in lexical order.
-    assert_eq!(all, vec!["t1", "t2", "t3", "t4"]);
-}
-
-/// A repeating shuffled lane loops a freshly permuted order each pass, not
-/// the same order every time. Both passes' orders are read from the queue (no
-/// re-implementation of the shuffle) and are deterministic for a fixed seed.
-#[test]
-fn test_context_repeat_shuffled_loops_a_re_derived_order() {
-    let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&["t1", "t2", "t3", "t4", "t5"]),
-        ContextStart::Shuffled { seed: 1 },
-    );
-    q.set_repeat_mode(RepeatMode::Context);
-    let first_pass = full_order(&q);
-    // Advance to the end of the pass, then one more advance loops it.
+/// A repeating shuffled lane loops a freshly shuffled order each pass. Twelve
+/// tracks, so two passes in the same order is one chance in 479,001,600.
+#[tokio::test]
+async fn test_context_repeat_shuffled_loops_a_reshuffled_order() {
+    let tracks: Vec<String> = (1..=12).map(|i| format!("t{i}")).collect();
+    let track_refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
+    let mut f = release(&track_refs).await;
+    f.play(ReleaseStart::Shuffled).await;
+    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
+    let first_pass = f.full_order().await;
     for _ in 0..first_pass.len() - 1 {
-        q.next_entry();
+        f.next().await;
     }
-    match q.next_entry() {
-        NextEntry::Play(_) => {}
-        other => panic!("expected a looped Play, got {other:?}"),
-    }
-    let second_pass = full_order(&q);
+    assert!(f.next().await.is_some(), "the pass loops");
+    let second_pass = f.full_order().await;
 
-    let (mut a, mut b) = (first_pass.clone(), second_pass.clone());
-    a.sort();
-    b.sort();
-    assert_eq!(a, b, "the loop replays exactly the same tracks");
-    assert_ne!(
-        first_pass, second_pass,
-        "but in a freshly re-derived order each pass"
-    );
+    assert_eq!(sorted(first_pass.clone()), sorted(second_pass.clone()));
+    assert_ne!(first_pass, second_pass, "each pass is shuffled anew");
+    assert!(!f.value().await.has_previous, "the new pass starts at its first track");
 }
 
-/// Stamping the WHOLE lane (not just the upcoming tail) is what keeps
-/// unshuffle well-defined after a repeat wrap has moved played rows back into
-/// upcoming: the post-wrap unshuffle lands every upcoming row in the stamp's
-/// relative order.
-#[test]
-fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
-    // Shuffle on from the head, so the stamp is source order.
-    q.set_shuffle(true, 7);
-    q.set_repeat_mode(RepeatMode::Context);
-    // Play through the pass; the next advance wraps and re-permutes the lane.
+/// Unshuffling after a repeat wrap puts every upcoming row back in the order
+/// the lane had when shuffle turned on.
+#[tokio::test]
+async fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+    f.play_from("t1").await;
+    f.queue.set_shuffle(true).await.unwrap();
+    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
     for _ in 0..4 {
-        q.next_entry();
+        f.next().await;
     }
-    assert!(matches!(q.next_entry(), NextEntry::Play(_)));
+    assert!(f.next().await.is_some());
 
-    q.set_shuffle(false, 0);
+    f.queue.set_shuffle(false).await.unwrap();
 
-    let wrapped_current = q.current_track_id().unwrap().to_string();
-    let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
-    .into_iter()
-    .filter(|t| *t != wrapped_current)
-    .collect();
+    let wrapped_current = f.current();
+    let expected: Vec<String> = names(&["t1", "t2", "t3", "t4", "t5"])
+        .into_iter()
+        .filter(|t| *t != wrapped_current)
+        .collect();
+    let upcoming = f.upcoming().await;
+    let behind = f.context_order().await.len() - upcoming.len() - 1;
     assert_eq!(
-        upcoming_tracks(&q),
-        expected,
-        "every row after the wrap's cursor sits in the stamped order"
+        upcoming,
+        expected[behind..].to_vec(),
+        "every row after the wrap's playing one sits in the stamped order"
     );
 }
 
-/// A sequential lane under `Context` repeat wraps to row 0 in the same order,
-/// carrying the session's removals and reorders into the next pass.
-#[test]
-fn test_context_repeat_sequential_wrap_carries_edits_into_the_next_pass() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4"]), ContextStart::Index(0));
-    // Remove t2 and move t4 ahead of t3: the lane becomes [t1, t4, t3].
-    let up = q.upcoming();
-    let t2_id = up[0].id.clone();
-    let t3_id = up[1].id.clone();
-    let t4_id = up[2].id.clone();
-    q.remove(&t2_id);
-    q.reorder(&t4_id, Some(&t3_id));
-    assert_eq!(q.context_order(), vec!["t1", "t4", "t3"]);
+/// A sequential lane under `Context` repeat wraps to its first row in the
+/// same order, carrying the session's removals and reorders into the next
+/// pass.
+#[tokio::test]
+async fn test_context_repeat_sequential_wrap_carries_edits_into_the_next_pass() {
+    let mut f = release(&["t1", "t2", "t3", "t4"]).await;
+    f.play_from("t1").await;
+    let (t2, t3, t4) = (f.entry("t2").await, f.entry("t3").await, f.entry("t4").await);
+    f.queue.remove(t2).await.unwrap();
+    f.queue.reorder(t4, Some(t3)).await.unwrap();
+    assert_eq!(f.context_order().await, names(&["t1", "t4", "t3"]));
 
-    q.set_repeat_mode(RepeatMode::Context);
-    q.next_entry(); // t4
-    q.next_entry(); // t3
-    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t1"));
+    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
+    assert_eq!(f.next().await, Some("t4".into()));
+    assert_eq!(f.next().await, Some("t3".into()));
+    assert_eq!(f.next().await, Some("t1".into()));
     assert_eq!(
-        q.context_order(),
-        vec!["t1", "t4", "t3"],
+        f.context_order().await,
+        names(&["t1", "t4", "t3"]),
         "the wrap replays the edited lane, not the source"
     );
 }
 
-/// A `Library` source is the same construct as a release: its tracks
-/// materialize into the context under the seed, keeping every track, and the
-/// snapshot reports the `Library` source.
-#[test]
-fn test_library_source_context_materializes_all_tracks() {
-    let mut q = queue();
-    q.play_release(
-        ContextSource::Library,
-        rel(&["t1", "t2", "t3", "t4", "t5"]),
-        ContextStart::Shuffled { seed: 3 },
-    );
-    let mut all = full_order(&q);
-    all.sort();
-    // Sorted, so the ids come out in lexical order.
-    assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"]);
-    assert_eq!(q.snapshot().context.unwrap().source, ContextSource::Library);
+/// A `Library` play holds every library track, shuffled, and its source is
+/// the library; unshuffling puts it in the library's own order.
+#[tokio::test]
+async fn test_library_play_holds_all_tracks_in_library_order() {
+    let mut f = fixture(&[("r1", &["a1", "a2"]), ("r2", &["b1", "b2", "b3"])]).await;
+    let first = f.play_fill(ContextFill::LibraryShuffled).await;
+    assert_eq!(sorted(f.full_order().await), names(&["a1", "a2", "b1", "b2", "b3"]));
+    let value = f.value().await;
+    let context = value.context.unwrap();
+    assert_eq!(context.source, ContextSource::Library);
+    assert!(context.shuffled);
+
+    f.queue.set_shuffle(false).await.unwrap();
+
+    // The library's order is by release, then position.
+    let mut releases = [("r1", vec!["a1", "a2"]), ("r2", vec!["b1", "b2", "b3"])];
+    releases.sort_by_key(|(release, _)| f.id(release));
+    let library_order: Vec<String> = releases
+        .iter()
+        .flat_map(|(_, tracks)| tracks.iter().map(|t| t.to_string()))
+        .filter(|t| *t != first)
+        .collect();
+    assert_eq!(f.upcoming().await, library_order);
 }
 
 // -- shuffle toggle --------------------------------------------------------
 
-#[test]
-fn test_set_shuffle_on_keeps_current_track_with_cursor_on_it() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(2));
-    assert_eq!(q.current_track_id(), Some("t3"));
-
-    q.set_shuffle(true, 7);
-
-    // The playing track keeps playing; the cursor sits on it.
-    assert_eq!(q.current_track_id(), Some("t3"));
-    let ctx = q.context_projection().expect("a release is playing");
-    assert!(
-        ctx.shuffled,
-        "the context reports shuffled after turning shuffle on"
-    );
-
-    // Every row is retained in the new order, just re-ordered.
-    let mut all = q.context_order();
-    all.sort();
-    // Sorted, so the ids come out in lexical order.
-    assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"], "no track is lost");
-}
-
 /// Turning shuffle on is surgery on the upcoming tail alone: the current row
-/// and the history before it stay exactly where they were, and every unplayed
-/// row stays upcoming — none is stranded behind the cursor where Next never
-/// reaches. Checked across seeds, since a permutation that happens to fix a
+/// and the history before it stay where they were, and every unplayed row
+/// stays upcoming. Run several times, since a shuffle that happens to leave a
 /// row in place would hide the bug.
-#[test]
-fn test_set_shuffle_on_keeps_history_and_permutes_only_upcoming() {
-    for seed in 0..8 {
-        let mut q = queue();
-        q.play_release(
-            rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
-            ContextStart::Index(2),
-        );
-        q.set_shuffle(true, seed);
+#[tokio::test]
+async fn test_set_shuffle_on_keeps_history_and_shuffles_only_upcoming() {
+    for _ in 0..8 {
+        let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+        f.play_from("t3").await;
+        f.queue.set_shuffle(true).await.unwrap();
 
-        assert_eq!(q.current_track_id(), Some("t3"), "seed {seed}");
+        assert_eq!(f.current(), "t3");
+        assert!(f.value().await.context.unwrap().shuffled);
         assert_eq!(
-            q.context_order()[..3],
-            ["t1", "t2", "t3"],
-            "seed {seed}: the history and the current row never move"
+            f.context_order().await[..3],
+            names(&["t1", "t2", "t3"])[..],
+            "the history and the current row never move"
         );
-        let mut rest = upcoming_tracks(&q);
-        rest.sort();
-        assert_eq!(
-            rest,
-            vec!["t4", "t5"],
-            "seed {seed}: every unplayed row stays upcoming"
-        );
+        assert_eq!(sorted(f.upcoming().await), names(&["t4", "t5"]));
     }
 }
 
 /// The lane is the authority: a reorder made before shuffling round-trips
-/// exactly, because the stamp taken when shuffle turns on is lane order — not
-/// album order.
-#[test]
-fn test_shuffle_round_trip_restores_a_reordered_lane_not_source_order() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
-    // Move t5 to the front of the upcoming tail: [t2, t3, t4, t5] → [t5, t2, t3, t4].
-    let up = q.upcoming();
-    let t5_id = up[3].id.clone();
-    let t2_id = up[0].id.clone();
-    q.reorder(&t5_id, Some(&t2_id));
-    let reordered = upcoming_tracks(&q);
-    assert_eq!(reordered, vec!["t5", "t2", "t3", "t4"]);
+/// exactly, because the order shuffle returns to is the lane's — not the
+/// album's.
+#[tokio::test]
+async fn test_shuffle_round_trip_restores_a_reordered_lane_not_source_order() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+    f.play_from("t1").await;
+    let (t5, t2) = (f.entry("t5").await, f.entry("t2").await);
+    f.queue.reorder(t5, Some(t2)).await.unwrap();
+    let reordered = f.upcoming().await;
+    assert_eq!(reordered, names(&["t5", "t2", "t3", "t4"]));
 
-    q.set_shuffle(true, 7);
-    q.set_shuffle(false, 0);
+    f.queue.set_shuffle(true).await.unwrap();
+    f.queue.set_shuffle(false).await.unwrap();
 
-    assert_eq!(
-        upcoming_tracks(&q),
-        reordered,
-        "unshuffling lands the lane back in ITS order, not the album's"
-    );
+    assert_eq!(f.upcoming().await, reordered);
 }
 
 /// Shuffle on then off with no edits in between round-trips to the original
 /// lane order.
-#[test]
-fn test_shuffle_round_trip_with_no_edits_is_the_identity() {
-    let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&["t1", "t2", "t3", "t4", "t5", "t6"]),
-        ContextStart::Index(1),
-    );
-    let before = q.context_order();
+#[tokio::test]
+async fn test_shuffle_round_trip_with_no_edits_is_the_identity() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5", "t6"]).await;
+    f.play_from("t2").await;
+    let before = f.context_order().await;
 
-    q.set_shuffle(true, 42);
-    q.set_shuffle(false, 0);
+    f.queue.set_shuffle(true).await.unwrap();
+    f.queue.set_shuffle(false).await.unwrap();
 
-    assert_eq!(q.context_order(), before);
-    assert_eq!(q.current_track_id(), Some("t2"));
+    assert_eq!(f.context_order().await, before);
+    assert_eq!(f.current(), "t2");
 }
 
-/// A row removed while shuffled is gone for the rest of the session — no
-/// later operation resurrects it, because no later operation consults
-/// anything but the rows. Every other unplayed row keeps its place in line.
-#[test]
-fn test_a_row_removed_while_shuffled_is_absent_after_unshuffling() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
-    q.set_shuffle(true, 7);
-    let removed_track = q.upcoming()[0].track_id.clone();
-    let removed_id = q.upcoming()[0].id.clone();
-    q.remove(&removed_id);
+/// A row removed while shuffled stays gone after unshuffling, and every other
+/// unplayed row keeps its place in line.
+#[tokio::test]
+async fn test_a_row_removed_while_shuffled_is_absent_after_unshuffling() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+    f.play_from("t1").await;
+    f.queue.set_shuffle(true).await.unwrap();
+    let removed = f.upcoming_entries().await[0].clone();
+    f.queue.remove(removed.id).await.unwrap();
 
-    q.set_shuffle(false, 0);
+    f.queue.set_shuffle(false).await.unwrap();
 
-    assert_eq!(q.current_track_id(), Some("t1"));
-    let expected: Vec<&str> = ["t2", "t3", "t4", "t5"]
+    let removed_track = f.name(&removed.track_id);
+    assert_eq!(f.current(), "t1");
+    let expected: Vec<String> = names(&["t2", "t3", "t4", "t5"])
         .into_iter()
         .filter(|t| *t != removed_track)
         .collect();
-    assert_eq!(
-        upcoming_tracks(&q),
-        expected,
-        "the removed row is absent; the survivors keep their place in line"
-    );
+    assert_eq!(f.upcoming().await, expected);
 }
 
-/// `set_shuffle` names the state it wants, so asking for the state the lane is
-/// already in changes nothing — no re-permutation, no revision bump.
-#[test]
-fn test_set_shuffle_to_the_current_state_is_idempotent() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(0));
-    q.set_shuffle(true, 7);
-    let order = q.context_order();
-    let revision = q.revision();
+/// Asking for the order the lane already has changes nothing.
+#[tokio::test]
+async fn test_set_shuffle_to_the_current_state_is_idempotent() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+    f.play_from("t1").await;
+    f.queue.set_shuffle(true).await.unwrap();
+    let order = f.context_order().await;
+    let revision = f.revision().await;
 
-    q.set_shuffle(true, 99);
+    f.queue.set_shuffle(true).await.unwrap();
 
-    assert_eq!(q.context_order(), order, "the lane is not re-permuted");
-    assert_eq!(
-        q.revision(),
-        revision,
-        "an already-shuffled lane doesn't bump"
-    );
+    assert_eq!(f.context_order().await, order, "the lane is not shuffled again");
+    assert_eq!(f.revision().await, revision);
 
-    q.set_shuffle(false, 0);
-    let sequential_revision = q.revision();
-    q.set_shuffle(false, 0);
-    assert_eq!(
-        q.revision(),
-        sequential_revision,
-        "an already-sequential lane doesn't bump"
-    );
+    f.queue.set_shuffle(false).await.unwrap();
+    let sequential = f.revision().await;
+    f.queue.set_shuffle(false).await.unwrap();
+    assert_eq!(f.revision().await, sequential);
 }
 
-#[test]
-fn test_set_shuffle_off_restores_source_order_from_current() {
-    let mut q = queue();
-    q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3", "t4", "t5"]), ContextStart::Index(2));
-    assert_eq!(q.current_track_id(), Some("t3"));
+#[tokio::test]
+async fn test_set_shuffle_off_restores_source_order_from_current() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+    f.play_from("t3").await;
+    f.queue.set_shuffle(true).await.unwrap();
+    assert_eq!(f.current(), "t3");
 
-    // On then off; the playing track rides through to a restored source order.
-    q.set_shuffle(true, 7);
-    assert!(q.context_projection().unwrap().shuffled);
-    assert_eq!(q.current_track_id(), Some("t3"));
+    f.queue.set_shuffle(false).await.unwrap();
 
-    q.set_shuffle(false, 0);
-
-    // Same playing track; the order is back to source order, cursor on it.
-    assert_eq!(q.current_track_id(), Some("t3"));
-    let ctx = q.context_projection().expect("a release is playing");
-    assert!(
-        !ctx.shuffled,
-        "the context is sequential after turning shuffle off"
-    );
-    assert_eq!(
-        full_order(&q),
-        vec!["t3", "t4", "t5"],
-        "source order resumes from the current track"
-    );
+    assert_eq!(f.current(), "t3");
+    assert!(!f.value().await.context.unwrap().shuffled);
+    assert_eq!(f.full_order().await, names(&["t3", "t4", "t5"]));
 }
 
-/// A shuffled fill permutes the whole lane; unshuffling it lands on source
-/// order from the track that is playing.
-#[test]
-fn test_shuffled_fill_then_unshuffle_yields_source_order() {
-    let mut q = queue();
-    q.play_release(
-        rel_src("r1"),
-        rel(&["t1", "t2", "t3", "t4", "t5"]),
-        ContextStart::Shuffled { seed: 7 },
-    );
-    let played_first = q.current_track_id().unwrap().to_string();
+/// A shuffled play shuffles the whole lane; unshuffling it lands on source
+/// order after the track that is playing.
+#[tokio::test]
+async fn test_shuffled_play_then_unshuffle_yields_source_order() {
+    let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
+    let played_first = f.play(ReleaseStart::Shuffled).await;
 
-    q.set_shuffle(false, 0);
+    f.queue.set_shuffle(false).await.unwrap();
 
-    assert_eq!(
-        q.current_track_id().unwrap(),
-        played_first,
-        "the playing track keeps playing"
-    );
-    let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
-    .into_iter()
-    .filter(|t| *t != played_first)
-    .collect();
-    assert_eq!(upcoming_tracks(&q), expected, "source order resumes");
+    assert_eq!(f.current(), played_first, "the playing track keeps playing");
+    let expected: Vec<String> = names(&["t1", "t2", "t3", "t4", "t5"])
+        .into_iter()
+        .filter(|t| *t != played_first)
+        .collect();
+    assert_eq!(f.upcoming().await, expected, "source order resumes");
 }
-
-// -- persistence round-trips -----------------------------------------------

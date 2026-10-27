@@ -269,19 +269,13 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
     )
     .await
     .expect("import the CUE/FLAC album");
-    let state = bae_core::db::DbPlaybackState {
-        context: None,
-        manual: "[]".to_string(),
-        repeat: "off".to_string(),
-        current_track_id: Some(imported.track_ids[1].clone()),
-        position_ms: None,
-        volume: 0.8,
-        is_muted: false,
-    };
-    library_manager.save_playback_state(&state).await.unwrap();
+    library_manager
+        .write_resume_point(&imported.release_id, imported.track_ids[1].clone(), None)
+        .await
+        .unwrap();
 
     let (handle, _capture_rx) =
-        start_capture_service(library_manager, tokio::runtime::Handle::current());
+        start_capture_service(library_manager, tokio::runtime::Handle::current()).await;
     let mut progress_rx = handle.subscribe_progress();
     let shown = support::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| {
         match event {

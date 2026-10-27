@@ -41,12 +41,15 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
     .await
     .expect("import the release");
     let (device, _capture) = bae_core::playback::RealtimeCaptureAudioDevice::new();
-    let playback = manager.start_playback_service_with_audio_device(
-        tokio::runtime::Handle::current(),
-        100,
-        false,
-        Box::new(device),
-    );
+    let playback = manager
+        .start_playback_service_with_audio_device(
+            tokio::runtime::Handle::current(),
+            100,
+            false,
+            Box::new(device),
+        )
+        .await
+        .expect("start playback");
     let mut progress = playback.subscribe_progress();
     let import = manager
         .start_import_service(tokio::runtime::Handle::current())

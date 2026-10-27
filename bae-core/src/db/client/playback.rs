@@ -1,22 +1,6 @@
 use super::*;
 
 impl Database {
-    /// Follow the display rows for the tracks `initial` names. The queue
-    /// changes by pointing the same query at new tracks through its request
-    /// handle, not by opening another one; a queue change that plays the same
-    /// tracks in another order is not a new request at all.
-    pub(crate) fn subscribe_queue_catalog(
-        &self,
-        initial: QueueCatalogRequest,
-    ) -> coven::ReconfigurableLiveQuery<QueueCatalogRequest, QueueCatalogProjection> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |request, sql| {
-                queue_catalog_on(&sql, request).map_err(CovenError::from)
-            })
-            .process(Ok)
-    }
-
     /// Follow the display of the track `initial` names, `None` when it names
     /// none or the library no longer holds it. The playing track changes by
     /// pointing the same query at the new track through its request handle.
@@ -78,24 +62,18 @@ impl Database {
     pub async fn save_playback_state(&self, state: &DbPlaybackState) -> Result<(), DbError> {
         let state = state.clone();
         self.call(move |conn| {
-            // Flatten the context substruct back to the table's nullable
-            // columns: all NULL when no context is playing.
-            let (source, shuffled) = match &state.context {
-                Some(ctx) => (Some(&ctx.source), Some(ctx.shuffled)),
+            let (current_entry, current_track_id) = match &state.current {
+                Some(current) => (Some(current.id.0), Some(current.track_id.clone())),
                 None => (None, None),
             };
             conn.execute(
                 "INSERT OR REPLACE INTO playback_state \
-                     (id, source, shuffled, manual, repeat, \
-                      current_track_id, position_ms, volume, is_muted) \
-                     VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?)",
+                     (id, current_entry, current_track_id, position_ms, volume, is_muted) \
+                     VALUES ('current', ?, ?, ?, ?, ?)",
                 params![
-                    source,
-                    shuffled,
-                    state.manual,
-                    state.repeat,
-                    state.current_track_id,
-                    state.position_ms,
+                    current_entry,
+                    current_track_id,
+                    state.position_ms.map(|position| position as i64),
                     state.volume,
                     state.is_muted,
                 ],
@@ -106,65 +84,33 @@ impl Database {
         .await
     }
 
-    /// Read the device-local `playback_state` row: [`LoadedPlaybackState::Present`]
-    /// with the row, [`LoadedPlaybackState::Absent`] when none is stored, or
-    /// [`LoadedPlaybackState::Corrupt`] for a structurally-impossible row. The
-    /// three are distinct so the caller counts and clears a corrupt cache rather
-    /// than silently starting fresh over a masked failure.
-    pub async fn load_playback_state(&self) -> Result<LoadedPlaybackState, DbError> {
+    /// Read the device-local `playback_state` row, `None` when none is stored.
+    pub async fn load_playback_state(&self) -> Result<Option<DbPlaybackState>, DbError> {
         self.read(move |sql| {
-            // The closure's `None` is a corrupt row; the outer `.optional()`'s
-            // `None` is no row at all — the two stay distinct below.
-            let loaded = sql
+            Ok(sql
                 .query_row(
-                    "SELECT source, shuffled, manual, repeat, \
-                     current_track_id, position_ms, volume, is_muted \
+                    "SELECT current_entry, current_track_id, position_ms, volume, is_muted \
                      FROM playback_state WHERE id = 'current'",
                     [],
                     |row| {
-                        // `source` and `shuffled` are written together: both
-                        // present is a context, both absent is no context,
-                        // exactly one present is a corrupt row.
-                        let source: Option<String> = row.get("source")?;
-                        let shuffled: Option<bool> = row.get("shuffled")?;
-                        let context = match (source, shuffled) {
-                            (Some(source), Some(shuffled)) => {
-                                Some(DbPlaybackContext { source, shuffled })
-                            }
-                            (None, None) => None,
-                            (Some(source), None) => {
-                                warn!(
-                                    "discarding the playback resume cache: source {source:?} \
-                                     present but shuffled is NULL"
-                                );
-                                return Ok(None);
-                            }
-                            (None, Some(shuffled)) => {
-                                warn!(
-                                    "discarding the playback resume cache: shuffled {shuffled} \
-                                     present but source is NULL"
-                                );
-                                return Ok(None);
-                            }
-                        };
-                        Ok(Some(DbPlaybackState {
-                            context,
-                            manual: row.get("manual")?,
-                            repeat: row.get("repeat")?,
-                            current_track_id: row.get("current_track_id")?,
-                            position_ms: row.get("position_ms")?,
+                        let entry: Option<i64> = row.get("current_entry")?;
+                        let track_id: Option<String> = row.get("current_track_id")?;
+                        // The schema keeps `position_ms` non-negative.
+                        let position_ms: Option<i64> = row.get("position_ms")?;
+                        Ok(DbPlaybackState {
+                            current: entry.zip(track_id).map(|(entry, track_id)| {
+                                crate::playback::QueueEntry {
+                                    id: crate::playback::QueueEntryId(entry),
+                                    track_id,
+                                }
+                            }),
+                            position_ms: position_ms.map(|position| position as u64),
                             volume: row.get("volume")?,
                             is_muted: row.get("is_muted")?,
-                        }))
+                        })
                     },
                 )
-                .optional()
-                .map_err(DbError::from)?;
-            Ok(match loaded {
-                None => LoadedPlaybackState::Absent,
-                Some(None) => LoadedPlaybackState::Corrupt,
-                Some(Some(row)) => LoadedPlaybackState::Present(row),
-            })
+                .optional()?)
         })
         .await
     }
@@ -196,71 +142,60 @@ impl Database {
     }
 }
 
-/// Each requested track's display, and its catalog duration the queue rows
-/// show: its title, its credited artists (the album's when the track credits
-/// none), its album, the release it is on, and that release's cover. The
-/// cover is the track's own release's, not the album's primary release's, so
-/// a track from a non-primary release shows that release's art. Its `covers`
-/// row joins in here rather than in a second query, giving each track the
-/// versioned reference the UI caches art under; a release with no cover row
-/// yields `None`. A requested track the library no longer holds is absent.
-fn track_displays_on(
-    sql: &SqlReadContext<'_>,
-    track_ids: &BTreeSet<String>,
-) -> Result<HashMap<String, TrackQueueMeta>, DbError> {
-    let track_ids: Vec<&String> = track_ids.iter().collect();
-    let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
-    for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
-        let placeholders = in_clause_placeholders(chunk.len());
-        let query = format!(
-            "SELECT \
-                t.id AS track_id, t.title, t.duration_ms, a.id AS album_id, \
-                a.title AS album_title, r.id AS release_id, c.revision AS cover_revision, \
-                c.hash AS cover_hash, \
-                {artist_names} AS artist_names \
-             FROM tracks t \
-             JOIN releases r ON r.id = t.release_id \
-             JOIN albums a ON a.id = r.album_id \
-             LEFT JOIN covers c ON c.id = r.id \
-             WHERE t.id IN ({placeholders})",
-            artist_names = track_credits_json_sql("t"),
-        );
-        meta_by_track.extend(sql.query(
-            &query,
-            rusqlite::params_from_iter(chunk.iter()),
-            |row| {
-                let track_id: String = row.get("track_id")?;
-                let release_id: String = row.get("release_id")?;
-                // A release's cover image is keyed by the release's id.
-                let cover_image = match row.get::<_, Option<String>>("cover_revision")? {
-                    Some(revision) => Some(crate::album_detail::ImageRef {
-                        id: release_id.clone(),
-                        version: super::files::image_version(
-                            &revision,
-                            row.get::<_, Option<Vec<u8>>>("cover_hash")?.as_deref(),
-                        ),
-                        image_type: LibraryImageType::Cover,
-                    }),
-                    None => None,
-                };
-                Ok((
-                    track_id,
-                    TrackQueueMeta {
-                        display: crate::playback::TrackDisplay {
-                            title: row.get("title")?,
-                            artist_names: credit_line_column(row, "artist_names")?,
-                            album_id: row.get("album_id")?,
-                            release_id,
-                            album_title: row.get("album_title")?,
-                            cover_image,
-                        },
-                        duration_ms: row.get("duration_ms")?,
-                    },
-                ))
-            },
-        )?);
-    }
-    Ok(meta_by_track)
+/// A track's display and its catalog duration, as the queue rows show it.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct TrackQueueMeta {
+    pub(super) display: crate::playback::TrackDisplay,
+    pub(super) duration_ms: u64,
+}
+
+/// The joins from `tracks t` that [`track_display_columns`] reads: the
+/// release the track is on, its album, and that release's cover.
+pub(super) const TRACK_DISPLAY_JOINS: &str = "JOIN releases r ON r.id = t.release_id \
+     JOIN albums a ON a.id = r.album_id \
+     LEFT JOIN covers c ON c.id = r.id";
+
+/// The columns of a track's display over `tracks t` and
+/// [`TRACK_DISPLAY_JOINS`], which [`track_queue_meta_from_row`] reads: its
+/// title, its credited artists (the album's when the track credits none), its
+/// album, the release it is on, and that release's cover. The cover is the
+/// track's own release's, not the album's primary release's, so a track from
+/// a non-primary release shows that release's art; its versioned reference is
+/// what the UI caches art under, and a release with no cover row has none.
+pub(super) fn track_display_columns() -> String {
+    format!(
+        "t.id AS track_id, t.title, t.duration_ms, a.id AS album_id, \
+         a.title AS album_title, r.id AS release_id, c.revision AS cover_revision, \
+         c.hash AS cover_hash, {artist_names} AS artist_names",
+        artist_names = track_credits_json_sql("t"),
+    )
+}
+
+pub(super) fn track_queue_meta_from_row(row: &Row<'_>) -> rusqlite::Result<TrackQueueMeta> {
+    let release_id: String = row.get("release_id")?;
+    // A release's cover image is keyed by the release's id.
+    let cover_image = match row.get::<_, Option<String>>("cover_revision")? {
+        Some(revision) => Some(crate::album_detail::ImageRef {
+            id: release_id.clone(),
+            version: super::files::image_version(
+                &revision,
+                row.get::<_, Option<Vec<u8>>>("cover_hash")?.as_deref(),
+            ),
+            image_type: LibraryImageType::Cover,
+        }),
+        None => None,
+    };
+    Ok(TrackQueueMeta {
+        display: crate::playback::TrackDisplay {
+            title: row.get("title")?,
+            artist_names: credit_line_column(row, "artist_names")?,
+            album_id: row.get("album_id")?,
+            release_id,
+            album_title: row.get("album_title")?,
+            cover_image,
+        },
+        duration_ms: row.get("duration_ms")?,
+    })
 }
 
 /// The display of `track_id`, or `None` when the library no longer holds it.
@@ -268,73 +203,16 @@ fn track_display_on(
     sql: &SqlReadContext<'_>,
     track_id: &str,
 ) -> Result<Option<crate::playback::TrackDisplay>, DbError> {
-    Ok(
-        track_displays_on(sql, &BTreeSet::from([track_id.to_string()]))?
-            .remove(track_id)
-            .map(|meta| meta.display),
-    )
-}
-
-fn queue_catalog_on(
-    sql: &SqlReadContext<'_>,
-    request: &QueueCatalogRequest,
-) -> Result<QueueCatalogProjection, DbError> {
-    let tracks = track_displays_on(sql, &request.track_ids)?;
-    let source_title = match request.context_release_id.as_deref() {
-        None => None,
-        Some(release_id) => {
-            let album_id = find_release_by_id_on(sql, release_id)?.map(|release| release.album_id);
-            match album_id {
-                None => None,
-                Some(album_id) => find_album_by_id_on(sql, &album_id)?.map(|album| album.title),
-            }
-        }
-    };
-    Ok(QueueCatalogProjection {
-        tracks,
-        source_title,
-    })
-}
-
-/// What a catalog read reads: the distinct tracks the queue shows, and the
-/// release a release context plays from, which names the queue's source. The
-/// queue's entries — which instance of a track sits where — are not read from
-/// the database, so they are not part of the request; the consumer joins them
-/// onto the tracks it read.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct QueueCatalogRequest {
-    pub track_ids: BTreeSet<String>,
-    pub context_release_id: Option<String>,
-}
-
-impl QueueCatalogRequest {
-    /// The request that reads every track `entries` play.
-    pub(crate) fn for_entries<'a>(
-        entries: impl IntoIterator<Item = &'a QueueEntry>,
-        context_release_id: Option<String>,
-    ) -> Self {
-        Self {
-            track_ids: entries
-                .into_iter()
-                .map(|entry| entry.track_id.clone())
-                .collect(),
-            context_release_id,
-        }
-    }
-}
-
-/// The display metadata of each requested track, and the source title.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct QueueCatalogProjection {
-    tracks: HashMap<String, TrackQueueMeta>,
-    pub source_title: Option<String>,
-}
-
-impl QueueCatalogProjection {
-    /// One item per entry whose track this read found, in entry order. An
-    /// entry whose track was not requested or is gone from the library is
-    /// skipped.
-    pub(crate) fn items(&self, entries: &[QueueEntry]) -> Vec<QueueItem> {
-        resolve_queue_entries(&self.tracks, entries)
-    }
+    Ok(sql
+        .query_row(
+            &format!(
+                "SELECT {columns} FROM tracks t {joins} WHERE t.id = ?",
+                columns = track_display_columns(),
+                joins = TRACK_DISPLAY_JOINS,
+            ),
+            [track_id],
+            track_queue_meta_from_row,
+        )
+        .optional()?
+        .map(|meta| meta.display))
 }

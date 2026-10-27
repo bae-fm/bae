@@ -9,42 +9,14 @@ impl LibraryManager {
         Ok(self.database.get_track_ids_for_release(release_id).await?)
     }
 
-    /// Every track id in the library, in a deterministic base order. Used to
-    /// materialize a `ContextSource::Library` context (shuffle library, and the
-    /// `Context`-repeat re-derive of a library context).
+    /// Every track id in the library, in a deterministic base order, for a
+    /// listing that pages through every song.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, LibraryError> {
         Ok(self.database.get_all_track_ids().await?)
     }
 
-    /// A track's play context: its release id, that release's full track order, and
-    /// the track's index within it. The playback service builds the queue around a
-    /// freshly selected track from this, without chaining library calls.
-    pub async fn get_play_context(&self, track_id: &str) -> Result<PlayContext, LibraryError> {
-        let track = self
-            .database
-            .find_track_by_id(track_id)
-            .await?
-            .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {}", track_id)))?;
-        let release_id = track.release_id;
-        let track_ids = self.database.get_track_ids_for_release(&release_id).await?;
-        let index = track_ids
-            .iter()
-            .position(|id| id == track_id)
-            .ok_or_else(|| {
-                LibraryError::TrackMapping(format!(
-                    "Track {} not present in its release {}",
-                    track_id, release_id
-                ))
-            })?;
-        Ok(PlayContext {
-            release_id,
-            track_ids,
-            index,
-        })
-    }
-
-    /// The subset of `ids` that still exist in the tracks table. Playback restore
-    /// validates a persisted queue with this in one query, not one per track.
+    /// The subset of `ids` that still exist in the tracks table, in one query
+    /// rather than one per track.
     pub async fn filter_existing_track_ids(
         &self,
         ids: &[String],
@@ -74,66 +46,32 @@ impl LibraryManager {
         Ok(track_ids)
     }
 
-    pub(crate) fn subscribe_queue_catalog(
+    /// The playback queue's tables, which the playback service changes.
+    pub(crate) fn playback_queue_tables(&self) -> crate::db::PlaybackQueueTables {
+        self.database.playback_queue_tables()
+    }
+
+    /// Follow the queue as its screens show it.
+    pub(crate) fn subscribe_queue_value(
         &self,
-        initial: crate::db::QueueCatalogRequest,
+    ) -> coven::LiveQuery<crate::queue::ResolvedQueueSnapshot> {
+        self.database.subscribe_queue_value()
+    }
+
+    /// The queue as its screens show it now.
+    pub async fn queue_value(&self) -> Result<crate::queue::ResolvedQueueSnapshot, LibraryError> {
+        Ok(self.database.queue_value().await?)
+    }
+
+    /// Follow the windows `initial` names of the context lane's upcoming tracks.
+    pub(crate) fn subscribe_queue_upcoming(
+        &self,
+        initial: crate::library::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::db::QueueCatalogRequest,
-        crate::db::QueueCatalogProjection,
+        crate::library::LibraryPageWindows,
+        crate::library::QueueUpcomingSnapshot,
     > {
-        self.database.subscribe_queue_catalog(initial)
-    }
-
-    /// `entries` joined onto the tracks `catalog` read, counting each entry
-    /// whose track the read did not find.
-    pub(crate) fn resolve_queue_entries(
-        &self,
-        catalog: &crate::db::QueueCatalogProjection,
-        entries: &[crate::playback::QueueEntry],
-    ) -> Vec<QueueItem> {
-        let items = catalog.items(entries);
-        let dropped = entries.len().saturating_sub(items.len());
-        for _ in 0..dropped {
-            self.diagnostics.event(TelemetryEvent::Anomaly {
-                kind: crate::diagnostics::AnomalyKind::QueueTrackNoMetadata,
-            });
-        }
-        items
-    }
-
-    /// The queue value: the manual lane in full, and only the first
-    /// `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming tail — the
-    /// rest is read by `AppServices::subscribe_queue_upcoming`. That tail is
-    /// library-scaled — a `Library` source's tail is every remaining track —
-    /// so `catalog` is read for the window only (see
-    /// [`queue_catalog_request`]), which keeps this bounded regardless of
-    /// library size.
-    pub(crate) fn resolve_queue_catalog(
-        &self,
-        projection: crate::playback::PlaybackQueueProjection,
-        catalog: crate::db::QueueCatalogProjection,
-    ) -> crate::queue::ResolvedQueueSnapshot {
-        let manual = self.resolve_queue_entries(&catalog, &projection.manual);
-        let context = projection.context.map(|context| {
-            let window = &context.upcoming[..context
-                .upcoming
-                .len()
-                .min(crate::queue::QUEUE_UPCOMING_WINDOW)];
-            crate::queue::ResolvedContext {
-                upcoming: self.resolve_queue_entries(&catalog, window),
-                upcoming_total: context.upcoming.len() as u64,
-                source: context.source,
-                source_title: catalog.source_title.clone(),
-                shuffled: context.shuffled,
-            }
-        });
-        crate::queue::ResolvedQueueSnapshot {
-            manual,
-            context,
-            has_next: projection.has_next,
-            has_previous: projection.has_previous,
-            revision: projection.revision,
-        }
+        self.database.subscribe_queue_upcoming(initial)
     }
 
     /// The file record for a file id — streaming looks the id up on the track's
@@ -205,29 +143,4 @@ impl LibraryManager {
     ) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::playback::PlaybackTrackInfo>> {
         self.database.subscribe_playback_track_infos(initial)
     }
-}
-
-/// What resolving `projection` reads: the tracks of the manual lane in full
-/// and of the first `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming
-/// tail.
-pub(crate) fn queue_catalog_request(
-    projection: &crate::playback::PlaybackQueueProjection,
-) -> crate::db::QueueCatalogRequest {
-    let context_window = projection.context.as_ref().into_iter().flat_map(|context| {
-        context
-            .upcoming
-            .iter()
-            .take(crate::queue::QUEUE_UPCOMING_WINDOW)
-    });
-    let context_release_id = projection.context.as_ref().and_then(|context| {
-        if let crate::playback::ContextSource::Release(release_id) = &context.source {
-            Some(release_id.clone())
-        } else {
-            None
-        }
-    });
-    crate::db::QueueCatalogRequest::for_entries(
-        projection.manual.iter().chain(context_window),
-        context_release_id,
-    )
 }

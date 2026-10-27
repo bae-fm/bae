@@ -17,22 +17,23 @@ impl PlaybackService {
         self.preloaded_next.as_ref().map(PreloadedNext::track_id)
     }
 
+    /// The library deleted `track_ids`. Their queue rows left with them; the
+    /// entry playing may be one of them.
     pub(super) async fn handle_tracks_deleted(&mut self, track_ids: Vec<String>) {
         let ids: HashSet<String> = track_ids.into_iter().collect();
 
-        let current_deleted = self
-            .playback_queue
-            .current_track_id()
-            .map(|s| ids.contains(s))
-            .unwrap_or(false);
-
-        self.playback_queue.apply(|queue| queue.remove_by_ids(&ids));
-
-        if current_deleted {
+        if self.playback_queue.forget_deleted_current(&ids) {
             self.stop().await;
 
             // Play on from what's left of the queue, or stay stopped.
-            if let Some(next_id) = self.playback_queue.apply(|queue| queue.advance_to_front()) {
+            let next = match self.playback_queue.advance_to_front().await {
+                Ok(next) => next,
+                Err(e) => {
+                    self.queue_failed("move the queue past a deleted track", e);
+                    None
+                }
+            };
+            if let Some(next_id) = next {
                 self.play_track(
                     &next_id,
                     TrackStart::Direct,
@@ -52,8 +53,13 @@ impl PlaybackService {
     }
 
     pub(super) async fn preload_queue_front(&mut self) {
-        if let Some(next_id) = self.playback_queue.front().map(str::to_string) {
-            self.preload_next_track(&next_id).await;
+        match self.playback_queue.front().await {
+            Ok(Some(next_id)) => self.preload_next_track(&next_id).await,
+            Ok(None) => {}
+            Err(e) => {
+                error!("couldn't read the queue's next track to preload: {e}");
+                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+            }
         }
     }
 
@@ -176,12 +182,15 @@ impl PlaybackService {
             return Err(());
         };
 
-        let Some(next_track_id) = self
-            .playback_queue
-            .next_sequential_context_track()
-            .map(str::to_string)
-        else {
-            return Ok(None);
+        let next_track_id = match self.playback_queue.next_sequential_context_track().await {
+            Ok(Some(next_track_id)) => next_track_id,
+            Ok(None) => return Ok(None),
+            Err(error) => {
+                error!(
+                    "failed to read the queue's next track for the side-pause decision: {error}"
+                );
+                return Err(());
+            }
         };
 
         let boundary = self
@@ -347,7 +356,15 @@ impl PlaybackService {
             return;
         }
 
-        let Some(front) = self.playback_queue.front().map(str::to_string) else {
+        let front = match self.playback_queue.front().await {
+            Ok(front) => front,
+            Err(e) => {
+                self.queue_failed("read the queue's next track", e);
+                self.abandon_side_pause();
+                return;
+            }
+        };
+        let Some(front) = front else {
             error!("side-pause resume expected {pending_track_id}, but the queue is empty");
             self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
             self.abandon_side_pause();
@@ -359,7 +376,7 @@ impl PlaybackService {
             self.abandon_side_pause();
             return;
         }
-        match self.playback_queue.apply(|queue| queue.next_entry()) {
+        match self.next_entry().await {
             NextEntry::Play(track_id) => {
                 self.play_track(
                     &track_id,
@@ -465,9 +482,16 @@ impl PlaybackService {
             Some(id) => id.to_string(),
             None => return,
         };
-        let queue_front = match self.playback_queue.front() {
-            Some(id) => id.to_string(),
-            None => {
+        let queue_front = match self.playback_queue.front().await {
+            Ok(Some(id)) => id,
+            Ok(None) => {
+                self.clear_next_track_state();
+                return;
+            }
+            // Which track follows is unknown, so no preload is known to be it.
+            Err(e) => {
+                error!("couldn't read the queue's next track to check the preload: {e}");
+                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
                 self.clear_next_track_state();
                 return;
             }
@@ -589,7 +613,10 @@ impl PlaybackService {
         // the track preloaded below.
         self.mark_current_foreground();
 
-        self.advance_to_preloaded();
+        if !self.advance_to_preloaded().await {
+            self.stop().await;
+            return;
+        }
         if !self.begin_listening().await {
             self.stop().await;
             return;
@@ -608,15 +635,20 @@ impl PlaybackService {
     /// Used by `Next`, `AutoAdvance` (preloaded path), and the gapless boundary
     /// handler. The front IS the track being played: the preload refreshes
     /// whenever the queue mutates, so the front we advance to and the track these
-    /// callers go on to play are the same one.
-    pub(super) fn advance_to_preloaded(&mut self) {
-        if self
-            .playback_queue
-            .apply(|queue| queue.advance_to_front())
-            .is_none()
-        {
-            warn!("advance_to_preloaded: queue had no front to advance to");
-            self.telemetry_anomaly(AnomalyKind::PreloadStateMissing);
+    /// callers go on to play are the same one. `false` when the queue's write
+    /// failed: the queue no longer says what is playing, so the caller stops.
+    pub(super) async fn advance_to_preloaded(&mut self) -> bool {
+        match self.playback_queue.advance_to_front().await {
+            Ok(Some(_)) => true,
+            Ok(None) => {
+                warn!("advance_to_preloaded: queue had no front to advance to");
+                self.telemetry_anomaly(AnomalyKind::PreloadStateMissing);
+                true
+            }
+            Err(e) => {
+                self.queue_failed("advance the queue to the preloaded track", e);
+                false
+            }
         }
     }
 
@@ -640,15 +672,17 @@ impl PlaybackService {
         } else {
             TrackTransition::Manual
         };
+        if !self.advance_to_preloaded().await {
+            self.stop().await;
+            return;
+        }
         if self.has_preloaded_next() {
             info!("Using preloaded track: {}", preloaded_track_id);
-            self.advance_to_preloaded();
             self.play_preloaded_track(natural, target, transition).await;
         } else {
             // A preload started but has no stream yet. `play_track` discards the
             // half-ready preload itself and keeps its file buffers — it is about
             // to play the same track.
-            self.advance_to_preloaded();
             self.play_track(
                 preloaded_track_id,
                 TrackStart::from_natural_transition(natural),

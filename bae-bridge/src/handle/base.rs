@@ -357,14 +357,25 @@ forward! { sync this => {
     }
 
     fn remove_entry(entry_id: String) {
-        this.services.playback_remove_entry(QueueEntryId(entry_id));
+        if let Some(entry_id) = queue_entry_id(&entry_id) {
+            this.services.playback_remove_entry(entry_id);
+        }
     }
 
     /// Move the entry `entry_id` to sit immediately before `before_entry_id`.
     /// `before_entry_id == None` moves it to the end of the queue.
     fn reorder_entry(entry_id: String, before_entry_id: Option<String>) {
-        this.services
-            .playback_reorder_entry(QueueEntryId(entry_id), before_entry_id.map(QueueEntryId));
+        let Some(entry_id) = queue_entry_id(&entry_id) else {
+            return;
+        };
+        let before = match before_entry_id {
+            None => None,
+            Some(before) => match queue_entry_id(&before) {
+                Some(before) => Some(before),
+                None => return,
+            },
+        };
+        this.services.playback_reorder_entry(entry_id, before);
     }
 
     fn clear_up_next() {
@@ -376,7 +387,9 @@ forward! { sync this => {
     }
 
     fn skip_to_entry(entry_id: String) {
-        this.services.playback_skip_to_entry(QueueEntryId(entry_id));
+        if let Some(entry_id) = queue_entry_id(&entry_id) {
+            this.services.playback_skip_to_entry(entry_id);
+        }
     }
 
     // ── Download (pin) queue ─────────────────────────────────────────
@@ -405,3 +418,15 @@ forward! { sync this => {
         this.services.retry_downloads();
     }
 } }
+
+/// The queue entry a UI names by the id its queue rows carry. Every id the
+/// bridge hands out parses; one that doesn't names no entry, and is logged.
+fn queue_entry_id(entry_id: &str) -> Option<QueueEntryId> {
+    match entry_id.parse() {
+        Ok(entry_id) => Some(entry_id),
+        Err(e) => {
+            tracing::warn!("queue entry id {entry_id:?} is not one the queue hands out: {e}");
+            None
+        }
+    }
+}

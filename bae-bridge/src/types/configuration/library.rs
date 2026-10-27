@@ -265,7 +265,7 @@ pub struct BridgeQueueSnapshot {
     pub context: Option<BridgePlaybackContext>,
     pub has_next: bool,
     pub has_previous: bool,
-    /// The queue revision this snapshot was resolved from. The UI shows the
+    /// The queue revision this snapshot was read at. The UI shows the
     /// upcoming windows it reads past `context.upcoming` only while their
     /// revision matches this one.
     pub revision: u64,

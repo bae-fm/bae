@@ -192,7 +192,7 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     let (handle, _capture_rx) = start_capture_service(
         playback.library_manager.clone(),
         playback.runtime_handle.clone(),
-    );
+    ).await;
     let mut progress_rx = handle.subscribe_progress();
 
     wait_for_state_on(
@@ -218,12 +218,12 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
 }
 
 /// With the "Restore on launch" preference off, a service that starts over a
-/// saved `playback_state` row must come up with nothing in playback: empty
-/// queue, no current track, no restored state emission. The row itself stays —
-/// it's the crash-safe resume point, and flipping the preference back on
-/// restores it at the next launch.
+/// saved session must come up with nothing in playback: empty queue, no
+/// current track, no restored state emission. Starting forgets the session —
+/// the queue and the resume row together — so a later launch with the
+/// preference on resumes nothing from before it.
 #[tokio::test(flavor = "multi_thread")]
-async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
+async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     let mut playback = MultiWindowPlayback::new("multi-window-restore-off").await;
     let track = playback.track_ids[0].clone();
     playback.play_and_wait(&track).await;
@@ -231,14 +231,12 @@ async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
     // Persist mid-track and tear the service down, like an app quit.
     playback.playback_handle.shutdown().await;
     assert!(
-        matches!(
-            playback
-                .library_manager
-                .load_playback_state()
-                .await
-                .expect("read the resume row"),
-            bae_core::db::LoadedPlaybackState::Present(_)
-        ),
+        playback
+            .library_manager
+            .load_playback_state()
+            .await
+            .expect("read the resume row")
+            .is_some(),
         "shutdown persists a resume row while a track is current"
     );
 
@@ -247,7 +245,8 @@ async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
         playback.library_manager.clone(),
         playback.runtime_handle.clone(),
         false,
-    );
+    )
+    .await;
     let mut progress_rx = handle.subscribe_progress();
 
     // No restored Paused/Playing state may surface. The bounded window is
@@ -268,24 +267,19 @@ async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
         "restore-off must not surface a restored playback state, got {restored:?}"
     );
 
-    let queue = handle.queue_projection().await.expect("queue projection");
+    let queue = handle.queue_value().await.expect("queue value");
     assert!(
         queue.manual.is_empty() && queue.context.is_none(),
         "restore-off starts with an empty queue"
     );
-
-    // The row survives the skipped restore, so turning the preference on
-    // restores this session at the next launch.
     assert!(
-        matches!(
-            playback
-                .library_manager
-                .load_playback_state()
-                .await
-                .expect("re-read the resume row"),
-            bae_core::db::LoadedPlaybackState::Present(_)
-        ),
-        "the resume row must survive a restore-off launch"
+        playback
+            .library_manager
+            .load_playback_state()
+            .await
+            .expect("re-read the resume row")
+            .is_none(),
+        "restore-off forgets the resume row with the queue"
     );
 }
 
@@ -375,7 +369,7 @@ async fn remove_entry_refreshes_preloaded_track_over_sparse_buffer() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.remove_entry(entries[0].id.clone()),
+        |h, entries| h.remove_entry(entries[0].id),
     )
     .await;
 }
@@ -393,7 +387,7 @@ async fn reorder_entry_displaces_preloaded_track_over_sparse_buffer() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
+        |h, entries| h.reorder_entry(entries[1].id, Some(entries[0].id)),
     )
     .await;
 }
@@ -438,7 +432,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
         .iter()
         .find(|e| e.track_id == third)
         .expect("the third track is queued in the context");
-    playback.playback_handle.skip_to_entry(target.id.clone());
+    playback.playback_handle.skip_to_entry(target.id);
     wait_for_state_on(
         &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
@@ -462,9 +456,9 @@ async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
     playback.playback_handle.set_shuffle(true);
     let shuffled = playback
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert!(
         shuffled.context.as_ref().is_some_and(|c| c.shuffled),
         "SetShuffle(true) puts the lane in shuffled order"
@@ -473,9 +467,9 @@ async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
     playback.playback_handle.set_shuffle(false);
     let sequential = playback
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert!(
         !sequential
             .context

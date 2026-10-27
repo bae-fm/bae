@@ -225,7 +225,7 @@ impl CueFlacTestFixture {
             "Should have 3 tracks from CUE/FLAC"
         );
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, device);
+            support::start_capture_playback(&library_manager, device).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -317,7 +317,7 @@ impl SidePauseTestFixture {
             &library_manager,
             support::TestAudioDevice::RealtimeCapture,
             clock.clone(),
-        );
+        ).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,

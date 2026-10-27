@@ -41,7 +41,6 @@ use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
-use crate::queue::QueueItem;
 use crate::sync::S3ConfigData;
 use coven::ClockRef;
 use coven::IdSourceRef;
@@ -120,7 +119,6 @@ use error_category::{
     key_category, sync_category,
 };
 mod track;
-pub(crate) use track::queue_catalog_request;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::DiscogsCheck;
@@ -656,16 +654,6 @@ impl ResolvedTrackAudio {
 /// Target playback loudness the replay gain aims each track/album at, in LUFS.
 /// -18 LUFS is a common reference for quiet-listening normalization.
 const REPLAY_GAIN_TARGET_LUFS: f64 = -18.0;
-
-/// The release a directly-selected track plays from: its full track order (its
-/// playing order) and the selected track's index into it. Everything
-/// the playback service needs to seed a context, so it never chases back into the
-/// library for neighbouring track IDs.
-pub struct PlayContext {
-    pub release_id: String,
-    pub track_ids: Vec<String>,
-    pub index: usize,
-}
 
 /// Tag fields to embed on an exported track file.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -21,21 +21,6 @@ pub enum PreviewState {
     },
 }
 
-/// The queue shape owned by the playback loop: per-instance queue entries,
-/// context metadata, and navigation affordances. The library layer resolves the
-/// entries to display rows because it owns track metadata.
-#[derive(Debug, Clone)]
-pub struct PlaybackQueueProjection {
-    pub manual: Vec<crate::playback::QueueEntry>,
-    pub context: Option<crate::playback::ContextProjection>,
-    pub has_next: bool,
-    pub has_previous: bool,
-    /// The `PlaybackQueue` revision this projection was read at. Stamped onto
-    /// the resolved snapshot and onto every upcoming-page fetch so a UI can
-    /// tell whether a page still corresponds to the queue it is rendering.
-    pub revision: u64,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlaybackPosition {
     pub track_id: String,

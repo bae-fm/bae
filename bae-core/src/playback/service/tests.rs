@@ -3,6 +3,7 @@ use crate::playback::audio_output::{
     audio_event_channel, AudioError, AudioEvent, AudioEventReceiver, AudioEventSender,
     AudioOutputControls, AudioState, AudioStream,
 };
+use crate::playback::ContextSource;
 use crate::playback::RemotePlayback;
 use crate::renderer::channel::{FakeChannel, FakeChannelState};
 use bae_audio::track_stream::create_track_stream_pair;
@@ -67,7 +68,7 @@ impl AudioOutput for TestAudioOutput {
 /// Track ids for the fixtures that insert real `tracks` rows. coven requires a
 /// canonical UUID on every synced-table row, so a seeded track cannot be named
 /// `"t"`; the short names elsewhere in this file are in-memory playback ids that
-/// never reach the database.
+/// never reach the database. A track the queue plays is a `tracks` row.
 const TRACK_T: &str = "3e747c7f-879c-44a2-ae1e-9767a8d76b15";
 const TRACK_A: &str = "bb035a79-2d3b-4ba0-ac99-121564ea97d2";
 const TRACK_B: &str = "36a9322d-0c07-4223-9c0b-2110a1fdc622";
@@ -119,6 +120,22 @@ async fn seed_test_releases(
             database.insert_track(&track).await.unwrap();
         }
     }
+}
+
+/// Make the seeded `release_id` the playing context from its first track.
+async fn fill_test_release(service: &mut PlaybackService, release_id: &str) {
+    let filled = service
+        .playback_queue
+        .play(ContextFill::Release {
+            release_id: release_id.to_string(),
+            start: ReleaseStart::First,
+        })
+        .await
+        .expect("the queue tables take the release");
+    assert!(
+        matches!(filled, ContextFilled::Playing { .. }),
+        "the seeded release has tracks: {filled:?}"
+    );
 }
 
 async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, LibraryManager) {
@@ -223,11 +240,10 @@ fn playback_service_over(
     PlaybackService,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let queue_ids = Arc::new(coven::SequentialIds::new());
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);
-    let playback_queue = PublishedQueue::new(queue_ids);
+    let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
     let staged_sides = advance::staged_sides_follow(&library_manager);
     let service = PlaybackService {
         library_manager,

@@ -299,7 +299,7 @@ impl CueApeTestFixture {
             "Should have 3 tracks from CUE/APE"
         );
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture);
+            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,

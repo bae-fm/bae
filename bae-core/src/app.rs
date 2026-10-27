@@ -448,14 +448,16 @@ where
 
         // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
         // iOS, AAudio on Android.
-        let playback_handle = timing.stage(&library_id, "start playback service", || {
-            library_manager.start_playback_service(
-                runtime.handle().clone(),
-                position_update_interval_ms,
-                restore_playback,
-                audio_focus,
-            )
-        });
+        let playback_handle = timing
+            .stage(&library_id, "start playback service", || {
+                runtime.block_on(library_manager.start_playback_service(
+                    runtime.handle().clone(),
+                    position_update_interval_ms,
+                    restore_playback,
+                    audio_focus,
+                ))
+            })
+            .map_err(|e| BootstrapError::Database(e.to_string()))?;
 
         // The import pipeline (scanning, transcoding, identify) is desktop-only.
         // Mobile is a sync/playback client, so its `AppServices` carries just the

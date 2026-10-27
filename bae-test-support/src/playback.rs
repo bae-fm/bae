@@ -100,35 +100,41 @@ pub enum TestAudioDevice {
 /// is an owner, and `scripts/owner-dependency-boundary.sh` refuses to let a
 /// public one expose its fields. Each test binary keeps its own (private)
 /// fixture around what this returns.
-pub fn start_capture_playback(
+pub async fn start_capture_playback(
     library_manager: &bae_core::library::LibraryManager,
     device: TestAudioDevice,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
     let (capture_device, capture_stream_rx) = capture_device(device);
-    let handle = library_manager.start_playback_service_with_audio_device(
-        tokio::runtime::Handle::current(),
-        100,
-        true,
-        capture_device,
-    );
+    let handle = library_manager
+        .start_playback_service_with_audio_device(
+            tokio::runtime::Handle::current(),
+            100,
+            true,
+            capture_device,
+        )
+        .await
+        .expect("start playback");
     (handle, capture_stream_rx)
 }
 
 /// [`start_capture_playback`] on a playback clock the test supplies, so the
 /// test decides when a side-pause countdown runs out.
-pub fn start_capture_playback_with_clock(
+pub async fn start_capture_playback_with_clock(
     library_manager: &bae_core::library::LibraryManager,
     device: TestAudioDevice,
     clock: bae_core::playback::PlaybackClockRef,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
     let (capture_device, capture_stream_rx) = capture_device(device);
-    let handle = library_manager.start_playback_service_with_clock(
-        tokio::runtime::Handle::current(),
-        100,
-        true,
-        capture_device,
-        clock,
-    );
+    let handle = library_manager
+        .start_playback_service_with_clock(
+            tokio::runtime::Handle::current(),
+            100,
+            true,
+            capture_device,
+            clock,
+        )
+        .await
+        .expect("start playback");
     (handle, capture_stream_rx)
 }
 

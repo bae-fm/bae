@@ -1,5 +1,4 @@
 use super::super::*;
-use crate::playback::QueueEntryId;
 
 async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
     let (db, tmp) = super::temp_db().await;
@@ -126,35 +125,45 @@ async fn cover_versions_merges_chunks() {
 }
 
 #[tokio::test]
-async fn track_id_queries_merge_chunks() {
+async fn filter_existing_track_ids_merges_chunks() {
     let (db, _tmp, track_ids) = chunked_track_db().await;
     let mut requested = track_ids.clone();
     requested.insert(SQL_MAX_IN_VARS / 2, "missing-track".to_string());
 
     let mut existing = db.filter_existing_track_ids(&requested).await.unwrap();
     existing.sort();
-    let mut expected_existing = track_ids.clone();
+    let mut expected_existing = track_ids;
     expected_existing.sort();
     assert_eq!(existing, expected_existing);
+}
 
-    let entries: Vec<QueueEntry> = requested
-        .iter()
-        .enumerate()
-        .map(|(index, track_id)| QueueEntry {
-            id: QueueEntryId(format!("entry-{index}")),
-            track_id: track_id.clone(),
-        })
-        .collect();
-    let items = super::queue_items(&db, &entries).await;
-    let resolved_track_ids: Vec<&str> = items.iter().map(|item| item.track_id.as_str()).collect();
-    let expected_track_ids: Vec<&str> = requested
-        .iter()
-        .filter(|track_id| track_id.as_str() != "missing-track")
-        .map(String::as_str)
-        .collect();
-    assert_eq!(resolved_track_ids, expected_track_ids);
-    // Every chunk's rows carry what the track → release → album join resolved,
-    // so a dropped chunk shows up as a missing album, not just a missing id.
+/// Up Next longer than one SQL statement's parameter limit takes every track,
+/// and the queue value shows each with what the track → release → album join
+/// resolved.
+#[tokio::test]
+async fn a_queue_longer_than_one_in_clause_reads_every_track() {
+    let (db, _tmp, track_ids) = chunked_track_db().await;
+    let mut requested = track_ids.clone();
+    requested.insert(
+        SQL_MAX_IN_VARS / 2,
+        bae_test_support::test_uuid("missing-track"),
+    );
+
+    let added = db
+        .playback_queue_tables()
+        .add_manual(requested, ManualPlace::End)
+        .await
+        .unwrap();
+    assert_eq!(
+        added,
+        track_ids.len(),
+        "the track the library lacks is left out"
+    );
+
+    let items = db.queue_value().await.unwrap().manual;
+    let resolved: Vec<&str> = items.iter().map(|item| item.track_id.as_str()).collect();
+    let expected: Vec<&str> = track_ids.iter().map(String::as_str).collect();
+    assert_eq!(resolved, expected);
     assert!(items
         .iter()
         .all(|item| item.display.album_title == "Album Title A"));

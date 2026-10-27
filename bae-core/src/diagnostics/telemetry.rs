@@ -142,6 +142,7 @@ telemetry_value_enum! {
         Preload => "preload",
         AudioOutputInit => "audio_output_init",
         QueueAdd => "queue_add",
+        QueueChange => "queue_change",
         Starvation => "starvation",
         DeviceRebuild => "device_rebuild",
         StreamStart => "stream_start",
@@ -192,13 +193,11 @@ telemetry_value_enum! {
     /// to the emission keeps the free-text detail, this counts the occurrence per
     /// version so regressions surface in the wild.
     pub enum AnomalyKind {
-        ResumeCacheCorrupt => "resume_cache_corrupt",
         ResumePersistFailed => "resume_persist_failed",
         GaplessBoundaryDesync => "gapless_boundary_desync",
         SidePauseDesync => "side_pause_desync",
         PreloadStateMissing => "preload_state_missing",
         QueueEntryUnknown => "queue_entry_unknown",
-        QueueTrackNoMetadata => "queue_track_no_metadata",
         AudioFormatOrphaned => "audio_format_orphaned",
         FileIdInvalid => "file_id_invalid",
         EncryptionKeyMissing => "encryption_key_missing",
@@ -541,13 +540,13 @@ mod tests {
     #[test]
     fn anomaly_is_warn_with_snake_case_kind() {
         let event = TelemetryEvent::Anomaly {
-            kind: AnomalyKind::ResumeCacheCorrupt,
+            kind: AnomalyKind::ResumePersistFailed,
         };
         assert_eq!(event.name(), "anomaly");
         assert_eq!(event.level(), DiagnosticLevel::Warn);
         assert_eq!(
             event.fields()["kind"],
-            serde_json::json!("resume_cache_corrupt")
+            serde_json::json!("resume_persist_failed")
         );
     }
 

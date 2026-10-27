@@ -70,123 +70,51 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     (release_id, tracks, source)
 }
 
-/// A resume cache whose context release is gone (its `get_track_ids` is empty)
-/// restores the manual lane only — the context drops, the surviving manual
-/// tracks and current track stay. The restored queue re-persists with no
-/// context, which is what we read back.
+/// A restart takes up the queue where it stood: the lane's shuffled order,
+/// Up Next, and the track playing, resumed paused. The order lives in the
+/// queue tables, so nothing shuffles it again.
 #[tokio::test]
-async fn test_restore_drops_deleted_context_keeps_manual() {
+async fn test_restart_resumes_the_stored_queue_in_its_order() {
     let lib = restore_test_library().await;
-    let track_id = lib.track_ids[0].clone();
-
-    // The context points at a release id that no longer exists, so its
-    // `get_track_ids` returns empty (the deleted-release signal). The manual lane
-    // and current track are a real, surviving track.
-    let state = bae_core::db::DbPlaybackState {
-        context: Some(bae_core::db::DbPlaybackContext {
-            source: RELEASE_THAT_WAS_DELETED.to_string(),
-            shuffled: false,
-        }),
-        manual: format!("[{:?}]", track_id),
-        repeat: "off".to_string(),
-        current_track_id: Some(track_id.clone()),
-        position_ms: Some(0),
-        volume: 0.8,
-        is_muted: false,
-    };
-    lib.library_manager
-        .save_playback_state(&state)
+    let release_id = lib
+        .library_manager
+        .get_track_display(&lib.track_ids[0])
         .await
-        .unwrap();
+        .expect("the imported track")
+        .release_id;
 
     let (handle, _capture_rx) =
-        start_capture_service(lib.library_manager.clone(), lib.runtime_handle);
+        start_capture_service(lib.library_manager.clone(), lib.runtime_handle.clone()).await;
     let mut progress_rx = handle.subscribe_progress();
-
-    // Restore committed once the surviving manual track surfaces as the
-    // restored (Paused) current track.
-    wait_for_state_on(
+    handle.play_release(release_id, None, true);
+    let playing = wait_for_state_on(
         &mut progress_rx,
-        |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == track_id),
+        |s| matches!(s, PlaybackState::Playing { .. }),
         Duration::from_secs(20),
     )
     .await
-    .expect("the surviving manual track should restore as current");
+    .expect("the shuffled release plays");
+    handle.add_to_queue(vec![lib.track_ids[0].clone()]);
+    handle.pause();
+    let before = handle.queue_value().await.expect("queue value");
+    assert!(before.context.as_ref().is_some_and(|context| context.shuffled));
+    handle.shutdown().await;
 
-    // Force the restored queue to re-persist, then read it back: the dropped
-    // context is gone and the manual track survived.
-    handle.set_repeat_mode(bae_core::playback::RepeatMode::Track);
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut row = None;
-    while Instant::now() < deadline {
-        if let bae_core::db::LoadedPlaybackState::Present(loaded) =
-            lib.library_manager.load_playback_state().await.unwrap()
-        {
-            if loaded.repeat == "track" {
-                row = Some(loaded);
-                break;
-            }
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    let row = row.expect("the restored, re-persisted row");
-    assert!(
-        row.context.is_none(),
-        "the deleted context release is dropped on restore"
-    );
-    assert_eq!(
-        row.manual,
-        format!("[{:?}]", track_id),
-        "the surviving manual lane restored"
-    );
-
-    handle.stop();
-}
-
-/// A corrupt resume cache (here, manual lane that is not valid JSON) is discarded
-/// by the boundary parse: the service starts with an empty queue and never
-/// panics. No playback state surfaces because no current track restored.
-#[tokio::test]
-async fn test_restore_corrupt_row_starts_fresh() {
-    let lib = restore_test_library().await;
-    let track_id = lib.track_ids[0].clone();
-
-    let state = bae_core::db::DbPlaybackState {
-        context: None,
-        manual: "not valid json".to_string(),
-        repeat: "off".to_string(),
-        current_track_id: Some(track_id),
-        position_ms: Some(0),
-        volume: 0.8,
-        is_muted: false,
-    };
-    lib.library_manager
-        .save_playback_state(&state)
-        .await
-        .unwrap();
-
-    let (handle, _capture_rx) = start_capture_service(lib.library_manager, lib.runtime_handle);
+    let (handle, _capture_rx) =
+        start_capture_service(lib.library_manager.clone(), lib.runtime_handle).await;
     let mut progress_rx = handle.subscribe_progress();
-
-    // A discarded resume cache restores nothing: no playback state may surface.
-    // The restore runs before the service handles its first command, so it is
-    // over once the sentinel is; the values carry whatever it emitted before
-    // this subscription existed.
-    let events = settled_events_on(&handle, &mut progress_rx).await;
-    let restored = states_in(&events);
-    assert!(
-        restored.is_empty(),
-        "a discarded resume cache leaves nothing playing (fresh start), got {restored:?}"
-    );
-    let state = handle.subscribe_values().borrow().state.clone();
-    assert!(
-        matches!(state, PlaybackState::Stopped),
-        "a discarded resume cache leaves nothing playing (fresh start), got {state:?}"
-    );
-    let queue = handle.queue_projection().await.expect("queue projection");
-    assert!(
-        queue.manual.is_empty() && queue.context.is_none(),
-        "a discarded resume cache starts with an empty queue"
+    let playing_id = playing.track_id().expect("a playing track").to_string();
+    wait_for_state_on(
+        &mut progress_rx,
+        |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == playing_id),
+        Duration::from_secs(20),
+    )
+    .await
+    .expect("the playing track resumes paused");
+    assert_eq!(
+        handle.queue_value().await.expect("queue value"),
+        before,
+        "the restarted queue is the one that was playing, in its order"
     );
 
     handle.stop();
@@ -332,7 +260,7 @@ impl CloudOnlyPlaybackFixture {
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager, runtime_handle);
+            start_capture_service(library_manager, runtime_handle).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,

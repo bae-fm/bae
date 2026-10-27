@@ -293,7 +293,7 @@ async fn test_reorder_entry_displaces_preloaded_track() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
+        |h, entries| h.reorder_entry(entries[1].id, Some(entries[0].id)),
     )
     .await;
 }
@@ -330,7 +330,7 @@ async fn test_remove_entry_refreshes_preloaded_track() {
         vec![track1, track2.clone()],
         &track0,
         &track2,
-        |h, entries| h.remove_entry(entries[0].id.clone()),
+        |h, entries| h.remove_entry(entries[0].id),
     )
     .await;
 }
@@ -341,12 +341,12 @@ async fn test_remove_entry_refreshes_preloaded_track() {
 // One focused test per PlaybackCommand / track deletion branch that had no
 // coverage, driven through the PlaybackHandle like the rest of the suite. Where
 // a command's effect is a queue-shape change, the serial command loop lets a
-// following queue_projection() read reflect it (the projection query is
-// processed after the mutation it follows).
+// following queue_value() read reflect it (the read is answered after the
+// mutation it follows).
 
 /// The release id of the currently-playing context, read off the projection.
 async fn current_release_id(handle: &bae_core::playback::PlaybackHandle) -> String {
-    let proj = handle.queue_projection().await.expect("queue projection");
+    let proj = handle.queue_value().await.expect("queue value");
     match proj.context.expect("a playing context").source {
         bae_core::playback::ContextSource::Release(id) => id,
         bae_core::playback::ContextSource::Releases(ids) => {
@@ -381,9 +381,9 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
     fixture.playback_handle.set_shuffle(true);
     let shuffled = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert!(
         shuffled.context.as_ref().is_some_and(|c| c.shuffled),
         "SetShuffle(true) puts the lane in shuffled order"
@@ -394,9 +394,9 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
     fixture.playback_handle.set_shuffle(false);
     let sequential = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     let ctx = sequential.context.expect("still a playing context");
     assert!(
         !ctx.shuffled,
@@ -447,9 +447,9 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
         fixture.playback_handle.set_shuffle(true);
         let front = fixture
             .playback_handle
-            .queue_projection()
+            .queue_value()
             .await
-            .expect("queue projection")
+            .expect("queue value")
             .context
             .expect("a playing context")
             .upcoming
@@ -492,9 +492,9 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
         .expect("a library track starts playing");
     let proj = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     let ctx = proj.context.expect("a library context");
     assert!(
         matches!(ctx.source, bae_core::playback::ContextSource::Library),
@@ -506,7 +506,7 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
 #[tokio::test]
 async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
     let (library_manager, runtime_handle, _temp) = empty_test_library().await;
-    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle);
+    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle).await;
     let mut progress = handle.subscribe_progress();
     handle.play_library_shuffled();
     let played = wait_for_state_on(
@@ -581,7 +581,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
         .iter()
         .find(|e| e.track_id == third)
         .expect("the third track is queued in the context");
-    fixture.playback_handle.skip_to_entry(target.id.clone());
+    fixture.playback_handle.skip_to_entry(target.id);
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
@@ -610,9 +610,9 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
     fixture.playback_handle.add_to_queue(vec![second]);
     let before = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert!(
         !before.manual.is_empty(),
         "the manual lane has the added track"
@@ -621,9 +621,9 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
     fixture.playback_handle.clear_up_next();
     let after = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert!(
         after.manual.is_empty(),
         "ClearUpNext empties the manual lane"
@@ -656,9 +656,9 @@ async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
 
     let after = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert!(
         after.context.is_none(),
         "the context section leaves the snapshot entirely"
@@ -690,9 +690,9 @@ async fn add_release_to_queue_appends_its_tracks_to_the_manual_lane() {
     fixture.playback_handle.add_release_to_queue(release_id);
     let proj = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert_eq!(
         proj.manual.len(),
         3,
@@ -719,9 +719,9 @@ async fn add_release_next_puts_its_tracks_at_the_front_of_the_manual_lane() {
     fixture.playback_handle.add_release_next(release_id);
     let proj = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert_eq!(proj.manual.len(), 4, "three release tracks plus the marker");
     assert_eq!(
         proj.manual.last().unwrap().track_id,
@@ -749,7 +749,7 @@ async fn remove_currently_playing_entry_stops_playback() {
         .find(|e| e.track_id == second)
         .expect("the second track is queued in the context")
         .clone();
-    fixture.playback_handle.skip_to_entry(entry.id.clone());
+    fixture.playback_handle.skip_to_entry(entry.id);
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
@@ -758,7 +758,7 @@ async fn remove_currently_playing_entry_stops_playback() {
         .await
         .expect("SkipTo makes the second track current");
 
-    fixture.playback_handle.remove_entry(entry.id.clone());
+    fixture.playback_handle.remove_entry(entry.id);
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Stopped),
@@ -815,9 +815,9 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
     let release_id = current_release_id(&fixture.playback_handle).await;
     let before = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
 
     fixture.playback_handle.play_release(
         release_id,
@@ -834,9 +834,9 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
     assert!(other_track.is_empty(), "no other track starts: {other_track:?}");
     let after = fixture
         .playback_handle
-        .queue_projection()
+        .queue_value()
         .await
-        .expect("queue projection");
+        .expect("queue value");
     assert_eq!(
         (after.revision, &after.context),
         (before.revision, &before.context),
@@ -865,7 +865,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     let b_first = b_tracks[0].clone();
 
     let (handle, _capture_rx) =
-        start_capture_service(lib.library_manager.clone(), lib.runtime_handle.clone());
+        start_capture_service(lib.library_manager.clone(), lib.runtime_handle.clone()).await;
     let mut progress = handle.subscribe_progress();
 
     handle.play(first.clone());
@@ -879,7 +879,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
 
     // Queue B's first track as the preloaded next.
     handle.add_next(vec![b_first.clone()]);
-    let queued = handle.queue_projection().await.expect("queue projection");
+    let queued = handle.queue_value().await.expect("queue value");
     assert!(
         queued.manual.iter().any(|e| e.track_id == b_first),
         "B's track is queued as the next up"
@@ -892,7 +892,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
         .delete_release(&b_release_id)
         .await
         .expect("delete release B");
-    let after = handle.queue_projection().await.expect("queue projection");
+    let after = handle.queue_value().await.expect("queue value");
     assert!(
         !after.manual.iter().any(|e| e.track_id == b_first),
         "the deleted release's queued track is purged"

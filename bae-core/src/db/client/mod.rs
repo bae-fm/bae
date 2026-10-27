@@ -2,7 +2,6 @@ use crate::credits::LibraryCredit;
 use crate::db::models::*;
 // The catalogs a record names belong to the import path, which the mobile
 // builds do not carry; the modules that read one are gated with it.
-use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use bae_catalogs::catalog::Catalog;
@@ -99,10 +98,14 @@ mod collections;
 mod history;
 mod people;
 mod playback;
+mod playback_queue;
+pub use playback_queue::{
+    ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
+};
+mod playback_queue_reads;
 #[cfg(desktop)]
 mod source_releases;
 pub(crate) use files::{OutboxDisplayContext, OutboxDisplayRequest};
-pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
 mod release;
 pub(crate) use release::ReleaseMetadataRows;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -190,12 +190,14 @@ impl AppServices {
         not(any(target_os = "ios", target_os = "android"))
     ))]
     pub async fn for_test(manager: LibraryManager) -> Result<Self, crate::import::ImportError> {
-        let playback = manager.start_playback_service_with_audio_device(
-            tokio::runtime::Handle::current(),
-            50,
-            false,
-            Box::new(crate::playback::audio_output::FailingAudioDevice),
-        );
+        let playback = manager
+            .start_playback_service_with_audio_device(
+                tokio::runtime::Handle::current(),
+                50,
+                false,
+                Box::new(crate::playback::audio_output::FailingAudioDevice),
+            )
+            .await?;
         let import = manager
             .start_import_service(tokio::runtime::Handle::current())
             .await?;

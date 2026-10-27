@@ -8,10 +8,7 @@ async fn pure_reads_use_the_read_connection() {
 
     // A device-local write still uses the write connection.
     db.save_playback_state(&bae_core::db::DbPlaybackState {
-        context: None,
-        manual: "off".to_string(),
-        repeat: "off".to_string(),
-        current_track_id: None,
+        current: None,
         position_ms: None,
         volume: 1.0,
         is_muted: false,
@@ -26,10 +23,16 @@ async fn pure_reads_use_the_read_connection() {
     db.find_artist_by_id("missing").await.unwrap();
     db.get_artist_count().await.unwrap();
     db.find_track_by_id("missing").await.unwrap();
-    db.get_all_track_ids().await.unwrap();
+    db.get_track_ids_for_release("missing").await.unwrap();
     db.find_release_by_id("missing").await.unwrap();
     db.get_release_records("missing").await.unwrap();
     db.load_playback_state().await.unwrap();
+    db.queue_value().await.unwrap();
+    let queue = db.playback_queue_tables();
+    queue.repeat().await.unwrap();
+    queue.context_track_count().await.unwrap();
+    queue.front().await.unwrap();
+    queue.next_in_order().await.unwrap();
     db.has_pending_cloud_upload("missing").await.unwrap();
     db.outbox_queue().await.unwrap();
 

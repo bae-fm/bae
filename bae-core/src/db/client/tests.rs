@@ -28,7 +28,6 @@ const COMPOSER_A: &str = "5dcc4999-03bd-42cc-8d14-8bf0a05effa3";
 const COMPOSER_B: &str = "2b748d47-e5b7-4c40-8716-1e608b9dfc3d";
 const COMPOSER_C: &str = "80cd3a5e-7fb7-4766-8ec3-d8e86575743b";
 const COMPOSER_SOLO: &str = "4d93d615-4549-45d9-81d9-644f079d59bf";
-const ENTRY_A: &str = "e2ebff4e-4ed0-4a73-88ed-93453a79b463";
 const RELEASE_1: &str = "c0218676-4c47-4eb7-8d65-57a8d328c3d1";
 const RELEASE_A: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
 const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
@@ -143,20 +142,17 @@ async fn watched_root() -> (super::Database, tempfile::TempDir, String) {
     (db, tmp, root)
 }
 
-/// `entries` resolved through the queue catalog query's first read, as the
-/// live queue resolves them.
-async fn queue_items(
-    db: &super::Database,
-    entries: &[crate::playback::QueueEntry],
-) -> Vec<crate::queue::QueueItem> {
-    let mut live =
-        db.subscribe_queue_catalog(super::QueueCatalogRequest::for_entries(entries, None));
-    live.next()
+/// The queue rows of `track_ids` queued in Up Next, as the queue value shows
+/// them.
+async fn queue_items(db: &super::Database, track_ids: &[&str]) -> Vec<crate::queue::QueueItem> {
+    db.playback_queue_tables()
+        .add_manual(
+            track_ids.iter().map(|id| id.to_string()).collect(),
+            super::ManualPlace::End,
+        )
         .await
-        .expect("the query stays open")
-        .result
-        .unwrap()
-        .items(entries)
+        .unwrap();
+    db.queue_value().await.unwrap().manual
 }
 
 /// Run one statement against the test database, panicking if it fails.
@@ -236,7 +232,7 @@ fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), cra
 }
 
 #[cfg(test)]
-mod queue_ordering_tests;
+mod playback_queue_tests;
 
 #[cfg(test)]
 mod personal_order_tests;
@@ -264,9 +260,6 @@ mod album_listing_tests;
 
 #[cfg(test)]
 mod storage_listing_tests;
-
-#[cfg(test)]
-mod playback_state_load_tests;
 
 #[cfg(test)]
 mod import_candidate_state_tests;

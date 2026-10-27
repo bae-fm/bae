@@ -490,7 +490,9 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         100,
         true,
         Box::new(device),
-    );
+    )
+    .await
+    .expect("start playback");
     let mut values = playback.subscribe_values();
     let mut positions = playback.subscribe_positions();
     let restored = tokio::time::timeout(

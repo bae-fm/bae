@@ -216,38 +216,23 @@ impl PlaybackService {
         self.library_manager.record_telemetry(event);
     }
 
-    /// Restore playback from the device-local resume cache at startup. A
-    /// present-and-valid row replays; a corrupt row (DB-structural or a per-lane
-    /// out-of-domain value) is counted and cleared; an absent row or a read
-    /// failure starts fresh.
+    /// Restore playback from the device-local resume row at startup: a stored
+    /// row resumes its track over the queue the tables hold; an absent row
+    /// resumes nothing, and the library opened with the queue emptied
+    /// (`settle_playback_queue`).
     pub(super) async fn restore_from_cache(&mut self) {
-        use crate::db::LoadedPlaybackState;
         match self.library_manager.load_playback_state().await {
-            Ok(LoadedPlaybackState::Present(state)) => match PersistedPlayback::from_row(state) {
-                Some(parsed) => self.restore(parsed).await,
-                // The row parsed as corrupt (a per-lane out-of-domain value; logged
-                // in `from_row`). Count it and delete it so the bad row doesn't
-                // linger durably across restarts.
-                None => self.discard_corrupt_resume_cache().await,
-            },
-            // A structurally-impossible row (source XOR cursor); the DB client
-            // logged the specific mismatch.
-            Ok(LoadedPlaybackState::Corrupt) => self.discard_corrupt_resume_cache().await,
-            Ok(LoadedPlaybackState::Absent) => {}
-            Err(e) => warn!("couldn't load the saved playback state: {e}; starting fresh"),
+            Ok(Some(state)) => self.restore(state).await,
+            Ok(None) => {}
+            Err(e) => warn!("couldn't load the saved playback state: {e}; resuming nothing"),
         }
     }
 
-    /// The resume cache was corrupt (a DB-structural mismatch or a per-lane
-    /// out-of-domain value): count the anomaly and delete the row so the bad
-    /// state doesn't linger durably across restarts. The pure parse/DB layers
-    /// only detect and log it; the service, which owns the diagnostics sink,
-    /// emits and clears.
-    pub(super) async fn discard_corrupt_resume_cache(&self) {
-        self.telemetry_anomaly(AnomalyKind::ResumeCacheCorrupt);
-        if let Err(e) = self.library_manager.clear_playback_state().await {
-            warn!("couldn't clear the corrupt playback resume cache: {e}");
-        }
+    /// A queue table write or read failed: the queue is as it was before the
+    /// command, and the command does nothing more.
+    pub(super) fn queue_failed(&self, doing: &str, error: crate::db::DbError) {
+        error!("couldn't {doing}: {error}");
+        self.telemetry_playback_failed(PlaybackOperation::QueueChange);
     }
 
     /// A play command established a new playing context.
@@ -283,35 +268,35 @@ impl PlaybackService {
     }
 
     /// Direct selection of `track_id`: its release becomes the playing context,
-    /// with the cursor at the chosen track. `get_play_context`'s `Err` covers
-    /// only DB failures and data-inconsistency (`release_id` is a required
-    /// column, so there is no legitimate "track with no context" case) — fail
-    /// loud rather than silently falling back to a single-track queue.
+    /// from the chosen track. A track the library does not hold, or a failed
+    /// fill, fails loud rather than falling back to a single-track queue.
     pub(super) async fn handle_play(&mut self, track_id: String) {
         self.stop_preview_for_main_playback();
-        let context = match self.library_manager.get_play_context(&track_id).await {
-            Ok(context) => context,
-            Err(e) => {
-                error!("Failed to load play context for {track_id}: {e}");
-                self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                emit_progress(
-                    &self.progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: PlaybackError::database(e).ui_reason(),
-                    },
-                );
-                return;
+        let failure = match self
+            .playback_queue
+            .play(ContextFill::ReleaseOfTrack(track_id.clone()))
+            .await
+        {
+            Ok(ContextFilled::Playing { track_count, .. }) => {
+                self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
+                None
             }
+            Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => Some(
+                crate::library::LibraryError::TrackMapping(format!("Track not found: {track_id}")),
+            ),
+            Err(e) => Some(crate::library::LibraryError::from(e)),
         };
-        let track_count = context.track_ids.len();
-        self.playback_queue.apply(|queue| {
-            queue.play_release(
-                ContextSource::Release(context.release_id),
-                context.track_ids,
-                ContextStart::Index(context.index),
-            )
-        });
-        self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
+        if let Some(e) = failure {
+            error!("Failed to play {track_id} from its release: {e}");
+            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::PlaybackError {
+                    reason: PlaybackError::database(e).ui_reason(),
+                },
+            );
+            return;
+        }
         self.play_track(
             &track_id,
             TrackStart::Direct,
@@ -336,7 +321,7 @@ impl PlaybackService {
                 .await;
         } else {
             // Nothing preloaded: let the queue decide what plays next.
-            match self.playback_queue.apply(|queue| queue.next_entry()) {
+            match self.next_entry().await {
                 NextEntry::Play(next_track) => {
                     info!("No preloaded track, playing from queue: {}", next_track);
                     self.play_track(
@@ -369,10 +354,14 @@ impl PlaybackService {
         };
         let target = self.current_play_target();
 
-        match self
-            .playback_queue
-            .apply(|queue| queue.previous_action(track_time))
-        {
+        let action = match self.playback_queue.previous_action(track_time).await {
+            Ok(action) => action,
+            Err(e) => {
+                self.queue_failed("step the queue back", e);
+                return;
+            }
+        };
+        match action {
             PreviousAction::PlayPrevious(previous_track_id) => {
                 info!("Going to previous track: {}", previous_track_id);
                 // previous_action already stepped the context cursor back and made
@@ -443,7 +432,7 @@ impl PlaybackService {
             }
         }
 
-        match self.playback_queue.apply(|queue| queue.next_entry()) {
+        match self.next_entry().await {
             NextEntry::RepeatCurrent(next_track) => {
                 info!("Repeat mode: track, replaying {}", next_track);
                 self.play_track(
@@ -593,16 +582,16 @@ impl PlaybackService {
             self.stop().await;
         }
     }
-    /// `restore_playback` controls whether startup restores the saved queue,
-    /// track, and position. The crash-safe row stays current either way: track
-    /// loads, stops, and queue edits write it immediately, and active playback
-    /// writes it at most once a second.
+    /// `restore_playback` controls whether startup resumes the saved track and
+    /// position over the queue the tables hold; opening the library settled
+    /// the tables for it first (`settle_playback_queue`). The crash-safe row
+    /// stays current either way: track loads, stops, and queue edits write it
+    /// immediately, and active playback writes it at most once a second.
     /// `clock` is the service's time source for side-pause countdowns;
     /// production passes one over the library's wall clock. `audio_focus` is
     /// how the platform shares the speaker, asked before every start.
     pub(crate) fn start(
         library_manager: LibraryManager,
-        queue_ids: coven::IdSourceRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -611,7 +600,6 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
-            queue_ids,
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -627,7 +615,6 @@ impl PlaybackService {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn start_with_audio_device(
         library_manager: LibraryManager,
-        queue_ids: coven::IdSourceRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -636,7 +623,6 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
-            queue_ids,
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -649,7 +635,6 @@ impl PlaybackService {
 
     pub(super) fn start_inner(
         library_manager: LibraryManager,
-        queue_ids: coven::IdSourceRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -659,8 +644,7 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
-        let playback_queue = PublishedQueue::new(queue_ids);
-        let queue_receiver = playback_queue.subscribe();
+        let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
         // Taken before the service runs, so no deletion lands unheard between.
         let track_deletions = library_manager.subscribe_track_deletions();
         let progress_handle_for_completion = progress_handle.clone();
@@ -738,8 +722,8 @@ impl PlaybackService {
                             clock,
                             staged_sides,
                         };
-                        // "Restore on launch" off starts with nothing in playback; the
-                        // row is kept either way — it stays the crash-safe resume point.
+                        // "Restore on launch" off starts with nothing in playback;
+                        // opening the library emptied the queue for it.
                         if restore_playback {
                             service.restore_from_cache().await;
                         } else {
@@ -749,7 +733,7 @@ impl PlaybackService {
                     });
                 })
             });
-        PlaybackHandle::new(worker, progress_handle, queue_receiver)
+        PlaybackHandle::new(worker, progress_handle)
     }
 
     pub(super) async fn run(
@@ -800,126 +784,76 @@ impl PlaybackService {
                     self.handle_play(track_id).await;
                 }
                 PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle } => {
-                    let track_ids = match self.library_manager.get_track_ids(&release_id).await {
-                        Ok(ids) => ids,
-                        Err(e) => {
-                            error!("Failed to get tracks for release {release_id}: {e}");
+                    // A shuffled play starts wherever the shuffle puts first.
+                    let start = match (shuffle, start_track_id) {
+                        (true, _) => ReleaseStart::Shuffled,
+                        (false, None) => ReleaseStart::First,
+                        (false, Some(track_id)) => ReleaseStart::Track(track_id),
+                    };
+                    let fill = ContextFill::Release { release_id: release_id.clone(), start };
+                    match self.playback_queue.play(fill).await {
+                        Ok(ContextFilled::Playing { current, track_count }) => {
+                            self.start_filled_context(
+                                current.track_id,
+                                PlaybackStartSource::Release,
+                                track_count,
+                            )
+                            .await;
+                        }
+                        Ok(ContextFilled::NoTracks) => {
+                            warn!("PlayRelease: release {release_id} has no tracks");
+                        }
+                        // A named track the release no longer has — an edit removed
+                        // it since the caller read it — plays nothing rather than
+                        // some other track.
+                        Ok(ContextFilled::StartMissing) => {
+                            error!("PlayRelease: the track to start from is not on release {release_id}");
                             self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                            continue;
                         }
-                    };
-
-                    if track_ids.is_empty() {
-                        warn!("PlayRelease: release {release_id} has no tracks");
-                        continue;
+                        Err(e) => {
+                            error!("Failed to play release {release_id}: {e}");
+                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+                        }
                     }
-
-                    let start = if shuffle {
-                        // The seed is minted once, here, and carried into the
-                        // context, so the order is reproducible and `Context`
-                        // repeat can re-derive it.
-                        ContextStart::Shuffled {
-                            seed: rand::random(),
-                        }
-                    } else {
-                        // `None` means "from the first track". A named track the
-                        // release no longer has — an edit removed it since the
-                        // caller read it — plays nothing rather than some
-                        // other track.
-                        let index = match &start_track_id {
-                            None => 0,
-                            Some(track_id) => match track_ids.iter().position(|id| id == track_id)
-                            {
-                                Some(index) => index,
-                                None => {
-                                    error!(
-                                        "PlayRelease: track {track_id} is not on release {release_id}"
-                                    );
-                                    self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                                    continue;
-                                }
-                            },
-                        };
-                        ContextStart::Index(index)
-                    };
-                    self.stop_preview_for_main_playback();
-                    let track_count = track_ids.len();
-                    let first_track = self.playback_queue.apply(|queue| {
-                        queue.play_release(ContextSource::Release(release_id), track_ids, start)
-                    });
-                    self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
-                    self.play_track(
-                        &first_track,
-                        TrackStart::Direct,
-                        PlayTarget::Playing,
-                        TrackTransition::Manual,
-                    )
-                    .await;
                 }
                 PlaybackCommand::PlayReleases(release_ids) => {
-                    // The source is exactly the releases that contributed tracks,
-                    // so a later shuffle/restore re-fetch stays in lockstep.
-                    let (playable_ids, track_ids) =
-                        self.load_release_set_tracks(release_ids).await;
-                    if track_ids.is_empty() {
-                        warn!("PlayReleases: no playable releases; nothing to play");
-                        continue;
+                    // The source names exactly the releases that have tracks.
+                    match self.playback_queue.play(ContextFill::Releases(release_ids)).await {
+                        Ok(ContextFilled::Playing { current, track_count }) => {
+                            self.start_filled_context(
+                                current.track_id,
+                                PlaybackStartSource::Releases,
+                                track_count,
+                            )
+                            .await;
+                        }
+                        Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
+                            warn!("PlayReleases: no playable releases; nothing to play");
+                        }
+                        Err(e) => {
+                            error!("PlayReleases: couldn't fill the queue: {e}");
+                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+                        }
                     }
-                    self.stop_preview_for_main_playback();
-                    let track_count = track_ids.len();
-                    let first_track = self.playback_queue.apply(|queue| {
-                        queue.play_release(
-                            ContextSource::releases(playable_ids),
-                            track_ids,
-                            ContextStart::Index(0),
-                        )
-                    });
-                    self.telemetry_playback_started(PlaybackStartSource::Releases, track_count);
-                    self.play_track(
-                        &first_track,
-                        TrackStart::Direct,
-                        PlayTarget::Playing,
-                        TrackTransition::Manual,
-                    )
-                    .await;
                 }
                 PlaybackCommand::PlayLibraryShuffled => {
-                    let track_ids = match self.fetch_source_tracks(&ContextSource::Library).await {
-                        Ok(ids) => ids,
-                        Err(e) => {
-                            error!("PlayLibraryShuffled: couldn't load library tracks: {e}");
-                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                            continue;
+                    match self.playback_queue.play(ContextFill::LibraryShuffled).await {
+                        Ok(ContextFilled::Playing { current, track_count }) => {
+                            self.start_filled_context(
+                                current.track_id,
+                                PlaybackStartSource::LibraryShuffled,
+                                track_count,
+                            )
+                            .await;
                         }
-                    };
-                    if track_ids.is_empty() {
-                        warn!("PlayLibraryShuffled: the library has no tracks; nothing to play");
-                        continue;
+                        Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
+                            warn!("PlayLibraryShuffled: the library has no tracks; nothing to play");
+                        }
+                        Err(e) => {
+                            error!("PlayLibraryShuffled: couldn't fill the queue: {e}");
+                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+                        }
                     }
-                    self.stop_preview_for_main_playback();
-                    // A fresh seed, so the order is reproducible and `Context`
-                    // repeat can re-derive it.
-                    let track_count = track_ids.len();
-                    let first_track = self.playback_queue.apply(|queue| {
-                        queue.play_release(
-                            ContextSource::Library,
-                            track_ids,
-                            ContextStart::Shuffled {
-                                seed: rand::random(),
-                            },
-                        )
-                    });
-                    self.telemetry_playback_started(
-                        PlaybackStartSource::LibraryShuffled,
-                        track_count,
-                    );
-                    self.play_track(
-                        &first_track,
-                        TrackStart::Direct,
-                        PlayTarget::Playing,
-                        TrackTransition::Manual,
-                    )
-                    .await;
                 }
                 PlaybackCommand::Pause => {
                     self.pause();
@@ -984,26 +918,18 @@ impl PlaybackService {
                     }
                 }
                 PlaybackCommand::AddToQueue(track_ids) => {
-                    let count = track_ids.len() as u32;
-                    self.playback_queue
-                        .apply(|queue| queue.add_to_queue(track_ids));
-                    self.emit_queue_items_added(count);
-                    self.on_queue_mutated().await;
+                    let added = self.playback_queue.add_to_queue(track_ids).await;
+                    self.queue_added(added).await;
                 }
                 PlaybackCommand::AddNext(track_ids) => {
-                    let count = track_ids.len() as u32;
-                    self.playback_queue.apply(|queue| queue.add_next(track_ids));
-                    self.emit_queue_items_added(count);
-                    self.on_queue_mutated().await;
+                    let added = self.playback_queue.add_next(track_ids).await;
+                    self.queue_added(added).await;
                 }
                 PlaybackCommand::AddReleaseToQueue(release_id) => {
                     match self.library_manager.get_track_ids(&release_id).await {
                         Ok(track_ids) if !track_ids.is_empty() => {
-                            let count = track_ids.len() as u32;
-                            self.playback_queue
-                                .apply(|queue| queue.add_to_queue(track_ids));
-                            self.emit_queue_items_added(count);
-                            self.on_queue_mutated().await;
+                            let added = self.playback_queue.add_to_queue(track_ids).await;
+                            self.queue_added(added).await;
                         }
                         Ok(_) => {}
                         Err(e) => {
@@ -1015,11 +941,8 @@ impl PlaybackService {
                 PlaybackCommand::AddReleaseNext(release_id) => {
                     match self.library_manager.get_track_ids(&release_id).await {
                         Ok(track_ids) if !track_ids.is_empty() => {
-                            let count = track_ids.len() as u32;
-                            self.playback_queue
-                                .apply(|queue| queue.add_next(track_ids));
-                            self.emit_queue_items_added(count);
-                            self.on_queue_mutated().await;
+                            let added = self.playback_queue.add_next(track_ids).await;
+                            self.queue_added(added).await;
                         }
                         Ok(_) => {}
                         Err(e) => {
@@ -1029,84 +952,79 @@ impl PlaybackService {
                     }
                 }
                 PlaybackCommand::InsertInQueue(track_ids, index) => {
-                    let count = track_ids.len() as u32;
-                    self.playback_queue
-                        .apply(|queue| queue.insert_at(index, track_ids));
-                    self.emit_queue_items_added(count);
-                    self.on_queue_mutated().await;
+                    let added = self.playback_queue.insert_at(index, track_ids).await;
+                    self.queue_added(added).await;
                 }
                 PlaybackCommand::RemoveFromQueue(entry_id) => {
-                    if let Some(removed) =
-                        self.playback_queue.apply(|queue| queue.remove(&entry_id))
-                    {
-                        if self
-                            .current_track_id()
-                            .map(|id| id == removed.track_id)
-                            .unwrap_or(false)
-                        {
-                            self.stop().await;
-                        } else {
-                            self.on_queue_mutated().await;
+                    match self.playback_queue.remove(entry_id).await {
+                        Ok(Some(removed)) => {
+                            if self
+                                .current_track_id()
+                                .map(|id| id == removed.track_id)
+                                .unwrap_or(false)
+                            {
+                                self.stop().await;
+                            } else {
+                                self.on_queue_mutated().await;
+                            }
                         }
-                    } else {
                         // The id named no queued entry — a stale UI action against a
                         // queue that already moved on.
-                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
+                        Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
+                        Err(e) => self.queue_failed("remove a queue entry", e),
                     }
                 }
                 PlaybackCommand::ReorderQueue { entry_id, before } => {
-                    if !self
-                        .playback_queue
-                        .apply(|queue| queue.reorder(&entry_id, before.as_ref()))
-                    {
-                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
+                    match self.playback_queue.reorder(entry_id, before).await {
+                        Ok(true) => self.on_queue_mutated().await,
+                        Ok(false) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
+                        Err(e) => self.queue_failed("reorder the queue", e),
                     }
-                    self.on_queue_mutated().await;
                 }
                 PlaybackCommand::ClearUpNext => {
-                    self.playback_queue.apply(|queue| queue.clear_up_next());
-                    self.on_queue_mutated().await;
+                    match self.playback_queue.clear_up_next().await {
+                        Ok(()) => self.on_queue_mutated().await,
+                        Err(e) => self.queue_failed("clear Up Next", e),
+                    }
                 }
                 PlaybackCommand::ClearPlayingFrom => {
-                    self.playback_queue
-                        .apply(|queue| queue.clear_playing_from());
-                    self.on_queue_mutated().await;
+                    match self.playback_queue.clear_playing_from().await {
+                        Ok(()) => self.on_queue_mutated().await,
+                        Err(e) => self.queue_failed("clear the context lane", e),
+                    }
                 }
                 PlaybackCommand::SetRepeatMode(mode) => {
                     self.apply_repeat_mode(mode).await;
                 }
                 PlaybackCommand::SetShuffle(on) => {
-                    // The seed for the permutation `set_shuffle` performs on the
-                    // rows it already holds; it uses it only when turning shuffle
-                    // on. Shuffling changes what plays next, so the preload and
-                    // the staged side-pause reconcile like any queue mutation.
-                    let seed: u64 = rand::random();
-                    self.playback_queue
-                        .apply(|queue| queue.set_shuffle(on, seed));
-                    self.on_queue_mutated().await;
+                    // Shuffling changes what plays next, so the preload and the
+                    // staged side-pause reconcile like any queue mutation.
+                    match self.playback_queue.set_shuffle(on).await {
+                        Ok(()) => self.on_queue_mutated().await,
+                        Err(e) => self.queue_failed("shuffle the queue", e),
+                    }
                 }
                 PlaybackCommand::ReevaluateSidePauseStaging => {
                     self.reevaluate_side_pause_staging().await;
                 }
                 PlaybackCommand::SkipTo(entry_id) => {
-                    if let Some(entry) =
-                        self.playback_queue.apply(|queue| queue.skip_to(&entry_id))
-                    {
-                        info!(
-                            "SkipTo: jumping to queue entry {}, track {}",
-                            entry.id.0, entry.track_id
-                        );
-
-                        self.play_track(
-                            &entry.track_id,
-                            TrackStart::Direct,
-                            PlayTarget::Playing,
-                            TrackTransition::Manual,
-                        )
-                        .await;
-                    } else {
+                    match self.playback_queue.skip_to(entry_id).await {
+                        Ok(Some(entry)) => {
+                            info!(
+                                "SkipTo: jumping to queue entry {}, track {}",
+                                entry.id, entry.track_id
+                            );
+                            self.play_track(
+                                &entry.track_id,
+                                TrackStart::Direct,
+                                PlayTarget::Playing,
+                                TrackTransition::Manual,
+                            )
+                            .await;
+                        }
                         // The id named no queued entry — a stale UI action.
-                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
+                        Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
+                        Err(e) => self.queue_failed("skip to a queue entry", e),
                     }
                 }
                 PlaybackCommand::PreviewPlay(target) => {
@@ -1132,9 +1050,14 @@ impl PlaybackService {
                     }
                 }
                 #[cfg(any(test, feature = "test-utils"))]
-                PlaybackCommand::GetQueueProjection(reply) => {
-                    if reply.send(self.playback_queue.projection()).is_err() {
-                        debug!("queue projection asked for by a caller that stopped waiting");
+                PlaybackCommand::GetQueue(reply) => {
+                    let value = self
+                        .library_manager
+                        .queue_value()
+                        .await
+                        .map_err(|e| e.to_string());
+                    if reply.send(value).is_err() {
+                        debug!("queue asked for by a caller that stopped waiting");
                     }
                 }
                 PlaybackCommand::Shutdown(reply) => {
