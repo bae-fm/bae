@@ -1,30 +1,18 @@
 use super::*;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
-use crate::library::release_queue::{
-    ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
-};
+use crate::library::release_queue::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};
+use crate::library::ReleaseQueueEntries;
 use crate::library::UploadProgress;
 
-fn queue<Extra: Clone, Progress>(
-    payload: Extra,
-    release_ids: &[&str],
-    paused: bool,
-) -> ReleaseQueueSnapshot<Extra, Progress> {
-    ReleaseQueueSnapshot {
-        rows: release_ids
-            .iter()
-            .map(|release_id| ReleaseQueueRow {
-                op: ReleaseQueueOp {
-                    release_id: release_id.to_string(),
-                    created_at: 1,
-                    payload: payload.clone(),
-                    state: ReleaseQueueState::Queued,
-                },
-                release: None,
-            })
-            .collect(),
-        total: Default::default(),
-        paused,
+fn row<Extra>(payload: Extra, release_id: &str) -> ReleaseQueueRow<Extra, ()> {
+    ReleaseQueueRow {
+        op: ReleaseQueueOp {
+            release_id: release_id.to_string(),
+            created_at: 1,
+            payload,
+            state: ReleaseQueueState::Queued,
+        },
+        release: None,
     }
 }
 
@@ -47,9 +35,12 @@ fn group(release_id: &str) -> UploadReleaseGroup {
 fn each_queue_shows_the_selected_releases_entry_with_its_own_pause_state() {
     let groups = [group("other"), group("selected")];
     let transfers = storage_inspector_transfers(
-        "selected",
-        &queue((), &["other", "selected"], false),
-        &queue(export(), &["selected"], true),
+        &ReleaseQueueEntries {
+            download: Some(row((), "selected")),
+            downloads_paused: false,
+            output: Some(row(export(), "selected")),
+            outputs_paused: true,
+        },
         selected_upload_group("selected", &groups),
         false,
     );
@@ -80,9 +71,12 @@ fn each_queue_shows_the_selected_releases_entry_with_its_own_pause_state() {
 fn a_release_no_queue_holds_has_no_transfers() {
     let groups = [group("other")];
     assert!(storage_inspector_transfers(
-        "selected",
-        &queue((), &["other"], false),
-        &queue(export(), &["other"], false),
+        &ReleaseQueueEntries {
+            download: None,
+            downloads_paused: false,
+            output: None,
+            outputs_paused: false,
+        },
         selected_upload_group("selected", &groups),
         false,
     )

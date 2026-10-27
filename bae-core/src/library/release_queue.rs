@@ -114,6 +114,25 @@ pub struct ReleaseQueueSnapshot<Extra, Progress> {
     pub paused: bool,
 }
 
+/// How many entries a queue holds, and the windows its pane draws of them in
+/// the order queued, each beside its release.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReleaseQueueWindows<Extra> {
+    pub windows: Vec<super::LibraryBrowseWindow<ReleaseQueueRow<Extra, ()>>>,
+    pub total_count: u64,
+}
+
+/// One release's entries in the download and export queues, and whether each
+/// queue is paused: what the storage inspector shows of the release.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReleaseQueueEntries {
+    pub download: Option<super::DownloadRow>,
+    pub downloads_paused: bool,
+    pub output: Option<super::OutputPhaseRow>,
+    pub outputs_paused: bool,
+}
+
 impl<Extra> ReleaseQueueSnapshot<Extra, ()> {
     /// The same rows with the active one's progress from `progress`, which
     /// holds an entry for every release the queue read as active. `None` when

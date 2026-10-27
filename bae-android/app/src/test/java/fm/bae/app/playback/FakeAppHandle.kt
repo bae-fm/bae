@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCoverSelection
-import uniffi.bae_bridge.BridgeDownloadSnapshot
+import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
@@ -68,7 +68,8 @@ import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigCallback
-import uniffi.bae_bridge.DownloadCallback
+import uniffi.bae_bridge.DownloadBrowseSubscription
+import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.InvitesCallback
 import uniffi.bae_bridge.LibraryNameCallback
@@ -150,7 +151,9 @@ internal open class FakeAppHandle(
 
     override fun subscribeSyncActivity(callback: SyncActivityCallback): LiveSubscription = liveSubscription()
 
-    override fun subscribeDownloads(callback: DownloadCallback): LiveSubscription = liveSubscription()
+    override fun subscribeDownloadCounts(callback: DownloadCountsCallback): LiveSubscription = liveSubscription()
+
+    override fun subscribeDownloadBrowse(): DownloadBrowseSubscription = unfaked("subscribeDownloadBrowse")
 
     override fun subscribeDownloadTransfers(callback: DownloadTransfersCallback): LiveSubscription = liveSubscription()
 
@@ -319,7 +322,7 @@ internal open class FakeAppHandle(
         groupByArtist: Boolean,
     ): ULong? = unfaked("getAlbumIndex")
 
-    override suspend fun getDownloadSnapshot(): BridgeDownloadSnapshot = unfaked("getDownloadSnapshot")
+    override suspend fun getDownloadCounts(): BridgeDownloadCounts = unfaked("getDownloadCounts")
 
     override fun insertInQueue(
         trackIds: List<String>,

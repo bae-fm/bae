@@ -4,21 +4,23 @@ import fm.bae.app.DisplayError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import uniffi.bae_bridge.BridgeDownloadSnapshot
+import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadTransferChange
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 
 /**
- * Mirror of core's download queue: its entries, phases and pause,
- * which core sends each time they change, or the failure of the last read in
- * their place; and each downloading release's bytes, kept in that release's
- * own flow so bytes arriving recompose only what collects that release.
+ * Mirror of core's download queue's counts: how many entries are in each phase
+ * and whether it is paused, which core sends each time they change, or the
+ * failure of the last read in their place; and each downloading release's
+ * bytes, kept in that release's own flow so bytes arriving recompose only what
+ * collects that release. The entries themselves are the Downloads screen's
+ * windows ([DownloadPageStore]).
  */
 class DownloadStore(
-    initialSnapshot: BridgeDownloadSnapshot,
+    initialCounts: BridgeDownloadCounts,
 ) {
-    private val _state = MutableStateFlow<LiveValue<BridgeDownloadSnapshot>>(LiveValue.Current(initialSnapshot))
-    val state: StateFlow<LiveValue<BridgeDownloadSnapshot>> = _state.asStateFlow()
+    private val _state = MutableStateFlow<LiveValue<BridgeDownloadCounts>>(LiveValue.Current(initialCounts))
+    val state: StateFlow<LiveValue<BridgeDownloadCounts>> = _state.asStateFlow()
 
     /** Each release's download progress; null while it is not downloading. Read and written on the main thread. */
     private val transfers = mutableMapOf<String, MutableStateFlow<BridgeDownloadTransferProgress?>>()
@@ -48,8 +50,8 @@ class DownloadStore(
         }
     }
 
-    fun setSnapshot(snapshot: BridgeDownloadSnapshot) {
-        _state.value = LiveValue.Current(snapshot)
+    fun setCounts(counts: BridgeDownloadCounts) {
+        _state.value = LiveValue.Current(counts)
     }
 
     fun fail(error: DisplayError) {

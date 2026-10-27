@@ -2518,7 +2518,10 @@ Reads come two ways:
   longer read or write it, is delivered once and ends the subscription. A
   subscription that shows a window of a long list is pointed at a new window
   in place as the person scrolls; one that has ended takes the new window and
-  reads nothing more. The Storage Manager's list is also told
+  reads nothing more. The downloads list on the phones is such a list: it
+  reads how many releases the queue holds and the windows on screen, and its
+  pause and retry controls and summary line read how many are in each phase.
+  The Storage Manager's list is also told
   which releases are selected in it, and each of its values carries the row
   of each one the list holds, on screen or not, and the storage actions every
   one of those allows: a selection is offered only those. Its inspector
@@ -2529,7 +2532,8 @@ Reads come two ways:
   list, including while an action's confirmation or folder prompt is open.
   The inspector reads its release live by id: the release's files, each beside
   the upload coven holds for it, and its entry in the download, export and
-  upload queues, worked out in core. The upload queue's own subscription says
+  upload queues, worked out in core; the download and export entries are read
+  for that release alone. The upload queue's own subscription says
   only which releases have uploads queued, how many, and whether it is paused;
   the bytes each upload and download moves, and the percent each export
   reaches, arrive apart, per file and per release.

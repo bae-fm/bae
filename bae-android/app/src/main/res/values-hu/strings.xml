@@ -142,6 +142,8 @@
     <string name="download_waiting">Letöltésre vár</string>
     <string name="resume">Folytatás</string>
     <string name="downloads_empty">Nincs letöltés</string>
+    <string name="downloads_load_failed">A letöltéseidet nem sikerült betölteni.</string>
+    <string name="downloads_load_more_failed">Nem sikerült több letöltést betölteni.</string>
     <string name="downloads_concurrency_label">Egyidejű letöltések</string>
     <plurals name="download_file_count">
         <item quantity="one">%1$d fájl</item>

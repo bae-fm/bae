@@ -5,18 +5,18 @@ import fm.bae.app.DisplayError
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** A failed read of the download queue replaces the last snapshot, so nothing shows it as current, until the next one. */
+/** A failed read of the download queue's counts replaces the last ones, so nothing shows them as current, until the next. */
 class DownloadStoreTest {
     @Test
-    fun aFailedReadReplacesTheLastSnapshotUntilTheNextOne() {
-        val snapshot = BridgeFixtures.downloadSnapshot()
-        val store = DownloadStore(snapshot)
+    fun aFailedReadReplacesTheLastCountsUntilTheNextOnes() {
+        val counts = BridgeFixtures.downloadCounts()
+        val store = DownloadStore(counts)
         val failure = DisplayError("Couldn't read the download queue.")
 
         store.fail(failure)
         assertEquals(LiveValue.Failed(failure), store.state.value)
 
-        store.setSnapshot(snapshot)
-        assertEquals(LiveValue.Current(snapshot), store.state.value)
+        store.setCounts(counts)
+        assertEquals(LiveValue.Current(counts), store.state.value)
     }
 }

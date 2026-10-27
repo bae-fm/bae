@@ -142,6 +142,8 @@
     <string name="download_waiting">Venter på nedlasting</string>
     <string name="resume">Fortsett</string>
     <string name="downloads_empty">Ingen nedlastinger</string>
+    <string name="downloads_load_failed">Nedlastingene dine kunne ikke lastes inn.</string>
+    <string name="downloads_load_more_failed">Kunne ikke laste inn flere nedlastinger.</string>
     <string name="downloads_concurrency_label">Samtidige nedlastinger</string>
     <plurals name="download_file_count">
         <item quantity="one">%1$d fil</item>

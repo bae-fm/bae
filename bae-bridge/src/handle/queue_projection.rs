@@ -202,24 +202,16 @@ impl crate::types::BridgeDownloadOp {
     }
 }
 
-impl crate::types::BridgeDownloadSnapshot {
-    pub(super) fn from_core(snapshot: bae_core::library::DownloadSnapshot) -> Self {
-        let summary_parts = snapshot
+impl crate::types::BridgeDownloadCounts {
+    pub(super) fn from_core(counts: bae_core::library::ReleaseQueueCounts) -> Self {
+        let summary_parts = counts
             .total
             .summary_parts("core.queue.downloading")
             .into_iter()
             .map(crate::types::BridgeCountLabel::from_core)
             .collect();
-        let bae_core::library::release_queue::ReleaseQueueSnapshot {
-            rows,
-            total,
-            paused,
-        } = snapshot;
-        crate::types::BridgeDownloadSnapshot {
-            downloads: rows
-                .into_iter()
-                .map(crate::types::BridgeDownloadOp::from_core)
-                .collect(),
+        let bae_core::library::ReleaseQueueCounts { total, paused } = counts;
+        crate::types::BridgeDownloadCounts {
             total: crate::types::BridgeDownloadProgress::from_core(total),
             summary_parts,
             paused,

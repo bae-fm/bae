@@ -97,6 +97,10 @@ mod cloud_operations;
 mod collection_subscription;
 mod configuration;
 mod detail;
+mod download_browse;
+pub use download_browse::{
+    BridgeDownloadBrowseSnapshot, BridgeDownloadBrowseWindow, DownloadBrowseSubscription,
+};
 mod library_search;
 #[cfg(feature = "desktop")]
 pub use collection_subscription::{

@@ -10,9 +10,9 @@ import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
+import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
-import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeFile
@@ -216,15 +216,13 @@ object BridgeFixtures {
             state = state,
         )
 
-    fun downloadSnapshot(
+    fun downloadCounts(
         queued: UInt = 0u,
         active: UInt = 0u,
         failed: UInt = 0u,
         paused: Boolean = false,
-        downloads: List<BridgeDownloadOp> = emptyList(),
-    ): BridgeDownloadSnapshot =
-        BridgeDownloadSnapshot(
-            downloads = downloads,
+    ): BridgeDownloadCounts =
+        BridgeDownloadCounts(
             total =
                 BridgeDownloadProgress(
                     queued = queued,

@@ -571,7 +571,7 @@ object AppSessionHolder {
         }
         val config: BridgeConfig = handle.getConfig()
         val initialOutbox = handle.getOutboxSnapshot()
-        val initialDownloads = handle.getDownloadSnapshot()
+        val initialDownloads = handle.getDownloadCounts()
         val previous = current
         current = null
         previous?.dispose()
@@ -618,7 +618,7 @@ object AppSessionHolder {
         config: BridgeConfig,
         handle: AppHandle,
         initialOutbox: uniffi.bae_bridge.BridgeOutboxSnapshot,
-        initialDownloads: uniffi.bae_bridge.BridgeDownloadSnapshot,
+        initialDownloads: uniffi.bae_bridge.BridgeDownloadCounts,
         messages: SessionMessages,
     ): OpenLibraryStores =
         OpenLibraryStores(

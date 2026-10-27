@@ -47,6 +47,11 @@ pub type ComposerBrowseSubscription = LibraryBrowseSubscription<
     crate::album_detail::ComposerSummary,
 >;
 
+/// The download queue as the Downloads pane draws it: its windows, each row
+/// an entry beside its release.
+pub type DownloadBrowseSubscription =
+    LibraryBrowseSubscription<crate::library::ReleaseQueueWindows<()>, crate::library::DownloadRow>;
+
 #[derive(Debug, thiserror::Error)]
 pub enum LibraryBrowseSubscriptionError {
     #[error("browse subscription cancelled")]

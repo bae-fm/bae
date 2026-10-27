@@ -139,6 +139,8 @@
     <string name="download_waiting">等待下載</string>
     <string name="resume">繼續</string>
     <string name="downloads_empty">沒有下載</string>
+    <string name="downloads_load_failed">無法載入你的下載。</string>
+    <string name="downloads_load_more_failed">無法載入更多下載。</string>
     <plurals name="download_file_count">
         <item quantity="other">%1$d 個檔案</item>
     </plurals>

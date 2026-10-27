@@ -45,7 +45,7 @@ import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
-import uniffi.bae_bridge.DownloadCallback
+import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
@@ -243,10 +243,10 @@ class OpenLibrary internal constructor(
                 },
             )
         valueSubscriptions +=
-            appHandle.subscribeDownloads(
-                object : DownloadCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeDownloadSnapshot) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.downloads.setSnapshot(value) }
+            appHandle.subscribeDownloadCounts(
+                object : DownloadCountsCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeDownloadCounts) {
+                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.downloads.setCounts(value) }
                     }
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {

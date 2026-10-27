@@ -139,6 +139,8 @@
     <string name="download_waiting">다운로드 대기 중</string>
     <string name="resume">재개</string>
     <string name="downloads_empty">다운로드 없음</string>
+    <string name="downloads_load_failed">다운로드를 불러올 수 없습니다.</string>
+    <string name="downloads_load_more_failed">다운로드를 더 불러올 수 없습니다.</string>
     <plurals name="download_file_count">
         <item quantity="other">파일 %1$d개</item>
     </plurals>

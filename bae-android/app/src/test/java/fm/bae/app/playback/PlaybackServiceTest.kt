@@ -138,7 +138,7 @@ class PlaybackServiceTest {
                     syncActivity = SyncActivityStore({}, {}),
                     transfers =
                         LibraryTransferStores(
-                            downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
+                            downloads = DownloadStore(BridgeFixtures.downloadCounts()),
                             outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
                         ),
                     cast = CastStore(),

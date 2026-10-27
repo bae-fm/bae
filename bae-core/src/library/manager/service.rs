@@ -540,22 +540,47 @@ impl LibraryManager {
         self.sync.subscribe_outbox_values()
     }
 
-    /// The download queue as the Downloads pane shows it now.
+    /// Every entry of the download queue now, for a test that reads the
+    /// whole queue.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn download_snapshot(
         &self,
     ) -> Result<crate::library::DownloadSnapshot, LibraryError> {
         self.downloads.snapshot().await
     }
 
-    /// Follow the download queue as the Downloads pane shows it.
+    /// Follow every entry of the download queue, for a test that waits on
+    /// the whole queue.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_download_snapshot(
         &self,
     ) -> coven::LiveQuery<crate::library::DownloadSnapshot> {
         self.downloads.subscribe()
     }
 
+    /// Follow how many downloads the queue holds and the windows `initial`
+    /// names of them, as the Downloads pane draws them.
+    pub(crate) fn subscribe_download_windows(
+        &self,
+        initial: crate::library::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::library::LibraryPageWindows,
+        crate::library::ReleaseQueueWindows<()>,
+    > {
+        self.downloads.subscribe_windows(initial)
+    }
+
+    /// How many downloads are in each phase now, and whether the queue is
+    /// paused.
+    pub async fn download_counts(
+        &self,
+    ) -> Result<crate::library::ReleaseQueueCounts, LibraryError> {
+        self.downloads.counts().await
+    }
+
     /// Follow how many downloads are in each phase, and whether the queue is
-    /// paused: what the sync activity shows of them.
+    /// paused: what the sync activity and the Downloads pane's controls show
+    /// of them.
     pub(crate) fn subscribe_download_counts(
         &self,
     ) -> coven::LiveQuery<crate::library::ReleaseQueueCounts> {
@@ -588,13 +613,23 @@ impl LibraryManager {
             })
     }
 
-    /// Follow the export queue as the storage inspector shows it, without
-    /// each export's percent.
-    #[cfg(desktop)]
+    /// Follow every entry of the export queue, for a test that waits on the
+    /// whole queue.
+    #[cfg(all(desktop, test))]
     pub(crate) fn subscribe_output_snapshot(
         &self,
     ) -> coven::LiveQuery<crate::library::OutputPhaseSnapshot> {
         self.outputs.subscribe()
+    }
+
+    /// Follow `initial`'s entries in the download and export queues, and
+    /// whether each is paused, as the storage inspector shows a release.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_release_queue_entries(
+        &self,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::library::ReleaseQueueEntries> {
+        self.database.subscribe_release_queue_entries(initial)
     }
 
     /// The percent the active export has reached, by release, and each

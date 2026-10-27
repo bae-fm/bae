@@ -15,6 +15,7 @@ import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
+import uniffi.bae_bridge.BridgeDownloadBrowseSnapshot
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
@@ -23,6 +24,7 @@ import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.ComposerBrowseSubscription
+import uniffi.bae_bridge.DownloadBrowseSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
 
 internal sealed interface LiveQueryEvent<out Value> {
@@ -193,6 +195,9 @@ class Library(
     internal fun artistBrowse(sortCriterion: BridgeArtistSortCriterion): ArtistBrowseQuery =
         BridgeArtistBrowseQuery(handle.subscribeArtistBrowse(listOf(sortCriterion)))
 
+    /** The download queue as the Downloads screen draws it, in windows that move as it scrolls. */
+    internal fun downloadBrowse(): DownloadBrowseQuery = BridgeDownloadBrowseQuery(handle.subscribeDownloadBrowse())
+
     internal fun composerDetails(id: String): DetailEvents<BridgeComposerDetail> = detailFlow(::composerDetail, id)
 
     internal fun workDetails(id: String): DetailEvents<BridgeWorkDetail> = detailFlow(::workDetail, id)
@@ -246,6 +251,8 @@ internal interface ComposerBrowseQuery : CollectionBrowseQuery<BridgeComposerBro
 
 internal interface ArtistBrowseQuery : CollectionBrowseQuery<BridgeArtistBrowseSnapshot>
 
+internal interface DownloadBrowseQuery : CollectionBrowseQuery<BridgeDownloadBrowseSnapshot>
+
 private class BridgeAlbumBrowseQuery(
     private val subscription: AlbumBrowseSubscription,
 ) : AlbumBrowseQuery {
@@ -262,6 +269,16 @@ private class BridgeComposerBrowseQuery(
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
 
     override suspend fun next(): BridgeComposerBrowseSnapshot = subscription.next()
+
+    override suspend fun cancel() = subscription.cancel()
+}
+
+private class BridgeDownloadBrowseQuery(
+    private val subscription: DownloadBrowseSubscription,
+) : DownloadBrowseQuery {
+    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
+
+    override suspend fun next(): BridgeDownloadBrowseSnapshot = subscription.next()
 
     override suspend fun cancel() = subscription.cancel()
 }

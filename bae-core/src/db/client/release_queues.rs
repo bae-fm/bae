@@ -9,8 +9,9 @@ use super::*;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
 use crate::library::release_queue::{
     QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress,
-    ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
+    ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState, ReleaseQueueWindows,
 };
+use crate::library::{LibraryBrowseWindow, LibraryPageWindows};
 use rusqlite::types::{Type, Value};
 
 /// What a queue's entries carry beyond their release, and the table that
@@ -133,9 +134,9 @@ fn phase_from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<ReleaseQueueStat
     }
 }
 
-/// The pane's read of a queue: every entry in the order queued, beside its
-/// release as the library holds it.
-pub(super) fn pane_sql<P: QueuedPayload>() -> String {
+/// A queue's entries beside their releases as the library holds them, the
+/// ones `tail` picks: a `WHERE`, `ORDER BY` or `LIMIT` over the queue `q`.
+pub(super) fn queue_rows_sql<P: QueuedPayload>(tail: &str) -> String {
     format!(
         "SELECT {columns}, q.state, q.error, r.id IS NOT NULL, a.title, \
             COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0), \
@@ -143,25 +144,20 @@ pub(super) fn pane_sql<P: QueuedPayload>() -> String {
          FROM {table} q \
          LEFT JOIN releases r ON r.id = q.release_id \
          LEFT JOIN albums a ON a.id = r.album_id \
-         ORDER BY q.position",
+         {tail}",
         columns = entry_columns::<P>("q."),
         table = P::TABLE,
     )
 }
 
-fn paused_on(sql: &SqlReadContext<'_>, queue: &str) -> rusqlite::Result<bool> {
-    sql.query_row(
-        "SELECT paused FROM release_queues WHERE queue = ?",
-        [queue],
-        |row| row.get(0),
-    )
-}
-
-fn release_queue_on<P: QueuedPayload>(
+/// The rows [`queue_rows_sql`] reads for `tail`, bound to `params`.
+fn queue_rows_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
-) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
+    tail: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<ReleaseQueueRow<P, ()>>, DbError> {
     let at = 2 + P::COLUMNS.len();
-    let rows = sql.query(&pane_sql::<P>(), [], |row| {
+    Ok(sql.query(&queue_rows_sql::<P>(tail), params, |row| {
         let entry = entry_from_row::<P>(row)?;
         let held: bool = row.get(at + 2)?;
         let release = if held {
@@ -182,7 +178,56 @@ fn release_queue_on<P: QueuedPayload>(
             },
             release,
         })
-    })?;
+    })?)
+}
+
+/// A window's offset or length as SQLite takes it.
+fn sql_bound(value: u64) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
+}
+
+/// How many entries the queue holds, and the windows `windows` names of
+/// them in the order queued, each beside its release.
+fn release_queue_windows_on<P: QueuedPayload>(
+    sql: &SqlReadContext<'_>,
+    windows: &LibraryPageWindows,
+) -> Result<ReleaseQueueWindows<P>, DbError> {
+    let total_count: u64 =
+        sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| {
+            row.get(0)
+        })?;
+    let windows = windows
+        .iter()
+        .map(|window| {
+            Ok(LibraryBrowseWindow {
+                window: window.clone(),
+                rows: queue_rows_on::<P>(
+                    sql,
+                    "ORDER BY q.position LIMIT ?1 OFFSET ?2",
+                    params![sql_bound(window.limit), sql_bound(window.offset)],
+                )?,
+            })
+        })
+        .collect::<Result<_, DbError>>()?;
+    Ok(ReleaseQueueWindows {
+        windows,
+        total_count,
+    })
+}
+
+fn paused_on(sql: &SqlReadContext<'_>, queue: &str) -> rusqlite::Result<bool> {
+    sql.query_row(
+        "SELECT paused FROM release_queues WHERE queue = ?",
+        [queue],
+        |row| row.get(0),
+    )
+}
+
+#[cfg(any(desktop, test, feature = "test-utils"))]
+fn release_queue_on<P: QueuedPayload>(
+    sql: &SqlReadContext<'_>,
+) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
+    let rows = queue_rows_on::<P>(sql, "ORDER BY q.position", [])?;
     let mut total = ReleaseQueueProgress::default();
     for row in &rows {
         match row.op.state {
@@ -218,6 +263,28 @@ fn release_queue_counts_on<P: QueuedPayload>(
             failed,
         },
         paused: paused_on(sql, P::QUEUE)?,
+    })
+}
+
+/// `release_id`'s entries in the download and export queues, and whether
+/// each queue is paused.
+#[cfg(desktop)]
+fn release_queue_entries_on(
+    sql: &SqlReadContext<'_>,
+    release_id: Option<&str>,
+) -> Result<crate::library::ReleaseQueueEntries, DbError> {
+    let (download, output) = match release_id {
+        Some(release_id) => (
+            queue_rows_on::<()>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
+            queue_rows_on::<OutputRequest>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
+        ),
+        None => (None, None),
+    };
+    Ok(crate::library::ReleaseQueueEntries {
+        download,
+        downloads_paused: paused_on(sql, <() as QueuedPayload>::QUEUE)?,
+        output,
+        outputs_paused: paused_on(sql, OutputRequest::QUEUE)?,
     })
 }
 
@@ -426,22 +493,64 @@ impl Database {
         .await
     }
 
-    /// The queue as its pane shows it now.
+    /// Every entry of the queue now, each beside its release: what the
+    /// automation surface's export status reads.
+    #[cfg(any(desktop, test, feature = "test-utils"))]
     pub(crate) async fn release_queue<P: QueuedPayload>(
         &self,
     ) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
         self.read(|sql| release_queue_on::<P>(&sql)).await
     }
 
-    /// Follow the queue as its pane shows it: an entry coming, going,
-    /// starting or failing, the queue pausing, or a change to a release it
-    /// names.
+    /// Follow every entry of the queue, for a test that waits on the whole
+    /// queue.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn subscribe_release_queue<P: QueuedPayload>(
         &self,
     ) -> coven::LiveQuery<ReleaseQueueSnapshot<P, ()>> {
         self.inner
             .handle
             .subscribe(|sql| release_queue_on::<P>(&sql).map_err(CovenError::from))
+    }
+
+    /// Follow how many entries the queue holds and the windows `initial`
+    /// names of them, as its pane draws them: an entry coming, going,
+    /// starting or failing, or a change to a release a window shows. The
+    /// windows move by pointing the same query at new ones.
+    pub(crate) fn subscribe_release_queue_windows<P: QueuedPayload>(
+        &self,
+        initial: LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<LibraryPageWindows, ReleaseQueueWindows<P>> {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |windows, sql| {
+                release_queue_windows_on::<P>(&sql, windows).map_err(CovenError::from)
+            })
+            .process(Ok)
+    }
+
+    /// Follow `initial`'s entries in the download and export queues and
+    /// whether each queue is paused: what the storage inspector shows of a
+    /// release. Another release is a new request on the same query.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_release_queue_entries(
+        &self,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::library::ReleaseQueueEntries> {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |release_id, sql| {
+                release_queue_entries_on(&sql, release_id.as_deref()).map_err(CovenError::from)
+            })
+            .process(Ok)
+    }
+
+    /// How many entries the queue holds in each phase now, and whether it is
+    /// paused.
+    pub(crate) async fn release_queue_counts<P: QueuedPayload>(
+        &self,
+    ) -> Result<ReleaseQueueCounts, DbError> {
+        self.read(|sql| release_queue_counts_on::<P>(&sql)).await
     }
 
     /// Follow how many entries the queue holds in each phase, and whether it

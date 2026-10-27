@@ -196,14 +196,35 @@ where
         self.shared.transfers.subscribe()
     }
 
-    /// The queue as its pane shows it now.
+    /// Every entry of the queue now.
+    #[cfg(any(desktop, test, feature = "test-utils"))]
     pub(crate) async fn snapshot(&self) -> Result<ReleaseQueueSnapshot<Extra, ()>, LibraryError> {
         Ok(self.database.release_queue::<Extra>().await?)
     }
 
-    /// Follow the queue as its pane shows it.
+    /// Follow every entry of the queue, for a test that waits on the whole
+    /// queue.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn subscribe(&self) -> coven::LiveQuery<ReleaseQueueSnapshot<Extra, ()>> {
         self.database.subscribe_release_queue::<Extra>()
+    }
+
+    /// Follow how many entries the queue holds and the windows `initial`
+    /// names of them, as its pane draws them.
+    pub(crate) fn subscribe_windows(
+        &self,
+        initial: crate::library::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::library::LibraryPageWindows,
+        crate::library::ReleaseQueueWindows<Extra>,
+    > {
+        self.database
+            .subscribe_release_queue_windows::<Extra>(initial)
+    }
+
+    /// How many entries are in each phase now, and whether it is paused.
+    pub(crate) async fn counts(&self) -> Result<ReleaseQueueCounts, LibraryError> {
+        Ok(self.database.release_queue_counts::<Extra>().await?)
     }
 
     /// Follow how many entries are in each phase, and whether it is paused.

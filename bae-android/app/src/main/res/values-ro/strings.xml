@@ -143,6 +143,8 @@
     <string name="download_waiting">Așteaptă descărcarea</string>
     <string name="resume">Reia</string>
     <string name="downloads_empty">Nicio descărcare</string>
+    <string name="downloads_load_failed">Descărcările tale nu au putut fi încărcate.</string>
+    <string name="downloads_load_more_failed">Nu s-au putut încărca mai multe descărcări.</string>
     <string name="downloads_concurrency_label">Descărcări simultane</string>
     <plurals name="download_file_count">
         <item quantity="one">%1$d fișier</item>

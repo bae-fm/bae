@@ -19,6 +19,7 @@ import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
@@ -59,6 +60,8 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     protected val scope: CoroutineScope,
     /** The headline for a later page that failed to load, naming what this list holds. */
     @StringRes private val loadMoreFailed: Int,
+    /** The headline for the first page failing to load, naming what this list holds. */
+    @StringRes private val loadFailed: Int = R.string.library_load_failed,
 ) {
     val rows = mutableStateMapOf<Int, Row>()
     var sections by mutableStateOf(emptyList<BridgeLibraryBrowseSection>())
@@ -186,7 +189,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
             PageError(
                 DisplayError(
                     appContext.getString(
-                        if (rows.isEmpty()) R.string.library_load_failed else loadMoreFailed,
+                        if (rows.isEmpty()) loadFailed else loadMoreFailed,
                     ),
                     value.diagnosticDetail,
                 ),
@@ -265,6 +268,23 @@ internal class ComposerPageStore(
         }
 }
 
+/** The download queue as the Downloads screen draws it: its entries in the order queued, by window. */
+internal class DownloadPageStore(
+    private val library: Library,
+    appContext: Context,
+    scope: CoroutineScope,
+) : WindowedBrowserPageStore<Unit, BridgeDownloadOp>(
+        appContext,
+        scope,
+        loadMoreFailed = R.string.downloads_load_more_failed,
+        loadFailed = R.string.downloads_load_failed,
+    ) {
+    override fun open(parameter: Unit): BrowseRowsQuery<BridgeDownloadOp> =
+        SnapshotRowsQuery(library.downloadBrowse()) { snapshot ->
+            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
+        }
+}
+
 /** A collection browse query read as rows by window, through [read]. */
 private class SnapshotRowsQuery<Snapshot, Row>(
     private val query: CollectionBrowseQuery<Snapshot>,
@@ -285,10 +305,12 @@ internal class BrowserPageStores(
     val albums = AlbumPageStore(library, appContext, scope)
     val artists = ArtistPageStore(library, appContext, scope)
     val composers = ComposerPageStore(library, appContext, scope)
+    val downloads = DownloadPageStore(library, appContext, scope)
 
     fun cancel() {
         albums.deactivate()
         artists.deactivate()
         composers.deactivate()
+        downloads.deactivate()
     }
 }

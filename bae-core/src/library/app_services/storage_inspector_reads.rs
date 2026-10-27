@@ -6,8 +6,8 @@ use crate::library::storage_inspector::{
     selected_upload_group, storage_inspector_transfers, StorageInspector, StorageInspectorTransfer,
 };
 use crate::library::{
-    DownloadSnapshot, LibraryError, LiveReadError, OutboxPauseState, OutboxState,
-    OutputPhaseSnapshot, UploadReleaseGroup,
+    LibraryError, LiveReadError, OutboxPauseState, OutboxState, ReleaseQueueEntries,
+    UploadReleaseGroup,
 };
 
 type OutboxValues = tokio::sync::watch::Receiver<Option<Result<OutboxState, String>>>;
@@ -44,18 +44,18 @@ impl AppServices {
     /// The Storage Manager inspector's release as it changes, read for the id
     /// the subscription is set to: its files, each beside the upload coven
     /// holds for it, and its entry in the download, export and upload
-    /// queues. A queue change that leaves the release's entries as they were
-    /// sends nothing; the bytes its uploads and downloads move are their
-    /// transfers. Another release is a new id on the same read.
+    /// queues, the first two read for this release alone. A queue change
+    /// that leaves the release's entries as they were sends nothing; the
+    /// bytes its uploads and downloads move are their transfers. Another
+    /// release is a new id on the same read.
     pub fn subscribe_storage_inspector(
         &self,
     ) -> crate::library::DetailSubscription<StorageInspector> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
+        let manager = self.inner.manager.clone();
         let release_detail = self.subscribe_release_detail();
-        let mut downloads = self.subscribe_download_values();
-        let mut outputs = self.subscribe_output_values();
         let mut outbox = self.subscribe_outbox_values();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task("storage inspector", task.clone(), async move {
@@ -63,8 +63,13 @@ impl AppServices {
             // The shown release's files as last read: `None` until they are,
             // `Some(None)` once no such release exists.
             let mut files: Option<Option<Vec<FileDetail>>> = None;
-            let mut download_queue: Option<DownloadSnapshot> = None;
-            let mut output_queue: Option<OutputPhaseSnapshot> = None;
+            let mut queues = reconfigurable_live_query_events(
+                &manager,
+                manager.subscribe_release_queue_entries(None),
+            );
+            // The release's download and export entries as last read: `None`
+            // until they are read for the release shown.
+            let mut entries: Option<ReleaseQueueEntries> = None;
             // `None` until read for the release shown, and after the upload
             // queue moves.
             let mut uploads: Option<ShownUploads> = None;
@@ -76,6 +81,8 @@ impl AppServices {
                         if changed.is_err() { return; }
                         id = ids.borrow_and_update().clone();
                         files = None;
+                        entries = None;
+                        queues.set(id.clone());
                         uploads = None;
                         told = Told::Nothing;
                         if release_detail.set(id.clone()).is_err() { return; }
@@ -96,20 +103,11 @@ impl AppServices {
                             continue;
                         }
                     },
-                    value = downloads.recv() => match value {
+                    value = queues.recv() => match value {
                         None => return,
-                        Some(Ok(queue)) => download_queue = Some(queue),
+                        Some(Ok(read)) => entries = Some(read),
                         Some(Err(error)) => {
-                            download_queue = None;
-                            if !fail(error) { return; }
-                            continue;
-                        }
-                    },
-                    value = outputs.recv() => match value {
-                        None => return,
-                        Some(Ok(queue)) => output_queue = Some(queue),
-                        Some(Err(error)) => {
-                            output_queue = None;
+                            entries = None;
                             if !fail(error) { return; }
                             continue;
                         }
@@ -142,8 +140,7 @@ impl AppServices {
                         }
                     }
                 }
-                let (Some(read_files), Some(download_queue), Some(output_queue), Some(uploads)) =
-                    (&files, &download_queue, &output_queue, &uploads)
+                let (Some(read_files), Some(entries), Some(uploads)) = (&files, &entries, &uploads)
                 else {
                     continue;
                 };
@@ -157,9 +154,7 @@ impl AppServices {
                     }
                     Some(release_files) => {
                         let transfers = storage_inspector_transfers(
-                            &release_id,
-                            download_queue,
-                            output_queue,
+                            entries,
                             uploads.group.clone(),
                             uploads.paused,
                         );

@@ -278,10 +278,11 @@ pub struct BridgeDownloadProgress {
     pub failed: u32,
 }
 
-/// The download queue as the Downloads pane renders it.
+/// How many downloads are in each phase, and whether the queue is paused:
+/// what the Downloads pane's summary and controls show. Its rows are the
+/// pane's windows (`DownloadBrowseSubscription`).
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeDownloadSnapshot {
-    pub downloads: Vec<BridgeDownloadOp>,
+pub struct BridgeDownloadCounts {
     pub total: BridgeDownloadProgress,
     /// The summary line's parts, in core's order; the UI resolves and joins them.
     pub summary_parts: Vec<BridgeCountLabel>,

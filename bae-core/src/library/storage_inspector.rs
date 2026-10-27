@@ -1,7 +1,7 @@
 //! The Storage Manager inspector's release: its files, each beside the upload
 //! coven holds for it, and the release's entry in each transfer queue.
 
-use super::{DownloadRow, DownloadSnapshot, OutputPhaseRow, OutputPhaseSnapshot};
+use super::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 use super::{UploadFileOp, UploadReleaseGroup};
 use crate::album_detail::FileDetail;
 
@@ -87,31 +87,24 @@ impl StorageInspector {
 /// The release's entry in each queue, downloads first, then exports, then
 /// its upload group (`upload`, from a queue paused when `uploads_paused`).
 pub(crate) fn storage_inspector_transfers(
-    release_id: &str,
-    downloads: &DownloadSnapshot,
-    outputs: &OutputPhaseSnapshot,
+    entries: &ReleaseQueueEntries,
     upload: Option<UploadReleaseGroup>,
     uploads_paused: bool,
 ) -> Vec<StorageInspectorTransfer> {
     let mut items = Vec::new();
-    if let Some(operation) = selected_release(release_id, &downloads.rows, |row| &row.op.release_id)
-    {
+    if let Some(operation) = &entries.download {
         items.push(StorageInspectorTransfer::Download {
             operation: operation.clone(),
-            paused: downloads.paused,
+            paused: entries.downloads_paused,
         });
     }
-    if let Some(operation) = selected_release(release_id, &outputs.rows, |row| &row.op.release_id) {
+    if let Some(operation) = &entries.output {
         items.push(StorageInspectorTransfer::Output {
             operation: operation.clone(),
-            paused: outputs.paused,
+            paused: entries.outputs_paused,
         });
     }
     if let Some(group) = upload {
-        assert_eq!(
-            group.release_id, release_id,
-            "the shown upload group is the selected release's"
-        );
         items.push(StorageInspectorTransfer::Upload {
             group,
             paused: uploads_paused,

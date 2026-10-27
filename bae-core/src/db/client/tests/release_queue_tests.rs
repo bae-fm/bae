@@ -283,10 +283,109 @@ async fn the_queue_reads_are_planned_on_their_keys() {
         by_release.contains("USING INDEX sqlite_autoindex_download_queue_1 (release_id=?)"),
         "{by_release}"
     );
-    let pane = plan(super::super::release_queues::pane_sql::<()>()).await;
+    let pane = plan(super::super::release_queues::queue_rows_sql::<()>(
+        "ORDER BY q.position LIMIT 100 OFFSET 0",
+    ))
+    .await;
     assert!(
         pane.contains("SEARCH r USING INDEX sqlite_autoindex_releases_1 (id=?)"),
         "{pane}"
     );
     assert!(!pane.contains("TEMP B-TREE"), "{pane}");
+}
+
+/// A pane's window holds the entries it names in the order queued, and the
+/// read says how many the queue holds; a window past the end holds none.
+#[tokio::test]
+async fn a_window_reads_its_entries_and_the_queue_length() {
+    let (db, _tmp) = temp_db().await;
+    let releases: Vec<String> = (0..5)
+        .map(|i| bae_test_support::test_uuid(&format!("window-release-{i}")))
+        .collect();
+    db.enqueue_releases(releases.iter().map(|id| download(id)).collect())
+        .await
+        .unwrap();
+    let mut live =
+        db.subscribe_release_queue_windows::<()>(crate::library::LibraryPageWindows::from([
+            crate::library::LibraryPageWindow {
+                offset: 1,
+                limit: 2,
+            },
+            crate::library::LibraryPageWindow {
+                offset: 9,
+                limit: 2,
+            },
+        ]));
+    let read = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(read.total_count, 5);
+    let shown: Vec<Vec<String>> = read
+        .windows
+        .iter()
+        .map(|window| {
+            window
+                .rows
+                .iter()
+                .map(|row| row.op.release_id.clone())
+                .collect()
+        })
+        .collect();
+    assert_eq!(shown, vec![releases[1..3].to_vec(), Vec::<String>::new()]);
+}
+
+/// The inspector's read of one release holds its entry in each queue beside
+/// that queue's pause state, and nothing of another release's.
+#[cfg(desktop)]
+#[tokio::test]
+async fn a_releases_entries_are_read_for_it_alone() {
+    let (db, _tmp) = temp_db().await;
+    db.enqueue_releases(vec![download(RELEASE_A), download(RELEASE_B)])
+        .await
+        .unwrap();
+    db.enqueue_releases(vec![ReleaseQueueEntry {
+        release_id: RELEASE_A.to_string(),
+        created_at: 3,
+        payload: OutputRequest {
+            target_dir: "/Users/ana/Music/Copies".into(),
+            kind: OutputKind::Export,
+        },
+    }])
+    .await
+    .unwrap();
+    db.set_release_queue_paused::<OutputRequest>(true)
+        .await
+        .unwrap();
+
+    let mut live = db.subscribe_release_queue_entries(Some(RELEASE_B.to_string()));
+    let read = live
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(
+        read.download.map(|row| row.op.release_id).as_deref(),
+        Some(RELEASE_B)
+    );
+    assert!(read.output.is_none(), "only RELEASE_A is exporting");
+    assert!(read.outputs_paused);
+    assert!(!read.downloads_paused);
+
+    live.requests()
+        .set(Some(RELEASE_A.to_string()))
+        .expect("the query is open");
+    let read = loop {
+        let event = live.next().await.expect("the query stays open");
+        if event.request.as_deref() == Some(RELEASE_A) {
+            break event.result.unwrap();
+        }
+    };
+    assert_eq!(
+        read.output.map(|row| row.op.payload.target_dir),
+        Some("/Users/ana/Music/Copies".into())
+    );
 }

@@ -139,6 +139,8 @@
     <string name="download_waiting">في انتظار التنزيل</string>
     <string name="resume">استئناف</string>
     <string name="downloads_empty">لا توجد تنزيلات</string>
+    <string name="downloads_load_failed">تعذّر تحميل تنزيلاتك.</string>
+    <string name="downloads_load_more_failed">تعذّر تحميل المزيد من التنزيلات.</string>
     <plurals name="download_file_count">
         <item quantity="zero">%1$d ملف</item>
         <item quantity="one">ملف واحد</item>

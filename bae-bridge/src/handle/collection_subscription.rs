@@ -149,7 +149,9 @@ browse_subscription! {
     row: bae_core::album_detail::ComposerSummary => BridgeComposerSummary,
 }
 
-fn browse_error(error: bae_core::library::LibraryBrowseSubscriptionError) -> BridgeError {
+pub(super) fn browse_error(
+    error: bae_core::library::LibraryBrowseSubscriptionError,
+) -> BridgeError {
     match error {
         bae_core::library::LibraryBrowseSubscriptionError::Cancelled => BridgeError::Cancelled,
         bae_core::library::LibraryBrowseSubscriptionError::Query(error) => {

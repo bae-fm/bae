@@ -12,9 +12,9 @@ import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeCountLabel
+import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
-import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferChange
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
@@ -324,15 +324,13 @@ object PreviewData {
             throughputBps = 0uL,
         )
 
-    fun downloadSnapshot(
+    fun downloadCounts(
         queued: UInt = 1u,
         active: UInt = 1u,
         failed: UInt = 0u,
         paused: Boolean = false,
-        downloads: List<BridgeDownloadOp> = listOf(downloadOp()),
-    ): BridgeDownloadSnapshot =
-        BridgeDownloadSnapshot(
-            downloads = downloads,
+    ): BridgeDownloadCounts =
+        BridgeDownloadCounts(
             total = BridgeDownloadProgress(queued = queued, active = active, failed = failed),
             summaryParts = emptyList(),
             paused = paused,
@@ -351,12 +349,12 @@ object PreviewData {
             isActive = isActive,
         )
 
-    /** A download store holding [snapshot], with [downloadingReleaseId]'s download at [downloadTransferProgress]. */
+    /** A download store holding [counts], with [downloadingReleaseId]'s download at [downloadTransferProgress]. */
     fun downloadStore(
-        snapshot: BridgeDownloadSnapshot = downloadSnapshot(),
+        counts: BridgeDownloadCounts = downloadCounts(),
         downloadingReleaseId: String = "rel-1",
     ): DownloadStore =
-        DownloadStore(snapshot).apply {
+        DownloadStore(counts).apply {
             applyTransferChange(
                 BridgeDownloadTransferChange.Reset(
                     listOf(BridgeKeyedDownloadTransfer(downloadingReleaseId, downloadTransferProgress())),

@@ -55,15 +55,17 @@ impl AppHandle {
         )
     }
 
-    pub fn subscribe_downloads(
+    /// How many downloads are in each phase, and whether the queue is
+    /// paused, now and after each change.
+    pub fn subscribe_download_counts(
         &self,
-        callback: Box<dyn crate::types::DownloadCallback>,
+        callback: Box<dyn crate::types::DownloadCountsCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         self.subscribe_channel(
-            |services| services.subscribe_download_values(),
+            |services| services.subscribe_download_counts(),
             move |value| match value {
                 Ok(value) => {
-                    callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(value))
+                    callback.on_value(crate::types::BridgeDownloadCounts::from_core(value))
                 }
                 Err(error) => callback.on_error(BridgeError::database_query(error)),
             },
@@ -91,13 +93,13 @@ impl AppHandle {
 }
 
 forward! { async this => {
-    /// The download queue as the Downloads pane shows it now, each entry
-    /// beside its release as the library holds it.
-    fn get_download_snapshot() -> crate::types::BridgeDownloadSnapshot {
+    /// How many downloads are in each phase now, and whether the queue is
+    /// paused.
+    fn get_download_counts() -> crate::types::BridgeDownloadCounts {
         this.services
-            .download_snapshot()
+            .download_counts()
             .await
-            .map(crate::types::BridgeDownloadSnapshot::from_core)
+            .map(crate::types::BridgeDownloadCounts::from_core)
             .map_err(BridgeError::database_query)
     }
 

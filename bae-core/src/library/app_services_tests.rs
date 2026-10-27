@@ -308,32 +308,37 @@ async fn a_release_session_keeps_its_choices_in_core() {
     assert!(services.release_lookup_choices().get(&key).is_none());
 }
 
-/// The next export-queue value whose only row satisfies `matches`, reading
-/// past the values before it.
+/// Wait until the storage inspector, set to one release, shows its export
+/// entry as `matches` looks for.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-async fn output_value_until(
-    values: &mut tokio::sync::mpsc::UnboundedReceiver<
-        Result<crate::library::OutputPhaseSnapshot, crate::library::LibraryError>,
+async fn inspected_export_until(
+    inspector: &crate::library::DetailSubscription<
+        crate::library::storage_inspector::StorageInspector,
     >,
     matches: impl Fn(&crate::library::OutputPhaseRow) -> bool,
-) -> crate::library::OutputPhaseSnapshot {
+) -> crate::library::OutputPhaseRow {
+    use crate::library::storage_inspector::StorageInspectorTransfer;
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+        let snapshot = tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())
             .await
-            .expect("export queue subscription delivers")
-            .expect("export queue subscription stays open")
-            .expect("export queue resolves");
-        if let [row] = value.rows.as_slice() {
-            if matches(row) {
-                return value;
+            .expect("the inspector delivers")
+            .expect("the inspector reads");
+        let Some(value) = snapshot.value else {
+            continue;
+        };
+        for transfer in value.transfers {
+            if let StorageInspectorTransfer::Output { operation, .. } = transfer {
+                if matches(&operation) {
+                    return operation;
+                }
             }
         }
     }
 }
 
 /// A queued export names its release by id only, so an album title edited
-/// while it waits shows on its row: the same subscription delivers the row
-/// with the new title, and a fresh read agrees.
+/// while it waits shows on its row: the inspector's read delivers the row
+/// with the new title, and a fresh read of the queue agrees.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[tokio::test(flavor = "multi_thread")]
 async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
@@ -346,12 +351,13 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
         .await
         .unwrap();
 
-    let mut values = services.subscribe_output_values();
-    let queued = output_value_until(&mut values, |row| row.release.is_some()).await;
-    let release = queued.rows[0].release.as_ref().unwrap();
+    let inspector = services.subscribe_storage_inspector();
+    inspector.set(Some(release_id.to_string())).unwrap();
+    let queued = inspected_export_until(&inspector, |row| row.release.is_some()).await;
+    let release = queued.release.as_ref().unwrap();
     assert_eq!(release.title, "Album Title");
     assert_eq!(release.file_count, 0);
-    assert_eq!(queued.rows[0].op.release_id, release_id);
+    assert_eq!(queued.op.release_id, release_id);
 
     manager
         .apply_release_metadata_user_edit(
@@ -384,7 +390,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
         .await
         .unwrap();
 
-    output_value_until(&mut values, |row| {
+    inspected_export_until(&inspector, |row| {
         row.release
             .as_ref()
             .is_some_and(|release| release.title == "Renamed Album")
@@ -457,12 +463,12 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_closes() {
     let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
-    let mut values = services.subscribe_download_values();
+    let mut values = services.subscribe_download_counts();
     tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
         .await
-        .expect("the download queue subscription delivers")
-        .expect("the download queue subscription stays open")
-        .expect("the download queue resolves");
+        .expect("the download counts subscription delivers")
+        .expect("the download counts subscription stays open")
+        .expect("the download counts resolve");
 
     services.close().await.unwrap();
 

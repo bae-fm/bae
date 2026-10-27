@@ -60,7 +60,9 @@ pub use output_snapshot::{
 };
 pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
 pub(crate) use queued_releases::QueuedReleases;
-pub use release_queue::{CountLabel, QueuedRelease, ReleaseQueueCounts};
+#[cfg(desktop)]
+pub use release_queue::ReleaseQueueEntries;
+pub use release_queue::{CountLabel, QueuedRelease, ReleaseQueueCounts, ReleaseQueueWindows};
 pub use release_transfers::{
     DownloadTransferChange, DownloadTransfersWatch, OutputTransferChange, OutputTransfersWatch,
     ReleaseTransferChange, ReleaseTransfersWatch,
