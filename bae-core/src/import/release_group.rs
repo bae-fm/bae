@@ -30,11 +30,11 @@
 //! within one.
 
 use crate::identify::agreements::Agreements;
-use bae_catalogs::remote_image::RemoteCover;
-use crate::import::pressing_evidence::{ComparedPressing, PressingEvidence, Support};
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataRef;
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::remote_image::RemoteCover;
+use pressing_sets::{formed_pressings, gather_pressings};
 
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it.
@@ -85,7 +85,9 @@ impl ReleaseGroup {
     /// Every row on the card that a run's agreement set aside, section by
     /// section.
     pub fn narrowed_out(&self) -> impl Iterator<Item = &Pressing> {
-        self.sections.iter().flat_map(|section| &section.narrowed_out)
+        self.sections
+            .iter()
+            .flat_map(|section| &section.narrowed_out)
     }
 
     /// Every row the card offers, section by section, taken out of it.
@@ -162,7 +164,9 @@ impl Pressing {
             .map(|release| {
                 let reference =
                     crate::import::MetadataRef::new(release.source, release.release_id.clone());
-                releases.iter().any(|other| other.links.contains(&reference))
+                releases
+                    .iter()
+                    .any(|other| other.links.contains(&reference))
             })
             .collect();
         let mut order: Vec<usize> = (0..releases.len()).collect();
@@ -212,7 +216,9 @@ impl Pressing {
         let mut partners: Vec<crate::import::MetadataRef> = Vec::new();
         for release in releases {
             let claimed = release.catalog == primary.catalog
-                || partners.iter().any(|partner| partner.catalog == release.catalog);
+                || partners
+                    .iter()
+                    .any(|partner| partner.catalog == release.catalog);
             if !claimed {
                 partners.push(release);
             }
@@ -500,130 +506,6 @@ struct CardRank {
     best: u32,
 }
 
-/// The sets of records each already-formed row holds, in the shape
-/// [`gather_pressings`] names them: indexes into the result list, in list
-/// order, and only the sets of two or more, since a record alone in its row
-/// is a row of its own without one here.
-fn formed_pressings(rows: &[u32]) -> Vec<Vec<usize>> {
-    let mut sets: Vec<(u32, Vec<usize>)> = Vec::new();
-    for (at, row) in rows.iter().enumerate() {
-        match sets.iter_mut().find(|(named, _)| named == row) {
-            Some((_, members)) => members.push(at),
-            None => sets.push((*row, vec![at])),
-        }
-    }
-    sets.into_iter()
-        .map(|(_, members)| members)
-        .filter(|members| members.len() > 1)
-        .collect()
-}
-
-/// The sets of records that name one pressing, as indexes into `releases`,
-/// each in the order its records arrived. Only the sets of two or more: a
-/// record no other names is a row of its own without one here.
-///
-/// Every record is weighed against every other, and only records of two
-/// different catalogs can name one pressing — see
-/// [`PressingEvidence::support`]. Candidates are taken from the
-/// best-supported level down. At
-/// each level, the candidate edges between distinct sets that are still open
-/// are read together: the sets an edge chain connects become one when every
-/// record across them supports every other; where they do not, a set that
-/// more than one of the chain's edges names is ambiguous and is settled as
-/// it stands, and a set named once stays open for the levels below. Nothing
-/// depends on the order the records arrived in.
-fn gather_pressings(releases: &[MetadataResult]) -> Vec<Vec<usize>> {
-    let facts: Vec<ComparedPressing<'_>> = releases.iter().map(ComparedPressing::of).collect();
-    let count = releases.len();
-    let mut supported = vec![vec![false; count]; count];
-    let mut edges: Vec<(Support, usize, usize)> = Vec::new();
-    for a in 0..count {
-        for b in a + 1..count {
-            if let Some(support) = PressingEvidence::between(&facts[a], &facts[b]).support() {
-                supported[a][b] = true;
-                supported[b][a] = true;
-                edges.push((support, a, b));
-            }
-        }
-    }
-    edges.sort_by(|(a, _, _), (b, _, _)| b.cmp(a));
-
-    // A set is named by the lowest index in it, which holds its members.
-    let mut set_of: Vec<usize> = (0..count).collect();
-    let mut members: Vec<Vec<usize>> = (0..count).map(|at| vec![at]).collect();
-    let mut settled = vec![false; count];
-    let mut level = edges.as_slice();
-    while let Some((top, _, _)) = level.first() {
-        let end = level
-            .iter()
-            .position(|(other, _, _)| other != top)
-            .unwrap_or(level.len());
-        // The distinct pairs of open sets this level's edges connect.
-        let mut live: Vec<(usize, usize)> = level[..end]
-            .iter()
-            .map(|(_, a, b)| (set_of[*a].min(set_of[*b]), set_of[*a].max(set_of[*b])))
-            .filter(|(a, b)| a != b && !settled[*a] && !settled[*b])
-            .collect();
-        live.sort_unstable();
-        live.dedup();
-        for chain in chains(&live) {
-            let all_support = chain.iter().enumerate().all(|(i, &x)| {
-                chain[i + 1..].iter().all(|&y| {
-                    members[x]
-                        .iter()
-                        .all(|&p| members[y].iter().all(|&q| supported[p][q]))
-                })
-            });
-            if all_support {
-                let into = chain[0];
-                for &set in &chain[1..] {
-                    let moved = std::mem::take(&mut members[set]);
-                    for &member in &moved {
-                        set_of[member] = into;
-                    }
-                    members[into].extend(moved);
-                }
-                members[into].sort_unstable();
-            } else {
-                for &set in &chain {
-                    let named = live.iter().filter(|(a, b)| *a == set || *b == set).count();
-                    if named > 1 {
-                        settled[set] = true;
-                    }
-                }
-            }
-        }
-        level = &level[end..];
-    }
-    members.into_iter().filter(|set| set.len() > 1).collect()
-}
-
-/// The groups of sets the edges connect, each sorted, in the order of their
-/// lowest set.
-fn chains(edges: &[(usize, usize)]) -> Vec<Vec<usize>> {
-    let mut chains: Vec<Vec<usize>> = Vec::new();
-    for &(a, b) in edges {
-        let of_a = chains.iter().position(|chain| chain.contains(&a));
-        let of_b = chains.iter().position(|chain| chain.contains(&b));
-        match (of_a, of_b) {
-            (Some(x), Some(y)) if x == y => {}
-            (Some(x), Some(y)) => {
-                let (keep, drop) = (x.min(y), x.max(y));
-                let moved = chains.remove(drop);
-                chains[keep].extend(moved);
-            }
-            (Some(x), None) => chains[x].push(b),
-            (None, Some(y)) => chains[y].push(a),
-            (None, None) => chains.push(vec![a, b]),
-        }
-    }
-    for chain in &mut chains {
-        chain.sort_unstable();
-    }
-    chains.sort_by_key(|chain| chain[0]);
-    chains
-}
-
 /// Bucket by `(source, source_group_id)`, preserving first-seen order. A
 /// result without a group id can't share one, so it becomes its own bucket.
 fn bucket_by_source_group(releases: &[MetadataResult]) -> Vec<Bucket> {
@@ -745,18 +627,19 @@ fn build_group(
             .expect("a release is read before its card takes it")
     };
     // Whether a release's album links were read, or never needed asking.
-    let links_known =
-        |at: usize| !matches!(read(at).album_links, crate::import::album_links::AlbumLinks::Unread);
+    let links_known = |at: usize| {
+        !matches!(
+            read(at).album_links,
+            crate::import::album_links::AlbumLinks::Unread
+        )
+    };
     let mut sources: Vec<ReleaseGroupSource> = card
         .iter()
         .map(|bucket| bucket.as_source(links_known))
         .collect();
     // An album a record's statements name on a catalog the card holds no
     // record of is still the album's: the card names it with its page.
-    for link in members
-        .iter()
-        .flat_map(|&at| read(at).album_links.read())
-    {
+    for link in members.iter().flat_map(|&at| read(at).album_links.read()) {
         let catalog = link.album.catalog;
         if !sources.iter().any(|source| source.source == catalog) {
             sources.push(ReleaseGroupSource {
@@ -856,7 +739,9 @@ fn build_group(
         let of = |offered: bool| -> Vec<Pressing> {
             ordered_rows(
                 rows.iter()
-                    .filter(|row| row.offered == offered && home.is_none_or(|home| row.album == home))
+                    .filter(|row| {
+                        row.offered == offered && home.is_none_or(|home| row.album == home)
+                    })
                     .map(|row| row.row.clone())
                     .collect(),
             )
@@ -913,9 +798,10 @@ fn agreed_label<'a>(pressings: impl Iterator<Item = &'a Pressing>) -> Option<Str
         .filter_map(bae_types::pressing::ReleaseLabel::name)
         .find(|name| {
             others.iter().all(|labels| {
-                labels.iter().filter_map(bae_types::pressing::ReleaseLabel::name).any(|other| {
-                    bae_types::text_match::same_label_name(name, other)
-                })
+                labels
+                    .iter()
+                    .filter_map(bae_types::pressing::ReleaseLabel::name)
+                    .any(|other| bae_types::text_match::same_label_name(name, other))
             })
         })
         .map(str::to_string)
@@ -975,6 +861,9 @@ fn ordered_rows(mut rows: Vec<Row>) -> Vec<Row> {
     rows
 }
 
+#[path = "release_group/pressing_sets.rs"]
+mod pressing_sets;
+
 #[path = "release_group/labels.rs"]
 mod labels;
 
@@ -985,6 +874,10 @@ mod tests;
 #[cfg(test)]
 #[path = "release_group_cover_tests.rs"]
 mod cover_tests;
+
+#[cfg(test)]
+#[path = "release_group/pairing_tests.rs"]
+mod pairing_tests;
 
 #[cfg(test)]
 #[path = "release_group/ranking_tests.rs"]
