@@ -1,6 +1,8 @@
 //! Live queries owned by a task of their own, so a subscription that merges
 //! one with other streams never cancels the query's read.
 
+use tracing::warn;
+
 /// A live query's events, produced on a task of the query's own, whose
 /// request changes while it runs: [`set`](Self::set) points the same query at
 /// a new request instead of opening another one.
@@ -44,7 +46,7 @@ pub(super) struct ReconfigurableLiveQueryEvents<Request, T> {
 
 impl<Request, T> ReconfigurableLiveQueryEvents<Request, T>
 where
-    Request: Clone + PartialEq,
+    Request: Clone + PartialEq + std::fmt::Debug,
 {
     /// The next result for the newest request, or `None` once the query ends.
     pub(super) async fn recv(&mut self) -> Option<Result<T, crate::library::LibraryError>> {
@@ -67,12 +69,16 @@ where
         }
     }
 
+    /// Point the query at `request`. A query that ended, once its store
+    /// closed or its handle failed, reads nothing more, for this request or
+    /// any later one, and [`Self::recv`] has ended with it.
     pub(super) fn set(&mut self, request: Request) {
-        self.newest = Some(
-            self.requests
-                .set(request)
-                .expect("the query task retains its subscription while this handle lives"),
-        );
+        match self.requests.set(request.clone()) {
+            Ok(revision) => self.newest = Some(revision),
+            Err(coven::LiveQueryClosed) => {
+                warn!("the live query has ended; {request:?} is not read");
+            }
+        }
     }
 }
 
@@ -113,5 +119,61 @@ where
         requests,
         newest: None,
         task,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    /// A new request to a query that ended once its store closed reads
+    /// nothing, and leaves the subscription that sent it running.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_ended_query_takes_a_new_request() {
+        let directory = tempfile::TempDir::new().unwrap();
+        let path = directory.path().join("library.db");
+        let database =
+            crate::db::Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
+                .await
+                .unwrap();
+        let config = crate::config::Config::with_defaults(
+            database.store_id(),
+            directory.path().join("preferences"),
+        );
+        let manager = crate::library::LibraryManager::new(
+            database.clone(),
+            crate::config::AppDir::under_home(directory.path()).unwrap(),
+            Arc::new(crate::config::ConfigHandle::new(config)),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidIds),
+            crate::diagnostics::Diagnostics::noop(),
+            tokio::runtime::Handle::current(),
+            bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+            crate::providers::Providers::offline(),
+        );
+        let mut events = super::reconfigurable_live_query_events(
+            &manager,
+            manager.subscribe_queue_upcoming(crate::library::LibraryPageWindows::new()),
+        );
+        database.close().await.unwrap();
+        // Results read before the close may still be waiting to be taken.
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            while events.recv().await.is_some() {}
+        })
+        .await
+        .expect("the query ends with its store");
+
+        events.set(
+            [crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: 10,
+            }]
+            .into(),
+        );
+
+        assert!(
+            events.recv().await.is_none(),
+            "the ended query reads nothing"
+        );
     }
 }

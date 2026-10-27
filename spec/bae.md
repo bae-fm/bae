@@ -2460,7 +2460,8 @@ Reads come two ways:
   one that fails because the store closed, or because the library can no
   longer read or write it, is delivered once and ends the subscription. A
   subscription that shows a window of a long list is pointed at a new window
-  in place as the person scrolls. The Storage Manager's list is also told
+  in place as the person scrolls; one that has ended takes the new window and
+  reads nothing more. The Storage Manager's list is also told
   which releases are selected in it, and each of its values carries the row
   of each one the list holds, on screen or not, and the storage actions every
   one of those allows: a selection is offered only those. Its inspector

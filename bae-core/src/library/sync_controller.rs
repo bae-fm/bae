@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::config::CloudProvider;
 use crate::db::{Database, OutboxDisplayContext, OutboxDisplayRequest};
@@ -55,7 +55,8 @@ pub(crate) struct OutboxProjection {
     /// delivers and after it fails.
     pending: Option<Vec<coven::PendingRecord>>,
     /// Points the display query at the rows the held durable queue needs;
-    /// present once the outbox subscription runs.
+    /// present once the outbox subscription runs, and reading nothing more
+    /// once that subscription stops or its query ends with its store.
     display_requests: Option<coven::LiveQueryRequests<OutboxDisplayRequest>>,
 }
 
@@ -80,9 +81,9 @@ impl OutboxProjection {
 
     fn hold_durable(&mut self, snapshot: coven::UploadQueue, request: OutboxDisplayRequest) {
         if let Some(requests) = &self.display_requests {
-            requests
-                .set(request.clone())
-                .expect("the outbox display subscription is retained");
+            if let Err(coven::LiveQueryClosed) = requests.set(request.clone()) {
+                warn!("the outbox display query has ended; {request:?} is not read");
+            }
         }
         self.durable = Some((snapshot, request));
     }
@@ -565,5 +566,46 @@ mod tests {
         let failure = projection.revision_for_failure();
         assert!(failure > second);
         assert!(projection.revision_for(&queue(2)) > failure);
+    }
+
+    /// A queue read after the outbox subscription stopped, while its store
+    /// still reads, is published, though the display query it would point at
+    /// the queue's rows has ended with the subscription.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_queue_read_after_the_subscription_stopped_is_published() {
+        let directory = tempfile::TempDir::new().unwrap();
+        let path = directory.path().join("library.db");
+        let database = Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
+        let sync = SyncController::new(
+            database.clone(),
+            Diagnostics::noop(),
+            Arc::new(coven::SystemClock),
+        );
+        let mut values = sync.subscribe_outbox_values();
+        let subscription = tokio::spawn({
+            let sync = sync.clone();
+            let outbox = database.subscribe_cloud_outbox();
+            async move { sync.run_cloud_outbox_subscription(outbox).await }
+        });
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            values.wait_for(Option::is_some),
+        )
+        .await
+        .expect("the subscription publishes a queue")
+        .expect("the outbox stream stays open");
+        subscription.abort();
+        assert!(subscription.await.unwrap_err().is_cancelled());
+
+        let revision = sync.emit_outbox_changed().await;
+
+        let published = values.borrow().clone().expect("a queue is published");
+        assert_eq!(
+            published.expect("the queue is read").revision,
+            revision,
+            "the queue read now is the one published"
+        );
     }
 }
