@@ -307,7 +307,6 @@ class OpenLibrary internal constructor(
                                 context = value.context,
                                 hasNext = value.hasNext,
                                 hasPrevious = value.hasPrevious,
-                                revision = value.revision,
                             )
                         }
                     }

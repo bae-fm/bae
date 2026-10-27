@@ -1,11 +1,9 @@
 package fm.bae.app.playback
 
 import android.os.Looper
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -14,71 +12,78 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
-import uniffi.bae_bridge.BridgeQueueEntry
-import uniffi.bae_bridge.BridgeQueueUpcomingSnapshot
-import uniffi.bae_bridge.BridgeQueueUpcomingWindow
-import uniffi.bae_bridge.BridgeTrackDisplay
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class QueueUpcomingWindowTest {
     @Test
-    fun scrollingMovesOneUpcomingReadsWindows() {
+    fun aContextOpensOneReadWithThePlaylistWindowAndScrollingMovesItsOtherWindows() {
         val feed = UpcomingFeed()
-        val player = player(feed)
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, revision = 1uL)
+        val player = playing(feed, total = 500)
 
-        for (offset in listOf(0, 100, 200, 300)) {
+        for (offset in listOf(0, 100, 200, 300, 400)) {
             player.loadUpcomingRange(offset, 60)
         }
 
         assertEquals(1, feed.opened)
         assertEquals(
-            "the window farthest from the newest one is dropped",
-            listOf(window(100, 60), window(200, 60), window(300, 60)),
+            "the playlist's window stays read, and the window farthest from the newest one is dropped",
+            listOf(window(0, PLAYLIST_CONTEXT_TRACKS), window(200, 60), window(300, 60), window(400, 60)),
             feed.requests.last(),
         )
 
-        player.loadUpcomingRange(210, 20)
-        assertEquals("a range a read window covers requests nothing", 4, feed.requests.size)
+        val requested = feed.requests.size
+        player.loadUpcomingRange(310, 20)
+        player.loadUpcomingRange(10, 20)
+        assertEquals("a range a read window covers requests nothing", requested, feed.requests.size)
     }
 
     @Test
-    fun anUpcomingValueShowsOnlyAtTheQueueRevisionItWasSlicedFrom() {
+    fun theLanesLengthAndRowsComeFromOneReadAndOnlyAQueueChangeCountsAsOne() {
         val feed = UpcomingFeed()
-        val player = player(feed)
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, revision = 1uL)
+        val player = playing(feed, total = 500)
+        val changes = player.queue.value.contextChanges
         player.loadUpcomingRange(100, 60)
 
-        feed.deliver(revision = 1uL, offset = 100, entryId = "first")
+        feed.deliver(total = 500, offset = 100, read = listOf(upcomingEntry("first")))
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals("first", itemAt(player, 100))
+        assertEquals("a scroll is not a change", changes, player.queue.value.contextChanges)
 
-        // The value for the next revision lands before the queue value does.
-        feed.deliver(revision = 2uL, offset = 100, entryId = "second")
+        feed.deliver(total = 300, queueChanged = true, offset = 100, read = listOf(upcomingEntry("second")))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals("a value ahead of the queue on screen waits for it", "first", itemAt(player, 100))
-
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, revision = 2uL)
         assertEquals("second", itemAt(player, 100))
-
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, revision = 3uL)
-        assertNull("a queue revision the read has not reached shows no stale entries", itemAt(player, 100))
+        assertEquals(
+            300,
+            player.queue.value.context
+                ?.upcomingTotal,
+        )
+        assertEquals(changes + 1uL, player.queue.value.contextChanges)
         assertEquals(1, feed.opened)
+    }
+
+    @Test
+    fun aQueueWithNoContextEndsTheRead() {
+        val feed = UpcomingFeed()
+        val player = playing(feed, total = 5)
+
+        player.onQueueValue(emptyList(), null, hasNext = false, hasPrevious = false)
+        assertNull(player.queue.value.context)
+
+        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false)
+        assertEquals("a new context opens the read again", 2, feed.opened)
     }
 
     /** A read that fails stops and says why; Retry opens it again over the windows it covered. */
     @Test
     fun aFailedUpcomingReadSaysWhyAndRetryOpensItAgain() {
         val feed = UpcomingFeed()
-        val player = player(feed)
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, revision = 1uL)
+        val player = playing(feed, total = 500)
         player.loadUpcomingRange(100, 60)
 
         val failure = BridgeException.Diagnostic(BridgeErrorCategory.Database, "database is locked")
@@ -90,17 +95,31 @@ class QueueUpcomingWindowTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertNull(player.upcoming.failure.value)
         assertEquals("Retry opens the read again", 2, feed.opened)
-        assertEquals("over the windows it covered", listOf(window(100, 60)), feed.requests.last())
+        assertEquals(
+            "over the windows it covered",
+            listOf(window(0, PLAYLIST_CONTEXT_TRACKS), window(100, 60)),
+            feed.requests.last(),
+        )
     }
 
-    private fun player(feed: UpcomingFeed) =
-        BaeCorePlayer(
-            applicationLooper = Looper.getMainLooper(),
-            appHandle = FakeAppHandle(),
-            system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            queueUpcomingSource = QueueUpcomingSource(feed::open),
-        )
+    /** A player playing a context whose upcoming read has answered with a tail of [total]. */
+    private fun playing(
+        feed: UpcomingFeed,
+        total: Int,
+    ): BaeCorePlayer {
+        val player =
+            BaeCorePlayer(
+                applicationLooper = Looper.getMainLooper(),
+                appHandle = FakeAppHandle(),
+                system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                queueUpcomingSource = feed.source,
+            )
+        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false)
+        feed.deliver(total = total)
+        shadowOf(Looper.getMainLooper()).idle()
+        return player
+    }
 
     private fun itemAt(
         player: BaeCorePlayer,
@@ -116,98 +135,11 @@ class QueueUpcomingWindowTest {
             sourceTitle = null,
             shuffled = false,
             upcoming = emptyList(),
-            upcomingTotal = 500uL,
+            upcomingTotal = 0uL,
         )
 
     private fun window(
         offset: Int,
         limit: Int,
     ) = BridgeLibraryPageWindow(offset.toULong(), limit.toULong())
-
-    /** An upcoming read the test drives: it records every window request and hands `next`
-     *  whatever the test delivers. */
-    private class UpcomingFeed {
-        private companion object {
-            /** Wakes a waiting read so it can fail; never applied. */
-            val PLACEHOLDER =
-                BridgeQueueUpcomingSnapshot(
-                    revision = 0uL,
-                    upcomingTotal = 0uL,
-                    queueChanged = false,
-                    windows = emptyList(),
-                )
-        }
-
-        var opened = 0
-            private set
-        val requests = mutableListOf<List<BridgeLibraryPageWindow>>()
-        private val values = Channel<BridgeQueueUpcomingSnapshot>(Channel.UNLIMITED)
-        private var failNext: BridgeException? = null
-        private val closed = CompletableDeferred<Unit>()
-
-        fun open(): QueueUpcomingQuery {
-            opened++
-            return object : QueueUpcomingQuery {
-                override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
-                    requests.add(windows)
-                }
-
-                override suspend fun next(): BridgeQueueUpcomingSnapshot {
-                    val value = values.receive()
-                    failNext?.let { error ->
-                        failNext = null
-                        throw error
-                    }
-                    return value
-                }
-
-                override suspend fun cancel() {
-                    closed.complete(Unit)
-                }
-            }
-        }
-
-        /** End the read with [error]; a read opened after it reads on. */
-        fun fail(error: BridgeException) {
-            failNext = error
-            values.trySend(PLACEHOLDER)
-        }
-
-        fun deliver(
-            revision: ULong,
-            offset: Int,
-            entryId: String,
-        ) {
-            values.trySend(
-                BridgeQueueUpcomingSnapshot(
-                    revision = revision,
-                    upcomingTotal = offset.toULong() + 1uL,
-                    queueChanged = false,
-                    windows =
-                        listOf(
-                            BridgeQueueUpcomingWindow(
-                                window = BridgeLibraryPageWindow(offset.toULong(), 1uL),
-                                entries =
-                                    listOf(
-                                        BridgeQueueEntry(
-                                            entryId = entryId,
-                                            trackId = "track-$entryId",
-                                            display =
-                                                BridgeTrackDisplay(
-                                                    title = "Track Title",
-                                                    artistNames = "Artist Name",
-                                                    albumId = "album-1",
-                                                    releaseId = "release-1",
-                                                    albumTitle = "Album Title",
-                                                    coverImage = null,
-                                                ),
-                                            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
-                                        ),
-                                    ),
-                            ),
-                        ),
-                ),
-            )
-        }
-    }
 }

@@ -27,30 +27,30 @@ class QueueOrderTest {
         )
 
     private fun context(
-        first: List<String>,
         total: Int,
-        paged: Map<Int, String> = emptyMap(),
+        read: Map<Int, String> = emptyMap(),
     ) = QueueContext(
         kind = BridgePlaybackSourceKind.LIBRARY,
         shuffled = true,
-        upcoming = first.map(::entry),
         upcomingTotal = total,
-        pagedUpcoming = paged.mapValues { entry(it.value) },
+        upcoming = read.mapValues { entry(it.value) },
     )
+
+    private fun rows(vararg ids: String): Map<Int, String> = ids.withIndex().associate { it.index to it.value }
 
     private fun ContextLaneOrder.shown(): List<String?> = (0 until size).map { itemAt(it)?.entryId }
 
     @Test
-    fun theLaneIsSizedToTheWholeTailAndReadsEachRowFromItsPages() {
+    fun theLaneIsSizedToTheWholeTailAndShowsEachReadRow() {
         val lane = ContextLaneOrder()
-        lane.seed(context(first = listOf("a", "b"), total = 5, paged = mapOf(4 to "e")))
+        lane.seed(context(total = 5, read = rows("a", "b") + mapOf(4 to "e")))
         assertEquals(listOf("a", "b", null, null, "e"), lane.shown())
     }
 
     @Test
     fun aDragShowsItsMovesAndTheValueAfterItReseedsTheLane() {
         val order = QueueOrder()
-        order.apply(emptyList(), context(first = listOf("a", "b", "c", "d"), total = 6), revision = 1u)
+        order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")), manualChanges = 1u, contextChanges = 1u)
         order.dragging()
         order.context.move(from = 0, to = 2)
         assertEquals(listOf("b", "c", "a", "d", null, null), order.context.shown())
@@ -60,19 +60,35 @@ class QueueOrderTest {
         assertEquals(3, order.context.indexOf("a"))
 
         // The value after the drag is core's order, whether or not the reorder took.
-        order.apply(emptyList(), context(first = listOf("a", "b", "c", "d"), total = 6), revision = 1u)
+        order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")), manualChanges = 1u, contextChanges = 1u)
         assertEquals(listOf("a", "b", "c", "d", null, null), order.context.shown())
     }
 
     @Test
-    fun aPageOfTheSameRevisionFillsOnlyItsRows() {
+    fun moreOfAnUnchangedTailFillsOnlyItsRowsAndAChangeReseedsIt() {
         val order = QueueOrder()
-        order.apply(emptyList(), context(first = listOf("a", "b"), total = 4), revision = 1u)
-        order.apply(emptyList(), context(first = listOf("a", "b"), total = 4, paged = mapOf(3 to "d")), revision = 1u)
-        assertEquals(listOf("a", "b", null, "d"), order.context.shown())
+        order.apply(emptyList(), context(total = 4, read = rows("a", "b")), manualChanges = 1u, contextChanges = 1u)
+        order.context.move(from = 0, to = 1)
+        order.apply(
+            emptyList(),
+            context(total = 4, read = rows("a", "b") + mapOf(3 to "d")),
+            manualChanges = 1u,
+            contextChanges = 1u,
+        )
+        assertEquals("a scroll keeps the moves over the lane", listOf("b", "a", null, "d"), order.context.shown())
 
-        order.apply(emptyList(), context(first = listOf("b", "d"), total = 3), revision = 2u)
+        order.apply(emptyList(), context(total = 3, read = rows("b", "d")), manualChanges = 1u, contextChanges = 2u)
         assertEquals(listOf("b", "d", null), order.context.shown())
         assertNull(order.context.indexOf("a"))
+    }
+
+    @Test
+    fun aChangeToOneLaneReseedsOnlyThatLane() {
+        val order = QueueOrder()
+        order.apply(listOf(entry("m")), context(total = 2, read = rows("a", "b")), manualChanges = 1u, contextChanges = 1u)
+        order.context.move(from = 0, to = 1)
+        order.apply(listOf(entry("n")), context(total = 2, read = rows("a", "b")), manualChanges = 2u, contextChanges = 1u)
+        assertEquals(listOf("n"), order.manual.map { it.entryId })
+        assertEquals("the context lane keeps its moves", listOf("b", "a"), order.context.shown())
     }
 }

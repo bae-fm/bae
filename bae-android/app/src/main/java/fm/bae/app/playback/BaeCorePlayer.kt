@@ -71,13 +71,10 @@ class BaeCorePlayer(
         val display: BridgeTrackDisplay,
     )
 
-    /** The release or library the queue plays from, and its not-yet-played tracks. */
+    /** The release or library the queue plays from; its tracks come from [upcoming]. */
     internal data class ContextLane(
         val kind: BridgePlaybackSourceKind,
         val shuffled: Boolean,
-        /** Only the first page of the [upcomingTotal] tracks. */
-        val entries: List<BridgeQueueEntry>,
-        val upcomingTotal: Int,
     )
 
     internal companion object {
@@ -212,20 +209,16 @@ class BaeCorePlayer(
     private var manualEntries: List<BridgeQueueEntry> = emptyList()
     private var contextLane: ContextLane? = null
 
-    /** Context tracks read past [ContextLane.entries], keyed by index in the whole tail; empty
-     *  until a read for [queueRevision] arrives. */
-    private var pagedUpcoming: Map<Int, BridgeQueueEntry> = emptyMap()
+    /** Counts the queue values taken, and the upcoming values that answered a change to the queue. */
+    private var manualChanges: ULong = 0u
+    private var contextChanges: ULong = 0u
 
-    /** The revision [manualEntries] and [contextLane] came from. */
-    private var queueRevision: ULong = 0u
-
-    /** The read of the context's tail past its first window; the queue shows its failure and retries it. */
+    /** The read of the context's tail; the queue shows its failure and retries it. */
     internal val upcoming =
-        QueueUpcomingWindows(queueUpcomingSource, scope) { revision ->
-            if (revision == queueRevision) {
-                pagedUpcoming = upcomingEntries()
-                publish()
-            }
+        QueueUpcomingWindows(queueUpcomingSource, scope) { queueChanged ->
+            if (queueChanged) contextChanges++
+            entries = playlistEntries()
+            publish()
         }
 
     /** The current track's metadata, from the latest playback value; null when stopped. */
@@ -462,32 +455,34 @@ class BaeCorePlayer(
         context: BridgePlaybackContext?,
         hasNext: Boolean,
         hasPrevious: Boolean,
-        revision: ULong,
     ) {
-        val lane =
-            context?.let {
-                ContextLane(
-                    kind = it.kind,
-                    shuffled = it.shuffled,
-                    entries = it.upcoming,
-                    upcomingTotal = it.upcomingTotal.toInt(),
-                )
-            }
-        if (revision < queueRevision) {
-            logger.warning("dropping queue value at revision $revision; revision $queueRevision is already applied")
-            return
-        }
         readFailures.queueArrived()
         manualEntries = manual
-        contextLane = lane
-        if (revision > queueRevision) {
-            queueRevision = revision
-            pagedUpcoming = upcomingEntries()
+        manualChanges++
+        contextLane = context?.let { ContextLane(kind = it.kind, shuffled = it.shuffled) }
+        if (contextLane == null) {
+            upcoming.close()
+        } else {
+            upcoming.pin(0 until PLAYLIST_CONTEXT_TRACKS)
         }
-        entries = (manual + (lane?.entries ?: emptyList())).map { it.toMeta() }
+        entries = playlistEntries()
         this.hasNext = hasNext
         this.hasPrevious = hasPrevious
         publish()
+    }
+
+    /** The Media3 playlist after the current track: Up Next, then the context tracks read from
+     *  its start, up to the first one not read yet. */
+    private fun playlistEntries(): List<Meta> {
+        val read = upcoming.entries()
+        val context =
+            generateSequence(0) { it + 1 }
+                .take(minOf(upcoming.total, PLAYLIST_CONTEXT_TRACKS))
+                .map { read[it] }
+                .takeWhile { it != null }
+                .filterNotNull()
+                .toList()
+        return (manualEntries + context).map { it.toMeta() }
     }
 
     /** Read `[offset, offset + limit)` of the context's tail. See [QueueUpcomingWindows.load]. */
@@ -495,12 +490,9 @@ class BaeCorePlayer(
         offset: Int,
         limit: Int,
     ) {
-        val lane = contextLane ?: return
-        upcoming.load(offset until minOf(offset + limit, lane.upcomingTotal))
+        if (contextLane == null) return
+        upcoming.load(offset until minOf(offset + limit, upcoming.total))
     }
-
-    /** The context tracks read for [queueRevision], by index in the whole tail. */
-    private fun upcomingEntries(): Map<Int, BridgeQueueEntry> = upcoming.entriesAt(queueRevision).toMap()
 
     /** Refresh the in-app position alone, for a tick Media3 extrapolates itself. */
     private fun publishPosition() {
@@ -532,12 +524,12 @@ class BaeCorePlayer(
                         QueueContext(
                             kind = lane.kind,
                             shuffled = lane.shuffled,
-                            upcoming = lane.entries,
-                            upcomingTotal = lane.upcomingTotal,
-                            pagedUpcoming = pagedUpcoming,
+                            upcomingTotal = upcoming.total,
+                            upcoming = upcoming.entries(),
                         )
                     },
-                revision = queueRevision,
+                manualChanges = manualChanges,
+                contextChanges = contextChanges,
             )
     }
 

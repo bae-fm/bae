@@ -155,7 +155,7 @@ internal fun rememberReorderableQueue(
         if (reorderState.isAnyItemDragging) {
             order.dragging()
         } else {
-            order.apply(queue.manual, queue.context, queue.revision)
+            order.apply(queue.manual, queue.context, queue.manualChanges, queue.contextChanges)
         }
     }
     return ReorderableQueue(order, reorderState, failures, readFailure)
@@ -198,7 +198,7 @@ internal fun LazyListScope.queueContent(
         // Always fully resolved, so no load hook.
         queueRows(
             session,
-            QueueLane(size = order.manual.size, itemAt = order.manual::get, revision = 0uL, loadRange = null),
+            QueueLane(size = order.manual.size, itemAt = order.manual::get, changes = 0uL, loadRange = null),
             reorderState,
             failures,
             onSkipped,
@@ -238,7 +238,7 @@ private fun LazyListScope.contextLane(
         QueueLane(
             size = order.context.size,
             itemAt = order.context::itemAt,
-            revision = order.revision ?: 0uL,
+            changes = order.contextChanges ?: 0uL,
             loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
         ),
         queue.reorderState,
@@ -252,7 +252,8 @@ private fun LazyListScope.contextLane(
 private class QueueLane(
     val size: Int,
     val itemAt: (Int) -> BridgeQueueEntry?,
-    val revision: ULong,
+    /** Core's change count of the lane, which restarts a row's load. */
+    val changes: ULong,
     val loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
 )
 
@@ -267,7 +268,7 @@ private fun LazyListScope.queueRows(
     items(count = lane.size, key = { index -> lane.itemAt(index)?.entryId ?: "placeholder-$index" }) { index ->
         val item = lane.itemAt(index)
         if (item == null) {
-            LaunchedEffect(lane.revision, index) {
+            LaunchedEffect(lane.changes, index) {
                 lane.loadRange?.invoke(
                     (index - QUEUE_UPCOMING_LOAD_BATCH_SIZE / 2).coerceAtLeast(0),
                     QUEUE_UPCOMING_LOAD_BATCH_SIZE,

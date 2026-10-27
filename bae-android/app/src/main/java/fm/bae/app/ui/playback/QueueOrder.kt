@@ -13,9 +13,13 @@ internal class QueueOrder {
     val manual = mutableStateListOf<BridgeQueueEntry>()
     val context = ContextLaneOrder()
 
-    /** The queue revision the lanes were seeded from, which re-keys each context row's load; null before the first. */
-    var revision by mutableStateOf<ULong?>(null)
+    /** Core's change count of the context lane the lane was seeded at, which re-keys each context
+     *  row's load; null before the first. */
+    var contextChanges by mutableStateOf<ULong?>(null)
         private set
+
+    /** Core's change count of the manual lane it was seeded at. */
+    private var manualChanges: ULong? = null
 
     val isEmpty: Boolean
         get() = manual.isEmpty() && context.size == 0
@@ -29,24 +33,29 @@ internal class QueueOrder {
     }
 
     /**
-     * Take a queue value. A new revision, or the end of a drag, re-seeds both lanes from it: core's
-     * value carries a reorder that took and drops one that failed. Otherwise it is a page of the
-     * context's tail arriving at the same revision, which fills only the rows it read.
+     * Take the queue. A lane core changed, or both at the end of a drag, re-seed from it: core's
+     * lanes carry a reorder that took and drop one that failed. A context lane core did not change
+     * is more of its tail read, which fills only the rows it read.
      */
     fun apply(
         manual: List<BridgeQueueEntry>,
         context: QueueContext?,
-        revision: ULong,
+        manualChanges: ULong,
+        contextChanges: ULong,
     ) {
-        if (revision == this.revision && !dragged) {
-            this.context.fill(context)
-            return
-        }
+        val reseed = dragged
         dragged = false
-        this.manual.clear()
-        this.manual.addAll(manual)
-        this.context.seed(context)
-        this.revision = revision
+        if (reseed || manualChanges != this.manualChanges) {
+            this.manual.clear()
+            this.manual.addAll(manual)
+            this.manualChanges = manualChanges
+        }
+        if (reseed || contextChanges != this.contextChanges) {
+            this.context.seed(context)
+            this.contextChanges = contextChanges
+        } else {
+            this.context.fill(context)
+        }
     }
 }
 
@@ -78,7 +87,7 @@ internal class ContextLaneOrder {
         moves.clear()
     }
 
-    /** Show [context], the same revision with more of its tail read. */
+    /** Show [context], unchanged by core with more of its tail read. */
     fun fill(context: QueueContext?) {
         source = context
     }
@@ -96,9 +105,10 @@ internal class ContextLaneOrder {
         }
 
     /** The tail index of the read row [entryId], or null when no read row is it. */
-    private fun QueueContext.readIndexOf(entryId: String): Int? =
-        upcoming.indexOfFirst { it.entryId == entryId }.takeIf { it >= 0 }
-            ?: pagedUpcoming.entries.firstOrNull { it.value.entryId == entryId }?.key
+    private fun QueueContext.readIndexOf(entryId: String): Int? {
+        val read = upcoming.entries.firstOrNull { it.value.entryId == entryId }
+        return read?.key
+    }
 
     /** Move the row shown at [from] to [to], as a drag does. */
     fun move(

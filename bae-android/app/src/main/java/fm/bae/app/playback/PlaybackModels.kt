@@ -50,27 +50,25 @@ data class PlaybackPosition(
     val durationMs: Long?,
 )
 
-/** The release or library the queue plays from, and the not-yet-played tracks
- *  after the current one. [upcoming] is only the first page of [upcomingTotal];
- *  [pagedUpcoming] holds later tracks read through
+/** The release or library the queue plays from, and the not-yet-played tracks after the current
+ *  one: [upcomingTotal] of them, of which [upcoming] holds those read through
  *  [BaeCorePlayer.loadUpcomingRange], keyed by index in the whole tail. */
 data class QueueContext(
     val kind: BridgePlaybackSourceKind,
     val shuffled: Boolean,
-    val upcoming: List<BridgeQueueEntry>,
     val upcomingTotal: Int,
-    val pagedUpcoming: Map<Int, BridgeQueueEntry> = emptyMap(),
+    val upcoming: Map<Int, BridgeQueueEntry> = emptyMap(),
 ) {
-    fun itemAt(index: Int): BridgeQueueEntry? = upcoming.getOrNull(index) ?: pagedUpcoming[index]
+    fun itemAt(index: Int): BridgeQueueEntry? = upcoming[index]
 }
 
-/** The queue as two sections: tracks added by hand ([manual]) and the
- *  [context] played from, or null when there is none. [revision] is the queue
- *  revision it was built from. */
+/** The queue as two sections: tracks added by hand ([manual]) and the [context] played from, or
+ *  null when there is none. [manualChanges] and [contextChanges] count core's changes to each. */
 data class QueueProjection(
     val manual: List<BridgeQueueEntry>,
     val context: QueueContext?,
-    val revision: ULong = 0u,
+    val manualChanges: ULong = 0u,
+    val contextChanges: ULong = 0u,
 ) {
     companion object {
         val EMPTY = QueueProjection(manual = emptyList(), context = null)

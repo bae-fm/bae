@@ -11,6 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeImageRef
@@ -22,9 +23,10 @@ import uniffi.bae_bridge.BridgeTrackDisplay
 /**
  * The two-lane queue projection ([BaeCorePlayer.onQueueValue] → [BaeCorePlayer.queue]).
  * A queue value carries a manual lane ("Up Next") and an optional
- * context lane (what the queue plays from). The projection keeps the two apart,
- * passing each lane's [BridgeQueueEntry]s through, and carries the context's
- * source kind and shuffle flag so the UI can label and mark the section.
+ * context lane (what the queue plays from), whose tracks the upcoming read
+ * brings. The projection keeps the two apart, passing each lane's
+ * [BridgeQueueEntry]s through, and carries the context's source kind and
+ * shuffle flag so the UI can label and mark the section.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -62,7 +64,6 @@ class QueueProjectionTest {
             context = null,
             hasNext = true,
             hasPrevious = false,
-            revision = 1uL,
         )
 
         assertEquals(listOf(entry("a"), entry("b")), player.queue.value.manual)
@@ -71,7 +72,8 @@ class QueueProjectionTest {
 
     @Test
     fun contextLaneIsSplitFromTheManualLane() {
-        val player = player()
+        val feed = UpcomingFeed()
+        val player = player(feed)
 
         player.onQueueValue(
             manual = listOf(entry("m")),
@@ -80,17 +82,20 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     sourceTitle = null,
                     shuffled = false,
-                    upcoming = listOf(entry("c1"), entry("c2")),
-                    upcomingTotal = 2uL,
+                    upcoming = emptyList(),
+                    upcomingTotal = 0uL,
                 ),
             hasNext = true,
             hasPrevious = false,
-            revision = 1uL,
         )
+
+        feed.deliver(total = 2, read = listOf(entry("c1"), entry("c2")))
+        shadowOf(Looper.getMainLooper()).idle()
 
         val projection = player.queue.value
         assertEquals(listOf(entry("m")), projection.manual)
-        assertEquals(listOf(entry("c1"), entry("c2")), projection.context?.upcoming)
+        assertEquals(mapOf(0 to entry("c1"), 1 to entry("c2")), projection.context?.upcoming)
+        assertEquals(2, projection.context?.upcomingTotal)
         assertEquals(BridgePlaybackSourceKind.RELEASE, projection.context?.kind)
         assertEquals(false, projection.context?.shuffled)
     }
@@ -106,12 +111,11 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     sourceTitle = null,
                     shuffled = true,
-                    upcoming = listOf(entry("c")),
-                    upcomingTotal = 1uL,
+                    upcoming = emptyList(),
+                    upcomingTotal = 0uL,
                 ),
             hasNext = true,
             hasPrevious = false,
-            revision = 1uL,
         )
 
         val context = player.queue.value.context
@@ -129,12 +133,11 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.LIBRARY,
                     sourceTitle = null,
                     shuffled = false,
-                    upcoming = listOf(entry("c")),
-                    upcomingTotal = 1uL,
+                    upcoming = emptyList(),
+                    upcomingTotal = 0uL,
                 ),
             hasNext = true,
             hasPrevious = false,
-            revision = 1uL,
         )
 
         val context = player.queue.value.context
@@ -151,12 +154,11 @@ class QueueProjectionTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     sourceTitle = null,
                     shuffled = false,
-                    upcoming = listOf(entry("c")),
-                    upcomingTotal = 1uL,
+                    upcoming = emptyList(),
+                    upcomingTotal = 0uL,
                 ),
             hasNext = true,
             hasPrevious = false,
-            revision = 1uL,
         )
 
         player.onQueueValue(
@@ -164,21 +166,21 @@ class QueueProjectionTest {
             context = null,
             hasNext = false,
             hasPrevious = false,
-            revision = 2uL,
         )
 
         assertEquals(emptyList<BridgeQueueEntry>(), player.queue.value.manual)
         assertNull(player.queue.value.context)
-        assertEquals(2uL, player.queue.value.revision)
+        assertEquals("each queue value is a change to the manual lane", 2uL, player.queue.value.manualChanges)
     }
 
-    private fun player(): BaeCorePlayer {
+    private fun player(feed: UpcomingFeed = UpcomingFeed()): BaeCorePlayer {
         val context = RuntimeEnvironment.getApplication()
         return BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = FakeAppHandle(),
             system = PlaybackSystem(context, AudioFocus(context), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            queueUpcomingSource = feed.source,
         )
     }
 }

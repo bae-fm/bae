@@ -58,7 +58,8 @@ class SeekToMediaItemTest {
 
     @Test
     fun seekingAcrossTheManualAndContextLanesResolvesTheFlatIndex() {
-        val (player, handle) = player()
+        val feed = UpcomingFeed()
+        val (player, handle) = player(feed)
         playing(
             player,
             manual = listOf(entry("m")),
@@ -67,10 +68,13 @@ class SeekToMediaItemTest {
                     kind = BridgePlaybackSourceKind.RELEASE,
                     sourceTitle = null,
                     shuffled = false,
-                    upcoming = listOf(entry("c")),
-                    upcomingTotal = 1uL,
+                    upcoming = emptyList(),
+                    upcomingTotal = 0uL,
                 ),
         )
+        // The context's tracks reach the playlist through the upcoming read.
+        feed.deliver(total = 1, read = listOf(entry("c")))
+        shadowOf(Looper.getMainLooper()).idle()
 
         // Playlist is [cur, track-m, track-c]; index 2 is the context entry.
         (player as Player).seekTo(2, 0L)
@@ -107,11 +111,11 @@ class SeekToMediaItemTest {
                 durationMs = 180_000uL,
             ),
         )
-        player.onQueueValue(manual = manual, context = context, hasNext = true, hasPrevious = false, revision = 1uL)
+        player.onQueueValue(manual = manual, context = context, hasNext = true, hasPrevious = false)
         shadowOf(Looper.getMainLooper()).idle()
     }
 
-    private fun player(): Pair<BaeCorePlayer, SkipRecordingHandle> {
+    private fun player(feed: UpcomingFeed = UpcomingFeed()): Pair<BaeCorePlayer, SkipRecordingHandle> {
         val handle = SkipRecordingHandle()
         val player =
             BaeCorePlayer(
@@ -119,6 +123,7 @@ class SeekToMediaItemTest {
                 appHandle = handle,
                 system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                queueUpcomingSource = feed.source,
             )
         return player to handle
     }

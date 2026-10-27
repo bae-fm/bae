@@ -21,6 +21,10 @@ private val logger = BaeLogger("bae.QueueUpcoming")
  *  rows and the two nearest it. */
 internal const val MAX_UPCOMING_WINDOWS = 3
 
+/** How many of the context's tracks the Media3 playlist lists after Up Next: the window the player
+ *  keeps read while a context plays. */
+internal const val PLAYLIST_CONTEXT_TRACKS = 100
+
 internal fun queuePageDistance(
     range: IntRange,
     index: Int,
@@ -32,9 +36,9 @@ internal fun queuePageDistance(
     }
 
 /**
- * The context's upcoming tail past the queue value's first window, read through one live
- * subscription: which windows it reads changes in place, and each value answers every window at
- * once, stamped with the queue revision it was sliced from.
+ * The context's upcoming tail, read through one live subscription: which windows it reads changes
+ * in place, and each value answers every window at once with the tail's length, and says whether
+ * the queue changed or only the windows moved.
  */
 interface QueueUpcomingQuery {
     fun setWindows(windows: List<BridgeLibraryPageWindow>)
@@ -63,15 +67,15 @@ class QueueUpcomingSource(
 }
 
 /**
- * The context tail's windows past the queue value's first, read through one live query opened on
- * first use. Its windows move in place as the queue scrolls, and the queue's revisions move it in
- * core; neither opens another. [onValue] hears the queue revision of each value it reads; a
- * failure stops the read and is held in [failure] until [retry] opens it again.
+ * The context tail's windows, read through one live query: a [pin]ned window, which stays read
+ * while a context plays, and the windows the queue scrolls to. Its windows move in place; neither
+ * opens another query. [onValue] hears each value it reads, and whether it answered a change to
+ * the queue; a failure stops the read and is held in [failure] until [retry] opens it again.
  */
 internal class QueueUpcomingWindows(
     private val source: QueueUpcomingSource,
     private val scope: CoroutineScope,
-    private val onValue: (revision: ULong) -> Unit,
+    private val onValue: (queueChanged: Boolean) -> Unit,
 ) {
     private val mutableFailure = MutableStateFlow<BridgeException?>(null)
 
@@ -81,11 +85,25 @@ internal class QueueUpcomingWindows(
     private var query: QueueUpcomingQuery? = null
     private var deliveries: Job? = null
 
-    /** The tail ranges the read covers, at most [MAX_UPCOMING_WINDOWS]. */
+    /** The window read for as long as the read is open, whatever the queue scrolls to. */
+    private var pinned: IntRange? = null
+
+    /** The scrolled-to tail ranges the read covers, at most [MAX_UPCOMING_WINDOWS]. */
     private val windows = mutableListOf<IntRange>()
 
-    /** The newest value, kept until the queue value of its revision arrives when it lands first. */
+    /** The newest value read; null until the read answers. */
     private var latest: BridgeQueueUpcomingSnapshot? = null
+
+    /** The tail's length as the newest value read it; 0 until the read answers. */
+    val total: Int
+        get() = latest?.upcomingTotal?.toInt() ?: 0
+
+    /** Keep [range] read while the read is open, opening it when it is not. */
+    fun pin(range: IntRange) {
+        if (pinned == range && query != null) return
+        pinned = range
+        request()
+    }
 
     /**
      * Read [range] of the tail too. A no-op when a window already read covers it. Past
@@ -93,49 +111,58 @@ internal class QueueUpcomingWindows(
      * request is logged and held in [failure].
      */
     fun load(range: IntRange) {
-        val covered = windows.any { it.first <= range.first && range.last <= it.last }
+        val covered = (windows + listOfNotNull(pinned)).any { it.first <= range.first && range.last <= it.last }
         if (range.isEmpty() || covered) return
         while (windows.size >= MAX_UPCOMING_WINDOWS) {
             val midpoint = range.first + range.count() / 2
             windows.remove(windows.maxBy { queuePageDistance(it, midpoint) })
         }
         windows.add(range)
-        try {
-            (query ?: open()).setWindows(
-                windows
-                    .sortedBy { it.first }
-                    .map { BridgeLibraryPageWindow(it.first.toULong(), it.count().toULong()) },
-            )
-        } catch (error: BridgeException) {
-            logger.error("upcoming range $range was not requested", error)
-            mutableFailure.value = error
-        }
+        request()
     }
 
     /** Open the read again over the windows it covered, after a failure stopped it. */
     fun retry() {
         mutableFailure.value = null
         val covered = windows.toList()
+        val keptPinned = pinned
         close()
+        keptPinned?.let(::pin)
         covered.forEach(::load)
     }
 
-    /** The newest value's entries by absolute tail index when it was sliced from queue
-     *  [revision], and none otherwise: its offsets count from another queue's tail. */
-    fun entriesAt(revision: ULong): List<Pair<Int, BridgeQueueEntry>> {
-        val value = latest?.takeIf { it.revision == revision } ?: return emptyList()
-        return value.windows.flatMap { window ->
-            window.entries.mapIndexed { i, entry -> window.window.offset.toInt() + i to entry }
-        }
+    /** The newest value's entries by index in the tail. */
+    fun entries(): Map<Int, BridgeQueueEntry> {
+        val value = latest ?: return emptyMap()
+        return value.windows
+            .flatMap { window ->
+                window.entries.mapIndexed { i, entry -> window.window.offset.toInt() + i to entry }
+            }.toMap()
     }
 
     fun close() {
         deliveries?.cancel()
         deliveries = null
         windows.clear()
+        pinned = null
+        latest = null
         val closing = query ?: return
         query = null
         scope.launch { closing.cancel() }
+    }
+
+    private fun request() {
+        val read = (listOfNotNull(pinned) + windows).filterNot { it.isEmpty() }
+        try {
+            (query ?: open()).setWindows(
+                read
+                    .sortedBy { it.first }
+                    .map { BridgeLibraryPageWindow(it.first.toULong(), it.count().toULong()) },
+            )
+        } catch (error: BridgeException) {
+            logger.error("upcoming windows $read were not requested", error)
+            mutableFailure.value = error
+        }
     }
 
     private fun open(): QueueUpcomingQuery {
@@ -151,7 +178,7 @@ internal class QueueUpcomingWindows(
             val delivered = runCatching { opened.next() }
             delivered.onSuccess { value ->
                 latest = value
-                onValue(value.revision)
+                onValue(value.queueChanged)
             }
             delivered.onFailure { error ->
                 reading = false
