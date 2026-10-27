@@ -22,34 +22,44 @@ pub(super) struct LookupChoiceRows {
 
 pub(super) fn load_lookup_choice_rows_on(
     sql: &impl QueryRows,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<LookupChoiceRows, DbError> {
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
     let catalogs = sql.query(
-        "SELECT content_hash, value FROM import_candidate_chosen_catalog \
-         WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, position",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, value FROM import_candidate_chosen_catalog \
+             {clause} \
+             ORDER BY content_hash, position"
+        ),
+        filter.params().as_slice(),
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )?;
     let discounted = sql.query(
-        "SELECT content_hash, value FROM import_candidate_discounted_catalog \
-         WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, value",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, value FROM import_candidate_discounted_catalog \
+             {clause} \
+             ORDER BY content_hash, value"
+        ),
+        filter.params().as_slice(),
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )?;
     let left_out = sql.query(
-        "SELECT content_hash, value FROM import_candidate_excluded_barcode \
-         WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, value",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, value FROM import_candidate_excluded_barcode \
+             {clause} \
+             ORDER BY content_hash, value"
+        ),
+        filter.params().as_slice(),
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )?;
     let rows = sql.query(
-        "SELECT content_hash, disc_id_excluded, search_album, search_artist \
-         FROM import_candidate_lookup_choices \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, disc_id_excluded, search_album, search_artist \
+             FROM import_candidate_lookup_choices \
+             {clause}"
+        ),
+        filter.params().as_slice(),
         |row| {
             let search_words = match (
                 row.get::<_, Option<String>>(2)?,
@@ -120,7 +130,7 @@ impl LookupChoiceRows {
 /// map; the caller defaults it.
 pub(super) fn load_lookup_choices_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<
     impl FnOnce() -> Result<HashMap<String, LookupChoices>, DbError> + Send + 'static,
     DbError,

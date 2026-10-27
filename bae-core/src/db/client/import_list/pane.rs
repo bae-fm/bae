@@ -83,7 +83,8 @@ pub(super) fn load_candidate_detail_on(
         )
         .optional()?;
 
-    let state = load_states_on(sql, Some(&content_hash))?.remove(&content_hash);
+    let state = load_states_on(sql, super::super::query::CandidateRows::One(&content_hash))?
+        .remove(&content_hash);
     let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
     let identify = current.as_ref().and_then(|state| state.identify.as_ref());
     let release_link = current

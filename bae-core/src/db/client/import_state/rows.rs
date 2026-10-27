@@ -277,18 +277,20 @@ pub(crate) fn load_release_link_rows_on(
 /// matches that hang off it.
 pub(crate) fn load_verdicts_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<
     impl FnOnce() -> Result<HashMap<String, DbCandidateIdentifyResult>, DbError> + Send + 'static,
     DbError,
 > {
-    let matches = load_matches_rows_on(sql, CandidateRows::of_one(&only))?;
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
+    let matches = load_matches_rows_on(sql, only)?;
     let rows = sql.query(
         &format!(
             "SELECT {VERDICT_COLUMNS} FROM import_candidate_verdict \
-             WHERE :only IS NULL OR content_hash = :only"
+             {clause}"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| Ok(read_verdict_row(row)),
     )?;
     Ok(move || {
@@ -369,8 +371,8 @@ pub(crate) fn load_matches_rows_on(
     let barcodes = sql.query(
         &format!(
             "SELECT content_hash, position, barcode FROM import_candidate_match_barcode \
-         {} \
-         ORDER BY content_hash, position, ordinal",
+             {} \
+             ORDER BY content_hash, position, ordinal",
             only.clause
         ),
         only.params().as_slice(),
@@ -385,7 +387,7 @@ pub(crate) fn load_matches_rows_on(
     let cover_copies = sql.query(
         &format!(
             "SELECT content_hash, position, max_edge, url FROM import_candidate_match_cover_copy \
-         {}",
+             {}",
             only.clause
         ),
         only.params().as_slice(),
@@ -401,9 +403,9 @@ pub(crate) fn load_matches_rows_on(
     let media = sql.query(
         &format!(
             "SELECT content_hash, position, media_kind, medium, quantity \
-         FROM import_candidate_match_medium \
-         {} \
-         ORDER BY content_hash, position, ordinal",
+             FROM import_candidate_match_medium \
+             {} \
+             ORDER BY content_hash, position, ordinal",
             only.clause
         ),
         only.params().as_slice(),
@@ -426,8 +428,8 @@ pub(crate) fn load_matches_rows_on(
     let links = sql.query(
         &format!(
             "SELECT content_hash, position, catalog, key FROM import_candidate_match_link \
-         {} \
-         ORDER BY content_hash, position, ordinal",
+             {} \
+             ORDER BY content_hash, position, ordinal",
             only.clause
         ),
         only.params().as_slice(),
@@ -444,9 +446,9 @@ pub(crate) fn load_matches_rows_on(
         &format!(
             "SELECT content_hash, position, catalog, key, stated, wikidata_item, \
                 musicbrainz_release, release_catalog, release_key \
-         FROM import_candidate_match_album_link \
-         {} \
-         ORDER BY content_hash, position, ordinal",
+             FROM import_candidate_match_album_link \
+             {} \
+             ORDER BY content_hash, position, ordinal",
             only.clause
         ),
         only.params().as_slice(),
@@ -527,31 +529,33 @@ pub(crate) fn load_matches_rows_on(
 /// verdict, signals, provenance, and file-decision rows that hang off it.
 pub(crate) fn load_states_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
     load_states_rows_on(sql, only)?()
 }
 
 pub(crate) fn load_states_rows_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<
     impl FnOnce() -> Result<HashMap<String, DbImportCandidateState>, DbError> + Send + 'static,
     DbError,
 > {
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
     let states = sql.query(
         &format!(
             "SELECT {STATE_COLUMNS} FROM import_candidate_state \
-             WHERE :only IS NULL OR content_hash = :only"
+             {clause}"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| Ok(read_state_row(row)),
     )?;
     let verdicts = load_verdicts_on(sql, only)?;
     let edits = load_edits_on(sql, only)?;
     let signals = load_signals_on(sql, only)?;
-    let provenances = load_provenance_rows_on(sql, CandidateRows::of_one(&only))?;
-    let links = load_release_link_rows_on(sql, CandidateRows::of_one(&only))?;
+    let provenances = load_provenance_rows_on(sql, only)?;
+    let links = load_release_link_rows_on(sql, only)?;
     let authors = super::pane_rows::load_authors_on(sql, only)?;
     let lookup_choices = load_lookup_choices_on(sql, only)?;
 
@@ -622,20 +626,22 @@ type FinishEdits<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 
 fn load_edits_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<FinishEdits<HashMap<String, CandidateFileEdits>>, DbError> {
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
     let rows = sql.query(
         &format!(
             "SELECT {SHEET_DISC_COLUMNS} FROM import_candidate_sheet_disc \
-             WHERE :only IS NULL OR content_hash = :only \
+             {clause} \
              ORDER BY content_hash, sheet_id"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| Ok(read_sheet_disc_row(row)),
     )?;
     let references = sql.query(
-        "SELECT content_hash, sheet_id, file_reference, file_id FROM import_candidate_sheet_reference WHERE :only IS NULL OR content_hash = :only ORDER BY content_hash, sheet_id, file_reference",
-        named_params! { ":only": only },
+        &format!("SELECT content_hash, sheet_id, file_reference, file_id FROM import_candidate_sheet_reference {clause} ORDER BY content_hash, sheet_id, file_reference"),
+        filter.params().as_slice(),
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?, row.get::<_, Option<String>>(3)?)),
     )?;
     Ok(Box::new(move || {
@@ -676,7 +682,7 @@ pub(crate) fn load_candidate_file_edits_on(
         )
         .optional()?;
     let edits = if revision.is_some() {
-        Some(load_edits_on(sql, Some(content_hash))?)
+        Some(load_edits_on(sql, CandidateRows::One(content_hash))?)
     } else {
         None
     };

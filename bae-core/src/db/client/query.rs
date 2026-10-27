@@ -18,35 +18,34 @@ pub(super) fn in_clause_placeholders(count: usize) -> String {
 }
 
 /// Which candidates a loader reads the rows of, by content hash: every one's,
-/// or only those named, which a keyed statement reaches by its index.
+/// one candidate's, or a window's, each by its own statement. The one
+/// candidate's statement names it by key, which its index reaches and which
+/// coven reruns a live query for only when that candidate's rows change.
 #[cfg(desktop)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum CandidateRows<'a> {
     All,
+    One(&'a str),
     Of(&'a [&'a str]),
 }
 
 #[cfg(desktop)]
 impl<'a> CandidateRows<'a> {
-    /// Every candidate's rows for `None`, the one candidate's for `Some`.
-    pub(crate) fn of_one(only: &'a Option<&'a str>) -> Self {
-        match only {
-            None => Self::All,
-            Some(one) => Self::Of(std::slice::from_ref(one)),
-        }
-    }
-
-    /// The clause keeping the named candidates' rows by `column`, and what it
+    /// The clause keeping these candidates' rows by `column`, and what it
     /// binds; no clause for every candidate.
     pub(crate) fn filter(self, column: &str) -> CandidateFilter {
         match self {
             Self::All => CandidateFilter {
                 clause: String::new(),
-                keys: None,
+                binds: CandidateBinds::None,
+            },
+            Self::One(key) => CandidateFilter {
+                clause: format!("WHERE {column} = :candidate"),
+                binds: CandidateBinds::One(key.to_string()),
             },
             Self::Of(keys) => CandidateFilter {
                 clause: format!("WHERE {column} IN (SELECT value FROM json_each(:candidates))"),
-                keys: Some(serde_json::Value::from(keys.to_vec()).to_string()),
+                binds: CandidateBinds::Of(serde_json::Value::from(keys.to_vec()).to_string()),
             },
         }
     }
@@ -56,16 +55,24 @@ impl<'a> CandidateRows<'a> {
 #[cfg(desktop)]
 pub(crate) struct CandidateFilter {
     pub(crate) clause: String,
-    keys: Option<String>,
+    binds: CandidateBinds,
+}
+
+#[cfg(desktop)]
+enum CandidateBinds {
+    None,
+    One(String),
+    Of(String),
 }
 
 #[cfg(desktop)]
 impl CandidateFilter {
     /// What the clause binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
-        match &self.keys {
-            None => Vec::new(),
-            Some(keys) => vec![(":candidates", keys as &dyn rusqlite::ToSql)],
+        match &self.binds {
+            CandidateBinds::None => Vec::new(),
+            CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
+            CandidateBinds::Of(keys) => vec![(":candidates", keys as &dyn rusqlite::ToSql)],
         }
     }
 }

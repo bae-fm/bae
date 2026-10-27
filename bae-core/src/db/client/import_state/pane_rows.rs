@@ -84,7 +84,7 @@ pub(crate) fn insert_draft(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author, draft_blank, draft_valid) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -180,7 +180,7 @@ pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
 ) -> Result<DbCandidatePaneRows, DbError> {
-    let metadata_draft = load_drafts_on(sql, Some(content_hash))?
+    let metadata_draft = load_drafts_on(sql, CandidateRows::One(content_hash))?
         .remove(content_hash)
         .ok_or_else(|| {
             DbError::Message(format!(
@@ -188,8 +188,7 @@ pub(crate) fn load_pane_rows_on(
             ))
         })?;
     Ok(DbCandidatePaneRows {
-        cover: load_covers_on(sql, super::super::query::CandidateRows::Of(&[content_hash]))?
-            .remove(content_hash),
+        cover: load_covers_on(sql, CandidateRows::One(content_hash))?.remove(content_hash),
         cover_options: load_cover_options_on(sql, content_hash)?,
         draft: metadata_draft,
         failure: load_failure_on(sql, content_hash)?,
@@ -200,7 +199,7 @@ pub(crate) fn load_pane_rows_on(
 /// The cover choice of every candidate `only` names.
 pub(crate) fn load_covers_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    only: super::super::query::CandidateRows<'_>,
+    only: CandidateRows<'_>,
 ) -> Result<HashMap<String, CoverSelection>, DbError> {
     let only = only.filter("content_hash");
     let rows = sql.query(
@@ -271,12 +270,16 @@ pub(crate) fn load_covers_on(
 /// Who wrote every candidate's draft, or the one `only` names.
 pub(crate) fn load_authors_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<HashMap<String, MetadataAuthor>, DbError> {
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
     sql.query(
-        "SELECT content_hash, author FROM import_candidate_edit \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, author FROM import_candidate_edit \
+             {clause}"
+        ),
+        filter.params().as_slice(),
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )?
     .into_iter()
@@ -287,18 +290,20 @@ pub(crate) fn load_authors_on(
 /// Every candidate's complete stored draft, or the one `only` names.
 pub(crate) fn load_drafts_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<HashMap<String, CandidateDraft>, DbError> {
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
     let album_assignments = load_album_artist_assignments_on(sql, only)?;
     let track_assignments = load_track_artist_assignments_on(sql, only)?;
     let mut values = values::load_draft_values_on(sql, only)?;
     let track_rows = sql.query(
         &format!(
             "SELECT {TRACK_COLUMNS} FROM import_candidate_track \
-             WHERE :only IS NULL OR content_hash = :only \
+             {clause} \
              ORDER BY content_hash, position"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| {
             Ok(StoredTrackRow {
                 content_hash: row.get("content_hash")?,
@@ -376,10 +381,12 @@ pub(crate) fn load_drafts_on(
             });
     }
     let medium_rows = sql.query(
-        "SELECT content_hash, medium, side_count FROM import_candidate_medium \
-         WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, position",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, medium, side_count FROM import_candidate_medium \
+             {clause} \
+             ORDER BY content_hash, position"
+        ),
+        filter.params().as_slice(),
         |row| {
             let content_hash: String = row.get("content_hash")?;
             let carrier: Option<String> = row.get("medium")?;
@@ -402,9 +409,9 @@ pub(crate) fn load_drafts_on(
     let rows = sql.query(
         &format!(
             "SELECT {EDIT_COLUMNS} FROM import_candidate_edit \
-             WHERE :only IS NULL OR content_hash = :only"
+             {clause}"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| {
             Ok(StoredDraftRow {
                 content_hash: row.get("content_hash")?,
@@ -688,17 +695,19 @@ fn insert_track_artist_assignments(
 
 pub(crate) fn load_album_artist_assignments_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<HashMap<String, Vec<Credited>>, DbError> {
+    let filter = only.filter("assignment.content_hash");
+    let clause = &filter.clause;
     let rows = sql.query(
         &format!(
             "SELECT assignment.content_hash, {STORED_ASSIGNMENT_COLUMNS} \
              FROM import_candidate_album_artist_assignment assignment \
              {STORED_ASSIGNMENT_JOINS} \
-             WHERE :only IS NULL OR assignment.content_hash = :only \
+             {clause} \
              ORDER BY assignment.content_hash, assignment.position"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>("content_hash")?,
@@ -717,17 +726,19 @@ pub(crate) fn load_album_artist_assignments_on(
 
 fn load_track_artist_assignments_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<HashMap<(String, String), Vec<Credited>>, DbError> {
+    let filter = only.filter("assignment.content_hash");
+    let clause = &filter.clause;
     let rows = sql.query(
         &format!(
             "SELECT assignment.content_hash, assignment.track_id, {STORED_ASSIGNMENT_COLUMNS} \
              FROM import_candidate_track_artist_assignment assignment \
              {STORED_ASSIGNMENT_JOINS} \
-             WHERE :only IS NULL OR assignment.content_hash = :only \
+             {clause} \
              ORDER BY assignment.content_hash, assignment.track_id, assignment.position"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>("content_hash")?,

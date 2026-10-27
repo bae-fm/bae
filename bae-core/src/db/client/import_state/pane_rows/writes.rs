@@ -9,8 +9,8 @@ impl Database {
     ) -> Result<Option<crate::db::DbCandidateImportPreparation>, DbError> {
         let content_hash = content_hash.to_string();
         self.read(move |sql| {
-            let Some(state) =
-                super::rows::load_states_on(&sql, Some(&content_hash))?.remove(&content_hash)
+            let Some(state) = super::rows::load_states_on(&sql, CandidateRows::One(&content_hash))?
+                .remove(&content_hash)
             else {
                 return Ok(None);
             };

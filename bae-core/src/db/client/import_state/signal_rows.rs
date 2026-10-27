@@ -169,15 +169,17 @@ fn free_text(text: &TextSignal) -> &[String] {
 /// Every candidate's settled signals, or the one `only` names.
 pub(super) fn load_signals_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<impl FnOnce() -> Result<HashMap<String, Signals>, DbError> + Send + 'static, DbError> {
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
     let values = sql.query(
         &format!(
             "SELECT {SIGNAL_VALUE_COLUMNS} FROM import_candidate_signal_value \
-             WHERE :only IS NULL OR content_hash = :only \
+             {clause} \
              ORDER BY content_hash, list, position"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>("content_hash")?,
@@ -190,10 +192,10 @@ pub(super) fn load_signals_on(
     let text_lines = sql.query(
         &format!(
             "SELECT {TEXT_LINE_COLUMNS} FROM import_candidate_text_line \
-             WHERE :only IS NULL OR content_hash = :only \
+             {clause} \
              ORDER BY content_hash, position"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>("content_hash")?,
@@ -205,9 +207,9 @@ pub(super) fn load_signals_on(
     let rows = sql.query(
         &format!(
             "SELECT {SIGNALS_COLUMNS} FROM import_candidate_signals \
-             WHERE :only IS NULL OR content_hash = :only"
+             {clause}"
         ),
-        named_params! { ":only": only },
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>("content_hash")?,

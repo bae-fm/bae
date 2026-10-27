@@ -688,6 +688,9 @@ Everything the list shows is read from tables, one read for its rows, its
 counts and its selection: each release's tab, state, group, dates, shown text
 and what its commands are decided from are kept beside it as it changes
 (Appendix A.7), so the list reads the rows it shows and not the whole queue.
+The pane reads its one candidate's rows by the candidate's key, and so does
+every read of one candidate's state, draft or preparation, so how long one
+takes does not grow with how many candidates the queue holds.
 
 ### 3.3 Clues in the files
 

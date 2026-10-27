@@ -111,14 +111,18 @@ pub(super) struct StoredDraftValues {
 
 pub(super) fn load_draft_values_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
+    only: CandidateRows<'_>,
 ) -> Result<StoredDraftValues, DbError> {
+    let filter = only.filter("content_hash");
+    let clause = &filter.clause;
     let mut values = StoredDraftValues::default();
     let works = sql.query(
-        "SELECT content_hash, musicbrainz_work_id, title, disambiguation, work_type \
-         FROM import_candidate_work WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, position",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, musicbrainz_work_id, title, disambiguation, work_type \
+             FROM import_candidate_work {clause} \
+             ORDER BY content_hash, position"
+        ),
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -141,11 +145,13 @@ pub(super) fn load_draft_values_on(
             .push(work);
     }
     let composers = sql.query(
-        "SELECT content_hash, musicbrainz_work_id, name, sort_name, musicbrainz_artist_id, \
+        &format!(
+            "SELECT content_hash, musicbrainz_work_id, name, sort_name, musicbrainz_artist_id, \
                 discogs_artist_id \
-         FROM import_candidate_work_composer WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, musicbrainz_work_id, position",
-        named_params! { ":only": only },
+             FROM import_candidate_work_composer {clause} \
+             ORDER BY content_hash, musicbrainz_work_id, position"
+        ),
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -179,9 +185,11 @@ pub(super) fn load_draft_values_on(
             .push(composer);
     }
     let parts = sql.query(
-        "SELECT content_hash, parent_work_id, child_work_id FROM import_candidate_work_part \
-         WHERE :only IS NULL OR content_hash = :only ORDER BY content_hash, position",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, parent_work_id, child_work_id FROM import_candidate_work_part \
+             {clause} ORDER BY content_hash, position"
+        ),
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -201,11 +209,13 @@ pub(super) fn load_draft_values_on(
             .push(part);
     }
     for (content_hash, role) in sql.query(
-        "SELECT content_hash, name, sort_name, musicbrainz_artist_id, discogs_artist_id, \
+        &format!(
+            "SELECT content_hash, name, sort_name, musicbrainz_artist_id, discogs_artist_id, \
                 source, role \
-         FROM import_candidate_release_role WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, position",
-        named_params! { ":only": only },
+             FROM import_candidate_release_role {clause} \
+             ORDER BY content_hash, position"
+        ),
+        filter.params().as_slice(),
         |row| Ok((row.get::<_, String>(0)?, role_columns(row, 1)?)),
     )? {
         values
@@ -215,11 +225,13 @@ pub(super) fn load_draft_values_on(
             .push(role.read()?);
     }
     for (content_hash, track_id, role) in sql.query(
-        "SELECT content_hash, track_id, name, sort_name, musicbrainz_artist_id, \
+        &format!(
+            "SELECT content_hash, track_id, name, sort_name, musicbrainz_artist_id, \
                 discogs_artist_id, source, role \
-         FROM import_candidate_track_role WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, track_id, position",
-        named_params! { ":only": only },
+             FROM import_candidate_track_role {clause} \
+             ORDER BY content_hash, track_id, position"
+        ),
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -235,10 +247,12 @@ pub(super) fn load_draft_values_on(
             .push(role.read()?);
     }
     for (content_hash, track_id, work) in sql.query(
-        "SELECT content_hash, track_id, musicbrainz_work_id FROM import_candidate_track_work \
-         WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, track_id, position",
-        named_params! { ":only": only },
+        &format!(
+            "SELECT content_hash, track_id, musicbrainz_work_id FROM import_candidate_track_work \
+             {clause} \
+             ORDER BY content_hash, track_id, position"
+        ),
+        filter.params().as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,

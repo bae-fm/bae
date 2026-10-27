@@ -1,3 +1,4 @@
+use super::query::CandidateRows;
 use super::*;
 
 mod album_pick_rows;
@@ -421,7 +422,7 @@ impl Database {
     /// folder scan reports the roles the user settled. Projected from the
     /// candidate-state read rather than a second query over the same rows.
     pub async fn load_stored_candidate_edits(&self) -> Result<StoredCandidateEdits, DbError> {
-        self.read(move |sql| load_states_rows_on(&sql, None))
+        self.read(move |sql| load_states_rows_on(&sql, CandidateRows::All))
             .process(|process| {
                 Ok(StoredCandidateEdits::new(
                     process()?
@@ -450,7 +451,7 @@ impl Database {
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-        self.read(move |sql| load_states_rows_on(&sql, None))
+        self.read(move |sql| load_states_rows_on(&sql, CandidateRows::All))
             .process(|process| process())
             .await
     }
@@ -462,7 +463,7 @@ impl Database {
         let content_hash = content_hash.to_string();
         self.read(move |sql| {
             Ok((
-                load_states_rows_on(&sql, Some(&content_hash))?,
+                load_states_rows_on(&sql, CandidateRows::One(&content_hash))?,
                 content_hash,
             ))
         })
