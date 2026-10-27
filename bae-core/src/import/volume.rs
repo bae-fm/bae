@@ -125,7 +125,7 @@ pub(crate) fn changed_directories(
     )
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(target_os = "macos")]
 mod platform {
     use super::VolumeKind;
     use std::path::Path;
@@ -238,12 +238,7 @@ mod platform {
     }
 }
 
-#[cfg(not(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "linux",
-    target_os = "windows"
-)))]
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 mod platform {
     use super::VolumeKind;
     use std::path::Path;
