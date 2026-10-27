@@ -93,11 +93,7 @@ fn save_failure_on(
     edit_revision: u64,
     failure: &ImportFailure,
 ) -> Result<(), DbError> {
-    let edit_revision = i64::try_from(edit_revision).map_err(|error| {
-        DbError::Message(format!(
-            "candidate edit revision {edit_revision} exceeds SQLite's integer range: {error}"
-        ))
-    })?;
+    let edit_revision = to_i64(edit_revision, "candidate edit revision")?;
     let current_revision = sql
         .query_row(
             "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",

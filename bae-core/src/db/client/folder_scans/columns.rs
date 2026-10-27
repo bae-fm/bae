@@ -12,12 +12,6 @@ pub(crate) fn unreadable(column: &str, stored: &str) -> DbError {
     DbError::Message(format!("folder scan column {column} holds {stored:?}"))
 }
 
-pub(super) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
-    i64::try_from(value).map_err(|error| {
-        DbError::Message(format!("{what} exceeds SQLite's integer range: {error}"))
-    })
-}
-
 pub(crate) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
     u64::try_from(value).map_err(|error| DbError::Message(format!("{what} is negative: {error}")))
 }

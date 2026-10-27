@@ -126,11 +126,7 @@ fn item_was_read_for(
 }
 
 fn generation_column(generation: u64) -> Result<i64, DbError> {
-    i64::try_from(generation).map_err(|error| {
-        DbError::Message(format!(
-            "folder scan generation exceeds SQLite's integer range: {error}"
-        ))
-    })
+    to_i64(generation, "folder scan generation")
 }
 
 /// Replace a candidate's file-tag snapshot, inside the caller's transaction,
@@ -143,7 +139,7 @@ pub(super) fn replace_candidate_file_tag_snapshot_on(
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
 ) -> Result<bool, DbError> {
     let expected_generation = generation_column(snapshot.scan_generation)?;
-    let expected_file_edit_revision = columns::to_i64(
+    let expected_file_edit_revision = to_i64(
         snapshot.file_edit_revision,
         "a file-tag snapshot's file edit revision",
     )?;

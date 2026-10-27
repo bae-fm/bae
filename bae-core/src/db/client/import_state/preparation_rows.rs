@@ -312,14 +312,6 @@ pub(super) fn save_preparation_on(
     Ok(CandidateSaved::Landed(reshaped))
 }
 
-fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
-    i64::try_from(value).map_err(|error| {
-        DbError::Message(format!(
-            "{what} {value} exceeds SQLite's integer range: {error}"
-        ))
-    })
-}
-
 impl Database {
     /// One candidate's whole stored state, or `None` for a hash no scan has
     /// stored a candidate under.

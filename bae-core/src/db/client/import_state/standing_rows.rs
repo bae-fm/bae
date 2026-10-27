@@ -378,14 +378,6 @@ fn write_on(
     Ok(())
 }
 
-fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
-    i64::try_from(value).map_err(|error| {
-        DbError::Message(format!(
-            "{what} {value} exceeds SQLite's integer range: {error}"
-        ))
-    })
-}
-
 /// Apply `change` to `candidate_key`'s identification as stored, inside the
 /// caller's write.
 pub(crate) fn change_identification_on(

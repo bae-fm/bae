@@ -105,11 +105,7 @@ pub(super) fn require_current_candidate(
         )
         .optional()?;
     let expected_file_edit_revision =
-        i64::try_from(expected_file_edit_revision).map_err(|error| {
-            DbError::Message(format!(
-                "candidate file revision exceeds SQLite range: {error}"
-            ))
-        })?;
+        to_i64(expected_file_edit_revision, "candidate file revision")?;
     let Some((current_hash, generation, current_file_edit_revision)) = current else {
         return Err(DbError::Message(format!(
             "candidate changed before metadata was stored: {candidate_path} is no longer valid"

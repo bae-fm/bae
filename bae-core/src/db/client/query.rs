@@ -2,6 +2,17 @@ use super::*;
 
 pub(crate) const SQL_MAX_IN_VARS: usize = 900;
 
+/// `value` as the integer SQLite stores, or the failure naming `what` when it
+/// is past SQLite's signed range.
+#[cfg(desktop)]
+pub(super) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
+    i64::try_from(value).map_err(|error| {
+        DbError::Message(format!(
+            "{what} {value} exceeds SQLite's integer range: {error}"
+        ))
+    })
+}
+
 pub(super) fn in_clause_placeholders(count: usize) -> String {
     (0..count).map(|_| "?").collect::<Vec<_>>().join(",")
 }
