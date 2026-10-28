@@ -165,6 +165,9 @@ async fn album_detail_releases_carry_their_own_pin_state() {
             wait_for_offline_copy_request(&manager, &release.id).await;
         }
         wait_for_landed_upload(&manager, &release.id).await;
+        if pin {
+            wait_for_kept_release(&manager, &release.id).await;
+        }
         pressings.push((release.id, pin));
     }
 
