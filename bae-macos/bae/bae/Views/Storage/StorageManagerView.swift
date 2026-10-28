@@ -488,4 +488,63 @@ struct StorageManagerView: View {
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
+
+    /// A release whose pin waits its turn in the download queue.
+    #Preview("Pin queued — inspector open") {
+        let fixture = StorageManagerPreviewFixture(
+            selectedReleaseId: "rel-row-5",
+            inspectorPresented: true,
+            downloads: PreviewData.queuedPinDownloads,
+            outputs: [],
+            uploads: []
+        )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(Importer.stub())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
+    }
+
+    /// A file of a release uploading selected: its details under the list.
+    #Preview("A file's details — inspector open") {
+        let fixture = StorageManagerPreviewFixture(
+            selectedReleaseId: "rel-row-1",
+            inspectorPresented: true,
+            selectedFileId: "rel-row-1-audio",
+            downloads: [],
+            outputs: []
+        )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialSelectedFileId: fixture.initialSelectedFileId
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(Importer.stub())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
+    }
 #endif
