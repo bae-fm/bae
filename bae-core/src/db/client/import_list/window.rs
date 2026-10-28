@@ -471,46 +471,75 @@ pub(super) fn stored_embedded_cover(
     candidate_path: &str,
     source_file_id: &str,
 ) -> Result<(FileVersion, Vec<u8>), DbError> {
-    let snapshot = super::super::folder_scans::load_candidate_file_tag_snapshot(
-        sql,
-        watched_folder_path,
-        candidate_path,
-    )?
-    .and_then(|stored| stored.snapshot)
-    .ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {candidate_path} selects embedded cover without a file-tag snapshot"
-        ))
-    })?;
-    let cover = snapshot.embedded_cover.ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {candidate_path} selects embedded cover without stored artwork"
-        ))
-    })?;
-    if cover.source_relative_path != source_file_id {
-        return Err(DbError::Message(format!(
-            "candidate {candidate_path} selects embedded cover from {source_file_id}, but its snapshot stores {}",
-            cover.source_relative_path
-        )));
-    }
-    let observation = snapshot
-        .files
-        .iter()
-        .map(|fact| &fact.observation)
-        .find(|observation| observation.relative_path == source_file_id)
+    type CoverColumns = (
+        Option<String>,
+        Option<Vec<u8>>,
+        Option<i64>,
+        Option<i64>,
+        Option<String>,
+    );
+    let (stored_source, data, size, modified_at_ns, path): CoverColumns = sql
+        .query_row(
+            "SELECT snapshot.embedded_cover_source_relative_path, snapshot.embedded_cover_data, \
+                    tags.file_size, tags.modified_at_ns, files.absolute_path \
+             FROM scan_candidate_tag_snapshot AS snapshot \
+             LEFT JOIN scan_candidate_file_tag AS tags \
+               ON tags.watched_folder_path = snapshot.watched_folder_path \
+              AND tags.candidate_path = snapshot.candidate_path \
+              AND tags.relative_path = :source \
+             LEFT JOIN scan_candidate_file AS files \
+               ON files.watched_folder_path = snapshot.watched_folder_path \
+              AND files.candidate_path = snapshot.candidate_path \
+              AND files.relative_path = :source \
+             WHERE snapshot.watched_folder_path = :root AND snapshot.candidate_path = :path",
+            rusqlite::named_params! {
+                ":root": watched_folder_path,
+                ":path": candidate_path,
+                ":source": source_file_id,
+            },
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
+        )
+        .optional()?
         .ok_or_else(|| {
             DbError::Message(format!(
-                "candidate {candidate_path}'s snapshot stores a cover from {source_file_id} but no reading of that file"
+                "candidate {candidate_path} selects embedded cover without a file-tag snapshot"
             ))
         })?;
-    let scanned = scanned_file_version(sql, watched_folder_path, candidate_path, source_file_id)?;
+    let (Some(stored_source), Some(data)) = (stored_source, data) else {
+        return Err(DbError::Message(format!(
+            "candidate {candidate_path} selects embedded cover without stored artwork"
+        )));
+    };
+    if stored_source != source_file_id {
+        return Err(DbError::Message(format!(
+            "candidate {candidate_path} selects embedded cover from {source_file_id}, but its snapshot stores {stored_source}"
+        )));
+    }
+    let (Some(size), Some(modified_at_ns)) = (size, modified_at_ns) else {
+        return Err(DbError::Message(format!(
+            "candidate {candidate_path}'s snapshot stores a cover from {source_file_id} but no reading of that file"
+        )));
+    };
+    let path = path.ok_or_else(|| {
+        DbError::Message(format!(
+            "candidate {candidate_path} names missing file {source_file_id}"
+        ))
+    })?;
     Ok((
         FileVersion {
-            path: scanned.path,
-            size: observation.size,
-            modified_at_ns: observation.modified_at_ns,
+            path: PathBuf::from(path),
+            size: to_u64(size, "a file-tag reading's size")?,
+            modified_at_ns,
         },
-        cover.data,
+        data,
     ))
 }
 
