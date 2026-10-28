@@ -17,7 +17,6 @@
 //! overwrites values its editor never showed. The editor opens again to see
 //! the release as it is now.
 
-use super::release::cover_ref_for;
 use super::*;
 
 /// One open editor's session on a library release.
@@ -98,9 +97,9 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
-        let context = self
+        let (context, edit_tracks) = self
             .database
-            .find_release_detail_context(release_id)
+            .find_release_edit_context(release_id)
             .await?
             .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
         let release = &context.detail.release;
@@ -111,8 +110,10 @@ impl LibraryManager {
             .ok_or_else(|| {
                 LibraryError::Refused(format!("Album '{}' not found", release.album_id))
             })?;
-        let display = crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail)?;
-        let cover = cover_ref_for(&self.database, release_id).await?;
+        let display =
+            crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail, edit_tracks)?;
+        let cover =
+            crate::album_detail::cover_ref(release_id, context.detail.cover_version.clone());
 
         let album_artist_assignments: Vec<crate::import::Credited> = context
             .album_artists

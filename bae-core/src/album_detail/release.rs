@@ -356,67 +356,48 @@ pub enum ReleaseEditLoadError {
 }
 
 impl ReleaseEditDisplayContext {
+    /// The editor's display of the release `raw`, from its tracks' audio as
+    /// `tracks` reads it in release order.
     #[cfg(desktop)]
-    pub(crate) fn from_raw(raw: &DbReleaseDetail) -> Result<Self, ReleaseEditLoadError> {
-        let mut contexts = Vec::with_capacity(raw.tracks.len());
-        for entry in &raw.tracks {
-            let formats = raw
-                .audio_formats
-                .iter()
-                .filter(|format| format.track_id == entry.track.id)
-                .collect::<Vec<_>>();
-            let format = match formats.as_slice() {
-                [] => {
-                    return Err(ReleaseEditLoadError::MissingAudioFormat {
-                        track_id: entry.track.id.clone(),
-                    });
-                }
-                [format] => *format,
-                _ => {
-                    return Err(ReleaseEditLoadError::MultipleAudioFormats {
-                        track_id: entry.track.id.clone(),
-                    });
-                }
-            };
-            let mut segments = raw
-                .audio_segments
-                .iter()
-                .filter(|segment| segment.audio_format_id == format.id)
-                .collect::<Vec<_>>();
-            segments.sort_by_key(|segment| segment.segment_index);
-            if segments.is_empty() {
-                return Err(ReleaseEditLoadError::MissingAudioSegments {
-                    track_id: entry.track.id.clone(),
-                });
+    pub(crate) fn from_raw(
+        raw: &DbReleaseDetail,
+        tracks: Vec<crate::db::DbReleaseEditTrack>,
+    ) -> Result<Self, ReleaseEditLoadError> {
+        let mut contexts = Vec::with_capacity(tracks.len());
+        for entry in tracks {
+            let track_id = entry.track.id.clone();
+            match entry.audio_format_count {
+                0 => return Err(ReleaseEditLoadError::MissingAudioFormat { track_id }),
+                1 => {}
+                _ => return Err(ReleaseEditLoadError::MultipleAudioFormats { track_id }),
             }
-
-            let mut sources = Vec::new();
-            for segment in segments {
+            if entry.segments.is_empty() {
+                return Err(ReleaseEditLoadError::MissingAudioSegments { track_id });
+            }
+            let mut sources: Vec<ReleaseEditTrackSource> = Vec::new();
+            for segment in entry.segments {
+                // A file a track plays in several segments is one source.
                 if sources
                     .iter()
-                    .any(|source: &ReleaseEditTrackSource| source.file_id == segment.file_id)
+                    .any(|source| source.file_id == segment.file_id)
                 {
                     continue;
                 }
-                let file = raw
-                    .files
-                    .iter()
-                    .find(|file| file.id == segment.file_id)
+                let file = segment
+                    .file
                     .ok_or_else(|| ReleaseEditLoadError::MissingSourceFile {
-                        track_id: entry.track.id.clone(),
+                        track_id: track_id.clone(),
                         file_id: segment.file_id.clone(),
                     })?;
-                let layout = file
-                    .source_audio
-                    .as_ref()
-                    .and_then(|audio| audio.layout)
-                    .ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
-                        track_id: entry.track.id.clone(),
-                        file_id: segment.file_id.clone(),
-                    })?;
+                let layout =
+                    file.layout
+                        .ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
+                            track_id: track_id.clone(),
+                            file_id: segment.file_id.clone(),
+                        })?;
                 sources.push(ReleaseEditTrackSource {
-                    file_id: file.id.clone(),
-                    name: file.original_filename.clone(),
+                    file_id: segment.file_id,
+                    name: file.name,
                     layout,
                 });
             }
@@ -424,7 +405,7 @@ impl ReleaseEditDisplayContext {
             contexts.push((
                 crate::util::format::track_side(&position),
                 ReleaseEditTrackContext {
-                    track_id: entry.track.id.clone(),
+                    track_id,
                     sources,
                     duration_ms: entry.track.duration_ms,
                     position_text: crate::util::format::track_position_text(&position),
@@ -436,7 +417,7 @@ impl ReleaseEditDisplayContext {
             source_audio: SourceAudioSummary::from_files(
                 raw.files
                     .iter()
-                    .filter_map(|file| file.source_audio.as_ref()?.summarized()),
+                    .filter_map(|row| row.file.source_audio.as_ref()?.summarized()),
             ),
             sides: ReleaseEditTrackSide::lay_out(contexts),
         })
@@ -492,27 +473,23 @@ impl ReleaseDetail {
 
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
-        let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.stored);
+        let remote = raw.remote;
         let playability = release_playability(&raw.unstored_audio, ctx.originals);
         let mut cover_files = Vec::new();
-        let mut file_uploads: std::collections::HashMap<String, FileUpload> = raw
-            .file_uploads
-            .into_iter()
-            .map(|upload| (upload.release_file_id.clone(), FileUpload::from_raw(upload)))
-            .collect();
         let files: Vec<FileDetail> = raw
             .files
             .into_iter()
-            .map(|f| {
+            .map(|row| {
+                let f = row.file;
                 let supports_cover = f.content_type.is_supported_cover();
                 let file = FileDetail {
-                    pin: raw.file_pins.get(&f.id).copied(),
+                    pin: row.pin,
                     place: FilePlace::of(&f.original_filename),
                     kind: FileKind::of(&f.content_type, &f.original_filename),
                     is_image: f.content_type.is_image(),
                     content_type: f.content_type.to_string(),
                     source_audio: f.source_audio,
-                    upload: file_uploads.remove(&f.id),
+                    upload: row.upload.map(FileUpload::from_raw),
                     id: f.id,
                     original_filename: f.original_filename,
                     file_size: f.file_size,
@@ -746,55 +723,35 @@ mod release_edit_display_tests {
     fn missing_segment_file_is_an_editor_load_error() {
         let release = crate::db::DbRelease::new_test("album-id", "release-id");
         let track = crate::db::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
-        let now = chrono::Utc::now();
-        let format = crate::db::DbAudioFormat {
-            id: "format-id".to_string(),
-            track_id: track.id.clone(),
-            content_type: bae_util::content_type::ContentType::Flac,
-            pregap_samples: None,
-            generated_pregap_samples: None,
-            sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),
-            bits_per_sample: Some(std::num::NonZeroU32::new(16).unwrap()),
-            channels: std::num::NonZeroU32::new(2).unwrap(),
-            track_loudness_lufs: None,
-            track_peak_linear: None,
-            created_at: now,
-        };
         let raw = crate::db::DbReleaseDetail {
             mediums: crate::db::DbReleaseMediums(vec![crate::db::DbReleaseMedium::new_test(
                 &release.id,
             )]),
             release,
             tracks: vec![crate::db::DbTrackWithArtists {
-                track,
+                track: track.clone(),
                 artists: Vec::new(),
             }],
             files: Vec::new(),
-            audio_formats: vec![format.clone()],
-            audio_segments: vec![crate::db::DbAudioSegment {
-                id: "segment-id".to_string(),
-                audio_format_id: format.id,
-                segment_index: 0,
-                role: crate::db::DbAudioSegmentRole::Main,
-                file_id: "missing-file-id".to_string(),
-                start_sample: 0,
-                end_sample: None,
-                start_byte: None,
-                end_byte: None,
-                created_at: now,
-            }],
             records: Vec::new(),
             unstored_audio: Vec::new(),
             pinned: false,
+            remote: false,
             upload: None,
-            file_pins: Default::default(),
-            file_uploads: Vec::new(),
             download: None,
             cover_version: None,
         };
+        let tracks = vec![crate::db::DbReleaseEditTrack {
+            track,
+            audio_format_count: 1,
+            segments: vec![crate::db::DbReleaseEditSegment {
+                file_id: "missing-file-id".to_string(),
+                file: None,
+            }],
+        }];
 
         assert!(matches!(
-            ReleaseEditDisplayContext::from_raw(&raw),
+            ReleaseEditDisplayContext::from_raw(&raw, tracks),
             Err(ReleaseEditLoadError::MissingSourceFile { file_id, .. })
                 if file_id == "missing-file-id"
         ));

@@ -262,13 +262,13 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .insert_release_records(&release.id, std::slice::from_ref(&identity))
         .await
         .unwrap();
-    let stored_before = manager
+    let (stored_before, audio_before) = manager
         .database
-        .find_release_detail_context(&release.id)
+        .find_release_edit_context(&release.id)
         .await
         .unwrap()
-        .expect("the release detail is stored")
-        .detail;
+        .expect("the release detail is stored");
+    let stored_before = stored_before.detail;
 
     manager
         .apply_release_metadata_user_edit(
@@ -297,15 +297,20 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .await
         .unwrap();
 
-    let stored_after = manager
+    let (stored_after, audio_after) = manager
         .database
-        .find_release_detail_context(&release.id)
+        .find_release_edit_context(&release.id)
         .await
         .unwrap()
-        .expect("the edited release remains stored")
-        .detail;
-    assert_eq!(stored_after.audio_formats, stored_before.audio_formats);
-    assert_eq!(stored_after.audio_segments, stored_before.audio_segments);
+        .expect("the edited release remains stored");
+    let stored_after = stored_after.detail;
+    let segments = |tracks: &[crate::db::DbReleaseEditTrack]| {
+        tracks
+            .iter()
+            .map(|track| (track.audio_format_count, track.segments.clone()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(segments(&audio_after), segments(&audio_before));
     assert_eq!(stored_after.files, stored_before.files);
     assert_eq!(
         manager

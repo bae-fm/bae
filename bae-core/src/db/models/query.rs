@@ -246,11 +246,7 @@ pub struct DbReleaseDetail {
     /// The release's mediums, which its tracks' places are read against.
     pub mediums: DbReleaseMediums,
     pub tracks: Vec<DbTrackWithArtists>,
-    pub files: Vec<DbFile>,
-    /// Audio-format rows for this release's tracks: codec, sample rate, bit
-    /// depth, channels. The file-backed windows live in `audio_segments`.
-    pub audio_formats: Vec<DbAudioFormat>,
-    pub audio_segments: Vec<DbAudioSegment>,
+    pub files: Vec<DbReleaseDetailFile>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -260,14 +256,11 @@ pub struct DbReleaseDetail {
     /// Whether this device keeps every file of the release pinned, as the
     /// release's listing counts its pinned files.
     pub pinned: bool,
+    /// Whether every file of the release names its stored file, as the
+    /// release's listing says.
+    pub remote: bool,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
-    /// Where this device's pin of each of the release's pinned files stands,
-    /// by the file's id; a file without a pin is absent.
-    pub file_pins: std::collections::BTreeMap<String, crate::album_detail::FilePin>,
-    /// Each of the release's files waiting in this device's upload queue, by
-    /// its row.
-    pub file_uploads: Vec<DbFileUpload>,
     /// The release's entry in this device's download queue, `None` when it
     /// has none.
     pub download: Option<crate::library::DownloadPhase>,
@@ -289,11 +282,46 @@ pub struct DbFilePin {
 /// the record of what it waits for.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbFileUpload {
-    /// The release file row whose file it is.
-    pub release_file_id: String,
     pub file: coven::FileId,
     pub sending: bool,
     pub pending: Option<coven::PendingRecord>,
+}
+
+/// A track as the release editor reads its audio: the track, how many audio
+/// formats it stores, and its formats' segments in segment order, each with
+/// the file it names.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseEditTrack {
+    pub track: DbTrack,
+    pub audio_format_count: i64,
+    pub segments: Vec<DbReleaseEditSegment>,
+}
+
+/// One segment of a track's audio as the release editor reads it: the file it
+/// names, and that file's name and stored audio layout; `file` is `None` when
+/// no release file has that id.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseEditSegment {
+    pub file_id: String,
+    pub file: Option<DbReleaseEditSourceFile>,
+}
+
+/// The file a release editor's segment names: its name, and its stored audio
+/// layout (`None` when it has none).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseEditSourceFile {
+    pub name: String,
+    pub layout: Option<crate::album_detail::SourceAudioLayout>,
+}
+
+/// One file of a release as its detail reads it: the file, where this
+/// device's pin of it stands (`None` while it isn't pinned or being pinned),
+/// and its upload while it waits in this device's upload queue.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseDetailFile {
+    pub file: DbFile,
+    pub pin: Option<crate::album_detail::FilePin>,
+    pub upload: Option<DbFileUpload>,
 }
 
 /// One file this process is sending now: when it is one of a release's

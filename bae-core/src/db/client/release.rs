@@ -312,6 +312,32 @@ impl Database {
         .await
     }
 
+    /// The release's detail context, as [`Self::find_release_detail_context`]
+    /// reads it, and its tracks' audio as the release editor reads it, in
+    /// release order: both from one read.
+    #[cfg(desktop)]
+    pub async fn find_release_edit_context(
+        &self,
+        release_id: &str,
+    ) -> Result<Option<(ReleaseDetailContext, Vec<DbReleaseEditTrack>)>, DbError> {
+        let release_id = release_id.to_string();
+        self.read(move |sql| {
+            let Some(context) = find_release_detail_context_on(&sql, &release_id)? else {
+                return Ok(None);
+            };
+            Ok(Some((context, release_edit_tracks_on(&sql, &release_id)?)))
+        })
+        .process(|rows| {
+            Ok(rows.map(|(context, tracks)| {
+                (
+                    super::release_projection::ReleaseContextRows::process(context),
+                    tracks,
+                )
+            }))
+        })
+        .await
+    }
+
     /// The raw release-detail aggregate, the release's album artists, and its
     /// 0-based position among its album's releases — all from one database call.
     /// `LibraryManager` resolves this into `ReleaseDetail`.
@@ -775,4 +801,77 @@ impl Database {
         })
         .await
     }
+}
+
+/// Each of a release's tracks in release order, with how many audio formats
+/// it stores and its formats' segments in segment order as a JSON array, each
+/// with the name and stored audio layout of the release file it names.
+#[cfg(desktop)]
+pub(super) const RELEASE_EDIT_TRACKS: &str = "SELECT t.*, \
+        (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) AS audio_format_count, \
+        (SELECT json_group_array(json_object( \
+                    'file_id', s.file_id, \
+                    'found', json(CASE WHEN f.id IS NULL THEN 'false' ELSE 'true' END), \
+                    'name', f.original_filename, 'layout', f.source_audio_layout) \
+                ORDER BY s.segment_index) \
+         FROM audio_formats af \
+         JOIN audio_format_segments s ON s.audio_format_id = af.id \
+         LEFT JOIN release_files f ON f.id = s.file_id \
+         WHERE af.track_id = t.id) AS segments_json \
+     FROM tracks t WHERE t.release_id = ?1 ORDER BY t.position";
+
+#[cfg(desktop)]
+fn release_edit_tracks_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Vec<DbReleaseEditTrack>, DbError> {
+    #[derive(serde::Deserialize)]
+    struct Segment {
+        file_id: String,
+        found: bool,
+        name: Option<String>,
+        layout: Option<String>,
+    }
+    Ok(sql.query(RELEASE_EDIT_TRACKS, params![release_id], |row| {
+        let index = row.as_ref().column_index("segments_json")?;
+        let segments: Vec<Segment> =
+            serde_json::from_str(&row.get::<_, String>(index)?).map_err(|error| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    index,
+                    rusqlite::types::Type::Text,
+                    Box::new(error),
+                )
+            })?;
+        let segments = segments
+            .into_iter()
+            .map(|segment| {
+                let file = match (segment.found, segment.name) {
+                    (true, Some(name)) => Some(DbReleaseEditSourceFile {
+                        name,
+                        layout: segment
+                            .layout
+                            .map(|layout| super::read::source_audio_layout_value(&layout, index))
+                            .transpose()?,
+                    }),
+                    (false, _) => None,
+                    (true, None) => {
+                        return Err(rusqlite::Error::FromSqlConversionFailure(
+                            index,
+                            rusqlite::types::Type::Text,
+                            format!("release file {} has no name", segment.file_id).into(),
+                        ))
+                    }
+                };
+                Ok(DbReleaseEditSegment {
+                    file_id: segment.file_id,
+                    file,
+                })
+            })
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(DbReleaseEditTrack {
+            track: row_to_track(row)?,
+            audio_format_count: row.get("audio_format_count")?,
+            segments,
+        })
+    })?)
 }

@@ -303,7 +303,8 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         .await
         .unwrap()
         .expect("release detail");
-    assert_eq!(names(&detail.files), expected, "the release's detail");
+    let detail_files: Vec<DbFile> = detail.files.into_iter().map(|row| row.file).collect();
+    assert_eq!(names(&detail_files), expected, "the release's detail");
 
     let plan = db
         .read(|sql| {
@@ -323,6 +324,27 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         plan.iter()
             .any(|step| step.contains("USING INDEX idx_release_files_release_order")),
         "the read walks the index: {plan:?}"
+    );
+    let detail_plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::read::RELEASE_DETAIL_FILES
+                ),
+                [RELEASE_A],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        detail_plan
+            .iter()
+            .any(|step| step.contains("USING INDEX idx_release_files_release_order"))
+            && !detail_plan.iter().any(|step| step.contains("TEMP B-TREE")),
+        "the detail's files walk the index with their pins and uploads: {detail_plan:?}"
     );
     assert!(
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),

@@ -158,19 +158,19 @@ pub(super) fn build_release_detail_on(
     release: DbRelease,
 ) -> Result<ReleaseDetailRows, DbError> {
     let tracks = get_tracks_with_artists_for_release_on(sql, &release.id)?;
-    let files = get_files_for_release_on(sql, &release.id)?;
-    let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
-    let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
+    let files = release_detail_files_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
     let unstored_audio = unstored_audio_on(sql, &release.id)?;
     let mediums = release_mediums_on(sql, &release.id)?;
-    let pinned = sql.query_row(
+    let (pinned, remote) = sql.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM release_listing listing \
-             WHERE listing.release_id = ? AND {RELEASE_LISTING_PINNED})"
+                            WHERE listing.release_id = ?1 AND {RELEASE_LISTING_PINNED}), \
+                    EXISTS (SELECT 1 FROM release_listing listing \
+                            WHERE listing.release_id = ?1 AND listing.stored = 1)"
         ),
         params![release.id],
-        |row| row.get(0),
+        |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
     let download = super::release_queues::download_phase_on(sql, &release.id)?;
     let cover_version = sql.query_row(
@@ -179,42 +179,17 @@ pub(super) fn build_release_detail_on(
         |row| row.get(0),
     )?;
     let upload = super::queued_uploads::release_upload_on(sql, &release.id)?;
-    let file_uploads = super::queued_uploads::release_file_uploads_on(sql, &release.id)?;
-    let file_pins = sql
-        .query(
-            // A pin's download lists its file in `coven_downloading` before
-            // `coven_pins` holds a row for it.
-            "SELECT f.id, pin.kept IS 1, downloading.file FROM release_files f \
-             LEFT JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
-             LEFT JOIN coven_downloading downloading \
-                 ON downloading.table_name = 'release_files' AND downloading.key = coven_key(f.id) \
-             WHERE f.release_id = ?1 AND (pin.key IS NOT NULL OR downloading.key IS NOT NULL)",
-            params![release.id],
-            |row| {
-                let pin = match (row.get::<_, bool>(1)?, row.get::<_, Option<coven::FileId>>(2)?) {
-                    (true, _) => crate::album_detail::FilePin::Kept,
-                    (false, Some(file)) => crate::album_detail::FilePin::Downloading { file },
-                    (false, None) => crate::album_detail::FilePin::Waiting,
-                };
-                Ok((row.get::<_, String>(0)?, pin))
-            },
-        )?
-        .into_iter()
-        .collect();
 
     Ok(ReleaseDetailRows {
         release,
         mediums,
         tracks,
         files,
-        audio_formats,
-        audio_segments,
         records,
         unstored_audio,
         pinned,
+        remote,
         upload,
-        file_pins,
-        file_uploads,
         download,
         cover_version,
     })
@@ -269,15 +244,12 @@ pub(super) struct ReleaseDetailRows {
     pub(super) release: DbRelease,
     mediums: DbReleaseMediums,
     tracks: Vec<(DbTrack, Option<LibraryCredit>)>,
-    files: Vec<DbFile>,
-    audio_formats: Vec<DbAudioFormat>,
-    audio_segments: Vec<DbAudioSegment>,
+    files: Vec<DbReleaseDetailFile>,
     records: Vec<crate::import::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
+    remote: bool,
     upload: Option<DbReleaseUpload>,
-    file_pins: std::collections::BTreeMap<String, crate::album_detail::FilePin>,
-    file_uploads: Vec<DbFileUpload>,
     download: Option<crate::library::DownloadPhase>,
     cover_version: Option<String>,
 }
@@ -289,14 +261,11 @@ impl ReleaseDetailRows {
             mediums: self.mediums,
             tracks: process_tracks(self.tracks),
             files: self.files,
-            audio_formats: self.audio_formats,
-            audio_segments: self.audio_segments,
             records: self.records,
             unstored_audio: self.unstored_audio,
             pinned: self.pinned,
+            remote: self.remote,
             upload: self.upload,
-            file_pins: self.file_pins,
-            file_uploads: self.file_uploads,
             download: self.download,
             cover_version: self.cover_version,
         }
@@ -373,46 +342,64 @@ pub(super) const RELEASE_FILES_IN_ORDER: &str = "SELECT * FROM release_files \
      WHERE release_id = ?1 \
      ORDER BY original_filename COLLATE natural_order, id";
 
+/// A release's files as its detail shows them, in [`RELEASE_FILES_IN_ORDER`]'s
+/// order, each with where this device's pin of it stands and its upload
+/// while it waits in this device's queue, from coven's `coven_pins`,
+/// `coven_downloading` and `coven_uploads`, each joined by the file's coven
+/// key. A pin's download lists its file in `coven_downloading` before
+/// `coven_pins` holds a row for it.
+pub(super) const RELEASE_DETAIL_FILES: &str = "SELECT f.*, \
+        pin.key IS NOT NULL AS pin_held, pin.kept IS 1 AS pin_kept, \
+        downloading.file AS downloading_file, \
+        upload.file AS upload_file, upload.sending AS upload_sending, \
+        upload.pending AS upload_pending \
+     FROM release_files AS f \
+     LEFT JOIN coven_pins AS pin \
+         ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
+     LEFT JOIN coven_downloading AS downloading \
+         ON downloading.table_name = 'release_files' AND downloading.key = coven_key(f.id) \
+     LEFT JOIN coven_uploads AS upload \
+         ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
+     WHERE f.release_id = ?1 \
+     ORDER BY f.original_filename COLLATE natural_order, f.id";
+
+fn release_detail_files_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Vec<DbReleaseDetailFile>, DbError> {
+    Ok(sql.query(RELEASE_DETAIL_FILES, params![release_id], |row| {
+        let pin = match (
+            row.get::<_, bool>("pin_kept")?,
+            row.get::<_, Option<coven::FileId>>("downloading_file")?,
+            row.get::<_, bool>("pin_held")?,
+        ) {
+            (true, _, _) => Some(crate::album_detail::FilePin::Kept),
+            (false, Some(file), _) => Some(crate::album_detail::FilePin::Downloading { file }),
+            (false, None, true) => Some(crate::album_detail::FilePin::Waiting),
+            (false, None, false) => None,
+        };
+        let upload = match row.get::<_, Option<coven::FileId>>("upload_file")? {
+            Some(file) => Some(DbFileUpload {
+                file,
+                sending: row.get("upload_sending")?,
+                pending: row.get("upload_pending")?,
+            }),
+            None => None,
+        };
+        Ok(DbReleaseDetailFile {
+            file: row_to_file(row)?,
+            pin,
+            upload,
+        })
+    })?)
+}
+
 pub(super) fn get_files_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbFile>, DbError> {
     let files = sql.query(RELEASE_FILES_IN_ORDER, params![release_id], row_to_file)?;
     Ok(files)
-}
-
-/// Every audio-format row for a release, joined through its tracks — one row per
-/// track. A single-file CUE rip yields many rows whose segments all point at the
-/// same file; the resolver groups them by that file id to describe each audio
-/// file's format.
-pub(super) fn get_audio_formats_for_release_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Vec<DbAudioFormat>, DbError> {
-    sql.query(
-        "SELECT af.* FROM audio_formats af \
-             JOIN tracks t ON t.id = af.track_id \
-             WHERE t.release_id = ?",
-        params![release_id],
-        row_to_audio_format,
-    )
-    .map_err(DbError::from)
-}
-
-pub(super) fn get_audio_segments_for_release_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Vec<DbAudioSegment>, DbError> {
-    sql.query(
-        "SELECT s.* FROM audio_format_segments s \
-             JOIN audio_formats af ON af.id = s.audio_format_id \
-             JOIN tracks t ON t.id = af.track_id \
-             WHERE t.release_id = ? \
-             ORDER BY af.track_id, s.segment_index",
-        params![release_id],
-        row_to_audio_segment,
-    )
-    .map_err(DbError::from)
 }
 
 /// Every catalog's description of a release, in the order surfaces list
@@ -612,18 +599,26 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
     })
 }
 
+/// A stored `source_audio_layout` value, read from the column at `index`.
+pub(super) fn source_audio_layout_value(
+    layout: &str,
+    index: usize,
+) -> rusqlite::Result<crate::album_detail::SourceAudioLayout> {
+    match layout {
+        "file" => Ok(crate::album_detail::SourceAudioLayout::File),
+        "cue" => Ok(crate::album_detail::SourceAudioLayout::Cue),
+        other => Err(rusqlite::Error::FromSqlConversionFailure(
+            index,
+            rusqlite::types::Type::Text,
+            format!("invalid source_audio_layout {other:?}").into(),
+        )),
+    }
+}
+
 pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
     let layout = row
         .get::<_, Option<String>>("source_audio_layout")?
-        .map(|layout| match layout.as_str() {
-            "file" => Ok(crate::album_detail::SourceAudioLayout::File),
-            "cue" => Ok(crate::album_detail::SourceAudioLayout::Cue),
-            other => Err(rusqlite::Error::FromSqlConversionFailure(
-                0,
-                rusqlite::types::Type::Text,
-                format!("invalid source_audio_layout {other:?}").into(),
-            )),
-        })
+        .map(|layout| source_audio_layout_value(&layout, 0))
         .transpose()?;
     let source_audio = match (
         row.get::<_, Option<String>>("source_audio_content_type")?,

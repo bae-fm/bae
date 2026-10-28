@@ -72,32 +72,6 @@ pub(super) fn release_upload_on(
         .flatten())
 }
 
-/// Each of the release `release_id`'s files waiting in this device's upload
-/// queue, in queue order. How far one being sent has got is its file's
-/// transfer.
-pub(super) fn release_file_uploads_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Vec<DbFileUpload>, DbError> {
-    Ok(sql.query(
-        "SELECT f.id, upload.file, upload.sending, upload.pending \
-         FROM release_files AS f \
-         JOIN coven_uploads AS upload \
-             ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
-         WHERE f.release_id = ?1 \
-         ORDER BY upload.position",
-        [release_id],
-        |row| {
-            Ok(DbFileUpload {
-                release_file_id: row.get(0)?,
-                file: row.get(1)?,
-                sending: row.get(2)?,
-                pending: row.get(3)?,
-            })
-        },
-    )?)
-}
-
 /// The upload queue's counts: every queued file, those being sent, and
 /// whether uploads are paused, each read by index or in one row.
 pub(super) const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
