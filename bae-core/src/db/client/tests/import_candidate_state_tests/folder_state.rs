@@ -844,3 +844,44 @@ async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
         "the kept row carries this generation, so the prune leaves it"
     );
 }
+
+/// A folder is offered combined while two releases or more are read from it
+/// or below it, and offered separate while the release read from it is its
+/// grouping.
+#[tokio::test]
+async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
+    use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
+
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    scanned_box_and_sibling(&db, root).await;
+    let key = |folder: &str| FolderReleaseDecisionKey {
+        watched_folder_path: root.to_string(),
+        relative_folder_path: folder.to_string(),
+    };
+    let offered = |folder: &'static str, decision| {
+        let db = db.clone();
+        let key = key(folder);
+        async move { db.folder_reading_offered(&key, decision).await.unwrap() }
+    };
+    assert!(offered("Box", FolderReleaseDecision::CombineAsOneRelease).await);
+    assert!(!offered("Other", FolderReleaseDecision::CombineAsOneRelease).await);
+    assert!(!offered("Box", FolderReleaseDecision::KeepAsSeparateReleases).await);
+
+    // Read as one release, the folder's release is its grouping.
+    let mut combined = combined_candidate(root, "Box");
+    if let crate::import::folder_scanner::ScanItem::Valid(candidate) = &mut combined {
+        candidate.grouping = Some("grouping:Box".to_string());
+    }
+    commit_reading(
+        &db,
+        root,
+        "Box",
+        FolderReleaseDecision::CombineAsOneRelease,
+        vec![combined],
+    )
+    .await
+    .unwrap();
+    assert!(offered("Box", FolderReleaseDecision::KeepAsSeparateReleases).await);
+    assert!(!offered("Box", FolderReleaseDecision::CombineAsOneRelease).await);
+}

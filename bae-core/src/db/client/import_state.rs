@@ -444,6 +444,52 @@ impl Database {
         .await
     }
 
+    /// Whether reading the folder at `key` as `decision` is something the
+    /// stored scan offers: combined when two releases or more are read from
+    /// it or below it, separate when the release read from it is its
+    /// grouping. Read by the candidates' folder index.
+    pub async fn folder_reading_offered(
+        &self,
+        key: &FolderReleaseDecisionKey,
+        decision: crate::import::folder_scanner::FolderReleaseDecision,
+    ) -> Result<bool, DbError> {
+        let folder = crate::import::folder_path::folder_below(
+            &key.watched_folder_path,
+            &key.relative_folder_path,
+        )
+        .map_err(|error| DbError::Message(error.to_string()))?;
+        let root = key.watched_folder_path.clone();
+        self.read(move |sql| match decision {
+            crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease => {
+                let (below_first, below_past) = crate::import::folder_path::paths_below(&folder);
+                Ok(sql.query_row(
+                    "SELECT COUNT(*) >= 2 FROM ( \
+                         SELECT 1 FROM scan_candidate \
+                         WHERE watched_folder_path = :root AND source_kind = 'folder' \
+                           AND (folder = :folder \
+                                OR (folder >= :below_first AND folder < :below_past)) \
+                         LIMIT 2)",
+                    rusqlite::named_params! {
+                        ":root": root,
+                        ":folder": folder,
+                        ":below_first": below_first,
+                        ":below_past": below_past,
+                    },
+                    |row| row.get(0),
+                )?)
+            }
+            crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases => Ok(sql
+                .query_row(
+                    "SELECT EXISTS (SELECT 1 FROM scan_candidate \
+                         WHERE watched_folder_path = :root AND source_kind = 'folder' \
+                           AND folder = :folder AND grouping_key IS NOT NULL)",
+                    rusqlite::named_params! { ":root": root, ":folder": folder },
+                    |row| row.get(0),
+                )?),
+        })
+        .await
+    }
+
     /// The keys of the scanned releases read from `folder` or a folder below
     /// it under the watched folder `watched_folder_path`, by the candidates'
     /// folder index.

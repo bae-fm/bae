@@ -883,6 +883,16 @@ impl LibraryManager {
         Ok(self.database.folder_reading_grouping(folder).await?)
     }
 
+    /// Whether reading the folder at `key` as `decision` is something the
+    /// stored scan offers.
+    pub(crate) async fn folder_reading_offered(
+        &self,
+        key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
+        decision: crate::import::folder_scanner::FolderReleaseDecision,
+    ) -> Result<bool, LibraryError> {
+        Ok(self.database.folder_reading_offered(key, decision).await?)
+    }
+
     /// The keys of the scanned releases at `folder` or below it.
     pub(crate) async fn scanned_release_keys_at_or_below(
         &self,

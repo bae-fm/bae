@@ -13,9 +13,7 @@
 //! [`super::candidate_runtime::CandidateRuntime`] holds beside it — the state
 //! a run published, how far an import has got — delivered per key.
 
-use super::folder_scanner::{
-    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate, ScanItem,
-};
+use super::folder_scanner::{FolderCandidate, InvalidCandidate};
 use super::types::ImportStep;
 use crate::identify::IdentifyState;
 
@@ -244,37 +242,4 @@ pub struct ImportInFlight {
 pub struct ImportedRelease {
     pub release_id: String,
     pub album_id: String,
-}
-
-/// Whether reading the folder at `key` as `decision` is something the stored
-/// scan offers — what a header's or a row's control points at.
-///
-/// A control acting on a folder this scan no longer reads that way is stale,
-/// and writing its decision would settle a folder that is not there. A folder
-/// is offered combined when two releases or more are stored below it, and
-/// offered separate when the release stored for it is its grouping.
-pub(crate) fn offers_folder_reading(
-    items: &[ScanItem],
-    key: &FolderReleaseDecisionKey,
-    decision: FolderReleaseDecision,
-) -> bool {
-    let folder = std::path::Path::new(&key.watched_folder_path).join(&key.relative_folder_path);
-    let releases = items.iter().filter_map(|item| match item {
-        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-            Some((&candidate.path, candidate.grouping.is_some()))
-        }
-        ScanItem::Invalid(candidate) => Some((&candidate.path, candidate.grouping.is_some())),
-        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
-    });
-    match decision {
-        FolderReleaseDecision::CombineAsOneRelease => {
-            releases
-                .filter(|(path, _)| path.starts_with(&folder))
-                .count()
-                >= 2
-        }
-        FolderReleaseDecision::KeepAsSeparateReleases => releases
-            .into_iter()
-            .any(|(path, grouped)| grouped && *path == folder),
-    }
 }

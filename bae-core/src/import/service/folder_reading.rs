@@ -52,12 +52,12 @@ impl ImportService {
                 detail: format!("{root_key} is never a release, so it has no reading to change"),
             });
         };
-        let stored_items = scan
+        if !scan
             .services
             .library_manager
-            .load_folder_scan_items(&root_key)
-            .await?;
-        if !crate::import::candidates::offers_folder_reading(&stored_items, key, target.1) {
+            .folder_reading_offered(key, target.1)
+            .await?
+        {
             return Err(crate::import::ImportError::Watch {
                 detail: format!(
                     "{} is not a current release boundary",
