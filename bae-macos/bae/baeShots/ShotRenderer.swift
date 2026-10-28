@@ -220,6 +220,7 @@ enum ShotError: Error, CustomStringConvertible {
     case pngEncodingFailed(String)
     case windowNotShared(String)
     case windowNotKey(String)
+    case unknownSelection(String, String)
 
     var description: String {
         switch self {
@@ -234,6 +235,8 @@ enum ShotError: Error, CustomStringConvertible {
             "the window server shares no window for scene \(id)"
         case .windowNotKey(let id):
             "another app kept the focus, so scene \(id) would draw inactive"
+        case .unknownSelection(let kind, let name):
+            "no \(kind) matches \(name)"
         }
     }
 }
