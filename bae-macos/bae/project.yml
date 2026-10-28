@@ -96,6 +96,12 @@ targets:
       - sdk: AudioToolbox.framework
       - sdk: MediaPlayer.framework
       - sdk: SystemConfiguration.framework
+    postBuildScripts:
+      # Copies the FFmpeg dylibs the app links from the dist on
+      # LIBRARY_SEARCH_PATHS into Contents/Frameworks, every build.
+      - name: Embed FFmpeg
+        basedOnDependencyAnalysis: false
+        script: python3 "$SRCROOT/../scripts/embed_ffmpeg.py"
     settings:
       base:
         # Only this target maps the private BAE_APP_* inputs (passed by run.sh
@@ -140,18 +146,14 @@ targets:
           - -lavutil
           - -lswresample
           - -lc++
-        # Runtime counterpart to LIBRARY_SEARCH_PATHS. The fork's libav* dylibs
-        # carry @rpath install names (@rpath/libavcodec.*.dylib), so point @rpath
-        # at the same fork dirs a local Debug build launches without bundling.
-        # Release rewrites these refs to @executable_path via bundle_dylibs.sh, so
-        # a dev-only path here is harmless there, and dyld ignores runpaths that
-        # don't exist.
+        # The fork's libav* dylibs carry @rpath install names
+        # (@rpath/libavcodec.*.dylib); the Embed FFmpeg phase below copies them
+        # into Contents/Frameworks, so @rpath resolves only inside the bundle,
+        # in every configuration.
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/../Frameworks"
           - "@loader_path/../Frameworks"
-          - $(SRCROOT)/../../bae-ffmpeg/dist/lib
-          - /opt/bae-ffmpeg/lib
       configs:
         Debug:
           BAE_LOG_ENABLE_LEVEL: Debug

@@ -188,8 +188,10 @@ jobs:
         curl -sL https://sentry.io/get-cli/ | bash
         sentry-cli debug-files upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" "$BAE_DSYM_PATH"
 
-    - name: Bundle dylibs into app
-      run: ./bae-macos/scripts/bundle_dylibs.sh "$APP_PATH"
+    - name: Check the app loads only bundled or system libraries
+      # The build's Embed FFmpeg phase copied the dist's dylibs into
+      # Contents/Frameworks; anything else outside the bundle or macOS fails.
+      run: python3 scripts/check-bundled-libraries.py "$APP_PATH"
 
     - name: Embed provisioning profile
       # Only the full edition needs it: the provisioning profile authorizes the
@@ -246,8 +248,8 @@ jobs:
           codesign --force --sign "$IDENTITY" --options runtime "$SPARKLE_PATH"
         fi
 
-        # Sign all dylibs
-        find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec \
+        # Sign all dylibs (the files; the version links point at them)
+        find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -type f -exec \
           codesign --force --sign "$IDENTITY" --options runtime {} \;
 
         # Sign every other embedded framework (e.g. Sentry) with hardened

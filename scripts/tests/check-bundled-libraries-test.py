@@ -117,6 +117,16 @@ class MachOTests(unittest.TestCase):
             self.assertEqual(status, 1)
             self.assertIn("LC_RPATH outside the bundle: /opt/bae-ffmpeg/lib", output)
 
+    def test_allowed_rpath_is_not_searched(self):
+        with tempfile.TemporaryDirectory() as root:
+            products = "/build/Products/Debug/PackageFrameworks"
+            app = self.app(root, ("@executable_path/../Frameworks", products))
+            self.assertEqual(check("--allow-rpath", products, app)[0], 0)
+            (app / "Contents/Frameworks/libbar.1.dylib").unlink()
+            status, output = check("--allow-rpath", products, app)
+            self.assertEqual(status, 1)
+            self.assertIn("@rpath/libbar.1.dylib", output)
+
     def test_homebrew_load_fails(self):
         with tempfile.TemporaryDirectory() as root:
             app = self.app(root, library_loads=(

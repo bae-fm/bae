@@ -51,6 +51,15 @@ jobs:
     # bug slips through — exactly how the OutboxStore crash in #738 reached
     # main.
 
+    - name: Check the app loads only bundled or system libraries
+      if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
+      # A Debug build also carries Xcode's own runpath to the build products'
+      # PackageFrameworks.
+      run: |
+        PRODUCTS="$PWD/bae-macos/bae/.build/derivedData/Build/Products/Debug"
+        python3 scripts/check-bundled-libraries.py \
+          --allow-rpath "$PRODUCTS/PackageFrameworks" "$PRODUCTS/bae.app"
+
     - name: Check localizable strings against the catalog
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
       run: python3 scripts/check_localizable_strings.py

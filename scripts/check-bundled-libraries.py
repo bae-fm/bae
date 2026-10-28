@@ -28,7 +28,9 @@ A symlink inside a bundle must not point outside it.
 
 --platform names whose system libraries an ELF bundle may use: android or
 linux. Mach-O and PE bundles need no platform; their system locations are
-fixed.
+fixed. --allow-rpath accepts one absolute LC_RPATH, for the build products'
+PackageFrameworks folder Xcode adds to a Debug build; nothing resolves through
+it, so every load must still resolve inside the bundle.
 """
 
 import argparse
@@ -324,10 +326,13 @@ def inside(root, path):
 
 
 class Checker:
-    def __init__(self, root, label, platform):
+    def __init__(self, root, label, platform, allowed_rpaths=()):
         self.root = Path(root)
         self.label = label
         self.platform = platform
+        # Compared by real path: a build folder reached through a symlink is
+        # recorded in the binary by its target.
+        self.allowed_rpaths = {os.path.realpath(path) for path in allowed_rpaths}
         self.problems = []
         self.binaries = {}
 
@@ -378,6 +383,8 @@ class Checker:
         rpath_dirs = []
         for rpath in macho.rpaths:
             if rpath.startswith(MACHO_SYSTEM_PREFIXES):
+                continue
+            if not rpath.startswith("@") and os.path.realpath(rpath) in self.allowed_rpaths:
                 continue
             if not rpath.startswith("@"):
                 self.problem(path, f"LC_RPATH outside the bundle: {rpath}")
@@ -483,6 +490,7 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("bundles", nargs="+", type=Path)
     parser.add_argument("--platform", choices=sorted(ELF_SYSTEM))
+    parser.add_argument("--allow-rpath", action="append", default=[], metavar="PATH")
     args = parser.parse_args()
     problems, checked = [], 0
     for bundle in args.bundles:
@@ -490,14 +498,14 @@ def main():
             problems.append(f"{bundle}: does not exist")
             continue
         if bundle.is_dir():
-            checker = Checker(bundle, str(bundle), args.platform)
+            checker = Checker(bundle, str(bundle), args.platform, args.allow_rpath)
             checker.check()
             problems.extend(checker.problems)
             checked += len(checker.binaries)
             continue
         with tempfile.TemporaryDirectory() as directory:
             extract(bundle, directory)
-            checker = Checker(directory, str(bundle), args.platform)
+            checker = Checker(directory, str(bundle), args.platform, args.allow_rpath)
             checker.check()
             if bundle.suffix == ".apk":
                 checker.check_apk_abis()

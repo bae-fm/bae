@@ -8,6 +8,7 @@ trap 'rm -rf "$test_root"' EXIT
 stub_bin="$test_root/bin"
 capture="$test_root/xcodebuild-arguments"
 ffmpeg_capture="$test_root/ffmpeg-dir"
+check_capture="$test_root/library-check"
 configured_ffmpeg="$test_root/ffmpeg"
 run_derived_data="$test_root/run-derived-data"
 mkdir -p "$stub_bin" "$configured_ffmpeg"
@@ -20,7 +21,13 @@ printf '%s\n' \
     "printf '%s\\n' \"\$@\" > \"\$BAE_RUN_ISOLATION_CAPTURE\"" \
     "printf '%s\\n' \"\$FFMPEG_DIR\" > \"\$BAE_RUN_ISOLATION_FFMPEG_CAPTURE\"" \
     > "$stub_bin/xcodebuild"
-chmod +x "$stub_bin/xcodegen" "$stub_bin/xcodebuild"
+# The stubbed xcodebuild builds no app, so the library check run.sh runs on it
+# is stubbed too, recording what it was asked to check.
+printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    "printf '%s\\n' \"\$@\" > \"$check_capture\"" \
+    > "$stub_bin/python3"
+chmod +x "$stub_bin/xcodegen" "$stub_bin/xcodebuild" "$stub_bin/python3"
 
 (
     cd "$repo_root"
@@ -36,6 +43,13 @@ if [[ "$(< "$ffmpeg_capture")" != "$configured_ffmpeg" ]]; then
     echo "run.sh did not preserve the configured FFMPEG_DIR" >&2
     exit 1
 fi
+
+for expected in scripts/check-bundled-libraries.py "$run_derived_data/Build/Products/Debug/bae.app"; do
+    if ! grep -Fxq -- "$expected" "$check_capture"; then
+        echo "run.sh did not check the built app's libraries ($expected)" >&2
+        exit 1
+    fi
+done
 
 require_argument() {
     local expected="$1"

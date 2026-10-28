@@ -103,6 +103,12 @@ if [[ "$SKIP_RUST" == true ]]; then
 fi
 xcodebuild "${XCODEBUILD_ARGUMENTS[@]}" build
 
+# The app must load only what it bundles and what macOS provides. A Debug build
+# also carries Xcode's own runpath to the build products' PackageFrameworks.
+python3 scripts/check-bundled-libraries.py \
+    --allow-rpath "$DERIVED_DATA/Build/Products/$CONFIG/PackageFrameworks" \
+    "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app"
+
 if [[ "$OPEN" == true ]]; then
     open "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app"
 fi
