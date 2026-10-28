@@ -70,6 +70,15 @@ struct OutboxStoreTransferTests {
         #expect(store.transfer(forRelease: release)?.bar == nil)
     }
 
+    /// The file's share as the native views following its stream hear it.
+    private func share(_ store: OutboxStore, _ fileId: String) -> Double? {
+        let source = store.fileTransfer(forFile: fileId)
+        var heard: Double?
+        let observation = source.values.observe(source.key) { heard = $0 }
+        source.values.stopObserving(observation)
+        return heard
+    }
+
     @Test("a file's share follows each change that names it")
     func fileShareFollowsItsChanges() {
         let store = OutboxStore(uploadsPaused: false)
@@ -77,16 +86,16 @@ struct OutboxStoreTransferTests {
             .reset(files: [BridgeKeyedFileTransfer(fileId: "a", fraction: 0.25)]
             )
         )
-        #expect(store.fileTransfer(forFile: "a") == 0.25)
-        #expect(store.fileTransfer(forFile: "b") == nil)
+        #expect(share(store, "a") == 0.25)
+        #expect(share(store, "b") == nil)
 
         store.applyFileTransferChange(.updated(fileId: "a", fraction: 0.5))
         store.applyFileTransferChange(.updated(fileId: "b", fraction: 0.1))
-        #expect(store.fileTransfer(forFile: "a") == 0.5)
-        #expect(store.fileTransfer(forFile: "b") == 0.1)
+        #expect(share(store, "a") == 0.5)
+        #expect(share(store, "b") == 0.1)
 
         store.applyFileTransferChange(.removed(fileId: "a"))
-        #expect(store.fileTransfer(forFile: "a") == nil)
+        #expect(share(store, "a") == nil)
     }
 
     @Test("the queue's rate shows only while bytes move")

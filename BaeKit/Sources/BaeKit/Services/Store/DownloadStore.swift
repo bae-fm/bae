@@ -15,14 +15,16 @@ public final class DownloadTransferValue {
 /// lands each release's progress into that release's own value, so bytes
 /// arriving redraw only what draws that release's progress. The queue's
 /// entries are the Storage Manager inspector's, read for one release in core.
+@MainActor
 @Observable
 public class DownloadStore {
     /// Each downloading release's progress, one value per release; the map
     /// changes only as releases start and stop downloading.
     private var transfers: [String: DownloadTransferValue] = [:]
-    /// How far each file being downloaded to keep whole has got, by file,
-    /// for a surface that draws each file and subscribes to them.
-    private let files = FileTransfers()
+    /// The share of each file being downloaded to keep whole its object has
+    /// moved, by file, for the native views that draw each file and subscribe
+    /// to them; nothing SwiftUI observes.
+    private let files = KeyedValues<Double>()
 
     public init() {}
 
@@ -49,13 +51,25 @@ public class DownloadStore {
 
     /// Apply one change the pin file transfer subscription delivered.
     public func applyFileTransferChange(_ change: BridgeFileTransferChange) {
-        files.apply(change)
+        switch change {
+        case .updated(let fileId, let fraction):
+            files.set(fraction, for: fileId)
+        case .removed(let fileId):
+            files.remove(fileId)
+        case .reset(let keyed):
+            files.reset(
+                Dictionary(
+                    uniqueKeysWithValues: keyed.map { ($0.fileId, $0.fraction) }
+                )
+            )
+        }
     }
 
-    /// The share of a file being downloaded to keep whole its object has
-    /// moved; `nil` while nothing of it is in flight.
-    public func fileTransfer(forFile fileId: String) -> Double? {
-        files.fraction(forFile: fileId)
+    /// The stream of the share a file being downloaded to keep whole has
+    /// moved, for the native view that draws it.
+    public func fileTransfer(forFile fileId: String) -> KeyedValueSource<Double>
+    {
+        KeyedValueSource(values: files, key: fileId)
     }
 
     /// A release's download progress as its own observed value, for a view

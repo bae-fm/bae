@@ -95,8 +95,8 @@ struct StorageInspectorFileRow: View {
     }
 }
 
-/// A file being sent's ring, filled as far as its object has gone, read
-/// alone by its file so moving bytes redraw only it.
+/// A file being sent's ring, filled from the file's stream as far as its
+/// object has gone; SwiftUI hands it only the stream.
 private struct StorageSendingFileMark: View {
     let fileId: String
     @Environment(OutboxStore.self)
@@ -104,16 +104,13 @@ private struct StorageSendingFileMark: View {
 
     var body: some View {
         StorageFileMark(
-            state: .moving(
-                .upload,
-                fraction: outboxStore.fileTransfer(forFile: fileId)
-            )
+            state: .moving(.upload, outboxStore.fileTransfer(forFile: fileId))
         )
     }
 }
 
-/// A file being downloaded to be kept's ring, filled as far as its object
-/// has come, read alone by its file so arriving bytes redraw only it.
+/// A file being downloaded to be kept's ring, filled from the file's stream
+/// as far as its object has come; SwiftUI hands it only the stream.
 private struct StoragePinningFileMark: View {
     let fileId: String
     @Environment(DownloadStore.self)
@@ -121,101 +118,80 @@ private struct StoragePinningFileMark: View {
 
     var body: some View {
         StorageFileMark(
-            state: .moving(
-                .pin,
-                fraction: downloadStore.fileTransfer(forFile: fileId)
-            )
+            state: .moving(.pin, downloadStore.fileTransfer(forFile: fileId))
         )
     }
 }
 
 /// A file row's mark: nothing for a file at rest, a dashed circle for one
-/// waiting its turn, a ring filling as far as its transfer has come.
+/// waiting its turn, a ring filling as far as its transfer has come, which
+/// the ring's own view sets from the file's stream.
 struct StorageFileMark: View {
-    enum State: Equatable {
+    enum State {
         case stored
         case queued
-        /// `fraction` is `nil` while nothing of the file has moved.
-        case moving(StorageTransferKind, fraction: Double?)
+        case moving(StorageTransferKind, KeyedValueSource<Double>)
     }
 
     let state: State
 
-    /// The ring's width and the dashed circle's.
-    private static let lineWidth: CGFloat = 1.75
-
     var body: some View {
-        // Every mark stays in the row's layout; only the one that applies
-        // shows.
-        ZStack {
+        switch state {
+        case .stored:
+            Color.clear.accessibilityHidden(true)
+        case .queued:
             Circle()
-                .inset(by: Self.lineWidth)
+                .inset(by: TransferRingNSView.lineWidth)
                 .stroke(
                     .secondary,
-                    style: StrokeStyle(lineWidth: Self.lineWidth, dash: [2, 2])
-                )
-                .opacity(state == .queued ? 1 : 0)
-            Circle()
-                .inset(by: Self.lineWidth)
-                .stroke(Theme.hairline, lineWidth: Self.lineWidth)
-                .opacity(ringShown ? 1 : 0)
-            Circle()
-                .inset(by: Self.lineWidth)
-                .trim(from: 0, to: ringFraction)
-                .stroke(
-                    ringColor,
                     style: StrokeStyle(
-                        lineWidth: Self.lineWidth,
-                        lineCap: .round
+                        lineWidth: TransferRingNSView.lineWidth,
+                        dash: [2, 2]
                     )
                 )
-                .rotationEffect(.degrees(-90))
-                .opacity(ringShown ? 1 : 0)
-        }
-        .accessibilityElement()
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityHidden(state == .stored)
-    }
-
-    private var ringShown: Bool {
-        if case .moving = state { return true }
-        return false
-    }
-
-    /// How much of the ring fills: as far as the transfer has come, none
-    /// before anything has moved and for a mark that shows no ring.
-    private var ringFraction: Double {
-        switch state {
-        case .moving(_, let fraction?): fraction
-        case .moving(_, nil), .stored, .queued: 0
+                .accessibilityElement()
+                .accessibilityLabel(Text("Queued"))
+        case .moving(let kind, let source):
+            TransferRing(kind: kind, source: source)
+                .accessibilityElement()
+                .accessibilityLabel(movingLabel(kind))
         }
     }
 
-    private var ringColor: Color {
-        switch state {
-        case .moving(let kind, _): kind.color
-        case .stored, .queued: .clear
-        }
-    }
-
-    private var accessibilityLabel: Text {
-        switch state {
-        case .stored: Text(verbatim: "")
-        case .queued: Text("Queued")
-        case .moving(.upload, _): Text("Uploading")
-        case .moving(.pin, _): Text("Pinning")
+    private func movingLabel(_ kind: StorageTransferKind) -> Text {
+        switch kind {
+        case .upload: Text("Uploading")
+        case .pin: Text("Pinning")
         }
     }
 }
 
 #if DEBUG
     #Preview("File marks") {
-        HStack(spacing: ThemeSpace.group) {
+        let shares = KeyedValues<Double>()
+        shares.set(0.38, for: "sending")
+        shares.set(0.64, for: "pinning")
+        return HStack(spacing: ThemeSpace.group) {
             StorageFileMark(state: .stored)
             StorageFileMark(state: .queued)
-            StorageFileMark(state: .moving(.upload, fraction: 0.38))
-            StorageFileMark(state: .moving(.pin, fraction: 0.64))
-            StorageFileMark(state: .moving(.upload, fraction: nil))
+            StorageFileMark(
+                state: .moving(
+                    .upload,
+                    KeyedValueSource(values: shares, key: "sending")
+                )
+            )
+            StorageFileMark(
+                state: .moving(
+                    .pin,
+                    KeyedValueSource(values: shares, key: "pinning")
+                )
+            )
+            StorageFileMark(
+                state: .moving(
+                    .upload,
+                    KeyedValueSource(values: shares, key: "unheard")
+                )
+            )
         }
         .frame(height: 16)
         .padding()

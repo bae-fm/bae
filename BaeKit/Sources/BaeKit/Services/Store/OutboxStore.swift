@@ -27,6 +27,7 @@ public final class UploadTransferValue {
 /// `upload`, read with the row. The transfer subscription lands each
 /// release's bytes and rate into that release's own value, so a move redraws
 /// only what draws that release. Views read both at the leaf.
+@MainActor
 @Observable
 public class OutboxStore {
     /// Whether the person paused uploads, as the retained subscription last
@@ -37,9 +38,10 @@ public class OutboxStore {
     private var releases: [String: ReleaseUploadTransferValue] = [:]
     /// The files being sent together; `nil` until the transfers first arrive.
     private var totalTransfer: UploadTransferValue?
-    /// How far each file being sent has got, by file, for a surface that
-    /// draws each file and subscribes to them.
-    private let files = FileTransfers()
+    /// The share of each file being sent its object has moved, by file, for
+    /// the native views that draw each file and subscribe to them; nothing
+    /// SwiftUI observes.
+    private let files = KeyedValues<Double>()
 
     public init(uploadsPaused: Bool) {
         self.uploadsPaused = uploadsPaused
@@ -84,7 +86,18 @@ public class OutboxStore {
 
     /// Apply one change the file transfer subscription delivered.
     public func applyFileTransferChange(_ change: BridgeFileTransferChange) {
-        files.apply(change)
+        switch change {
+        case .updated(let fileId, let fraction):
+            files.set(fraction, for: fileId)
+        case .removed(let fileId):
+            files.remove(fileId)
+        case .reset(let keyed):
+            files.reset(
+                Dictionary(
+                    uniqueKeysWithValues: keyed.map { ($0.fileId, $0.fraction) }
+                )
+            )
+        }
     }
 
     /// How far a release's upload has got, of its whole size, and how fast
@@ -96,10 +109,11 @@ public class OutboxStore {
         releases[releaseId]?.transfer
     }
 
-    /// The share of a file being sent its object has moved; `nil` while
-    /// nothing of it has.
-    public func fileTransfer(forFile fileId: String) -> Double? {
-        files.fraction(forFile: fileId)
+    /// The stream of the share a file being sent has moved, for the native
+    /// view that draws it.
+    public func fileTransfer(forFile fileId: String) -> KeyedValueSource<Double>
+    {
+        KeyedValueSource(values: files, key: fileId)
     }
 
     /// How far the files being sent have gone together; `nil` until the
