@@ -874,6 +874,27 @@ impl LibraryManager {
         Ok(self.database.commit_folder_reading(commit).await?)
     }
 
+    /// The grouping the folder `folder` is read as; `None` when no reading
+    /// of it is stored.
+    pub(crate) async fn folder_reading_grouping(
+        &self,
+        folder: &crate::import::folder_scanner::FolderReleaseDecisionKey,
+    ) -> Result<Option<String>, LibraryError> {
+        Ok(self.database.folder_reading_grouping(folder).await?)
+    }
+
+    /// The keys of the scanned releases at `folder` or below it.
+    pub(crate) async fn scanned_release_keys_at_or_below(
+        &self,
+        watched_folder_path: &str,
+        folder: &str,
+    ) -> Result<std::collections::BTreeSet<String>, LibraryError> {
+        Ok(self
+            .database
+            .scanned_release_keys_at_or_below(watched_folder_path, folder)
+            .await?)
+    }
+
     pub async fn load_folder_release_decisions(
         &self,
         watched_folder_path: &str,

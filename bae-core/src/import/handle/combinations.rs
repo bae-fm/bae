@@ -118,21 +118,10 @@ impl ImportServiceHandle {
             .iter()
             .map(crate::import::FolderCandidate::key)
             .collect();
-        let below: std::collections::BTreeSet<String> = self
+        let below = self
             .library_manager
-            .load_folder_scan_items(root)
-            .await?
-            .into_iter()
-            .filter_map(|item| match item {
-                ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                    candidate.path.starts_with(&folder).then(|| candidate.key())
-                }
-                ScanItem::Invalid(candidate) => {
-                    candidate.path.starts_with(&folder).then(|| candidate.key())
-                }
-                ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
-            })
-            .collect();
+            .scanned_release_keys_at_or_below(root, &folder.to_string_lossy())
+            .await?;
         if below != selected {
             return Ok(None);
         }
@@ -156,10 +145,8 @@ impl ImportServiceHandle {
         )
         .await?;
         self.library_manager
-            .load_folder_release_decisions(&folder.watched_folder_path)
+            .folder_reading_grouping(&folder)
             .await?
-            .get(&folder.relative_folder_path)
-            .map(|reading| reading.grouping.clone())
             .ok_or_else(|| ImportError::Internal {
                 detail: format!(
                     "{} was combined but no grouping is stored for it",

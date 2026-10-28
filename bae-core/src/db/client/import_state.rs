@@ -421,17 +421,78 @@ impl Database {
         .await
     }
 
+    /// The grouping the folder `folder` is read as, by the groupings' anchor
+    /// index; `None` when no reading of it is stored.
+    pub async fn folder_reading_grouping(
+        &self,
+        folder: &FolderReleaseDecisionKey,
+    ) -> Result<Option<String>, DbError> {
+        let anchor = crate::import::folder_path::folder_below(
+            &folder.watched_folder_path,
+            &folder.relative_folder_path,
+        )
+        .map_err(|error| DbError::Message(error.to_string()))?;
+        self.read(move |sql| {
+            Ok(sql
+                .query_row(
+                    "SELECT key FROM release_grouping WHERE anchor_folder = ?",
+                    [anchor],
+                    |row| row.get(0),
+                )
+                .optional()?)
+        })
+        .await
+    }
+
+    /// The keys of the scanned releases read from `folder` or a folder below
+    /// it under the watched folder `watched_folder_path`, by the candidates'
+    /// folder index.
+    pub async fn scanned_release_keys_at_or_below(
+        &self,
+        watched_folder_path: &str,
+        folder: &str,
+    ) -> Result<std::collections::BTreeSet<String>, DbError> {
+        let (below_first, below_past) = crate::import::folder_path::paths_below(folder);
+        let (root, folder) = (watched_folder_path.to_string(), folder.to_string());
+        self.read(move |sql| {
+            Ok(sql
+                .query(
+                    "SELECT path FROM scan_candidate \
+                     WHERE watched_folder_path = :root AND source_kind = 'folder' \
+                       AND (folder = :folder \
+                            OR (folder >= :below_first AND folder < :below_past))",
+                    rusqlite::named_params! {
+                        ":root": root,
+                        ":folder": folder,
+                        ":below_first": below_first,
+                        ":below_past": below_past,
+                    },
+                    |row| row.get(0),
+                )?
+                .into_iter()
+                .collect())
+        })
+        .await
+    }
+
     /// Each stored folder reading below one watched root, by path below it.
     pub async fn load_folder_release_decisions(
         &self,
         watched_folder_path: &str,
     ) -> Result<FolderReleaseDecisions, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
+        let (below_first, below_past) =
+            crate::import::folder_path::paths_below(&watched_folder_path);
         self.read(move |sql| {
             let rows = sql.query(
-                "SELECT anchor_folder, combined, author, key \
-                 FROM release_grouping WHERE anchor_folder IS NOT NULL",
-                [],
+                "SELECT anchor_folder, combined, author, key FROM release_grouping \
+                 WHERE anchor_folder = :root \
+                    OR (anchor_folder >= :below_first AND anchor_folder < :below_past)",
+                rusqlite::named_params! {
+                    ":root": watched_folder_path,
+                    ":below_first": below_first,
+                    ":below_past": below_past,
+                },
                 |row| {
                     Ok((
                         row.get::<_, String>(0)?,
@@ -444,9 +505,6 @@ impl Database {
             let mut readings = HashMap::new();
             for (folder, combined, author, grouping) in rows {
                 crate::import::watched_folder::validate_stored_folder(&folder)?;
-                if !std::path::Path::new(&folder).starts_with(&watched_folder_path) {
-                    continue;
-                }
                 let path = relative_below(&watched_folder_path, &folder)?;
                 let author = match author.as_str() {
                     "user" => FolderReleaseDecisionAuthor::User,
