@@ -462,3 +462,51 @@ async fn a_releases_index_counts_the_releases_before_it() {
         "the count reads the album's releases index: {plan:?}"
     );
 }
+
+/// A track's place in its release's order is read on the index of each
+/// release's track positions: whether it is the first, the track after it,
+/// and how many the release has.
+#[tokio::test]
+async fn a_tracks_neighbors_are_read_from_the_positions_index() {
+    let (db, _tmp) = release_detail_db().await;
+    assert_eq!(
+        db.track_neighbors(TRACK_A).await.unwrap(),
+        Some(super::super::track::TrackNeighbors {
+            is_first: true,
+            next: Some(TRACK_B.to_string()),
+        })
+    );
+    assert_eq!(
+        db.track_neighbors(TRACK_B).await.unwrap(),
+        Some(super::super::track::TrackNeighbors {
+            is_first: false,
+            next: None,
+        })
+    );
+    assert_eq!(db.count_tracks_for_release(RELEASE_A).await.unwrap(), 2);
+
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::track::TRACK_NEIGHBORS
+                ),
+                [TRACK_A],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter()
+            .filter(|step| step.contains("earlier") || step.contains("later"))
+            .all(|step| step.contains("tracks_release_position")),
+        "the neighbors are read on the positions index: {plan:?}"
+    );
+    assert!(
+        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+        "the read sorts after reading: {plan:?}"
+    );
+}

@@ -33,8 +33,7 @@ impl LibraryManager {
             crate::credits::library_line(&track_artists)
         };
 
-        let release_tracks = self.database.get_tracks_for_release(&release.id).await?;
-        let total_tracks = release_tracks.len();
+        let total_tracks = self.database.count_tracks_for_release(&release.id).await?;
         let disc = self
             .database
             .get_release_mediums(&release.id)
@@ -183,21 +182,18 @@ impl LibraryManager {
                 ))
             })?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let release_tracks = self
+        let neighbors = self
             .database
-            .get_tracks_for_release(&meta.release.id)
-            .await?;
-        let track_index = release_tracks
-            .iter()
-            .position(|track| track.id == meta.track.id)
+            .track_neighbors(&meta.track.id)
+            .await?
             .ok_or_else(|| {
                 LibraryError::Save(format!(
                     "track {} is not ordered in release {}",
                     meta.track.id, meta.release.id
                 ))
             })?;
-        let next = match release_tracks.get(track_index + 1) {
-            Some(next) => Some(TrackAudioMeta::resolve(&self.database, &next.id).await?),
+        let next = match &neighbors.next {
+            Some(next) => Some(TrackAudioMeta::resolve(&self.database, next).await?),
             None => None,
         };
         let cover = self
@@ -209,7 +205,7 @@ impl LibraryManager {
                 SaveWindow::TrackFile {
                     next,
                     placement: preset.pregap_placement,
-                    is_first_track: track_index == 0,
+                    is_first_track: neighbors.is_first,
                 },
             )
             .await?;

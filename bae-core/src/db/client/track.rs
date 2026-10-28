@@ -1,5 +1,23 @@
 use super::*;
 
+/// Whether the track `?1` is its release's first, and the track after it.
+pub(super) const TRACK_NEIGHBORS: &str = "SELECT \
+        NOT EXISTS (SELECT 1 FROM tracks AS earlier \
+                    WHERE earlier.release_id = track.release_id \
+                      AND earlier.position < track.position), \
+        (SELECT later.id FROM tracks AS later \
+         WHERE later.release_id = track.release_id AND later.position > track.position \
+         ORDER BY later.position LIMIT 1) \
+     FROM tracks AS track WHERE track.id = ?1";
+
+/// Where a track sits in its release's order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrackNeighbors {
+    pub is_first: bool,
+    /// The id of the track after it, `None` for the last.
+    pub next: Option<String>,
+}
+
 impl Database {
     /// Write one medium row of a release, for a test that builds a release row
     /// by row.
@@ -93,6 +111,37 @@ impl Database {
                 )?);
             }
             Ok(existing)
+        })
+        .await
+    }
+
+    /// How many tracks the release has, counted on its tracks' index.
+    pub async fn count_tracks_for_release(&self, release_id: &str) -> Result<usize, DbError> {
+        let release_id = release_id.to_string();
+        self.read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT COUNT(*) FROM tracks WHERE release_id = ?",
+                params![release_id],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+    }
+
+    /// Where the track `track_id` sits in its release's order: whether it is
+    /// the first, and the id of the one after it; `None` when there is no such
+    /// track. Read on the index of each release's track positions.
+    pub async fn track_neighbors(&self, track_id: &str) -> Result<Option<TrackNeighbors>, DbError> {
+        let track_id = track_id.to_string();
+        self.read(move |sql| {
+            Ok(sql
+                .query_row(TRACK_NEIGHBORS, params![track_id], |row| {
+                    Ok(TrackNeighbors {
+                        is_first: row.get(0)?,
+                        next: row.get(1)?,
+                    })
+                })
+                .optional()?)
         })
         .await
     }
