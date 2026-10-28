@@ -108,7 +108,6 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
         OTHER_LDFLAGS:
           - -lz
-          - -liconv
           - -lsqlite3
           - -framework Security
           - -framework SystemConfiguration
