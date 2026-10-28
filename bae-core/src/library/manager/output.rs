@@ -15,7 +15,7 @@ impl LibraryManager {
     // Exporting a release copies its whole file set out verbatim to a
     // user-chosen directory, routed through a serial queue (mirroring the
     // download/pin queue): one release copies out at a time, the rest wait,
-    // and the user can pause/cancel/retry. The queue is the `output_queue`
+    // and the user can pause or cancel. The queue is the `output_queue`
     // table, which the library empties as it opens: on restart it's empty. Export changes no release state: it only reads (through coven's
     // file reader) and writes to a user directory. Its attachments and local
     // source paths remain unchanged.
@@ -111,11 +111,6 @@ impl LibraryManager {
     /// removed when the aborted task's future drops.
     pub async fn cancel_output(&self, release_id: &str) -> Result<(), LibraryError> {
         self.outputs.cancel(release_id).await
-    }
-
-    /// Flip every failed export back to queued and wake the worker to retry them.
-    pub async fn retry_outputs(&self) -> Result<(), LibraryError> {
-        self.outputs.retry_failed().await
     }
 
     /// The serial export worker: drains the export queue one release at a time

@@ -1559,8 +1559,9 @@ Two ways put a release back on disk, from desktop:
   write a release as one image with a CUE sheet. FLAC and MP3 presets come
   built in (Appendix C).
 
-Both run from a queue that can be paused, cancelled and retried, kept and
-emptied as the pin queue is (§4.3). A save keeps the preset it was queued
+Both run from a queue that can be paused and cancelled, kept and emptied as
+the pin queue is (§4.3); a failed one stays in it, with its error, until it is
+cancelled. A save keeps the preset it was queued
 with, so editing the preset changes nothing already queued. Either reads files
 from wherever they are: the person's own path, the cache, or storage.
 

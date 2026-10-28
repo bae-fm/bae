@@ -329,10 +329,10 @@ async fn assert_export_rejects_invalid_path(
 }
 
 /// A write error (an unwritable target) marks the export `Failed` with a message
-/// and keeps it in the queue; `retry_outputs` flips it back to `Queued`.
+/// and keeps it in the queue until it is cancelled.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn export_write_error_marks_failed_and_retries() {
+async fn export_write_error_marks_failed_until_cancelled() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
 
@@ -364,19 +364,6 @@ async fn export_write_error_marks_failed_and_retries() {
     })
     .await;
     assert_eq!(failed.total.failed, 1);
-
-    // Retry flips it back to Queued (it'll fail again, but stays tracked).
-    manager.retry_outputs().await.unwrap();
-    assert!(output_queue_now(&manager)
-        .await
-        .rows
-        .first()
-        .is_some_and(|row| matches!(
-            row.op.state,
-            crate::library::OutputPhase::Queued
-                | crate::library::OutputPhase::Active { .. }
-                | crate::library::OutputPhase::Failed { .. }
-        )));
 
     manager.cancel_output(&release_id).await.unwrap();
     assert!(

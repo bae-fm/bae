@@ -744,12 +744,6 @@ forward! {
             Ok(this.services.cancel_output(&release_id).await?)
         }
 
-        /// Retry every failed export now (flips them back to queued and wakes the
-        /// worker).
-        fn retry_outputs() -> () {
-            Ok(this.services.retry_outputs().await?)
-        }
-
         /// Enqueue a verbatim release export to `target_dir`. It joins the serial
         /// output queue; the worker drains it one release at a time. The
         /// storage-summary lookup (resolving the pane row's title/size) happens here;

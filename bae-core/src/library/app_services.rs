@@ -500,8 +500,6 @@ impl AppServices {
     delegate_async!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), crate::library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, retry_outputs => retry_outputs() -> Result<(), crate::library::LibraryError>);
 
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(manager, has_cloud_home => has_cloud_home() -> bool);
