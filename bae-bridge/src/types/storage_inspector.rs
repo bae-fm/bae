@@ -5,7 +5,8 @@ use super::{BridgeDownloadOp, BridgeFile, BridgeOutputOp};
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageInspector {
     /// The release's entry in each transfer queue that holds one: downloads,
-    /// then exports, then uploads.
+    /// then exports, then uploads; while coven fetches the copies its pins
+    /// wait for, that fetch after its download.
     pub transfers: Vec<BridgeStorageInspectorTransfer>,
     pub files: Vec<BridgeStorageInspectorFile>,
 }
@@ -54,6 +55,11 @@ pub enum BridgeStorageInspectorTransfer {
     Download {
         operation: BridgeDownloadOp,
         files: Option<BridgePinFiles>,
+    },
+    /// Coven fetching the copies the release's pins wait for, outside the
+    /// download queue: `files` counts the pinned files kept and waiting.
+    PinFetch {
+        files: BridgePinFiles,
     },
     Output {
         operation: BridgeOutputOp,

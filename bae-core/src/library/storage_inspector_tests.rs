@@ -1,5 +1,5 @@
 use super::*;
-use crate::album_detail::{FileKind, FilePlace};
+use crate::album_detail::{FileKind, FilePin, FilePlace};
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
 use crate::library::release_queue::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};
 use crate::library::ReleaseQueueEntries;
@@ -39,7 +39,7 @@ fn waiting() -> ReleaseUpload {
     }
 }
 
-fn file(id: &str, kept: bool) -> FileDetail {
+fn file(id: &str, pin: Option<FilePin>) -> FileDetail {
     FileDetail {
         id: id.to_string(),
         original_filename: format!("{id}.flac"),
@@ -52,7 +52,7 @@ fn file(id: &str, kept: bool) -> FileDetail {
         content_type: "audio/flac".into(),
         source_audio: None,
         upload: None,
-        kept,
+        pin,
     }
 }
 
@@ -88,6 +88,7 @@ fn each_queue_shows_the_selected_releases_entry() {
                 StorageInspectorTransfer::Download { operation, .. } => {
                     ("download", operation.op.release_id.as_str())
                 }
+                StorageInspectorTransfer::PinFetch { .. } => ("pin fetch", "selected"),
                 StorageInspectorTransfer::Output { operation } => {
                     ("output", operation.op.release_id.as_str())
                 }
@@ -107,7 +108,7 @@ fn each_queue_shows_the_selected_releases_entry() {
 #[test]
 fn a_release_no_queue_holds_has_no_transfers() {
     let inspector = shown(
-        vec![file("a", true)],
+        vec![file("a", Some(FilePin::Kept))],
         &ReleaseQueueEntries {
             download: None,
             output: None,
@@ -122,10 +123,17 @@ fn a_release_no_queue_holds_has_no_transfers() {
 }
 
 /// While its download waits or runs, each file says whether it is kept and
-/// the download counts them; a failed download shows neither.
+/// the download counts them; a failed download shows neither, and leaves a
+/// pin waiting for its copy to coven's fetch.
 #[test]
 fn a_release_pinning_shows_each_files_pin_and_counts_them() {
-    let files = || vec![file("a", true), file("b", false), file("c", false)];
+    let files = || {
+        vec![
+            file("a", Some(FilePin::Kept)),
+            file("b", Some(FilePin::Waiting)),
+            file("c", None),
+        ]
+    };
     for state in [
         ReleaseQueueState::Queued,
         ReleaseQueueState::Active { progress: () },
@@ -176,9 +184,70 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
         },
         None,
     );
-    assert!(failed.files.iter().all(|file| file.pin.is_none()));
+    assert_eq!(
+        failed.files.iter().map(|file| file.pin).collect::<Vec<_>>(),
+        vec![Some(FilePin::Kept), Some(FilePin::Waiting), None],
+        "coven still fetches the copy the pin waits for"
+    );
     assert!(matches!(
         failed.transfers.as_slice(),
-        [StorageInspectorTransfer::Download { files: None, .. }]
+        [
+            StorageInspectorTransfer::Download { files: None, .. },
+            StorageInspectorTransfer::PinFetch {
+                files: PinFiles {
+                    kept: 1,
+                    waiting: 1
+                }
+            }
+        ]
     ));
+}
+
+/// Out of the download queue, a release whose pins wait for coven to fetch
+/// their copies is pinning: each pinned file says whether it is kept, a file
+/// without a pin shows none, and coven's fetch counts them. Once no pin
+/// waits, nothing pins it.
+#[test]
+fn a_release_whose_pins_wait_for_their_copies_shows_coven_fetching_them() {
+    let no_queue = ReleaseQueueEntries {
+        download: None,
+        output: None,
+    };
+    let fetching = shown(
+        vec![
+            file("a", Some(FilePin::Kept)),
+            file("b", Some(FilePin::Waiting)),
+            file("c", None),
+        ],
+        &no_queue,
+        None,
+    );
+    assert_eq!(
+        fetching
+            .files
+            .iter()
+            .map(|file| file.pin)
+            .collect::<Vec<_>>(),
+        vec![Some(FilePin::Kept), Some(FilePin::Waiting), None]
+    );
+    assert_eq!(
+        fetching.transfers,
+        vec![StorageInspectorTransfer::PinFetch {
+            files: PinFiles {
+                kept: 1,
+                waiting: 1
+            }
+        }]
+    );
+
+    let kept = shown(
+        vec![
+            file("a", Some(FilePin::Kept)),
+            file("b", Some(FilePin::Kept)),
+        ],
+        &no_queue,
+        None,
+    );
+    assert!(kept.transfers.is_empty());
+    assert!(kept.files.iter().all(|file| file.pin.is_none()));
 }

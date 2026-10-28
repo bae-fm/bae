@@ -234,12 +234,13 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 #[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
-    use crate::library::storage_inspector::{FilePin, PinFiles, StorageInspectorTransfer};
+    use crate::album_detail::FilePin;
+    use crate::library::storage_inspector::{PinFiles, StorageInspectorTransfer};
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
     let detail = manager.find_release_detail(&cloud).await.unwrap().unwrap();
-    assert!(detail.files.iter().all(|file| !file.kept));
+    assert!(detail.files.iter().all(|file| file.pin.is_none()));
 
     let services = crate::library::AppServices::for_test(manager.library.clone())
         .await
@@ -260,5 +261,8 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 
     manager.set_downloads_paused(false).await.unwrap();
     let pinned = inspector_until(&inspector, |value| value.transfers.is_empty()).await;
-    assert!(pinned.files.iter().all(|file| file.pin.is_none() && file.file.kept));
+    assert!(pinned
+        .files
+        .iter()
+        .all(|file| file.pin.is_none() && file.file.pin == Some(FilePin::Kept)));
 }

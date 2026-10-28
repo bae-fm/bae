@@ -26,10 +26,10 @@ impl crate::types::BridgeStorageInspectorTransfer {
         match transfer {
             StorageInspectorTransfer::Download { operation, files } => Self::Download {
                 operation: crate::types::BridgeDownloadOp::from_core(operation),
-                files: files.map(|files| crate::types::BridgePinFiles {
-                    kept: files.kept,
-                    waiting: files.waiting,
-                }),
+                files: files.map(crate::types::BridgePinFiles::from_core),
+            },
+            StorageInspectorTransfer::PinFetch { files } => Self::PinFetch {
+                files: crate::types::BridgePinFiles::from_core(files),
             },
             StorageInspectorTransfer::Output { operation } => Self::Output {
                 operation: crate::types::BridgeOutputOp::from_core(operation),
@@ -38,6 +38,15 @@ impl crate::types::BridgeStorageInspectorTransfer {
                 release_id,
                 upload: crate::types::BridgeReleaseUpload::from_core(upload),
             },
+        }
+    }
+}
+
+impl crate::types::BridgePinFiles {
+    fn from_core(files: bae_core::library::storage_inspector::PinFiles) -> Self {
+        Self {
+            kept: files.kept,
+            waiting: files.waiting,
         }
     }
 }
@@ -59,12 +68,8 @@ impl crate::types::BridgeStorageInspectorFile {
                 bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
             }),
             pin: pin.map(|pin| match pin {
-                bae_core::library::storage_inspector::FilePin::Kept => {
-                    crate::types::BridgeFilePin::Kept
-                }
-                bae_core::library::storage_inspector::FilePin::Waiting => {
-                    crate::types::BridgeFilePin::Waiting
-                }
+                bae_core::album_detail::FilePin::Kept => crate::types::BridgeFilePin::Kept,
+                bae_core::album_detail::FilePin::Waiting => crate::types::BridgeFilePin::Waiting,
             }),
         }
     }

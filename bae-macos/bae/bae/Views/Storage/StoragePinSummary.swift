@@ -1,14 +1,22 @@
 import BaeKit
 import SwiftUI
 
-/// The selected release's pin while its download waits or runs: how many of
-/// its files are kept and how many wait, with the button that cancels the
-/// pin; while it downloads, the bytes it holds of its size and how fast it
-/// goes, over a bar of the same bytes.
+/// The selected release's pin while its files come to this device: how many
+/// of its files are kept and how many wait. While its download waits or
+/// runs, the button that cancels the pin, and while it downloads, the bytes
+/// it holds of its size and how fast it goes, over a bar of the same bytes.
+/// While coven fetches the copies its pins wait for, outside the download
+/// queue, the counts alone: no queue entry holds that fetch to cancel or
+/// measure.
 struct StoragePinSummary: View {
-    let releaseId: String
     let files: BridgePinFiles
-    let onCancel: () -> Void
+    let download: Download?
+
+    /// The download pinning the release, and what cancels it.
+    struct Download {
+        let releaseId: String
+        let onCancel: () -> Void
+    }
 
     /// The gap between the summary's lines, and its inset above and below.
     private static let lineGap: CGFloat = 10
@@ -28,10 +36,14 @@ struct StoragePinSummary: View {
                 Text(QueueSummary.countLabel("core.queue.pinned", files.kept))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Cancel", action: onCancel)
-                    .controlSize(.small)
+                if let download {
+                    Button("Cancel", action: download.onCancel)
+                        .controlSize(.small)
+                }
             }
-            StoragePinProgress(releaseId: releaseId)
+            if let download {
+                StoragePinProgress(releaseId: download.releaseId)
+            }
         }
         .themeText(.detail)
         .padding(.horizontal, ThemeSpace.edge)

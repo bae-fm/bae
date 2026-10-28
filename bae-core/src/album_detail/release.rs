@@ -501,7 +501,7 @@ impl ReleaseDetail {
             .map(|f| {
                 let supports_cover = f.content_type.is_supported_cover();
                 let file = FileDetail {
-                    kept: raw.kept_files.contains(&f.id),
+                    pin: raw.file_pins.get(&f.id).copied(),
                     place: FilePlace::of(&f.original_filename),
                     kind: FileKind::of(&f.content_type, &f.original_filename),
                     is_image: f.content_type.is_image(),
@@ -782,7 +782,7 @@ mod release_edit_display_tests {
             unstored_audio: Vec::new(),
             pinned: false,
             upload: None,
-            kept_files: Default::default(),
+            file_pins: Default::default(),
             file_uploads: Vec::new(),
             download: None,
         };

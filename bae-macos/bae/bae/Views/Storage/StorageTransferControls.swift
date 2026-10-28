@@ -34,11 +34,18 @@ struct StorageTransferControls: View {
     {
         switch item {
         case .download(let operation, let files?):
-            StoragePinSummary(releaseId: operation.releaseId, files: files) {
-                run {
-                    try await downloads.cancelDownload(operation.releaseId)
+            StoragePinSummary(
+                files: files,
+                download: StoragePinSummary.Download(
+                    releaseId: operation.releaseId
+                ) {
+                    run {
+                        try await downloads.cancelDownload(operation.releaseId)
+                    }
                 }
-            }
+            )
+        case .pinFetch(let files):
+            StoragePinSummary(files: files, download: nil)
         case .download(let operation, nil):
             // A failed download: the row says why and offers its cancel.
             DownloadRow(

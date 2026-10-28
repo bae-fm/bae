@@ -297,9 +297,18 @@ pub struct FileDetail {
     pub source_audio: Option<SourceAudioFile>,
     /// The file's upload while it waits in this device's upload queue.
     pub upload: Option<FileUpload>,
-    /// Whether this device keeps a whole copy of the file, pinned, as
-    /// coven's `coven_pins` says.
-    pub kept: bool,
+    /// Where this device's pin of the file stands, as coven's `coven_pins`
+    /// says; `None` while it isn't pinned.
+    pub pin: Option<FilePin>,
+}
+
+/// Where this device's pin of a file stands: kept whole on this device, or
+/// waiting for its copy to arrive. Which of the files waiting coven is
+/// fetching now, and how far each has got, coven doesn't say.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FilePin {
+    Kept,
+    Waiting,
 }
 
 /// A release file's file waiting in this device's upload queue, read with the

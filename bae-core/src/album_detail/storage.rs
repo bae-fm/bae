@@ -67,13 +67,15 @@ impl ReleaseStorageSummary {
 
 /// Where a release's files are, as the Storage Manager sorts its rows by
 /// storage, in that order: its listing works it out from the upload queue,
-/// the download queue, and its stored and pinned files, in the write that
-/// changes any of them.
+/// the download queue, and its stored, pinned and waiting pinned files, in
+/// the write that changes any of them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoragePlace {
     /// Files of it wait in this device's upload queue.
     Uploading,
-    /// This device's download queue holds it, waiting or downloading.
+    /// Its files are coming to this device: this device's download queue
+    /// holds it, waiting or downloading, or pins of its files wait for coven
+    /// to fetch their copies.
     Pinning,
     Local,
     /// Uploaded, every file pinned on this device.

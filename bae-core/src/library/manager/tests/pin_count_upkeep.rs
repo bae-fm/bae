@@ -1,8 +1,8 @@
-// The pinned count `release_listing` keeps per release, against the count of
-// files `coven_pins` lists as kept, probed file by file, through random
-// library writes and pins: uploads that keep their copy or not, their
-// completion, pins, unpins, evictions, a file moving between releases, and
-// deletes.
+// The pinned and waiting pin counts `release_listing` keeps per release,
+// against the counts of files `coven_pins` lists as kept and as waiting for
+// their copies, probed file by file, through random library writes and pins:
+// uploads that keep their copy or not, their completion, pins, unpins,
+// evictions, a file moving between releases, and deletes.
 //
 // `include!`d into `manager::tests`.
 
@@ -21,24 +21,30 @@ enum HarnessStage {
     Remote,
 }
 
-/// Each release whose listed pinned or file count differs from the one probed
-/// from its files, or that has no listing row: none when the triggers kept up.
+/// Each release whose listed pinned, waiting or file count differs from the
+/// one probed from its files, or that has no listing row: none when the
+/// triggers kept up.
 #[cfg(feature = "test-utils")]
 async fn listing_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .database
         .query_texts_for_test(
-            "SELECT r.id || ': listed ' || COALESCE(l.pinned_count || ' of ' || l.file_count, 'nothing') \
-                 || ', probed ' || probe.pinned || ' of ' || probe.files \
+            "SELECT r.id || ': listed ' \
+                 || COALESCE(l.pinned_count || ' and ' || l.waiting_pin_count || ' waiting of ' || l.file_count, 'nothing') \
+                 || ', probed ' || probe.pinned || ' and ' || probe.waiting || ' waiting of ' || probe.files \
              FROM releases r \
              LEFT JOIN release_listing l ON l.release_id = r.id \
              JOIN (SELECT r2.id AS release_id, \
                      (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id) AS files, \
                      (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id \
                         AND EXISTS (SELECT 1 FROM coven_pins p \
-                                    WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id) AND p.kept = 1)) AS pinned \
+                                    WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id) AND p.kept = 1)) AS pinned, \
+                     (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id \
+                        AND EXISTS (SELECT 1 FROM coven_pins p \
+                                    WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id) AND p.kept = 0)) AS waiting \
                    FROM releases r2) probe ON probe.release_id = r.id \
-             WHERE l.release_id IS NULL OR l.pinned_count <> probe.pinned OR l.file_count <> probe.files",
+             WHERE l.release_id IS NULL OR l.pinned_count <> probe.pinned \
+                OR l.waiting_pin_count <> probe.waiting OR l.file_count <> probe.files",
         )
         .await
         .unwrap()

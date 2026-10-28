@@ -175,13 +175,20 @@ pub(super) fn build_release_detail_on(
     let download = super::release_queues::download_phase_on(sql, &release.id)?;
     let upload = super::queued_uploads::release_upload_on(sql, &release.id)?;
     let file_uploads = super::queued_uploads::release_file_uploads_on(sql, &release.id)?;
-    let kept_files = sql
+    let file_pins = sql
         .query(
-            "SELECT f.id FROM release_files f \
+            "SELECT f.id, pin.kept FROM release_files f \
              JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
-             WHERE f.release_id = ?1 AND pin.kept = 1",
+             WHERE f.release_id = ?1",
             params![release.id],
-            |row| row.get::<_, String>(0),
+            |row| {
+                let pin = if row.get::<_, bool>(1)? {
+                    crate::album_detail::FilePin::Kept
+                } else {
+                    crate::album_detail::FilePin::Waiting
+                };
+                Ok((row.get::<_, String>(0)?, pin))
+            },
         )?
         .into_iter()
         .collect();
@@ -197,7 +204,7 @@ pub(super) fn build_release_detail_on(
         unstored_audio,
         pinned,
         upload,
-        kept_files,
+        file_pins,
         file_uploads,
         download,
     })
@@ -259,7 +266,7 @@ pub(super) struct ReleaseDetailRows {
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
     upload: Option<DbReleaseUpload>,
-    kept_files: std::collections::BTreeSet<String>,
+    file_pins: std::collections::BTreeMap<String, crate::album_detail::FilePin>,
     file_uploads: Vec<DbFileUpload>,
     download: Option<crate::library::DownloadPhase>,
 }
@@ -277,7 +284,7 @@ impl ReleaseDetailRows {
             unstored_audio: self.unstored_audio,
             pinned: self.pinned,
             upload: self.upload,
-            kept_files: self.kept_files,
+            file_pins: self.file_pins,
             file_uploads: self.file_uploads,
             download: self.download,
         }

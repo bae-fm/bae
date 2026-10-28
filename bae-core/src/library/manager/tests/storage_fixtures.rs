@@ -125,6 +125,58 @@ async fn uploaded_release_with_files(
     release.id
 }
 
+/// A release pinned as it uploaded, whose upload completed and whose files'
+/// pins coven carried to the stored files, where they wait: the stored files
+/// can't be read, so coven can't fetch their copies until the test clears
+/// the storage's faults. The manager must already be connected via
+/// [`connect_test_cloud`].
+#[cfg(feature = "test-utils")]
+async fn release_waiting_for_its_carried_pin(
+    manager: &TestManager,
+    dir: &std::path::Path,
+    album_title: &str,
+) -> DbRelease {
+    let release =
+        insert_local_release_with_files(manager, dir, album_title, &[("track.flac", b"carried-bytes")])
+            .await;
+    manager.upload_release(&release.id, true).await.unwrap();
+    wait_for_offline_copy_request(manager, &release.id).await;
+
+    // Hold the file's upload as it is created, and from then on refuse every
+    // read of the stored file, so the carried pin can't fetch its copy.
+    let home = &manager.storage;
+    let (started, created) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_creation(
+        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        started,
+        resumed,
+    )
+    .await;
+    let drain = tokio::spawn({
+        let manager = manager.library.clone();
+        async move { manager.drain_uploads_expecting_work().await }
+    });
+    created.await.unwrap();
+    let stored = home
+        .request_trace()
+        .into_iter()
+        .rev()
+        .find_map(|request| match request {
+            coven::MemoryRequest::Create(path) => Some(path),
+            _ => None,
+        })
+        .expect("the held upload is the last creation");
+    home.set_faults(coven::Faults {
+        read_failures: [(stored, coven::StorageFailure::Network)].into(),
+        ..coven::Faults::none()
+    })
+    .await;
+    resume.send(()).unwrap();
+    drain.await.unwrap().unwrap();
+    release
+}
+
 /// The coven file each of a release's files carries.
 #[cfg(feature = "test-utils")]
 async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<coven::FileRef> {

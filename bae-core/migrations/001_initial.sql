@@ -1160,13 +1160,16 @@ END;
 -- (every stated medium with its count, in order); its files' count and total
 -- size; `stored`, 1 when it has files and every one names its stored file;
 -- `pinned_count`, how many of its files coven's `coven_pins` lists as kept
--- whole on this device, leaving out a pin still waiting for its copy;
--- `queued_count` and `first_queued_position`, how many of its files coven's
+-- whole on this device, and `waiting_pin_count`, how many it lists waiting
+-- for coven to fetch their copies; `queued_count` and
+-- `first_queued_position`, how many of its files coven's
 -- `coven_upload_queue` lists and the place of the first of them (NULL with
--- none); `pinning`, 1 while this device's download queue holds it waiting or
--- downloading; and `storage_order`, where it sorts by storage, worked out
--- from those in the same write: uploading (0), pinning (1), local (2),
--- pinned (3), in the cloud only (4).
+-- none); `download_queued`, 1 while this device's download queue holds it
+-- waiting or downloading; and `storage_order`, where it sorts by storage,
+-- worked out from those in the same write: uploading (0), pinning (1) while
+-- its files are coming to this device, by the download queue or by coven
+-- fetching the copies its pins wait for, local (2), pinned (3), in the
+-- cloud only (4).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -1180,12 +1183,13 @@ CREATE TABLE IF NOT EXISTS release_listing (
     total_size INTEGER NOT NULL,
     stored INTEGER NOT NULL,
     pinned_count INTEGER NOT NULL,
+    waiting_pin_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
-    pinning INTEGER NOT NULL CHECK (pinning IN (0, 1)),
+    download_queued INTEGER NOT NULL CHECK (download_queued IN (0, 1)),
     storage_order INTEGER GENERATED ALWAYS AS (CASE
         WHEN queued_count > 0 THEN 0
-        WHEN pinning = 1 THEN 1
+        WHEN download_queued = 1 OR waiting_pin_count > 0 THEN 1
         WHEN stored = 0 THEN 2
         WHEN file_count > 0 AND pinned_count = file_count THEN 3
         ELSE 4 END) VIRTUAL,
@@ -1277,7 +1281,7 @@ BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
-        queued_count, first_queued_position, pinning)
+        waiting_pin_count, queued_count, first_queued_position, download_queued)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            json_array_length(r.media) = 0,
            (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'),
@@ -1291,6 +1295,9 @@ BEGIN
            (SELECT COUNT(*) FROM release_files f
             JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id)
             WHERE f.release_id = r.id AND pin.kept = 1),
+           (SELECT COUNT(*) FROM release_files f
+            JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id)
+            WHERE f.release_id = r.id AND pin.kept = 0),
            (SELECT COUNT(*) FROM release_files f
             JOIN coven_upload_queue queued
                 ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
@@ -1316,9 +1323,10 @@ BEGIN
         total_size = excluded.total_size,
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
+        waiting_pin_count = excluded.waiting_pin_count,
         queued_count = excluded.queued_count,
         first_queued_position = excluded.first_queued_position,
-        pinning = excluded.pinning;
+        download_queued = excluded.download_queued;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_release_added AFTER INSERT ON releases
@@ -1371,34 +1379,37 @@ CREATE INDEX IF NOT EXISTS idx_release_files_coven_key ON release_files (coven_k
 -- release by it.
 CREATE INDEX IF NOT EXISTS idx_releases_coven_key ON releases (coven_key(id));
 
--- A release file's pin moves its release's pinned count as the file
--- becomes kept whole on this device or stops being kept, in the transaction
--- that changes the pin: this device's own write, another device's applied,
--- or coven's own as a file is pinned, downloads, uploads or is unpinned. A
--- pin begins kept (a pinned file still queued here, or a pinned whole copy)
--- or waiting for its copy (a pin carried from a completed upload that kept
--- no copy of its own), and a waiting pin's `kept` turns to 1 as its copy
--- lands. A file whose row is gone, or whose release is not listed yet,
--- moves nothing: the refresh above counts its release's kept pins from
+-- A release file's pin moves its release's pinned and waiting counts, in
+-- the transaction that changes the pin: this device's own write, another
+-- device's applied, or coven's own as a file is pinned, downloads, uploads
+-- or is unpinned. A pin begins kept (a pinned file still queued here, or a
+-- pinned whole copy) or waiting for its copy (a pin carried from a
+-- completed upload that kept no copy of its own), and a waiting pin's
+-- `kept` turns to 1 as its copy lands, moving it from the waiting count to
+-- the pinned one. A file whose row is gone, or whose release is not listed
+-- yet, moves nothing: the refresh above counts its release's pins from
 -- `coven_pins` as it writes the release's row.
 CREATE TRIGGER IF NOT EXISTS release_listing_file_pinned AFTER INSERT ON coven_pins
-WHEN NEW.table_name = 'release_files' AND NEW.kept = 1
+WHEN NEW.table_name = 'release_files'
 BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count + 1
+    UPDATE release_listing SET pinned_count = pinned_count + NEW.kept,
+        waiting_pin_count = waiting_pin_count + 1 - NEW.kept
     WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_file_kept AFTER UPDATE OF kept ON coven_pins
 WHEN NEW.table_name = 'release_files' AND OLD.kept <> NEW.kept
 BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count + NEW.kept - OLD.kept
+    UPDATE release_listing SET pinned_count = pinned_count + NEW.kept - OLD.kept,
+        waiting_pin_count = waiting_pin_count + OLD.kept - NEW.kept
     WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_file_unpinned AFTER DELETE ON coven_pins
-WHEN OLD.table_name = 'release_files' AND OLD.kept = 1
+WHEN OLD.table_name = 'release_files'
 BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count - 1
+    UPDATE release_listing SET pinned_count = pinned_count - OLD.kept,
+        waiting_pin_count = waiting_pin_count - 1 + OLD.kept
     WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = OLD.key);
 END;
 
@@ -1705,27 +1716,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS download_queue_active
     ON download_queue (state) WHERE state = 'active';
 
 -- A release joining, moving through or leaving this device's download queue
--- moves its listing's pinning flag, in the transaction that changes the
--- queue: waiting or downloading sets it, a failed download or leaving the
--- queue clears it. An entry names its release by id alone, so one whose
+-- moves its listing's `download_queued` flag, in the transaction that
+-- changes the queue: waiting or downloading sets it, a failed download or
+-- leaving the queue clears it. An entry names its release by id alone, so one whose
 -- release is gone, or not listed yet, moves nothing: the listing's refresh
 -- reads the queue as it writes the release's row.
 CREATE TRIGGER IF NOT EXISTS release_listing_pin_queued AFTER INSERT ON download_queue
 BEGIN
-    UPDATE release_listing SET pinning = NEW.state IN ('queued', 'active')
+    UPDATE release_listing SET download_queued = NEW.state IN ('queued', 'active')
     WHERE release_id = NEW.release_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_pin_changed AFTER UPDATE OF release_id, state ON download_queue
 BEGIN
-    UPDATE release_listing SET pinning = 0 WHERE release_id = OLD.release_id;
-    UPDATE release_listing SET pinning = NEW.state IN ('queued', 'active')
+    UPDATE release_listing SET download_queued = 0 WHERE release_id = OLD.release_id;
+    UPDATE release_listing SET download_queued = NEW.state IN ('queued', 'active')
     WHERE release_id = NEW.release_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_pin_dequeued AFTER DELETE ON download_queue
 BEGIN
-    UPDATE release_listing SET pinning = 0 WHERE release_id = OLD.release_id;
+    UPDATE release_listing SET download_queued = 0 WHERE release_id = OLD.release_id;
 END;
 
 -- A release queued to export or save into a folder, as `download_queue` holds
