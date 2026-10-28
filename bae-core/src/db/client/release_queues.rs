@@ -230,17 +230,9 @@ fn release_queue_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueSnapshot<P, ()>, DbError> {
     let rows = queue_rows_on::<P>(sql, "ORDER BY q.position", [])?;
-    let mut total = ReleaseQueueProgress::default();
-    for row in &rows {
-        match row.op.state {
-            ReleaseQueueState::Queued => total.queued += 1,
-            ReleaseQueueState::Active { .. } => total.active += 1,
-            ReleaseQueueState::Failed { .. } => total.failed += 1,
-        }
-    }
     Ok(ReleaseQueueSnapshot {
         rows,
-        total,
+        total: release_queue_counts_on::<P>(sql)?.total,
         paused: paused_on(sql, P::QUEUE)?,
     })
 }
