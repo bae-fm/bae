@@ -145,6 +145,15 @@ internal fun codeReadStep(
     }
 
 /**
+ * The core onboarding runs against: the [host] that restores and joins, and
+ * [newCancellation], which makes the stop each restore is handed.
+ */
+internal class OnboardingCore(
+    val host: BridgeHostInterface,
+    val newCancellation: () -> BootstrapCancellation,
+)
+
+/**
  * Onboarding's one flow: a code, scanned or typed, is either the person's own
  * restore code or an invite, and this device restores or joins with it. With
  * [restoreOver], the code restores over this device's copy of that library. What either produced goes to
@@ -154,7 +163,7 @@ internal fun codeReadStep(
 internal class OnboardingFlow(
     private val scope: CoroutineScope,
     private val context: Context,
-    private val host: BridgeHostInterface,
+    private val core: OnboardingCore,
     private val oauthProvidersError: String?,
     restoreOver: RestoreOver?,
     private val onBootstrapped: (BridgeBootstrapResult) -> Unit,
@@ -179,7 +188,7 @@ internal class OnboardingFlow(
         scope.launch {
             val joins =
                 try {
-                    host.unfinishedJoins()
+                    core.host.unfinishedJoins()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: BridgeException) {
@@ -255,11 +264,11 @@ internal class OnboardingFlow(
         from: OnboardingStep.Restore,
         credentials: BridgeS3Credentials?,
     ) {
-        val running = BootstrapCancellation()
+        val running = core.newCancellation()
         run(from, running::cancel) { callback ->
             when (val entry = from.entry) {
                 is RestoreOver -> {
-                    host.restoreReplacingDevice(
+                    core.host.restoreReplacingDevice(
                         entry.libraryId,
                         from.code,
                         credentials,
@@ -270,7 +279,7 @@ internal class OnboardingFlow(
                 }
 
                 CodeEntry.NewDevice -> {
-                    host.restoreFromCode(from.code, credentials, deviceName(context), callback, running)
+                    core.host.restoreFromCode(from.code, credentials, deviceName(context), callback, running)
                 }
             }
         }
@@ -285,8 +294,8 @@ internal class OnboardingFlow(
         joining = control
         run(from, control::cancel) { callback ->
             when (val start = from.start) {
-                is JoinStart.Code -> host.joinWithInvite(start.code, deviceName(context), callback, control)
-                is JoinStart.Unfinished -> host.resumeJoin(start.join, callback, control)
+                is JoinStart.Code -> core.host.joinWithInvite(start.code, deviceName(context), callback, control)
+                is JoinStart.Unfinished -> core.host.resumeJoin(start.join, callback, control)
             }
         }
     }

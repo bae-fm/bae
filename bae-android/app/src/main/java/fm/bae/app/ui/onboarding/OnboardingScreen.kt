@@ -49,6 +49,7 @@ import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.delay
+import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -99,7 +100,14 @@ internal fun OnboardingScreen(
     val host = (context.applicationContext as BaeApp).host
     val flow =
         remember(restoreOver?.libraryId) {
-            OnboardingFlow(scope, context, host, oauthProvidersError, restoreOver, onBootstrapped)
+            OnboardingFlow(
+                scope,
+                context,
+                OnboardingCore(host, ::BootstrapCancellation),
+                oauthProvidersError,
+                restoreOver,
+                onBootstrapped,
+            )
         }
     OnboardingSteps(flow)
 }

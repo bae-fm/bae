@@ -73,7 +73,14 @@ class OnboardingFlowTest {
         )
 
     private fun newFlow(): OnboardingFlow {
-        val flow = OnboardingFlow(scope, RuntimeEnvironment.getApplication(), host, null, null) {}
+        val flow =
+            OnboardingFlow(
+                scope,
+                RuntimeEnvironment.getApplication(),
+                OnboardingCore(host, ::FakeBootstrapCancellation),
+                null,
+                null,
+            ) {}
         shadowOf(Looper.getMainLooper()).idle()
         return flow
     }
