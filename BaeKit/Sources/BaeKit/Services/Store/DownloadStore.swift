@@ -13,6 +13,10 @@ public class DownloadStore {
     private nonisolated let fileShares = LatestByKey<Double>()
     /// Each downloading release's progress, by release.
     private let releases = KeyedValues<BridgeDownloadTransferProgress>()
+    /// The latest progress of each downloading release, which the release's
+    /// native views read each display frame.
+    private nonisolated let releaseProgress =
+        LatestByKey<BridgeDownloadTransferProgress>()
 
     public init() {}
 
@@ -21,16 +25,16 @@ public class DownloadStore {
         switch change {
         case .updated(let releaseId, let progress):
             releases.set(progress, for: releaseId)
+            releaseProgress.set(progress, for: releaseId)
         case .removed(let releaseId):
             releases.remove(releaseId)
+            releaseProgress.remove(releaseId)
         case .reset(let keyed):
-            releases.reset(
-                Dictionary(
-                    uniqueKeysWithValues: keyed.map {
-                        ($0.releaseId, $0.progress)
-                    }
-                )
+            let all = Dictionary(
+                uniqueKeysWithValues: keyed.map { ($0.releaseId, $0.progress) }
             )
+            releases.reset(all)
+            releaseProgress.reset(all)
         }
     }
 
@@ -50,6 +54,14 @@ public class DownloadStore {
             )
             fileShares.reset(all)
         }
+    }
+
+    /// The latest progress of a downloading release, for the native views
+    /// that read it each display frame.
+    public nonisolated func downloadProgress(forRelease releaseId: String)
+        -> LatestSource<BridgeDownloadTransferProgress>
+    {
+        LatestSource(store: releaseProgress, key: releaseId)
     }
 
     /// The latest share a file in flight has moved, for the native view that

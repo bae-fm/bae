@@ -170,6 +170,20 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "OutboxStore",
+        "uploadProgress",
+        "the latest progress of a release's upload, which core measures from "
+        "coven's upload watch and keeps in no table; the leaf hands it to a "
+        "native view that reads it each display frame",
+    ),
+    KeyedStream(
+        "DownloadStore",
+        "downloadProgress",
+        "the latest bytes a release's download has moved, which core sends as "
+        "they arrive and keeps in no table; the leaf hands it to a native view "
+        "that reads it each display frame",
+    ),
+    KeyedStream(
+        "OutboxStore",
         "releaseTransfer",
         "the stream of how far and how fast a release's upload goes, which "
         "core measures from coven's upload watch and keeps in no table; the "

@@ -18,6 +18,10 @@ public class OutboxStore {
     private nonisolated let fileShares = LatestByKey<Double>()
     /// Each release with files being sent, its transfer, by release.
     private let releaseTransfers = KeyedValues<BridgeReleaseUploadTransfer>()
+    /// The latest transfer of each release with files being sent, which the
+    /// release's native views read each display frame.
+    private nonisolated let releaseProgress =
+        LatestByKey<BridgeReleaseUploadTransfer>()
     /// The files being sent together, for the native views that draw them.
     public let totalTransferStream = LatestValue<BridgeUploadTransfer>()
 
@@ -34,18 +38,18 @@ public class OutboxStore {
         switch change {
         case .updated(let releaseId, let transfer):
             releaseTransfers.set(transfer, for: releaseId)
+            releaseProgress.set(transfer, for: releaseId)
         case .removed(let releaseId):
             releaseTransfers.remove(releaseId)
+            releaseProgress.remove(releaseId)
         case .totalUpdated(let transfer):
             totalTransferStream.set(transfer)
         case .reset(let keyed, let total):
-            releaseTransfers.reset(
-                Dictionary(
-                    uniqueKeysWithValues: keyed.map {
-                        ($0.releaseId, $0.transfer)
-                    }
-                )
+            let all = Dictionary(
+                uniqueKeysWithValues: keyed.map { ($0.releaseId, $0.transfer) }
             )
+            releaseTransfers.reset(all)
+            releaseProgress.reset(all)
             totalTransferStream.set(total)
         }
     }
@@ -74,6 +78,14 @@ public class OutboxStore {
         -> KeyedValueSource<BridgeReleaseUploadTransfer>
     {
         KeyedValueSource(values: releaseTransfers, key: releaseId)
+    }
+
+    /// The latest transfer of a release with files being sent, for the
+    /// native views that read it each display frame.
+    public nonisolated func uploadProgress(forRelease releaseId: String)
+        -> LatestSource<BridgeReleaseUploadTransfer>
+    {
+        LatestSource(store: releaseProgress, key: releaseId)
     }
 
     /// The latest share a file in flight has moved, for the native view that
