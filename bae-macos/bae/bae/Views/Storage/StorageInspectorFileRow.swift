@@ -1,111 +1,162 @@
 import BaeKit
 import SwiftUI
 
-/// One file in the storage inspector: a release file with its upload while
-/// one waits.
+/// One file in the storage inspector, on one line: a mark for where its
+/// bytes are going, its name and its size. A stored file has no mark; a
+/// queued one a dashed circle, its name dimmed; one being sent a ring that
+/// fills as it goes, its name in the upload's colour. A file waiting on a
+/// reason says why in its tooltip.
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
-    /// How fast the row's upload goes; `nil` while no rate has arrived for
-    /// it, or when the row has no upload.
-    let throughputBps: UInt64?
 
-    /// The lines under the name start under it, past the icon column.
-    private static let detailIndent = ThemeIcon.medium.size + ThemeSpace.related
+    /// The mark's side, which every row keeps so the names line up, and the
+    /// gap between the row's columns.
+    private static let markSize: CGFloat = 16
+    private static let columnGap: CGFloat = 10
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-            HStack(spacing: ThemeSpace.related) {
-                Image(systemName: "doc")
-                    .themeIcon(.medium)
-                    .foregroundStyle(.secondary)
-                    .frame(width: ThemeIcon.medium.size)
-                Text(row.file.originalFilename)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .help(row.file.originalFilename)
-                Spacer(minLength: ThemeSpace.related)
-                Text(row.file.fileSizeText)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            Text(row.file.audioFormat?.text ?? "")
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
+        HStack(spacing: Self.columnGap) {
+            StorageFileMark(state: state)
+                .frame(width: Self.markSize, height: Self.markSize)
+            Text(row.file.originalFilename)
                 .lineLimit(1)
-                .padding(.leading, Self.detailIndent)
-            if let upload = row.upload {
-                UploadOperationLine(
-                    upload: upload,
-                    throughputBps: throughputBps
-                )
-                .padding(.leading, Self.detailIndent)
-            }
+                .truncationMode(.middle)
+                .foregroundStyle(nameStyle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(row.file.fileSizeText)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
-        .padding(.vertical, ThemeSpace.line)
-        .accessibilityElement(children: .contain)
+        .padding(.vertical, ThemeSpace.related)
+        // The row's own padding is its whole height: the list adds none.
+        .listRowInsets(
+            EdgeInsets(
+                top: 0,
+                leading: ThemeSpace.edge,
+                bottom: 0,
+                trailing: ThemeSpace.edge
+            )
+        )
+        .help(help)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier("file:\(row.file.id)")
     }
-}
 
-/// One upload's state, its rate while bytes move, and its progress bar. A
-/// pending upload shows why coven is waiting instead of its state.
-private struct UploadOperationLine: View {
-    let upload: BridgeFileUpload
-    /// How fast the file goes; `nil` while no rate has arrived for it.
-    let throughputBps: UInt64?
-
-    var body: some View {
-        let bar = upload.bar
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-            HStack(spacing: ThemeSpace.related) {
-                StatusChip(
-                    verbatim: status,
-                    tone: tone,
-                    symbol: symbol
-                )
-                .help(status)
-                Text(bar?.text ?? "")
-                    .monospacedDigit()
-                Spacer(minLength: 0)
-                Text(throughputText)
-                    .monospacedDigit()
-                    .fixedSize()
-            }
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
-            ProgressTrackBar(progress: bar?.fraction ?? 0)
-                .opacity(bar == nil ? 0 : 1)
-                .accessibilityHidden(bar == nil)
+    private var state: StorageFileMark.State {
+        guard let upload = row.upload else { return .stored }
+        switch upload.state {
+        case .waiting: return .queued
+        case .uploading: return .moving(.upload, fraction: upload.bar?.fraction)
         }
     }
 
-    private var status: String {
-        if let pending = upload.pending {
+    private var nameStyle: AnyShapeStyle {
+        switch state {
+        case .stored: AnyShapeStyle(.primary)
+        case .queued: AnyShapeStyle(.secondary)
+        case .moving(let kind, _): AnyShapeStyle(kind.color)
+        }
+    }
+
+    /// Why a waiting upload waits, as coven says; otherwise the file's name,
+    /// which the row may cut short.
+    private var help: String {
+        if let pending = row.upload?.pending {
             return localizedCoreString(pending.reason.key)
         }
-        return localizedCoreString(
-            bridgeUploadFileStateKey(state: upload.state)
-        )
-    }
-
-    private var symbol: String {
-        if upload.pending != nil { return "exclamationmark.triangle.fill" }
-        return switch upload.state {
-        case .waiting: "clock"
-        case .uploading: "arrow.up.circle.fill"
-        }
-    }
-
-    private var tone: StatusTone {
-        if upload.pending != nil { return .warning }
-        return switch upload.state {
-        case .waiting: .neutral
-        case .uploading: .activity
-        }
-    }
-
-    private var throughputText: String {
-        guard let throughputBps, throughputBps > 0 else { return "" }
-        return QueueSummary.throughputText(bytesPerSecond: throughputBps)
+        return row.file.originalFilename
     }
 }
+
+/// A file row's mark: nothing for a file at rest, a dashed circle for one
+/// waiting its turn, a ring filling as far as its transfer has come.
+struct StorageFileMark: View {
+    enum State: Equatable {
+        case stored
+        case queued
+        /// `fraction` is `nil` while nothing has been confirmed sent.
+        case moving(StorageTransferKind, fraction: Double?)
+    }
+
+    let state: State
+
+    /// The ring's width and the dashed circle's.
+    private static let lineWidth: CGFloat = 1.75
+
+    var body: some View {
+        // Every mark stays in the row's layout; only the one that applies
+        // shows.
+        ZStack {
+            Circle()
+                .inset(by: Self.lineWidth)
+                .stroke(
+                    .secondary,
+                    style: StrokeStyle(lineWidth: Self.lineWidth, dash: [2, 2])
+                )
+                .opacity(state == .queued ? 1 : 0)
+            Circle()
+                .inset(by: Self.lineWidth)
+                .stroke(Theme.hairline, lineWidth: Self.lineWidth)
+                .opacity(ringShown ? 1 : 0)
+            Circle()
+                .inset(by: Self.lineWidth)
+                .trim(from: 0, to: ringFraction)
+                .stroke(
+                    ringColor,
+                    style: StrokeStyle(
+                        lineWidth: Self.lineWidth,
+                        lineCap: .round
+                    )
+                )
+                .rotationEffect(.degrees(-90))
+                .opacity(ringShown ? 1 : 0)
+        }
+        .accessibilityElement()
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHidden(state == .stored)
+    }
+
+    private var ringShown: Bool {
+        if case .moving = state { return true }
+        return false
+    }
+
+    /// How much of the ring fills: as far as the transfer has come, none
+    /// before anything is confirmed and for a mark that shows no ring.
+    private var ringFraction: Double {
+        switch state {
+        case .moving(_, let fraction?): fraction
+        case .moving(_, nil), .stored, .queued: 0
+        }
+    }
+
+    private var ringColor: Color {
+        switch state {
+        case .moving(let kind, _): kind.color
+        case .stored, .queued: .clear
+        }
+    }
+
+    private var accessibilityLabel: Text {
+        switch state {
+        case .stored: Text(verbatim: "")
+        case .queued: Text("Queued")
+        case .moving(.upload, _): Text("Uploading")
+        case .moving(.pin, _): Text("Pinning")
+        }
+    }
+}
+
+#if DEBUG
+    #Preview("File marks") {
+        HStack(spacing: ThemeSpace.group) {
+            StorageFileMark(state: .stored)
+            StorageFileMark(state: .queued)
+            StorageFileMark(state: .moving(.upload, fraction: 0.38))
+            StorageFileMark(state: .moving(.pin, fraction: 0.64))
+            StorageFileMark(state: .moving(.upload, fraction: nil))
+        }
+        .frame(height: 16)
+        .padding()
+    }
+#endif

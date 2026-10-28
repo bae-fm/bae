@@ -362,14 +362,3 @@ pub fn bridge_upload_activity_key(activity: BridgeUploadActivity) -> String {
     }
     .to_string()
 }
-
-/// Localization key for one file's upload state, worded as the release phase
-/// it shares.
-#[uniffi::export]
-pub fn bridge_upload_file_state_key(state: BridgeUploadFileState) -> String {
-    match state {
-        BridgeUploadFileState::Uploading => "core.outbox.phase.uploading",
-        BridgeUploadFileState::Waiting => "core.outbox.phase.queued",
-    }
-    .to_string()
-}

@@ -2618,7 +2618,10 @@ Reads come two ways:
   whole queue, which the list's footer pauses (§4.2): its upload shows how
   many of its files are uploading, queued and stored, a control that
   cancels it, and while files are sent, the bytes of its size stored or sent
-  and how fast they go.
+  and how fast they go. Each file is one line, its name and size after a
+  mark: none for a file at rest, a dashed circle for one waiting its turn, a
+  ring filling as it is sent; a file waiting on a reason says why when the
+  pointer rests on it.
   The upload queue's own subscription says only whether it is paused; how
   fast each upload goes, the bytes each download moves, and the percent each
   export reaches arrive apart, per file and per release.

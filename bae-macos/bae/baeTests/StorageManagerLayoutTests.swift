@@ -203,7 +203,9 @@ final class StorageManagerLayoutTests: XCTestCase {
         }
     }
 
-    func testInspectorShowsFileProgressAlongsideContents() async throws {
+    /// The inspector lists the release's files one line each, its upload's
+    /// progress drawn once above them and none on any row.
+    func testInspectorShowsEachFileOnOneLine() async throws {
         let size = NSSize(width: 940, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
             StorageManagerPreviewScene(
@@ -224,17 +226,24 @@ final class StorageManagerLayoutTests: XCTestCase {
                     .last { $0.documentView is NSTableView }
             )
             let files = try XCTUnwrap(fileList.documentView as? NSTableView)
-            // Two contents files, and the six uploads the fixture ties to no
-            // release file (including generated artwork), each on its own row.
-            XCTAssertEqual(files.numberOfRows, 8)
+            // The release's audio file and its cover.
+            XCTAssertEqual(files.numberOfRows, 2)
+            for row in 0..<files.numberOfRows {
+                XCTAssertLessThan(files.rect(ofRow: row).height, 40)
+            }
             XCTAssertFalse(
                 descendants.compactMap { $0 as? NSSegmentedControl }
                     .contains { $0.segmentCount == 2 }
             )
-            XCTAssertGreaterThanOrEqual(
+            XCTAssertEqual(
                 SnapshotTestSupport.descendants(of: fileList)
                     .compactMap { $0 as? ProgressTrackNSView }.count,
-                2
+                0
+            )
+            XCTAssertEqual(
+                descendants.compactMap { $0 as? ProgressTrackNSView }.count,
+                1,
+                "the release's upload summary draws the one bar"
             )
             let screenshot = try await SnapshotTestSupport.capturePNG(
                 host,
@@ -244,7 +253,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 data: screenshot,
                 uniformTypeIdentifier: "public.png"
             )
-            attachment.name = "Storage inspector with file progress"
+            attachment.name = "Storage inspector, one line per file"
             attachment.lifetime = .keepAlways
             add(attachment)
         }

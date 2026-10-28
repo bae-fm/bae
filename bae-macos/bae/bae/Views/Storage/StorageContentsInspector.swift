@@ -8,9 +8,6 @@ struct StorageContentsInspector: View {
     @Environment(Library.self)
     private var library
 
-    @Environment(OutboxStore.self)
-    private var outboxStore
-
     let releaseId: String
 
     /// The inspector's one read, moved as `releaseId` changes.
@@ -55,14 +52,7 @@ struct StorageContentsInspector: View {
             }
             else {
                 List(rows, id: \.file.id) { row in
-                    // Read for each row as it is placed, so a file's
-                    // changing rate redraws its row alone.
-                    StorageInspectorFileRow(
-                        row: row,
-                        throughputBps: row.upload.flatMap {
-                            outboxStore.throughput(forFile: $0.fileId)
-                        }
-                    )
+                    StorageInspectorFileRow(row: row)
                 }
                 .listStyle(.plain)
                 .accessibilityIdentifier("storage-inspector-files")
