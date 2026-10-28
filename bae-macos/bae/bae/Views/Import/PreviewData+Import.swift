@@ -371,7 +371,6 @@
                     standing: .notLookedUp,
                     badge: nil
                 ),
-                matched: nil,
                 metadataSummary: nil,
                 cover: nil,
                 importStatus: nil,

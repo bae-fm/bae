@@ -212,7 +212,6 @@ impl crate::types::BridgeTriageRow {
             // What the row's commands are decided from, which `live` already
             // decided.
             action_basis: _,
-            matched,
             metadata_summary,
             cover,
             import_status,
@@ -230,7 +229,6 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
-            matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             metadata_summary: metadata_summary
                 .map(crate::types::BridgeTriageMetadataSummary::from_core),
             cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
@@ -420,40 +418,6 @@ impl crate::types::BridgeFolderCheck {
             },
         }
     }
-}
-
-mirror_struct! {
-    crate::types::BridgeMatchedPressing = bae_core::import::MatchedPressing,
-    from_core: fn,
-    fields: { year, media: (each crate::types::BridgeMediaCount), track_count },
-}
-
-mirror_struct! {
-    crate::types::BridgeMatchEvidence = bae_core::import::MatchEvidence,
-    from_core: fn,
-    fields: {
-        source: (crate::types::BridgeCatalog),
-        signal: (opt crate::types::BridgeMatchedSignal),
-    },
-}
-
-mirror_struct! {
-    crate::types::BridgeMatchedRelease = bae_core::import::MatchedRelease,
-    from_core: pub(crate) fn,
-    fields: {
-        release_id,
-        title,
-        artist,
-        pressing: (opt crate::types::BridgeMatchedPressing),
-        cover: (opt crate::types::BridgeRemoteImageSet),
-        evidence: (crate::types::BridgeMatchEvidence),
-    },
-}
-
-mirror_enum! {
-    crate::types::BridgeMatchedSignal = bae_core::import::MatchedSignal,
-    from_core: pub(crate) fn,
-    variants: { DiscId, Barcode, Isrc, TitleSearch },
 }
 
 // ── The paged list ─────────────────────────────────────────────────────────

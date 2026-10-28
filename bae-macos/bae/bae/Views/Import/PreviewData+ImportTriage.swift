@@ -7,40 +7,10 @@
     extension PreviewData {
         // MARK: - Triage sidebar
 
-        /// A `BridgeMatchedRelease` fixture with a settled single pressing.
-        static func triageMatch(
-            releaseId: String,
-            title: String,
-            artist: String? = "Artist Name",
-            year: Int32? = 1997,
-            media: [BridgeMediaCount] = PreviewData.media(.cd),
-            trackCount: UInt32? = 12,
-            source: BridgeCatalog = .musicBrainz,
-            signal: BridgeMatchedSignal? = .discId
-        ) -> BridgeMatchedRelease {
-            BridgeMatchedRelease(
-                releaseId: releaseId,
-                title: title,
-                artist: artist,
-                pressing: BridgeMatchedPressing(
-                    year: year,
-                    media: media,
-                    trackCount: trackCount
-                ),
-                // A path `PreviewData.artImageStore()` serves from disk.
-                cover: BridgeRemoteImageSet(
-                    url: previewArtPath(title),
-                    downscaled: []
-                ),
-                evidence: BridgeMatchEvidence(source: source, signal: signal)
-            )
-        }
-
         /// A `BridgeTriageRow` fixture for an existing `Candidate` fixture.
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
-            matched: BridgeMatchedRelease?,
             metadataSummary: BridgeTriageMetadataSummary? = nil,
             cover: BridgeCoverImageSource? = nil,
             importStatus: BridgeTriageImportStatus? = nil,
@@ -56,7 +26,6 @@
                 actionable: true,
                 placement: placement,
                 live: live,
-                matched: matched,
                 metadataSummary: metadataSummary,
                 cover: cover,
                 importStatus: importStatus,
@@ -286,7 +255,6 @@
         static let triageRowUnidentified = triageRow(
             for: importTabUnidentifiedCandidate,
             placement: .pending,
-            matched: nil,
             metadataSummary: nil,
             cover: .local(file: previewArtFile("Front.png"))
         )
@@ -295,7 +263,6 @@
         static let triageRowPrefilledFromTags = triageRow(
             for: importTabTaggedCandidate,
             placement: .pending,
-            matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Twelve",
                 albumArtists: "Artist Name"
@@ -321,7 +288,6 @@
         static let triageRowIdentifiedOnline = triageRow(
             for: importTabIdentifiedCandidate,
             placement: .pending,
-            matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Thirteen",
                 albumArtists: "Artist Name"
@@ -340,7 +306,6 @@
         static let triageRowIdentifiedSeveralMatches = triageRow(
             for: importTabIdentifiedSeveralMatchesCandidate,
             placement: .pending,
-            matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Fourteen",
                 albumArtists: "Artist Name"
@@ -359,14 +324,6 @@
         static let triageRowIdentified = triageRow(
             for: importTabCandidate,
             placement: .pending,
-            matched: triageMatch(
-                releaseId: releaseDetailBridge.releaseId,
-                title: releaseDetailBridge.title,
-                artist: releaseDetailBridge.artist,
-                year: releaseDetailBridge.year,
-                media: releaseDetailBridge.facts.media,
-                trackCount: 9
-            ),
             metadataSummary: nil,
             metadataProvenance: .externalRelease(
                 record: BridgeMetadataRef(
@@ -380,18 +337,6 @@
         static let triageRowPickAPressing = triageRow(
             for: importTabSeveralMatchesCandidate,
             placement: .pending,
-            // Several matches leave the pressing unsettled.
-            matched: BridgeMatchedRelease(
-                releaseId: "rel-lead",
-                title: "Album Title Five",
-                artist: "Artist Name",
-                pressing: nil,
-                cover: nil,
-                evidence: BridgeMatchEvidence(
-                    source: .musicBrainz,
-                    signal: nil
-                )
-            ),
             metadataSummary: nil,
             importStatus: nil,
             live: triageLive(identifiedDraftCommands)
@@ -401,7 +346,6 @@
         static let triageRowSeveralMatchesFromSignals = triageRow(
             for: importTabDisagreementCandidate,
             placement: .pending,
-            matched: nil,
             metadataSummary: nil,
             live: triageLive(identifiedDraftCommands)
         )
@@ -409,12 +353,6 @@
         static let triageRowNoTracklist = triageRow(
             for: importTabNoTracklistCandidate,
             placement: .pending,
-            matched: triageMatch(
-                releaseId: "rel-no-tracklist",
-                title: "Album Title Seven",
-                year: 1994,
-                trackCount: nil
-            ),
             metadataSummary: nil,
             live: triageLive(identifiedDraftCommands)
         )
@@ -423,13 +361,6 @@
         static let triageRowAlreadyInLibrary = triageRow(
             for: importTabAlreadyInLibraryCandidate,
             placement: .pending,
-            matched: triageMatch(
-                releaseId: releaseDetailBridge.releaseId,
-                title: "Album Title (Reissue)",
-                year: 2004,
-                trackCount: 14,
-                signal: .barcode
-            ),
             metadataSummary: nil,
             metadataProvenance: .externalRelease(
                 record: BridgeMetadataRef(
@@ -443,7 +374,6 @@
         static let triageRowNoMatch = triageRow(
             for: importTabNoMatchCandidate,
             placement: .pending,
-            matched: nil,
             metadataSummary: nil,
             live: triageLive(
                 identifiedDraftCommands,
@@ -458,7 +388,6 @@
         static let triageRowIdentifying = triageRow(
             for: importTabIdentifyingCandidate,
             placement: .pending,
-            matched: nil,
             metadataSummary: nil,
             live: triageLive([.skip], identification: .running)
         )
@@ -477,11 +406,6 @@
         static let triageRowImporting = triageRow(
             for: importTabImportingCandidate,
             placement: .pending,
-            matched: triageMatch(
-                releaseId: "rel-importing",
-                title: importTabImportingCandidate.displayName,
-                trackCount: 15
-            ),
             metadataSummary: nil,
             live: triageLive([], importStanding: .running)
         )
@@ -489,7 +413,6 @@
         static let triageRowSkipped = triageRow(
             for: folderCandidates[1],
             placement: .skipped,
-            matched: nil,
             metadataSummary: nil,
             live: triageLive([.restore])
         )
@@ -499,7 +422,6 @@
         static let triageRowDoneImported = triageRow(
             for: importTabDoneCandidate,
             placement: .done,
-            matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Sixteen",
                 albumArtists: "Artist Name"
@@ -525,7 +447,6 @@
         static let triageRowDoneFromTags = triageRow(
             for: folderCandidates[0],
             placement: .done,
-            matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title",
                 albumArtists: "Artist Name"
@@ -544,13 +465,6 @@
         static let triageRowFailed = triageRow(
             for: importTabFailedCandidate,
             placement: .failed,
-            matched: triageMatch(
-                releaseId: "rel-failed",
-                title: importTabFailedCandidate.displayName,
-                trackCount: 18,
-                source: .discogs,
-                signal: .barcode
-            ),
             metadataSummary: nil,
             importStatus: .error(
                 error: .Diagnostic(
@@ -570,14 +484,6 @@
             triageRow(
                 for: importTabGroupedReadyCandidate,
                 placement: .pending,
-                matched: triageMatch(
-                    releaseId: releaseDetailBridge.releaseId,
-                    title: releaseDetailBridge.title,
-                    artist: releaseDetailBridge.artist,
-                    year: releaseDetailBridge.year,
-                    media: releaseDetailBridge.facts.media,
-                    trackCount: 9
-                ),
                 metadataSummary: nil,
                 metadataProvenance: .externalRelease(
                     record: BridgeMetadataRef(
@@ -590,7 +496,6 @@
             triageRow(
                 for: importTabGroupedCandidates[1],
                 placement: .pending,
-                matched: nil,
                 metadataSummary: nil,
                 live: triageLive(unidentifiedDraftCommands)
             ),

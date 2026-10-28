@@ -333,12 +333,12 @@ async fn fixture_candidates_carry_what_their_states_name() {
             .find(|row| row.display_path == path)
             .unwrap_or_else(|| panic!("{path} is listed"))
     };
-    assert_eq!(
-        row("Identified Folder")
-            .matched
-            .as_ref()
-            .map(|matched| matched.title.as_str()),
-        Some("Identified Folder")
+    assert!(
+        matches!(
+            row("Identified Folder").reading,
+            crate::import::triage::TriageReading::Identified { .. }
+        ),
+        "the row reads as linked to its release"
     );
     assert_eq!(
         row("Identified Folder")

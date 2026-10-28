@@ -15,6 +15,8 @@ use std::path::PathBuf;
 
 mod dates;
 mod identity;
+#[cfg(unix)]
+mod linked;
 mod list_read;
 mod skipped;
 
@@ -184,10 +186,10 @@ fn standings(
         .collect()
 }
 
-/// A candidate the user picked a release for leads with that release as its
-/// stored release describes it — not with whatever the verdict named.
+/// A candidate the user picked a release for reads as identified in the
+/// records its stored release describes — not in whatever the verdict named.
 #[tokio::test]
-async fn a_picked_row_leads_with_the_stored_release() {
+async fn a_picked_row_reads_in_the_stored_releases_records() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
@@ -240,12 +242,15 @@ async fn a_picked_row_leads_with_the_stored_release() {
         .load_import_list_read(request(TriageTab::Pending).await)
         .await
         .unwrap();
-    let matched = rows(&projection)[0]
-        .matched
-        .clone()
-        .expect("the row leads with the picked release");
-    assert_eq!(matched.release_id, "mb-picked");
-    assert_eq!(matched.title, "Picked Album");
+    assert_eq!(
+        rows(&projection)[0].reading,
+        crate::import::triage::TriageReading::Identified {
+            records: vec![crate::import::ReleaseRecord::new(
+                &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+                None,
+            )],
+        }
+    );
 }
 
 /// A pick of a release nothing stored is refused and leaves nothing behind.
@@ -284,26 +289,6 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
         None,
         "the refused pick left nothing behind"
     );
-}
-
-/// A row with a verdict and no pick leads with the verdict's lead match.
-#[tokio::test]
-async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
-    let (db, _tmp, root) = watched_root().await;
-    let candidate = scanned(&db, &root, "Album").await;
-    save_verdict(&db, &candidate, "mb-verdict").await;
-
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
-    let matched = rows(&projection)[0]
-        .matched
-        .clone()
-        .expect("the row leads with the verdict's lead");
-    assert_eq!(matched.release_id, "mb-verdict");
-    assert_eq!(matched.title, "Verdict Album");
-    assert_eq!(matched.artist.as_deref(), Some("Verdict Artist"));
 }
 
 /// A sole release whose document could not be read is not picked for the

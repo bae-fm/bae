@@ -560,51 +560,6 @@ pub fn bridge_folder_check_key(folder_check: &BridgeFolderCheck) -> String {
     folder_check.loc_key().to_string()
 }
 
-/// Which signal produced a match.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeMatchedSignal {
-    DiscId,
-    Barcode,
-    /// The search by the audio's ISRCs.
-    Isrc,
-    /// A catalog search for the candidate's album title.
-    TitleSearch,
-}
-
-/// Which provider answered and what matched.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeMatchEvidence {
-    pub source: BridgeCatalog,
-    /// `None` for a release the person picked themselves.
-    pub signal: Option<BridgeMatchedSignal>,
-}
-
-/// The facts that differ between editions of one album, present only once the
-/// pressing is settled.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeMatchedPressing {
-    pub year: Option<i32>,
-    /// Each carrier the source lists, with its count.
-    pub media: Vec<BridgeMediaCount>,
-    /// The source's track count, when it listed one.
-    pub track_count: Option<u32>,
-}
-
-/// The release identification matched for a row, kept on Skipped rows too.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeMatchedRelease {
-    /// The lead match's release id.
-    pub release_id: String,
-    /// The lead match's title, standing in for the album when several
-    /// pressings matched.
-    pub title: String,
-    pub artist: Option<String>,
-    pub pressing: Option<BridgeMatchedPressing>,
-    /// The lead pressing's cover, in every size its catalog serves.
-    pub cover: Option<BridgeRemoteImageSet>,
-    pub evidence: BridgeMatchEvidence,
-}
-
 /// The candidate's stored draft as its row shows it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageMetadataSummary {
@@ -765,7 +720,6 @@ pub struct BridgeTriageRow {
     /// offers and the state it is in with it. The list delivers the row again
     /// when it changes.
     pub live: BridgeCandidateLiveState,
-    pub matched: Option<BridgeMatchedRelease>,
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
     /// The cover the row draws, even when its draft is otherwise blank.
     pub cover: Option<BridgeCoverImageSource>,

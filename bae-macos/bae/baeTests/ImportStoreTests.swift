@@ -102,34 +102,11 @@ private func folderCandidate(
 
 // MARK: - Triage row builders
 
-private func matchedRelease(
-    releaseId: String,
-    title: String,
-    trackCount: UInt32? = 10,
-    cover: BridgeRemoteImageSet? = nil
-) -> BridgeMatchedRelease {
-    BridgeMatchedRelease(
-        releaseId: releaseId,
-        title: title,
-        artist: "Artist",
-        pressing: trackCount.map {
-            BridgeMatchedPressing(
-                year: 2000,
-                media: PreviewData.media(.cd),
-                trackCount: $0
-            )
-        },
-        cover: cover,
-        evidence: BridgeMatchEvidence(source: .musicBrainz, signal: .discId)
-    )
-}
-
-/// An identified Pending row: matched, no import status. Shared with the
+/// An identified Pending row: linked, no import status. Shared with the
 /// paged list's tests.
 func identifiedRow(
     _ key: String,
     title: String,
-    matchedCover: BridgeRemoteImageSet? = nil,
     metadataSummary: BridgeTriageMetadataSummary? = nil,
     cover: BridgeCoverImageSource? = nil
 ) -> BridgeTriageRow {
@@ -146,11 +123,6 @@ func identifiedRow(
             actions: [],
             standing: .notLookedUp,
             badge: nil
-        ),
-        matched: matchedRelease(
-            releaseId: "rel-\(key)",
-            title: title,
-            cover: matchedCover
         ),
         metadataSummary: metadataSummary,
         cover: cover,
@@ -185,7 +157,6 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
             standing: .notLookedUp,
             badge: nil
         ),
-        matched: nil,
         metadataSummary: nil,
         cover: nil,
         importStatus: nil,
@@ -364,10 +335,6 @@ struct ImportStoreSidebarCoverTests {
             let row = identifiedRow(
                 key,
                 title: "Subject",
-                matchedCover: BridgeRemoteImageSet(
-                    url: "https://example.com/queue-cover.jpg",
-                    downscaled: []
-                ),
                 metadataSummary: BridgeTriageMetadataSummary(
                     albumTitle: "Applied Draft",
                     albumArtists: ""
@@ -390,19 +357,5 @@ struct ImportStoreSidebarCoverTests {
                     == ImageContent(bridge: choice.image)
             )
         }
-    }
-
-    @Test("the sidebar renders only the cover resolved by core")
-    func sidebarDoesNotDeriveACoverFromMatchMetadata() {
-        let row = identifiedRow(
-            "/w/subject",
-            title: "Subject",
-            matchedCover: BridgeRemoteImageSet(
-                url: "https://example.com/queue-cover.jpg",
-                downscaled: []
-            )
-        )
-
-        #expect(ImportStore().sidebarCover(for: row) == nil)
     }
 }

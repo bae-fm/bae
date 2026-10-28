@@ -706,6 +706,9 @@ Everything the list shows is read from tables, one read for its rows, its
 counts and its selection: each release's tab, state, group, dates, shown text
 and what its commands are decided from are kept beside it as it changes
 (Appendix A.7), so the list reads the rows it shows and not the whole queue.
+A row reads none of its folder's files, so a folder on a slow or unreachable
+volume does not hold up the list, and a linked row reads only the records its
+stored releases name, not the releases whole.
 Its counts — each tab's, each filter entry's, how many items the list holds
 and how many releases its filters keep, and how many each group's header
 counts — are kept beside the placement as rows move, so reading them costs

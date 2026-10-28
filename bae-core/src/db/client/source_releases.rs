@@ -2,8 +2,9 @@
 //! extraction left it.
 //!
 //! A release is written whole when it is fetched and read whole by every
-//! import surface. Writing it again replaces every row under it in one
-//! transaction, so a reader sees one extraction or the other, never a mix.
+//! import surface but the import list's rows, which read only the records it
+//! names. Writing it again replaces every row under it in one transaction, so
+//! a reader sees one extraction or the other, never a mix.
 
 use super::*;
 use crate::import::album_links::AlbumLinks;
@@ -695,6 +696,77 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         notes,
         unfetched,
     }))
+}
+
+/// The records the stored release `release`, filed under `source_group_id`,
+/// names past its own — what the other catalogs say it is, and the albums its
+/// album's statements join to it — in the order surfaces list catalogs, and
+/// those joined albums.
+fn other_records_on<S: QueryOne + QueryRows>(
+    sql: &S,
+    release: &MetadataRef,
+    source_group_id: Option<&str>,
+) -> Result<(Vec<ReleaseRecord>, Vec<MetadataRef>), DbError> {
+    let mut other_records: Vec<ReleaseRecord> = sql
+        .query(
+            "SELECT record_catalog, kind, key, album_key FROM source_release_record \
+             WHERE catalog = ? AND release_id = ?",
+            params![release.catalog.as_str(), release.key],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                ))
+            },
+        )?
+        .into_iter()
+        .map(|(record_catalog, kind, record_key, album_key)| {
+            let reference = MetadataRef::new(catalog_column(&record_catalog)?, record_key);
+            match kind.as_str() {
+                "pressing" => Ok(ReleaseRecord::new(&reference, album_key)),
+                "album" => Ok(ReleaseRecord::album(&reference)),
+                other => Err(unreadable("record kind", other)),
+            }
+        })
+        .collect::<Result<_, DbError>>()?;
+    let joined = super::album_link_rows::joined_albums_on(
+        sql,
+        release.catalog,
+        source_group_id,
+        &other_records,
+    )?;
+    other_records.extend(joined.iter().map(ReleaseRecord::album));
+    other_records
+        .sort_by_key(|record| crate::import::source_release::catalog_rank(record.catalog()));
+    Ok((other_records, joined))
+}
+
+/// Every record the stored release `release` names, its own first — what
+/// [`SourceRelease::records`] answers of it — read without the rest of the
+/// release: its tracklist, covers and credits stay unread. `None` when
+/// nothing stored it.
+pub(super) fn load_release_records_on<S: QueryOne + QueryRows>(
+    sql: &S,
+    release: &MetadataRef,
+) -> Result<Option<Vec<ReleaseRecord>>, DbError> {
+    let Some(source_group_id) = sql
+        .query_row(
+            "SELECT source_group_id FROM source_release WHERE catalog = ? AND release_id = ?",
+            params![release.catalog.as_str(), release.key],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()?
+    else {
+        return Ok(None);
+    };
+    let (others, _) = other_records_on(sql, release, source_group_id.as_deref())?;
+    Ok(Some(crate::import::source_release::release_records(
+        release,
+        source_group_id,
+        others,
+    )))
 }
 
 impl Database {

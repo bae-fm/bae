@@ -19,12 +19,10 @@
 //! order is [`crate::import::list`]'s.
 
 use super::folder_scanner::FolderReleaseDecisionKey;
-use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::ReleaseLink;
 use super::ImportedRelease;
 use super::MetadataAuthor;
-use crate::identify::{FolderCheck, LeadMatch, VerdictSummary};
-use bae_catalogs::catalog::Catalog;
+use crate::identify::{FolderCheck, VerdictSummary};
 
 mod actions;
 mod model;
@@ -138,6 +136,9 @@ impl TriageRuntimeFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::identify::LeadMatch;
+    use crate::import::search::SourceTracks;
+    use bae_catalogs::catalog::Catalog;
 
     /// The pane states the found release's failed check while identification's
     /// pick or nobody's draft stands; a person's or the tags' valid draft is

@@ -616,7 +616,8 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
 
     let primary = primary.extract().expect("the primary extracts");
     let partner = partner.extract().expect("the partner extracts");
-    let records = crate::import::source_release::claimed_records(&[&primary, &partner]);
+    let records =
+        crate::import::source_release::claimed_records(&[primary.records(), partner.records()]);
 
     assert_eq!(records.len(), 2);
     assert_eq!(records[0].catalog(), Catalog::MusicBrainz);

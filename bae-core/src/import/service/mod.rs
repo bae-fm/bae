@@ -721,7 +721,10 @@ pub(crate) fn records_for_commit(
     primary: &crate::import::source_release::SourceRelease,
     partners: &[crate::import::source_release::SourceRelease],
 ) -> Vec<crate::import::ReleaseRecord> {
-    let claimed: Vec<_> = std::iter::once(primary).chain(partners).collect();
+    let claimed: Vec<_> = std::iter::once(primary)
+        .chain(partners)
+        .map(crate::import::source_release::SourceRelease::records)
+        .collect();
     crate::import::source_release::claimed_records(&claimed)
 }
 

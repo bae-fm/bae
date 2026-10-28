@@ -26,7 +26,6 @@
             triageRow(
                 for: glyphCandidate(folder),
                 placement: .pending,
-                matched: nil,
                 metadataSummary: glyphSummary,
                 cover: .local(file: previewArtFile("Front.png")),
                 metadataProvenance: readFromRecord

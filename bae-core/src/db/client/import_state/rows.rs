@@ -340,20 +340,12 @@ type FinishMatches =
     Box<dyn FnOnce() -> Result<HashMap<String, StoredMatches>, DbError> + Send + 'static>;
 
 /// The stored matches of every candidate `only` names, keyed by content
-/// hash.
+/// hash, read now and assembled by the closure it answers with.
 ///
 /// The whole row per match rather than a count and a lead, and the barcode,
 /// medium and link rows that hang off it: how many *pressings* a verdict named
 /// is decided by grouping them, which needs everything each one states. The
-/// one reader of these columns, for the pane's whole verdict and for the
-/// queue list's summary alike.
-pub(crate) fn load_matches_on(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    only: CandidateRows<'_>,
-) -> Result<HashMap<String, StoredMatches>, DbError> {
-    load_matches_rows_on(sql, only)?()
-}
-
+/// one reader of these columns, for the pane's whole verdict.
 pub(crate) fn load_matches_rows_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     only: CandidateRows<'_>,

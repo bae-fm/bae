@@ -302,14 +302,11 @@ impl SourceRelease {
     /// level: its own first, then what the other catalogs say, in catalog
     /// order.
     pub fn records(&self) -> Vec<ReleaseRecord> {
-        let mut others = self.other_records.clone();
-        others.sort_by_key(|record| catalog_rank(record.catalog()));
-        let mut records = vec![ReleaseRecord::new(
+        release_records(
             &self.release,
             self.source_group_id.clone(),
-        )];
-        records.extend(others);
-        records
+            self.other_records.clone(),
+        )
     }
 
     /// The mediums the coverage names, in release order.
@@ -514,21 +511,37 @@ pub(crate) async fn pick_gallery_covers(
     Ok(covers)
 }
 
+/// Every catalog identity of `release`, filed under `source_group_id`: its own
+/// record first, then `others`, what the other catalogs say, in catalog
+/// order.
+pub(crate) fn release_records(
+    release: &MetadataRef,
+    source_group_id: Option<String>,
+    mut others: Vec<ReleaseRecord>,
+) -> Vec<ReleaseRecord> {
+    others.sort_by_key(|record| catalog_rank(record.catalog()));
+    let mut records = vec![ReleaseRecord::new(release, source_group_id)];
+    records.extend(others);
+    records
+}
+
 /// The records the releases one pick claims describe together.
 ///
-/// `claimed` is the primary first — the release the draft is read from — then
-/// each partner.
+/// `claimed` is each claimed release's [`SourceRelease::records`], its own
+/// record first: the primary's first — the release the draft is read from —
+/// then each partner's.
 ///
 /// The primary's facts are read first, so what they say about another catalog
 /// stands unless that catalog is one the person themselves claimed — a
 /// claimed release's own record outranks what an editor cross-linked to it.
 /// The primary's own record is the list's first, the applied one; the rest
 /// follow in the order surfaces list catalogs.
-pub fn claimed_records(claimed: &[&SourceRelease]) -> Vec<ReleaseRecord> {
+pub fn claimed_records(claimed: &[Vec<ReleaseRecord>]) -> Vec<ReleaseRecord> {
+    let own_catalog = |release: &Vec<ReleaseRecord>| release.first().map(ReleaseRecord::catalog);
     let mut records: Vec<ReleaseRecord> = Vec::new();
     for release in claimed {
-        for record in release.records() {
-            let claimed_by_the_person = record.catalog() == release.release.catalog;
+        for record in release.iter().cloned() {
+            let claimed_by_the_person = Some(record.catalog()) == own_catalog(release);
             match records
                 .iter_mut()
                 .find(|existing| existing.catalog() == record.catalog())
@@ -539,7 +552,7 @@ pub fn claimed_records(claimed: &[&SourceRelease]) -> Vec<ReleaseRecord> {
             }
         }
     }
-    let applied = claimed.first().map(|primary| primary.release.catalog);
+    let applied = claimed.first().and_then(own_catalog);
     records.sort_by_key(|record| {
         (
             Some(record.catalog()) != applied,

@@ -186,26 +186,25 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         }],
         "a manual pick does not erase the candidate's extracted signal source"
     );
-    let matched = queue_row(&fixture, &key)
-        .await
-        .matched
-        .expect("the row leads with the release the pick settled it on");
-    assert_eq!(matched.release_id, "mb-picked-1");
-    assert_eq!(matched.title, "Picked Album Title");
-    assert_eq!(matched.artist.as_deref(), Some("Picked Artist Name"));
-    let cover = matched
-        .cover
-        .expect("the picked release's document says the archive holds a front image");
-    assert!(
-        cover.url.ends_with("/release/mb-picked-1/front"),
-        "the row's cover is the archive's address for the picked release's \
-         front image, got {}",
-        cover.url
+    let row = queue_row(&fixture, &key).await;
+    assert_eq!(
+        row.release_link,
+        Some(crate::import::ReleaseLink::Pressing(
+            crate::import::PressingLink {
+                record: crate::import::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                    "mb-picked-1".to_string(),
+                ),
+                partners: vec![],
+            }
+        )),
+        "the row is linked to the release the pick settled it on"
     );
-    assert!(
-        cover.url_covering(Some(80)).ends_with("/release/mb-picked-1/front-250"),
-        "a row-sized slot reads the archive's smallest copy"
-    );
+    let summary = row
+        .metadata_summary
+        .expect("the row shows the draft the pick read");
+    assert_eq!(summary.album_title, "Picked Album Title");
+    assert_eq!(summary.album_artists, "Picked Artist Name");
 }
 
 /// A pick is written with the candidate, so the answer, the row's resume

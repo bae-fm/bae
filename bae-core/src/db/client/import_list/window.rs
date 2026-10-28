@@ -3,27 +3,27 @@
 //!
 //! A release's row comes from its placement — what it shows, its state and
 //! what its commands are decided from — and the keyed rows beside it: its
-//! scan, its stored lookup's lead, its link, its draft's source, its cover
-//! and what is running for it. A group's header says how many of its
-//! releases the filters keep, whether the list folds it, and whether its
-//! folder is offered to be read as one release, as its placement holds it.
+//! scan, its link and the records of the stored releases the link names, its
+//! draft's source, its cover and what is running for it. None of it opens
+//! the folder's files. A group's header says how many of its releases the
+//! filters keep, whether the list folds it, and whether its folder is offered
+//! to be read as one release, as its placement holds it.
 
 use super::super::folder_scans;
 use super::super::import_state::{
-    load_covers_on, load_matches_on, load_provenance_on, load_release_links_on, RuntimeFactColumns,
+    load_covers_on, load_provenance_on, load_release_links_on, RuntimeFactColumns,
     RUNTIME_FACT_COLUMNS,
 };
 use super::super::query::CandidateRows;
-use super::super::release_groupings::{block_of, load_candidate_on};
-use super::super::source_releases::load_source_release_on;
+use super::super::release_groupings::block_of;
+use super::super::source_releases::load_release_records_on;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
-use crate::identify::LeadMatch;
-use crate::import::folder_scanner::{CategorizedFiles, FileVersion, ScanItem};
+use crate::import::folder_scanner::{FileVersion, ScanItem};
 use crate::import::list::{ImportListItem, ListedRelease};
 use crate::import::triage::{
-    import_status_of, MatchedRelease, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
+    import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
 use crate::import::{CoverSelection, FolderReleaseDecisionKey, PressingLink, ReleaseLink};
 use std::path::PathBuf;
@@ -49,7 +49,6 @@ pub(super) fn materialise(
         .filter_map(|release| release.content_hash.as_deref())
         .collect();
     let current = CandidateRows::Of(&current);
-    let mut matches = load_matches_on(sql, current)?;
     let mut provenances = load_provenance_on(sql, current)?;
     let mut links = load_release_links_on(sql, current)?;
     let mut covers = load_covers_on(sql, current)?;
@@ -72,19 +71,15 @@ pub(super) fn materialise(
             if key.item == Item::Invalid {
                 return invalid_item(sql, release);
             }
-            // The lookup's lead, the draft's source, the link and the cover
-            // are the candidate's own only while its state describes its
-            // current files.
+            // The draft's source, the link and the cover are the
+            // candidate's own only while its state describes its current
+            // files.
             let hash = release.content_hash.clone().filter(|_| release.current);
             let hash = hash.as_ref();
-            let lead = hash
-                .and_then(|hash| matches.remove(hash))
-                .and_then(|matches| matches.found.into_iter().next())
-                .map(|stored| LeadMatch::of(&stored.result, Some(&stored.provenance)));
             let provenance = hash.and_then(|hash| provenances.remove(hash));
             let link = hash.and_then(|hash| links.remove(hash));
             let cover = hash.and_then(|hash| covers.remove(hash));
-            candidate_item(sql, release, header_position, lead, provenance, link, cover)
+            candidate_item(sql, release, header_position, provenance, link, cover)
         })
         .collect()
 }
@@ -183,8 +178,6 @@ struct ReleaseRows {
     block: (Option<String>, Option<String>, Option<String>),
     failure: Option<crate::import::ImportFailureReason>,
     facts: RuntimeFactColumns,
-    /// Whether the stored lookup settled on exactly one pressing.
-    settled: bool,
     selected: bool,
 }
 
@@ -209,10 +202,6 @@ fn release_rows<'a>(
                     g.blocked, g.blocked_subject, g.blocked_holder, \
                     failure.content_hash IS NOT NULL AS failed, {FAILURE_REASON_COLUMNS}, \
                     {RUNTIME_FACT_COLUMNS}, \
-                    v.kind IS 'found' AND (SELECT COUNT(DISTINCT m.pressing) \
-                                           FROM import_candidate_match AS m \
-                                           WHERE m.content_hash = v.content_hash \
-                                             AND m.narrowed_out = 0) = 1 AS settled, \
                     EXISTS (SELECT 1 FROM import_list_selection AS chosen \
                             WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected \
              FROM json_each(:keys) AS w \
@@ -222,7 +211,6 @@ fn release_rows<'a>(
              LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
              LEFT JOIN import_candidate_state AS s \
                  ON s.content_hash = c.content_hash AND s.edit_revision = c.file_edit_revision \
-             LEFT JOIN import_candidate_verdict AS v ON v.content_hash = s.content_hash \
              LEFT JOIN local_release_origin AS origin ON origin.content_hash = c.content_hash \
              LEFT JOIN releases AS released ON released.id = origin.release_id \
              LEFT JOIN import_candidate_failure AS failure \
@@ -264,7 +252,6 @@ fn release_rows<'a>(
                     false => None,
                 },
                 facts: RuntimeFactColumns::read(row, 27)?,
-                settled: row.get("settled")?,
                 selected: row.get("selected")?,
             })
         },
@@ -302,7 +289,6 @@ fn candidate_item(
     sql: &SqlReadContext<'_>,
     release: ReleaseRows,
     header_position: Option<u64>,
-    lead: Option<LeadMatch>,
     metadata_provenance: Option<crate::import::MetadataProvenance>,
     release_link: Option<ReleaseLink>,
     cover: Option<CoverSelection>,
@@ -316,21 +302,11 @@ fn candidate_item(
         block.as_ref(),
         release.failure.as_ref(),
     );
-    // A linked release outranks the lookup's lead. A pressing's releases are
-    // read in this snapshot and interpreted after it ends; an album names its
-    // records itself.
+    // A pressing's releases' records are read in this snapshot and put
+    // together after it ends; an album names its records itself.
     let picked = match release_link.as_ref() {
         Some(ReleaseLink::Pressing(pressing)) => {
-            let files = load_candidate_on(sql, &release.key)?
-                .ok_or_else(|| {
-                    DbError::Message(format!(
-                        "candidate {} vanished while reading its presentation",
-                        release.key
-                    ))
-                })?
-                .candidate
-                .files;
-            Some(LinkedRows::Pressing(picked_release(sql, pressing, files)?))
+            Some(LinkedRows::Pressing(claimed_records(sql, pressing)?))
         }
         Some(ReleaseLink::Album(album)) => Some(LinkedRows::Album(album.records())),
         None => None,
@@ -347,13 +323,6 @@ fn candidate_item(
         actionable: basis.actionable,
         placement: basis.placement,
         action_basis: basis.clone(),
-        // A draft read from somewhere with no link names no release, so
-        // nothing leads the row then: the lookup's lead does not stand in
-        // for a pick.
-        matched: match (&release_link, &metadata_provenance) {
-            (None, None) => lead.map(|lead| MatchedRelease::of_lead(&lead, release.settled)),
-            (Some(_), _) | (None, Some(_)) => None,
-        },
         reading: TriageReading::of(release.summary.as_ref(), release_link.as_ref(), Vec::new()),
         metadata_summary: release.summary.clone(),
         cover: None,
@@ -397,29 +366,15 @@ impl WindowItemRows {
                 cover,
                 header_position,
             } => {
-                match picked {
-                    Some(LinkedRows::Pressing(picked)) => {
-                        let PickedRelease { matched, records } = picked.process()?;
-                        row.matched = Some(matched);
-                        // The reading the row was placed with named no
-                        // records; this is where the documents are read.
-                        row.reading = TriageReading::of(
-                            row.metadata_summary.as_ref(),
-                            row.release_link.as_ref(),
-                            records,
-                        );
-                    }
-                    // An album is no pressing, so nothing leads the row: the
-                    // lookup's lead is one of the pressings the person could
-                    // not tell their copy from.
-                    Some(LinkedRows::Album(records)) => {
-                        row.reading = TriageReading::of(
-                            row.metadata_summary.as_ref(),
-                            row.release_link.as_ref(),
-                            records,
-                        );
-                    }
-                    None => {}
+                // The reading the row was placed with named no records;
+                // this is where the linked releases' records are put
+                // together.
+                if let Some(picked) = picked {
+                    row.reading = TriageReading::of(
+                        row.metadata_summary.as_ref(),
+                        row.release_link.as_ref(),
+                        picked.records(),
+                    );
                 }
                 row.cover = cover;
                 Ok(ImportListItem::Candidate {
@@ -432,55 +387,22 @@ impl WindowItemRows {
     }
 }
 
-/// What a linked row's link reads: a pressing's stored releases, or an
-/// album's records, which the link names itself.
+/// What a linked row's link reads: the records of each release a pressing
+/// claims, the primary's first and then its partners', each release's own
+/// record first; or an album's records, which the link names itself.
 #[derive(Clone, PartialEq)]
 pub(super) enum LinkedRows {
-    Pressing(PickedReleaseRows),
+    Pressing(Vec<Vec<crate::import::ReleaseRecord>>),
     Album(Vec<crate::import::ReleaseRecord>),
 }
 
-#[derive(Clone, PartialEq)]
-pub(super) struct PickedReleaseRows {
-    /// Every release the link claims, the primary first and then its
-    /// partners.
-    claimed: Vec<crate::import::source_release::SourceRelease>,
-    files: CategorizedFiles,
-}
-
-/// What the picked releases say: the release the row leads with, and every
-/// catalog that describes it.
-pub(super) struct PickedRelease {
-    matched: MatchedRelease,
-    records: Vec<crate::import::ReleaseRecord>,
-}
-
-impl PickedReleaseRows {
-    fn process(self) -> Result<PickedRelease, DbError> {
-        // The folder's audio as it stands — its rip logs and sheets read
-        // now — which the primary's tracklist is counted against.
-        let audio = crate::import::catalog_reading::ReadAudio::of_files(&self.files)
-            .map_err(|error| DbError::Message(error.to_string()))?;
-        let records = crate::import::source_release::claimed_records(
-            &self.claimed.iter().collect::<Vec<_>>(),
-        );
-        // Only the link's primary release states the row's facts; a
-        // partner's own release is not a second set of them. Its artwork is
-        // another matter: a row's cover is the pick's, so the partners go to
-        // the detail that carries the cover options.
-        let (primary, partners) = self
-            .claimed
-            .split_first()
-            .expect("a pick claims at least its primary");
-        let detail = primary.detail(partners);
-        Ok(PickedRelease {
-            matched: MatchedRelease::of_pick(
-                primary.release().catalog,
-                &detail,
-                crate::import::catalog_reading::listing(&primary.read(&audio), &audio),
-            ),
-            records,
-        })
+impl LinkedRows {
+    /// Every catalog that describes what the row is linked to.
+    fn records(self) -> Vec<crate::import::ReleaseRecord> {
+        match self {
+            Self::Pressing(claimed) => crate::import::source_release::claimed_records(&claimed),
+            Self::Album(records) => records,
+        }
     }
 }
 
@@ -592,16 +514,15 @@ pub(super) fn stored_embedded_cover(
     ))
 }
 
-/// Every release a linked pressing claims, with the stored release for each.
-fn picked_release(
+/// The records of every stored release a linked pressing claims, the
+/// primary's first.
+fn claimed_records(
     sql: &SqlReadContext<'_>,
     link: &PressingLink,
-    files: CategorizedFiles,
-) -> Result<PickedReleaseRows, DbError> {
-    let claimed = link
-        .claimed()
+) -> Result<Vec<Vec<crate::import::ReleaseRecord>>, DbError> {
+    link.claimed()
         .map(|release| {
-            load_source_release_on(sql, release)?.ok_or_else(|| {
+            load_release_records_on(sql, release)?.ok_or_else(|| {
                 DbError::Message(format!(
                     "{} release {} is linked but nothing stored it",
                     release.catalog.as_str(),
@@ -609,6 +530,5 @@ fn picked_release(
                 ))
             })
         })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(PickedReleaseRows { claimed, files })
+        .collect()
 }

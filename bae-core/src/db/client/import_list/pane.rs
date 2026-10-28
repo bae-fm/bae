@@ -124,9 +124,12 @@ pub(super) fn load_candidate_detail_on(
     // pressing's releases describe it, an album names its own.
     let records = match &release_link {
         Some(ReleaseLink::Album(album)) => album.records(),
-        Some(ReleaseLink::Pressing(_)) | None => {
-            crate::import::source_release::claimed_records(&claimed.iter().collect::<Vec<_>>())
-        }
+        Some(ReleaseLink::Pressing(_)) | None => crate::import::source_release::claimed_records(
+            &claimed
+                .iter()
+                .map(crate::import::source_release::SourceRelease::records)
+                .collect::<Vec<_>>(),
+        ),
     };
     let picked_library_status = match claimed.first() {
         Some(release) => check_releases_in_library_on(sql, &[release.library_check()])?

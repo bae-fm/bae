@@ -123,7 +123,6 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
                 standing: .notLookedUp,
                 badge: nil
             ),
-            matched: nil,
             metadataSummary: nil,
             cover: nil,
             importStatus: nil,

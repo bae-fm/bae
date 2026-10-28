@@ -75,69 +75,6 @@ pub enum IdentificationStatus {
     FinalizationFailed { failure: crate::import::SaveFailure },
 }
 
-/// Which lookup produced a match, strongest first: the row's evidence chip
-/// names the strongest one that claims it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MatchedSignal {
-    /// The disc's table of contents.
-    DiscId,
-    Barcode,
-    /// The search by the audio's ISRCs.
-    Isrc,
-    /// A catalog search for the candidate's album title.
-    TitleSearch,
-}
-
-impl MatchedSignal {
-    /// `None` for a release the person picked themselves.
-    fn of(lead: &LeadMatch) -> Option<Self> {
-        if lead.by_disc_id {
-            Some(Self::DiscId)
-        } else if lead.by_barcode {
-            Some(Self::Barcode)
-        } else if lead.by_isrc {
-            Some(Self::Isrc)
-        } else if lead.by_search {
-            Some(Self::TitleSearch)
-        } else {
-            None
-        }
-    }
-}
-
-/// Which provider answered, and what matched.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MatchEvidence {
-    pub source: Catalog,
-    pub signal: Option<MatchedSignal>,
-}
-
-/// The facts that differ between editions of one album, present only once the
-/// pressing is settled.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MatchedPressing {
-    pub year: Option<i32>,
-    /// Each carrier the source lists, with its count.
-    pub media: Vec<bae_types::pressing::MediaCount>,
-    /// The source's track count, when it listed one.
-    pub track_count: Option<u32>,
-}
-
-/// The release identification matched for a row, kept on Skipped rows too.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MatchedRelease {
-    /// The lead match's release id.
-    pub release_id: String,
-    /// The lead match's title, standing in for the album when several
-    /// pressings matched.
-    pub title: String,
-    pub artist: Option<String>,
-    pub pressing: Option<MatchedPressing>,
-    /// The lead pressing's cover, in every size its catalog serves.
-    pub cover: Option<bae_catalogs::remote_image::RemoteImageSet>,
-    pub evidence: MatchEvidence,
-}
-
 /// The candidate's stored draft as the row shows it, independent of what
 /// identification matched.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,60 +95,6 @@ impl TriageMetadataSummary {
             album_title: draft.album_title.clone(),
             album_artists: crate::import::credited_line(&draft.album_artist_assignments),
         })
-    }
-}
-
-impl MatchedRelease {
-    /// The release a stored verdict leads with, `lead`; its pressing only when
-    /// the verdict is `settled`, having found exactly one. A failed lookup may
-    /// have named other pressings, so it never is.
-    pub fn of_lead(lead: &LeadMatch, settled: bool) -> Self {
-        Self {
-            release_id: lead.release_id.clone(),
-            title: lead.title.clone(),
-            artist: lead.artist.clone(),
-            pressing: settled.then(|| MatchedPressing {
-                year: lead.year,
-                media: lead.media.clone(),
-                track_count: source_track_count(&lead.source_tracks),
-            }),
-            cover: lead.cover.clone(),
-            evidence: MatchEvidence {
-                source: lead.source,
-                signal: MatchedSignal::of(lead),
-            },
-        }
-    }
-
-    /// The release the person picked, as its documents describe it, its
-    /// tracklist `source_tracks` as read against the folder's audio.
-    pub fn of_pick(
-        source: Catalog,
-        detail: &ImportSearchReleaseDetail,
-        source_tracks: SourceTracks,
-    ) -> Self {
-        Self {
-            release_id: detail.release_id.clone(),
-            title: detail.title.clone(),
-            artist: detail.artist.clone(),
-            pressing: Some(MatchedPressing {
-                year: detail.year,
-                media: detail.facts.media.clone(),
-                track_count: source_track_count(&Some(source_tracks)),
-            }),
-            cover: detail.default_cover().map(|cover| cover.image.clone()),
-            evidence: MatchEvidence {
-                source,
-                signal: None,
-            },
-        }
-    }
-}
-
-fn source_track_count(source_tracks: &Option<SourceTracks>) -> Option<u32> {
-    match source_tracks {
-        Some(SourceTracks::Listed { count }) => Some(*count),
-        Some(SourceTracks::Nothing | SourceTracks::Unreadable) | None => None,
     }
 }
 
@@ -278,7 +161,6 @@ pub struct TriageRow {
     pub placement: TriagePlacement,
     /// What the row's commands are decided from in the tables.
     pub action_basis: CandidateActionBasis,
-    pub matched: Option<MatchedRelease>,
     pub metadata_summary: Option<TriageMetadataSummary>,
     /// The cover the row draws: the chosen one, the matched artwork, or the
     /// folder's default image.
