@@ -5,9 +5,9 @@ import SwiftUI
 /// cancel button.
 struct DownloadRow: View {
     let op: BridgeDownloadOp
-    /// The stream of how far the download has gone, which the row's native
-    /// readout sets itself from while the download runs.
-    let transfer: KeyedValueSource<BridgeDownloadTransferProgress>
+    /// The latest progress of the download, which the row's native readout
+    /// reads each display frame while the download runs.
+    let transfer: LatestSource<BridgeDownloadTransferProgress>
     let onCancel: () -> Void
 
     var body: some View {
@@ -71,7 +71,7 @@ struct DownloadRow: View {
                 DownloadRow(
                     op: op,
                     transfer: PreviewData.downloadStore()
-                        .releaseTransfer(forRelease: op.releaseId),
+                        .downloadProgress(forRelease: op.releaseId),
                     onCancel: {}
                 )
                 Divider()

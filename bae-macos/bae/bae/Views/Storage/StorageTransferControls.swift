@@ -51,7 +51,7 @@ struct StorageTransferControls: View {
             // A failed download: the row says why and offers its cancel.
             DownloadRow(
                 op: operation,
-                transfer: downloadStore.releaseTransfer(
+                transfer: downloadStore.downloadProgress(
                     forRelease: operation.releaseId
                 )
             ) {

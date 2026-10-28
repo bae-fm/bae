@@ -47,7 +47,7 @@ private struct StorageReleaseUploadProgress: View {
         if sending {
             TransferReadout(
                 stream: .upload(
-                    outboxStore.releaseTransfer(forRelease: releaseId)
+                    outboxStore.uploadProgress(forRelease: releaseId)
                 ),
                 kind: .upload
             )

@@ -54,7 +54,7 @@ private struct StoragePinProgress: View {
 
     var body: some View {
         TransferReadout(
-            stream: .pin(downloadStore.releaseTransfer(forRelease: releaseId)),
+            stream: .pin(downloadStore.downloadProgress(forRelease: releaseId)),
             kind: .pin
         )
     }

@@ -3,10 +3,10 @@ import BaeKit
 import SwiftUI
 
 /// A release transfer's readout: the bytes it holds of its size and how fast
-/// it goes on one line, over a bar of the same bytes, all set straight from
-/// the release's keyed stream. Moving bytes set the labels' text and the
-/// bar's fill and run no SwiftUI update. Before the stream names the release
-/// the labels are empty and the bar empty.
+/// it goes on one line, over a bar of the same bytes, all read from the
+/// release's latest progress once per display frame while it moves. Moving
+/// bytes run no SwiftUI update. Before the stream names the release the
+/// labels are empty and the bar empty.
 final class TransferReadoutNSView: NSView {
     /// The gap between the line of text and the bar.
     static let lineGap: CGFloat = 10
@@ -14,8 +14,26 @@ final class TransferReadoutNSView: NSView {
     private let bytesField = NSTextField(labelWithString: "")
     private let rateField = NSTextField(labelWithString: "")
     private let bar: ProgressTrackNSView
-    private let uploads = KeyedValueFollowing<BridgeReleaseUploadTransfer>()
-    private let pins = KeyedValueFollowing<BridgeDownloadTransferProgress>()
+    private lazy var uploads = FrameFollowing<BridgeReleaseUploadTransfer>(
+        view: self
+    ) { [weak self] transfer in
+        self?
+            .show(
+                bytes: transfer?.bar.text,
+                rate: transfer.map(\.throughputBps),
+                fraction: transfer?.bar.fraction
+            )
+    }
+    private lazy var pins = FrameFollowing<BridgeDownloadTransferProgress>(
+        view: self
+    ) { [weak self] progress in
+        self?
+            .show(
+                bytes: progress?.bytesText,
+                rate: progress?.throughputBps,
+                fraction: progress?.fraction
+            )
+    }
 
     var tint: NSColor {
         get { bar.accent }
@@ -84,28 +102,14 @@ final class TransferReadoutNSView: NSView {
         NSSize(width: NSView.noIntrinsicMetric, height: Self.height)
     }
 
-    func follow(_ stream: ReleaseTransferStream) {
+    func follow(_ stream: ReleaseProgressSource) {
         switch stream {
         case .upload(let source):
             pins.stop()
-            uploads.follow(source) { [weak self] transfer in
-                self?
-                    .show(
-                        bytes: transfer?.bar.text,
-                        rate: transfer.map(\.throughputBps),
-                        fraction: transfer?.bar.fraction
-                    )
-            }
+            uploads.follow(source)
         case .pin(let source):
             uploads.stop()
-            pins.follow(source) { [weak self] progress in
-                self?
-                    .show(
-                        bytes: progress?.bytesText,
-                        rate: progress?.throughputBps,
-                        fraction: progress?.fraction
-                    )
-            }
+            pins.follow(source)
         }
     }
 
@@ -128,7 +132,7 @@ final class TransferReadoutNSView: NSView {
 /// SwiftUI's place for a release transfer's readout: it hands the readout
 /// the release's stream and its tint, never a value.
 struct TransferReadout: NSViewRepresentable {
-    let stream: ReleaseTransferStream
+    let stream: ReleaseProgressSource
     let kind: StorageTransferKind
 
     func makeNSView(context _: Context) -> TransferReadoutNSView {
