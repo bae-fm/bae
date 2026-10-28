@@ -10,7 +10,10 @@ import plistlib
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
+
+CHECK = Path(__file__).resolve().parent.parent / "scripts" / "check-bundled-libraries.py"
 
 
 def run(*args):
@@ -72,11 +75,21 @@ def bundle(args, identity, entitlements, staging):
     shutil.copytree(args.publish, native, symlinks=True)
     resources.mkdir()
     shutil.copy2(args.bridge, native / "libbae_bridge.dylib")
-    libraries = list((args.ffmpeg / "lib").glob("*.dylib"))
+    # The dist names each library by its full version and links its shorter
+    # names to that file. Copy the files once and send every reference to a
+    # shorter name to the file it names, so each library loads once.
+    ffmpeg_lib = args.ffmpeg / "lib"
+    libraries = [path for path in ffmpeg_lib.glob("*.dylib") if not path.is_symlink()]
     if not libraries:
-        raise ValueError(f"No FFmpeg dylibs in {args.ffmpeg / 'lib'}")
+        raise ValueError(f"No FFmpeg dylibs in {ffmpeg_lib}")
+    aliases = {}
+    for link in ffmpeg_lib.glob("*.dylib"):
+        if link.is_symlink():
+            target = link.resolve()
+            if target.parent != ffmpeg_lib.resolve():
+                raise ValueError(f"{link} links outside the FFmpeg dist, to {target}")
+            aliases[link.name] = target.name
     for library in libraries:
-        # Dereference distribution symlinks so no link can point outside the app.
         shutil.copy2(library, native / library.name)
 
     # codesign treats MacOS as native code. Managed assemblies and runtime data
@@ -91,9 +104,10 @@ def bundle(args, identity, entitlements, staging):
         # packages can ship an ID whose basename differs from their filename.
         if path.suffix == ".dylib":
             run("install_name_tool", "-id", f"@loader_path/{path.name}", str(path))
-        # Follow absolute dependencies from the distribution (including its
-        # Homebrew libraries), then rewrite every reference into the bundle.
-        # Universal binaries have one unindented header per architecture.
+        # Rewrite every reference into the bundle. A library outside the bundle
+        # and macOS is an error, not something to copy in: the dist must not
+        # depend on one. Universal binaries have one unindented header per
+        # architecture.
         dependencies = dict.fromkeys(
             line.strip().split(" (compatibility version", 1)[0]
             for line in run("otool", "-L", str(path)).decode().splitlines()
@@ -104,10 +118,10 @@ def bundle(args, identity, entitlements, staging):
                 ("/System/Library/", "/usr/lib/")
             ):
                 continue
+            if not dependency.startswith("@"):
+                raise ValueError(f"{path.name} loads {dependency}, outside the bundle and macOS")
             name = Path(dependency).name
-            if not (native / name).exists() and Path(dependency).is_absolute():
-                shutil.copy2(dependency, native / name)
-                binaries.append(native / name)
+            name = aliases.get(name, name)
             if (native / name).is_file():
                 run("install_name_tool", "-change", dependency,
                     f"@loader_path/{name}", str(path))
@@ -139,6 +153,7 @@ def bundle(args, identity, entitlements, staging):
     run("codesign", "--force", "--sign", identity, "--timestamp=none",
         "--entitlements", str(entitlement_path), str(app))
     run("codesign", "--verify", "--deep", "--strict", str(app))
+    subprocess.run([sys.executable, str(CHECK), str(app)], check=True)
     return app
 
 
