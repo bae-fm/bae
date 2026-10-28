@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.playback.FakeAppHandle
@@ -62,7 +63,8 @@ class AddDeviceDialogTest {
         // The live read's first value: no device has joined yet.
         callback.onValue(null)
         compose.waitForIdle()
-        compose.onNodeWithText("CVR1-CODE").assertIsDisplayed()
+        // The QR code takes the dialog's width, so the code below it is scrolled to.
+        compose.onNodeWithText("CVR1-CODE").performScrollTo().assertIsDisplayed()
 
         callback.onValue(BridgeActiveDevice(id = 7u, name = "New Phone", isSelf = false, canRemove = true))
         compose.waitForIdle()

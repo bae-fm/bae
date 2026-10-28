@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.LocalBugReports
@@ -157,10 +158,12 @@ class RecoveryCodeSectionTest {
             }
         }
 
+        // The QR code takes the dialog's width, so what follows it is scrolled to.
         compose
             .onNodeWithText("On the new device, choose “Add device”, then scan this or type:")
+            .performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithText(CODE).assertIsDisplayed()
+        compose.onNodeWithText(CODE).performScrollTo().assertIsDisplayed()
         compose
             .onNodeWithText("The QR code also carries your S3 access key, so a device that scans it won't ask for the key.")
             .assertDoesNotExist()
