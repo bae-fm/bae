@@ -14,12 +14,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
+import fm.bae.app.data.LatestSource
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.NowPlayingBar
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -91,7 +90,7 @@ internal fun LibraryBrowser(
                 session.messages.perform("play the library shuffled") { session.appHandle.playLibraryShuffled() }
             },
             syncActivity = session.syncActivityStore,
-            uploadTransfer = session.outboxStore.totalTransfer,
+            uploadTransfer = session.outboxStore.totalProgress,
             onOpenSyncSettings = onSyncStatus,
             onOpenDownloads = onDownloads,
             onSettings = onSettings,
@@ -255,7 +254,7 @@ private fun LibraryBrowserChrome(
     onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
     onShuffleLibrary: () -> Unit,
     syncActivity: SyncActivityStore,
-    uploadTransfer: StateFlow<BridgeUploadTransfer?>,
+    uploadTransfer: LatestSource<BridgeUploadTransfer>,
     onOpenSyncSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
     onSettings: () -> Unit,
@@ -311,7 +310,7 @@ private fun LibraryBrowserChromePreview() {
             onArtistSortChange = {},
             onShuffleLibrary = {},
             syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = false)) },
-            uploadTransfer = MutableStateFlow(PreviewData.uploadTransfer()),
+            uploadTransfer = PreviewData.uploadTransferSource(),
             onOpenSyncSettings = {},
             onOpenDownloads = {},
             onSettings = {},

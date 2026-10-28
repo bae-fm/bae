@@ -45,14 +45,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
+import fm.bae.app.data.LatestSource
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.sync.SyncActivityButton
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -83,7 +82,7 @@ internal fun LibraryTopBar(
     artistSortCriterion: BridgeArtistSortCriterion,
     onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
     syncActivity: SyncActivityStore,
-    uploadTransfer: StateFlow<BridgeUploadTransfer?>,
+    uploadTransfer: LatestSource<BridgeUploadTransfer>,
     onOpenSyncSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
     onSettings: () -> Unit,
@@ -334,7 +333,7 @@ private fun LibraryTopBarPreview() {
             artistSortCriterion = previewArtistSort,
             onArtistSortChange = {},
             syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = true)) },
-            uploadTransfer = MutableStateFlow(PreviewData.uploadTransfer()),
+            uploadTransfer = PreviewData.uploadTransferSource(),
             onOpenSyncSettings = {},
             onOpenDownloads = {},
             onSettings = {},

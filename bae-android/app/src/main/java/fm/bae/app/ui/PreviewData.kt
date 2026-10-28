@@ -1,6 +1,8 @@
 package fm.bae.app.ui
 
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.LatestOne
+import fm.bae.app.data.LatestSource
 import fm.bae.app.playback.SidePausePrompt
 import uniffi.bae_bridge.BridgeAbandonedAttachments
 import uniffi.bae_bridge.BridgeActiveDevice
@@ -320,11 +322,16 @@ object PreviewData {
         )
 
     /** The upload queue's transfer while [syncActivity]'s files are sent. */
+
     fun uploadTransfer(): BridgeUploadTransfer =
         BridgeUploadTransfer(
             bar = BridgeUploadBar(bytesDone = 3_200_000uL, bytesTotal = 8_400_000uL),
             throughputBps = 0uL,
         )
+
+    /** The files being sent together, as the sync activity's upload line reads them. */
+    fun uploadTransferSource(): LatestSource<BridgeUploadTransfer> =
+        LatestOne<BridgeUploadTransfer>().apply { set(uploadTransfer()) }.source
 
     fun downloadCounts(
         queued: UInt = 1u,

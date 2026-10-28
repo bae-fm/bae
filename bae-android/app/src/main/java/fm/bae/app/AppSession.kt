@@ -284,8 +284,9 @@ class OpenLibrary internal constructor(
             // Nothing on Android draws one file's or release's upload, so only the total crosses.
             appHandle.subscribeOutboxTotalTransfer(
                 object : OutboxTotalTransferCallback {
+                    // Written on the thread it arrives on: the View drawing it reads the latest each frame.
                     override fun onValue(transfer: uniffi.bae_bridge.BridgeUploadTransfer) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.setTotalTransfer(transfer) }
+                        stores.transfers.outbox.setTotalTransfer(transfer)
                     }
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {

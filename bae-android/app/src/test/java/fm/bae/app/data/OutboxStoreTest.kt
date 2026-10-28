@@ -39,20 +39,28 @@ class OutboxStoreTest {
         assertEquals(LiveValue.Current(false), store.uploadsPaused.value)
     }
 
-    /** The files being sent together are absent until the total subscription delivers them, then follow it until a read fails. */
+    /**
+     * The files being sent together are absent until the total subscription
+     * delivers them, follow each total while files are being sent, and are
+     * idle once none is or a read fails.
+     */
     @Test
-    fun theQueuesTransferFollowsEachTotal() {
+    fun theQueuesTransferFollowsEachTotalWhileFilesAreSent() {
         val store = OutboxStore(initialUploadsPaused = false)
-        assertNull(store.totalTransfer.value)
+        assertNull(store.totalProgress.latest)
         val transfer = { done: ULong -> BridgeUploadTransfer(BridgeUploadBar(done, 40uL), throughputBps = 5uL) }
 
         store.setTotalTransfer(transfer(10uL))
-        assertEquals(transfer(10uL), store.totalTransfer.value)
+        assertEquals(transfer(10uL), store.totalProgress.latest)
 
         store.setTotalTransfer(transfer(20uL))
-        assertEquals(transfer(20uL), store.totalTransfer.value)
+        assertEquals(transfer(20uL), store.totalProgress.latest)
 
+        store.setTotalTransfer(BridgeUploadTransfer(bar = null, throughputBps = 0uL))
+        assertNull("no file being sent is idle", store.totalProgress.latest)
+
+        store.setTotalTransfer(transfer(30uL))
         store.forgetTotalTransfer()
-        assertNull("a failed read draws no transfer", store.totalTransfer.value)
+        assertNull("a failed read draws no transfer", store.totalProgress.latest)
     }
 }
