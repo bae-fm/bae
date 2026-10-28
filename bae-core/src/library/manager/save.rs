@@ -385,7 +385,11 @@ impl SaveTrackPlan {
         let meta = &self.audio_meta;
         match &self.window {
             SaveWindow::ImageTrack => SaveSegments {
-                segments: meta.audio_segments.iter().collect(),
+                segments: meta
+                    .audio_segments
+                    .iter()
+                    .map(|entry| &entry.segment)
+                    .collect(),
                 leading_silence_frames: pregap_frames(meta.audio_format.generated_pregap_samples),
                 trailing_silence_frames: 0,
             },
@@ -403,6 +407,7 @@ impl SaveTrackPlan {
                 let mut segments: Vec<_> = meta
                     .audio_segments
                     .iter()
+                    .map(|entry| &entry.segment)
                     .filter(|segment| {
                         include_own_pregap || segment.role == crate::db::DbAudioSegmentRole::Main
                     })
@@ -420,9 +425,14 @@ impl SaveTrackPlan {
                 ) {
                     if let Some(next) = next {
                         if pregap_frames(next.audio_format.pregap_samples) > 0 {
-                            segments.extend(next.audio_segments.iter().filter(|segment| {
-                                segment.role == crate::db::DbAudioSegmentRole::AudioPregap
-                            }));
+                            segments.extend(
+                                next.audio_segments
+                                    .iter()
+                                    .map(|entry| &entry.segment)
+                                    .filter(|segment| {
+                                        segment.role == crate::db::DbAudioSegmentRole::AudioPregap
+                                    }),
+                            );
                         }
                         trailing_silence_frames =
                             pregap_frames(next.audio_format.generated_pregap_samples);

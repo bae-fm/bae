@@ -413,10 +413,21 @@ pub(crate) struct TrackAudioMeta {
     pub track: DbTrack,
     pub release: DbRelease,
     pub audio_format: DbAudioFormat,
-    pub audio_segments: Vec<DbAudioSegment>,
-    /// The scrub points of every segment that has any.
-    pub scrub_points: Vec<crate::db::DbScrubPoints>,
+    /// The format's segments in segment order, each with its file's size and
+    /// its scrub points.
+    pub audio_segments: Vec<TrackAudioSegment>,
+    /// The release files the segments name, each once, which a save opens.
+    #[cfg(desktop)]
     pub audio_files: Vec<DbFile>,
+}
+
+/// One segment of a track's audio, with the size of the file it names and
+/// the frames a scrub inside it can start at.
+#[derive(Clone)]
+pub(crate) struct TrackAudioSegment {
+    pub segment: DbAudioSegment,
+    pub file_size: u64,
+    pub scrub_points: Vec<crate::db::ScrubPoint>,
 }
 
 impl TrackAudioMeta {
@@ -436,41 +447,40 @@ impl TrackAudioMeta {
         let release = database.get_release_for_track(&track).await?;
 
         let audio_segments = database
-            .get_audio_segments_for_format(&audio_format.id)
-            .await?;
+            .get_track_audio_segments(&audio_format.id)
+            .await?
+            .into_iter()
+            .map(|row| {
+                let file_size = row.file_size.ok_or_else(|| {
+                    LibraryError::TrackMapping(format!(
+                        "Audio file not found: {}",
+                        row.segment.file_id
+                    ))
+                })?;
+                Ok(TrackAudioSegment {
+                    file_size,
+                    segment: row.segment,
+                    scrub_points: row.scrub_points,
+                })
+            })
+            .collect::<Result<Vec<_>, LibraryError>>()?;
         if audio_segments.is_empty() {
             return Err(LibraryError::TrackMapping(format!(
                 "No audio segments for track: {}",
                 track_id
             )));
         }
-
-        let scrub_points = database
-            .get_scrub_points_for_format(&audio_format.id)
+        #[cfg(desktop)]
+        let audio_files = database
+            .get_audio_files_for_format(&audio_format.id)
             .await?;
-
-        let mut audio_files = Vec::new();
-        for segment in &audio_segments {
-            let audio_file = database
-                .find_file_by_id(&segment.file_id)
-                .await?
-                .ok_or_else(|| {
-                    LibraryError::TrackMapping(format!("Audio file not found: {}", segment.file_id))
-                })?;
-            if !audio_files
-                .iter()
-                .any(|existing: &DbFile| existing.id == audio_file.id)
-            {
-                audio_files.push(audio_file);
-            }
-        }
 
         Ok(Self {
             track,
             release,
             audio_format,
             audio_segments,
-            scrub_points,
+            #[cfg(desktop)]
             audio_files,
         })
     }
@@ -525,24 +535,12 @@ impl ResolvedTrackAudio {
         let segments = meta
             .audio_segments
             .iter()
-            .map(|segment| {
-                let audio_file = meta
-                    .audio_files
-                    .iter()
-                    .find(|file| file.id == segment.file_id)
-                    .expect("TrackAudioMeta resolves every segment file");
-                ResolvedTrackAudioSegment {
-                    role: segment.role.clone(),
-                    file_id: segment.file_id.clone(),
-                    file_size: audio_file.file_size as u64,
-                    span: segment.span(),
-                    scrub_points: crate::playback::ScrubPoints::new(
-                        meta.scrub_points
-                            .iter()
-                            .find(|stored| stored.audio_segment_id == segment.id)
-                            .map_or_else(Vec::new, |stored| stored.points.clone()),
-                    ),
-                }
+            .map(|entry| ResolvedTrackAudioSegment {
+                role: entry.segment.role.clone(),
+                file_id: entry.segment.file_id.clone(),
+                file_size: entry.file_size,
+                span: entry.segment.span(),
+                scrub_points: crate::playback::ScrubPoints::new(entry.scrub_points.clone()),
             })
             .collect();
         Self {
