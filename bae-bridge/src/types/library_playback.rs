@@ -629,12 +629,36 @@ pub fn bridge_seek_bar(
 pub struct BridgeFile {
     pub id: String,
     pub original_filename: String,
+    /// The file's own name, past its folders.
+    pub name: String,
+    /// The folders above it in the release's folder ("Disc 1"); `None` at
+    /// the folder's top.
+    pub folder: Option<String>,
+    pub kind: BridgeFileKind,
     pub file_size: i64,
     pub content_type: String,
     pub is_image: bool,
     /// Structured audio format; `None` for non-audio files. The UI composes the
     /// one-line descriptor from it.
     pub audio_format: Option<BridgeAudioFormat>,
+}
+
+/// What kind of file a release file is. Mirrors `FileKind`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeFileKind {
+    /// Audio, with its format's name ("FLAC").
+    Audio {
+        format: String,
+    },
+    /// An image, with its format's name ("JPEG").
+    Image {
+        format: String,
+    },
+    CueSheet,
+    RipLog,
+    Text,
+    Pdf,
+    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

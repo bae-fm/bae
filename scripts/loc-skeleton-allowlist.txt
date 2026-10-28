@@ -231,3 +231,7 @@ zh-Hant	S3-compatible
 zh-Hant	cloud_provider_s3
 da	Pause uploads
 da	settings_pause_uploads
+da	Rip log
+fr	PDF document
+nl	PDF document
+ro	PDF document

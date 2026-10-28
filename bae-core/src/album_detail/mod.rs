@@ -35,6 +35,7 @@ use crate::db::LibraryImageType;
 mod album;
 mod artist;
 mod composer;
+mod file_kind;
 mod playability;
 mod release;
 mod search;
@@ -44,6 +45,7 @@ mod storage;
 pub use album::*;
 pub use artist::*;
 pub use composer::*;
+pub use file_kind::{FileKind, FilePlace};
 pub use playability::ReleasePlayability;
 pub(crate) use playability::{
     recorded_originals, release_playability, OriginalOnDisk, OriginalsSeen,
@@ -285,6 +287,9 @@ pub struct TrackGroup {
 pub struct FileDetail {
     pub id: String,
     pub original_filename: String,
+    /// Its name and folder within the release's folder.
+    pub place: FilePlace,
+    pub kind: FileKind,
     pub file_size: i64,
     pub is_image: bool,
     pub content_type: String,

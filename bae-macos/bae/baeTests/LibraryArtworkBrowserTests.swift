@@ -215,6 +215,9 @@ extension LibraryArtworkBrowserTests {
             file: BridgeFile(
                 id: "booklet-file",
                 originalFilename: "booklet.png",
+                name: "booklet.png",
+                folder: nil,
+                kind: .image(format: "PNG"),
                 fileSize: 100,
                 contentType: "image/png",
                 isImage: true,

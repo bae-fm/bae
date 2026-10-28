@@ -501,6 +501,8 @@ impl ReleaseDetail {
             .map(|f| {
                 let supports_cover = f.content_type.is_supported_cover();
                 let file = FileDetail {
+                    place: FilePlace::of(&f.original_filename),
+                    kind: FileKind::of(&f.content_type, &f.original_filename),
                     is_image: f.content_type.is_image(),
                     content_type: f.content_type.to_string(),
                     source_audio: f.source_audio,

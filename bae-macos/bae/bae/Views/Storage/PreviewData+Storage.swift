@@ -583,6 +583,9 @@
                 BridgeFile(
                     id: "\(row.id)-audio",
                     originalFilename: "01 Track Title.flac",
+                    name: "01 Track Title.flac",
+                    folder: nil,
+                    kind: .audio(format: "FLAC"),
                     fileSize: 34_000_000,
                     contentType: "audio/flac",
                     isImage: false,
@@ -591,6 +594,9 @@
                 BridgeFile(
                     id: "\(row.id)-image",
                     originalFilename: "cover.jpg",
+                    name: "cover.jpg",
+                    folder: nil,
+                    kind: .image(format: "JPEG"),
                     fileSize: 2_400_000,
                     contentType: "image/jpeg",
                     isImage: true,

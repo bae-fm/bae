@@ -157,6 +157,9 @@
         private static let previewReleaseCoverFile = BridgeFile(
             id: "f-cover",
             originalFilename: "cover.jpg",
+            name: "cover.jpg",
+            folder: nil,
+            kind: .image(format: "JPEG"),
             fileSize: 2_450_000,
             contentType: "image/jpeg",
             isImage: true,
@@ -168,6 +171,9 @@
             BridgeFile(
                 id: "f-1",
                 originalFilename: "01 - Track Title.flac",
+                name: "01 - Track Title.flac",
+                folder: nil,
+                kind: .audio(format: "FLAC"),
                 fileSize: 38_400_000,
                 contentType: "Audio",
                 isImage: false,
@@ -176,6 +182,9 @@
             BridgeFile(
                 id: "f-2",
                 originalFilename: "02 - Track Title.flac",
+                name: "02 - Track Title.flac",
+                folder: nil,
+                kind: .audio(format: "FLAC"),
                 fileSize: 41_100_000,
                 contentType: "Audio",
                 isImage: false,

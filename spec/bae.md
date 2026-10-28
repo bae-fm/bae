@@ -2622,7 +2622,11 @@ Reads come two ways:
   and how fast they go. Each file is one line, its name and size after a
   mark: none for a file at rest, a dashed circle for one waiting its turn, a
   ring filling as it is sent; a file waiting on a reason says why when the
-  pointer rests on it.
+  pointer rests on it. Selecting a file shows its details under the list,
+  closed by a button or by selecting nothing: its name and the folder it
+  sits in within the release's folder, what kind of file it is, its audio
+  format, and its size. Core reads a file's kind from its content type, and
+  for a cue sheet or a rip log from its extension.
   The upload queue's own subscription says only whether it is paused; how
   fast each release's upload goes, the bytes and speed each download moves,
   and the percent each export reaches arrive apart, per release.

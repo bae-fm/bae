@@ -1,10 +1,26 @@
 use super::*;
 
+mirror_enum! {
+    crate::types::BridgeFileKind = bae_core::album_detail::FileKind,
+    from_core: fn,
+    variants: {
+        Audio { format },
+        Image { format },
+        CueSheet,
+        RipLog,
+        Text,
+        Pdf,
+        Other,
+    },
+}
+
 impl BridgeFile {
     pub(super) fn from_core(f: bae_core::album_detail::FileDetail) -> Self {
         let bae_core::album_detail::FileDetail {
             id,
             original_filename,
+            place,
+            kind,
             file_size,
             is_image,
             content_type,
@@ -14,6 +30,9 @@ impl BridgeFile {
         BridgeFile {
             id,
             original_filename,
+            name: place.name,
+            folder: place.folder,
+            kind: crate::types::BridgeFileKind::from_core(kind),
             file_size,
             is_image,
             content_type,

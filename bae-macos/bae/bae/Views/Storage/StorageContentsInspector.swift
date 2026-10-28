@@ -1,9 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The selected release's transfers and files, read for it in core. Detail
-/// observation lives here so list rows depend only on their summary
-/// projection.
+/// The selected release's transfers and files, read for it in core, and the
+/// details of the file selected among them. Detail observation lives here so
+/// list rows depend only on their summary projection.
 struct StorageContentsInspector: View {
     @Environment(Library.self)
     private var library
@@ -21,6 +21,10 @@ struct StorageContentsInspector: View {
     private var inspector: BridgeStorageInspector?
     @State
     private var error: DisplayError?
+    /// The file whose details show under the list; `nil` while none is
+    /// selected, and again once the inspector moves to another release.
+    @State
+    private var selectedFileId: String?
 
     var body: some View {
         Group {
@@ -33,6 +37,14 @@ struct StorageContentsInspector: View {
                 VStack(spacing: 0) {
                     StorageTransferControls(items: inspector.transfers)
                     fileList(inspector.files)
+                    if let selected = inspector.files.first(where: {
+                        $0.file.id == selectedFileId
+                    }) {
+                        Divider()
+                        StorageFileDetails(file: selected.file) {
+                            selectedFileId = nil
+                        }
+                    }
                 }
             }
             else {
@@ -41,7 +53,10 @@ struct StorageContentsInspector: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { showRelease(releaseId) }
-        .onChange(of: releaseId) { _, newId in showRelease(newId) }
+        .onChange(of: releaseId) { _, newId in
+            selectedFileId = nil
+            showRelease(newId)
+        }
         .onDisappear { reader?.close() }
     }
 
@@ -51,7 +66,7 @@ struct StorageContentsInspector: View {
                 ContentUnavailableView { Text("No files") }
             }
             else {
-                List(rows, id: \.file.id) { row in
+                List(rows, id: \.file.id, selection: $selectedFileId) { row in
                     StorageInspectorFileRow(row: row)
                 }
                 .listStyle(.plain)

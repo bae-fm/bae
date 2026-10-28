@@ -69,6 +69,9 @@ struct CoverPickerTests {
         let file = BridgeFile(
             id: "library-image-id",
             originalFilename: "scans/front.png",
+            name: "front.png",
+            folder: "scans",
+            kind: .image(format: "PNG"),
             fileSize: 100,
             contentType: "image/png",
             isImage: true,
@@ -77,6 +80,9 @@ struct CoverPickerTests {
         let bitmap = BridgeFile(
             id: "bitmap-image-id",
             originalFilename: "scans/booklet.bmp",
+            name: "booklet.bmp",
+            folder: "scans",
+            kind: .image(format: "BMP"),
             fileSize: 120,
             contentType: "image/bmp",
             isImage: true,

@@ -10,6 +10,7 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAudioFormat
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFile
+import uniffi.bae_bridge.BridgeFileKind
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeSourceAudioDifference
 import uniffi.bae_bridge.BridgeSourceAudioSummary
@@ -58,6 +59,9 @@ class BridgeReleaseFormatTest {
                         BridgeFile(
                             id = "file-1",
                             originalFilename = "01.flac",
+                            name = "01.flac",
+                            folder = null,
+                            kind = BridgeFileKind.Audio(format = "FLAC"),
                             fileSize = 1_000,
                             contentType = "audio/flac",
                             isImage = false,
