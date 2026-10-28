@@ -7,15 +7,7 @@ runs:
     - name: Install macOS dependencies
       shell: bash
       run: |
-        brew install pkg-config openssl@3 switchaudio-osx
-
-    - name: Export Homebrew paths
-      shell: bash
-      run: |
-        BREW_PREFIX="$(brew --prefix)"
-        echo "BREW_PREFIX=$BREW_PREFIX" >> $GITHUB_ENV
-        echo "C_INCLUDE_PATH=$BREW_PREFIX/include" >> $GITHUB_ENV
-        echo "LIBRARY_PATH=$BREW_PREFIX/lib" >> $GITHUB_ENV
+        brew install pkg-config switchaudio-osx
 
     - name: Download bae-ffmpeg
       shell: bash
@@ -29,10 +21,12 @@ runs:
         sudo chown "$(id -u)" /opt
         ./scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
         echo "FFMPEG_DIR=$FFMPEG_DIR" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH=$FFMPEG_DIR/lib/pkgconfig:$BREW_PREFIX/lib/pkgconfig" >> $GITHUB_ENV
-        echo "LIBRARY_PATH=$FFMPEG_DIR/lib:$BREW_PREFIX/lib" >> $GITHUB_ENV
+        # Only the dist: a Homebrew lib or include folder here would let the
+        # link take whatever Homebrew has installed under a name bae links.
+        echo "PKG_CONFIG_PATH=$FFMPEG_DIR/lib/pkgconfig" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$FFMPEG_DIR/lib" >> $GITHUB_ENV
         echo "DYLD_LIBRARY_PATH=$FFMPEG_DIR/lib" >> $GITHUB_ENV
-        echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_DIR/include -I$BREW_PREFIX/include" >> $GITHUB_ENV
+        echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_DIR/include" >> $GITHUB_ENV
         echo "$FFMPEG_DIR/bin" >> $GITHUB_PATH
 
     - name: Setup virtual audio device

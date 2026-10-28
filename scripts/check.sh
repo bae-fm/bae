@@ -14,11 +14,6 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 ./scripts/build-layout.sh
 
-if command -v brew &>/dev/null; then
-  BREW_PREFIX="$(brew --prefix)"
-  export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
-fi
-
 # The tests load FFmpeg's dylibs from bae-ffmpeg/dist; SIP strips an inherited
 # DYLD_* variable, so it is set here.
 if [[ -d "$ROOT/bae-ffmpeg/dist/lib" ]]; then
