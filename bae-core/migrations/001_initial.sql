@@ -367,6 +367,11 @@ CREATE TABLE IF NOT EXISTS release_records (
 
 CREATE INDEX IF NOT EXISTS idx_release_records_catalog_key ON release_records (catalog, key) WHERE kind = 'pressing';
 
+-- Each release's records in the order surfaces list catalogs
+-- (`bae_catalog_rank`), which the release's detail reads them in.
+CREATE INDEX IF NOT EXISTS idx_release_records_release_order
+    ON release_records (release_id, bae_catalog_rank(catalog));
+
 CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
     (catalog, CASE WHEN kind = 'album' THEN key ELSE album_key END);
 

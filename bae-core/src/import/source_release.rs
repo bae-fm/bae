@@ -461,10 +461,7 @@ impl SourceRelease {
 }
 
 pub(crate) fn catalog_rank(catalog: Catalog) -> usize {
-    Catalog::ALL
-        .iter()
-        .position(|known| *known == catalog)
-        .expect("a record names one of the catalogs")
+    catalog.rank()
 }
 
 /// The cover options a pick offers, in the order a surface shows them and so

@@ -362,3 +362,62 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].source_audio, Some(source_audio));
 }
+
+/// A release's records come back in the order surfaces list catalogs, read
+/// in that order from the index of each release's records, whatever order
+/// they were written in.
+#[tokio::test]
+async fn release_records_are_read_in_catalog_order() {
+    let (db, _tmp) = release_detail_db().await;
+    db.call(|conn| {
+        conn.execute_batch(&format!(
+            "INSERT INTO release_records (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES
+             ('3f0c5d1e-8a2b-4c6d-9e7f-1a2b3c4d5e6f', '{RELEASE_A}', 'spotify', 'album', 'album-s', NULL, 'https://open.spotify.com/album/album-s', '2026-01-01T00:00:00Z'),
+             ('4a1d6e2f-9b3c-4d7e-8f0a-2b3c4d5e6f7a', '{RELEASE_A}', 'discogs', 'pressing', 'pressing-d', NULL, 'https://www.discogs.com/release/pressing-d', '2026-01-01T00:00:00Z'),
+             ('5b2e7f3a-0c4d-4e8f-9a1b-3c4d5e6f7a8b', '{RELEASE_A}', 'musicbrainz', 'pressing', 'pressing-m', 'group-m', 'https://musicbrainz.org/release/pressing-m', '2026-01-01T00:00:00Z');"
+        ))?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+
+    let records = db
+        .read(|sql| super::super::read::get_release_records_on(&sql, RELEASE_A))
+        .await
+        .unwrap();
+    assert_eq!(
+        records
+            .iter()
+            .map(|record| record.catalog())
+            .collect::<Vec<_>>(),
+        [
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            bae_catalogs::catalog::Catalog::Discogs,
+            bae_catalogs::catalog::Catalog::Spotify,
+        ]
+    );
+
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::read::RELEASE_RECORDS_IN_ORDER
+                ),
+                [RELEASE_A],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter()
+            .any(|step| step.contains("USING INDEX idx_release_records_release_order")),
+        "the read walks the index: {plan:?}"
+    );
+    assert!(
+        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+        "the read sorts after reading: {plan:?}"
+    );
+}

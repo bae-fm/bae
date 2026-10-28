@@ -404,19 +404,22 @@ pub(super) fn get_audio_segments_for_release_on(
 }
 
 /// Every catalog's description of a release, in the order surfaces list
+/// catalogs (`bae_catalog_rank`), read from the index of each release's
+/// records in that order.
+pub(super) const RELEASE_RECORDS_IN_ORDER: &str =
+    "SELECT rr.catalog, rr.kind, rr.key, rr.album_key \
+     FROM release_records rr \
+     WHERE rr.release_id = ?1 \
+     ORDER BY bae_catalog_rank(rr.catalog)";
+
+/// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
 pub(super) fn get_release_records_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
-    let mut records = sql.query(
-        r#"
-            SELECT rr.catalog, rr.kind, rr.key, rr.album_key
-            FROM release_records rr
-            WHERE rr.release_id = ?
-            "#,
-        params![release_id],
-        |row| {
+    Ok(
+        sql.query(RELEASE_RECORDS_IN_ORDER, params![release_id], |row| {
             let identity = crate::import::MetadataRef::new(
                 parsed_column(row, "catalog")?,
                 row.get::<_, String>("key")?,
@@ -433,15 +436,8 @@ pub(super) fn get_release_records_on(
                     format!("unknown record kind: {kind}").into(),
                 )),
             }
-        },
-    )?;
-    records.sort_by_key(|record| {
-        bae_catalogs::catalog::Catalog::ALL
-            .iter()
-            .position(|catalog| *catalog == record.catalog())
-            .expect("every stored catalog is one of the catalogs")
-    });
-    Ok(records)
+        })?,
+    )
 }
 
 /// Build a column-conversion error for a named column whose stored text the

@@ -2919,6 +2919,10 @@ connection to a library: it orders text the way a person reads folder names
 strings never tie). It is part of the schema, so it gives the same answer on
 every device and in every version.
 
+It also gives coven the function `bae_catalog_rank`, a catalog's place in the
+order surfaces list catalogs (MusicBrainz, Discogs, then the rest by name),
+which indexes order records by; it is part of the schema the same way.
+
 ### A.1 The library
 
 All sync.
@@ -2938,7 +2942,7 @@ All sync.
 | `covers` | release's cover, keyed by the release; carries a file |
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
-| `release_records` | catalog record of a release: pressing or album, key, album key, URL |
+| `release_records` | catalog record of a release: pressing or album, key, album key, URL; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
 | `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
 | `track_artists` | track's own credit, one per place in its list, from position 0, as an album's |

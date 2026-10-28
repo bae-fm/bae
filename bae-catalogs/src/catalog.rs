@@ -59,6 +59,15 @@ impl Catalog {
     /// recording is registered under, and Discogs has no way to ask by one.
     pub const ISRC_CATALOG: Catalog = Self::MusicBrainz;
 
+    /// The catalog's place in [`Self::ALL`], the order surfaces list
+    /// catalogs in.
+    pub fn rank(self) -> usize {
+        Self::ALL
+            .iter()
+            .position(|known| *known == self)
+            .expect("every catalog is in Catalog::ALL")
+    }
+
     /// The stored `catalog` column value.
     pub fn as_str(&self) -> &'static str {
         match self {

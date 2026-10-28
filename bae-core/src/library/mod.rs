@@ -240,6 +240,12 @@ pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
             |arguments| Ok(search_pattern_value(arguments.get(0)?)),
         )
         .function(
+            "bae_catalog_rank",
+            1,
+            coven::Determinism::Deterministic,
+            |arguments| catalog_rank_value(arguments.get(0)?),
+        )
+        .function(
             "bae_folder_below",
             2,
             coven::Determinism::Deterministic,
@@ -262,6 +268,16 @@ fn fold_case_value(text: Option<String>) -> Option<String> {
 /// by; NULL stays NULL.
 fn search_pattern_value(query: Option<String>) -> Option<String> {
     query.map(|query| search::search_pattern(&query))
+}
+
+/// `bae_catalog_rank`: a stored catalog's place in the order surfaces list
+/// catalogs (`Catalog::ALL`). Part of the schema once an index uses it: the
+/// order must not change.
+fn catalog_rank_value(catalog: String) -> rusqlite::Result<i64> {
+    let catalog: bae_catalogs::catalog::Catalog = catalog
+        .parse()
+        .map_err(|error: String| rusqlite::Error::UserFunctionError(error.into()))?;
+    Ok(catalog.rank() as i64)
 }
 
 /// `bae_folder_below`: the absolute path of a `/`-separated folder below a
@@ -307,6 +323,10 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
     let deterministic = FunctionFlags::SQLITE_UTF8
         | FunctionFlags::SQLITE_DETERMINISTIC
         | FunctionFlags::SQLITE_INNOCUOUS;
+    conn.create_scalar_function("bae_catalog_rank", 1, deterministic, |context| {
+        catalog_rank_value(context.get(0)?)
+    })
+    .expect("bae_catalog_rank registers");
     conn.create_scalar_function("bae_folder_below", 2, deterministic, |context| {
         folder_below_value(context.get(0)?, context.get(1)?)
     })
