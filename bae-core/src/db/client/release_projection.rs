@@ -4,6 +4,7 @@ use super::*;
 /// where the release's files are.
 pub(super) type StorageRowParts = (
     DbReleaseSummary,
+    Option<String>,
     AlbumSummaryRow,
     crate::album_detail::StoragePlace,
 );
@@ -11,6 +12,7 @@ pub(super) type StorageRowParts = (
 fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
     Ok((
         row_to_release_summary(sql, row)?,
+        row.get("release_cover_version")?,
         AlbumSummaryRow::read(row)?,
         storage_place(row)?,
     ))
@@ -100,9 +102,10 @@ pub(super) fn process_storage_rows(
     rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter()
-        .map(|(release, album, place)| {
+        .map(|(release, release_cover_version, album, place)| {
             Ok(DbStorageRow {
                 release,
+                release_cover_version,
                 album: album.process()?,
                 place,
             })
@@ -209,7 +212,6 @@ pub struct StorageBrowseProjection {
     pub total_count: u64,
     pub total_size: u64,
     pub selected: Vec<DbStorageRow>,
-    pub cover_versions: HashMap<String, String>,
     pub queues: crate::library::StorageQueues,
 }
 

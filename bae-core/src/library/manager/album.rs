@@ -18,15 +18,7 @@ impl LibraryManager {
         limit: u64,
     ) -> Result<Vec<AlbumSummary>, LibraryError> {
         let raws = self.database.get_album_page(sort, offset, limit).await?;
-        let release_ids: Vec<String> = raws
-            .iter()
-            .flat_map(|r| r.release_ids.iter().cloned())
-            .collect();
-        let covers = self.cover_refs(&release_ids).await?;
-        Ok(raws
-            .into_iter()
-            .map(|raw| AlbumSummary::from_raw(raw, |rid| covers.get(rid).cloned()))
-            .collect())
+        Ok(raws.into_iter().map(AlbumSummary::from_raw).collect())
     }
 
     /// Resolve the album's first appearance under the active browse order.
@@ -66,14 +58,17 @@ impl LibraryManager {
         request_revision: u64,
         cause: coven::LiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<AlbumSummary> {
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         crate::library::LibraryBrowseSnapshot {
             windows: projection
                 .windows
                 .into_iter()
                 .map(|window| crate::library::LibraryBrowseWindow {
                     window: window.window,
-                    rows: resolve_album_rows(window.rows, &covers),
+                    rows: window
+                        .rows
+                        .into_iter()
+                        .map(AlbumSummary::from_raw)
+                        .collect(),
                 })
                 .collect(),
             total_count: projection.total_count,
@@ -264,15 +259,6 @@ impl LibraryManager {
 
         Ok(())
     }
-}
-
-fn resolve_album_rows(
-    rows: Vec<crate::db::DbAlbumSummary>,
-    covers: &HashMap<String, ImageRef>,
-) -> Vec<AlbumSummary> {
-    rows.into_iter()
-        .map(|row| AlbumSummary::from_raw(row, |id| covers.get(id).cloned()))
-        .collect()
 }
 
 impl LibraryManager {

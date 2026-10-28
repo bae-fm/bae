@@ -133,38 +133,17 @@ impl Database {
                 let selected = storage_selected_on(&sql, request.filter, &request.selected)
                     .map_err(CovenError::from)?;
                 let queues = storage_queues_on(&sql).map_err(CovenError::from)?;
-                // A row shows its own release's cover and its album's; only
-                // those covers are read.
-                let rows = || {
-                    windows
-                        .iter()
-                        .flat_map(|(_, rows)| rows.iter())
-                        .chain(selected.iter())
-                };
-                let album_ids = rows()
-                    .map(|(_, album, _)| album.id.clone())
-                    .collect::<Vec<_>>();
-                let release_ids = rows()
-                    .map(|(release, _, _)| release.id.clone())
-                    .collect::<Vec<_>>();
-                let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                cover_versions.extend(super::files::image_versions_on(
-                    &sql,
-                    LibraryImageType::Cover,
-                    &release_ids,
-                )?);
                 Ok((
                     request.clone(),
                     windows,
                     total_count,
                     total_size,
                     selected,
-                    cover_versions,
                     queues,
                 ))
             })
             .process(
-                |(request, windows, total_count, total_size, selected, cover_versions, queues)| {
+                |(request, windows, total_count, total_size, selected, queues)| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -181,7 +160,6 @@ impl Database {
                         total_count,
                         total_size,
                         selected: super::release_projection::process_storage_rows(selected)?,
-                        cover_versions,
                         queues,
                     })
                 },

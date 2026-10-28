@@ -172,14 +172,6 @@ impl LibraryManager {
         let total_count = self.database.get_storage_count(filter).await?;
 
         let has_cloud_home = self.has_cloud_home();
-        // The cover resolver serves both halves of each row — the release's own id
-        // and the album's primary release id — so gather both for the batch
-        // lookup.
-        let cover_ids: Vec<String> = raw_rows
-            .iter()
-            .flat_map(|r| [r.release.id.clone(), r.album.primary_release_id.clone()])
-            .collect();
-        let covers = self.cover_refs(&cover_ids).await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(
                 raw_rows.iter().flat_map(|row| &row.release.unstored_audio),
@@ -193,7 +185,6 @@ impl LibraryManager {
                 has_cloud_home,
                 transfer_action,
                 &originals,
-                |rid| covers.get(rid).cloned(),
             ));
         }
         Ok(StoragePage { rows, total_count })
@@ -247,17 +238,10 @@ impl LibraryManager {
         projection: crate::db::StorageBrowseProjection,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> crate::library::StorageBrowseSnapshot {
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let has_cloud_home = self.has_cloud_home();
         let resolve = |raw: crate::db::DbStorageRow| {
             let transfer_action = self.current_transfer_action(&raw.release.id);
-            StorageRow::from_raw(
-                raw,
-                has_cloud_home,
-                transfer_action,
-                originals,
-                |release_id| covers.get(release_id).cloned(),
-            )
+            StorageRow::from_raw(raw, has_cloud_home, transfer_action, originals)
         };
         let windows = projection
             .windows

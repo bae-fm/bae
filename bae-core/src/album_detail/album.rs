@@ -47,16 +47,15 @@ pub struct AlbumSummary {
 }
 
 impl AlbumSummary {
-    /// `resolve_cover` maps that primary release id to its cover reference. It is
-    /// passed in rather than reached for through `&self`, so one resolver serves the
-    /// SQL-page, search, and event paths without each duplicating the
-    /// existence-and-version logic.
-    pub(crate) fn from_raw(
-        raw: DbAlbumSummary,
-        resolve_cover: impl Fn(&str) -> Option<ImageRef>,
-    ) -> AlbumSummary {
+    /// The album as its row reads it, its cover the one its primary release's
+    /// cover version names.
+    pub(crate) fn from_raw(raw: DbAlbumSummary) -> AlbumSummary {
         let primary_release_id = raw.primary_release_id;
-        let cover = resolve_cover(&primary_release_id);
+        let cover = raw.cover_version.map(|version| ImageRef {
+            id: primary_release_id.clone(),
+            version,
+            image_type: crate::db::LibraryImageType::Cover,
+        });
         AlbumSummary {
             id: raw.id,
             title: raw.title,

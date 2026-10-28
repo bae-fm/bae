@@ -232,31 +232,22 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |artist_id, sql| {
                 let Some(artist_id) = artist_id else {
-                    return Ok((None, HashMap::new(), HashMap::new()));
+                    return Ok((None, HashMap::new()));
                 };
                 let detail = find_artist_detail_on(&sql, artist_id).map_err(CovenError::from)?;
-                let (artist_ids, album_ids) = match &detail {
-                    Some(detail) => (
-                        vec![detail.artist.artist.id.clone()],
-                        detail
-                            .albums
-                            .iter()
-                            .map(|album| album.id.clone())
-                            .collect::<Vec<_>>(),
-                    ),
-                    None => (Vec::new(), Vec::new()),
+                let artist_ids = match &detail {
+                    Some(detail) => vec![detail.artist.artist.id.clone()],
+                    None => Vec::new(),
                 };
                 let image_versions =
                     super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
                         .map_err(CovenError::from)?;
-                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                Ok((detail, image_versions, cover_versions))
+                Ok((detail, image_versions))
             })
-            .process(|(detail, image_versions, cover_versions)| {
+            .process(|(detail, image_versions)| {
                 Ok(ArtistDetailProjection {
                     detail: detail.map(ArtistDetailRows::process).transpose()?,
                     image_versions,
-                    cover_versions,
                 })
             })
     }
@@ -745,7 +736,6 @@ pub struct ArtistBrowseProjection {
 pub struct ArtistDetailProjection {
     pub detail: Option<DbArtistDetail>,
     pub image_versions: HashMap<String, String>,
-    pub cover_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

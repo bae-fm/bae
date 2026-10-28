@@ -173,7 +173,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
         .unwrap();
     assert_eq!(initial.total_count, 1);
     assert_eq!(initial.windows[0].rows[0].title, "Album Title");
-    assert!(initial.cover_versions.is_empty());
+    assert_eq!(initial.windows[0].rows[0].cover_version, None);
 
     let cover = super::write_cover(&db, RELEASE_ID, "cover bytes").await;
 
@@ -184,7 +184,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
         .result
         .unwrap();
     assert_eq!(
-        updated.cover_versions.get(RELEASE_ID).map(String::as_str),
+        updated.windows[0].rows[0].cover_version.as_deref(),
         Some(cover.as_str())
     );
 }
@@ -209,7 +209,7 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         .unwrap();
 
     super::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
-    super::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
+    let primary = super::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the primary release's cover wakes the browse")
@@ -217,8 +217,8 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         .result
         .unwrap();
     assert_eq!(
-        updated.cover_versions.keys().collect::<Vec<_>>(),
-        vec![RELEASE_ID]
+        updated.windows[0].rows[0].cover_version.as_deref(),
+        Some(primary.as_str())
     );
 }
 
@@ -390,10 +390,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         .unwrap();
     assert_eq!(covered.windows[0].rows[0].id, OTHER_ALBUM_ID);
     assert_eq!(
-        covered
-            .cover_versions
-            .get(OTHER_RELEASE_ID)
-            .map(String::as_str),
+        covered.windows[0].rows[0].cover_version.as_deref(),
         Some(other_cover.as_str())
     );
 
@@ -406,10 +403,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         .result
         .unwrap();
     assert_eq!(
-        cover_updated
-            .cover_versions
-            .get(OTHER_RELEASE_ID)
-            .map(String::as_str),
+        cover_updated.windows[0].rows[0].cover_version.as_deref(),
         Some(replaced_other_cover.as_str())
     );
 

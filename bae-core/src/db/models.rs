@@ -203,6 +203,8 @@ pub struct DbAlbumSummary {
     pub release_ids: Vec<String>,
     /// The album's lowest-ordered release.
     pub primary_release_id: String,
+    /// The version of that release's cover; `None` when it has none.
+    pub cover_version: Option<String>,
 }
 
 /// Probe whether a search-result candidate is already in the library: as the

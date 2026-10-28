@@ -236,6 +236,23 @@ pub(super) fn image_version(revision: &str, hash: Option<&[u8]>) -> String {
     }
 }
 
+/// [`image_version`] of the image row `alias` names, as a SQL expression.
+fn image_version_sql(alias: &str) -> String {
+    format!(
+        "(CASE WHEN {alias}.hash IS NULL THEN {alias}.revision \
+          ELSE {alias}.revision || '.' || lower(hex({alias}.hash)) END)"
+    )
+}
+
+/// The version of the cover of the release `release_id` (a SQL expression),
+/// found by the covers' key; NULL when the release has no cover.
+pub(super) fn cover_version_sql(release_id: &str) -> String {
+    format!(
+        "(SELECT {version} FROM covers AS cover WHERE cover.id = {release_id})",
+        version = image_version_sql("cover")
+    )
+}
+
 /// The version of one image row, or `None` when there is no such row.
 pub(super) fn image_version_on<Q: QueryOne>(
     sql: &Q,

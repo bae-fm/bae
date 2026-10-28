@@ -377,6 +377,8 @@ pub struct DbReleaseUpload {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
+    /// The version of the release's own cover; `None` when it has none.
+    pub release_cover_version: Option<String>,
     pub album: DbAlbumSummary,
     pub place: crate::album_detail::StoragePlace,
 }

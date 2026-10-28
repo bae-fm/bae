@@ -218,17 +218,7 @@ impl LibraryManager {
         let images = self
             .artist_image_refs(std::slice::from_ref(&raw.artist.artist.id))
             .await?;
-        let release_ids: Vec<String> = raw
-            .albums
-            .iter()
-            .flat_map(|a| a.release_ids.iter().cloned())
-            .collect();
-        let covers = self.cover_refs(&release_ids).await?;
-        let albums = raw
-            .albums
-            .into_iter()
-            .map(|album| AlbumSummary::from_raw(album, |rid| covers.get(rid).cloned()))
-            .collect();
+        let albums = raw.albums.into_iter().map(AlbumSummary::from_raw).collect();
         let image = images.get(&raw.artist.artist.id).cloned();
         Ok(Some(ArtistDetail {
             artist: ArtistSummary::from_raw(raw.artist, image),
@@ -250,16 +240,11 @@ impl LibraryManager {
     ) -> Option<ArtistDetail> {
         let raw = projection.detail?;
         let images = image_refs(projection.image_versions, LibraryImageType::Artist);
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let image = images.get(&raw.artist.artist.id).cloned();
         Some(ArtistDetail {
             artist: ArtistSummary::from_raw(raw.artist, image),
             credit_names: raw.credit_names,
-            albums: raw
-                .albums
-                .into_iter()
-                .map(|album| AlbumSummary::from_raw(album, |id| covers.get(id).cloned()))
-                .collect(),
+            albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
         })
     }
 

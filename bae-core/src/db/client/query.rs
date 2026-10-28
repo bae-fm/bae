@@ -716,6 +716,7 @@ fn storage_row_select(filter: StorageFilter) -> String {
             listing.total_size, \
             {RELEASE_LISTING_PINNED} AS pinned, \
             listing.storage_order, \
+            {release_cover} AS release_cover_version, \
             {upload_columns}, \
             {album_columns} \
         FROM release_listing listing \
@@ -723,6 +724,7 @@ fn storage_row_select(filter: StorageFilter) -> String {
         JOIN albums a ON a.id = listing.album_id \
         LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
         {where_clause}",
+        release_cover = super::files::cover_version_sql("r.id"),
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
         releases_sending = super::queued_uploads::RELEASES_SENDING,
     )
@@ -819,14 +821,17 @@ pub(super) fn album_primary_release_sql() -> &'static str {
 
 /// Shared column list for album-summary queries. Emits `album_credits` (the
 /// credit list as JSON), `release_ids_json`
-/// (releases in album order) and `primary_release_id`.
+/// (releases in album order), `primary_release_id` and the version of that
+/// release's cover, `primary_cover_version`.
 pub(super) fn album_summary_columns() -> String {
     format!(
         "a.id, a.title, a.year, a.is_compilation, \
             {primary} AS primary_release_id, \
+            {cover} AS primary_cover_version, \
             {album_credits} AS album_credits, \
             {release_ids} AS release_ids_json",
         primary = album_primary_release_sql(),
+        cover = super::files::cover_version_sql(album_primary_release_sql()),
         album_credits = album_credits_json_sql(),
         release_ids = album_release_ids_json_sql()
     )
@@ -848,6 +853,7 @@ pub(super) struct AlbumSummaryRow {
     album_credits: String,
     release_ids_json: String,
     primary_release_id: String,
+    primary_cover_version: Option<String>,
 }
 
 impl AlbumSummaryRow {
@@ -860,6 +866,7 @@ impl AlbumSummaryRow {
             album_credits: row.get("album_credits")?,
             release_ids_json: row.get("release_ids_json")?,
             primary_release_id: row.get("primary_release_id")?,
+            primary_cover_version: row.get("primary_cover_version")?,
         })
     }
 
@@ -876,6 +883,7 @@ impl AlbumSummaryRow {
             )?),
             release_ids,
             primary_release_id: self.primary_release_id,
+            cover_version: self.primary_cover_version,
         })
     }
 }

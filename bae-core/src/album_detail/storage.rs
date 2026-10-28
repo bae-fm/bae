@@ -141,21 +141,24 @@ pub fn common_storage_actions(rows: &[StorageRow]) -> Vec<ReleaseStorageAction> 
 }
 
 impl StorageRow {
-    /// The release and its album arrive pre-joined from SQL; each half maps
-    /// to its own summary projection.
-    /// `resolve_cover` serves both, so the release row carries its own art and
-    /// the album carries its primary release's.
+    /// The release and its album arrive pre-joined from SQL, each with its
+    /// cover's version; each half maps to its own summary projection, so the
+    /// release row carries its own art and the album its primary release's.
     pub(crate) fn from_raw(
         raw: DbStorageRow,
         has_cloud_home: bool,
         transfer_action: Option<ReleaseStorageAction>,
         originals: &OriginalsSeen,
-        resolve_cover: impl Fn(&str) -> Option<ImageRef>,
     ) -> StorageRow {
+        let cover = raw.release_cover_version.map(|version| ImageRef {
+            id: raw.release.id.clone(),
+            version,
+            image_type: crate::db::LibraryImageType::Cover,
+        });
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
             originals,
-            cover: resolve_cover(&raw.release.id),
+            cover,
             transfer_action,
             // A storage row projects a `ReleaseSummary`, which has no tracks, so
             // the per-track compilation flag is never read on this path.
@@ -163,7 +166,7 @@ impl StorageRow {
         };
         StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),
-            album: AlbumSummary::from_raw(raw.album, &resolve_cover),
+            album: AlbumSummary::from_raw(raw.album),
             status: StorageRowStatus::of(raw.place, transfer_action),
         }
     }

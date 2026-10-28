@@ -226,39 +226,29 @@ impl Database {
                         })
                     })
                     .collect::<Result<Vec<_>, CovenError>>()?;
-                // Only the rows the windows hold are shown, so only their
-                // covers are read and followed.
-                let album_ids = windows
-                    .iter()
-                    .flat_map(|window| window.rows.iter().map(|row| row.id.clone()))
-                    .collect::<Vec<_>>();
-                let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                Ok((windows, cover_versions, total_count, row_count, sections))
+                Ok((windows, total_count, row_count, sections))
             })
-            .process(
-                |(windows, cover_versions, total_count, row_count, sections)| {
-                    let windows = windows
-                        .into_iter()
-                        .map(|window| {
-                            Ok(crate::library::LibraryBrowseWindow {
-                                window: window.window,
-                                rows: window
-                                    .rows
-                                    .into_iter()
-                                    .map(AlbumSummaryRow::process)
-                                    .collect::<Result<_, _>>()?,
-                            })
+            .process(|(windows, total_count, row_count, sections)| {
+                let windows = windows
+                    .into_iter()
+                    .map(|window| {
+                        Ok(crate::library::LibraryBrowseWindow {
+                            window: window.window,
+                            rows: window
+                                .rows
+                                .into_iter()
+                                .map(AlbumSummaryRow::process)
+                                .collect::<Result<_, _>>()?,
                         })
-                        .collect::<Result<_, CovenError>>()?;
-                    Ok(AlbumBrowseProjection {
-                        windows,
-                        cover_versions,
-                        total_count,
-                        row_count,
-                        sections,
                     })
-                },
-            )
+                    .collect::<Result<_, CovenError>>()?;
+                Ok(AlbumBrowseProjection {
+                    windows,
+                    total_count,
+                    row_count,
+                    sections,
+                })
+            })
     }
 
     /// Follow which of the albums `initial` names — the grid's
@@ -741,7 +731,6 @@ fn album_rows_on<P: Params>(
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumSummary>>,
-    pub cover_versions: HashMap<String, String>,
     pub total_count: u64,
     pub row_count: u64,
     pub sections: Vec<crate::library::LibraryBrowseSection>,
