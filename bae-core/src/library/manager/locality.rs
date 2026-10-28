@@ -179,12 +179,6 @@ impl LibraryManager {
         self.downloads.cancel(release_id).await
     }
 
-    /// Cancel every download — queued, failed, and the one in flight — as
-    /// [`Self::cancel_download`] cancels one.
-    pub async fn cancel_all_downloads(&self) -> Result<(), LibraryError> {
-        self.downloads.cancel_all().await
-    }
-
     /// Flip every failed download back to queued and wake the worker to retry
     /// them.
     pub async fn retry_downloads(&self) -> Result<(), LibraryError> {

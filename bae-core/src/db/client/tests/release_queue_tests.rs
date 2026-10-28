@@ -153,8 +153,7 @@ async fn a_paused_queue_offers_nothing_to_start() {
     );
 }
 
-/// Cancelling takes an entry out in any phase; cancelling all empties the
-/// queue.
+/// Cancelling takes an entry out in any phase.
 #[tokio::test]
 async fn cancelling_takes_entries_out() {
     let (db, _tmp) = temp_db().await;
@@ -168,8 +167,13 @@ async fn cancelling_takes_entries_out() {
     db.activate_queued_release::<()>(RELEASE_A).await.unwrap();
     assert!(db.cancel_queued_release::<()>(RELEASE_A).await.unwrap());
     assert!(!db.cancel_queued_release::<()>(RELEASE_A).await.unwrap());
-    db.cancel_all_queued_releases::<()>().await.unwrap();
-    assert!(downloads(&db).await.is_empty());
+    assert_eq!(
+        downloads(&db).await,
+        vec![
+            (RELEASE_B.to_string(), ReleaseQueueState::Queued),
+            (RELEASE_Z.to_string(), ReleaseQueueState::Queued),
+        ]
+    );
 }
 
 /// A row shows its release as the library holds it now; one whose release

@@ -401,7 +401,6 @@ impl AppServices {
     delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);
     delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, cancel_all_downloads => cancel_all_downloads() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, get_artist_count => get_artist_count() -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
@@ -501,8 +500,6 @@ impl AppServices {
     delegate_async!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), crate::library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, cancel_all_outputs => cancel_all_outputs() -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, retry_outputs => retry_outputs() -> Result<(), crate::library::LibraryError>);
 

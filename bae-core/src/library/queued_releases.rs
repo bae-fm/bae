@@ -127,14 +127,6 @@ where
         Ok(())
     }
 
-    /// Empty the queue: take out every queued and failed entry and abort the
-    /// active one's task.
-    pub(crate) async fn cancel_all(&self) -> Result<(), LibraryError> {
-        self.database.cancel_all_queued_releases::<Extra>().await?;
-        self.stop(|_| true);
-        Ok(())
-    }
-
     /// Queue every failed entry again and wake the worker.
     pub(crate) async fn retry_failed(&self) -> Result<(), LibraryError> {
         if self.database.retry_failed_releases::<Extra>().await? {

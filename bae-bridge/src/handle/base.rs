@@ -267,11 +267,6 @@ forward! { async this => {
         Ok(this.services.cancel_download(&release_id).await?)
     }
 
-    /// Cancel every download — queued, failed, and the one in flight.
-    fn cancel_all_downloads() -> () {
-        Ok(this.services.cancel_all_downloads().await?)
-    }
-
     /// Retry every failed download now (flips them back to queued and wakes the
     /// worker).
     fn retry_downloads() -> () {

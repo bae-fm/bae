@@ -26,8 +26,6 @@ final class Outputs: Sendable, Observable {
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
     let cancelOutput: @Sendable (_ releaseId: String) async throws -> Void
-    /// Cancel every export — queued, failed, and the one in flight.
-    let cancelAllOutputs: @Sendable () async throws -> Void
     /// Replace configured export presets.
     let setSavePresets:
         @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
@@ -53,7 +51,6 @@ final class Outputs: Sendable, Observable {
         cancelOutput: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
-        cancelAllOutputs: @escaping @Sendable () async throws -> Void = {},
         setSavePresets:
             @escaping @Sendable ([BridgeSavePreset]) async throws -> Void = {
                 _ in
@@ -69,7 +66,6 @@ final class Outputs: Sendable, Observable {
         self.enqueueReleaseSave = enqueueReleaseSave
         self.setOutputsPaused = setOutputsPaused
         self.cancelOutput = cancelOutput
-        self.cancelAllOutputs = cancelAllOutputs
         self.setSavePresets = setSavePresets
         self.setDefaultTrackSavePreset = setDefaultTrackSavePreset
         self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
@@ -89,7 +85,6 @@ final class Outputs: Sendable, Observable {
             },
             setOutputsPaused: { try await handle.setOutputsPaused(paused: $0) },
             cancelOutput: { try await handle.cancelOutput(releaseId: $0) },
-            cancelAllOutputs: { try await handle.cancelAllOutputs() },
             setSavePresets: { try await handle.setSavePresets(presets: $0) },
             setDefaultTrackSavePreset: {
                 try await handle.setDefaultTrackSavePreset(presetId: $0)

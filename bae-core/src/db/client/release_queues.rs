@@ -480,15 +480,6 @@ impl Database {
         .await
     }
 
-    /// Empty the queue.
-    pub(crate) async fn cancel_all_queued_releases<P: QueuedPayload>(&self) -> Result<(), DbError> {
-        self.call(|sql| {
-            sql.execute(&format!("DELETE FROM {}", P::TABLE), [])?;
-            Ok(())
-        })
-        .await
-    }
-
     /// Every entry of the queue now, each beside its release: what the
     /// automation surface's export status reads.
     #[cfg(any(desktop, test, feature = "test-utils"))]

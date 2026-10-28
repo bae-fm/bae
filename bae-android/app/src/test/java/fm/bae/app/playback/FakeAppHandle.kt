@@ -273,10 +273,6 @@ internal open class FakeAppHandle(
         unfaked("addToQueue")
     }
 
-    override suspend fun cancelAllDownloads() {
-        unfaked("cancelAllDownloads")
-    }
-
     override suspend fun cancelDownload(releaseId: String) {
         unfaked("cancelDownload")
     }
