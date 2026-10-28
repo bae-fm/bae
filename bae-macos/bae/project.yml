@@ -73,18 +73,20 @@ targets:
           - CFBundleURLName: fm.bae.url
             CFBundleURLSchemes:
               - bae
-        # The app runs with stdout and stderr on /dev/null, and the unified log
-        # keeps only default, error and fault lines on disk unless the app
-        # says otherwise, so without this a running build's debug and info
-        # lines (Rust tracing and BaeLogger, both fm.bae.desktop) are gone as
-        # they are written. Read them back with
+        # The unified log saves default, error and fault lines, keeps info
+        # lines in memory for a while, and drops debug lines unless someone is
+        # streaming. A Debug build has it save every level of fm.bae.desktop
+        # (Rust tracing and BaeLogger), so a running development build is read
+        # back with
         # `log show --last 1h --debug --predicate 'subsystem == "fm.bae.desktop"'`.
+        # Release states the system's own defaults, so a person's Mac keeps
+        # what it keeps for any app.
         OSLogPreferences:
           fm.bae.desktop:
             DEFAULT-OPTIONS:
               Level:
-                Enable: Debug
-                Persist: Debug
+                Enable: $(BAE_LOG_ENABLE_LEVEL)
+                Persist: $(BAE_LOG_PERSIST_LEVEL)
     dependencies:
       - package: BaeKit
       - package: Sparkle
@@ -152,6 +154,8 @@ targets:
           - /opt/bae-ffmpeg/lib
       configs:
         Debug:
+          BAE_LOG_ENABLE_LEVEL: Debug
+          BAE_LOG_PERSIST_LEVEL: Debug
           BAE_APP_BUNDLE_IDENTIFIER: fm.bae.desktop.xcode
           BAE_APP_PRODUCT_NAME: bae
           BAE_APP_GENERATE_INFOPLIST_FILE: YES
@@ -163,6 +167,8 @@ targets:
           # generated agent-app plist keeps that pre-start process out of the
           # Dock; run.sh supplies runnable values through the private inputs.
         Release:
+          BAE_LOG_ENABLE_LEVEL: Info
+          BAE_LOG_PERSIST_LEVEL: Default
           BAE_APP_BUNDLE_IDENTIFIER: fm.bae.desktop
           BAE_APP_PRODUCT_NAME: bae
           BAE_APP_GENERATE_INFOPLIST_FILE: NO

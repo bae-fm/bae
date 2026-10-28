@@ -30,6 +30,22 @@
 	<string>$(BAE_GIT_COMMIT)</string>
 	<key>BaeSentryDsn</key>
 	<string>$(BAE_SENTRY_DSN)</string>
+	<key>OSLogPreferences</key>
+	<dict>
+		<key>fm.bae.app</key>
+		<dict>
+			<key>DEFAULT-OPTIONS</key>
+			<dict>
+				<key>Level</key>
+				<dict>
+					<key>Enable</key>
+					<string>$(BAE_LOG_ENABLE_LEVEL)</string>
+					<key>Persist</key>
+					<string>$(BAE_LOG_PERSIST_LEVEL)</string>
+				</dict>
+			</dict>
+		</dict>
+	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>

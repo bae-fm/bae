@@ -116,6 +116,16 @@ targets:
           - -framework AudioToolbox
           - -framework AVFoundation
           - -framework AVFAudio
+      # Info.plist's OSLogPreferences: a Debug build has the unified log save
+      # every level of fm.bae.app; Release states the system's own defaults
+      # (save default and above, keep info in memory, drop debug).
+      configs:
+        Debug:
+          BAE_LOG_ENABLE_LEVEL: Debug
+          BAE_LOG_PERSIST_LEVEL: Debug
+        Release:
+          BAE_LOG_ENABLE_LEVEL: Info
+          BAE_LOG_PERSIST_LEVEL: Default
 schemes:
   bae:
     build:

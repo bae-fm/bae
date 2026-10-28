@@ -368,11 +368,12 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
 
 /// One local log sink and the level bae's own crates record at when
 /// `RUST_LOG` is unset. Levels are per sink because the sinks keep different
-/// amounts: iOS's unified log and ETW discard what no one is capturing, and a
+/// amounts: the unified log and ETW discard what no one is capturing, and a
 /// terminal is someone watching, so they take `debug`; logcat and the journal
-/// keep every line on the device, so they take `info`. The macOS app keeps
-/// `debug` on disk too: its Info.plist (`OSLogPreferences`) has the unified log
-/// store every `fm.bae.desktop` line, so a running build is read after the fact.
+/// keep every line on the device, so they take `info`. A Debug build of the
+/// macOS or iOS app has the unified log save every level of its lines
+/// (`OSLogPreferences` in its Info.plist), so a development build is read after
+/// the fact; a Release build keeps the system's defaults.
 struct LogSink {
     layer: Box<dyn tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync>,
     default_level: LevelFilter,
@@ -496,8 +497,7 @@ fn terminal_log_sink() -> LogSink {
     )
 }
 
-/// The unified log, which the app's Info.plist has store every level on disk:
-/// read back with
+/// The unified log, read back from a Debug build with
 /// `log show --last 1h --debug --predicate 'subsystem == "fm.bae.desktop"'`,
 /// or followed with
 /// `log stream --level debug --predicate 'subsystem == "fm.bae.desktop"'`.
@@ -529,7 +529,9 @@ fn configure_logging() {
     install_logging(vec![LogSink::new(android_layer, LevelFilter::INFO)])
 }
 
-/// The unified log, read with
+/// The unified log, read back from a Debug build with
+/// `log show --last 1h --debug --predicate 'subsystem == "fm.bae.app"'`, or
+/// followed with
 /// `log stream --level debug --predicate 'subsystem == "fm.bae.app"'`.
 #[cfg(target_os = "ios")]
 fn configure_logging() {

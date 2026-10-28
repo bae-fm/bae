@@ -2813,10 +2813,13 @@ each device and hands playback the channel or sink.
   each app hands core at launch. Crash reporting itself stays in the apps.
 - **Logs stay in the platform's log.** Core's and each app's log lines go to
   the platform's own log on the device: the unified log on macOS and iOS,
-  logcat on Android, ETW on Windows, the systemd journal on Linux. The macOS
-  app launches with no terminal, so it has the unified log keep every level of
-  its lines on disk, and a running app is read after the fact with `log show`.
-  A desktop app run from a terminal also prints its lines there.
+  logcat on Android, ETW on Windows, the systemd journal on Linux. A
+  development (Debug) build of the macOS or iOS app has the unified log save
+  every level of its lines, so a running build is read after the fact with
+  `log show`; a release keeps the system's defaults, which save default,
+  error and fault lines and drop the rest, so bae doesn't fill a person's log
+  with its detail. A desktop app run from a terminal also prints its lines
+  there.
 - **Reporting needs its settings.** A bae-edition build missing a telemetry
   or crash-reporting setting turns that reporting off and logs a warning
   naming what's missing.
