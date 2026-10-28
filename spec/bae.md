@@ -2811,6 +2811,12 @@ each device and hands playback the channel or sink.
   own guarantee — is logged with its causes and handed to the platform's crash
   reporter as a non-fatal event naming the operation, through the reporter
   each app hands core at launch. Crash reporting itself stays in the apps.
+- **Logs stay in the platform's log.** Core's and each app's log lines go to
+  the platform's own log on the device: the unified log on macOS and iOS,
+  logcat on Android, ETW on Windows, the systemd journal on Linux. The macOS
+  app launches with no terminal, so it has the unified log keep every level of
+  its lines on disk, and a running app is read after the fact with `log show`.
+  A desktop app run from a terminal also prints its lines there.
 - **Reporting needs its settings.** A bae-edition build missing a telemetry
   or crash-reporting setting turns that reporting off and logs a warning
   naming what's missing.

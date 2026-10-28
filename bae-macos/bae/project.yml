@@ -73,6 +73,18 @@ targets:
           - CFBundleURLName: fm.bae.url
             CFBundleURLSchemes:
               - bae
+        # The app runs with stdout and stderr on /dev/null, and the unified log
+        # keeps only default, error and fault lines on disk unless the app
+        # says otherwise, so without this a running build's debug and info
+        # lines (Rust tracing and BaeLogger, both fm.bae.desktop) are gone as
+        # they are written. Read them back with
+        # `log show --last 1h --debug --predicate 'subsystem == "fm.bae.desktop"'`.
+        OSLogPreferences:
+          fm.bae.desktop:
+            DEFAULT-OPTIONS:
+              Level:
+                Enable: Debug
+                Persist: Debug
     dependencies:
       - package: BaeKit
       - package: Sparkle
