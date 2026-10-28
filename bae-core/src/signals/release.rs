@@ -49,7 +49,9 @@ pub(crate) async fn resolve_release_identity(
         .ok_or_else(|| {
             crate::library::LibraryError::Refused(format!("Release '{release_id}' not found"))
         })?;
-    let files = library_manager.get_files_for_release(release_id).await?;
+    let files = library_manager
+        .get_files_with_originals_for_release(release_id)
+        .await?;
     let tracks = library_manager.get_tracks_for_release(release_id).await?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
@@ -60,8 +62,8 @@ pub(crate) async fn resolve_release_identity(
     let mut documents = Vec::new();
     let mut cue_paths = Vec::new();
     let mut audio_files = Vec::new();
-    for f in &files {
-        if let Some(path) = library_manager.file_local_path(&f.id).await? {
+    for (f, original) in files {
+        if let Some(path) = original {
             if !path.exists() {
                 continue;
             }
@@ -113,7 +115,9 @@ pub(crate) async fn resolve_release_artwork_paths(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
 ) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), crate::library::LibraryError> {
-    let files = library_manager.get_files_for_release(release_id).await?;
+    let files = library_manager
+        .get_files_with_originals_for_release(release_id)
+        .await?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
     // The cover is one of several OCR inputs (the image files below are the
@@ -163,11 +167,11 @@ pub(crate) async fn resolve_release_artwork_paths(
 
     // In-folder artwork (cover.jpg and the like), resolved to this device's
     // original file whether or not it has been attached for upload.
-    for file in &files {
+    for (file, original) in &files {
         if !file.content_type.is_image() {
             continue;
         }
-        if let Some(p) = library_manager.file_local_path(&file.id).await? {
+        if let Some(p) = original.clone() {
             match tokio::fs::try_exists(&p).await {
                 Ok(true) => paths.push(p),
                 Ok(false) => warn!(

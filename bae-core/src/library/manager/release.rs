@@ -495,6 +495,19 @@ impl LibraryManager {
         Ok(self.database.get_files_for_release(release_id).await?)
     }
 
+    /// The release's files in their order, each with the path of the original
+    /// this device holds for it; `None` where it holds none.
+    #[cfg(desktop)]
+    pub(crate) async fn get_files_with_originals_for_release(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, LibraryError> {
+        Ok(self
+            .database
+            .get_files_with_originals_for_release(release_id)
+            .await?)
+    }
+
     pub async fn get_album_id_for_release(&self, release_id: &str) -> Result<String, LibraryError> {
         let album_id = self
             .database
