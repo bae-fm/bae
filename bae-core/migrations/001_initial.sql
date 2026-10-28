@@ -1155,10 +1155,13 @@ END;
 -- row; `media_empty` (1 for a release stating no medium) and `media_key`
 -- (every stated medium with its count, in order); its files' count and total
 -- size; `stored`, 1 when it has files and every one names its stored file;
--- `pinned_count`, how many of its files coven's `coven_pins` lists; and
+-- `pinned_count`, how many of its files coven's `coven_pins` lists;
 -- `queued_count` and `first_queued_position`, how many of its files coven's
 -- `coven_upload_queue` lists and the place of the first of them (NULL with
--- none).
+-- none); `pinning`, 1 while this device's download queue holds it waiting or
+-- downloading; and `storage_order`, where it sorts by storage, worked out
+-- from those in the same write: uploading (0), pinning (1), local (2),
+-- pinned (3), in the cloud only (4).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -1174,6 +1177,13 @@ CREATE TABLE IF NOT EXISTS release_listing (
     pinned_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
+    pinning INTEGER NOT NULL CHECK (pinning IN (0, 1)),
+    storage_order INTEGER GENERATED ALWAYS AS (CASE
+        WHEN queued_count > 0 THEN 0
+        WHEN pinning = 1 THEN 1
+        WHEN stored = 0 THEN 2
+        WHEN file_count > 0 AND pinned_count = file_count THEN 3
+        ELSE 4 END) VIRTUAL,
     CHECK ((queued_count = 0) = (first_queued_position IS NULL))
 ) STRICT;
 
@@ -1189,6 +1199,8 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_files ON release_listing (file_co
 CREATE INDEX IF NOT EXISTS idx_release_listing_files_desc ON release_listing (file_count DESC, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_size ON release_listing (total_size, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_size_desc ON release_listing (total_size DESC, album_title COLLATE NOCASE, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_storage ON release_listing (storage_order, album_title COLLATE NOCASE, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_storage_desc ON release_listing (storage_order DESC, album_title COLLATE NOCASE, created_at, release_id);
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title ON release_listing (stored, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title_desc ON release_listing (stored, album_title COLLATE NOCASE DESC, created_at, release_id);
@@ -1200,6 +1212,8 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files ON release_listing (
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_files_desc ON release_listing (stored, file_count DESC, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size ON release_listing (stored, total_size, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_desc ON release_listing (stored, total_size DESC, album_title COLLATE NOCASE, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage ON release_listing (stored, storage_order, album_title COLLATE NOCASE, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_desc ON release_listing (stored, storage_order DESC, album_title COLLATE NOCASE, created_at, release_id);
 
 -- The uploaded releases this device doesn't keep wholly pinned (§4.3): those
 -- it could no longer play without the cloud. It holds the columns its WHERE
@@ -1258,7 +1272,7 @@ BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
-        queued_count, first_queued_position)
+        queued_count, first_queued_position, pinning)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            json_array_length(r.media) = 0,
            (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'),
@@ -1279,7 +1293,9 @@ BEGIN
            (SELECT MIN(queued.position) FROM release_files f
             JOIN coven_upload_queue queued
                 ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
-            WHERE f.release_id = r.id)
+            WHERE f.release_id = r.id),
+           EXISTS (SELECT 1 FROM download_queue download
+                   WHERE download.release_id = r.id AND download.state IN ('queued', 'active'))
     FROM releases r
     JOIN album_listing album ON album.album_id = r.album_id
     WHERE r.id = NEW.release_id
@@ -1296,7 +1312,8 @@ BEGIN
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
         queued_count = excluded.queued_count,
-        first_queued_position = excluded.first_queued_position;
+        first_queued_position = excluded.first_queued_position,
+        pinning = excluded.pinning;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_release_added AFTER INSERT ON releases
@@ -1672,6 +1689,30 @@ CREATE TABLE IF NOT EXISTS download_queue (
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS download_queue_active
     ON download_queue (state) WHERE state = 'active';
+
+-- A release joining, moving through or leaving this device's download queue
+-- moves its listing's pinning flag, in the transaction that changes the
+-- queue: waiting or downloading sets it, a failed download or leaving the
+-- queue clears it. An entry names its release by id alone, so one whose
+-- release is gone, or not listed yet, moves nothing: the listing's refresh
+-- reads the queue as it writes the release's row.
+CREATE TRIGGER IF NOT EXISTS release_listing_pin_queued AFTER INSERT ON download_queue
+BEGIN
+    UPDATE release_listing SET pinning = NEW.state IN ('queued', 'active')
+    WHERE release_id = NEW.release_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_pin_changed AFTER UPDATE OF release_id, state ON download_queue
+BEGIN
+    UPDATE release_listing SET pinning = 0 WHERE release_id = OLD.release_id;
+    UPDATE release_listing SET pinning = NEW.state IN ('queued', 'active')
+    WHERE release_id = NEW.release_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_pin_dequeued AFTER DELETE ON download_queue
+BEGIN
+    UPDATE release_listing SET pinning = 0 WHERE release_id = OLD.release_id;
+END;
 
 -- A release queued to export or save into a folder, as `download_queue` holds
 -- a download. How far it has got is not here either.

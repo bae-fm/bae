@@ -154,3 +154,41 @@ async fn the_uploading_releases_read_the_listing_in_queue_order() {
         vec!["SEARCH uploading USING COVERING INDEX idx_release_listing_uploading (first_queued_position>?)".to_string()]
     );
 }
+
+/// Sorting by storage reads a window from an index of the listing in either
+/// direction, under every filter: SQLite never sorts the list itself.
+#[tokio::test]
+async fn the_storage_sort_reads_a_window_from_an_index() {
+    let (db, _tmp) = super::temp_db().await;
+    for filter in [
+        StorageFilter::All,
+        StorageFilter::Local,
+        StorageFilter::Remote,
+    ] {
+        for direction in [SortDirection::Ascending, SortDirection::Descending] {
+            let sort = StorageSortCriterion {
+                field: StorageSortField::Storage,
+                direction,
+            };
+            let steps = plan(
+                &db,
+                super::super::query::storage_page_query(&sort, filter)
+                    .replace("LIMIT ? OFFSET ?", "LIMIT 50 OFFSET 0"),
+            )
+            .await;
+            assert!(
+                steps
+                    .iter()
+                    .any(|step| step.contains("USING INDEX idx_release_listing_")
+                        && step.contains("storage")),
+                "{filter:?} {direction:?}: {steps:?}"
+            );
+            assert!(
+                !steps
+                    .iter()
+                    .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                "{filter:?} {direction:?}: {steps:?}"
+            );
+        }
+    }
+}

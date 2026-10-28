@@ -666,6 +666,7 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> String {
         }
         StorageSortField::FileCount => format!("listing.file_count {dir}, {tie}"),
         StorageSortField::TotalSize => format!("listing.total_size {dir}, {tie}"),
+        StorageSortField::Storage => format!("listing.storage_order {dir}, {tie}"),
     }
 }
 

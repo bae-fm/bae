@@ -212,8 +212,7 @@ pub struct BridgeStorageRow {
     pub album: BridgeAlbum,
 }
 
-/// Column the Storage Manager can sort by. Mirrors the sortable
-/// columns `StorageManagerView` renders today.
+/// Column the Storage Manager can sort by. Mirrors `StorageSortField`.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgeStorageSortField {
     AlbumTitle,
@@ -221,6 +220,8 @@ pub enum BridgeStorageSortField {
     Media,
     FileCount,
     TotalSize,
+    /// Uploading, pinning, local, pinned, then in the cloud only, ascending.
+    Storage,
 }
 
 #[derive(Debug, Clone, Copy, uniffi::Enum)]

@@ -167,3 +167,162 @@ async fn storage_page_sort_by_total_size() {
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Small", "Medium", "Big"]);
 }
+
+/// The release ids of the Storage Manager list under `filter`, sorted by
+/// storage in `direction`.
+#[cfg(feature = "test-utils")]
+async fn by_storage(
+    manager: &LibraryManager,
+    filter: crate::db::StorageFilter,
+    direction: crate::db::SortDirection,
+) -> Vec<String> {
+    let sort = crate::db::StorageSortCriterion {
+        field: crate::db::StorageSortField::Storage,
+        direction,
+    };
+    manager
+        .get_storage_page(&sort, filter, 0, 10)
+        .await
+        .unwrap()
+        .rows
+        .into_iter()
+        .map(|row| row.release.id)
+        .collect()
+}
+
+/// Sorting by storage puts the releases uploading first, then those waiting
+/// or downloading to be pinned, then the local, the pinned and the
+/// cloud-only ones, whatever their titles; descending reverses it, and each
+/// filter keeps the order among the releases it shows.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn storage_page_sort_by_storage_state() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let dir = |name: &str| temp_dir.path().join(name);
+
+    let cloud = uploaded_release(&manager, &dir("cloud"), "Album Title A", false).await;
+    let pinned = uploaded_release(&manager, &dir("pinned"), "Album Title B", true).await;
+    let local = insert_local_release_with_files(
+        &manager,
+        &dir("local"),
+        "Album Title C",
+        &[("track.flac", b"local")],
+    )
+    .await
+    .id;
+    let pinning = uploaded_release(&manager, &dir("pinning"), "Album Title D", false).await;
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![pinning.clone()]).await.unwrap();
+    let uploading = insert_release_with_queued_uploads(
+        &manager,
+        &dir("uploading"),
+        "Album Title E",
+        &[("track.flac", b"uploading")],
+    )
+    .await
+    .id;
+
+    use crate::db::{SortDirection, StorageFilter};
+    let ascending = vec![
+        uploading.clone(),
+        pinning.clone(),
+        local.clone(),
+        pinned.clone(),
+        cloud.clone(),
+    ];
+    assert_eq!(
+        by_storage(&manager, StorageFilter::All, SortDirection::Ascending).await,
+        ascending
+    );
+    let mut descending = ascending.clone();
+    descending.reverse();
+    assert_eq!(
+        by_storage(&manager, StorageFilter::All, SortDirection::Descending).await,
+        descending
+    );
+    assert_eq!(
+        by_storage(&manager, StorageFilter::Local, SortDirection::Ascending).await,
+        vec![uploading.clone(), local.clone()]
+    );
+    assert_eq!(
+        by_storage(&manager, StorageFilter::Remote, SortDirection::Ascending).await,
+        vec![pinning.clone(), pinned.clone(), cloud.clone()]
+    );
+}
+
+/// A release is pinning while the download queue holds it waiting or
+/// downloading, in the write that changes the queue: a failure, a cancel, a
+/// finish and the queue emptied as the library opens each return it to its
+/// resting place, and a retry or a refreshed listing row keep it pinning.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let dir = |name: &str| temp_dir.path().join(name);
+    let first = uploaded_release(&manager, &dir("first"), "Album Title A", false).await;
+    let second = uploaded_release(&manager, &dir("second"), "Album Title B", false).await;
+    let ascending = || {
+        by_storage(
+            &manager,
+            crate::db::StorageFilter::All,
+            crate::db::SortDirection::Ascending,
+        )
+    };
+    let resting = vec![first.clone(), second.clone()];
+    let second_pinning = vec![second.clone(), first.clone()];
+    assert_eq!(ascending().await, resting);
+
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![second.clone()]).await.unwrap();
+    assert_eq!(ascending().await, second_pinning, "queued");
+
+    assert!(manager
+        .database
+        .activate_queued_release::<()>(&second)
+        .await
+        .unwrap());
+    assert_eq!(ascending().await, second_pinning, "downloading");
+
+    assert!(manager
+        .database
+        .fail_queued_release::<()>(&second, "the network connection was lost".into())
+        .await
+        .unwrap());
+    assert_eq!(ascending().await, resting, "failed");
+
+    manager.retry_downloads().await.unwrap();
+    assert_eq!(ascending().await, second_pinning, "retried");
+
+    // Rewriting the release's listing row reads the queue again.
+    manager
+        .database
+        .execute_for_test(
+            "UPDATE releases SET media = media WHERE id = ?1",
+            vec![second.clone()],
+        )
+        .await
+        .unwrap();
+    assert_eq!(ascending().await, second_pinning, "refreshed");
+
+    manager.cancel_download(&second).await.unwrap();
+    assert_eq!(ascending().await, resting, "cancelled");
+
+    manager.enqueue_pins(vec![second.clone()]).await.unwrap();
+    assert!(manager
+        .database
+        .activate_queued_release::<()>(&second)
+        .await
+        .unwrap());
+    assert!(manager
+        .database
+        .finish_queued_release::<()>(&second)
+        .await
+        .unwrap());
+    assert_eq!(ascending().await, resting, "finished");
+
+    manager.enqueue_pins(vec![second.clone()]).await.unwrap();
+    manager.database.clear_release_queues().await.unwrap();
+    assert_eq!(ascending().await, resting, "emptied as the library opens");
+}

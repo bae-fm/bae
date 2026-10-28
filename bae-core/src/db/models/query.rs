@@ -372,6 +372,9 @@ pub enum StorageSortField {
     Media,
     FileCount,
     TotalSize,
+    /// Where the release's files are, ascending: uploading, pinning, local,
+    /// pinned, in the cloud only.
+    Storage,
 }
 
 /// A single sort criterion for storage-page queries.

@@ -691,7 +691,7 @@ mirror_enum! {
     BridgeStorageSortField = bae_core::db::StorageSortField,
     from_core: fn,
     into_core: fn,
-    variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize },
+    variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize, Storage },
 }
 
 mirror_enum! {
