@@ -360,3 +360,33 @@ async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
         .unwrap()
         .is_none());
 }
+
+/// Removing a watched folder forgets what was decided under it alone: a
+/// watched folder beside it whose name only begins with its own keeps its
+/// skips.
+#[tokio::test]
+async fn removing_a_watched_folder_leaves_the_folder_beside_it() {
+    let (db, _tmp) = empty_db().await;
+    let root = host_root("/mounted/library");
+    let beside = host_root("/mounted/library 2");
+    for folder in [&root, &beside] {
+        db.add_watched_import_folder(folder).await.unwrap();
+        db.set_import_candidate_skipped(
+            &crate::import::folder_path::folder_below(folder, "Release").unwrap(),
+            true,
+        )
+        .await
+        .unwrap();
+    }
+
+    db.remove_watched_import_folders(vec![root.clone()], None)
+        .await
+        .unwrap()
+        .expect("the folder was watched");
+
+    assert!(db.load_skipped_import_candidates(&root).await.unwrap().is_empty());
+    assert_eq!(
+        db.load_skipped_import_candidates(&beside).await.unwrap(),
+        ["Release".to_string()].into_iter().collect()
+    );
+}

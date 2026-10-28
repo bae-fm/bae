@@ -203,11 +203,14 @@ impl Database {
         &self,
         watched_folder_path: &str,
     ) -> Result<HashSet<String>, DbError> {
+        let (below_first, below_past) =
+            crate::import::folder_path::paths_below(watched_folder_path);
         let paths = self
             .read(move |sql| {
                 Ok(sql.query(
-                    "SELECT candidate_path FROM skipped_import_candidates",
-                    [],
+                    "SELECT candidate_path FROM skipped_import_candidates \
+                     WHERE candidate_path >= ? AND candidate_path < ?",
+                    params![below_first, below_past],
                     |row| row.get::<_, String>(0),
                 )?)
             })
@@ -215,14 +218,11 @@ impl Database {
         let mut below = HashSet::new();
         for path in &paths {
             crate::import::watched_folder::validate_stored_folder(path)?;
-            if std::path::Path::new(path).starts_with(watched_folder_path) {
-                below.insert(relative_below(watched_folder_path, path)?);
-            }
+            below.insert(relative_below(watched_folder_path, path)?);
         }
         Ok(below)
     }
 
-    /// Every watched root, in the order they were added.
     /// Whether `path`, spelled as the store keys it, is a watched folder,
     /// read by the watched folders' key.
     pub async fn is_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
@@ -262,6 +262,7 @@ impl Database {
         .await
     }
 
+    /// Every watched root, in the order they were added.
     async fn watched_import_roots(&self) -> Result<Vec<String>, DbError> {
         self.read(move |sql| {
             Ok(sql.query(

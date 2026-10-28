@@ -2239,6 +2239,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_folder (
         REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
+-- The candidates found under a folder, which a watched folder's removal
+-- forgets by the range of folders below it.
+CREATE INDEX IF NOT EXISTS idx_import_candidate_folder_folder
+    ON import_candidate_folder (folder);
+
 -- The release-level metadata draft the import will write.
 CREATE TABLE IF NOT EXISTS import_candidate_edit (
     content_hash   TEXT PRIMARY KEY,
