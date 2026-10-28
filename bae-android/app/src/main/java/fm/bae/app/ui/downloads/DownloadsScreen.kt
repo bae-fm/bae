@@ -24,7 +24,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -228,9 +227,12 @@ private fun DownloadsList(
         // Keyed by place in the queue, which is what the windows read by.
         items(count, key = { index -> index }) { index ->
             val op = row(index) ?: return@items
-            // Collected per item, so a release's bytes arriving recompose its row alone.
-            val progress by remember(op.releaseId, downloads) { downloads.progress(op.releaseId) }.collectAsState()
-            DownloadQueueRow(op = op, progress = progress, onCancel = { onCancel(op.releaseId) })
+            // The row's progress View reads the release's latest bytes each frame; nothing recomposes for them.
+            DownloadQueueRow(
+                op = op,
+                progress = downloads.latestProgress(op.releaseId),
+                onCancel = { onCancel(op.releaseId) },
+            )
             HorizontalDivider()
         }
     }

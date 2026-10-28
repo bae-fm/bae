@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.LatestSource
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -38,7 +39,7 @@ import uniffi.bae_bridge.BridgeQueuedRelease
 @Composable
 internal fun DownloadQueueRow(
     op: BridgeDownloadOp,
-    progress: BridgeDownloadTransferProgress?,
+    progress: LatestSource<BridgeDownloadTransferProgress>,
     onCancel: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -75,7 +76,7 @@ internal fun DownloadQueueRow(
 @Composable
 private fun DownloadRowState(
     state: BridgeDownloadState,
-    progress: BridgeDownloadTransferProgress?,
+    progress: LatestSource<BridgeDownloadTransferProgress>,
 ) {
     when (state) {
         BridgeDownloadState.Queued -> {
@@ -83,7 +84,7 @@ private fun DownloadRowState(
         }
 
         BridgeDownloadState.Active -> {
-            progress?.let { DownloadProgressBytes(it) }
+            DownloadProgress(progress)
         }
 
         is BridgeDownloadState.Failed -> {

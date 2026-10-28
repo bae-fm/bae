@@ -322,7 +322,6 @@ object PreviewData {
         )
 
     /** The upload queue's transfer while [syncActivity]'s files are sent. */
-
     fun uploadTransfer(): BridgeUploadTransfer =
         BridgeUploadTransfer(
             bar = BridgeUploadBar(bytesDone = 3_200_000uL, bytesTotal = 8_400_000uL),
@@ -364,11 +363,12 @@ object PreviewData {
         downloadingReleaseId: String = "rel-1",
     ): DownloadStore =
         DownloadStore(counts).apply {
-            applyTransferChange(
+            val transfers =
                 BridgeDownloadTransferChange.Reset(
                     listOf(BridgeKeyedDownloadTransfer(downloadingReleaseId, downloadTransferProgress())),
-                ),
-            )
+                )
+            applyTransferChange(transfers)
+            applyLatestTransferChange(transfers)
         }
 
     fun downloadTransferProgress(
