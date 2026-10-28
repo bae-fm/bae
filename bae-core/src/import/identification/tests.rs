@@ -141,6 +141,14 @@ impl FakeProvider {
         ));
     }
 
+    /// Answer one held request, the next to reach the hold if none is
+    /// waiting, and go on holding the rest.
+    fn let_one_through(&self) {
+        if let Some((_, gate)) = self.state.lock().unwrap().gate.as_ref() {
+            gate.add_permits(1);
+        }
+    }
+
     /// Answer everything held, and let later requests through.
     fn release(&self) {
         if let Some((_, gate)) = self.state.lock().unwrap().gate.take() {

@@ -285,15 +285,22 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     );
 }
 
-/// "Identify selected" asks for each row in turn. The page shows each row
-/// waiting and then running, at the list's one request revision.
+/// "Identify selected" asks for each row in turn. A row asked for while
+/// every slot is taken waits, and the page shows it queued until a slot
+/// frees and then running, at the list's one request revision. A row that
+/// finds a slot free starts at once, so its queued moment is no state the
+/// page promises to show.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_batch_identify_shows_each_row_queued_then_running() {
+async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     let fixture = Fixture::new("batch-identify-rows").await;
-    let first = fixture.disc_id_candidate("First");
-    let second = fixture.disc_id_candidate("Second");
-    std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
-    let probed = fixture.probed_total_ms(&first);
+    let dirs: Vec<PathBuf> = (0..MAX_IN_FLIGHT + 1)
+        .map(|index| {
+            let dir = fixture.disc_id_candidate(&format!("Album {index}"));
+            std::fs::write(dir.join(format!("notes-{index}.txt")), format!("{index}")).unwrap();
+            dir
+        })
+        .collect();
+    let probed = fixture.probed_total_ms(&dirs[0]);
     fixture.provider.route(
         "/discid/",
         200,
@@ -304,17 +311,21 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
         200,
         release_json("mb-batch", "rg-batch", &[probed, 0]),
     );
+    fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
     fixture
         .manager
         .set_identify_automatically(false)
         .await
         .unwrap();
-    fixture.scan(2).await;
+    fixture.scan(MAX_IN_FLIGHT + 1).await;
 
     let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
-    let keys = [&first, &second].map(|dir| dir.to_string_lossy().into_owned());
+    let keys: Vec<String> = dirs
+        .iter()
+        .map(|dir| dir.to_string_lossy().into_owned())
+        .collect();
     for key in &keys {
         assert_eq!(page_live(&initial)[key].facts.identification, None);
     }
@@ -322,43 +333,50 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
     for key in &keys {
         fixture.identification().rerun_identify(key.clone());
     }
+    wait_for_request(&fixture.provider, "/discid/", MAX_IN_FLIGHT).await;
 
-    let mut seen: BTreeMap<String, Vec<crate::import::IdentificationStatus>> = BTreeMap::new();
-    let ran = |seen: &BTreeMap<String, Vec<crate::import::IdentificationStatus>>| {
-        keys.iter().all(|key| {
-            seen.get(key).is_some_and(|statuses| {
-                statuses.contains(&crate::import::IdentificationStatus::Running)
-            })
-        })
+    let status = |snapshot: &crate::import::ImportListSnapshot, key: &String| {
+        page_live(snapshot)[key].facts.identification.clone()
     };
-    while !ran(&seen) {
+    let running = Some(crate::import::IdentificationStatus::Running);
+    let queued = Some(crate::import::IdentificationStatus::Queued);
+    // Every slot holds a lookup the provider has not answered, so the row
+    // over the cap waits.
+    let waiting = loop {
         let snapshot = next_page(&list).await;
         assert_eq!(
             snapshot.view_revision, initial.view_revision,
             "identifying changed the list's request"
         );
-        for (key, live) in page_live(&snapshot) {
-            let statuses = seen.entry(key).or_default();
-            if let Some(status) = live.facts.identification {
-                if statuses.last() != Some(&status) {
-                    statuses.push(status);
-                }
-            }
+        let runs = keys
+            .iter()
+            .filter(|key| status(&snapshot, key) == running)
+            .count();
+        let waits: Vec<&String> = keys
+            .iter()
+            .filter(|key| status(&snapshot, key) == queued)
+            .collect();
+        if runs == MAX_IN_FLIGHT && waits.len() == 1 {
+            break waits[0].clone();
+        }
+    };
+
+    // One lookup answers, its run ends and frees its slot, and the waiting
+    // row's run takes it, held at its own lookup.
+    fixture.provider.let_one_through();
+    loop {
+        let snapshot = next_page(&list).await;
+        assert_eq!(
+            snapshot.view_revision, initial.view_revision,
+            "identifying changed the list's request"
+        );
+        match status(&snapshot, &waiting) {
+            Some(crate::import::IdentificationStatus::Queued) => {}
+            Some(crate::import::IdentificationStatus::Running) => break,
+            other => panic!("{waiting} went from queued to {other:?}"),
         }
     }
-    for key in &keys {
-        let statuses = &seen[key];
-        let queued = statuses
-            .iter()
-            .position(|status| *status == crate::import::IdentificationStatus::Queued);
-        let running = statuses
-            .iter()
-            .position(|status| *status == crate::import::IdentificationStatus::Running);
-        assert!(
-            matches!((queued, running), (Some(queued), Some(running)) if queued < running),
-            "{key} showed queued, then running: {statuses:?}"
-        );
-    }
+    fixture.provider.release();
 }
 
 /// A verdict stored for a row off the page reaches no row on it, but moves

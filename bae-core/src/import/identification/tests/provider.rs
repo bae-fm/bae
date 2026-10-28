@@ -36,13 +36,12 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
         (status, body, gate)
     };
     if let Some(gate) = gate {
-        // The hold ends by closing the semaphore, so this wait only ever ends
-        // — it never takes a permit, and no release can be missed.
-        #[expect(
-            clippy::let_underscore_must_use,
-            reason = "the hold ends by closing the semaphore, which ends this wait without a permit"
-        )]
-        let _ = gate.acquire().await;
+        // The hold ends by closing the semaphore, which ends every wait, so
+        // no release can be missed; a permit lets one request through and is
+        // spent on it.
+        if let Ok(permit) = gate.acquire().await {
+            permit.forget();
+        }
     }
 
     let response_head = format!(
