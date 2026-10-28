@@ -4,7 +4,9 @@
 //! task and its progress live here, since neither outlives the process.
 
 use crate::db::{Database, QueuedPayload};
-use crate::library::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueSnapshot};
+#[cfg(any(desktop, test, feature = "test-utils"))]
+use crate::library::release_queue::ReleaseQueueSnapshot;
+use crate::library::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use crate::library::LibraryError;
 use std::collections::BTreeMap;
 use std::future::Future;

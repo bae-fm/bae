@@ -7,9 +7,11 @@
 
 use super::*;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
+#[cfg(any(desktop, test, feature = "test-utils"))]
+use crate::library::release_queue::ReleaseQueueSnapshot;
 use crate::library::release_queue::{
     QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress,
-    ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState, ReleaseQueueWindows,
+    ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
 use crate::library::{LibraryBrowseWindow, LibraryPageWindows};
 use rusqlite::types::{Type, Value};
