@@ -25,6 +25,9 @@ public class DownloadStore {
     /// moved, by file, for the native views that draw each file and subscribe
     /// to them; nothing SwiftUI observes.
     private let files = KeyedValues<Double>()
+    /// Each downloading release's progress, by release, for the native views
+    /// that draw it; nothing SwiftUI observes.
+    private let releases = KeyedValues<BridgeDownloadTransferProgress>()
 
     public init() {}
 
@@ -38,13 +41,22 @@ public class DownloadStore {
             else {
                 transfers[releaseId] = DownloadTransferValue(progress)
             }
+            releases.set(progress, for: releaseId)
         case .removed(let releaseId):
             transfers.removeValue(forKey: releaseId)
+            releases.remove(releaseId)
         case .reset(let keyed):
             transfers = Dictionary(
                 uniqueKeysWithValues: keyed.map {
                     ($0.releaseId, DownloadTransferValue($0.progress))
                 }
+            )
+            releases.reset(
+                Dictionary(
+                    uniqueKeysWithValues: keyed.map {
+                        ($0.releaseId, $0.progress)
+                    }
+                )
             )
         }
     }
@@ -70,6 +82,14 @@ public class DownloadStore {
     public func fileTransfer(forFile fileId: String) -> KeyedValueSource<Double>
     {
         KeyedValueSource(values: files, key: fileId)
+    }
+
+    /// The stream of a release's download progress, for the native view that
+    /// draws it.
+    public func releaseTransfer(forRelease releaseId: String)
+        -> KeyedValueSource<BridgeDownloadTransferProgress>
+    {
+        KeyedValueSource(values: releases, key: releaseId)
     }
 
     /// A release's download progress as its own observed value, for a view

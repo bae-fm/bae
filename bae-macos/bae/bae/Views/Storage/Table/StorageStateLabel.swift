@@ -26,8 +26,8 @@ struct StorageStateLabel: View {
     }
 }
 
-/// An uploading release's chip, filled as far as its bytes have come while
-/// any file is being sent. It alone reads the release's upload transfer.
+/// An uploading release's chip, filled from the release's upload stream as
+/// far as its bytes have come while any file is being sent.
 private struct StorageUploadingChip: View {
     let releaseId: String
     @Environment(OutboxStore.self)
@@ -37,14 +37,14 @@ private struct StorageUploadingChip: View {
         StorageProgressChip(
             label: "Uploading",
             kind: .upload,
-            fraction: outboxStore.transfer(forRelease: releaseId)?.bar.fraction
+            fill: .upload(outboxStore.releaseTransfer(forRelease: releaseId))
         )
     }
 }
 
-/// A pinning release's chip, filled as far as its download has come; a
-/// release still waiting its turn has moved nothing. It alone reads the
-/// bytes the download moves, by its release.
+/// A pinning release's chip, filled from the release's download stream as
+/// far as its download has come; a release still waiting its turn has moved
+/// nothing.
 private struct StoragePinningChip: View {
     let releaseId: String
     @Environment(DownloadStore.self)
@@ -54,8 +54,7 @@ private struct StoragePinningChip: View {
         StorageProgressChip(
             label: "Pinning",
             kind: .pin,
-            fraction: downloadStore.transfer(forRelease: releaseId)?.progress
-                .fraction
+            fill: .pin(downloadStore.releaseTransfer(forRelease: releaseId))
         )
     }
 }

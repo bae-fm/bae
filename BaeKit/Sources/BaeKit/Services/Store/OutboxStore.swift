@@ -42,6 +42,9 @@ public class OutboxStore {
     /// the native views that draw each file and subscribe to them; nothing
     /// SwiftUI observes.
     private let files = KeyedValues<Double>()
+    /// Each release with files being sent, its transfer, by release, for the
+    /// native views that draw it; nothing SwiftUI observes.
+    private let releaseTransfers = KeyedValues<BridgeReleaseUploadTransfer>()
 
     public init(uploadsPaused: Bool) {
         self.uploadsPaused = uploadsPaused
@@ -61,8 +64,10 @@ public class OutboxStore {
             else {
                 releases[releaseId] = ReleaseUploadTransferValue(transfer)
             }
+            releaseTransfers.set(transfer, for: releaseId)
         case .removed(let releaseId):
             releases.removeValue(forKey: releaseId)
+            releaseTransfers.remove(releaseId)
         case .totalUpdated(let transfer):
             setTotal(transfer)
         case .reset(let keyed, let total):
@@ -70,6 +75,13 @@ public class OutboxStore {
                 uniqueKeysWithValues: keyed.map {
                     ($0.releaseId, ReleaseUploadTransferValue($0.transfer))
                 }
+            )
+            releaseTransfers.reset(
+                Dictionary(
+                    uniqueKeysWithValues: keyed.map {
+                        ($0.releaseId, $0.transfer)
+                    }
+                )
             )
             setTotal(total)
         }
@@ -107,6 +119,14 @@ public class OutboxStore {
         -> BridgeReleaseUploadTransfer?
     {
         releases[releaseId]?.transfer
+    }
+
+    /// The stream of a release's upload transfer, for the native view that
+    /// draws it.
+    public func releaseTransfer(forRelease releaseId: String)
+        -> KeyedValueSource<BridgeReleaseUploadTransfer>
+    {
+        KeyedValueSource(values: releaseTransfers, key: releaseId)
     }
 
     /// The stream of the share a file being sent has moved, for the native
