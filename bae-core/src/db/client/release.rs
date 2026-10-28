@@ -404,7 +404,6 @@ impl Database {
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |sql| get_files_for_release_on(&sql, &release_id))
-            .process(|files| Ok(process_files(files)))
             .await
     }
 

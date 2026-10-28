@@ -304,7 +304,11 @@ CREATE TABLE IF NOT EXISTS release_files (
     )
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
+-- Each release's files in natural order of their names (`natural_order`:
+-- "Disc 2" before "Disc 10", case aside), id breaking a tie: the order every
+-- list of a release's files shows, read straight from this index.
+CREATE INDEX IF NOT EXISTS idx_release_files_release_order
+    ON release_files (release_id, original_filename COLLATE natural_order, id);
 
 -- The original of each release file this device imported, or the copy a
 -- detach made: its path and the modification time recorded then. These paths

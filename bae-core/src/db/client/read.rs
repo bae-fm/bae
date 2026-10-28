@@ -270,7 +270,7 @@ impl ReleaseDetailRows {
             release: self.release,
             mediums: self.mediums,
             tracks: process_tracks(self.tracks),
-            files: process_files(self.files),
+            files: self.files,
             audio_formats: self.audio_formats,
             audio_segments: self.audio_segments,
             records: self.records,
@@ -346,28 +346,20 @@ fn process_tracks(joined: Vec<(DbTrack, Option<LibraryCredit>)>) -> Vec<DbTrackW
     tracks
 }
 
+/// A release's files in natural order of their names, case aside, the way
+/// the import folder lists them, id breaking a tie: the order every list of
+/// a release's files shows (detail, gallery, storage, export), read from the
+/// index of each release's files in that order.
+pub(super) const RELEASE_FILES_IN_ORDER: &str = "SELECT * FROM release_files \
+     WHERE release_id = ?1 \
+     ORDER BY original_filename COLLATE natural_order, id";
+
 pub(super) fn get_files_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbFile>, DbError> {
-    let files = sql.query(
-        "SELECT * FROM release_files WHERE release_id = ?",
-        params![release_id],
-        row_to_file,
-    )?;
+    let files = sql.query(RELEASE_FILES_IN_ORDER, params![release_id], row_to_file)?;
     Ok(files)
-}
-
-pub(super) fn process_files(mut files: Vec<DbFile>) -> Vec<DbFile> {
-    // Every file list a user sees (detail, gallery, storage, export) derives
-    // from this read, so it is ordered here once, the same way the import
-    // folder lists its files: natural order, case-insensitive. Id breaks
-    // exact ties so the order is stable.
-    files.sort_by(|a, b| {
-        natord::compare_ignore_case(&a.original_filename, &b.original_filename)
-            .then_with(|| a.id.cmp(&b.id))
-    });
-    files
 }
 
 /// Every audio-format row for a release, joined through its tracks — one row per

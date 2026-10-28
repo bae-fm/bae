@@ -242,8 +242,12 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
     assert!(detail.tracks[1].artists.is_empty());
 }
 
+/// A release's files come back in natural order of their names, case aside,
+/// from the read itself, which SQLite orders by walking the index of each
+/// release's files in that order: the release's file list, its detail and the
+/// read under both all show it.
 #[tokio::test]
-async fn release_files_come_back_in_case_insensitive_natural_order() {
+async fn release_files_are_read_in_case_insensitive_natural_order() {
     let (db, _tmp) = release_detail_db().await;
     // Inserted out of order, mixed case, with a two-digit number.
     for (i, name) in [
@@ -276,18 +280,53 @@ async fn release_files_come_back_in_case_insensitive_natural_order() {
         .await
         .unwrap();
     }
+    let expected = vec![
+        "album.cue",
+        "Back.jpg",
+        "cover.jpg",
+        "Track 2.flac",
+        "Track 10.flac",
+    ];
+    let names = |files: &[DbFile]| -> Vec<String> {
+        files.iter().map(|f| f.original_filename.clone()).collect()
+    };
 
-    let files = db.get_files_for_release(RELEASE_A).await.unwrap();
-    let names: Vec<&str> = files.iter().map(|f| f.original_filename.as_str()).collect();
-    assert_eq!(
-        names,
-        vec![
-            "album.cue",
-            "Back.jpg",
-            "cover.jpg",
-            "Track 2.flac",
-            "Track 10.flac",
-        ]
+    let read = db
+        .read(|sql| super::super::read::get_files_for_release_on(&sql, RELEASE_A))
+        .await
+        .unwrap();
+    assert_eq!(names(&read), expected, "the read");
+    let listed = db.get_files_for_release(RELEASE_A).await.unwrap();
+    assert_eq!(names(&listed), expected, "the release's file list");
+    let detail = db
+        .find_release_detail(RELEASE_A)
+        .await
+        .unwrap()
+        .expect("release detail");
+    assert_eq!(names(&detail.files), expected, "the release's detail");
+
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::read::RELEASE_FILES_IN_ORDER
+                ),
+                [RELEASE_A],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter()
+            .any(|step| step.contains("USING INDEX idx_release_files_release_order")),
+        "the read walks the index: {plan:?}"
+    );
+    assert!(
+        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+        "the read sorts after reading: {plan:?}"
     );
 }
 
