@@ -10,13 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,7 +23,6 @@ import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LatestSource
 import fm.bae.app.formatFileSize
-import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorText
@@ -103,31 +98,13 @@ internal fun WaitingToDownloadText() {
     )
 }
 
-/** [releaseId]'s download progress, collected here so its bytes arriving recompose this alone. */
+/** [releaseId]'s download progress, which a View reads from its latest value each display frame. */
 @Composable
 internal fun ActiveDownloadProgress(
     releaseId: String,
     downloads: DownloadStore,
 ) {
-    val progress by remember(releaseId, downloads) { downloads.progress(releaseId) }.collectAsState()
-    progress?.let { DownloadProgressBytes(it) }
-}
-
-/** The active-download progress bar plus its "{done} of {total}" byte line. */
-@Composable
-internal fun DownloadProgressBytes(progress: BridgeDownloadTransferProgress) {
-    val context = LocalContext.current
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        LinearProgressIndicator(
-            progress = { progress.fraction.toFloat() },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            text = progress.bytesProgressText(context),
-            style = ThemeText.fine.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    DownloadProgress(downloads.latestProgress(releaseId), Modifier.fillMaxWidth())
 }
 
 private fun BridgeQueuedRelease.detailText(context: Context): String {
@@ -139,12 +116,3 @@ private fun BridgeQueuedRelease.detailText(context: Context): String {
         )
     return "$files · ${context.formatFileSize(totalSize)}"
 }
-
-private fun BridgeDownloadTransferProgress.bytesProgressText(context: Context): String =
-    context.coreString(
-        "core.download.bytes_progress",
-        mapOf(
-            "done" to context.formatFileSize(bytesDone.requireDisplayableByteCount()),
-            "total" to context.formatFileSize(bytesTotal.requireDisplayableByteCount()),
-        ),
-    )

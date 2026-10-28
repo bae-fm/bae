@@ -368,7 +368,6 @@ object PreviewData {
                     listOf(BridgeKeyedDownloadTransfer(downloadingReleaseId, downloadTransferProgress())),
                 )
             applyTransferChange(transfers)
-            applyLatestTransferChange(transfers)
         }
 
     fun downloadTransferProgress(

@@ -261,10 +261,7 @@ class OpenLibrary internal constructor(
                 object : DownloadTransfersCallback {
                     override fun onChanges(changes: List<uniffi.bae_bridge.BridgeDownloadTransferChange>) {
                         // The latest values on the thread they arrive on, which the Views drawing them read each frame.
-                        changes.forEach(stores.transfers.downloads::applyLatestTransferChange)
-                        scope.launch(Dispatchers.Main.immediate) {
-                            changes.forEach(stores.transfers.downloads::applyTransferChange)
-                        }
+                        changes.forEach(stores.transfers.downloads::applyTransferChange)
                     }
                 },
             )

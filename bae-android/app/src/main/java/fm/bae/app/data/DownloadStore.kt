@@ -22,23 +22,14 @@ class DownloadStore(
     private val _state = MutableStateFlow<LiveValue<BridgeDownloadCounts>>(LiveValue.Current(initialCounts))
     val state: StateFlow<LiveValue<BridgeDownloadCounts>> = _state.asStateFlow()
 
-    /** Each release's download progress; null while it is not downloading. Read and written on the main thread. */
-    private val transfers = mutableMapOf<String, MutableStateFlow<BridgeDownloadTransferProgress?>>()
-
     /** Each downloading release's latest progress, written on any thread. */
     private val latest = LatestByKey<BridgeDownloadTransferProgress>()
 
     /** [releaseId]'s latest download progress, for the View that reads it each display frame. */
     fun latestProgress(releaseId: String) = LatestSource(latest, releaseId)
 
-    /** How far [releaseId]'s download has gone; null while none has arrived for it. */
-    fun progress(releaseId: String): StateFlow<BridgeDownloadTransferProgress?> = transfer(releaseId).asStateFlow()
-
-    private fun transfer(releaseId: String): MutableStateFlow<BridgeDownloadTransferProgress?> =
-        transfers.getOrPut(releaseId) { MutableStateFlow(null) }
-
     /** Apply one change the transfer subscription delivered to the latest values, on any thread. */
-    fun applyLatestTransferChange(change: BridgeDownloadTransferChange) {
+    fun applyTransferChange(change: BridgeDownloadTransferChange) {
         when (change) {
             is BridgeDownloadTransferChange.Updated -> {
                 latest.set(change.releaseId, change.progress)
@@ -50,25 +41,6 @@ class DownloadStore(
 
             is BridgeDownloadTransferChange.Reset -> {
                 latest.reset(change.transfers.associate { it.releaseId to it.progress })
-            }
-        }
-    }
-
-    /** Apply one change the transfer subscription delivered. */
-    fun applyTransferChange(change: BridgeDownloadTransferChange) {
-        when (change) {
-            is BridgeDownloadTransferChange.Updated -> {
-                transfer(change.releaseId).value = change.progress
-            }
-
-            is BridgeDownloadTransferChange.Removed -> {
-                transfer(change.releaseId).value = null
-            }
-
-            is BridgeDownloadTransferChange.Reset -> {
-                val listed = change.transfers.associate { it.releaseId to it.progress }
-                transfers.forEach { (releaseId, flow) -> flow.value = listed[releaseId] }
-                listed.forEach { (releaseId, progress) -> transfer(releaseId).value = progress }
             }
         }
     }
