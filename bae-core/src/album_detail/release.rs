@@ -790,6 +790,7 @@ mod release_edit_display_tests {
             file_pins: Default::default(),
             file_uploads: Vec::new(),
             download: None,
+            cover_version: None,
         };
 
         assert!(matches!(

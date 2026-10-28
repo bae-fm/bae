@@ -105,7 +105,19 @@ async fn cover_versions_merges_chunks() {
     .await
     .unwrap();
 
-    let versions = db.cover_versions(&release_ids).await.unwrap();
+    let versions = db
+        .read({
+            let release_ids = release_ids.clone();
+            move |sql| {
+                super::super::files::image_versions_on(
+                    &sql,
+                    crate::db::LibraryImageType::Cover,
+                    &release_ids,
+                )
+            }
+        })
+        .await
+        .unwrap();
 
     // Spans three chunks; every row from every chunk must survive the merge.
     assert_eq!(versions.len(), cover_count);

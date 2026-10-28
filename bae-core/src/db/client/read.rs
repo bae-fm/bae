@@ -173,6 +173,11 @@ pub(super) fn build_release_detail_on(
         |row| row.get(0),
     )?;
     let download = super::release_queues::download_phase_on(sql, &release.id)?;
+    let cover_version = sql.query_row(
+        &format!("SELECT {}", super::files::cover_version_sql("?1")),
+        params![release.id],
+        |row| row.get(0),
+    )?;
     let upload = super::queued_uploads::release_upload_on(sql, &release.id)?;
     let file_uploads = super::queued_uploads::release_file_uploads_on(sql, &release.id)?;
     let file_pins = sql
@@ -211,6 +216,7 @@ pub(super) fn build_release_detail_on(
         file_pins,
         file_uploads,
         download,
+        cover_version,
     })
 }
 
@@ -273,6 +279,7 @@ pub(super) struct ReleaseDetailRows {
     file_pins: std::collections::BTreeMap<String, crate::album_detail::FilePin>,
     file_uploads: Vec<DbFileUpload>,
     download: Option<crate::library::DownloadPhase>,
+    cover_version: Option<String>,
 }
 
 impl ReleaseDetailRows {
@@ -291,6 +298,7 @@ impl ReleaseDetailRows {
             file_pins: self.file_pins,
             file_uploads: self.file_uploads,
             download: self.download,
+            cover_version: self.cover_version,
         }
     }
 }

@@ -110,19 +110,6 @@ impl LibraryManager {
         cover_ref_for(&self.database, release_id).await
     }
 
-    /// The cover [`ImageRef`] for each of `release_ids` that has a `covers` row,
-    /// in one query. The batch source for the list/grid resolvers, which build a
-    /// `Fn(&str) -> Option<ImageRef>` over the returned map.
-    pub(super) async fn cover_refs(
-        &self,
-        release_ids: &[String],
-    ) -> Result<HashMap<String, ImageRef>, LibraryError> {
-        Ok(image_refs(
-            self.database.cover_versions(release_ids).await?,
-            LibraryImageType::Cover,
-        ))
-    }
-
     /// Read a host-provided library image's whole bytes through coven's
     /// locality-aware read. The [`ImageRef`] carries the image kind, so the read
     /// goes directly to the table/namespace that produced the ref.

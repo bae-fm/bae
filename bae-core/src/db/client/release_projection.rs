@@ -218,5 +218,4 @@ pub struct StorageBrowseProjection {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailProjection {
     pub context: Option<ReleaseDetailContext>,
-    pub cover_versions: HashMap<String, String>,
 }

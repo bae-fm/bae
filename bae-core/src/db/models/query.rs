@@ -222,6 +222,8 @@ pub struct DbAlbumDetail {
     pub releases: Vec<DbReleaseDetail>,
     /// The album's lowest-ordered release.
     pub primary_release_id: String,
+    /// The version of that release's cover; `None` when it has none.
+    pub primary_cover_version: Option<String>,
 }
 
 /// A release detail plus the album context needed to project it: the album's
@@ -269,6 +271,8 @@ pub struct DbReleaseDetail {
     /// The release's entry in this device's download queue, `None` when it
     /// has none.
     pub download: Option<crate::library::DownloadPhase>,
+    /// The version of the release's cover; `None` when it has none.
+    pub cover_version: Option<String>,
 }
 
 /// Where one release file stands for its pin: whether this device keeps it

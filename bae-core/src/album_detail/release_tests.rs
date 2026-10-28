@@ -36,6 +36,7 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         file_pins: Default::default(),
         file_uploads: Vec::new(),
         download: None,
+        cover_version: None,
     };
     let originals = OriginalsSeen::default();
     let ctx = ReleaseResolveCtx {

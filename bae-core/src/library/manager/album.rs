@@ -154,9 +154,7 @@ impl LibraryManager {
         let Some(raw) = projection.detail else {
             return Ok(None);
         };
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        self.resolve_album_detail_with_covers(raw, covers, originals)
-            .map(Some)
+        self.resolve_album_detail_with(raw, originals).map(Some)
     }
 
     /// The library albums a parsed, non-blank query finds, as the album
@@ -242,8 +240,6 @@ impl LibraryManager {
         &self,
         raw: crate::db::DbAlbumDetail,
     ) -> Result<AlbumDetail, LibraryError> {
-        let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release.id.clone()).collect();
-        let covers = self.cover_refs(&release_ids).await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(
                 raw.releases
@@ -251,27 +247,27 @@ impl LibraryManager {
                     .flat_map(|release| &release.unstored_audio),
             ))
             .await?;
-        self.resolve_album_detail_with_covers(raw, covers, &originals)
+        self.resolve_album_detail_with(raw, &originals)
     }
 
-    fn resolve_album_detail_with_covers(
+    /// The album detail as its rows read it, with what the disk said of its
+    /// originals.
+    fn resolve_album_detail_with(
         &self,
         raw: crate::db::DbAlbumDetail,
-        covers: HashMap<String, ImageRef>,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<AlbumDetail, LibraryError> {
         let artist_names = crate::credits::library_line(&raw.artists);
         let primary_release_id = raw.primary_release_id;
 
         let has_cloud_home = self.has_cloud_home();
-        let cover = covers.get(&primary_release_id).cloned();
+        let cover = crate::album_detail::cover_ref(&primary_release_id, raw.primary_cover_version);
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, r) in raw.releases.into_iter().enumerate() {
-            let release_cover = covers.get(&r.release.id).cloned();
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,
                 originals,
-                cover: release_cover,
+                cover: crate::album_detail::cover_ref(&r.release.id, r.cover_version.clone()),
                 transfer_action: self.current_transfer_action(&r.release.id),
                 is_compilation: raw.album.is_compilation,
             };

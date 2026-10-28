@@ -323,26 +323,13 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |album_id, sql| {
                 let Some(album_id) = album_id else {
-                    return Ok((None, HashMap::new()));
+                    return Ok(None);
                 };
-                let detail = find_album_detail_on(&sql, album_id).map_err(CovenError::from)?;
-                let release_ids = match &detail {
-                    Some(detail) => detail
-                        .releases
-                        .iter()
-                        .map(|release| release.release.id.clone())
-                        .collect::<Vec<_>>(),
-                    None => Vec::new(),
-                };
-                let cover_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                        .map_err(CovenError::from)?;
-                Ok((detail, cover_versions))
+                find_album_detail_on(&sql, album_id).map_err(CovenError::from)
             })
-            .process(|(detail, cover_versions)| {
+            .process(|detail| {
                 Ok(AlbumDetailProjection {
                     detail: detail.map(AlbumDetailRows::process),
-                    cover_versions,
                 })
             })
     }
@@ -638,13 +625,14 @@ fn find_album_detail_on(
     if db_releases.is_empty() {
         return Ok(None);
     }
-    let primary_release_id: String = sql.query_row(
+    let (primary_release_id, primary_cover_version): (String, Option<String>) = sql.query_row(
         &format!(
-            "SELECT {} FROM albums a WHERE a.id = ?",
-            album_primary_release_sql()
+            "SELECT {primary}, {cover} FROM albums a WHERE a.id = ?",
+            primary = album_primary_release_sql(),
+            cover = super::files::cover_version_sql(album_primary_release_sql()),
         ),
         params![album_id],
-        |row| row.get(0),
+        |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
     let releases = db_releases
         .into_iter()
@@ -655,6 +643,7 @@ fn find_album_detail_on(
         artists,
         releases,
         primary_release_id,
+        primary_cover_version,
     }))
 }
 
@@ -664,6 +653,7 @@ struct AlbumDetailRows {
     artists: Vec<LibraryCredit>,
     releases: Vec<ReleaseDetailRows>,
     primary_release_id: String,
+    primary_cover_version: Option<String>,
 }
 
 impl AlbumDetailRows {
@@ -677,6 +667,7 @@ impl AlbumDetailRows {
                 .map(ReleaseDetailRows::process)
                 .collect(),
             primary_release_id: self.primary_release_id,
+            primary_cover_version: self.primary_cover_version,
         }
     }
 }
@@ -708,7 +699,6 @@ pub struct AlbumBrowseProjection {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumDetailProjection {
     pub detail: Option<DbAlbumDetail>,
-    pub cover_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

@@ -101,32 +101,6 @@ impl Database {
         .await
     }
 
-    /// The version of each given release's cover (its file's content hash); ids
-    /// with no cover row are absent from the map. This is the version a cover
-    /// [`ImageRef`](crate::album_detail::ImageRef) carries — it moves whenever the
-    /// cover bytes change, which moves the UI's `(id, version)` cache key and makes
-    /// the subscribed album value show the new art.
-    pub async fn cover_versions(
-        &self,
-        release_ids: &[String],
-    ) -> Result<HashMap<String, String>, DbError> {
-        self.image_versions(LibraryImageType::Cover, release_ids)
-            .await
-    }
-
-    async fn image_versions(
-        &self,
-        image_type: LibraryImageType,
-        ids: &[String],
-    ) -> Result<HashMap<String, String>, DbError> {
-        if ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-        let ids = ids.to_vec();
-        self.read(move |sql| image_versions_on(&sql, image_type, &ids))
-            .await
-    }
-
     /// The version of one release's cover, or `None` when it has no cover.
     pub async fn cover_version(&self, release_id: &str) -> Result<Option<String>, DbError> {
         self.find_image_version(&LibraryImageType::Cover, release_id)

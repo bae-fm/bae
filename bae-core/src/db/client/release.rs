@@ -335,22 +335,13 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let Some(release_id) = release_id else {
-                    return Ok((None, HashMap::new()));
+                    return Ok(None);
                 };
-                let context =
-                    find_release_detail_context_on(&sql, release_id).map_err(CovenError::from)?;
-                let cover_versions = super::files::image_versions_on(
-                    &sql,
-                    LibraryImageType::Cover,
-                    std::slice::from_ref(release_id),
-                )
-                .map_err(CovenError::from)?;
-                Ok((context, cover_versions))
+                find_release_detail_context_on(&sql, release_id).map_err(CovenError::from)
             })
-            .process(|(context, cover_versions)| {
+            .process(|context| {
                 Ok(ReleaseDetailProjection {
                     context: context.map(super::release_projection::ReleaseContextRows::process),
-                    cover_versions,
                 })
             })
     }

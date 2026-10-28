@@ -396,21 +396,12 @@ impl LibraryManager {
         else {
             return Ok(None);
         };
-        let cover = projection
-            .cover_versions
-            .get(release_id)
-            .map(|version| ImageRef {
-                id: release_id.to_string(),
-                version: version.clone(),
-                image_type: LibraryImageType::Cover,
-            });
         Ok(Some(self.resolve_release_detail_context(
             release_id,
             detail,
             album_artists,
             release_index,
             is_compilation,
-            cover,
             originals,
         )))
     }
@@ -422,14 +413,13 @@ impl LibraryManager {
         album_artists: Vec<crate::credits::LibraryCredit>,
         release_index: usize,
         is_compilation: bool,
-        cover: Option<ImageRef>,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> ReleaseDetail {
         let has_cloud_home = self.has_cloud_home();
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
             originals,
-            cover,
+            cover: crate::album_detail::cover_ref(release_id, raw.cover_version.clone()),
             transfer_action: self.current_transfer_action(release_id),
             is_compilation,
         };
@@ -458,7 +448,6 @@ impl LibraryManager {
         else {
             return Ok(None);
         };
-        let cover = self.cover_ref(release_id).await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(&raw.unstored_audio))
             .await?;
@@ -468,7 +457,6 @@ impl LibraryManager {
             album_artists,
             release_index,
             is_compilation,
-            cover,
             &originals,
         )))
     }
