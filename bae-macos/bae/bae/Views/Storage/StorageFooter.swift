@@ -44,6 +44,7 @@ struct StorageFooter: View {
                 }
             }
         }
+        .lineLimit(1)
         .foregroundStyle(.secondary)
         .themeText(.body)
         .padding(.horizontal)
@@ -91,6 +92,9 @@ private struct StorageQueueControl<Progress: View>: View {
             .accessibilityLabel(pauseLabel)
             .help(pauseLabel)
         }
+        // A narrow table keeps each queue's rate whole on one line; the
+        // release count and total give way instead.
+        .fixedSize()
     }
 
     @ViewBuilder
