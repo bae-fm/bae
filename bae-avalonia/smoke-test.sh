@@ -40,10 +40,7 @@ if [[ "$(uniffi-bindgen-cs --version)" != 'uniffi-bindgen 0.11.0+v0.32.0' ]]; th
     exit 1
 fi
 export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
-if [[ ! -f "$FFMPEG_DIR/include/libavutil/avutil.h" ]]; then
-    echo "FFmpeg missing at $FFMPEG_DIR; run scripts/setup-ffmpeg.sh first." >&2
-    exit 1
-fi
+./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
 
 # The bridge is copied out of Cargo's target directory as soon as it is built,
 # so another build in a shared target directory cannot change it between the

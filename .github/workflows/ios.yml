@@ -54,9 +54,9 @@ jobs:
       uses: actions/cache@v5
       with:
         path: bae-ffmpeg/ios
-        # Keyed on the build recipe: rebuild only when the FFmpeg cross-build
-        # script changes (mirrors the Android FFmpeg cache).
-        key: ffmpeg-ios-${{ hashFiles('scripts/build-ffmpeg-ios.sh') }}
+        # Keyed on the download script and the release it downloads (mirrors
+        # the Android FFmpeg cache).
+        key: ffmpeg-ios-${{ hashFiles('scripts/build-ffmpeg-ios.sh', 'scripts/bae-ffmpeg-release') }}
 
     - name: Build iOS FFmpeg (on cache miss)
       if: steps.ffmpeg-cache.outputs.cache-hit != 'true'

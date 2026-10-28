@@ -16,7 +16,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="v8.1.2-bae7"
+VERSION="$(cat "$REPO_ROOT/scripts/bae-ffmpeg-release")"
 BASE_URL="https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION"
 OUT="$REPO_ROOT/bae-ffmpeg/android"
 
@@ -31,6 +31,12 @@ download() {
     echo "FATAL: libavcodec.so missing in $dest after download" >&2
     exit 1
   fi
+  # These ship in the APK, so they may load only each other and Android's own
+  # libraries.
+  python3 "$REPO_ROOT/scripts/check-bundled-libraries.py" --platform android "$dest"
+  # The release this dir holds, which scripts/check-ffmpeg-dist.sh compares to
+  # the pin before bae-bridge/build-android.sh links it.
+  printf '%s\n' "$VERSION" > "$dest/VERSION"
 }
 
 download aarch64

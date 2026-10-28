@@ -62,10 +62,7 @@ IOS_DEPLOYMENT_TARGET=16.0
 # layouts from being the host's. The static libs come from scripts/build-ffmpeg-ios.sh.
 FFMPEG_DEVICE="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios"
 FFMPEG_SIM="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios-sim"
-if [ ! -f "$FFMPEG_DEVICE/lib/libavcodec.a" ]; then
-    echo "FFmpeg for iOS not built. Run: ./scripts/build-ffmpeg-ios.sh" >&2
-    exit 1
-fi
+./scripts/check-ffmpeg-dist.sh scripts/build-ffmpeg-ios.sh "$FFMPEG_DEVICE" "$FFMPEG_SIM"
 
 DEVICE_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
 SIM_SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"

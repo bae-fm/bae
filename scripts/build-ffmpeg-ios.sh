@@ -18,7 +18,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="v8.1.2-bae7"
+VERSION="$(cat "$REPO_ROOT/scripts/bae-ffmpeg-release")"
 BASE_URL="https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION"
 OUT="$REPO_ROOT/bae-ffmpeg/ios"
 
@@ -34,6 +34,9 @@ download() {
     echo "FATAL: libavcodec.a missing in $dest after download" >&2
     exit 1
   fi
+  # The release this dir holds, which scripts/check-ffmpeg-dist.sh compares to
+  # the pin before bae-bridge/build-ios.sh links it.
+  printf '%s\n' "$VERSION" > "$dest/VERSION"
 }
 
 download ios-arm64     aarch64-apple-ios

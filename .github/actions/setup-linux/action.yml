@@ -1,12 +1,6 @@
 name: 'Setup Linux Build Environment'
 description: 'Install Linux dependencies and configure environment for building bae'
 
-inputs:
-  ffmpeg-version:
-    description: 'bae-ffmpeg release tag'
-    required: false
-    default: 'v8.1.2-bae7'
-
 runs:
   using: 'composite'
   steps:
@@ -39,11 +33,14 @@ runs:
     - name: Download bae-ffmpeg
       shell: bash
       run: |
-        ARCH=$(uname -m)
+        # The release scripts/bae-ffmpeg-release pins, checked and stamped by
+        # the same installer local checkouts use. It stages the download beside
+        # the dist and swaps it in, so the runner's user owns /opt itself (not
+        # what is already under it).
         FFMPEG_DIR=/opt/bae-ffmpeg
-        sudo mkdir -p "$FFMPEG_DIR"
-        curl -L "https://github.com/bae-fm/bae-ffmpeg/releases/download/${{ inputs.ffmpeg-version }}/ffmpeg-linux-$ARCH.tar.gz" | \
-          sudo tar xz -C "$FFMPEG_DIR"
+        sudo mkdir -p /opt
+        sudo chown "$(id -u)" /opt
+        ./scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
         # The pinned FFmpeg 8.0 bae-core links against. Its bundled ffmpeg CLI
         # (anoisesrc + flac + libmp3lame encoders) also generates the test
         # fixtures, so the CLI and the link libs are one consistent version.

@@ -42,7 +42,6 @@ jobs:
       # rustc flattens its response file, and ffmpeg-sys-next's argument list
       # then exceeds Windows' 32K limit (os error 206).
       RUSTC_WRAPPER: ""
-      FFMPEG_VERSION: v8.1.2-bae7
       BAE_ENVIRONMENT: production
       BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
       BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}
@@ -95,14 +94,25 @@ jobs:
         run: |
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: Set up Python
+        # scripts/check-bundled-libraries.py reads the DLLs' imports.
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
       - name: Fetch bae-ffmpeg (Windows ${{ matrix.arch.ffmpeg_arch }})
         shell: pwsh
         run: |
+          # The release scripts/bae-ffmpeg-release pins; its DLLs may import
+          # only each other and Windows' own DLLs.
+          $version = (Get-Content scripts\bae-ffmpeg-release -Raw).Trim()
           $dist = "$PWD\bae-ffmpeg\dist"
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
-          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-${{ matrix.arch.ffmpeg_arch }}.zip"
+          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$version/ffmpeg-windows-${{ matrix.arch.ffmpeg_arch }}.zip"
           curl.exe -fsSL --retry 5 --retry-delay 3 $url -o ffmpeg.zip
           Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
+          python scripts\check-bundled-libraries.py "$dist\bin"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
           New-Item -ItemType Directory -Force -Path "$dist\lib" | Out-Null
           Copy-Item "$dist\bin\*.lib" "$dist\lib\" -Force
           echo "FFMPEG_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8

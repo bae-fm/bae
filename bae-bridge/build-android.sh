@@ -64,10 +64,7 @@ for ABI in "${ABIS[@]}"; do
     TARGET=$(android_rust_target "$ABI")
     # The FFmpeg download names each arch by its target triple's first part.
     FA="${TARGET%%-*}"
-    if [ ! -f "$ANDROID_FFMPEG_DIR/$FA/lib/libavcodec.so" ]; then
-        echo "FFmpeg for Android ($FA) is not downloaded. Run: ./scripts/build-ffmpeg-android.sh" >&2
-        exit 1
-    fi
+    ./scripts/check-ffmpeg-dist.sh scripts/build-ffmpeg-android.sh "$ANDROID_FFMPEG_DIR/$FA"
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
     FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done

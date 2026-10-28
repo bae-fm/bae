@@ -72,6 +72,9 @@ BAE_BRIDGE_TARGET="${BAE_BRIDGE_TARGET:-x86_64-unknown-linux-gnu}"
 
 rustup target add "$BAE_BRIDGE_TARGET"
 
+# FFMPEG_DIR defaults to .cargo/config.toml's bae-ffmpeg/dist.
+./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "${FFMPEG_DIR:-bae-ffmpeg/dist}"
+
 echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
 # `cargo rustc --crate-type cdylib` builds only the shared library. The crate
 # also lists `staticlib` for Apple, whose builds link the .a into the framework

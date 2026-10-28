@@ -1,12 +1,6 @@
 name: 'Setup macOS Build Environment'
 description: 'Install macOS dependencies and configure environment for building bae'
 
-inputs:
-  ffmpeg-version:
-    description: 'bae-ffmpeg release tag'
-    required: false
-    default: 'v8.1.2-bae7'
-
 runs:
   using: 'composite'
   steps:
@@ -26,11 +20,14 @@ runs:
     - name: Download bae-ffmpeg
       shell: bash
       run: |
-        ARCH=$(uname -m)
+        # The release scripts/bae-ffmpeg-release pins, checked and stamped by
+        # the same installer local checkouts use. It stages the download beside
+        # the dist and swaps it in, so the runner's user owns /opt itself (not
+        # what is already under it).
         FFMPEG_DIR=/opt/bae-ffmpeg
-        sudo mkdir -p "$FFMPEG_DIR"
-        curl -L "https://github.com/bae-fm/bae-ffmpeg/releases/download/${{ inputs.ffmpeg-version }}/ffmpeg-macos-$ARCH.tar.gz" | \
-          sudo tar xz -C "$FFMPEG_DIR"
+        sudo mkdir -p /opt
+        sudo chown "$(id -u)" /opt
+        ./scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
         echo "FFMPEG_DIR=$FFMPEG_DIR" >> $GITHUB_ENV
         echo "PKG_CONFIG_PATH=$FFMPEG_DIR/lib/pkgconfig:$BREW_PREFIX/lib/pkgconfig" >> $GITHUB_ENV
         echo "LIBRARY_PATH=$FFMPEG_DIR/lib:$BREW_PREFIX/lib" >> $GITHUB_ENV

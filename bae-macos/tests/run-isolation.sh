@@ -10,8 +10,9 @@ capture="$test_root/xcodebuild-arguments"
 ffmpeg_capture="$test_root/ffmpeg-dir"
 configured_ffmpeg="$test_root/ffmpeg"
 run_derived_data="$test_root/run-derived-data"
-mkdir -p "$stub_bin" "$configured_ffmpeg/include/libavutil"
-: > "$configured_ffmpeg/include/libavutil/avutil.h"
+mkdir -p "$stub_bin" "$configured_ffmpeg"
+# run.sh accepts only a dist holding the pinned bae-ffmpeg release.
+cp "$repo_root/scripts/bae-ffmpeg-release" "$configured_ffmpeg/VERSION"
 
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$stub_bin/xcodegen"
 printf '%s\n' \
@@ -75,11 +76,13 @@ mkdir -p \
     "$rust_fixture/bae-macos/bae" \
     "$rust_fixture/bae-bridge" \
     "$rust_fixture/scripts" \
-    "$rust_fixture/bae-ffmpeg/dist/include/libavutil"
+    "$rust_fixture/bae-ffmpeg/dist"
 cp "$repo_root/bae-macos/run.sh" "$rust_fixture/bae-macos/run.sh"
 cp "$repo_root/bae-macos/prepare-build.sh" \
     "$rust_fixture/bae-macos/prepare-build.sh"
-: > "$rust_fixture/bae-ffmpeg/dist/include/libavutil/avutil.h"
+cp "$repo_root/scripts/check-ffmpeg-dist.sh" "$repo_root/scripts/bae-ffmpeg-release" \
+    "$rust_fixture/scripts/"
+cp "$repo_root/scripts/bae-ffmpeg-release" "$rust_fixture/bae-ffmpeg/dist/VERSION"
 
 printf '%s\n' \
     '#!/usr/bin/env bash' \

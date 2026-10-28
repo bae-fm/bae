@@ -48,10 +48,7 @@ cd "$(dirname "$0")/.."
 FFMPEG_DIR="${FFMPEG_DIR:-$PWD/bae-ffmpeg/dist}"
 export FFMPEG_DIR
 
-if [[ ! -f "$FFMPEG_DIR/include/libavutil/avutil.h" ]]; then
-    echo "bae-ffmpeg dist missing at $FFMPEG_DIR — run scripts/setup-ffmpeg.sh first" >&2
-    exit 1
-fi
+./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
 
 case "$EDITION" in
     bae)

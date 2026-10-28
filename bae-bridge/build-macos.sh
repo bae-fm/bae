@@ -39,6 +39,9 @@ else
     CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE"
 fi
 
+# FFMPEG_DIR defaults to .cargo/config.toml's bae-ffmpeg/dist.
+./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "${FFMPEG_DIR:-bae-ffmpeg/dist}"
+
 # The bridge's cargo features, from which the Swift #if conditions are derived.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
 # UI tests launch the debug app with an in-memory keychain, so they never touch

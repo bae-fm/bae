@@ -78,6 +78,13 @@ run_check "pre-commit staged path matching" bash scripts/hooks/tests/file-list-t
     exit 1
 }
 
+# The clippy and rustdoc builds below compile against the local FFmpeg dist
+# (.cargo/config.toml's FFMPEG_DIR).
+run_check "pinned FFmpeg dist" \
+    scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "${FFMPEG_DIR:-bae-ffmpeg/dist}" || {
+    exit 1
+}
+
 # Formats every package; a change fails the commit for review.
 record_staged_worktree_state "$FORMAT_STATE"
 run_check "cargo fmt" cargo fmt --all || {

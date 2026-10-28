@@ -81,10 +81,7 @@ if [[ "$RELEASE" == true ]]; then
     CARGO_FLAGS+=(--release)
 fi
 export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
-if [[ ! -f "$FFMPEG_DIR/include/libavutil/avutil.h" ]]; then
-    echo "FFmpeg missing at $FFMPEG_DIR; run scripts/setup-ffmpeg.sh first." >&2
-    exit 1
-fi
+./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
 
 RUN_DIR="$REPO/bae-avalonia/bin/run/$RID/$EDITION/$CONFIG"
 APP="$RUN_DIR/$EDITION Avalonia.app"

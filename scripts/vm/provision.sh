@@ -8,7 +8,7 @@ set -euo pipefail
 VM="${1:?usage: provision.sh <vm-ip> [branch]}"
 BRANCH="${2:-main}"
 SSH="ssh tom@${VM}"
-FFMPEG_VERSION="$(grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+-bae[0-9]+' .github/workflows/windows.yml | head -1)"
+FFMPEG_VERSION="$(cat "$(dirname "$0")/../bae-ffmpeg-release")"
 
 echo "== toolchain (winget) =="
 $SSH 'winget install --id Git.Git --source winget -e --accept-source-agreements --accept-package-agreements --silent & winget install --id Microsoft.DotNet.SDK.8 --source winget -e --accept-package-agreements --silent & winget install --id Rustlang.Rustup --source winget -e --accept-package-agreements --silent & winget install --id LLVM.LLVM --source winget -e --accept-package-agreements --silent & winget install --id Mozilla.sccache --source winget -e --accept-package-agreements --silent & winget install --id Microsoft.WinDbg --source winget -e --accept-package-agreements --silent & winget install --id Microsoft.WindowsAppRuntime.1.6 --source winget -e --accept-package-agreements --silent & winget install --id Microsoft.DotNet.DesktopRuntime.8 --source winget -e --accept-package-agreements --silent'

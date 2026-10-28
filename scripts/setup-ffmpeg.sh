@@ -1,52 +1,42 @@
 #!/bin/bash
 set -euo pipefail
 
-# Download or build bae-ffmpeg for local development
-# Usage: ./scripts/setup-ffmpeg.sh [--build]
+# Install the bae-ffmpeg fork's prebuilt FFmpeg for this host.
+# Usage: ./scripts/setup-ffmpeg.sh [DIST_DIR]
+#
+# DIST_DIR defaults to bae-ffmpeg/dist, where .cargo/config.toml points
+# FFMPEG_DIR; CI passes its own location. The release is the one
+# scripts/bae-ffmpeg-release pins. The download is checked for libraries
+# outside the dist or the OS before it replaces DIST_DIR, and DIST_DIR/VERSION
+# records the release, which scripts/check-ffmpeg-dist.sh compares to the pin
+# before a build links it.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-FFMPEG_DIR="$PROJECT_ROOT/bae-ffmpeg/dist"
-VERSION="v8.1.2-bae7"
+VERSION="$(cat "$SCRIPT_DIR/bae-ffmpeg-release")"
+DIST="${1:-$PROJECT_ROOT/bae-ffmpeg/dist}"
 
 ARCH=$(uname -m)
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+case "$(uname -s)" in
+    Darwin) ARCHIVE="ffmpeg-macos-$ARCH.tar.gz"; CHECK_FLAGS=() ;;
+    Linux) ARCHIVE="ffmpeg-linux-$ARCH.tar.gz"; CHECK_FLAGS=(--platform linux) ;;
+    *) echo "Unsupported OS: $(uname -s)" >&2; exit 1 ;;
+esac
 
-if [[ "$OS" == "darwin" ]]; then
-    PLATFORM="macos"
-    ARCHIVE="ffmpeg-macos-$ARCH.tar.gz"
-elif [[ "$OS" == "linux" ]]; then
-    PLATFORM="linux"
-    ARCHIVE="ffmpeg-linux-$ARCH.tar.gz"
-else
-    echo "Unsupported OS: $OS"
-    exit 1
-fi
+mkdir -p "$(dirname "$DIST")"
+STAGING="$(mktemp -d "$(dirname "$DIST")/.ffmpeg-dist.XXXXXX")"
+trap 'rm -rf "$STAGING"' EXIT
 
-mkdir -p "$FFMPEG_DIR"
+echo "Downloading bae-ffmpeg $VERSION ($ARCHIVE)..."
+curl -fL --retry 3 --retry-delay 2 \
+    "https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION/$ARCHIVE" \
+    | tar xz -C "$STAGING"
+python3 "$SCRIPT_DIR/check-bundled-libraries.py" ${CHECK_FLAGS[@]+"${CHECK_FLAGS[@]}"} "$STAGING"
+printf '%s\n' "$VERSION" > "$STAGING/VERSION"
 
-if [[ "${1:-}" == "--build" ]]; then
-    echo "Building bae-ffmpeg locally..."
-    cd "$PROJECT_ROOT/bae-ffmpeg"
-    "./build-$PLATFORM.sh" "$ARCH"
+rm -rf "$DIST"
+mv "$STAGING" "$DIST"
+chmod 755 "$DIST"
+trap - EXIT
 
-    # Extract to dist
-    tar xzf "dist/$ARCHIVE" -C "$FFMPEG_DIR"
-else
-    echo "Downloading bae-ffmpeg $VERSION for $PLATFORM-$ARCH..."
-    curl -L "https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION/$ARCHIVE" | \
-        tar xz -C "$FFMPEG_DIR"
-fi
-
-echo ""
-echo "bae-ffmpeg installed to: $FFMPEG_DIR"
-echo ""
-echo "This is required local setup: bae links FFmpeg exclusively from here, never"
-echo "from a system/Homebrew install. Add to your shell profile (.zshrc or .bashrc):"
-echo ""
-echo "  export FFMPEG_DIR=\"$FFMPEG_DIR\""
-echo "  export PKG_CONFIG_PATH=\"$FFMPEG_DIR/lib/pkgconfig:\$PKG_CONFIG_PATH\""
-echo "  export LIBRARY_PATH=\"$FFMPEG_DIR/lib:\$LIBRARY_PATH\""
-echo "  export DYLD_LIBRARY_PATH=\"$FFMPEG_DIR/lib:\$DYLD_LIBRARY_PATH\""
-echo "  export BINDGEN_EXTRA_CLANG_ARGS=\"-I$FFMPEG_DIR/include \${BINDGEN_EXTRA_CLANG_ARGS:-}\""
-echo ""
+echo "bae-ffmpeg $VERSION installed to: $DIST"
