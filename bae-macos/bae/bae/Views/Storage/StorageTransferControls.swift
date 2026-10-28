@@ -51,7 +51,7 @@ struct StorageTransferControls: View {
             // A failed download: the row says why and offers its cancel.
             DownloadRow(
                 op: operation,
-                transfer: downloadStore.transfer(
+                transfer: downloadStore.releaseTransfer(
                     forRelease: operation.releaseId
                 )
             ) {
@@ -60,12 +60,11 @@ struct StorageTransferControls: View {
                 }
             }
         case .output(let operation):
-            // The row alone reads the percent the export reaches.
+            // The row's native label alone follows the percent the export
+            // reaches.
             OutputRow(
                 op: operation,
-                transfer: outputStore.transfer(
-                    forRelease: operation.releaseId
-                )
+                percent: outputStore.percent(forRelease: operation.releaseId)
             ) {
                 run { try await outputs.cancelOutput(operation.releaseId) }
             }

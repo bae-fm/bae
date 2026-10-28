@@ -5,9 +5,9 @@ import SwiftUI
 /// save, a state badge, and a cancel button.
 struct OutputRow: View {
     let op: BridgeOutputOp
-    /// How far the active export has got, observed by this row alone; `nil`
-    /// while none has arrived.
-    let transfer: OutputTransferValue?
+    /// The stream of how far the export has got, which a native label beside
+    /// the badge sets itself from while the export runs.
+    let percent: KeyedValueSource<UInt8>
     let onCancel: () -> Void
 
     private var presetName: String? {
@@ -57,7 +57,10 @@ struct OutputRow: View {
         case .queued:
             StatusChip("Queued", symbol: "clock")
         case .active:
-            activeBadge(percent: Int(transfer?.percent ?? 0))
+            HStack(spacing: ThemeSpace.inline) {
+                activeBadge
+                StreamLabel(stream: .exportPercent(percent))
+            }
         case .failed(let error):
             StatusChip(
                 "Failed",
@@ -69,17 +72,17 @@ struct OutputRow: View {
     }
 
     @ViewBuilder
-    private func activeBadge(percent: Int) -> some View {
+    private var activeBadge: some View {
         switch op.kind {
         case .export:
             StatusChip(
-                "Exporting \(percent)%",
+                "Exporting",
                 tone: .activity,
                 symbol: "square.and.arrow.up.fill"
             )
         case .save:
             StatusChip(
-                "Saving \(percent)%",
+                "Saving",
                 tone: .activity,
                 symbol: "square.and.arrow.down.fill"
             )
@@ -93,8 +96,8 @@ struct OutputRow: View {
             ForEach(PreviewData.outputOps, id: \.releaseId) { op in
                 OutputRow(
                     op: op,
-                    transfer: PreviewData.outputStore()
-                        .transfer(forRelease: op.releaseId),
+                    percent: PreviewData.outputStore()
+                        .percent(forRelease: op.releaseId),
                     onCancel: {}
                 )
                 Divider()

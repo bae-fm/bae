@@ -42977,175 +42977,175 @@
         }
       }
     },
-    "Exporting %lld%%" : {
-      "comment" : "Export row: badge showing the export percent",
+    "Exporting" : {
+      "comment" : "Export queue row: the badge of an export running now, beside how far it has got.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ التصدير %lld%%"
+            "value" : "جارٍ التصدير"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Експортиране %lld%%"
+            "value" : "Експортиране"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportuje se %lld%%"
+            "value" : "Exportuje se"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eksporterer %lld%%"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exporting %lld%%"
+            "value" : "Eksporterer"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportiert %lld%%"
+            "value" : "Exportiert"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Εξαγωγή %lld%%"
+            "value" : "Εξαγωγή"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporting"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportando %lld%%"
+            "value" : "Exportando"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Viedään %lld %%"
+            "value" : "Viedään"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportation %lld%%"
+            "value" : "Exportation"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מייצא %lld%%"
+            "value" : "מייצא"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izvoz %lld%%"
+            "value" : "Izvoz"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportálás %lld%%"
+            "value" : "Exportálás"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esportazione %lld%%"
+            "value" : "Esportazione"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld%%エクスポート中"
+            "value" : "エクスポート中"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "내보내는 중 %lld%%"
+            "value" : "내보내는 중"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eksporterer %lld%%"
+            "value" : "Eksporterer"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exporteren %lld%%"
+            "value" : "Exporteren"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eksportowanie %lld%%"
+            "value" : "Eksportowanie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportando %lld%%"
+            "value" : "Exportando"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A exportar %lld%%"
+            "value" : "A exportar"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se exportă %lld%%"
+            "value" : "Se exportă"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportuje sa %lld %%"
+            "value" : "Exportuje sa"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exporterar %lld%%"
+            "value" : "Exporterar"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dışa aktarılıyor %lld%%"
+            "value" : "Dışa aktarılıyor"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Експорт %lld%%"
+            "value" : "Експорт"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在导出 %lld%%"
+            "value" : "正在导出"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在匯出 %lld%%"
+            "value" : "正在匯出"
           }
         }
       }
@@ -72271,174 +72271,175 @@
         }
       }
     },
-    "Saving %lld%%" : {
+    "Saving" : {
+      "comment" : "Export queue row: the badge of a save running now, beside how far it has got.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ الحفظ %lld%%"
+            "value" : "جارٍ الحفظ"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запазване %lld%%"
+            "value" : "Запазване"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukládá se %lld%%"
+            "value" : "Ukládá se"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gemmer %lld%%"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saving %lld%%"
+            "value" : "Gemmer"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Speichert %lld%%"
+            "value" : "Speichert"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αποθήκευση %lld%%"
+            "value" : "Αποθήκευση"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Guardando %lld%%"
+            "value" : "Guardando"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tallennetaan %lld %%"
+            "value" : "Tallennetaan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistrement %lld%%"
+            "value" : "Enregistrement"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שומר %lld%%"
+            "value" : "שומר"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spremanje %lld%%"
+            "value" : "Spremanje"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mentés %lld%%"
+            "value" : "Mentés"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvataggio %lld%%"
+            "value" : "Salvataggio"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld%%保存中"
+            "value" : "保存中"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "저장 중 %lld%%"
+            "value" : "저장 중"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagrer %lld%%"
+            "value" : "Lagrer"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bewaren %lld%%"
+            "value" : "Bewaren"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zapisywanie %lld%%"
+            "value" : "Zapisywanie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvando %lld%%"
+            "value" : "Salvando"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A guardar %lld%%"
+            "value" : "A guardar"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se salvează %lld%%"
+            "value" : "Se salvează"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukladá sa %lld %%"
+            "value" : "Ukladá sa"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sparar %lld%%"
+            "value" : "Sparar"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kaydediliyor %lld%%"
+            "value" : "Kaydediliyor"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Збереження %lld%%"
+            "value" : "Збереження"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在保存 %lld%%"
+            "value" : "正在保存"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在儲存 %lld%%"
+            "value" : "正在儲存"
           }
         }
       }
