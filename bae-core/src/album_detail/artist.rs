@@ -6,12 +6,12 @@ use crate::db::DbArtistSummary;
 #[derive(Debug, Clone)]
 pub struct ArtistSummary {
     pub raw: DbArtistSummary,
-    pub image: Option<ImageRef>,
 }
 
 impl ArtistSummary {
-    pub(crate) fn from_raw(raw: DbArtistSummary, image: Option<ImageRef>) -> Self {
-        Self { raw, image }
+    /// The artist as its row reads it, image and all.
+    pub(crate) fn from_raw(raw: DbArtistSummary) -> Self {
+        Self { raw }
     }
 }
 

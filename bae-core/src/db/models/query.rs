@@ -42,6 +42,8 @@ pub struct DbTrackSearchResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbComposerSummary {
     pub artist: DbArtist,
+    /// The artist's image, at the version its row read; `None` when it has none.
+    pub image: Option<crate::album_detail::ImageRef>,
     pub work_count: i64,
     pub linked_release_count: i64,
     pub unlinked_credit_count: i64,
@@ -52,6 +54,8 @@ pub struct DbComposerSummary {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbArtistSummary {
     pub artist: DbArtist,
+    /// The artist's image, at the version its row read; `None` when it has none.
+    pub image: Option<crate::album_detail::ImageRef>,
     pub album_count: i64,
 }
 

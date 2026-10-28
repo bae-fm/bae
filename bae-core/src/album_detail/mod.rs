@@ -356,6 +356,26 @@ pub struct ImageRef {
     pub image_type: LibraryImageType,
 }
 
+/// The cover of the release `release_id` at `version`, as its row read it;
+/// `None` when the release has no cover.
+pub(crate) fn cover_ref(release_id: &str, version: Option<String>) -> Option<ImageRef> {
+    version.map(|version| ImageRef {
+        id: release_id.to_string(),
+        version,
+        image_type: LibraryImageType::Cover,
+    })
+}
+
+/// The image of the artist `artist_id` at `version`, as its row read it;
+/// `None` when the artist has no image.
+pub(crate) fn artist_image_ref(artist_id: &str, version: Option<String>) -> Option<ImageRef> {
+    version.map(|version| ImageRef {
+        id: artist_id.to_string(),
+        version,
+        image_type: LibraryImageType::Artist,
+    })
+}
+
 /// Turn a subject-id -> content-version map — the shape the DB and every
 /// live-query projection carry images in — into the [`ImageRef`]s a resolver
 /// looks its subjects up in.

@@ -198,17 +198,8 @@ impl LibraryManager {
                 .iter()
                 .filter_map(|w| w.representative_release_id.clone()),
         );
-        // Artist and composer hits share one image prefetch: both are artist
-        // rows, keyed by artist id.
-        let mut artist_ids: Vec<String> = raw.artists.iter().map(|a| a.artist.id.clone()).collect();
-        artist_ids.extend(raw.composers.iter().map(|c| c.artist.id.clone()));
         let release_covers = self.cover_refs(&release_ids).await?;
-        let artist_images = self.artist_image_refs(&artist_ids).await?;
-        Ok(SearchResults::from_raw(
-            raw,
-            &release_covers,
-            &artist_images,
-        ))
+        Ok(SearchResults::from_raw(raw, &release_covers))
     }
 
     pub(crate) fn subscribe_library_search(
@@ -227,8 +218,7 @@ impl LibraryManager {
         projection: crate::db::LibrarySearchProjection,
     ) -> SearchResults {
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        let artist_images = image_refs(projection.artist_image_versions, LibraryImageType::Artist);
-        SearchResults::from_raw(projection.results, &covers, &artist_images)
+        SearchResults::from_raw(projection.results, &covers)
     }
 
     /// Delete an album and its data: the rows go in one transaction, which

@@ -9,12 +9,12 @@ use crate::db::{
 #[derive(Debug, Clone)]
 pub struct ComposerSummary {
     pub raw: DbComposerSummary,
-    pub image: Option<ImageRef>,
 }
 
 impl ComposerSummary {
-    pub(crate) fn from_raw(raw: DbComposerSummary, image: Option<ImageRef>) -> Self {
-        Self { raw, image }
+    /// The composer as its row reads it, image and all.
+    pub(crate) fn from_raw(raw: DbComposerSummary) -> Self {
+        Self { raw }
     }
 }
 

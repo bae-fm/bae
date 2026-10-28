@@ -389,11 +389,11 @@ fn composer_detail_conversion_preserves_work_groups() {
                     musicbrainz_artist_id: None,
                     created_at,
                 },
+                image: None,
                 work_count: 2,
                 linked_release_count: 1,
                 unlinked_credit_count: 0,
             },
-            image: None,
         },
         work_groups: vec![ComposerWorkGroup {
             id: "work-parent-a".to_string(),

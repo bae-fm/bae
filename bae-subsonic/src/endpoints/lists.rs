@@ -288,7 +288,7 @@ async fn artist_summary_child(
         &artist.name,
         count,
         artist.musicbrainz_artist_id.clone(),
-        summary.image.as_ref(),
+        summary.raw.image.as_ref(),
     )
     .to_element())
 }

@@ -51,11 +51,7 @@ impl AlbumSummary {
     /// cover version names.
     pub(crate) fn from_raw(raw: DbAlbumSummary) -> AlbumSummary {
         let primary_release_id = raw.primary_release_id;
-        let cover = raw.cover_version.map(|version| ImageRef {
-            id: primary_release_id.clone(),
-            version,
-            image_type: crate::db::LibraryImageType::Cover,
-        });
+        let cover = cover_ref(&primary_release_id, raw.cover_version);
         AlbumSummary {
             id: raw.id,
             title: raw.title,

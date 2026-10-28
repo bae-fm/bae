@@ -150,11 +150,7 @@ impl StorageRow {
         transfer_action: Option<ReleaseStorageAction>,
         originals: &OriginalsSeen,
     ) -> StorageRow {
-        let cover = raw.release_cover_version.map(|version| ImageRef {
-            id: raw.release.id.clone(),
-            version,
-            image_type: crate::db::LibraryImageType::Cover,
-        });
+        let cover = cover_ref(&raw.release.id, raw.release_cover_version);
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
             originals,

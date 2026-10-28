@@ -123,16 +123,6 @@ impl LibraryManager {
         ))
     }
 
-    pub(super) async fn artist_image_refs(
-        &self,
-        artist_ids: &[String],
-    ) -> Result<HashMap<String, ImageRef>, LibraryError> {
-        Ok(image_refs(
-            self.database.artist_image_versions(artist_ids).await?,
-            LibraryImageType::Artist,
-        ))
-    }
-
     /// Read a host-provided library image's whole bytes through coven's
     /// locality-aware read. The [`ImageRef`] carries the image kind, so the read
     /// goes directly to the table/namespace that produced the ref.

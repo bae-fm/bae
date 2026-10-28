@@ -120,18 +120,8 @@ impl Database {
                         })
                     })
                     .collect::<Result<Vec<_>, CovenError>>()?;
-                // Only the rows the windows hold are shown, so only their
-                // images are read and followed.
-                let artist_ids = windows
-                    .iter()
-                    .flat_map(|window| window.rows.iter().map(|row| row.artist.id.clone()))
-                    .collect::<Vec<_>>();
-                let image_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                        .map_err(CovenError::from)?;
                 Ok(ComposerBrowseProjection {
                     windows,
-                    image_versions,
                     total_count,
                 })
             })
@@ -190,18 +180,8 @@ impl Database {
                         })
                     })
                     .collect::<Result<Vec<_>, CovenError>>()?;
-                // Only the rows the windows hold are shown, so only their
-                // images are read and followed.
-                let artist_ids = windows
-                    .iter()
-                    .flat_map(|window| window.rows.iter().map(|row| row.artist.id.clone()))
-                    .collect::<Vec<_>>();
-                let image_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                        .map_err(CovenError::from)?;
                 Ok(ArtistBrowseProjection {
                     windows,
-                    image_versions,
                     total_count,
                 })
             })
@@ -232,22 +212,13 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |artist_id, sql| {
                 let Some(artist_id) = artist_id else {
-                    return Ok((None, HashMap::new()));
+                    return Ok(None);
                 };
-                let detail = find_artist_detail_on(&sql, artist_id).map_err(CovenError::from)?;
-                let artist_ids = match &detail {
-                    Some(detail) => vec![detail.artist.artist.id.clone()],
-                    None => Vec::new(),
-                };
-                let image_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                        .map_err(CovenError::from)?;
-                Ok((detail, image_versions))
+                find_artist_detail_on(&sql, artist_id).map_err(CovenError::from)
             })
-            .process(|(detail, image_versions)| {
+            .process(|detail| {
                 Ok(ArtistDetailProjection {
                     detail: detail.map(ArtistDetailRows::process).transpose()?,
-                    image_versions,
                 })
             })
     }
@@ -273,33 +244,26 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |artist_id, sql| {
                 let Some(artist_id) = artist_id else {
-                    return Ok((None, HashMap::new(), HashMap::new()));
+                    return Ok((None, HashMap::new()));
                 };
                 let detail = find_composer_detail_on(&sql, artist_id).map_err(CovenError::from)?;
-                let (artist_ids, release_ids) = match &detail {
-                    Some(detail) => (
-                        vec![detail.composer.artist.id.clone()],
-                        detail
-                            .works
-                            .iter()
-                            .chain(detail.parents.values())
-                            .filter_map(|work| work.representative_release_id.clone())
-                            .collect::<Vec<_>>(),
-                    ),
-                    None => (Vec::new(), Vec::new()),
+                let release_ids = match &detail {
+                    Some(detail) => detail
+                        .works
+                        .iter()
+                        .chain(detail.parents.values())
+                        .filter_map(|work| work.representative_release_id.clone())
+                        .collect::<Vec<_>>(),
+                    None => Vec::new(),
                 };
-                let image_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                        .map_err(CovenError::from)?;
                 let cover_versions =
                     super::files::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
                         .map_err(CovenError::from)?;
-                Ok((detail, image_versions, cover_versions))
+                Ok((detail, cover_versions))
             })
-            .process(|(detail, image_versions, cover_versions)| {
+            .process(|(detail, cover_versions)| {
                 Ok(ComposerDetailProjection {
                     detail: detail.map(ComposerDetailRows::process),
-                    image_versions,
                     cover_versions,
                 })
             })
@@ -714,28 +678,24 @@ fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbComposerSummary>>,
-    pub image_versions: HashMap<String, String>,
     pub total_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerDetailProjection {
     pub detail: Option<DbComposerDetail>,
-    pub image_versions: HashMap<String, String>,
     pub cover_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbArtistSummary>>,
-    pub image_versions: HashMap<String, String>,
     pub total_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistDetailProjection {
     pub detail: Option<DbArtistDetail>,
-    pub image_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

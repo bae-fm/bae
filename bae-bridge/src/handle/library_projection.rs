@@ -356,9 +356,10 @@ mirror_struct! {
 
 impl BridgeComposerSummary {
     pub(super) fn from_core(s: bae_core::album_detail::ComposerSummary) -> Self {
-        let bae_core::album_detail::ComposerSummary { raw, image } = s;
+        let bae_core::album_detail::ComposerSummary { raw } = s;
         let bae_core::db::DbComposerSummary {
             artist,
+            image,
             work_count,
             linked_release_count,
             unlinked_credit_count,
@@ -386,9 +387,10 @@ impl BridgeComposerSummary {
 
 impl BridgeArtistSummary {
     pub(super) fn from_core(s: bae_core::album_detail::ArtistSummary) -> Self {
-        let bae_core::album_detail::ArtistSummary { raw, image } = s;
+        let bae_core::album_detail::ArtistSummary { raw } = s;
         let bae_core::db::DbArtistSummary {
             artist,
+            image,
             album_count,
         } = raw;
         let bae_core::db::DbArtist {

@@ -19,12 +19,11 @@ pub struct SearchResults {
 impl SearchResults {
     /// `release_covers` is keyed by release id and serves every release-cover
     /// lookup the raw rows need: album primary release ids, track release ids,
-    /// and work representative release ids. `artist_images` is keyed by artist
-    /// id and serves both the artist and composer hits.
+    /// and work representative release ids. Artist and composer hits carry
+    /// their images' versions.
     pub(crate) fn from_raw(
         raw: DbLibrarySearchResults,
         release_covers: &HashMap<String, ImageRef>,
-        artist_images: &HashMap<String, ImageRef>,
     ) -> SearchResults {
         SearchResults {
             albums: raw
@@ -61,18 +60,12 @@ impl SearchResults {
             artists: raw
                 .artists
                 .into_iter()
-                .map(|artist| {
-                    let image = artist_images.get(&artist.artist.id).cloned();
-                    ArtistSummary::from_raw(artist, image)
-                })
+                .map(ArtistSummary::from_raw)
                 .collect(),
             composers: raw
                 .composers
                 .into_iter()
-                .map(|composer| {
-                    let image = artist_images.get(&composer.artist.id).cloned();
-                    ComposerSummary::from_raw(composer, image)
-                })
+                .map(ComposerSummary::from_raw)
                 .collect(),
             works: raw
                 .works

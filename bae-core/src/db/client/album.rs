@@ -83,37 +83,22 @@ impl Database {
                             .filter_map(|work| work.representative_release_id.clone()),
                     )
                     .collect::<Vec<_>>();
-                let artist_ids = results
-                    .artists
-                    .iter()
-                    .map(|artist| artist.artist.id.clone())
-                    .chain(
-                        results
-                            .composers
-                            .iter()
-                            .map(|composer| composer.artist.id.clone()),
-                    )
-                    .collect::<Vec<_>>();
                 let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 cover_versions.extend(super::files::image_versions_on(
                     &sql,
                     LibraryImageType::Cover,
                     &release_ids,
                 )?);
-                let artist_image_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                        .map_err(CovenError::from)?;
-                Ok(Some((results, cover_versions, artist_image_versions)))
+                Ok(Some((results, cover_versions)))
             })
             .process(|raw| {
-                let Some((results, cover_versions, artist_image_versions)) = raw else {
+                let Some((results, cover_versions)) = raw else {
                     return Ok(LibrarySearchProjection::default());
                 };
                 let results = results.process()?;
                 Ok(LibrarySearchProjection {
                     results,
                     cover_versions,
-                    artist_image_versions,
                 })
             })
     }
@@ -746,5 +731,4 @@ pub struct AlbumDetailProjection {
 pub struct LibrarySearchProjection {
     pub results: DbLibrarySearchResults,
     pub cover_versions: HashMap<String, String>,
-    pub artist_image_versions: HashMap<String, String>,
 }

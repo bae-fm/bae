@@ -53,7 +53,7 @@ async fn artist_index(
             &artist.name,
             release_count,
             artist.musicbrainz_artist_id.clone(),
-            summary.image.as_ref(),
+            summary.raw.image.as_ref(),
         );
         buckets
             .entry(index_letter(&artist.name))
@@ -110,7 +110,7 @@ pub(crate) async fn get_artist(
         &artist.name,
         release_ids.len() as i64,
         artist.musicbrainz_artist_id.clone(),
-        detail.artist.image.as_ref(),
+        detail.artist.raw.image.as_ref(),
     )
     .to_element();
 

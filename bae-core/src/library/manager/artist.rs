@@ -155,15 +155,7 @@ impl LibraryManager {
         limit: u64,
     ) -> Result<Vec<ArtistSummary>, LibraryError> {
         let raw = self.database.get_artist_page(sort, offset, limit).await?;
-        let artist_ids: Vec<String> = raw.iter().map(|a| a.artist.id.clone()).collect();
-        let images = self.artist_image_refs(&artist_ids).await?;
-        Ok(raw
-            .into_iter()
-            .map(|artist| {
-                let image = images.get(&artist.artist.id).cloned();
-                ArtistSummary::from_raw(artist, image)
-            })
-            .collect())
+        Ok(raw.into_iter().map(ArtistSummary::from_raw).collect())
     }
 
     pub(crate) fn subscribe_artist_browse(
@@ -183,7 +175,6 @@ impl LibraryManager {
         request_revision: u64,
         cause: coven::LiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<ArtistSummary> {
-        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
         crate::library::LibraryBrowseSnapshot {
             windows: projection
                 .windows
@@ -193,10 +184,7 @@ impl LibraryManager {
                     rows: window
                         .rows
                         .into_iter()
-                        .map(|row| {
-                            let image = images.get(&row.artist.id).cloned();
-                            ArtistSummary::from_raw(row, image)
-                        })
+                        .map(ArtistSummary::from_raw)
                         .collect(),
                 })
                 .collect(),
@@ -215,13 +203,9 @@ impl LibraryManager {
         let Some(raw) = self.database.find_artist_detail(artist_id).await? else {
             return Ok(None);
         };
-        let images = self
-            .artist_image_refs(std::slice::from_ref(&raw.artist.artist.id))
-            .await?;
         let albums = raw.albums.into_iter().map(AlbumSummary::from_raw).collect();
-        let image = images.get(&raw.artist.artist.id).cloned();
         Ok(Some(ArtistDetail {
-            artist: ArtistSummary::from_raw(raw.artist, image),
+            artist: ArtistSummary::from_raw(raw.artist),
             credit_names: raw.credit_names,
             albums,
         }))
@@ -239,10 +223,8 @@ impl LibraryManager {
         projection: crate::db::ArtistDetailProjection,
     ) -> Option<ArtistDetail> {
         let raw = projection.detail?;
-        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
-        let image = images.get(&raw.artist.artist.id).cloned();
         Some(ArtistDetail {
-            artist: ArtistSummary::from_raw(raw.artist, image),
+            artist: ArtistSummary::from_raw(raw.artist),
             credit_names: raw.credit_names,
             albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
         })

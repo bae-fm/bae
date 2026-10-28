@@ -226,19 +226,21 @@ pub(super) const ALBUM_A_IS_SHOWN: &str =
 /// The composer list's rows (`composer_listing`), each with its artist, as
 /// [`row_to_composer_summary`] reads them; `filter` and `tail` follow the join.
 pub(super) fn composer_listing_query(filter: Option<&str>, tail: Option<&str>) -> String {
-    let mut query = String::from(
+    let mut query = format!(
         "SELECT composer.id AS artist_id,
                 composer.name AS artist_name,
                 composer.sort_name AS artist_sort_name,
                 composer.discogs_artist_id AS artist_discogs_artist_id,
                 composer.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
                 composer.created_at AS artist_created_at,
+                {image} AS artist_image_version,
                 listing.work_count,
                 listing.linked_release_count,
                 listing.unlinked_credit_count
          FROM composer_listing listing
          JOIN artists composer ON composer.id = listing.artist_id
          ",
+        image = super::files::artist_image_version_sql("composer.id"),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -257,17 +259,19 @@ pub(super) fn composer_listing_query(filter: Option<&str>, tail: Option<&str>) -
 /// Various Artists gets no special case: it is a real `artists` row and lists
 /// like any other artist.
 pub(super) fn artist_listing_query(filter: Option<&str>, tail: Option<&str>) -> String {
-    let mut query = String::from(
+    let mut query = format!(
         "SELECT ar.id AS artist_id,
                 ar.name AS artist_name,
                 ar.sort_name AS artist_sort_name,
                 ar.discogs_artist_id AS artist_discogs_artist_id,
                 ar.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
                 ar.created_at AS artist_created_at,
+                {image} AS artist_image_version,
                 listing.album_count
          FROM artist_listing listing
          JOIN artists ar ON ar.id = listing.artist_id
          ",
+        image = super::files::artist_image_version_sql("ar.id"),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -430,8 +434,10 @@ pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
 }
 
 pub(super) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
+    let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbComposerSummary {
-        artist: row_to_artist_with_prefix(row, "artist_")?,
+        image: crate::album_detail::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        artist,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
         unlinked_credit_count: row.get("unlinked_credit_count")?,
@@ -439,8 +445,10 @@ pub(super) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
 }
 
 pub(super) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistSummary> {
+    let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbArtistSummary {
-        artist: row_to_artist_with_prefix(row, "artist_")?,
+        image: crate::album_detail::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        artist,
         album_count: row.get("album_count")?,
     })
 }

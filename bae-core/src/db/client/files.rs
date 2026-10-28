@@ -114,16 +114,6 @@ impl Database {
             .await
     }
 
-    /// The version of each given artist's `artist_images` row, for the ids
-    /// that have one. Ids with no artist image row are absent from the map.
-    pub async fn artist_image_versions(
-        &self,
-        artist_ids: &[String],
-    ) -> Result<HashMap<String, String>, DbError> {
-        self.image_versions(LibraryImageType::Artist, artist_ids)
-            .await
-    }
-
     async fn image_versions(
         &self,
         image_type: LibraryImageType,
@@ -250,6 +240,16 @@ pub(super) fn cover_version_sql(release_id: &str) -> String {
     format!(
         "(SELECT {version} FROM covers AS cover WHERE cover.id = {release_id})",
         version = image_version_sql("cover")
+    )
+}
+
+/// The version of the image of the artist `artist_id` (a SQL expression),
+/// found by the artist images' key; NULL when the artist has no image.
+pub(super) fn artist_image_version_sql(artist_id: &str) -> String {
+    format!(
+        "(SELECT {version} FROM artist_images AS artist_image \
+          WHERE artist_image.id = {artist_id})",
+        version = image_version_sql("artist_image")
     )
 }
 

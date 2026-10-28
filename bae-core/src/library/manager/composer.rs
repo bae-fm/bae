@@ -31,14 +31,17 @@ impl LibraryManager {
         request_revision: u64,
         cause: coven::LiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<ComposerSummary> {
-        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
         crate::library::LibraryBrowseSnapshot {
             windows: projection
                 .windows
                 .into_iter()
                 .map(|window| crate::library::LibraryBrowseWindow {
                     window: window.window,
-                    rows: resolve_composer_rows(window.rows, &images),
+                    rows: window
+                        .rows
+                        .into_iter()
+                        .map(ComposerSummary::from_raw)
+                        .collect(),
                 })
                 .collect(),
             total_count: projection.total_count,
@@ -61,7 +64,6 @@ impl LibraryManager {
         projection: crate::db::ComposerDetailProjection,
     ) -> Option<ComposerDetail> {
         let raw = projection.detail?;
-        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let work_groups = raw
             .work_groups
@@ -85,9 +87,8 @@ impl LibraryManager {
                 .map(|work| work.raw.work.id.clone())
                 .or_else(|| group.works.first().map(|work| work.raw.work.id.clone()))
         });
-        let image = images.get(&raw.composer.artist.id).cloned();
         Some(ComposerDetail {
-            composer: ComposerSummary::from_raw(raw.composer, image),
+            composer: ComposerSummary::from_raw(raw.composer),
             work_groups,
             unlinked_release_roles: raw.unlinked_release_roles,
             unlinked_track_roles: raw.unlinked_track_roles,
@@ -204,18 +205,6 @@ impl LibraryManager {
             tracks: raw.tracks,
         })
     }
-}
-
-fn resolve_composer_rows(
-    rows: Vec<crate::db::DbComposerSummary>,
-    images: &HashMap<String, ImageRef>,
-) -> Vec<ComposerSummary> {
-    rows.into_iter()
-        .map(|row| {
-            let image = images.get(&row.artist.id).cloned();
-            ComposerSummary::from_raw(row, image)
-        })
-        .collect()
 }
 
 fn work_summary_with_cover(

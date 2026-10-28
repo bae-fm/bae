@@ -557,10 +557,10 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         .unwrap();
     assert_eq!(imaged.windows[0].rows[0].artist.id, OTHER_COMPOSER_ID);
     assert_eq!(
-        imaged
-            .image_versions
-            .get(OTHER_COMPOSER_ID)
-            .map(String::as_str),
+        imaged.windows[0].rows[0]
+            .image
+            .as_ref()
+            .map(|image| image.version.as_str()),
         Some(composer_image.as_str())
     );
 
@@ -573,10 +573,10 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         .result
         .unwrap();
     assert_eq!(
-        image_updated
-            .image_versions
-            .get(OTHER_COMPOSER_ID)
-            .map(String::as_str),
+        image_updated.windows[0].rows[0]
+            .image
+            .as_ref()
+            .map(|image| image.version.as_str()),
         Some(replaced_composer_image.as_str())
     );
 
@@ -640,7 +640,7 @@ async fn artist_browse_reads_its_windows_and_their_images() {
         .unwrap();
     assert_eq!(initial.total_count, 1);
     assert_eq!(initial.windows[0].rows[0].artist.id, ARTIST_ID);
-    assert!(initial.image_versions.is_empty());
+    assert!(initial.windows[0].rows[0].image.is_none());
 
     let artist_image = write_artist_image(&db, ARTIST_ID, "artist image bytes").await;
     let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
@@ -650,7 +650,10 @@ async fn artist_browse_reads_its_windows_and_their_images() {
         .result
         .unwrap();
     assert_eq!(
-        imaged.image_versions.get(ARTIST_ID).map(String::as_str),
+        imaged.windows[0].rows[0]
+            .image
+            .as_ref()
+            .map(|image| image.version.as_str()),
         Some(artist_image.as_str())
     );
 
@@ -663,7 +666,6 @@ async fn artist_browse_reads_its_windows_and_their_images() {
         .unwrap();
     assert_eq!(count_only.total_count, 1);
     assert!(count_only.windows.is_empty());
-    assert!(count_only.image_versions.is_empty());
 }
 
 /// A search follows its text by moving its request: the same subscription
