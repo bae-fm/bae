@@ -54,6 +54,14 @@ impl CpalAudioOutput {
 /// preview) and exactly one listener may exist. macOS and Windows only: there a
 /// cpal stream stays bound to the device it opened on, so without a rebuild the
 /// samples keep going to the old device.
+///
+/// Linux needs no watch. cpal opens ALSA's `default` device, which on a
+/// PipeWire or PulseAudio system is the sound server's ALSA plugin, and the
+/// stream it creates names no sink. The sound server moves such a stream to the
+/// new default sink itself: WirePlumber relinks streams without a target when
+/// `default.audio.sink` changes, and PulseAudio 14 and later move the streams on
+/// the old default sink to the new one. With ALSA alone, `default` is fixed
+/// configuration rather than a device that changes.
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 pub(crate) fn watch_default_output_device(
     on_change: impl Fn() + Send + Sync + 'static,
