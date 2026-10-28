@@ -23,19 +23,17 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
 private final class OutputTransfersSink: OutputTransfersCallback,
     @unchecked Sendable
 {
-    private let apply: @MainActor @Sendable (BridgeOutputTransferChange) -> Void
+    private let apply: @Sendable (BridgeOutputTransferChange) -> Void
 
-    init(
-        apply:
-            @escaping @MainActor @Sendable (BridgeOutputTransferChange) ->
-            Void
-    ) {
+    init(apply: @escaping @Sendable (BridgeOutputTransferChange) -> Void) {
         self.apply = apply
     }
 
-    /// One batch lands in one main-actor turn, applied in order.
+    /// One batch lands on the thread it arrives on, applied in order: the
+    /// values go to stores the views drawing them read on their own frames,
+    /// so no change hops to the main thread.
     func onChanges(changes: [BridgeOutputTransferChange]) {
-        Task { @MainActor in changes.forEach(apply) }
+        changes.forEach(apply)
     }
 }
 

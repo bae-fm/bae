@@ -16,8 +16,8 @@ struct DownloadStoreTransferTests {
         )
     }
 
-    /// A native view following a release hears its progress now, each
-    /// change that names it, and none once the release stops downloading.
+    /// A release's latest progress is each change that names it, and none
+    /// once the release stops downloading.
     @Test("a release's progress follows each change that names it")
     func releaseProgressFollowsItsChanges() {
         let store = DownloadStore()
@@ -29,11 +29,8 @@ struct DownloadStoreTransferTests {
                 )
             ])
         )
-        let source = store.releaseTransfer(forRelease: "release-a")
-        var heard: [BridgeDownloadTransferProgress?] = []
-        let observation = source.values.observe(source.key) {
-            heard.append($0)
-        }
+        let source = store.downloadProgress(forRelease: "release-a")
+        #expect(source.latest == progress(10))
 
         store.applyTransferChange(
             .updated(releaseId: "release-a", progress: progress(40))
@@ -41,12 +38,9 @@ struct DownloadStoreTransferTests {
         store.applyTransferChange(
             .updated(releaseId: "release-b", progress: progress(70))
         )
-        store.applyTransferChange(.removed(releaseId: "release-a"))
-        source.values.stopObserving(observation)
-        store.applyTransferChange(
-            .updated(releaseId: "release-a", progress: progress(90))
-        )
+        #expect(source.latest == progress(40))
 
-        #expect(heard == [progress(10), progress(40), nil])
+        store.applyTransferChange(.removed(releaseId: "release-a"))
+        #expect(source.latest == nil)
     }
 }

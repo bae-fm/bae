@@ -56,21 +56,16 @@ struct OutboxStoreTransferTests {
                 total: transfer(10)
             )
         )
-        let source = store.releaseTransfer(forRelease: release)
-        var heard: [BridgeReleaseUploadTransfer?] = []
-        let observation = source.values.observe(source.key) {
-            heard.append($0)
-        }
+        let source = store.uploadProgress(forRelease: release)
+        #expect(source.latest == releaseTransfer(20, 10))
 
         store.applyTransferChange(
             .updated(releaseId: release, transfer: releaseTransfer(60, 40))
         )
-        store.applyTransferChange(.removed(releaseId: release))
-        source.values.stopObserving(observation)
+        #expect(source.latest == releaseTransfer(60, 40))
 
-        #expect(
-            heard == [releaseTransfer(20, 10), releaseTransfer(60, 40), nil]
-        )
+        store.applyTransferChange(.removed(releaseId: release))
+        #expect(source.latest == nil)
     }
 
     /// The file's share as its native view reads it on a frame.
@@ -97,21 +92,52 @@ struct OutboxStoreTransferTests {
         #expect(share(store, "a") == nil)
     }
 
-    @Test("the files being sent together follow each total delivered")
-    func totalFollowsEachDelivery() {
+    /// The files being sent together are active while any is: a total with
+    /// no bar leaves nothing to read.
+    @Test("the files being sent together are read only while any is sent")
+    func totalIsReadWhileFilesAreSent() {
         let store = OutboxStore(uploadsPaused: false)
-        var heard: [BridgeUploadTransfer?] = []
-        let observation = store.totalTransferStream.observe {
-            heard.append($0)
-        }
+        #expect(store.totalProgress.latest == nil)
 
         store.applyTransferChange(.totalUpdated(transfer: transfer(10)))
-        let idle = BridgeUploadTransfer(bar: nil, throughputBps: 0)
-        store.applyTransferChange(.totalUpdated(transfer: idle))
-        store.totalTransferStream.stopObserving(observation)
+        #expect(store.totalProgress.latest == transfer(10))
 
-        #expect(heard == [nil, transfer(10), idle])
+        store.applyTransferChange(
+            .totalUpdated(
+                transfer: BridgeUploadTransfer(bar: nil, throughputBps: 0)
+            )
+        )
+        #expect(store.totalProgress.latest == nil)
     }
+
+    /// Watching a release is told on the main thread as it starts and as it
+    /// stops being sent, and not for each value between.
+    @Test("a release's watch hears it start and stop, not each value")
+    func watchHearsStartAndStop() async throws {
+        let store = OutboxStore(uploadsPaused: false)
+        let source = store.uploadProgress(forRelease: release)
+        let heard = Heard()
+        let watch = source.store.watch(source.key) {
+            heard.active.append(source.latest != nil)
+        }
+        store.applyTransferChange(
+            .updated(releaseId: release, transfer: releaseTransfer(10, 1))
+        )
+        store.applyTransferChange(
+            .updated(releaseId: release, transfer: releaseTransfer(20, 1))
+        )
+        store.applyTransferChange(.removed(releaseId: release))
+        try await Wait.until { heard.active.count == 2 }
+        source.store.stopWatching(watch)
+
+        #expect(heard.active.count == 2)
+    }
+}
+
+/// What a watch heard, on the main thread.
+@MainActor
+private final class Heard {
+    var active: [Bool] = []
 }
 
 @Suite("ReleaseEditor cloud batches")
