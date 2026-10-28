@@ -2,17 +2,19 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// A ring that fills as far as one file's transfer has come, set straight
-/// from the file's keyed stream: a step of bytes moves the ring's stroke and
-/// runs no SwiftUI update. Before the stream names the file the ring is
-/// empty.
+/// A ring that fills as far as one file's transfer has come, read from the
+/// file's latest share once per display frame while the file is in flight:
+/// moving bytes run no SwiftUI update and no main-thread work of their own.
+/// Before the stream names the file the ring is empty.
 final class TransferRingNSView: NSView {
     /// The ring's width.
     static let lineWidth: CGFloat = 1.75
 
     private let track = CAShapeLayer()
     private let fill = CAShapeLayer()
-    private let following = KeyedValueFollowing<Double>()
+    private lazy var following = FrameFollowing<Double>(view: self) {
+        [weak self] fraction in self?.show(fraction)
+    }
 
     var color: NSColor {
         didSet { needsDisplay = true }
@@ -64,11 +66,9 @@ final class TransferRingNSView: NSView {
         }
     }
 
-    /// Follow `source`, filling as far as each share it tells.
-    func follow(_ source: KeyedValueSource<Double>) {
-        following.follow(source) { [weak self] fraction in
-            self?.show(fraction)
-        }
+    /// Read `source` each frame while its file is in flight.
+    func follow(_ source: LatestSource<Double>) {
+        following.follow(source)
     }
 
     func stopFollowing() {
@@ -87,7 +87,7 @@ final class TransferRingNSView: NSView {
 /// stream and its colour, never a value.
 struct TransferRing: NSViewRepresentable {
     let kind: StorageTransferKind
-    let source: KeyedValueSource<Double>
+    let source: LatestSource<Double>
 
     func makeNSView(context _: Context) -> TransferRingNSView {
         let view = TransferRingNSView(color: NSColor(kind.color))

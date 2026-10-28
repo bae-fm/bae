@@ -163,10 +163,10 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "OutboxStore",
-        "fileTransfer",
-        "the stream of how far a file being sent has got, which coven's "
-        "upload watch tells and no table keeps; the leaf hands it to a native "
-        "view that sets itself from it",
+        "fileShare",
+        "the latest share a file being sent has moved, which coven's upload "
+        "watch tells and no table keeps; the leaf hands it to a native view "
+        "that reads it each display frame",
     ),
     KeyedStream(
         "OutboxStore",
@@ -184,10 +184,10 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "DownloadStore",
-        "fileTransfer",
-        "the stream of how far a file being downloaded to keep whole has got, "
+        "fileShare",
+        "the latest share a file being downloaded to keep whole has moved, "
         "which coven's download watch tells and no table keeps; the leaf hands "
-        "it to a native view that sets itself from it",
+        "it to a native view that reads it each display frame",
     ),
 )
 

@@ -73,13 +73,9 @@ struct OutboxStoreTransferTests {
         )
     }
 
-    /// The file's share as the native views following its stream hear it.
+    /// The file's share as its native view reads it on a frame.
     private func share(_ store: OutboxStore, _ fileId: String) -> Double? {
-        let source = store.fileTransfer(forFile: fileId)
-        var heard: Double?
-        let observation = source.values.observe(source.key) { heard = $0 }
-        source.values.stopObserving(observation)
-        return heard
+        store.fileShare(forFile: fileId).latest
     }
 
     @Test("a file's share follows each change that names it")

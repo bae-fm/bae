@@ -8,9 +8,9 @@ import SwiftUI
 @MainActor
 @Observable
 public class DownloadStore {
-    /// The share of each file being downloaded to keep whole its object has
-    /// moved, by file.
-    private let files = KeyedValues<Double>()
+    /// The latest share of each file in flight, by file, which the file's
+    /// native view reads each display frame.
+    private nonisolated let fileShares = LatestByKey<Double>()
     /// Each downloading release's progress, by release.
     private let releases = KeyedValues<BridgeDownloadTransferProgress>()
 
@@ -34,27 +34,30 @@ public class DownloadStore {
         }
     }
 
-    /// Apply one change the pin file transfer subscription delivered.
-    public func applyFileTransferChange(_ change: BridgeFileTransferChange) {
+    /// Apply one change the pin file transfer subscription delivered, on any
+    /// thread.
+    public nonisolated func applyFileTransferChange(
+        _ change: BridgeFileTransferChange
+    ) {
         switch change {
         case .updated(let fileId, let fraction):
-            files.set(fraction, for: fileId)
+            fileShares.set(fraction, for: fileId)
         case .removed(let fileId):
-            files.remove(fileId)
+            fileShares.remove(fileId)
         case .reset(let keyed):
-            files.reset(
-                Dictionary(
-                    uniqueKeysWithValues: keyed.map { ($0.fileId, $0.fraction) }
-                )
+            let all = Dictionary(
+                uniqueKeysWithValues: keyed.map { ($0.fileId, $0.fraction) }
             )
+            fileShares.reset(all)
         }
     }
 
-    /// The stream of the share a file being downloaded to keep whole has
-    /// moved, for the native view that draws it.
-    public func fileTransfer(forFile fileId: String) -> KeyedValueSource<Double>
+    /// The latest share a file in flight has moved, for the native view that
+    /// reads it each display frame.
+    public nonisolated func fileShare(forFile fileId: String)
+        -> LatestSource<Double>
     {
-        KeyedValueSource(values: files, key: fileId)
+        LatestSource(store: fileShares, key: fileId)
     }
 
     /// The stream of a release's download progress, for the native view that

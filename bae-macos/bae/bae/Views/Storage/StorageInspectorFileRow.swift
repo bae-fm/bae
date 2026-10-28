@@ -95,8 +95,8 @@ struct StorageInspectorFileRow: View {
     }
 }
 
-/// A file being sent's ring, filled from the file's stream as far as its
-/// object has gone; SwiftUI hands it only the stream.
+/// A file being sent's ring, filled each frame from the file's latest share;
+/// SwiftUI hands it only the stream.
 private struct StorageSendingFileMark: View {
     let fileId: String
     @Environment(OutboxStore.self)
@@ -104,13 +104,13 @@ private struct StorageSendingFileMark: View {
 
     var body: some View {
         StorageFileMark(
-            state: .moving(.upload, outboxStore.fileTransfer(forFile: fileId))
+            state: .moving(.upload, outboxStore.fileShare(forFile: fileId))
         )
     }
 }
 
-/// A file being downloaded to be kept's ring, filled from the file's stream
-/// as far as its object has come; SwiftUI hands it only the stream.
+/// A file being downloaded to be kept's ring, filled each frame from the
+/// file's latest share; SwiftUI hands it only the stream.
 private struct StoragePinningFileMark: View {
     let fileId: String
     @Environment(DownloadStore.self)
@@ -118,7 +118,7 @@ private struct StoragePinningFileMark: View {
 
     var body: some View {
         StorageFileMark(
-            state: .moving(.pin, downloadStore.fileTransfer(forFile: fileId))
+            state: .moving(.pin, downloadStore.fileShare(forFile: fileId))
         )
     }
 }
@@ -130,7 +130,7 @@ struct StorageFileMark: View {
     enum State {
         case stored
         case queued
-        case moving(StorageTransferKind, KeyedValueSource<Double>)
+        case moving(StorageTransferKind, LatestSource<Double>)
     }
 
     let state: State
@@ -168,7 +168,7 @@ struct StorageFileMark: View {
 
 #if DEBUG
     #Preview("File marks") {
-        let shares = KeyedValues<Double>()
+        let shares = LatestByKey<Double>()
         shares.set(0.38, for: "sending")
         shares.set(0.64, for: "pinning")
         return HStack(spacing: ThemeSpace.group) {
@@ -177,19 +177,19 @@ struct StorageFileMark: View {
             StorageFileMark(
                 state: .moving(
                     .upload,
-                    KeyedValueSource(values: shares, key: "sending")
+                    LatestSource(store: shares, key: "sending")
                 )
             )
             StorageFileMark(
                 state: .moving(
                     .pin,
-                    KeyedValueSource(values: shares, key: "pinning")
+                    LatestSource(store: shares, key: "pinning")
                 )
             )
             StorageFileMark(
                 state: .moving(
                     .upload,
-                    KeyedValueSource(values: shares, key: "unheard")
+                    LatestSource(store: shares, key: "unheard")
                 )
             )
         }

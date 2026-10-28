@@ -13,8 +13,9 @@ public class OutboxStore {
     /// Whether the person paused uploads, as the retained subscription last
     /// said.
     public private(set) var uploadsPaused: Bool
-    /// The share of each file being sent its object has moved, by file.
-    private let files = KeyedValues<Double>()
+    /// The latest share of each file in flight, by file, which the file's
+    /// native view reads each display frame.
+    private nonisolated let fileShares = LatestByKey<Double>()
     /// Each release with files being sent, its transfer, by release.
     private let releaseTransfers = KeyedValues<BridgeReleaseUploadTransfer>()
     /// The files being sent together, for the native views that draw them.
@@ -49,19 +50,21 @@ public class OutboxStore {
         }
     }
 
-    /// Apply one change the file transfer subscription delivered.
-    public func applyFileTransferChange(_ change: BridgeFileTransferChange) {
+    /// Apply one change the file transfer subscription delivered, on any
+    /// thread.
+    public nonisolated func applyFileTransferChange(
+        _ change: BridgeFileTransferChange
+    ) {
         switch change {
         case .updated(let fileId, let fraction):
-            files.set(fraction, for: fileId)
+            fileShares.set(fraction, for: fileId)
         case .removed(let fileId):
-            files.remove(fileId)
+            fileShares.remove(fileId)
         case .reset(let keyed):
-            files.reset(
-                Dictionary(
-                    uniqueKeysWithValues: keyed.map { ($0.fileId, $0.fraction) }
-                )
+            let all = Dictionary(
+                uniqueKeysWithValues: keyed.map { ($0.fileId, $0.fraction) }
             )
+            fileShares.reset(all)
         }
     }
 
@@ -73,10 +76,11 @@ public class OutboxStore {
         KeyedValueSource(values: releaseTransfers, key: releaseId)
     }
 
-    /// The stream of the share a file being sent has moved, for the native
-    /// view that draws it.
-    public func fileTransfer(forFile fileId: String) -> KeyedValueSource<Double>
+    /// The latest share a file in flight has moved, for the native view that
+    /// reads it each display frame.
+    public nonisolated func fileShare(forFile fileId: String)
+        -> LatestSource<Double>
     {
-        KeyedValueSource(values: files, key: fileId)
+        LatestSource(store: fileShares, key: fileId)
     }
 }

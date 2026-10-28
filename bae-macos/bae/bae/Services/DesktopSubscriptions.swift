@@ -42,18 +42,17 @@ private final class OutputTransfersSink: OutputTransfersCallback,
 private final class FileTransfersSink: FileTransfersCallback,
     @unchecked Sendable
 {
-    private let apply: @MainActor @Sendable (BridgeFileTransferChange) -> Void
+    private let apply: @Sendable (BridgeFileTransferChange) -> Void
 
-    init(
-        apply:
-            @escaping @MainActor @Sendable (BridgeFileTransferChange) -> Void
-    ) {
+    init(apply: @escaping @Sendable (BridgeFileTransferChange) -> Void) {
         self.apply = apply
     }
 
-    /// One batch lands in one main-actor turn, applied in order.
+    /// One batch lands on the thread it arrives on, applied in order: the
+    /// shares go to a store each file's view reads on its own frames, so no
+    /// change hops to the main thread.
     func onChanges(changes: [BridgeFileTransferChange]) {
-        Task { @MainActor in changes.forEach(apply) }
+        changes.forEach(apply)
     }
 }
 
