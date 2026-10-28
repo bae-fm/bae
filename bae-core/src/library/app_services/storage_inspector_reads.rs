@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::album_detail::{FileDetail, ReleaseUpload};
-use crate::library::storage_inspector::{storage_inspector_transfers, StorageInspector};
+use crate::library::storage_inspector::StorageInspector;
 use crate::library::{LibraryError, LiveReadError, ReleaseQueueEntries};
 
 /// What the reader was last told of the release shown.
@@ -103,8 +103,10 @@ impl AppServices {
                     }
                     Some((files, upload)) => {
                         let inspector = StorageInspector::of(
+                            &release_id,
                             files.clone(),
-                            storage_inspector_transfers(&release_id, entries, upload.clone()),
+                            entries,
+                            upload.clone(),
                             &causes.borrow_and_update(),
                         );
                         if matches!(&told, Told::Shown(shown) if *shown == inspector) {

@@ -226,3 +226,39 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
     })
     .await;
 }
+
+/// A release's file says whether this device keeps it whole, and while the
+/// release waits in the download queue the inspector shows each file's pin
+/// and counts them; once the download has kept every file it leaves the
+/// queue, and the inspector shows no pin but each file kept.
+#[cfg(feature = "test-utils")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
+    use crate::library::storage_inspector::{FilePin, PinFiles, StorageInspectorTransfer};
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    let detail = manager.find_release_detail(&cloud).await.unwrap().unwrap();
+    assert!(detail.files.iter().all(|file| !file.kept));
+
+    let services = crate::library::AppServices::for_test(manager.library.clone())
+        .await
+        .unwrap();
+    let inspector = services.subscribe_storage_inspector();
+    inspector.set(Some(cloud.clone())).unwrap();
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
+    let pinning = inspector_until(&inspector, |value| !value.transfers.is_empty()).await;
+    assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
+    assert!(matches!(
+        pinning.transfers.as_slice(),
+        [StorageInspectorTransfer::Download {
+            files: Some(PinFiles { kept: 0, waiting: 1 }),
+            ..
+        }]
+    ));
+
+    manager.set_downloads_paused(false).await.unwrap();
+    let pinned = inspector_until(&inspector, |value| value.transfers.is_empty()).await;
+    assert!(pinned.files.iter().all(|file| file.pin.is_none() && file.file.kept));
+}

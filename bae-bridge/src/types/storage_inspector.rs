@@ -10,12 +10,30 @@ pub struct BridgeStorageInspector {
     pub files: Vec<BridgeStorageInspectorFile>,
 }
 
-/// One release file in the inspector, beside its upload while one waits.
-/// Mirrors `StorageInspectorFile`.
+/// One release file in the inspector, beside its upload while one waits,
+/// and while the release is pinning, where its pin stands. Mirrors
+/// `StorageInspectorFile`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageInspectorFile {
     pub file: BridgeFile,
     pub upload: Option<BridgeFileUpload>,
+    pub pin: Option<BridgeFilePin>,
+}
+
+/// Whether a pinning release's file is kept whole on this device yet.
+/// Mirrors `FilePin`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeFilePin {
+    Kept,
+    Waiting,
+}
+
+/// How many of a pinning release's files are kept and how many wait.
+/// Mirrors `PinFiles`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgePinFiles {
+    pub kept: u32,
+    pub waiting: u32,
 }
 
 /// A release file's queued upload: which file, whether it is being sent,
@@ -32,8 +50,10 @@ pub struct BridgeFileUpload {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeStorageInspectorTransfer {
+    /// `files` counts the release's files while its download waits or runs.
     Download {
         operation: BridgeDownloadOp,
+        files: Option<BridgePinFiles>,
     },
     Output {
         operation: BridgeOutputOp,

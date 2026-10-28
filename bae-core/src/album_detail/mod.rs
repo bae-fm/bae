@@ -297,6 +297,9 @@ pub struct FileDetail {
     pub source_audio: Option<SourceAudioFile>,
     /// The file's upload while it waits in this device's upload queue.
     pub upload: Option<FileUpload>,
+    /// Whether this device keeps a whole copy of the file, pinned, as
+    /// coven's `coven_pins` says.
+    pub kept: bool,
 }
 
 /// A release file's file waiting in this device's upload queue, read with the

@@ -26,6 +26,7 @@ impl BridgeFile {
             content_type,
             source_audio,
             upload: _,
+            kept: _,
         } = f;
         BridgeFile {
             id,

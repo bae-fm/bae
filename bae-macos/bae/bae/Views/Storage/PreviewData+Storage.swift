@@ -542,7 +542,7 @@
         ) -> BridgeStorageInspector {
             var transfers: [BridgeStorageInspectorTransfer] = []
             if let download {
-                transfers.append(.download(operation: download))
+                transfers.append(.download(operation: download, files: nil))
             }
             if let output {
                 transfers.append(.output(operation: output))
@@ -560,7 +560,8 @@
                 files: release.files.map {
                     BridgeStorageInspectorFile(
                         file: $0,
-                        upload: upload?.files[$0.id]
+                        upload: upload?.files[$0.id],
+                        pin: nil
                     )
                 }
             )

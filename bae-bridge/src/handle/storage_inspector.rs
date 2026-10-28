@@ -24,8 +24,12 @@ impl crate::types::BridgeStorageInspectorTransfer {
     fn from_core(transfer: bae_core::library::storage_inspector::StorageInspectorTransfer) -> Self {
         use bae_core::library::storage_inspector::StorageInspectorTransfer;
         match transfer {
-            StorageInspectorTransfer::Download { operation } => Self::Download {
+            StorageInspectorTransfer::Download { operation, files } => Self::Download {
                 operation: crate::types::BridgeDownloadOp::from_core(operation),
+                files: files.map(|files| crate::types::BridgePinFiles {
+                    kept: files.kept,
+                    waiting: files.waiting,
+                }),
             },
             StorageInspectorTransfer::Output { operation } => Self::Output {
                 operation: crate::types::BridgeOutputOp::from_core(operation),
@@ -40,7 +44,7 @@ impl crate::types::BridgeStorageInspectorTransfer {
 
 impl crate::types::BridgeStorageInspectorFile {
     fn from_core(row: bae_core::library::storage_inspector::StorageInspectorFile) -> Self {
-        let bae_core::library::storage_inspector::StorageInspectorFile { file, upload } = row;
+        let bae_core::library::storage_inspector::StorageInspectorFile { file, upload, pin } = row;
         Self {
             file: BridgeFile::from_core(file),
             upload: upload.map(|upload| crate::types::BridgeFileUpload {
@@ -53,6 +57,14 @@ impl crate::types::BridgeStorageInspectorFile {
                     .pending
                     .map(crate::types::BridgePendingWait::from_core),
                 bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
+            }),
+            pin: pin.map(|pin| match pin {
+                bae_core::library::storage_inspector::FilePin::Kept => {
+                    crate::types::BridgeFilePin::Kept
+                }
+                bae_core::library::storage_inspector::FilePin::Waiting => {
+                    crate::types::BridgeFilePin::Waiting
+                }
             }),
         }
     }

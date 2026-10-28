@@ -247,6 +247,8 @@ pub struct DbReleaseDetail {
     pub pinned: bool,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
+    /// The release's files this device keeps a whole copy of, pinned, by id.
+    pub kept_files: std::collections::BTreeSet<String>,
     /// Each of the release's files waiting in this device's upload queue, by
     /// its row.
     pub file_uploads: Vec<DbFileUpload>,

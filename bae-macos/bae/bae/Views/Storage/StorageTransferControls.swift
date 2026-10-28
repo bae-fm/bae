@@ -33,7 +33,7 @@ struct StorageTransferControls: View {
         -> some View
     {
         switch item {
-        case .download(let operation):
+        case .download(let operation, _):
             // The row alone reads the bytes the download moves.
             DownloadRow(
                 op: operation,

@@ -2614,8 +2614,12 @@ Reads come two ways:
   The inspector reads its release live by id: the release's files, each beside
   its upload while one waits (whether it is being sent, what it waits for with
   the error behind that while this process holds it, and while it is sent,
-  the bytes of it sent), and its entry in the download, export and
-  upload queues, all read for that release alone. It shows nothing of a
+  the bytes of it sent, and while the release waits in or runs through the
+  download queue, whether the file is kept whole on this device yet, as
+  coven's `coven_pins` says), and its entry in the download, export and
+  upload queues, a download with how many of its files are kept and how
+  many wait, all read for that release alone. Which of the files not kept
+  coven is fetching now, and how far each has got, coven doesn't say. It shows nothing of a
   whole queue, which the list's footer pauses (§4.2): its upload shows how
   many of its files are uploading, queued and stored, a control that
   cancels it, and while files are sent, the bytes of its size stored or sent
