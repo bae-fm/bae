@@ -1447,11 +1447,11 @@ stored files' sizes and, of each file being sent, that share of its size,
 beside the stored bytes a live query of the files being sent reads; the
 files being sent together count their objects' bytes. Each file's share is
 told by file too, for the Storage Manager's rings. How fast they go is
-measured beside the database from the bytes a live query of the files
-being sent reads as each part is confirmed, file by file: a rate for each
-release, its files being sent together, and for every file being sent
-together; no screen shows one file's rate, so none is sent. A file that
-only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
+measured beside the database from the same watch's bytes, file by file, as
+each step of them goes, so a file sent in one request has a rate too: a
+rate for each release, its files being sent together, and for every file
+being sent together; no screen shows one file's rate, so none is sent. A
+file that only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
 otherwise; moving a release to the cloud shows that transfer until its files
 are queued.

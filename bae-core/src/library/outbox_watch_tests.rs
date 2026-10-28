@@ -42,8 +42,6 @@ fn sending(file: coven::FileId, release: Option<(&str, i64)>) -> DbSendingFile {
         file,
         release_id: release.map(|(id, _)| id.to_string()),
         file_size: release.map(|(_, size)| size),
-        bytes_confirmed: None,
-        bytes_total: None,
     }
 }
 

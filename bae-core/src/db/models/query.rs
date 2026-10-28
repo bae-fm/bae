@@ -271,15 +271,12 @@ pub struct DbFileUpload {
 }
 
 /// One file this process is sending now: when it is one of a release's
-/// files, its release and size, and the bytes its upload session has had
-/// confirmed, while it is sent in parts.
+/// files, its release and size.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbSendingFile {
     pub file: coven::FileId,
     pub release_id: Option<String>,
     pub file_size: Option<i64>,
-    pub bytes_confirmed: Option<i64>,
-    pub bytes_total: Option<i64>,
 }
 
 /// A release with files this process is sending now: of its whole size, the

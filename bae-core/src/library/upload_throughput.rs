@@ -1,7 +1,8 @@
-//! Transfer rates from provider-confirmed upload counters.
+//! Transfer rates from the bytes coven's upload watch tells each file has
+//! handed to the connection.
 use crate::db::DbSendingUploads;
 use coven::FileId;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::Duration;
 
 const WINDOW: Duration = Duration::from_secs(10);
@@ -9,7 +10,7 @@ const WINDOW: Duration = Duration::from_secs(10);
 struct Measurement {
     samples: VecDeque<(Duration, u64)>,
     started: Duration,
-    confirmed: u64,
+    transferred: u64,
     total: u64,
 }
 #[derive(Default)]
@@ -18,48 +19,52 @@ pub(crate) struct UploadThroughput {
 }
 
 impl UploadThroughput {
-    /// Measure the files being sent at `now` from the bytes confirmed of
-    /// them. A file no longer sent, or sent in one request, has no rate; a
+    /// Measure the files `sending` lists at `now` from how far `progress`
+    /// has each. A file no longer sent, or not yet told, has no rate; a
     /// pause ends every measurement.
-    pub(crate) fn observe(&mut self, sending: &DbSendingUploads, now: Duration) {
+    pub(crate) fn observe(
+        &mut self,
+        sending: &DbSendingUploads,
+        progress: &BTreeMap<FileId, coven::TransferProgress>,
+        now: Duration,
+    ) {
         if sending.paused {
             self.files.clear();
             return;
         }
-        let bytes = |value: i64| u64::try_from(value).expect("an upload session's bytes");
         let measured = || {
             sending.files.iter().filter_map(|file| {
-                file.bytes_confirmed
-                    .zip(file.bytes_total)
-                    .map(|(confirmed, total)| (file.file, bytes(confirmed), bytes(total)))
+                progress
+                    .get(&file.file)
+                    .map(|moved| (file.file, moved.bytes_transferred, moved.bytes_total))
             })
         };
         self.files
             .retain(|id, _| measured().any(|(file, _, _)| file == *id));
-        for (file, confirmed, total) in measured() {
-            self.record(file, confirmed, total, now);
+        for (file, transferred, total) in measured() {
+            self.record(file, transferred, total, now);
         }
     }
-    fn record(&mut self, id: FileId, confirmed: u64, total: u64, now: Duration) {
+    fn record(&mut self, id: FileId, transferred: u64, total: u64, now: Duration) {
         let measurement = self.files.entry(id).or_insert_with(|| Measurement {
             samples: VecDeque::new(),
             started: now,
-            confirmed,
+            transferred,
             total,
         });
-        if confirmed < measurement.confirmed || total != measurement.total {
+        if transferred < measurement.transferred || total != measurement.total {
             *measurement = Measurement {
                 samples: VecDeque::new(),
                 started: now,
-                confirmed,
+                transferred,
                 total,
             };
         }
-        let delta = confirmed - measurement.confirmed;
+        let delta = transferred - measurement.transferred;
         if delta > 0 {
             measurement.samples.push_back((now, delta));
         }
-        measurement.confirmed = confirmed;
+        measurement.transferred = transferred;
     }
     pub(crate) fn rates(&mut self, now: Duration) -> HashMap<FileId, u64> {
         self.files

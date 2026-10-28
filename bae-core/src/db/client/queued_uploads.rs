@@ -108,14 +108,10 @@ pub(super) const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
 /// Whether the person paused uploads, as coven's one row says.
 const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 
-/// Each file this process is sending now: when it is one of a release's
-/// files, its release and size, and the bytes its upload session has had
-/// confirmed. One row per upload in flight is read, each found by its place
-/// in the queue.
-const FILES_SENDING: &str = "SELECT sending.file, f.release_id, f.file_size, \
-         upload.bytes_confirmed, upload.bytes_total \
+/// Each file this process is sending now and, when it is one of a release's
+/// files, its release and size. One row per upload in flight is read.
+const FILES_SENDING: &str = "SELECT sending.file, f.release_id, f.file_size \
      FROM coven_sending AS sending \
-     JOIN coven_uploads AS upload ON upload.position = sending.position \
      LEFT JOIN release_files AS f \
          ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key";
 
@@ -175,10 +171,10 @@ impl Database {
         })
     }
 
-    /// The files this process is sending now, the releases they belong to
-    /// with the bytes of each stored, and the bytes confirmed of each file,
-    /// live: it reruns with each part a provider confirms, and as files start
-    /// and stop being sent or the person pauses uploads.
+    /// The files this process is sending now and the releases they belong
+    /// to with the bytes of each stored, live: it reruns as files start and
+    /// stop being sent or the person pauses uploads. How far each file has
+    /// got is coven's upload watch.
     pub(crate) fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads> {
         self.inner.handle.subscribe(|sql| {
             let files = sql.query(FILES_SENDING, [], |row| {
@@ -186,8 +182,6 @@ impl Database {
                     file: row.get(0)?,
                     release_id: row.get(1)?,
                     file_size: row.get(2)?,
-                    bytes_confirmed: row.get(3)?,
-                    bytes_total: row.get(4)?,
                 })
             })?;
             let releases = sql.query(RELEASES_SENDING_BYTES, [], |row| {

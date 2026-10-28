@@ -14,7 +14,7 @@ fn an_empty_tracker_has_no_rates() {
 }
 
 #[test]
-fn restarting_or_retrying_does_not_count_old_confirmed_bytes_as_new() {
+fn restarting_or_retrying_does_not_count_old_bytes_as_new() {
     let id = file(1);
     let mut tracker = UploadThroughput::default();
     tracker.record(id, 400, 1000, Duration::ZERO);
@@ -112,16 +112,14 @@ fn a_sample_clock_cannot_regress() {
     tracker.rates(secs(4));
 }
 
-fn sending(files: &[(FileId, Option<(i64, i64)>)], paused: bool) -> DbSendingUploads {
+fn sending(files: &[FileId], paused: bool) -> DbSendingUploads {
     DbSendingUploads {
         files: files
             .iter()
-            .map(|(file, bytes)| crate::db::DbSendingFile {
+            .map(|file| crate::db::DbSendingFile {
                 file: *file,
                 release_id: None,
                 file_size: None,
-                bytes_confirmed: bytes.map(|(confirmed, _)| confirmed),
-                bytes_total: bytes.map(|(_, total)| total),
             })
             .collect(),
         releases: Vec::new(),
@@ -129,31 +127,61 @@ fn sending(files: &[(FileId, Option<(i64, i64)>)], paused: bool) -> DbSendingUpl
     }
 }
 
-/// Only a file sent in parts is measured; a file that stops being sent loses
-/// its rate, and a pause ends every measurement.
+/// How far each file has got, as the upload watch tells it.
+fn moved(files: &[(FileId, u64, u64)]) -> BTreeMap<FileId, coven::TransferProgress> {
+    files
+        .iter()
+        .map(|(file, bytes_transferred, bytes_total)| {
+            (
+                *file,
+                coven::TransferProgress {
+                    bytes_transferred: *bytes_transferred,
+                    bytes_total: *bytes_total,
+                },
+            )
+        })
+        .collect()
+}
+
+/// Each file being sent is measured from the bytes the watch tells it has
+/// handed over, whether it goes in parts or in one request; a file the watch
+/// doesn't name yet has no rate, a file that stops being sent loses its
+/// rate, and a pause ends every measurement.
 #[test]
-fn the_files_being_sent_in_parts_are_measured_until_they_stop_or_pause() {
-    let (parts, one_request) = (file(1), file(2));
+fn the_files_being_sent_are_measured_from_the_watch_until_they_stop_or_pause() {
+    let (first, second, unheard) = (file(1), file(2), file(3));
     let mut tracker = UploadThroughput::default();
+    let all = [first, second, unheard];
     tracker.observe(
-        &sending(&[(parts, Some((0, 1000))), (one_request, None)], false),
+        &sending(&all, false),
+        &moved(&[(first, 0, 1000), (second, 0, 2000)]),
         Duration::ZERO,
     );
     tracker.observe(
-        &sending(&[(parts, Some((500, 1000))), (one_request, None)], false),
+        &sending(&all, false),
+        &moved(&[(first, 500, 1000), (second, 2000, 2000)]),
         secs(1),
     );
     let rates = tracker.rates(secs(1));
-    assert_eq!(rates.get(&parts), Some(&500));
-    assert_eq!(rates.get(&one_request), None);
+    assert_eq!(rates.get(&first), Some(&500));
+    assert_eq!(rates.get(&second), Some(&2000));
+    assert_eq!(rates.get(&unheard), None);
 
-    tracker.observe(&sending(&[(parts, Some((600, 1000)))], true), secs(2));
+    tracker.observe(
+        &sending(&[first], true),
+        &moved(&[(first, 600, 1000)]),
+        secs(2),
+    );
     assert!(
         tracker.rates(secs(2)).is_empty(),
         "a pause ends the measurement"
     );
 
-    tracker.observe(&sending(&[(parts, Some((600, 1000)))], false), secs(3));
-    tracker.observe(&sending(&[], false), secs(4));
+    tracker.observe(
+        &sending(&[first], false),
+        &moved(&[(first, 600, 1000)]),
+        secs(3),
+    );
+    tracker.observe(&sending(&[], false), &BTreeMap::new(), secs(4));
     assert!(tracker.rates(secs(4)).is_empty(), "a file sent has no rate");
 }

@@ -1,8 +1,8 @@
 //! How far and how fast the uploads go, for a reader that draws it: each
 //! release with files being sent, and the files being sent together. A live
 //! query of the files being sent says which files and releases move; how far
-//! each file has got is coven's upload watch, and how fast is measured here.
-//! Neither is held by any table.
+//! each file has got is coven's upload watch, and how fast is measured here
+//! from it. Neither is held by any table.
 
 use super::upload_throughput::UploadThroughput;
 use super::UploadBar;
@@ -153,10 +153,7 @@ impl SendingTransfers {
         loop {
             tokio::select! {
                 read = self.sending.next() => match read? {
-                    Ok(sending) => {
-                        self.throughput.observe(&sending, self.clock.elapsed());
-                        self.read = Some(sending);
-                    }
+                    Ok(sending) => self.read = Some(sending),
                     Err(error) => return Some(Err(error)),
                 },
                 changes = self.watch.next() => {
@@ -164,9 +161,11 @@ impl SendingTransfers {
                 }
             }
             if let Some(sending) = &self.read {
+                let now = self.clock.elapsed();
+                self.throughput.observe(sending, &self.progress, now);
                 return Some(Ok(OutboxTransfers::of(
                     sending,
-                    &self.throughput.rates(self.clock.elapsed()),
+                    &self.throughput.rates(now),
                     &self.progress,
                 )));
             }
