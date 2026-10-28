@@ -299,9 +299,16 @@ async fn the_inspector_never_shows_a_pin_out_of_the_queue_before_its_files_are_k
             .all(|file| file.file.pin == Some(FilePin::Kept))
     };
 
+    // The release as it stands before any pin: unpinned, out of the queue.
+    inspector_until(&inspector, |value| {
+        value.files.iter().all(|file| file.file.pin.is_none())
+    })
+    .await;
     for round in 0..20 {
         manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
-        inspector_until(&inspector, |value| !value.transfers.is_empty()).await;
+        // The inspector sends only what changes, so every value after the
+        // pin is queued holds the rule; a download can finish before a value
+        // shows the release in the queue, so none has to.
         tokio::time::timeout(std::time::Duration::from_secs(10), async {
             loop {
                 let snapshot = inspector.next().await.expect("the inspector reads");
