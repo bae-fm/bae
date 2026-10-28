@@ -126,11 +126,12 @@ impl LibraryManager {
         // No merge candidate. A release alone in its album moves to its group's
         // own album, the one every device files this group under, so two
         // devices identifying one group while apart land in one album.
-        let other_records_in_current = self
-            .other_release_records_for_album(current_album_id, release_id)
+        let beside = self
+            .database
+            .album_beside_release(current_album_id, release_id, new_records)
             .await?;
         let group_album_id = crate::db::identity::album_id_for_records(new_records);
-        if other_records_in_current.is_empty() {
+        if !beside.holds_others {
             return match group_album_id {
                 Some(group_album_id) if group_album_id != current_album_id => {
                     self.group_album(current_album_id, group_album_id).await
@@ -143,8 +144,9 @@ impl LibraryManager {
         }
 
         // Stay put if the album's other releases don't disagree on a shared
-        // catalog.
-        if records_fit_album(new_records, &other_records_in_current) {
+        // catalog: two releases can share an album as long as they don't
+        // disagree on a catalog they both name.
+        if !beside.disagrees {
             return Ok(RecordsTargetAlbum {
                 album_id: current_album_id.to_string(),
                 new_album: None,
@@ -173,12 +175,7 @@ impl LibraryManager {
         current_album_id: &str,
         group_album_id: String,
     ) -> Result<RecordsTargetAlbum, LibraryError> {
-        if !self
-            .database
-            .get_releases_for_album(&group_album_id)
-            .await?
-            .is_empty()
-        {
+        if self.database.album_holds_releases(&group_album_id).await? {
             return Ok(RecordsTargetAlbum {
                 album_id: group_album_id,
                 new_album: None,
@@ -192,25 +189,6 @@ impl LibraryManager {
             album_id: new_album.id.clone(),
             new_album: Some(new_album),
         })
-    }
-
-    /// The records of every release in an album but `exclude_release_id`, one
-    /// inner Vec per release.
-    async fn other_release_records_for_album(
-        &self,
-        album_id: &str,
-        exclude_release_id: &str,
-    ) -> Result<Vec<Vec<crate::import::ReleaseRecord>>, LibraryError> {
-        let releases = self.database.get_releases_for_album(album_id).await?;
-        let mut all = Vec::with_capacity(releases.len());
-        for release in releases {
-            if release.id == exclude_release_id {
-                continue;
-            }
-            let records = self.database.get_release_records(&release.id).await?;
-            all.push(records);
-        }
-        Ok(all)
     }
 
     /// A fresh album row mirroring `seed_album_id`'s metadata, for when
@@ -234,30 +212,4 @@ impl LibraryManager {
             created_at: now,
         })
     }
-}
-
-/// Per-catalog agreement: do `new_records` fit alongside the records of every
-/// *other* release in the candidate album? Two releases can share an album as
-/// long as they don't disagree on a catalog they both name — a shared catalog
-/// requires a matching group; different catalogs are independent.
-fn records_fit_album(
-    new_records: &[crate::import::ReleaseRecord],
-    other_release_records: &[Vec<crate::import::ReleaseRecord>],
-) -> bool {
-    for new_album in new_records
-        .iter()
-        .filter_map(crate::import::ReleaseRecord::album_ref)
-    {
-        for other_release in other_release_records {
-            for existing in other_release
-                .iter()
-                .filter_map(crate::import::ReleaseRecord::album_ref)
-            {
-                if existing.catalog == new_album.catalog && existing.key != new_album.key {
-                    return false;
-                }
-            }
-        }
-    }
-    true
 }

@@ -47,6 +47,58 @@ impl Database {
             .await
     }
 
+    /// Where an album stands for a release whose records are about to be
+    /// `records`: whether it holds releases besides `release_id`, and whether
+    /// one of those names another album than `records` do on a catalog they
+    /// share. Read by the albums' releases index and each release's records.
+    pub async fn album_beside_release(
+        &self,
+        album_id: &str,
+        release_id: &str,
+        records: &[crate::import::ReleaseRecord],
+    ) -> Result<AlbumBesideRelease, DbError> {
+        let album_refs = serde_json::Value::from(
+            records
+                .iter()
+                .filter_map(crate::import::ReleaseRecord::album_ref)
+                .map(|album| serde_json::json!([album.catalog.as_str(), album.key]))
+                .collect::<Vec<_>>(),
+        )
+        .to_string();
+        let (album_id, release_id) = (album_id.to_string(), release_id.to_string());
+        self.read(move |sql| {
+            Ok(sql.query_row(
+                ALBUM_BESIDE_RELEASE,
+                rusqlite::named_params! {
+                    ":album": album_id,
+                    ":release": release_id,
+                    ":album_refs": album_refs,
+                },
+                |row| {
+                    Ok(AlbumBesideRelease {
+                        holds_others: row.get(0)?,
+                        disagrees: row.get(1)?,
+                    })
+                },
+            )?)
+        })
+        .await
+    }
+
+    /// Whether the album `album_id` holds any release, by the albums'
+    /// releases index.
+    pub async fn album_holds_releases(&self, album_id: &str) -> Result<bool, DbError> {
+        let album_id = album_id.to_string();
+        self.read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?1)",
+                [album_id],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+    }
+
     /// Replace a release's record rows and move the release between albums
     /// when the target differs from the source, in one transaction (see
     /// [`set_records_on`]).
@@ -225,107 +277,77 @@ pub(crate) fn album_records_name_on(
     records: &[crate::import::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
+    let excluding = serde_json::Value::from(excluding.to_vec()).to_string();
     for record in records {
-        let mut albums = match record.release_ref() {
-            Some(release) => albums_holding_record(
-                sql,
-                RecordMatch::Pressing,
-                release.catalog.as_str(),
-                &release.key,
-                excluding,
-            )?,
-            None => Vec::new(),
-        };
-        if albums.is_empty() {
-            if let Some(album) = record.album_ref() {
-                albums = albums_holding_record(
-                    sql,
-                    RecordMatch::Album,
-                    album.catalog.as_str(),
-                    &album.key,
-                    excluding,
-                )?;
-            }
-        }
+        let pressing = record.release_ref();
+        let album = record.album_ref();
         let own = crate::db::identity::album_id_for_records(std::slice::from_ref(record));
-        if let Some(album) = own
-            .filter(|own| albums.contains(own))
-            .or_else(|| albums.into_iter().next())
-        {
-            return Ok(Some(album));
+        let named: Option<String> = sql
+            .query_row(
+                ALBUM_NAMED_BY_RECORD,
+                rusqlite::named_params! {
+                    ":pressing_catalog": pressing.as_ref().map(|r| r.catalog.as_str()),
+                    ":pressing_key": pressing.as_ref().map(|r| r.key.as_str()),
+                    ":album_catalog": album.as_ref().map(|r| r.catalog.as_str()),
+                    ":album_key": album.as_ref().map(|r| r.key.as_str()),
+                    ":own": own,
+                    ":excluding": excluding,
+                },
+                |row| row.get(0),
+            )
+            .optional()?;
+        if named.is_some() {
+            return Ok(named);
         }
     }
     Ok(None)
 }
 
-/// Which identity a record lookup matches a library record by.
-#[derive(Clone, Copy)]
-enum RecordMatch {
-    /// A copy of the pressing: a pressing record naming the same release.
-    Pressing,
-    /// Another release of the album: a record naming the same album (release
-    /// group, master), as an album record does by its key and a pressing
-    /// record by its album key.
-    Album,
+/// The album one record names in the library, as [`album_records_name_on`]
+/// reads it: an album holding a copy of the record's pressing (a pressing
+/// record naming the same release, on `idx_release_records_catalog_key`)
+/// when one does, else one holding another release of its album (a record
+/// naming the same release group or master, on
+/// `idx_release_records_catalog_album`), records of `:excluding` releases
+/// aside; among those, the record's own group album first, then the oldest
+/// (ties by id), so every device reads the same one.
+const ALBUM_NAMED_BY_RECORD: &str = "SELECT a.id FROM ( \
+         SELECT r.album_id, 0 AS match_rank FROM release_records rr \
+         JOIN releases r ON r.id = rr.release_id \
+         WHERE rr.catalog = :pressing_catalog AND rr.kind = 'pressing' \
+           AND rr.key = :pressing_key \
+           AND rr.release_id NOT IN (SELECT value FROM json_each(:excluding)) \
+         UNION ALL \
+         SELECT r.album_id, 1 AS match_rank FROM release_records rr \
+         JOIN releases r ON r.id = rr.release_id \
+         WHERE rr.catalog = :album_catalog \
+           AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = :album_key \
+           AND rr.release_id NOT IN (SELECT value FROM json_each(:excluding)) \
+     ) AS named \
+     JOIN albums a ON a.id = named.album_id \
+     ORDER BY named.match_rank, a.id IS :own DESC, a.created_at, a.id \
+     LIMIT 1";
+
+/// Where an album stands beside one of its releases, as
+/// [`Database::album_beside_release`] reads it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AlbumBesideRelease {
+    /// The album holds releases besides the one asked about.
+    pub holds_others: bool,
+    /// One of those names another album than the records asked about on a
+    /// catalog they share.
+    pub disagrees: bool,
 }
 
-impl RecordMatch {
-    /// The predicate on `rr` with `?1` the catalog and `?2` the key: plain
-    /// equality on the index that kind of record has —
-    /// `idx_release_records_catalog_key` for a pressing,
-    /// `idx_release_records_catalog_album`, whose expression this is, for an
-    /// album.
-    fn predicate(self) -> &'static str {
-        match self {
-            RecordMatch::Pressing => "rr.catalog = ?1 AND rr.kind = 'pressing' AND rr.key = ?2",
-            RecordMatch::Album => {
-                "rr.catalog = ?1 \
-                 AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = ?2"
-            }
-        }
-    }
-}
-
-/// The lookup [`album_records_name_on`] reads each record by: every album
-/// holding a release with a record matching `(catalog, key)` the way `kind`
-/// says, skipping records of `exclude_release_ids`, each once, oldest first
-/// (ties by id): a stated order, so every device reads one list.
-fn albums_holding_record(
-    sql: &SqlReadContext<'_>,
-    kind: RecordMatch,
-    catalog: &str,
-    key: &str,
-    exclude_release_ids: &[String],
-) -> Result<Vec<String>, DbError> {
-    let exclude_predicate = if exclude_release_ids.is_empty() {
-        String::new()
-    } else {
-        format!(
-            "AND rr.release_id NOT IN ({})",
-            (0..exclude_release_ids.len())
-                .map(|index| format!("?{}", index + 3))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    };
-    let query = format!(
-        "SELECT a.id FROM albums a
-         WHERE a.id IN (
-             SELECT r.album_id FROM release_records rr
-             JOIN releases r ON r.id = rr.release_id
-             WHERE {predicate}
-               {exclude_predicate})
-         ORDER BY a.created_at, a.id",
-        predicate = kind.predicate()
-    );
-    let binds = [catalog, key]
-        .into_iter()
-        .chain(exclude_release_ids.iter().map(String::as_str));
-    sql.query(&query, rusqlite::params_from_iter(binds), |row| {
-        row.get::<_, String>(0)
-    })
-    .map_err(DbError::from)
-}
+const ALBUM_BESIDE_RELEASE: &str = "SELECT \
+        EXISTS (SELECT 1 FROM releases r WHERE r.album_id = :album AND r.id <> :release), \
+        EXISTS (SELECT 1 FROM releases r \
+                JOIN release_records rr ON rr.release_id = r.id \
+                JOIN json_each(:album_refs) AS new \
+                  ON rr.catalog = json_extract(new.value, '$[0]') \
+                WHERE r.album_id = :album AND r.id <> :release \
+                  AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
+                      <> json_extract(new.value, '$[1]'))";
 
 /// One statement answers every check: the checks go in as one JSON array,
 /// each matched by plain equality on the index its kind of record has — its

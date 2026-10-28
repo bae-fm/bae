@@ -175,6 +175,31 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
     assert_eq!(siblings.len(), 2);
 }
 
+/// A release's records on a catalog the album's other releases don't name
+/// can't disagree with them: the release stays in its album.
+#[tokio::test]
+async fn set_records_on_another_catalog_keeps_the_release_in_its_album() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let releases =
+        seed_grouped_releases(&manager, &album, &[("g1", "g1-rel"), ("g1", "g1-other")]).await;
+
+    manager
+        .set_records(&releases[0].id, vec![discogs_identity("master-1", "d-rel-1")])
+        .await
+        .unwrap();
+
+    assert_eq!(
+        manager
+            .database
+            .find_album_id_for_release(&releases[0].id)
+            .await
+            .unwrap()
+            .as_deref(),
+        Some(album.id.as_str())
+    );
+}
+
 #[tokio::test]
 async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
     let (manager, _temp_dir) = setup_test_manager().await;
