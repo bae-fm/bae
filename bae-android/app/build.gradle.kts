@@ -157,14 +157,6 @@ android {
             java.srcDir("generated/theme/kotlin")
             res.srcDir("generated/theme/res")
         }
-        // Each edition compiles against its own bindings, so a stray OAuth reference
-        // fails baeium's build.
-        getByName("full") {
-            java.srcDir("../../bae-bridge/kotlin-bindings-full")
-        }
-        getByName("baeium") {
-            java.srcDir("../../bae-bridge/kotlin-bindings-baeium")
-        }
     }
 }
 
@@ -180,7 +172,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
-    implementation("net.java.dev.jna:jna:5.15.0@aar")
+    // The generated bindings, each edition its own, and the one module that
+    // reads the bridge's fast values.
+    implementation(project(":bridge"))
+    implementation(project(":fastvalues"))
     // The JVM half of the Rust TLS verifier, located through Cargo metadata by
     // settings.gradle.
     implementation(nativeDeps.rustls.platform.verifier)

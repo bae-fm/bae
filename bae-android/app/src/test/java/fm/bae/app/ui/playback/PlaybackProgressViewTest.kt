@@ -2,7 +2,7 @@ package fm.bae.app.ui.playback
 
 import android.app.Activity
 import android.os.Looper
-import fm.bae.app.data.LatestStream
+import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test

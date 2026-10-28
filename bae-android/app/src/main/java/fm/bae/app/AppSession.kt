@@ -11,7 +11,6 @@ import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LatestFeed
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
@@ -21,12 +20,13 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.data.castEndedFailure
-import fm.bae.app.data.feed
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
 import fm.bae.app.widget.NowPlayingWidget
 import fm.bae.app.widget.WidgetSnapshot
 import fm.bae.app.widget.WidgetSnapshotStore
+import fm.bae.fastvalues.LatestFeed
+import fm.bae.fastvalues.feed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

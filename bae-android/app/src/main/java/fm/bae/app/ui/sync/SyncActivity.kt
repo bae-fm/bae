@@ -46,7 +46,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.DisplayError
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
-import fm.bae.app.data.LatestSource
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.syncActivityVisible
 import fm.bae.app.displayError
@@ -57,9 +56,10 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.FrameFollowing
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
+import fm.bae.fastvalues.FrameFollowing
+import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeAbandonedAttachment
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecords
@@ -294,15 +294,16 @@ internal class TransferBytesView(
         val shown = bar?.takeIf { it.bytesTotal > 0uL }
         visibility = if (shown == null) GONE else VISIBLE
         val text =
-            shown?.let {
-                context.coreString(
-                    "core.download.bytes_progress",
-                    mapOf(
-                        "done" to context.formatFileSize(it.bytesDone.requireDisplayableByteCount()),
-                        "total" to context.formatFileSize(it.bytesTotal.requireDisplayableByteCount()),
-                    ),
-                )
-            }.orEmpty()
+            shown
+                ?.let {
+                    context.coreString(
+                        "core.download.bytes_progress",
+                        mapOf(
+                            "done" to context.formatFileSize(it.bytesDone.requireDisplayableByteCount()),
+                            "total" to context.formatFileSize(it.bytesTotal.requireDisplayableByteCount()),
+                        ),
+                    )
+                }.orEmpty()
         if (this.text.toString() != text) this.text = text
     }
 }

@@ -20,6 +20,8 @@ bae-ios/bae/.build                    10G
 BaeKit/.build                         9G
 bae-android/.gradle                   1G
 bae-android/app/build                 2G
+bae-android/bridge/build              1G
+bae-android/fastvalues/build          1G
 bae-avalonia/obj                      1G
 bae-avalonia/bin                      1G
 bae-avalonia/bae-avalonia.Tests/obj   1G

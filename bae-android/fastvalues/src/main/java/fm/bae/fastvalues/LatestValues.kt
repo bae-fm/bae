@@ -1,7 +1,8 @@
-package fm.bae.app.data
+package fm.bae.fastvalues
 
 import android.os.Handler
 import android.os.Looper
+import androidx.annotation.VisibleForTesting
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
@@ -50,8 +51,13 @@ class LatestStream<V : Any> private constructor(
             fed?.latest(key)?.let { value -> checkNotNull(read(value)) { "a stream was fed $value" } }
         }
 
-    /** A test's write of [key], telling the Views watching it when it starts or stops holding a value. */
-    internal fun write(
+    /**
+     * A test's write of [key] into a stream [written] made, telling the Views
+     * watching it when it starts or stops holding a value. App code never
+     * writes a stream; only core does.
+     */
+    @VisibleForTesting
+    fun write(
         key: String,
         value: V?,
     ) {
@@ -70,7 +76,8 @@ class LatestStream<V : Any> private constructor(
 
     companion object {
         /** A stream a test writes through [write], in place of core. */
-        internal fun <V : Any> written(): LatestStream<V> = LatestStream(emptyMap()) { null }
+        @VisibleForTesting
+        fun <V : Any> written(): LatestStream<V> = LatestStream(emptyMap()) { null }
 
         /** The files being sent together, while any is; a preview's holds [value] and nothing feeds it. */
         fun uploadTotal(value: BridgeUploadTransfer? = null): LatestStream<BridgeUploadTransfer> =

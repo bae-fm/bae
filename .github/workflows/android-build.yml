@@ -168,7 +168,7 @@ jobs:
       run: |
         curl -sSL https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint -o /usr/local/bin/ktlint
         chmod +x /usr/local/bin/ktlint
-        ktlint "bae-android/app/src/**/*.kt"
+        ktlint "bae-android/app/src/**/*.kt" "bae-android/fastvalues/src/**/*.kt"
 
     - name: Kotlin dead code check (detekt)
       # detekt static analysis: unused code, unused imports, unused private
@@ -181,12 +181,12 @@ jobs:
         DETEKT_VERSION=1.23.8
         curl -sSL "https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}.zip" -o detekt-cli.zip
         unzip -q detekt-cli.zip
-        "detekt-cli-${DETEKT_VERSION}/bin/detekt-cli" --input bae-android/app/src/main/java \
+        "detekt-cli-${DETEKT_VERSION}/bin/detekt-cli" --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java \
           --config bae-android/detekt.yml --build-upon-default-config
         # The rules that need type resolution, against the platform jar of the
         # app's compileSdk (installed above).
         source bae-android/toolchain.sh
-        "detekt-cli-${DETEKT_VERSION}/bin/detekt-cli" --input bae-android/app/src/main/java \
+        "detekt-cli-${DETEKT_VERSION}/bin/detekt-cli" --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java \
           --config bae-android/detekt-type-resolved.yml \
           --classpath "$ANDROID_PLATFORM_JAR" --jvm-target "$ANDROID_JAVA_VERSION"
 

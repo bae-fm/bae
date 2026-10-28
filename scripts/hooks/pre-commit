@@ -313,7 +313,7 @@ fi
 if [ "$KOTLIN_STYLE_CONFIG_CHANGED" -eq 1 ]; then
     require_command ktlint "verify Kotlin after style configuration changes"
     run_check "ktlint (all hand-written sources)" \
-        ktlint "bae-android/app/src/**/*.kt" || {
+        ktlint "bae-android/app/src/**/*.kt" "bae-android/fastvalues/src/**/*.kt" || {
         exit 1
     }
 fi
@@ -323,7 +323,7 @@ if [ "${#STAGED_KOTLIN_FILES[@]}" -gt 0 ] \
     || staged_file_in_list "bae-android/detekt-type-resolved.yml"; then
     require_command detekt "check Kotlin dead code"
     run_check "detekt" detekt \
-        --input bae-android/app/src/main/java \
+        --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java \
         --config bae-android/detekt.yml \
         --build-upon-default-config || {
         exit 1
@@ -335,7 +335,7 @@ if [ "${#STAGED_KOTLIN_FILES[@]}" -gt 0 ] \
         exit 1
     fi
     run_check "detekt (type-resolved rules)" detekt \
-        --input bae-android/app/src/main/java \
+        --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java \
         --config bae-android/detekt-type-resolved.yml \
         --classpath "$ANDROID_PLATFORM_JAR" \
         --jvm-target "$ANDROID_JAVA_VERSION" || {

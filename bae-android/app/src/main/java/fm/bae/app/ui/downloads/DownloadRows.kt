@@ -21,11 +21,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
-import fm.bae.app.data.LatestSource
 import fm.bae.app.formatFileSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorText
+import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress

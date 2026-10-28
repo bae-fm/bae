@@ -1,8 +1,7 @@
-package fm.bae.app.ui.components
+package fm.bae.fastvalues
 
 import android.view.Choreographer
 import android.view.View
-import fm.bae.app.data.LatestSource
 
 /**
  * A View's reading of one key of a fast stream on the display's own clock:

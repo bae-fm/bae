@@ -21,10 +21,10 @@ import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
 import fm.bae.app.clockText
 import fm.bae.app.currentLocale
-import fm.bae.app.data.LatestSource
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.components.FrameFollowing
+import fm.bae.fastvalues.FrameFollowing
+import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.bridgeSeekBar
 

@@ -1,10 +1,10 @@
 package fm.bae.app.ui
 
 import fm.bae.app.data.DownloadStore
-import fm.bae.app.data.LatestSource
-import fm.bae.app.data.LatestStream
-import fm.bae.app.data.only
 import fm.bae.app.playback.SidePausePrompt
+import fm.bae.fastvalues.LatestSource
+import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.only
 import uniffi.bae_bridge.BridgeAbandonedAttachments
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum

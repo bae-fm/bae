@@ -13,12 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.coreString
-import fm.bae.app.data.LatestSource
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.FrameFollowing
+import fm.bae.fastvalues.FrameFollowing
+import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 
 private const val BAR_MAX = 10_000

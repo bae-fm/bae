@@ -101,6 +101,8 @@ bae-macos/bae/bae/oauth-creds.json
 bae-android/app/src/full/assets/oauth-creds.json
 bae-android/.gradle
 bae-android/app/build
+bae-android/bridge/build
+bae-android/fastvalues/build
 bae-android/build/
 
 # Build output

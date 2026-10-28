@@ -11,7 +11,7 @@ import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
-import fm.bae.app.data.LatestStream
+import fm.bae.fastvalues.LatestStream
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
