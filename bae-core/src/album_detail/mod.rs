@@ -302,6 +302,26 @@ pub struct FileDetail {
     pub pin: Option<FilePin>,
 }
 
+impl FileDetail {
+    /// The release file `row` with its pin and its upload, as one read of
+    /// the release holds them.
+    pub(crate) fn from_raw(row: crate::db::DbReleaseDetailFile) -> Self {
+        let f = row.file;
+        FileDetail {
+            pin: row.pin,
+            place: FilePlace::of(&f.original_filename),
+            kind: FileKind::of(&f.content_type, &f.original_filename),
+            is_image: f.content_type.is_image(),
+            content_type: f.content_type.to_string(),
+            source_audio: f.source_audio,
+            upload: row.upload.map(FileUpload::from_raw),
+            id: f.id,
+            original_filename: f.original_filename,
+            file_size: f.file_size,
+        }
+    }
+}
+
 /// Where this device's pin of a file stands: kept whole on this device,
 /// downloading now to be kept, as coven's `coven_downloading` lists it, or
 /// waiting for its copy to arrive.

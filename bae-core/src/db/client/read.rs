@@ -363,7 +363,7 @@ pub(super) const RELEASE_DETAIL_FILES: &str = "SELECT f.*, \
      WHERE f.release_id = ?1 \
      ORDER BY f.original_filename COLLATE natural_order, f.id";
 
-fn release_detail_files_on(
+pub(super) fn release_detail_files_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbReleaseDetailFile>, DbError> {

@@ -341,17 +341,24 @@ async fn a_window_reads_its_entries_and_the_queue_length() {
     assert_eq!(shown, vec![releases[1..3].to_vec(), Vec::<String>::new()]);
 }
 
-/// The inspector's read of one release holds its entry in each queue beside
-/// that queue's pause state, and nothing of another release's.
+/// The inspector's read of one release holds its entry in each queue and
+/// nothing of another release's, and reads no release the library does not
+/// hold.
 #[cfg(desktop)]
 #[tokio::test]
-async fn a_releases_entries_are_read_for_it_alone() {
+async fn the_inspectors_read_holds_the_releases_own_entries() {
     let (db, _tmp) = temp_db().await;
+    db.call(|sql| {
+        seed_artist_album_release(sql)?;
+        Ok(())
+    })
+    .await
+    .unwrap();
     db.enqueue_releases(vec![download(RELEASE_A), download(RELEASE_B)])
         .await
         .unwrap();
     db.enqueue_releases(vec![ReleaseQueueEntry {
-        release_id: RELEASE_A.to_string(),
+        release_id: RELEASE_B.to_string(),
         created_at: 3,
         payload: OutputRequest {
             target_dir: "/Users/ana/Music/Copies".into(),
@@ -360,22 +367,15 @@ async fn a_releases_entries_are_read_for_it_alone() {
     }])
     .await
     .unwrap();
-    db.set_release_queue_paused::<OutputRequest>(true)
-        .await
-        .unwrap();
 
-    let mut live = db.subscribe_release_queue_entries(Some(RELEASE_B.to_string()));
+    let mut live = db.subscribe_storage_inspector(Some(RELEASE_B.to_string()));
     let read = live
         .next()
         .await
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(
-        read.download.map(|row| row.op.release_id).as_deref(),
-        Some(RELEASE_B)
-    );
-    assert!(read.output.is_none(), "only RELEASE_A is exporting");
+    assert_eq!(read, None, "the library holds no RELEASE_B");
 
     live.requests()
         .set(Some(RELEASE_A.to_string()))
@@ -383,11 +383,15 @@ async fn a_releases_entries_are_read_for_it_alone() {
     let read = loop {
         let event = live.next().await.expect("the query stays open");
         if event.request.as_deref() == Some(RELEASE_A) {
-            break event.result.unwrap();
+            break event.result.unwrap().expect("the library holds RELEASE_A");
         }
     };
     assert_eq!(
-        read.output.map(|row| row.op.payload.target_dir),
-        Some("/Users/ana/Music/Copies".into())
+        read.entries
+            .download
+            .map(|row| row.op.release_id)
+            .as_deref(),
+        Some(RELEASE_A)
     );
+    assert!(read.entries.output.is_none(), "only RELEASE_B is exporting");
 }

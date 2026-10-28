@@ -274,3 +274,54 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
         .iter()
         .all(|file| file.pin.is_none() && file.file.pin == Some(FilePin::Kept)));
 }
+
+/// Each value the inspector shows of a pinning release is one the library
+/// held: the release still in the download queue, or out of it with every
+/// file kept, never out of it with a file not yet kept. The download worker
+/// keeps the files and then takes the release out of the queue, one write
+/// after the other, so each pin passes through both.
+#[cfg(feature = "test-utils")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_inspector_never_shows_a_pin_out_of_the_queue_before_its_files_are_kept() {
+    use crate::album_detail::FilePin;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    let services = crate::library::AppServices::for_test(manager.library.clone())
+        .await
+        .unwrap();
+    let inspector = services.subscribe_storage_inspector();
+    inspector.set(Some(cloud.clone())).unwrap();
+    let kept = |value: &crate::library::storage_inspector::StorageInspector| {
+        value
+            .files
+            .iter()
+            .all(|file| file.file.pin == Some(FilePin::Kept))
+    };
+
+    for round in 0..20 {
+        manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
+        inspector_until(&inspector, |value| !value.transfers.is_empty()).await;
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let snapshot = inspector.next().await.expect("the inspector reads");
+                let value = snapshot.value.expect("the library holds the release");
+                assert!(
+                    !value.transfers.is_empty() || kept(&value),
+                    "round {round}: out of the download queue with a file not kept: {value:?}"
+                );
+                if value.transfers.is_empty() {
+                    break;
+                }
+            }
+        })
+        .await
+        .expect("the pin finishes");
+
+        manager.unpin_release(&cloud).await.unwrap();
+        inspector_until(&inspector, |value| {
+            value.files.iter().all(|file| file.file.pin.is_none())
+        })
+        .await;
+    }
+}

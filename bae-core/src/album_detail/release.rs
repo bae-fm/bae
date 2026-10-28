@@ -110,7 +110,7 @@ pub struct ReleaseUpload {
 }
 
 impl ReleaseUpload {
-    fn from_raw(raw: crate::db::DbReleaseUpload) -> Self {
+    pub(crate) fn from_raw(raw: crate::db::DbReleaseUpload) -> Self {
         let count = |value: i64| u32::try_from(value).expect("a release's queued file count");
         let progress = crate::library::UploadProgress {
             queued: count(raw.queued - raw.sending),
@@ -480,20 +480,8 @@ impl ReleaseDetail {
             .files
             .into_iter()
             .map(|row| {
-                let f = row.file;
-                let supports_cover = f.content_type.is_supported_cover();
-                let file = FileDetail {
-                    pin: row.pin,
-                    place: FilePlace::of(&f.original_filename),
-                    kind: FileKind::of(&f.content_type, &f.original_filename),
-                    is_image: f.content_type.is_image(),
-                    content_type: f.content_type.to_string(),
-                    source_audio: f.source_audio,
-                    upload: row.upload.map(FileUpload::from_raw),
-                    id: f.id,
-                    original_filename: f.original_filename,
-                    file_size: f.file_size,
-                };
+                let supports_cover = row.file.content_type.is_supported_cover();
+                let file = FileDetail::from_raw(row);
                 if supports_cover {
                     cover_files.push(file.clone());
                 }

@@ -270,18 +270,14 @@ fn release_queue_counts_on<P: QueuedPayload>(
 
 /// `release_id`'s entries in the download and export queues.
 #[cfg(desktop)]
-fn release_queue_entries_on(
+pub(super) fn release_queue_entries_on(
     sql: &SqlReadContext<'_>,
-    release_id: Option<&str>,
+    release_id: &str,
 ) -> Result<crate::library::ReleaseQueueEntries, DbError> {
-    let (download, output) = match release_id {
-        Some(release_id) => (
-            queue_rows_on::<()>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
-            queue_rows_on::<OutputRequest>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
-        ),
-        None => (None, None),
-    };
-    Ok(crate::library::ReleaseQueueEntries { download, output })
+    Ok(crate::library::ReleaseQueueEntries {
+        download: queue_rows_on::<()>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
+        output: queue_rows_on::<OutputRequest>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
+    })
 }
 
 /// The download queue's phase for `release_id`, `None` when it is not
@@ -512,22 +508,6 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |windows, sql| {
                 release_queue_windows_on::<P>(&sql, windows).map_err(CovenError::from)
-            })
-            .process(Ok)
-    }
-
-    /// Follow `initial`'s entries in the download and export queues and
-    /// whether each queue is paused: what the storage inspector shows of a
-    /// release. Another release is a new request on the same query.
-    #[cfg(desktop)]
-    pub(crate) fn subscribe_release_queue_entries(
-        &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::library::ReleaseQueueEntries> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |release_id, sql| {
-                release_queue_entries_on(&sql, release_id.as_deref()).map_err(CovenError::from)
             })
             .process(Ok)
     }

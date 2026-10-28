@@ -660,14 +660,14 @@ impl LibraryManager {
         self.outputs.subscribe()
     }
 
-    /// Follow `initial`'s entries in the download and export queues, and
-    /// whether each is paused, as the storage inspector shows a release.
+    /// Follow the release `initial` names as the storage inspector shows it,
+    /// each value read in one go.
     #[cfg(desktop)]
-    pub(crate) fn subscribe_release_queue_entries(
+    pub(crate) fn subscribe_storage_inspector(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, crate::library::ReleaseQueueEntries> {
-        self.database.subscribe_release_queue_entries(initial)
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::db::DbStorageInspector>> {
+        self.database.subscribe_storage_inspector(initial)
     }
 
     /// The percent the active export has reached, by release, and each

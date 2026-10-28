@@ -67,6 +67,22 @@ pub enum StorageInspectorTransfer {
 }
 
 impl StorageInspector {
+    /// The release `release_id` from one read of it, `rows`, each upload's
+    /// record with the error `causes` holds for it.
+    pub(crate) fn read(
+        release_id: &str,
+        rows: crate::db::DbStorageInspector,
+        causes: &coven::PendingCauses,
+    ) -> Self {
+        Self::of(
+            release_id,
+            rows.files.into_iter().map(FileDetail::from_raw).collect(),
+            &rows.entries,
+            rows.upload.map(ReleaseUpload::from_raw),
+            causes,
+        )
+    }
+
     /// The release `release_id`: its `files` in their order, each upload's
     /// record with the error `causes` holds for it; its entry in each queue
     /// (`entries`, and its files waiting to upload, `upload`); while its

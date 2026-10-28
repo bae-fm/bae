@@ -136,6 +136,8 @@ pub(crate) use release_queues::QueuedPayload;
     not(any(target_os = "ios", target_os = "android"))
 ))]
 mod seeded_albums;
+#[cfg(desktop)]
+mod storage_inspector;
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

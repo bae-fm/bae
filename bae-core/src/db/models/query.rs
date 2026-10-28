@@ -238,6 +238,19 @@ pub struct ReleaseDetailContext {
     pub is_compilation: bool,
 }
 
+/// What the Storage Manager's inspector shows of one release, read at once
+/// so its queue entries, its files' pins and its uploads are of one moment.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbStorageInspector {
+    /// The release's files in their order, each with its pin and upload.
+    pub files: Vec<DbReleaseDetailFile>,
+    /// What of the release waits in this device's upload queue.
+    pub upload: Option<DbReleaseUpload>,
+    /// The release's entries in the download and export queues.
+    pub entries: crate::library::ReleaseQueueEntries,
+}
+
 /// Raw release-detail aggregate. The resolver in `LibraryManager` produces
 /// the display-ready `crate::album_detail::ReleaseDetail`.
 #[derive(Debug, Clone, PartialEq)]

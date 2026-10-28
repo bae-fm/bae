@@ -2645,7 +2645,8 @@ Reads come two ways:
   coven's download watch), and its entry in the download, export and upload
   queues, a download with how many of its files are downloading, wait and
   are kept, and coven's fetch of the copies its pins wait for, with the same
-  counts, all read for that release alone. It shows nothing of a
+  counts, all read for that release alone and at once, so its queue entries
+  and its files' pins are as they stood together. It shows nothing of a
   whole queue, which the list's footer pauses (§4.2): its upload shows how
   many of its files are uploading, queued and stored, a count of none left
   out, so a release with nothing being sent reads only what waits and what
