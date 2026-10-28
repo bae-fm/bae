@@ -49,7 +49,7 @@ import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.PlaybackPositionsCallback
+import uniffi.bae_bridge.PlaybackTimelineCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
@@ -238,13 +238,14 @@ class OpenLibrary internal constructor(
                 },
             )
         valueSubscriptions +=
-            appHandle.subscribePlaybackPositions(
-                object : PlaybackPositionsCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgePlaybackPositions) {
-                        scope.launch(Dispatchers.Main.immediate) { playback.applyPositions(value) }
+            appHandle.subscribePlaybackTimeline(
+                object : PlaybackTimelineCallback {
+                    override fun onValue(timeline: uniffi.bae_bridge.BridgePlaybackTimeline) {
+                        scope.launch(Dispatchers.Main.immediate) { playback.applyTimeline(timeline) }
                     }
                 },
             )
+        streamFeeds += playback.trackPositions.feed(appHandle)
         valueSubscriptions +=
             appHandle.subscribeDownloadCounts(
                 object : DownloadCountsCallback {

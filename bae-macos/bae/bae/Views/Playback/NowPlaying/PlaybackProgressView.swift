@@ -1,23 +1,16 @@
 import BaeKit
-import Combine
 import SwiftUI
 
-extension EnvironmentValues {
-    @Entry
-    var playbackPositionPublisher: AnyPublisher<PlaybackPositionEvent, Never> =
-        Empty().eraseToAnyPublisher()
-}
-
 struct PlaybackProgressView: View {
-    @Environment(\.playbackPositionPublisher)
-    private var positions
+    /// Where the playing track is; `nil` while no track plays.
+    let position: LatestSource<BridgeTrackPosition>?
     let showRemainingTime: Bool
     let onSeek: (Double) -> Void
     let onToggleRemainingTime: () -> Void
 
     var body: some View {
         SeekBarRepresentable(
-            positions: positions,
+            source: position.map(SeekBarSource.track),
             showRemainingTime: showRemainingTime,
             onSeek: onSeek,
             onToggleRemainingTime: onToggleRemainingTime

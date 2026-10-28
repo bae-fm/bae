@@ -2713,8 +2713,19 @@ several releases or the library shuffled; pause, resume, stop; next, previous,
 seek; volume and mute; queue edits; repeat and shuffle; play on a receiver or
 stop; preview a file before import. Its values are live subscriptions: the
 playing track and its phase, with volume, mute, repeat and where playback is
-going, sent only when one changes; its position and a preview's, sent as they
-move, each naming the track or clip it is of; and the queue.
+going, sent only when one changes; the timeline, the line of the playing
+track and of a preview, each a position and whether it moves on from it,
+sent only as playback leaves the line it holds (a seek, another track or
+clip, a pause or resume, a new length, the pregap ending, or a position more
+than a second off the line), for the operating system's media controls and
+Media3, which move the position on themselves; and the queue. Those surfaces
+show no time before a track's start, so a playing pregap is one line
+standing at the start, and the line that moves begins as the track does. The playing track's position and
+a preview's, which move as audio plays, reach an app only in a
+`KeyedValueStream` (§10.2): the track's under its id, with the seeks applied
+so far. A seek the person drops is held in front of the track's position
+until core has applied it, so every view drawing that track — the seek bar,
+the queue's strip — shows where they dropped it meanwhile.
 
 ### 9.5 Storage and sync
 
@@ -2807,9 +2818,10 @@ to compile in the bridge until it is carried across.
   and merge its values, so closing or removing the library stops them all
   before the store closes, and none hears from a closed store. One opened on
   a closed library delivers nothing and is reported as a bug.
-- **Fast values** — transfer bytes and rates, file shares and export
-  percents, which core sends many times a second — reach an app only in a
-  `KeyedValueStream`, keyed by release or file, never in a callback, a
+- **Fast values** — transfer bytes and rates, file shares, export
+  percents, and playback and preview positions, which core sends many times
+  a second — reach an app only in a `KeyedValueStream`, keyed by release,
+  file or track, never in a callback, a
   record field or a subscription value. A `feed_*` call starts writing one
   on the bridge's side and returns it; cancelling or dropping it, or closing
   the library, stops it, and it then holds nothing. A read that fails empties

@@ -11,8 +11,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgePlaybackPosition
 import uniffi.bae_bridge.BridgePlaybackValueState
+import uniffi.bae_bridge.BridgeTimelinePoint
+import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -22,74 +23,42 @@ class PlaybackSeekProjectionTest {
         val (player, handle) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        player.onProgress(positionMs = 10_000, durationMs = 100_000, progress = 0.10)
+        player.onProgress(positionMs = 10_000, durationMs = 100_000)
 
         player.seekTo(75_000)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(0.75, handle.seekRatios.single(), 0.0)
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onProgress(positionMs = 20_000, durationMs = 100_000, progress = 0.20)
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        player.onProgress(positionMs = 20_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onProgress(positionMs = 75_050, durationMs = 100_000, progress = 0.7505)
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        player.onProgress(positionMs = 75_050, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onProgress(positionMs = 80_000, durationMs = 100_000, progress = 0.80)
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        player.onProgress(positionMs = 80_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onSeeked(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        player.onSeeked(positionMs = 75_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onProgress(positionMs = 80_000, durationMs = 100_000, progress = 0.80)
-        assertPosition(
-            player.position.value,
-            progress = 0.80,
-            positionMs = 80_000,
-            durationMs = 100_000,
-        )
+        player.onProgress(positionMs = 80_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 80_000, durationMs = 100_000)
     }
 
-    /** A position tick reaches the in-app bar but not Media3, which moves on by
-     *  itself; a seek reaches both. */
+    /** Each line core tells moves Media3's position, which moves on by itself
+     *  from there; a seek's line does too. */
     @Test
-    fun aPositionTickIsLeftToMedia3AndASeekIsToldToIt() {
+    fun eachLineIsToldToMedia3() {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        val told = player.currentPosition
-        player.onProgress(positionMs = 10_000, durationMs = 100_000, progress = 0.10)
+        player.onProgress(positionMs = 10_000, durationMs = 100_000)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(10_000L, player.position.value.positionMs)
-        assertEquals(told, player.currentPosition)
+        assertEquals(10_000L, player.currentPosition)
 
-        player.onSeeked(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
+        player.onSeeked(positionMs = 75_000, durationMs = 100_000)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(75_000L, player.currentPosition)
     }
@@ -99,26 +68,16 @@ class PlaybackSeekProjectionTest {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        player.onProgress(positionMs = 10_000, durationMs = 100_000, progress = 0.10)
+        player.onProgress(positionMs = 10_000, durationMs = 100_000)
 
         player.seekTo(75_000)
         shadowOf(Looper.getMainLooper()).idle()
 
-        player.onProgress(positionMs = 80_000, durationMs = 100_000, progress = 0.80)
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        player.onProgress(positionMs = 80_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onSeeked(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        player.onSeeked(positionMs = 75_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
     }
 
     @Test
@@ -126,7 +85,7 @@ class PlaybackSeekProjectionTest {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        player.onProgress(positionMs = 10_000, durationMs = 100_000, progress = 0.10)
+        player.onProgress(positionMs = 10_000, durationMs = 100_000)
 
         player.seekTo(75_000)
         shadowOf(Looper.getMainLooper()).idle()
@@ -136,14 +95,9 @@ class PlaybackSeekProjectionTest {
             ),
         )
 
-        player.onProgress(positionMs = 20_000, durationMs = 100_000, progress = 0.20)
+        player.onProgress(positionMs = 20_000, durationMs = 100_000)
 
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
     }
 
     @Test
@@ -151,20 +105,15 @@ class PlaybackSeekProjectionTest {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        player.onProgress(positionMs = 10_000, durationMs = 100_000, progress = 0.10)
+        player.onProgress(positionMs = 10_000, durationMs = 100_000)
 
         player.seekTo(75_000)
         shadowOf(Looper.getMainLooper()).idle()
         player.startPlaying(durationMs = 100_000uL)
 
-        player.onProgress(positionMs = 20_000, durationMs = 100_000, progress = 0.20)
+        player.onProgress(positionMs = 20_000, durationMs = 100_000)
 
-        assertPosition(
-            player.position.value,
-            progress = 0.75,
-            positionMs = 75_000,
-            durationMs = 100_000,
-        )
+        assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
     }
 
     @Test
@@ -172,34 +121,19 @@ class PlaybackSeekProjectionTest {
         val (player, handle) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        player.onProgress(positionMs = 80_000, durationMs = 100_000, progress = 0.80)
+        player.onProgress(positionMs = 80_000, durationMs = 100_000)
 
         player.seekTo(25_000)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(0.25, handle.seekRatios.single(), 0.0)
-        assertPosition(
-            player.position.value,
-            progress = 0.25,
-            positionMs = 25_000,
-            durationMs = 100_000,
-        )
+        assertMedia3Position(player, positionMs = 25_000, durationMs = 100_000)
 
-        player.onProgress(positionMs = 82_000, durationMs = 100_000, progress = 0.82)
-        assertPosition(
-            player.position.value,
-            progress = 0.25,
-            positionMs = 25_000,
-            durationMs = 100_000,
-        )
+        player.onProgress(positionMs = 82_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 25_000, durationMs = 100_000)
 
-        player.onProgress(positionMs = 25_000, durationMs = 100_000, progress = 0.25)
-        assertPosition(
-            player.position.value,
-            progress = 0.25,
-            positionMs = 25_000,
-            durationMs = 100_000,
-        )
+        player.onProgress(positionMs = 25_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 25_000, durationMs = 100_000)
     }
 
     @Test
@@ -207,14 +141,28 @@ class PlaybackSeekProjectionTest {
         val (player, handle) = player()
 
         player.startPlaying(durationMs = null)
-        player.onProgress(positionMs = 10_000, durationMs = null, progress = 0.0)
-        val positionBeforeSeek = player.position.value
+        player.onProgress(positionMs = 10_000, durationMs = null)
 
         player.seekTo(75_000)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(emptyList<Double>(), handle.seekRatios)
-        assertEquals(positionBeforeSeek, player.position.value)
+        assertEquals(10_000L, player.contentPosition)
+    }
+
+    /** Through a pregap core's line stands at the track's start while the track plays, and Media3's position with it. */
+    @Test
+    fun aStandingLineHoldsMedia3sPositionWhileTheTrackPlays() {
+        val (player, _) = player()
+        player.startPlaying(durationMs = 100_000uL)
+
+        player.applyTimeline(timeline(line("track-1", 0, 100_000, moving = false)))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1_500))
+        assertEquals(0L, player.contentPosition)
+
+        player.applyTimeline(timeline(line("track-1", 0, 100_000)))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1_000))
+        assertEquals(1_000L, player.contentPosition)
     }
 
     @Test
@@ -222,32 +170,11 @@ class PlaybackSeekProjectionTest {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        player.onProgress(positionMs = 25_000, durationMs = 100_000, progress = 0.25)
+        player.onProgress(positionMs = 25_000, durationMs = 100_000)
 
         player.applyPlaybackState(BridgePlaybackValueState.Stopped)
 
-        assertPosition(
-            player.position.value,
-            progress = 0.0,
-            positionMs = null,
-            durationMs = null,
-        )
-    }
-
-    @Test
-    fun pregapPositionRemainsNegativeInUiWhileMedia3PositionIsZero() {
-        val (player, _) = player()
-
-        player.startPlaying(durationMs = 100_000uL)
-        player.onProgress(positionMs = -1_250, durationMs = 100_000, progress = 0.0)
-
-        assertPosition(
-            player.position.value,
-            progress = 0.0,
-            positionMs = -1_250,
-            durationMs = 100_000,
-        )
-        assertEquals(0, player.contentPosition)
+        assertEquals(0L, player.contentPosition)
     }
 
     @Test
@@ -255,23 +182,11 @@ class PlaybackSeekProjectionTest {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
-        player.applyPositions(
-            playbackPositions(BridgePlaybackPosition("track-2", 30_000, 200_000uL, 0.15)),
-        )
-        assertPosition(
-            player.position.value,
-            progress = 0.0,
-            positionMs = 0,
-            durationMs = 100_000,
-        )
+        player.applyTimeline(timeline(line("track-2", 30_000, 200_000)))
+        assertMedia3Position(player, positionMs = 0, durationMs = 100_000)
 
         player.applyPlaybackState(playingState(trackId = "track-2", durationMs = 200_000uL))
-        assertPosition(
-            player.position.value,
-            progress = 0.15,
-            positionMs = 30_000,
-            durationMs = 200_000,
-        )
+        assertMedia3Position(player, positionMs = 30_000, durationMs = 200_000)
     }
 
     @Test
@@ -330,35 +245,32 @@ class PlaybackSeekProjectionTest {
     private fun BaeCorePlayer.onProgress(
         positionMs: Long,
         durationMs: Long?,
-        progress: Double,
     ) {
-        applyPositions(
-            playbackPositions(BridgePlaybackPosition("track-1", positionMs, durationMs?.toULong(), progress)),
-        )
+        applyTimeline(timeline(line("track-1", positionMs, durationMs)))
     }
 
     private fun BaeCorePlayer.onSeeked(
         positionMs: Long,
         durationMs: Long?,
-        progress: Double,
     ) {
-        applyPositions(
-            playbackPositions(
-                BridgePlaybackPosition("track-1", positionMs, durationMs?.toULong(), progress),
-                seekRevision = 1u,
-            ),
-        )
+        applyTimeline(timeline(line("track-1", positionMs, durationMs), seekRevision = 1u))
     }
 
-    private fun assertPosition(
-        position: PlaybackPosition,
-        progress: Double,
-        positionMs: Long?,
+    private fun line(
+        trackId: String,
+        positionMs: Long,
         durationMs: Long?,
+        moving: Boolean = true,
+    ) = BridgeTimelinePoint(trackId, positionMs.toULong(), durationMs?.toULong(), moving)
+
+    /** Where Media3 shows the track: the anchor it moves on from, and the length. */
+    private fun assertMedia3Position(
+        player: BaeCorePlayer,
+        positionMs: Long,
+        durationMs: Long,
     ) {
-        assertEquals(progress, position.progress, 0.0)
-        assertEquals(positionMs, position.positionMs)
-        assertEquals(durationMs, position.durationMs)
+        assertEquals(positionMs, player.contentPosition)
+        assertEquals(durationMs, player.duration)
     }
 
     private class SeekRecordingHandle : FakeAppHandle() {

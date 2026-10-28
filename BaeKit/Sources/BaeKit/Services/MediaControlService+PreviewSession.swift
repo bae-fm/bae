@@ -144,8 +144,7 @@
         ) -> MPRemoteCommandHandlerStatus {
             guard let activeSession,
                 let playback = activeSession.playback,
-                let previewAudio = activeSession.previewAudio,
-                let playbackStore = activeSession.playbackStore
+                let previewAudio = activeSession.previewAudio
             else {
                 return .noActionableNowPlayingItem
             }
@@ -158,7 +157,6 @@
             }
             return handleScrub(
                 positionTime: positionTime,
-                playbackStore: playbackStore,
                 seekByRatio: playback.seekByRatio
             )
         }
@@ -187,8 +185,7 @@
             anchor = ElapsedAnchor(
                 positionMs: positionMs,
                 rate: rate,
-                at: now(),
-                seekRevision: nil
+                at: now()
             )
             publish(info, on: infoCenter)
         }

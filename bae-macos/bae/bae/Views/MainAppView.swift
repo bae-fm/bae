@@ -293,14 +293,6 @@ struct MainAppView: View {
             .environment(CastStore())
             .environment(SyncActivityStore.preview())
             .albumDetailPreviewEnvironment()
-            .environment(
-                \.playbackPositionPublisher,
-                Empty<PlaybackPositionEvent, Never>().eraseToAnyPublisher()
-            )
-            .environment(
-                \.previewProgressPublisher,
-                Empty<PlaybackPositionEvent, Never>().eraseToAnyPublisher()
-            )
             .mainWindowPreviewEnvironment()
             .padding(.top, 1)
             .frame(width: 1280, height: 800)

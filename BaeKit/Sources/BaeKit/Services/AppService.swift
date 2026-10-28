@@ -65,7 +65,6 @@ public struct AppServiceComponents {
 #if DEBUG
     public struct AppServiceTestState {
         public let nowPlaying: NowPlaying
-        public let playbackPosition: PlaybackPositionEvent
         public let manualQueueEntryIds: [String]
         public let volume: Float
         public let isMuted: Bool
@@ -173,6 +172,7 @@ open class AppService: @unchecked Sendable, Observable {
             syncActivityStore: components.syncActivityStore,
             outboxStore: components.outboxStore,
             downloadStore: components.downloadStore,
+            playbackStore: components.playbackStore,
             castStore: components.castStore
         )
         libraryProjectionStore = LibraryProjectionStore(
@@ -203,12 +203,6 @@ open class AppService: @unchecked Sendable, Observable {
     public var libraryId: String { configStore.config.libraryId }
     public var libraryName: String { configStore.libraryName }
     public var libraryPath: String { configStore.config.libraryPath }
-
-    public var playbackPositionPublisher:
-        AnyPublisher<PlaybackPositionEvent, Never>
-    {
-        playbackStore.playbackPositionPublisher
-    }
 
     /// Close the library so nothing of this process holds its store: save
     /// where playback was, stop its services and sync, close the store, and
@@ -340,11 +334,8 @@ open class AppService: @unchecked Sendable, Observable {
                 )
                 applyPlatformPlaybackValues(values)
             },
-            applyPositions: { [weak self] positions in
-                guard let self else { return }
-                playbackValues.apply(positions)
-                mediaControlService.applyPositions(positions)
-                applyPlatformPlaybackPositions(positions)
+            applyTimeline: { [weak self] timeline in
+                self?.mediaControlService.applyTimeline(timeline)
             },
             applyQueue: { [weak self] snapshot in
                 self?.playbackValues.applyQueueSnapshot(snapshot)
@@ -359,8 +350,6 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     open func applyPlatformPlaybackValues(_: BridgePlaybackValues) {}
-
-    open func applyPlatformPlaybackPositions(_: BridgePlaybackPositions) {}
 
     func applyQueueItemsAdded(_ count: UInt32) {
         playbackValues.applyQueueItemsAdded(count)

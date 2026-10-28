@@ -1,31 +1,27 @@
 import AppKit
 import BaeKit
-import Combine
 import SwiftUI
 
-/// Both seek bars render their entire timeline from one subscription.
-/// SwiftUI updates appearance, preferences, and callbacks only.
+/// Both seek bars draw their entire timeline from their position stream,
+/// which the native view reads each display frame. SwiftUI hands it the
+/// stream and updates appearance, preferences, and callbacks only.
 struct SeekBarRepresentable: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent
     @Environment(\.colorScheme)
     private var colorScheme
 
-    let positions: AnyPublisher<PlaybackPositionEvent, Never>
+    /// `nil` while nothing plays.
+    let source: SeekBarSource?
     let showRemainingTime: Bool
     let onSeek: (Double) -> Void
     let onToggleRemainingTime: (() -> Void)?
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeNSView(context: Context) -> SeekBarNSView {
+    func makeNSView(context _: Context) -> SeekBarNSView {
         let view = SeekBarNSView(
             showsRemainingTimeToggle: onToggleRemainingTime != nil
         )
         apply(to: view)
-        context.coordinator.subscribe(to: positions, view: view)
         return view
     }
 
@@ -33,25 +29,15 @@ struct SeekBarRepresentable: NSViewRepresentable {
         apply(to: view)
     }
 
+    static func dismantleNSView(_ view: SeekBarNSView, coordinator _: ()) {
+        view.stopFollowing()
+    }
+
     private func apply(to view: SeekBarNSView) {
         view.accent = NSColor(accent.color(in: colorScheme))
         view.onSeek = onSeek
         view.onToggleRemainingTime = onToggleRemainingTime
         view.showRemainingTime = showRemainingTime
-    }
-
-    final class Coordinator {
-        private var cancellable: AnyCancellable?
-
-        @MainActor
-        func subscribe(
-            to publisher: AnyPublisher<PlaybackPositionEvent, Never>,
-            view: SeekBarNSView
-        ) {
-            cancellable =
-                publisher
-                .receive(on: DispatchQueue.main)
-                .sink { view.apply($0) }
-        }
+        view.follow(source)
     }
 }

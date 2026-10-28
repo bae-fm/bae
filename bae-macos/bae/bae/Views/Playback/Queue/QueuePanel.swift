@@ -1,5 +1,4 @@
 import BaeKit
-import Combine
 import SwiftUI
 
 /// The queue, docked as a fixed-width sidebar between the title bar and the
@@ -38,6 +37,7 @@ struct QueuePanel: View {
             }
         QueueView(
             isActive: np.isActive,
+            nowPlayingTrackId: track?.track.trackId,
             nowPlayingTitle: track?.display.title,
             nowPlayingArtist: track?.display.artistNames,
             nowPlayingCover: cover,
@@ -95,17 +95,6 @@ struct QueuePanel: View {
         .environment(fixture.queue)
         .environment(ImageStore.stub())
         .environment(UiStore())
-        .environment(
-            \.playbackPositionPublisher,
-            Just(
-                PlaybackPositionEvent.position(
-                    progress: 0.34,
-                    positionMs: 73_000,
-                    durationMs: 214_000
-                )
-            )
-            .eraseToAnyPublisher()
-        )
         // The preview canvas proposes ideal size, under which the panel's
         // ScrollView collapses; a firm height stands in for the window slot
         // the sidebar fills in the app.

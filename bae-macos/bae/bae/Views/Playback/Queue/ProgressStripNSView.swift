@@ -1,16 +1,31 @@
 import AppKit
 import BaeKit
-import Combine
 import SwiftUI
 
 /// A compact, display-only playback readout: a slim accent bar plus an elapsed
-/// label, updated imperatively from the playback-position Combine stream for
-/// the same reason as `SeekBarNSView` — a position arrives with every tick
-/// core sends, too often for SwiftUI observation. Unlike the seek bar it takes no
-/// input: the queue panel's now-playing card shows where playback is; seeking
-/// stays with the transport bar.
+/// label, set straight from the playing track's position stream once per
+/// display frame for the same reason as `SeekBarNSView` — a position arrives
+/// with every tick core sends, too often for SwiftUI observation. Unlike the
+/// seek bar it takes no input: the queue panel's now-playing card shows where
+/// playback is; seeking stays with the transport bar, and a seek made there
+/// shows here too, held in the track's stream until core applies it.
 final class ProgressStripNSView: NSView {
     private let bar: ProgressTrackNSView
+    private(set) lazy var following = FrameFollowing<BridgeTrackPosition>(
+        view: self
+    ) { [weak self] position in
+        guard let self else { return }
+        if let position {
+            setPosition(
+                progress: position.progress,
+                positionMs: position.positionMs,
+                durationMs: position.durationMs
+            )
+        }
+        else {
+            reset()
+        }
+    }
 
     var accent: NSColor {
         get { bar.accent }
@@ -60,9 +75,27 @@ final class ProgressStripNSView: NSView {
         fatalError()
     }
 
-    // MARK: - Direct position updates (called from a Combine subscription)
+    // MARK: - Position updates
 
-    func setPosition(progress: Double, positionMs: Int64, durationMs: UInt64?) {
+    /// Draw `position` from now on, or nothing.
+    func follow(_ position: LatestSource<BridgeTrackPosition>?) {
+        guard let position else {
+            following.stop()
+            reset()
+            return
+        }
+        following.follow(position)
+    }
+
+    func stopFollowing() {
+        following.stop()
+    }
+
+    private func setPosition(
+        progress: Double,
+        positionMs: Int64,
+        durationMs: UInt64?
+    ) {
         self.positionMs = positionMs
         self.durationMs = durationMs
         bar.progress = progress
@@ -70,7 +103,7 @@ final class ProgressStripNSView: NSView {
     }
 
     /// Clears everything: bar to 0, label empty, position and duration dropped.
-    func reset() {
+    private func reset() {
         bar.progress = 0
         positionMs = nil
         durationMs = nil
@@ -100,52 +133,26 @@ struct ProgressStripRepresentable: NSViewRepresentable {
     private var accent
     @Environment(\.colorScheme)
     private var colorScheme
-    @Environment(\.playbackPositionPublisher)
-    private var positionPublisher
+    /// Where the playing track is; `nil` while no track plays.
+    let position: LatestSource<BridgeTrackPosition>?
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeNSView(context: Context) -> ProgressStripNSView {
+    func makeNSView(context _: Context) -> ProgressStripNSView {
         let view = ProgressStripNSView(
             accent: NSColor(accent.color(in: colorScheme))
         )
-        context.coordinator.subscribe(to: positionPublisher, view: view)
+        view.follow(position)
         return view
     }
 
     func updateNSView(_ view: ProgressStripNSView, context _: Context) {
         view.accent = NSColor(accent.color(in: colorScheme))
+        view.follow(position)
     }
 
-    class Coordinator {
-        private var cancellable: AnyCancellable?
-
-        @MainActor
-        func subscribe(
-            to publisher: AnyPublisher<PlaybackPositionEvent, Never>,
-            view: ProgressStripNSView
-        ) {
-            cancellable =
-                publisher
-                .receive(on: DispatchQueue.main)
-                .sink { event in
-                    switch event {
-                    case .position(
-                        let progress,
-                        let positionMs,
-                        let durationMs
-                    ):
-                        view.setPosition(
-                            progress: progress,
-                            positionMs: positionMs,
-                            durationMs: durationMs
-                        )
-                    case .reset:
-                        view.reset()
-                    }
-                }
-        }
+    static func dismantleNSView(
+        _ view: ProgressStripNSView,
+        coordinator _: ()
+    ) {
+        view.stopFollowing()
     }
 }

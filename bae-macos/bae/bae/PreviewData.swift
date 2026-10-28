@@ -354,9 +354,11 @@
         static func queueStore(
             manualCount: Int,
             context: BridgePlaybackSourceKind? = .release,
-            shuffled: Bool = false
+            shuffled: Bool = false,
+            trackPositions: LatestStream<BridgeTrackPosition> =
+                .trackPositions()
         ) -> PlaybackStore {
-            let store = PlaybackStore()
+            let store = PlaybackStore(trackPositions: trackPositions)
             let manual = Array(queueEntries.prefix(manualCount))
             let upcoming = Array(queueEntries.suffix(from: manualCount))
             store.applyQueueSnapshot(
@@ -389,7 +391,7 @@
             context: Bool = true,
             shuffled: Bool = false
         ) -> QueuePreviewFixture {
-            let store = PlaybackStore()
+            let store = PlaybackStore(trackPositions: queuePositions())
             let model = PreviewQueueModel(
                 store: store,
                 manual: Array(queueEntries.prefix(manualCount)),

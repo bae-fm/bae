@@ -333,6 +333,7 @@ final class DesktopSubscriptions {
             outputStore.percents.feed(from: appHandle),
             outboxStore.fileShares.feedUploads(from: appHandle),
             downloadStore.fileShares.feedPins(from: appHandle),
+            importStore.previewPosition.feed(from: appHandle),
         ]
         subscriptions = [
             appHandle.subscribeCandidateRuntime(

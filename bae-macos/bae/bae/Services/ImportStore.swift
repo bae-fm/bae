@@ -164,16 +164,11 @@ class ImportStore {
 
     var previewState: BridgePreviewState = .idle
 
-    /// Preview audio progress (the import-tab preview player).
-    /// High-frequency — published as a Combine signal so only the
-    /// progress-bar NSView re-renders. Buffers the latest value so a
-    /// subscriber created mid-session (e.g. after the overlay's NSView is
-    /// rebuilt) sees the current position immediately instead of an empty
-    /// bar until the next tick.
+    /// Where the import tab's preview is in its clip, while one is loaded,
+    /// for the native bar that reads it each display frame.
     @ObservationIgnored
-    let previewProgressSubject = CurrentValueSubject<
-        PlaybackPositionEvent, Never
-    >(.reset)
+    let previewPosition = LatestStream<BridgePreviewPosition>
+        .previewPosition()
 
     /// What every candidate has in flight — a run's identify state, a running
     /// import's progress — as one signal. Not a stored dictionary: a leaf that

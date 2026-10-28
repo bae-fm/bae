@@ -202,6 +202,80 @@ impl AppHandle {
     }
 }
 
+#[uniffi::export]
+impl AppHandle {
+    /// Write where the playing track is into a stream keyed by track id, the
+    /// playing track's alone, with the seeks applied so far.
+    pub fn feed_playback_positions(
+        &self,
+        activity: Box<dyn KeyActivityCallback>,
+    ) -> Arc<KeyedValueStream> {
+        self.feed(activity, move |services, writer| async move {
+            let mut positions = services.subscribe_playback_positions();
+            loop {
+                let held = track_positions(&positions.borrow_and_update());
+                writer.reset(held);
+                if positions.changed().await.is_err() {
+                    return;
+                }
+            }
+        })
+    }
+}
+
+/// The playing track's position as its stream holds it: under its track's
+/// key, or nothing.
+fn track_positions(
+    positions: &bae_core::playback::PlaybackPositions,
+) -> HashMap<String, BridgeFastValue> {
+    positions
+        .library
+        .clone()
+        .map(|position| {
+            (
+                position.track_id.clone(),
+                BridgeFastValue::TrackPosition {
+                    position: crate::types::BridgeTrackPosition::from_core(
+                        position,
+                        positions.seek_revision,
+                    ),
+                },
+            )
+        })
+        .into_iter()
+        .collect()
+}
+
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+impl AppHandle {
+    /// Write where the preview is in its clip into a stream's one key, `""`,
+    /// while a preview is loaded.
+    pub fn feed_preview_position(
+        &self,
+        activity: Box<dyn KeyActivityCallback>,
+    ) -> Arc<KeyedValueStream> {
+        self.feed(activity, move |services, writer| async move {
+            let mut positions = services.subscribe_playback_positions();
+            loop {
+                let preview = positions.borrow_and_update().preview.clone();
+                match preview {
+                    Some(position) => writer.set(
+                        ONLY_KEY.to_string(),
+                        BridgeFastValue::PreviewPosition {
+                            position: crate::types::BridgePreviewPosition::from_core(position),
+                        },
+                    ),
+                    None => writer.remove(ONLY_KEY),
+                }
+                if positions.changed().await.is_err() {
+                    return;
+                }
+            }
+        })
+    }
+}
+
 // Gated on the target, not on `desktop`: bae-core gates `mod export` itself on
 // the target.
 #[cfg(desktop)]

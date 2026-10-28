@@ -57,7 +57,8 @@ callbacks! {
     SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot);
     SyncActivityCallback: on_value(value: super::BridgeSyncActivity) + on_error;
     PlaybackValuesCallback: on_value(value: BridgePlaybackValues) + on_error;
-    PlaybackPositionsCallback: on_value(value: BridgePlaybackPositions);
+    /// The timeline now, then each time playback leaves the line it holds.
+    PlaybackTimelineCallback: on_value(timeline: BridgePlaybackTimeline);
     DownloadCountsCallback: on_value(value: super::BridgeDownloadCounts) + on_error;
 
     /// What every candidate has in flight: a `Reset` with every running key

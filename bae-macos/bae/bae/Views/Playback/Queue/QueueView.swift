@@ -10,6 +10,9 @@ struct QueueView: View {
     private var queue
 
     let isActive: Bool
+    /// The playing track, whose position the card draws; `nil` while none
+    /// plays.
+    let nowPlayingTrackId: String?
     let nowPlayingTitle: String?
     let nowPlayingArtist: String?
     let nowPlayingCover: ImageContent?
@@ -222,9 +225,13 @@ struct QueueView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                ProgressStripRepresentable()
-                    .frame(height: 10)
-                    .padding(.top, ThemeSpace.compact)
+                ProgressStripRepresentable(
+                    position: playbackStore.trackPosition(
+                        forTrack: nowPlayingTrackId
+                    )
+                )
+                .frame(height: 10)
+                .padding(.top, ThemeSpace.compact)
             }
             .allowsHitTesting(false)
 
@@ -319,6 +326,7 @@ struct QueueView: View {
         var body: some View {
             QueueView(
                 isActive: store.nowPlaying.isActive,
+                nowPlayingTrackId: store.nowPlaying.track?.track.trackId,
                 nowPlayingTitle: store.nowPlaying.track?.display.title,
                 nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,

@@ -1,21 +1,21 @@
 import BaeKit
-import Combine
 import SwiftUI
 
 extension EnvironmentValues {
+    /// Where the import tab's preview is in its clip, for the native bar
+    /// that reads it each display frame; `nil` where no preview plays.
     @Entry
-    var previewProgressPublisher: AnyPublisher<PlaybackPositionEvent, Never> =
-        Empty().eraseToAnyPublisher()
+    var previewPosition: LatestSource<BridgePreviewPosition>?
 }
 
 struct PreviewProgressView: View {
-    @Environment(\.previewProgressPublisher)
-    private var positions
+    @Environment(\.previewPosition)
+    private var position
     let onSeek: (Double) -> Void
 
     var body: some View {
         SeekBarRepresentable(
-            positions: positions,
+            source: position.map(SeekBarSource.preview),
             showRemainingTime: false,
             onSeek: onSeek,
             onToggleRemainingTime: nil
@@ -27,15 +27,11 @@ struct PreviewProgressView: View {
     #Preview("Preview progress bar") {
         PreviewProgressView(onSeek: { _ in })
             .environment(
-                \.previewProgressPublisher,
-                Just(
-                    PlaybackPositionEvent.position(
-                        progress: 0.4,
-                        positionMs: 78_000,
-                        durationMs: 195_000
-                    )
+                \.previewPosition,
+                PreviewData.previewPosition(
+                    positionMs: 78_000,
+                    durationMs: 195_000
                 )
-                .eraseToAnyPublisher()
             )
             .frame(width: 320, height: 40)
             .padding()

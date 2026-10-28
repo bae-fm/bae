@@ -5,6 +5,68 @@
     // Fixtures for the component previews.
     @MainActor
     extension PreviewData {
+        /// A seek bar's track at `positionMs` of `durationMs`, as its stream
+        /// would hold it.
+        static func trackPosition(
+            positionMs: Int64,
+            durationMs: UInt64
+        ) -> LatestSource<BridgeTrackPosition> {
+            LatestStream.trackPositions(
+                holding: [
+                    "preview-track": BridgeTrackPosition(
+                        positionMs: positionMs,
+                        durationMs: durationMs,
+                        progress: Double(positionMs) / Double(durationMs),
+                        seekRevision: 0
+                    )
+                ]
+            )
+            .source(for: "preview-track")
+        }
+
+        /// Where each preview queue entry is while it plays: a third of the
+        /// way through, whichever plays.
+        static func queuePositions() -> LatestStream<BridgeTrackPosition> {
+            .trackPositions(
+                holding: Dictionary(
+                    queueEntries.map {
+                        (
+                            $0.trackId,
+                            BridgeTrackPosition(
+                                positionMs: 73_000,
+                                durationMs: 214_000,
+                                progress: 0.34,
+                                seekRevision: 0
+                            )
+                        )
+                    },
+                    uniquingKeysWith: { first, _ in first }
+                )
+            )
+        }
+
+        /// A preview clip at `positionMs` of `durationMs`, as its stream
+        /// would hold it.
+        static func previewPosition(
+            positionMs: UInt64,
+            durationMs: UInt64
+        ) -> LatestSource<BridgePreviewPosition> {
+            LatestStream.previewPosition(
+                holding: BridgePreviewPosition(
+                    target: BridgePreviewTarget(
+                        path:
+                            "/Music/Downloads/Album Title/01 Track Title.flac",
+                        startSample: 0,
+                        endSample: nil
+                    ),
+                    durationMs: durationMs,
+                    positionMs: positionMs,
+                    progress: Double(positionMs) / Double(durationMs)
+                )
+            )
+            .only
+        }
+
         /// A failure the UI worded itself, with no detail to disclose.
         static let displayErrorSimple = DisplayError(
             line:

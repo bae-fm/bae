@@ -45,8 +45,9 @@ pub use error::PlaybackError;
 pub use now_playing::{NowPlayingTrack, NowPlayingValues, PlayingTrack, TrackDisplay};
 pub use preview_player::PreviewTarget;
 pub use progress::{
-    MediaControlPlayback, MediaControlPosition, PlaybackPosition, PlaybackPositions,
-    PlaybackProgress, PlaybackValues, PreviewPosition, PreviewState, RemoteDevice, RemotePlayback,
+    MediaControlPlayback, PlaybackPosition, PlaybackPositions, PlaybackProgress, PlaybackTimeline,
+    PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint, RemoteDevice,
+    RemotePlayback, TimelinePoint,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use repeat_mode::RepeatMode;

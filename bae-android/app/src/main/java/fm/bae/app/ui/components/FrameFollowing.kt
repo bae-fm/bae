@@ -30,6 +30,9 @@ class FrameFollowing<V : Any>(
         )
     }
 
+    /** Whether [source] names the key already read. */
+    fun follows(source: LatestSource<V>): Boolean = source == this.source
+
     /** Read [source] from now on; the source already read changes nothing. */
     fun follow(source: LatestSource<V>) {
         if (source == this.source) return

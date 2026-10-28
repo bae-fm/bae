@@ -204,30 +204,23 @@ pub enum BridgePreviewState {
     },
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgePlaybackPosition {
-    pub track_id: String,
+/// Where the playing track is, as its seek bar draws it: the value its
+/// track's key holds in the playback positions' `KeyedValueStream`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeTrackPosition {
+    /// Track-relative: negative while pregap audio plays.
     pub position_ms: i64,
     /// `None` when the track's length is unknown.
     pub duration_ms: Option<u64>,
     /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
-}
-
-/// The library timeline exposed to an operating-system media surface. Unlike
-/// the in-app position, it cannot represent the pregap countdown because those
-/// APIs accept only positions at or after track start.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMediaControlPosition {
-    pub track_id: String,
-    pub position_ms: u64,
-    /// `None` when the track's length is unknown.
-    pub duration_ms: Option<u64>,
-    pub progress: f64,
+    /// The applied seeks so far, so a bar that projected a seek knows when
+    /// core applied it.
+    pub seek_revision: u64,
 }
 
 /// Where the preview is in its clip, and which clip that is.
-#[derive(Debug, Clone, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePreviewPosition {
     pub target: BridgePreviewTarget,
     pub duration_ms: u64,
@@ -303,15 +296,36 @@ pub struct BridgePlaybackValues {
     pub media_control: BridgeMediaControlPlayback,
 }
 
-/// Where playback is in what it plays; sent as it moves. Each position names
-/// its track or clip. Mirrors `bae_core::playback::PlaybackPositions`, with
-/// the library position on the media controls' timeline.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgePlaybackPositions {
-    pub library: Option<BridgePlaybackPosition>,
+/// Where playback is, for a surface that moves the position on itself: the
+/// operating system's media controls and Media3. Sent only as playback
+/// leaves the line it holds. Mirrors `bae_core::playback::PlaybackTimeline`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgePlaybackTimeline {
+    /// The library track's line, at or after the track's start.
+    pub library: Option<BridgeTimelinePoint>,
     pub seek_revision: u64,
-    pub preview: Option<BridgePreviewPosition>,
-    pub media_control: Option<BridgeMediaControlPosition>,
+    pub preview: Option<BridgePreviewTimelinePoint>,
+}
+
+/// One track's line: where it was when told, and whether it moves on at the
+/// play rate. Mirrors `bae_core::playback::TimelinePoint`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeTimelinePoint {
+    pub track_id: String,
+    pub position_ms: u64,
+    /// `None` when the track's length is unknown.
+    pub duration_ms: Option<u64>,
+    pub moving: bool,
+}
+
+/// The preview clip's line. Mirrors
+/// `bae_core::playback::PreviewTimelinePoint`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgePreviewTimelinePoint {
+    pub target: BridgePreviewTarget,
+    pub position_ms: u64,
+    pub duration_ms: u64,
+    pub moving: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -358,21 +372,52 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgePlaybackPosition = bae_core::playback::PlaybackPosition,
-    from_core: fn,
-    fields: { track_id, position_ms, duration_ms, progress },
-}
-
-mirror_struct! {
-    BridgeMediaControlPosition = bae_core::playback::MediaControlPosition,
-    from_core: fn,
-    fields: { track_id, position_ms, duration_ms, progress },
-}
-
-mirror_struct! {
     BridgePreviewPosition = bae_core::playback::PreviewPosition,
-    from_core: fn,
+    from_core: pub(crate) fn,
     fields: { target: (BridgePreviewTarget), duration_ms, position_ms, progress },
+}
+
+mirror_struct! {
+    BridgeTimelinePoint = bae_core::playback::TimelinePoint,
+    from_core: fn,
+    fields: { track_id, position_ms, duration_ms, moving },
+}
+
+mirror_struct! {
+    BridgePreviewTimelinePoint = bae_core::playback::PreviewTimelinePoint,
+    from_core: fn,
+    fields: { target: (BridgePreviewTarget), position_ms, duration_ms, moving },
+}
+
+mirror_struct! {
+    BridgePlaybackTimeline = bae_core::playback::PlaybackTimeline,
+    from_core: pub(crate) fn,
+    fields: {
+        library: (opt BridgeTimelinePoint),
+        seek_revision,
+        preview: (opt BridgePreviewTimelinePoint),
+    },
+}
+
+impl BridgeTrackPosition {
+    /// The track's position, with the seeks applied so far.
+    pub(crate) fn from_core(
+        position: bae_core::playback::PlaybackPosition,
+        seek_revision: u64,
+    ) -> Self {
+        let bae_core::playback::PlaybackPosition {
+            track_id: _,
+            position_ms,
+            duration_ms,
+            progress,
+        } = position;
+        Self {
+            position_ms,
+            duration_ms,
+            progress,
+            seek_revision,
+        }
+    }
 }
 
 mirror_enum! {
@@ -395,20 +440,6 @@ impl BridgePlaybackValues {
             repeat_mode: BridgeRepeatMode::from_core(value.repeat_mode),
             remote: BridgeRemotePlayback::from_core(value.remote),
             preview: BridgePreviewState::from_core(value.preview),
-            media_control,
-        }
-    }
-}
-
-impl BridgePlaybackPositions {
-    pub(crate) fn from_core(positions: bae_core::playback::PlaybackPositions) -> Self {
-        let media_control = positions
-            .media_control()
-            .map(BridgeMediaControlPosition::from_core);
-        Self {
-            library: positions.library.map(BridgePlaybackPosition::from_core),
-            seek_revision: positions.seek_revision,
-            preview: positions.preview.map(BridgePreviewPosition::from_core),
             media_control,
         }
     }

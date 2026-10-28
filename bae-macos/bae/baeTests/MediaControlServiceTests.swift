@@ -50,12 +50,16 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.updatePosition(positionMs: 5_000, durationMs: 60_000)
+        service.updatePosition(
+            positionMs: 5_000,
+            durationMs: 60_000,
+            moving: true
+        )
         #expect(scrubberEnabled)
 
         // Core reports no duration when the track's length is unknown; the
         // scrubber must go away so a drag can't map onto a missing timeline.
-        service.updatePosition(positionMs: 6_000, durationMs: nil)
+        service.updatePosition(positionMs: 6_000, durationMs: nil, moving: true)
 
         let info = infoCenter.nowPlayingInfo
         #expect(
@@ -76,7 +80,11 @@ struct MediaControlServiceTests {
         // Enable the scrubber, then clear — `clearNowPlaying` disables it. A
         // preview started afterwards, with its always-known duration, must turn
         // it back on, or preview scrubbing would stay disabled.
-        service.updatePosition(positionMs: 1_000, durationMs: 60_000)
+        service.updatePosition(
+            positionMs: 1_000,
+            durationMs: 60_000,
+            moving: true
+        )
         #expect(scrubberEnabled)
         service.clearNowPlaying()
         #expect(!scrubberEnabled)
@@ -102,8 +110,8 @@ struct MediaControlServiceTests {
             libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
-        service.applyPositions(
-            libraryPositions(trackId: "track-2", positionMs: 30_000)
+        service.applyTimeline(
+            libraryTimeline(trackId: "track-2", positionMs: 30_000)
         )
         #expect(elapsedSeconds == nil)
 
@@ -126,8 +134,8 @@ struct MediaControlServiceTests {
             previewValues(durationMs: 120_000, isPlaying: true),
             appHandle: fakeAppHandle
         )
-        service.applyPositions(
-            previewPositions(target: previewTarget, positionMs: 45_000)
+        service.applyTimeline(
+            previewTimeline(target: previewTarget, positionMs: 45_000)
         )
         #expect(elapsedSeconds == 45.0)
 
@@ -154,8 +162,8 @@ struct MediaControlServiceTests {
             previewValues(durationMs: 120_000, isPlaying: true),
             appHandle: fakeAppHandle
         )
-        service.applyPositions(
-            previewPositions(
+        service.applyTimeline(
+            previewTimeline(
                 target: BridgePreviewTarget(
                     path: "/tmp/Other Track.flac",
                     startSample: 0,
@@ -167,8 +175,8 @@ struct MediaControlServiceTests {
         #expect(elapsedSeconds == nil)
     }
 
-    @Test("positions along the playing line are not written again")
-    func positionsAlongThePlayingLineAreNotWritten() {
+    @Test("each line core's timeline tells is written")
+    func eachLineIsWritten() {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
         defer { infoCenter.nowPlayingInfo = nil }
@@ -179,27 +187,32 @@ struct MediaControlServiceTests {
             libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
-        service.applyPositions(
-            libraryPositions(trackId: "track-1", positionMs: 10_000)
+        service.applyTimeline(
+            libraryTimeline(trackId: "track-1", positionMs: 10_000)
         )
         #expect(elapsedSeconds == 10.0)
 
-        clock.advance(ms: 200)
-        service.applyPositions(
-            libraryPositions(trackId: "track-1", positionMs: 10_200)
-        )
-        #expect(elapsedSeconds == 10.0)
-
+        // The system moves the elapsed time on; a write in between carries
+        // it where the line is.
         clock.advance(ms: 200)
         service.applyValues(
             libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
         #expect(elapsedSeconds == 10.0)
+
+        clock.advance(ms: 200)
+        service.applyTimeline(
+            libraryTimeline(trackId: "track-1", positionMs: 4_000)
+        )
+        #expect(elapsedSeconds == 4.0)
     }
 
-    @Test("a seek, or a position off the playing line, is written")
-    func aSeekOrAPositionOffTheLineIsWritten() {
+    /// Through a pregap core's line stands at the track's start while the
+    /// track plays; Now Playing's elapsed time stands with it, and moves on
+    /// from the line that starts the track.
+    @Test("a pregap's elapsed time stands until the track starts")
+    func aPregapStandsUntilTheTrackStarts() {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
         defer { infoCenter.nowPlayingInfo = nil }
@@ -210,30 +223,26 @@ struct MediaControlServiceTests {
             libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
-        service.applyPositions(
-            libraryPositions(trackId: "track-1", positionMs: 10_000)
+        service.applyTimeline(
+            libraryTimeline(trackId: "track-1", positionMs: 0, moving: false)
         )
+        #expect(elapsedSeconds == 0.0)
+        #expect(playbackRate == 0.0)
 
-        clock.advance(ms: 200)
-        service.applyPositions(
-            libraryPositions(
-                trackId: "track-1",
-                positionMs: 10_500,
-                seekRevision: 1
-            )
+        // A write while the pregap plays keeps it at the start.
+        clock.advance(ms: 1_500)
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
+            appHandle: fakeAppHandle
         )
-        #expect(elapsedSeconds == 10.5)
+        #expect(elapsedSeconds == 0.0)
 
-        // Playback stalled for the five seconds the line moved on.
-        clock.advance(ms: 5_000)
-        service.applyPositions(
-            libraryPositions(
-                trackId: "track-1",
-                positionMs: 10_700,
-                seekRevision: 1
-            )
+        clock.advance(ms: 1_500)
+        service.applyTimeline(
+            libraryTimeline(trackId: "track-1", positionMs: 0)
         )
-        #expect(elapsedSeconds == 10.7)
+        #expect(elapsedSeconds == 0.0)
+        #expect(playbackRate == 1.0)
     }
 
     @Test("pausing writes the elapsed time where playback paused")
@@ -248,8 +257,8 @@ struct MediaControlServiceTests {
             libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
-        service.applyPositions(
-            libraryPositions(trackId: "track-1", positionMs: 10_000)
+        service.applyTimeline(
+            libraryTimeline(trackId: "track-1", positionMs: 10_000)
         )
 
         clock.advance(ms: 2_000)
@@ -283,20 +292,6 @@ private func pausedState(trackId: String) -> BridgePlaybackValueState {
     .paused(track: nowPlayingTrack(trackId: trackId), reason: .manual)
 }
 
-private func libraryPositions(
-    trackId: String,
-    positionMs: UInt64,
-    seekRevision: UInt64
-) -> BridgePlaybackPositions {
-    let positions = libraryPositions(trackId: trackId, positionMs: positionMs)
-    return BridgePlaybackPositions(
-        library: positions.library,
-        seekRevision: seekRevision,
-        preview: positions.preview,
-        mediaControl: positions.mediaControl
-    )
-}
-
 private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())
 
 private let previewTarget = BridgePreviewTarget(
@@ -326,48 +321,49 @@ private func nowPlayingTrack(trackId: String) -> BridgeNowPlayingTrack {
     )
 }
 
-private func libraryPositions(
+private func libraryTimeline(
     trackId: String,
-    positionMs: UInt64
-) -> BridgePlaybackPositions {
-    BridgePlaybackPositions(
-        library: BridgePlaybackPosition(
-            trackId: trackId,
-            positionMs: Int64(positionMs),
-            durationMs: 200_000,
-            progress: Double(positionMs) / 200_000
-        ),
-        seekRevision: 0,
-        preview: nil,
-        mediaControl: BridgeMediaControlPosition(
+    positionMs: UInt64,
+    moving: Bool = true
+) -> BridgePlaybackTimeline {
+    BridgePlaybackTimeline(
+        library: BridgeTimelinePoint(
             trackId: trackId,
             positionMs: positionMs,
             durationMs: 200_000,
-            progress: Double(positionMs) / 200_000
-        )
+            moving: moving
+        ),
+        seekRevision: 0,
+        preview: nil
     )
 }
 
-private func previewPositions(
+private func previewTimeline(
     target: BridgePreviewTarget,
     positionMs: UInt64
-) -> BridgePlaybackPositions {
-    BridgePlaybackPositions(
+) -> BridgePlaybackTimeline {
+    BridgePlaybackTimeline(
         library: nil,
         seekRevision: 0,
-        preview: BridgePreviewPosition(
+        preview: BridgePreviewTimelinePoint(
             target: target,
-            durationMs: 120_000,
             positionMs: positionMs,
-            progress: Double(positionMs) / 120_000
-        ),
-        mediaControl: nil
+            durationMs: 120_000,
+            moving: true
+        )
     )
 }
 
 private var elapsedSeconds: Double? {
     MPNowPlayingInfoCenter.default().nowPlayingInfo?[
         MPNowPlayingInfoPropertyElapsedPlaybackTime
+    ] as? Double
+}
+
+/// The rate the system moves Now Playing's elapsed time on at.
+private var playbackRate: Double? {
+    MPNowPlayingInfoCenter.default().nowPlayingInfo?[
+        MPNowPlayingInfoPropertyPlaybackRate
     ] as? Double
 }
 

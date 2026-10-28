@@ -16,8 +16,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDurationClock
-import uniffi.bae_bridge.BridgePlaybackPosition
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeTimelinePoint
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
@@ -117,7 +117,7 @@ class NowPlayingProjectionTest {
         player.applyPlaybackState(playingState(trackId = "cur", durationMs = 185_000uL))
         val playing = player.currentTimeline
 
-        player.applyPositions(playbackPositions(position(trackId = "cur", positionMs = 1_000L)))
+        player.applyTimeline(timeline(line(trackId = "cur", positionMs = 1_000uL)))
         assertSame(playing, player.currentTimeline)
 
         player.onQueueValue(manual = listOf(entry("up2")), context = null, hasNext = true, hasPrevious = false)
@@ -152,10 +152,10 @@ class NowPlayingProjectionTest {
             durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
         )
 
-    private fun position(
+    private fun line(
         trackId: String,
-        positionMs: Long,
-    ) = BridgePlaybackPosition(trackId = trackId, positionMs = positionMs, durationMs = 185_000uL, progress = 0.0)
+        positionMs: ULong,
+    ) = BridgeTimelinePoint(trackId = trackId, positionMs = positionMs, durationMs = 185_000uL, moving = true)
 
     private fun player(): BaeCorePlayer {
         val context = RuntimeEnvironment.getApplication()

@@ -78,6 +78,14 @@ impl AppServices {
     ) -> tokio::sync::watch::Receiver<crate::playback::PlaybackPositions> {
         self.inner.playback.subscribe_positions()
     }
+
+    /// Where playback is, for a surface that moves the position on itself:
+    /// a line it is told again only as playback leaves it.
+    pub fn subscribe_playback_timeline(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::playback::PlaybackTimeline> {
+        self.inner.playback.subscribe_timeline()
+    }
 }
 
 type ValuesSender = tokio::sync::mpsc::UnboundedSender<

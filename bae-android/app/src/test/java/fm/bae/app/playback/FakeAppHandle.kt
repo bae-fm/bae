@@ -79,7 +79,7 @@ import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.MembershipCallback
 import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.PlaybackPositionsCallback
+import uniffi.bae_bridge.PlaybackTimelineCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.PlaylistEntriesCallback
 import uniffi.bae_bridge.PlaylistsCallback
@@ -181,7 +181,9 @@ internal open class FakeAppHandle(
 
     override fun subscribePlaybackValues(callback: PlaybackValuesCallback): LiveSubscription = liveSubscription()
 
-    override fun subscribePlaybackPositions(callback: PlaybackPositionsCallback): LiveSubscription = liveSubscription()
+    override fun subscribePlaybackTimeline(callback: PlaybackTimelineCallback): LiveSubscription = liveSubscription()
+
+    override fun feedPlaybackPositions(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
 
     override fun triggerSync() {}
 

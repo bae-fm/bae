@@ -1,7 +1,9 @@
 pub mod handle;
+pub mod timeline;
 use crate::playback::service::PlaybackState;
 use crate::playback::RepeatMode;
 pub use handle::PlaybackProgressHandle;
+pub use timeline::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::warn;
 
@@ -31,27 +33,6 @@ pub struct PlaybackPosition {
     pub duration_ms: Option<u64>,
     /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
-}
-
-/// The non-negative timeline accepted by operating-system media controls.
-#[derive(Debug, Clone)]
-pub struct MediaControlPosition {
-    pub track_id: String,
-    pub position_ms: u64,
-    /// `None` when the track's length is unknown.
-    pub duration_ms: Option<u64>,
-    pub progress: f64,
-}
-
-impl MediaControlPosition {
-    fn from_playback(position: &PlaybackPosition) -> Self {
-        Self {
-            track_id: position.track_id.clone(),
-            position_ms: position.position_ms.max(0) as u64,
-            duration_ms: position.duration_ms,
-            progress: position.progress,
-        }
-    }
 }
 
 /// Where the preview is in its clip, and which clip that is, so a surface
@@ -279,14 +260,6 @@ impl PlaybackPositions {
         }
         Some(next)
     }
-
-    /// The library position on the timeline operating-system media controls
-    /// accept.
-    pub fn media_control(&self) -> Option<MediaControlPosition> {
-        self.library
-            .as_ref()
-            .map(MediaControlPosition::from_playback)
-    }
 }
 
 impl<Track> PlaybackValues<Track> {
@@ -465,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn media_control_clamps_pregap_while_ui_position_remains_signed() {
+    fn the_in_app_position_keeps_the_pregap() {
         let positions = PlaybackPositions::initial()
             .applying(&PlaybackProgress::PositionUpdate {
                 position_ms: -1_250,
@@ -479,9 +452,6 @@ mod tests {
             positions.library.as_ref().expect("UI position").position_ms,
             -1_250
         );
-        let position = positions.media_control().expect("media-control position");
-        assert_eq!(position.position_ms, 0);
-        assert_eq!(position.duration_ms, Some(100_000));
     }
 
     #[test]

@@ -72,19 +72,19 @@ private final class PlaybackValuesSink: PlaybackValuesCallback,
     }
 }
 
-private final class PlaybackPositionsSink: PlaybackPositionsCallback,
+private final class PlaybackTimelineSink: PlaybackTimelineCallback,
     @unchecked Sendable
 {
-    private let apply: @MainActor @Sendable (BridgePlaybackPositions) -> Void
+    private let apply: @MainActor @Sendable (BridgePlaybackTimeline) -> Void
 
     init(
-        apply: @escaping @MainActor @Sendable (BridgePlaybackPositions) -> Void
+        apply: @escaping @MainActor @Sendable (BridgePlaybackTimeline) -> Void
     ) {
         self.apply = apply
     }
 
-    func onValue(value: BridgePlaybackPositions) {
-        Task { @MainActor in apply(value) }
+    func onValue(timeline: BridgePlaybackTimeline) {
+        Task { @MainActor in apply(timeline) }
     }
 }
 
@@ -156,6 +156,7 @@ final class CommonSubscriptions {
     private let syncActivityStore: SyncActivityStore
     private let outboxStore: OutboxStore
     private let downloadStore: DownloadStore
+    private let playbackStore: PlaybackStore
     private let castStore: CastStore
     private var subscriptions: [LiveSubscription] = []
     /// The fast streams' feeds, which stop with these subscriptions.
@@ -168,6 +169,7 @@ final class CommonSubscriptions {
         syncActivityStore: SyncActivityStore,
         outboxStore: OutboxStore,
         downloadStore: DownloadStore,
+        playbackStore: PlaybackStore,
         castStore: CastStore
     ) {
         self.appHandle = appHandle
@@ -176,14 +178,15 @@ final class CommonSubscriptions {
         self.syncActivityStore = syncActivityStore
         self.outboxStore = outboxStore
         self.downloadStore = downloadStore
+        self.playbackStore = playbackStore
         self.castStore = castStore
     }
 
     func start(
         applyPlayback:
             @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void,
-        applyPositions:
-            @escaping @MainActor @Sendable (BridgePlaybackPositions) -> Void,
+        applyTimeline:
+            @escaping @MainActor @Sendable (BridgePlaybackTimeline) -> Void,
         applyQueue:
             @escaping @MainActor @Sendable (BridgeQueueSnapshot) -> Void,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
@@ -193,6 +196,7 @@ final class CommonSubscriptions {
             outboxStore.releaseProgress.feed(from: appHandle, onError: onError),
             outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
             downloadStore.releaseProgress.feed(from: appHandle),
+            playbackStore.trackPositions.feed(from: appHandle),
         ]
         subscriptions =
             libraryStatusSubscriptions(onError: onError) + [
@@ -202,8 +206,8 @@ final class CommonSubscriptions {
                         fail: onError
                     )
                 ),
-                appHandle.subscribePlaybackPositions(
-                    callback: PlaybackPositionsSink(apply: applyPositions)
+                appHandle.subscribePlaybackTimeline(
+                    callback: PlaybackTimelineSink(apply: applyTimeline)
                 ),
                 appHandle.subscribeQueue(
                     callback: QueueValueSink(

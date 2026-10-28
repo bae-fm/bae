@@ -162,6 +162,11 @@ pub enum BridgeFastValue {
     },
     /// An exporting release's percent; keyed by release.
     ExportPercent { percent: u8 },
+    /// Where the playing track is; keyed by track, the playing one alone.
+    TrackPosition { position: BridgeTrackPosition },
+    /// Where the preview is in its clip; a stream's one key, `""`, while a
+    /// preview is loaded.
+    PreviewPosition { position: BridgePreviewPosition },
 }
 
 /// Which keys of a stream started or stopped holding a value.

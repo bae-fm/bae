@@ -181,12 +181,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         desktopEvents.applyPreview(values.preview)
     }
 
-    override func applyPlatformPlaybackPositions(
-        _ positions: BridgePlaybackPositions
-    ) {
-        desktopEvents.applyPreviewPosition(positions.preview)
-    }
-
     /// Wire the live `AppHandle` into the stores: start the common and desktop
     /// value subscriptions, subscribe to Rust UI events, register the artwork
     /// analyzer, set up macOS media remote-control bindings, and re-check a
@@ -224,11 +218,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(export)
             .environment(outputStore)
             .environment(uiStore)
-            .environment(
-                \.playbackPositionPublisher,
-                playbackPositionPublisher
-            )
-            .environment(\.previewProgressPublisher, previewProgressPublisher)
+            .environment(\.previewPosition, importStore.previewPosition.only)
             .environment(
                 \.candidateRuntimePublisher,
                 candidateRuntimePublisher
@@ -240,12 +230,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             #if BAE_OAUTH_PROVIDERS
                 .environment(cloudSyncSetup)
             #endif
-    }
-
-    private var previewProgressPublisher:
-        AnyPublisher<PlaybackPositionEvent, Never>
-    {
-        importStore.previewProgressSubject.eraseToAnyPublisher()
     }
 
     private var candidateRuntimePublisher:

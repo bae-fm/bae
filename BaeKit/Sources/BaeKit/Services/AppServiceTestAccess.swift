@@ -12,7 +12,6 @@
         var state: AppServiceTestState {
             AppServiceTestState(
                 nowPlaying: playbackStore.nowPlaying,
-                playbackPosition: playbackStore.playbackPositionEvent,
                 manualQueueEntryIds: playbackStore.manualQueue.map(\.entryId),
                 volume: playbackStore.volume,
                 isMuted: playbackStore.isMuted,

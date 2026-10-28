@@ -57,15 +57,19 @@ public final class MediaControlService: @unchecked Sendable {
     private var artworkTask: Task<Void, Never>?
     /// What Now Playing shows.
     var shown: NowPlayingSubject = .nothing
-    /// The latest positions core sent. They arrive on their own subscription,
-    /// so they can come before the values that put their track or clip on
-    /// Now Playing; each values update shows the latest positions again.
-    private var latestPositions: BridgePlaybackPositions?
+    /// The latest timeline core sent. It arrives on its own subscription,
+    /// so it can come before the values that put its track or clip on Now
+    /// Playing; each values update shows the latest timeline again.
+    private var latestTimeline: BridgePlaybackTimeline?
     /// What `setNowPlaying` last wrote for a library track, so the same
     /// metadata is not written again; `nil` while a library track is not shown.
     var writtenLibrary: NowPlayingMetadata?
-    /// The playback rate Now Playing shows: 1.0 playing, 0.0 otherwise.
+    /// The playback rate the state gives: 1.0 playing, 0.0 otherwise.
     var rate: Double = 0.0
+    /// Whether the library line core last told moves. Through a pregap it
+    /// stands at the track's start while the track plays, and so does Now
+    /// Playing's elapsed time.
+    var lineMoves = true
     /// The elapsed time Now Playing was last given; `nil` while it shows
     /// nothing, or a track or clip no position has been written for yet.
     var anchor: ElapsedAnchor?
@@ -101,10 +105,9 @@ public final class MediaControlService: @unchecked Sendable {
     /// Translate core's resolved media-control presentation onto the platform's
     /// single Now Playing surface: the preview clip it names, or the library
     /// playback in `values.state`. A track or clip no elapsed time has been
-    /// written for yet takes the latest position, which can arrive before the
-    /// values that show it. One already moving keeps its line, rebased at a
-    /// new rate: the latest position was read when it arrived, and the next
-    /// one is measured against the line.
+    /// written for yet takes the latest timeline's line, which can arrive
+    /// before the values that show it. One already moving keeps its line,
+    /// rebased at a new rate, until core's timeline tells the next.
     public func applyValues(
         _ values: BridgePlaybackValues,
         appHandle: AppHandle
@@ -128,70 +131,52 @@ public final class MediaControlService: @unchecked Sendable {
             updateNowPlaying(state: state, appHandle: appHandle)
         }
         if anchor == nil {
-            showLatestPositions()
+            showLatestTimeline()
         }
     }
 
-    /// Write core's latest positions onto Now Playing: the elapsed time of the
-    /// track or clip it shows.
-    public func applyPositions(_ positions: BridgePlaybackPositions) {
-        latestPositions = positions
-        showLatestPositions()
+    /// Write core's latest line onto Now Playing: the elapsed time of the
+    /// track or clip it shows. Core tells a line only as playback leaves the
+    /// last one, so each is written.
+    public func applyTimeline(_ timeline: BridgePlaybackTimeline) {
+        latestTimeline = timeline
+        showLatestTimeline()
     }
 
-    private func showLatestPositions() {
-        guard let latestPositions else {
+    private func showLatestTimeline() {
+        guard let latestTimeline else {
             return
         }
         switch shown {
         case .nothing:
             return
         case .library(let trackId):
-            guard let position = latestPositions.mediaControl else {
+            guard let line = latestTimeline.library else {
                 return
             }
-            guard position.trackId == trackId else {
+            guard line.trackId == trackId else {
                 logger.debug(
-                    "Not showing the position of \(position.trackId); Now Playing shows \(trackId)"
+                    "Not showing the position of \(line.trackId); Now Playing shows \(trackId)"
                 )
                 return
             }
-            let jumped =
-                anchor?
-                .isJump(
-                    to: position.positionMs,
-                    seekRevision: latestPositions.seekRevision,
-                    at: now()
-                ) ?? true
-            guard jumped || position.durationMs != currentDurationMs else {
-                return
-            }
             updatePosition(
-                positionMs: position.positionMs,
-                durationMs: position.durationMs
+                positionMs: line.positionMs,
+                durationMs: line.durationMs,
+                moving: line.moving
             )
         #if os(macOS)
             case .preview(let target):
-                guard let preview = latestPositions.preview else {
+                guard let line = latestTimeline.preview else {
                     return
                 }
-                guard preview.target == target else {
+                guard line.target == target else {
                     logger.debug(
-                        "Not showing the position of preview \(preview.target.path); Now Playing shows \(target.path)"
+                        "Not showing the position of preview \(line.target.path); Now Playing shows \(target.path)"
                     )
                     return
                 }
-                let jumped =
-                    anchor?
-                    .isJump(
-                        to: preview.positionMs,
-                        seekRevision: nil,
-                        at: now()
-                    ) ?? true
-                guard jumped else {
-                    return
-                }
-                updatePreviewPosition(positionMs: preview.positionMs)
+                updatePreviewPosition(positionMs: line.positionMs)
         #endif
         }
     }
@@ -252,10 +237,15 @@ public final class MediaControlService: @unchecked Sendable {
         }
         var info = infoCenter.nowPlayingInfo ?? [:]
         if writtenLibrary?.track.track.trackId == metadata.track.track.trackId {
-            anchor = anchor?.rebased(rate: metadata.playbackRate, at: now())
+            anchor = anchor?
+                .rebased(
+                    rate: lineMoves ? metadata.playbackRate : 0,
+                    at: now()
+                )
         }
         else {
             anchor = nil
+            lineMoves = true
             info.removeValue(
                 forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime
             )
@@ -278,17 +268,21 @@ public final class MediaControlService: @unchecked Sendable {
     }
 
     /// Set Now Playing's elapsed time to `positionMs`, from which the system
-    /// moves it forward at the shown rate.
-    public func updatePosition(positionMs: UInt64, durationMs: UInt64?) {
+    /// moves it forward at the shown rate while the line `moving`.
+    public func updatePosition(
+        positionMs: UInt64,
+        durationMs: UInt64?,
+        moving: Bool
+    ) {
         let infoCenter = MPNowPlayingInfoCenter.default()
         guard var info = infoCenter.nowPlayingInfo else {
             return
         }
+        lineMoves = moving
         anchor = ElapsedAnchor(
             positionMs: positionMs,
-            rate: rate,
-            at: now(),
-            seekRevision: latestPositions?.seekRevision
+            rate: moving ? rate : 0,
+            at: now()
         )
         // Re-track here too: core may only learn the duration once decoding
         // starts, so it can arrive on progress rather than the Playing payload.
@@ -304,6 +298,8 @@ public final class MediaControlService: @unchecked Sendable {
         if let anchor {
             info[MPNowPlayingInfoPropertyElapsedPlaybackTime] =
                 max(0, anchor.positionMs(at: now())) / 1000.0
+            // The system moves the elapsed time on at this rate.
+            info[MPNowPlayingInfoPropertyPlaybackRate] = anchor.rate
         }
         infoCenter.nowPlayingInfo = info
     }
@@ -388,23 +384,23 @@ extension MediaControlService {
         return positionTime / (Double(durationMs) / 1000.0)
     }
 
-    /// Shared library-scrub math: map the drag onto the timeline, project the
-    /// seek so the position bar jumps immediately, then dispatch the actual
-    /// seek. `seekByRatio` is the platform's transport call.
+    /// Shared library-scrub math: map the drag onto the timeline, move Now
+    /// Playing's elapsed time there at once, then dispatch the actual seek,
+    /// whose line core's timeline tells once applied. `seekByRatio` is the
+    /// platform's transport call.
     func handleScrub(
         positionTime: TimeInterval,
-        playbackStore: PlaybackStore,
         seekByRatio: (Double) -> Void
     ) -> MPRemoteCommandHandlerStatus {
         guard let ratio = scrubRatio(for: positionTime) else {
             return .commandFailed
         }
-        if let snapshot = playbackStore.projectSeek(ratio: ratio) {
-            updatePosition(
-                positionMs: UInt64(snapshot.positionMs),
-                durationMs: snapshot.durationMs
-            )
-        }
+        // A scrub lands on the track's own time, past any pregap.
+        updatePosition(
+            positionMs: UInt64(max(0, positionTime * 1000).rounded()),
+            durationMs: currentDurationMs,
+            moving: true
+        )
         seekByRatio(ratio)
         return .success
     }

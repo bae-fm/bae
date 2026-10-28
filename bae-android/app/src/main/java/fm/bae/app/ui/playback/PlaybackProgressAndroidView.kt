@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -22,18 +21,11 @@ import androidx.media3.common.C
 import fm.bae.app.OpenLibrary
 import fm.bae.app.clockText
 import fm.bae.app.currentLocale
+import fm.bae.app.data.LatestSource
 import fm.bae.app.playback.BaeCorePlayer
-import fm.bae.app.playback.PlaybackPosition
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.rememberScreenScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import fm.bae.app.ui.components.FrameFollowing
+import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.bridgeSeekBar
 
 private const val SEEK_BAR_MAX = 10_000
@@ -52,11 +44,11 @@ internal data class SeekBarState(
 
 /** The bar's state for [position], with empty labels when nothing is playing. */
 internal fun Context.seekBarState(
-    position: PlaybackPosition,
+    position: BridgeTrackPosition?,
     showRemaining: Boolean,
 ): SeekBarState {
-    val positionMs = position.positionMs ?: return SeekBarState(position.progress, "", "", seekable = false)
-    val clocks = bridgeSeekBar(positionMs, position.durationMs?.toULong(), showRemaining)
+    position ?: return SeekBarState(0.0, "", "", seekable = false)
+    val clocks = bridgeSeekBar(position.positionMs, position.durationMs, showRemaining)
     return SeekBarState(
         progress = position.progress,
         leading = clockText(clocks.leading, currentLocale()),
@@ -78,14 +70,10 @@ fun PlaybackProgressAndroidView(
     perform: (operation: String, action: suspend () -> Unit) -> Unit = session.messages::perform,
 ) {
     val context = LocalContext.current
-    val scope = rememberScreenScope()
     val config by session.configStore.config.collectAsState()
     val showRemaining = config.showRemainingTime
-    // Remembered because the view re-collects whenever the flow instance changes.
-    val state =
-        remember(player, context, showRemaining) {
-            player.position.map { context.seekBarState(it, showRemaining) }
-        }
+    val nowPlaying by player.nowPlaying.collectAsState()
+    val position = nowPlaying?.let { player.trackPositions.source(it.trackId) }
     val colors = MaterialTheme.colorScheme
     val hairline = BaeTheme.colors.hairline
     AndroidView(
@@ -98,7 +86,8 @@ fun PlaybackProgressAndroidView(
                 text = colors.onSurfaceVariant.toArgb(),
             )
             view.bind(
-                state = state,
+                position = position,
+                state = { context.seekBarState(it, showRemaining) },
                 onSeekRatio = { ratio ->
                     val duration = player.duration
                     if (duration != C.TIME_UNSET && duration > 0L) {
@@ -153,9 +142,16 @@ internal class PlaybackProgressView(
     var onToggleRemaining: () -> Unit = {}
 
     private var isDragging = false
-    private var state: Flow<SeekBarState>? = null
-    private var positionScope: CoroutineScope? = null
-    private var positionJob: Job? = null
+    private val following = FrameFollowing<BridgeTrackPosition>(this) { show(it) }
+
+    /** What the bar draws of a position; set by [bind]. */
+    private var state: (BridgeTrackPosition?) -> SeekBarState = { SeekBarState(0.0, "", "", seekable = false) }
+
+    /** What the stream last said; null while it holds nothing. */
+    private var position: BridgeTrackPosition? = null
+
+    /** The seek the person made, shown until a position of a later applied seek arrives. */
+    private var projected: BridgeTrackPosition? = null
 
     init {
         orientation = HORIZONTAL
@@ -198,32 +194,41 @@ internal class PlaybackProgressView(
         }
     }
 
+    /**
+     * Draw [position] from now on, or nothing, through [state]. The same
+     * position's stream already followed changes nothing.
+     */
     fun bind(
-        state: Flow<SeekBarState>,
+        position: LatestSource<BridgeTrackPosition>?,
+        state: (BridgeTrackPosition?) -> SeekBarState,
         onSeekRatio: (Double) -> Unit,
         onToggleRemaining: () -> Unit,
     ) {
         this.onSeekRatio = onSeekRatio
         this.onToggleRemaining = onToggleRemaining
-        if (this.state === state && positionJob?.isActive == true) {
-            return
-        }
         this.state = state
-        positionScope?.cancel()
-        val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
-        positionScope = scope
-        positionJob =
-            scope.launch {
-                state.collect { setPosition(it) }
-            }
+        if (position == null) {
+            following.stop()
+            projected = null
+            show(null)
+        } else {
+            // A seek made on another track is not this one's.
+            if (!following.follows(position)) projected = null
+            following.follow(position)
+            showShown()
+        }
     }
 
-    override fun onDetachedFromWindow() {
-        positionScope?.cancel()
-        positionScope = null
-        positionJob = null
-        state = null
-        super.onDetachedFromWindow()
+    /** A position the stream holds; a seek the person made shows until one of a later applied seek. */
+    private fun show(position: BridgeTrackPosition?) {
+        this.position = position
+        val projected = projected
+        if (projected != null && position?.seekRevision != projected.seekRevision) this.projected = null
+        showShown()
+    }
+
+    private fun showShown() {
+        setPosition(state(projected ?: position))
     }
 
     internal fun beginTracking() {
@@ -233,6 +238,16 @@ internal class PlaybackProgressView(
     internal fun finishTracking() {
         val ratio = seekBar.progress.toDouble() / seekBar.max.toDouble()
         isDragging = false
+        val position = position
+        val durationMs = position?.durationMs
+        if (position != null && durationMs != null) {
+            projected =
+                position.copy(
+                    positionMs = (ratio * durationMs.toDouble()).toLong(),
+                    progress = ratio,
+                )
+            showShown()
+        }
         onSeekRatio(ratio)
     }
 

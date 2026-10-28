@@ -5,13 +5,13 @@ import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeMediaControlPlayback
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackPauseReason
-import uniffi.bae_bridge.BridgePlaybackPosition
-import uniffi.bae_bridge.BridgePlaybackPositions
+import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgePlayingTrack
 import uniffi.bae_bridge.BridgePreviewState
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeTimelinePoint
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 internal fun playbackValues(
@@ -30,16 +30,15 @@ internal fun playbackValues(
         mediaControl = BridgeMediaControlPlayback.Library,
     )
 
-/** Positions holding [library]; the media controls' timeline is not read on Android. */
-internal fun playbackPositions(
-    library: BridgePlaybackPosition?,
+/** A timeline holding [library]'s line; the preview's is not read on Android. */
+internal fun timeline(
+    library: BridgeTimelinePoint?,
     seekRevision: ULong = 0u,
-): BridgePlaybackPositions =
-    BridgePlaybackPositions(
+): BridgePlaybackTimeline =
+    BridgePlaybackTimeline(
         library = library,
         seekRevision = seekRevision,
         preview = null,
-        mediaControl = null,
     )
 
 internal fun nowPlayingTrack(

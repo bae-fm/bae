@@ -10,6 +10,8 @@ struct NowPlayingBar: View {
     let cover: ImageContent?
     let isPlaying: Bool
     let isLoading: Bool
+    /// Where the playing track is; `nil` while no track plays.
+    let position: LatestSource<BridgeTrackPosition>?
     /// The user's elapsed-vs-remaining choice, from the config.
     let showRemainingTime: Bool
     let volume: Float
@@ -207,6 +209,7 @@ struct NowPlayingBar: View {
 
     private var progressBar: some View {
         PlaybackProgressView(
+            position: position,
             showRemainingTime: showRemainingTime,
             onSeek: onSeek,
             onToggleRemainingTime: onToggleRemainingTime,
@@ -336,6 +339,8 @@ extension NowPlayingBar {
         var isLoading: Bool = false
         let repeatMode: BridgeRepeatMode
         let shuffled: Bool?
+        /// The seek bar's position: a quarter through a track, or none.
+        var hasPosition = true
 
         @State
         private var showQueue = false
@@ -351,6 +356,12 @@ extension NowPlayingBar {
                 cover: nil,
                 isPlaying: isPlaying,
                 isLoading: isLoading,
+                position: hasPosition
+                    ? PreviewData.trackPosition(
+                        positionMs: 55_500,
+                        durationMs: 222_000
+                    )
+                    : nil,
                 showRemainingTime: false,
                 volume: volume,
                 isMuted: isMuted,
@@ -376,28 +387,6 @@ extension NowPlayingBar {
         }
     }
 
-    extension View {
-        /// The seek position the bar reads: a quarter through a track, or the
-        /// empty reset.
-        @MainActor
-        func nowPlayingPreviewTransport(playing: Bool) -> some View {
-            self
-                .environment(
-                    \.playbackPositionPublisher,
-                    Just(
-                        playing
-                            ? PlaybackPositionEvent.position(
-                                progress: 0.25,
-                                positionMs: 55_500,
-                                durationMs: 222_000
-                            )
-                            : .reset
-                    )
-                    .eraseToAnyPublisher()
-                )
-        }
-    }
-
     #Preview("Playing") {
         NowPlayingBarPreview(
             trackTitle: PreviewData.nowPlayingTitle,
@@ -406,7 +395,6 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: false,
         )
-        .nowPlayingPreviewTransport(playing: true)
         .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 2))
         .environment(Queue.stub())
@@ -420,7 +408,6 @@ extension NowPlayingBar {
             repeatMode: .context,
             shuffled: false,
         )
-        .nowPlayingPreviewTransport(playing: true)
         .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
         .environment(Queue.stub())
@@ -434,7 +421,6 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: true,
         )
-        .nowPlayingPreviewTransport(playing: true)
         .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
         .environment(Queue.stub())
@@ -449,7 +435,6 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: nil,
         )
-        .nowPlayingPreviewTransport(playing: true)
         .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 5, context: nil))
         .environment(Queue.stub())
@@ -462,8 +447,8 @@ extension NowPlayingBar {
             isPlaying: false,
             repeatMode: .off,
             shuffled: nil,
+            hasPosition: false,
         )
-        .nowPlayingPreviewTransport(playing: false)
         .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 0, context: nil))
         .environment(Queue.stub())

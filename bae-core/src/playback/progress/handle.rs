@@ -1,34 +1,45 @@
+use super::timeline::{PlaybackTimeline, TimelineFold};
 use super::{PlaybackPositions, PlaybackProgress, PlaybackValues};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::watch;
 use tracing::info;
 /// Fans one progress stream out to every subscriber, and folds it into the
-/// playback values and positions.
+/// playback values, the positions, and the timeline they make.
 #[derive(Clone)]
 pub struct PlaybackProgressHandle {
     subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>>,
     values: watch::Receiver<PlaybackValues>,
     positions: watch::Receiver<PlaybackPositions>,
+    timeline: watch::Receiver<PlaybackTimeline>,
 }
 impl PlaybackProgressHandle {
     /// Spawn the fan-out task that forwards each event from `progress_rx` to
-    /// every live subscriber, after folding it into the values and positions.
+    /// every live subscriber, after folding it into the values, the positions
+    /// and, read at `clock`'s now, the timeline.
     pub fn new(
         mut progress_rx: tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         runtime_handle: tokio::runtime::Handle,
+        clock: crate::playback::PlaybackClockRef,
     ) -> Self {
         let subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>> =
             Arc::new(Mutex::new(Vec::new()));
         let subscriptions_clone = subscriptions.clone();
         let (values_tx, values) = watch::channel(PlaybackValues::initial());
         let (positions_tx, positions) = watch::channel(PlaybackPositions::initial());
+        let (timeline_tx, timeline) = watch::channel(PlaybackTimeline::initial());
         runtime_handle.spawn(async move {
+            let mut fold = TimelineFold::new();
             loop {
                 match progress_rx.recv().await {
                     Some(progress) => {
                         publish_change(&values_tx, |values| values.applying(&progress));
                         publish_change(&positions_tx, |positions| positions.applying(&progress));
+                        if let Some(next) =
+                            fold.next(&positions_tx.borrow(), &values_tx.borrow(), clock.now())
+                        {
+                            timeline_tx.send_replace(next);
+                        }
                         let mut subs = subscriptions_clone.lock().unwrap();
                         subs.retain(|tx| tx.send(progress.clone()).is_ok());
                     }
@@ -43,6 +54,7 @@ impl PlaybackProgressHandle {
             subscriptions,
             values,
             positions,
+            timeline,
         }
     }
     /// A receiver yielding every progress update. Dropping it unsubscribes (the
@@ -63,6 +75,12 @@ impl PlaybackProgressHandle {
     pub fn subscribe_positions(&self) -> watch::Receiver<PlaybackPositions> {
         self.positions.clone()
     }
+
+    /// The timeline, which changes only as playback leaves the line it
+    /// holds.
+    pub fn subscribe_timeline(&self) -> watch::Receiver<PlaybackTimeline> {
+        self.timeline.clone()
+    }
 }
 
 /// Store `next`'s result for `tx`'s value and wake its receivers, only when
@@ -82,10 +100,18 @@ mod tests {
     use super::*;
     use tokio::time::{timeout, Duration};
 
+    fn test_clock() -> crate::playback::PlaybackClockRef {
+        std::sync::Arc::new(crate::playback::ManualPlaybackClock::new(chrono::Utc::now()))
+    }
+
     #[tokio::test]
     async fn forwards_to_live_subscribers_and_prunes_dropped_ones() {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let handle = PlaybackProgressHandle::new(progress_rx, tokio::runtime::Handle::current());
+        let handle = PlaybackProgressHandle::new(
+            progress_rx,
+            tokio::runtime::Handle::current(),
+            test_clock(),
+        );
         let mut live = handle.subscribe_all();
         let dropped = handle.subscribe_all();
         drop(dropped);
@@ -118,7 +144,11 @@ mod tests {
     #[tokio::test]
     async fn persistent_values_are_replayed_to_late_subscribers() {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let handle = PlaybackProgressHandle::new(progress_rx, tokio::runtime::Handle::current());
+        let handle = PlaybackProgressHandle::new(
+            progress_rx,
+            tokio::runtime::Handle::current(),
+            test_clock(),
+        );
 
         progress_tx
             .send(PlaybackProgress::VolumeChanged { volume: 0.25 })
@@ -132,7 +162,11 @@ mod tests {
     #[tokio::test]
     async fn seek_revision_is_retained_across_later_position_ticks() {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let handle = PlaybackProgressHandle::new(progress_rx, tokio::runtime::Handle::current());
+        let handle = PlaybackProgressHandle::new(
+            progress_rx,
+            tokio::runtime::Handle::current(),
+            test_clock(),
+        );
         let mut events = handle.subscribe_all();
 
         progress_tx
@@ -180,7 +214,11 @@ mod tests {
     #[tokio::test]
     async fn a_position_tick_sends_no_value_and_a_state_change_sends_one() {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let handle = PlaybackProgressHandle::new(progress_rx, tokio::runtime::Handle::current());
+        let handle = PlaybackProgressHandle::new(
+            progress_rx,
+            tokio::runtime::Handle::current(),
+            test_clock(),
+        );
         let mut events = handle.subscribe_all();
         let mut values = handle.subscribe_values();
         let mut positions = handle.subscribe_positions();

@@ -40,15 +40,16 @@ impl AppHandle {
         )
     }
 
-    /// Where playback is in what it plays, now and then as it moves.
-    pub fn subscribe_playback_positions(
+    /// Where playback is, for a surface that moves the position on itself:
+    /// the timeline now, then each time playback leaves the line it holds.
+    pub fn subscribe_playback_timeline(
         &self,
-        callback: Box<dyn crate::types::PlaybackPositionsCallback>,
+        callback: Box<dyn crate::types::PlaybackTimelineCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         self.subscribe_watch(
-            |services| services.subscribe_playback_positions(),
+            |services| services.subscribe_playback_timeline(),
             move |value| {
-                callback.on_value(crate::types::BridgePlaybackPositions::from_core(
+                callback.on_value(crate::types::BridgePlaybackTimeline::from_core(
                     value.clone(),
                 ))
             },

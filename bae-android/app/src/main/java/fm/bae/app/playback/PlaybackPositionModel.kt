@@ -1,27 +1,31 @@
 package fm.bae.app.playback
 
 /**
- * Pure seek and position math for the now-playing bar and the Media3 playback
- * state. Owns the position anchor from core's progress events, the current
- * track's duration, the latest raw progress fraction, and the pending in-track
- * seek whose dropped position wins until core's progress catches up.
+ * Pure seek and position math for the Media3 playback state. Owns the position
+ * anchor from the lines core's timeline tells, the current track's duration,
+ * and the pending in-track seek whose dropped position wins until core
+ * confirms it.
  *
  * Holds no Media3 or bridge types: track ids are plain strings, positions and
  * durations are milliseconds, and an unknown duration is null. [BaeCorePlayer]
- * holds one instance, feeds it the playback events, and reads its outputs for
- * both the Media3 state and the position StateFlow.
+ * holds one instance, feeds it the lines, and reads its outputs for the Media3
+ * state.
  */
 internal class PlaybackPositionModel {
     /** Position anchor from the latest progress event. */
     private var anchorPositionMs: Long = 0L
 
+    /**
+     * Whether the line the anchor came from moves. Through a pregap it stands
+     * at the track's start while the track plays, and Media3's position
+     * stands with it.
+     */
+    var lineMoves: Boolean = true
+        private set
+
     /** The current track's duration, or null when its length is unknown. */
     var durationMs: Long? = null
         private set
-
-    /** Latest raw [0,1] progress fraction from core, used for the slider when no
-     *  duration is known to derive it from the position. */
-    private var progress: Double = 0.0
 
     private var pendingSeek: PendingSeek? = null
 
@@ -38,28 +42,28 @@ internal class PlaybackPositionModel {
     }
 
     /**
-     * Fold a progress event into the position state. A pending in-track seek for
+     * Fold a line into the position state. A pending in-track seek for
      * the incoming track outranks live progress ([PositionUpdate.HeldByPendingSeek])
      * until [onSeeked] confirms it; a position for a different track than the one
-     * playing is rejected ([PositionUpdate.StaleTrack]); otherwise the anchor,
-     * duration, and progress advance ([PositionUpdate.Applied]).
+     * playing is rejected ([PositionUpdate.StaleTrack]); otherwise the anchor
+     * and duration advance ([PositionUpdate.Applied]).
      */
     fun onProgress(
         currentTrackId: String?,
         trackId: String,
         positionMs: Long,
         durationMs: Long?,
-        progress: Double,
+        moving: Boolean,
     ): PositionUpdate {
         val pendingSeek = pendingSeek
         if (pendingSeek != null && pendingSeek.matches(trackId)) {
             return PositionUpdate.HeldByPendingSeek
         }
-        return apply(currentTrackId, trackId, positionMs, durationMs, progress)
+        return apply(currentTrackId, trackId, positionMs, durationMs, moving)
     }
 
     /**
-     * Fold a seek-confirmation event into the position state, clearing the pending
+     * Fold a seek's line into the position state, clearing the pending
      * seek it confirms. A position for a different track than the one playing is
      * rejected ([PositionUpdate.StaleTrack]).
      */
@@ -68,13 +72,13 @@ internal class PlaybackPositionModel {
         trackId: String,
         positionMs: Long,
         durationMs: Long?,
-        progress: Double,
+        moving: Boolean,
     ): PositionUpdate {
         if (!targetsCurrentTrack(currentTrackId, trackId)) {
             return PositionUpdate.StaleTrack
         }
         pendingSeek = null
-        return apply(currentTrackId, trackId, positionMs, durationMs, progress)
+        return apply(currentTrackId, trackId, positionMs, durationMs, moving)
     }
 
     private fun apply(
@@ -82,14 +86,14 @@ internal class PlaybackPositionModel {
         trackId: String,
         positionMs: Long,
         durationMs: Long?,
-        progress: Double,
+        moving: Boolean,
     ): PositionUpdate {
         if (!targetsCurrentTrack(currentTrackId, trackId)) {
             return PositionUpdate.StaleTrack
         }
         anchorPositionMs = positionMs
         this.durationMs = durationMs
-        this.progress = progress
+        lineMoves = moving
         return PositionUpdate.Applied
     }
 
@@ -103,8 +107,8 @@ internal class PlaybackPositionModel {
     /**
      * Enter or refresh the active track. Clears the pending seek when the track
      * changed (its projection no longer applies) and adopts the reported duration
-     * ([durationMs] is null when the length is unknown). Leaves the anchor and
-     * progress to the progress events.
+     * ([durationMs] is null when the length is unknown). Leaves the anchor to
+     * the lines.
      */
     fun setActiveTrack(
         trackChanged: Boolean,
@@ -118,7 +122,7 @@ internal class PlaybackPositionModel {
 
     /**
      * Begin an in-track seek to [requestedPositionMs], projecting the dropped
-     * position (clamped into the track) until core's progress confirms it. Returns
+     * position (clamped into the track) until core confirms it. Returns
      * the [0,1] ratio to send core, or null when there is no known duration to seek
      * within — the caller logs and ignores the seek.
      */
@@ -143,42 +147,17 @@ internal class PlaybackPositionModel {
         pendingSeek = null
         anchorPositionMs = 0L
         durationMs = null
-        progress = 0.0
-    }
-
-    /**
-     * The seek-bar projection: the [0,1] slider fraction plus the raw position and
-     * duration the bar renders its clock labels from. When a duration is known the
-     * fraction is derived from the position; otherwise core's raw progress is used.
-     * Empty when no track plays ([hasCurrentTrack] false).
-     */
-    fun position(hasCurrentTrack: Boolean): PlaybackPosition {
-        if (!hasCurrentTrack) {
-            return PlaybackPosition(0.0, null, null)
-        }
-        val positionMs = effectivePositionMs
-        val total = durationMs
-        val progress =
-            if (total != null) {
-                (positionMs.toDouble() / total.toDouble()).coerceIn(0.0, 1.0)
-            } else {
-                this.progress.coerceIn(0.0, 1.0)
-            }
-        return PlaybackPosition(
-            progress = progress,
-            positionMs = positionMs,
-            durationMs = total,
-        )
+        lineMoves = true
     }
 }
 
-/** The outcome of folding a progress or seek position into [PlaybackPositionModel]. */
+/** The outcome of folding a line or a seek's line into [PlaybackPositionModel]. */
 internal enum class PositionUpdate {
     /** The position advanced; the player should republish its projection. */
     Applied,
 
-    /** A pending in-track seek for the current track outranks this live progress
-     *  until core confirms the seek — the projection holds, nothing republishes. */
+    /** A pending in-track seek for the current track outranks this line until
+     *  core confirms the seek — the projection holds, nothing republishes. */
     HeldByPendingSeek,
 
     /** The position is for a track that is not the one playing. */

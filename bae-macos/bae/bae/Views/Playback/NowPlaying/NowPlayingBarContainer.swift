@@ -1,12 +1,11 @@
 import BaeKit
-import Combine
 import SwiftUI
 
 /// Reads the stores for `NowPlayingBar`, so the bar re-evaluates when what it
 /// shows changes: a playback value (core sends one only when it changed), the
 /// queue's shuffle, the queue panel, or the bar's settings. Positions never
-/// re-evaluate it: the seek bar's `SeekBarNSView` subscribes to
-/// `playbackPositionPublisher` from the environment and redraws itself.
+/// re-evaluate it: it hands the seek bar the playing track's position
+/// stream, which the bar's `SeekBarNSView` reads each display frame.
 struct NowPlayingBarContainer: View {
     @Environment(Playback.self)
     var playback
@@ -34,6 +33,9 @@ struct NowPlayingBarContainer: View {
             cover: cover,
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
+            position: playbackStore.trackPosition(
+                forTrack: track?.track.trackId
+            ),
             showRemainingTime: configStore.config.showRemainingTime,
             volume: playbackStore.volume,
             isMuted: playbackStore.isMuted,
@@ -44,10 +46,7 @@ struct NowPlayingBarContainer: View {
             onPlayPause: { playback.playPause(for: playbackStore.nowPlaying) },
             onNext: { playback.nextTrack() },
             onPrevious: { playback.previousTrack() },
-            onSeek: { ratio in
-                playbackStore.projectSeek(ratio: ratio)
-                playback.seekByRatio(ratio)
-            },
+            onSeek: { ratio in playback.seekByRatio(ratio) },
             onToggleRemainingTime: {
                 // Write-through: the config subscription re-renders the
                 // bar, so there is nothing to flip locally.
@@ -96,7 +95,19 @@ struct NowPlayingBarContainer: View {
     /// services as stubs, a config store, and a `PlaybackStore` pre-seeded with
     /// a now-playing track and a queue so the bar renders a full playing state.
     #Preview("Playing") {
-        let store = PreviewData.queueStore(manualCount: 2)
+        let store = PreviewData.queueStore(
+            manualCount: 2,
+            trackPositions: .trackPositions(
+                holding: [
+                    "t-np": BridgeTrackPosition(
+                        positionMs: 55_500,
+                        durationMs: 222_000,
+                        progress: 0.25,
+                        seekRevision: 0
+                    )
+                ]
+            )
+        )
         store.play(
             track: BridgeNowPlayingTrack(
                 track: BridgePlayingTrack(
@@ -119,17 +130,6 @@ struct NowPlayingBarContainer: View {
             .environment(Playback.stub())
             .environment(Queue.stub())
             .environment(store)
-            .environment(
-                \.playbackPositionPublisher,
-                Just(
-                    PlaybackPositionEvent.position(
-                        progress: 0.25,
-                        positionMs: 55_500,
-                        durationMs: 222_000
-                    )
-                )
-                .eraseToAnyPublisher()
-            )
             .environment(UiStore())
             .environment(PreviewData.configStore())
             .environment(ImageStore.stub())

@@ -643,7 +643,8 @@ impl PlaybackService {
         audio_focus: crate::playback::AudioFocus,
     ) -> PlaybackHandle {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
+        let progress_handle =
+            PlaybackProgressHandle::new(progress_rx, runtime_handle.clone(), clock.clone());
         let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
         // Taken before the service runs, so no deletion lands unheard between.
         let track_deletions = library_manager.subscribe_track_deletions();

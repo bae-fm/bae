@@ -6,6 +6,7 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
+import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.KeyActivityCallback
 import uniffi.bae_bridge.KeyedValueStream
@@ -14,7 +15,8 @@ import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 // The one place the app touches the bridge's KeyedValueStream: values core
-// sends many times a second (transfer bytes and rates) arrive in a stream the
+// sends many times a second (transfer bytes and rates, the playing track's
+// position) arrive in a stream the
 // bridge holds and writes itself, and the only reader of a value is
 // FrameFollowing, which hands it to the View drawing that key once per
 // display frame. App code passes streams and sources around; it never holds a
@@ -28,9 +30,12 @@ import java.util.concurrent.ConcurrentHashMap
  * that nothing feeds.
  */
 class LatestStream<V : Any> private constructor(
-    private val preview: Map<String, V>?,
+    preview: Map<String, V>?,
     private val read: (BridgeFastValue) -> V?,
 ) {
+    /** A preview's or a test's values, which nothing feeds; null for a stream core feeds. */
+    private val preview: MutableMap<String, V>? = preview?.let { ConcurrentHashMap(it) }
+
     internal val activity = KeyActivity()
 
     @Volatile private var fed: KeyedValueStream? = null
@@ -45,6 +50,16 @@ class LatestStream<V : Any> private constructor(
             fed?.latest(key)?.let { value -> checkNotNull(read(value)) { "a stream was fed $value" } }
         }
 
+    /** A test's write of [key], telling the Views watching it when it starts or stops holding a value. */
+    internal fun write(
+        key: String,
+        value: V?,
+    ) {
+        val values = checkNotNull(preview) { "only a written stream is written" }
+        val held = if (value == null) values.remove(key) else values.put(key, value)
+        if ((held == null) != (value == null)) activity.onKeysChanged(listOf(key))
+    }
+
     /** Hold what [open] starts feeding, until the returned feed is cancelled. */
     internal fun fed(open: (KeyActivityCallback) -> KeyedValueStream): LatestFeed {
         check(preview == null && fed == null) { "a stream is fed twice" }
@@ -54,6 +69,9 @@ class LatestStream<V : Any> private constructor(
     }
 
     companion object {
+        /** A stream a test writes through [write], in place of core. */
+        internal fun <V : Any> written(): LatestStream<V> = LatestStream(emptyMap()) { null }
+
         /** The files being sent together, while any is; a preview's holds [value] and nothing feeds it. */
         fun uploadTotal(value: BridgeUploadTransfer? = null): LatestStream<BridgeUploadTransfer> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
@@ -63,6 +81,10 @@ class LatestStream<V : Any> private constructor(
         /** Each downloading release's bytes and rate, by release id; a preview's holds [values], fed by nothing. */
         fun downloads(values: Map<String, BridgeDownloadTransferProgress>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.Download)?.progress }
+
+        /** Where the playing track is, by track id; a preview's holds [values] and nothing feeds it. */
+        fun trackPositions(values: Map<String, BridgeTrackPosition>? = null) =
+            LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
     }
 }
 
@@ -81,6 +103,10 @@ fun LatestStream<BridgeUploadTransfer>.feed(
 /** Fill from core. */
 fun LatestStream<BridgeDownloadTransferProgress>.feed(appHandle: AppHandleInterface): LatestFeed =
     fed { appHandle.feedDownloadTransfers(it) }
+
+/** Fill from core. */
+@JvmName("feedTrackPositions")
+fun LatestStream<BridgeTrackPosition>.feed(appHandle: AppHandleInterface) = fed { appHandle.feedPlaybackPositions(it) }
 
 /** A fed stream's feed, which stops when cancelled; the stream then holds nothing. */
 class LatestFeed internal constructor(

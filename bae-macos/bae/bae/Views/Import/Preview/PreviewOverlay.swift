@@ -1,5 +1,4 @@
 import BaeKit
-import Combine
 import SwiftUI
 
 struct PreviewOverlay: View {
@@ -66,15 +65,8 @@ struct PreviewOverlay: View {
         .frame(width: 600, height: 400)
         .environment(PreviewAudio.stub())
         .environment(
-            \.previewProgressPublisher,
-            Just(
-                PlaybackPositionEvent.position(
-                    progress: 0.25,
-                    positionMs: 52_500,
-                    durationMs: 210_000
-                )
-            )
-            .eraseToAnyPublisher()
+            \.previewPosition,
+            PreviewData.previewPosition(positionMs: 52_500, durationMs: 210_000)
         )
         .windowBackground()
     }

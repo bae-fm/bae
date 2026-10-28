@@ -11,6 +11,7 @@ import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
+import fm.bae.app.data.LatestStream
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -26,14 +27,15 @@ import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
-import uniffi.bae_bridge.BridgePlaybackPosition
-import uniffi.bae_bridge.BridgePlaybackPositions
 import uniffi.bae_bridge.BridgePlaybackSourceKind
+import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeTimelinePoint
 import uniffi.bae_bridge.BridgeTrackDisplay
+import uniffi.bae_bridge.BridgeTrackPosition
 
 private const val TAG = "bae.BaeCorePlayer"
 private val logger = BaeLogger(TAG)
@@ -232,10 +234,10 @@ class BaeCorePlayer(
 
     private var lastSeekRevision: ULong = 0u
 
-    /** The latest library position core sent. Positions arrive on their own
+    /** The latest library line core's timeline told. It arrives on its own
      *  subscription, so one can come before the value that makes its track
      *  current; it is folded in once that track is. */
-    private var latestPosition: BridgePlaybackPosition? = null
+    private var latestLine: BridgeTimelinePoint? = null
     private var hasNext: Boolean = false
     private var hasPrevious: Boolean = false
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
@@ -258,8 +260,11 @@ class BaeCorePlayer(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _position = MutableStateFlow(PlaybackPosition(0.0, null, null))
-    val position: StateFlow<PlaybackPosition> = _position.asStateFlow()
+    /**
+     * Where the playing track is, by track id, for the View that draws it each
+     * display frame: the session's to feed.
+     */
+    val trackPositions: LatestStream<BridgeTrackPosition> = LatestStream.trackPositions()
 
     // The in-app queue; the current track is not in it.
     private val _queue = MutableStateFlow(QueueProjection.EMPTY)
@@ -318,7 +323,7 @@ class BaeCorePlayer(
                     false
                 }
             }
-        latestPosition
+        latestLine
             ?.takeIf { playingTrackId != previousTrackId && it.trackId == playingTrackId }
             ?.let { fold(it, seeked = false) }
         media3RepeatMode =
@@ -336,17 +341,19 @@ class BaeCorePlayer(
         }
     }
 
-    fun applyPositions(positions: BridgePlaybackPositions) {
-        val seeked = positions.seekRevision != lastSeekRevision
-        lastSeekRevision = positions.seekRevision
-        latestPosition = positions.library
-        val position = positions.library ?: return
-        when (fold(position, seeked)) {
-            // Media3 moves the position on from the state's playing speed, and a
-            // state that differs only in its position tells its listeners
-            // nothing; a seek is a jump it has to be told.
+    /**
+     * Fold core's latest line into Media3's position: Media3 moves the position
+     * on from the state's playing speed, so it is told only as playback leaves
+     * the line it holds, which is when core tells one.
+     */
+    fun applyTimeline(timeline: BridgePlaybackTimeline) {
+        val seeked = timeline.seekRevision != lastSeekRevision
+        lastSeekRevision = timeline.seekRevision
+        latestLine = timeline.library
+        val line = timeline.library ?: return
+        when (fold(line, seeked)) {
             PositionUpdate.Applied -> {
-                if (seeked) publish() else publishPosition()
+                publish()
             }
 
             PositionUpdate.HeldByPendingSeek -> {
@@ -354,22 +361,23 @@ class BaeCorePlayer(
             }
 
             PositionUpdate.StaleTrack -> {
-                logger.debug("not showing position of ${position.trackId}; playing $playingTrackId")
+                logger.debug("not showing position of ${line.trackId}; playing $playingTrackId")
             }
         }
     }
 
-    /** Fold [position] into the position model, as a seek's confirmation when [seeked]. */
+    /** Fold [line] into the position model, as a seek's confirmation when [seeked]. */
     private fun fold(
-        position: BridgePlaybackPosition,
+        line: BridgeTimelinePoint,
         seeked: Boolean,
     ): PositionUpdate {
-        val trackId = position.trackId
-        val durationMs = position.durationMs?.toLong()
+        val trackId = line.trackId
+        val positionMs = line.positionMs.toLong()
+        val durationMs = line.durationMs?.toLong()
         return if (seeked) {
-            positionModel.onSeeked(playingTrackId, trackId, position.positionMs, durationMs, position.progress)
+            positionModel.onSeeked(playingTrackId, trackId, positionMs, durationMs, line.moving)
         } else {
-            positionModel.onProgress(playingTrackId, trackId, position.positionMs, durationMs, position.progress)
+            positionModel.onProgress(playingTrackId, trackId, positionMs, durationMs, line.moving)
         }
     }
 
@@ -494,11 +502,6 @@ class BaeCorePlayer(
         upcoming.load(offset until minOf(offset + limit, upcoming.total))
     }
 
-    /** Refresh the in-app position alone, for a tick Media3 extrapolates itself. */
-    private fun publishPosition() {
-        _position.value = positionModel.position(hasCurrentTrack = currentMeta != null)
-    }
-
     /** Refresh the Media3 [State] and the in-app flows from the same fields. */
     private fun publish() {
         invalidateState()
@@ -515,7 +518,6 @@ class BaeCorePlayer(
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isLoading.value = transport == Transport.BUFFERING
-        _position.value = positionModel.position(hasCurrentTrack = currentMeta != null)
         _queue.value =
             QueueProjection(
                 manual = manualEntries,
@@ -551,7 +553,9 @@ class BaeCorePlayer(
             .setContentPositionMs(
                 PositionSupplier.getExtrapolating(
                     positionModel.effectivePositionMs.coerceAtLeast(0L),
-                    if (playbackState == Player.STATE_READY && playWhenReady) 1.0f else 0.0f,
+                    // Media3 moves the position on at this speed; through a
+                    // pregap the line stands at the track's start.
+                    if (playbackState == Player.STATE_READY && playWhenReady && positionModel.lineMoves) 1.0f else 0.0f,
                 ),
             ).build()
     }

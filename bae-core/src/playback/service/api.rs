@@ -500,6 +500,12 @@ impl PlaybackHandle {
         self.progress_handle.subscribe_positions()
     }
 
+    pub fn subscribe_timeline(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::playback::progress::PlaybackTimeline> {
+        self.progress_handle.subscribe_timeline()
+    }
+
     /// The queue as its screens show it, read after every command sent before
     /// this one has changed it.
     #[cfg(any(test, feature = "test-utils"))]

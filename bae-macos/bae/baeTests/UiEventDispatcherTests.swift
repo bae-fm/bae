@@ -76,27 +76,8 @@ struct AppServiceMediaControlTests {
         appService.startCommonSubscriptions()
 
         let state = playingState
-        let position = BridgePlaybackPosition(
-            trackId: "track-1",
-            positionMs: 30_000,
-            durationMs: 120_000,
-            progress: 0.25
-        )
-        let mediaPosition = BridgeMediaControlPosition(
-            trackId: "track-1",
-            positionMs: 30_000,
-            durationMs: 120_000,
-            progress: 0.25
-        )
         handle.deliverPlayback(playbackValues(state: state))
-        handle.deliverPositions(
-            BridgePlaybackPositions(
-                library: position,
-                seekRevision: 0,
-                preview: nil,
-                mediaControl: mediaPosition
-            )
-        )
+        handle.deliverTimeline(line(trackId: "track-1", positionMs: 30_000))
 
         try await Wait.until {
             infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
@@ -105,7 +86,7 @@ struct AppServiceMediaControlTests {
     }
 
     @Test(
-        "a position that comes before its track's value shows once that track does"
+        "a line that comes before its track's value shows once that track does"
     )
     func positionBeforeItsTrackShowsWithTheTrack() async throws {
         let infoCenter = MPNowPlayingInfoCenter.default()
@@ -122,38 +103,33 @@ struct AppServiceMediaControlTests {
             appService.stateForTesting.nowPlaying.track?.track.trackId
                 == "track-1"
         }
-        handle.deliverPositions(
-            BridgePlaybackPositions(
-                library: BridgePlaybackPosition(
-                    trackId: "track-2",
-                    positionMs: 30_000,
-                    durationMs: 120_000,
-                    progress: 0.25
-                ),
-                seekRevision: 0,
-                preview: nil,
-                mediaControl: BridgeMediaControlPosition(
-                    trackId: "track-2",
-                    positionMs: 30_000,
-                    durationMs: 120_000,
-                    progress: 0.25
-                )
-            )
-        )
+        handle.deliverTimeline(line(trackId: "track-2", positionMs: 30_000))
         handle.deliverPlayback(
             playbackValues(state: playing(trackId: "track-2"))
         )
 
         try await Wait.until {
-            guard
-                case .position(_, let positionMs, _) = appService
-                    .stateForTesting.playbackPosition
-            else {
-                return false
-            }
-            return positionMs == 30_000
+            infoCenter.nowPlayingInfo?[
+                MPNowPlayingInfoPropertyElapsedPlaybackTime
+            ] as? Double == 30.0
         }
     }
+}
+
+/// A library line core's timeline tells.
+private func line(trackId: String, positionMs: UInt64)
+    -> BridgePlaybackTimeline
+{
+    BridgePlaybackTimeline(
+        library: BridgeTimelinePoint(
+            trackId: trackId,
+            positionMs: positionMs,
+            durationMs: 120_000,
+            moving: true
+        ),
+        seekRevision: 0,
+        preview: nil
+    )
 }
 
 private func playing(trackId: String) -> BridgePlaybackValueState {
@@ -226,13 +202,17 @@ private let handledEvents: [BridgeUiEvent] = [
 
 // MARK: - Test doubles
 
+/// The instant the tests' Now Playing measures elapsed time against, which
+/// stands still, so an elapsed time reads what was written.
+private let fixedInstant = ContinuousClock.now
+
 @MainActor
 private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
     -> bae.AppService
 {
     bae.AppService(
         appHandle: handle,
-        mediaControlService: MediaControlService(),
+        mediaControlService: MediaControlService(now: { fixedInstant }),
         diagnostics: configureDiagnostics(
             config: .disabled,
             bugReporter: CoreBugReporter()
@@ -301,7 +281,7 @@ private var emptySeed: LibrarySessionSeed {
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private var queueCallback: (any QueueCallback)?
     private var playbackCallback: (any PlaybackValuesCallback)?
-    private var positionsCallback: (any PlaybackPositionsCallback)?
+    private var timelineCallback: (any PlaybackTimelineCallback)?
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -350,11 +330,17 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         return NoopLiveSubscription()
     }
 
-    override func subscribePlaybackPositions(
-        callback: any PlaybackPositionsCallback
+    override func subscribePlaybackTimeline(
+        callback: any PlaybackTimelineCallback
     ) -> LiveSubscription {
-        positionsCallback = callback
+        timelineCallback = callback
         return NoopLiveSubscription()
+    }
+
+    override func feedPlaybackPositions(
+        activity _: any KeyActivityCallback
+    ) -> KeyedValueStream {
+        NoopKeyedValueStream()
     }
 
     override func subscribeUploadsPaused(
@@ -422,8 +408,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         playbackCallback?.onValue(value: value)
     }
 
-    func deliverPositions(_ value: BridgePlaybackPositions) {
-        positionsCallback?.onValue(value: value)
+    func deliverTimeline(_ timeline: BridgePlaybackTimeline) {
+        timelineCallback?.onValue(timeline: timeline)
     }
 
 }

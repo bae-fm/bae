@@ -8,11 +8,12 @@ private let logger = Logger.bae("PlaybackStore")
 private let maximumUpcomingWindows = 3
 
 /// Mirror of core's playback state, written by the playback and queue
-/// subscriptions. Views read it and act through `appHandle`.
+/// subscriptions. Views read it and act through `appHandle`. Where the
+/// playing track is moves too often for it: the native views drawing that
+/// read `trackPositions` each display frame.
 ///
-/// Not `@MainActor` as a whole because `MediaControlService.handleScrub` calls
-/// `projectSeek` from a nonisolated callback; only the upcoming-read methods
-/// are, since the `Task` they start captures `self`.
+/// Not `@MainActor` as a whole; only the upcoming-read methods are, since
+/// the `Task` they start captures `self`.
 @Observable
 public class PlaybackStore {
     public private(set) var nowPlaying: NowPlaying = .stopped
@@ -54,38 +55,34 @@ public class PlaybackStore {
     /// Unread rows stay placeholders while it is set.
     public private(set) var upcomingFailure: DisplayError?
 
-    /// Sent through Combine rather than `@Observable` because it changes with
-    /// every position core sends; the views showing it subscribe and redraw
-    /// themselves, so no SwiftUI view re-evaluates for it.
-    @ObservationIgnored
-    private let playbackPositionSubject = CurrentValueSubject<
-        PlaybackPositionEvent, Never
-    >(.reset)
-    /// What `playbackPositionSubject` last sent, and whether it is a seek's
-    /// projection; read by the store alone, so no view observes it.
-    @ObservationIgnored
-    private var playbackPosition: PlaybackPositionState?
+    /// Where the playing track is, under its track id, for the native views
+    /// that read it each display frame.
+    public let trackPositions: LatestStream<BridgeTrackPosition>
 
     /// The count of tracks each add puts in the queue; drives the queue
     /// button's "+N" badge.
     @ObservationIgnored
     private let queueItemsAddedSubject = PassthroughSubject<Int, Never>()
 
-    public var playbackPositionPublisher:
-        AnyPublisher<PlaybackPositionEvent, Never>
-    {
-        playbackPositionSubject.eraseToAnyPublisher()
-    }
-
-    public var playbackPositionEvent: PlaybackPositionEvent {
-        playbackPositionSubject.value
-    }
-
     public var queueItemsAddedPublisher: AnyPublisher<Int, Never> {
         queueItemsAddedSubject.eraseToAnyPublisher()
     }
 
-    public init() {}
+    /// A store whose positions the subscription fills, or, for a preview,
+    /// fixed positions.
+    public init(
+        trackPositions: LatestStream<BridgeTrackPosition> = .trackPositions()
+    ) {
+        self.trackPositions = trackPositions
+    }
+
+    /// Where `trackId` is while it plays, for the native view drawing it;
+    /// `nil` while no track is.
+    public func trackPosition(forTrack trackId: String?)
+        -> LatestSource<BridgeTrackPosition>?
+    {
+        trackId.map { trackPositions.source(for: $0) }
+    }
 
     deinit {
         upcomingDeliveries?.cancel()
@@ -109,23 +106,18 @@ public class PlaybackStore {
 
     public func stop() {
         setNowPlaying(.stopped)
-        resetPlaybackPosition()
     }
 
     /// Enter loading for `trackId`, keeping the displayed track until
     /// `setLoadingTarget` brings the target's metadata; otherwise the
     /// now-playing bar would close on every track change.
     public func beginLoading(trackId: String) {
-        let previousTrackId = nowPlaying.track?.track.trackId
         setNowPlaying(
             .loading(
                 .unprepared(trackId: trackId),
                 previous: nowPlaying.track
             )
         )
-        if trackId != previousTrackId {
-            resetPlaybackPosition()
-        }
     }
 
     /// The target's metadata arrived. It applies when already loading this
@@ -157,121 +149,15 @@ public class PlaybackStore {
         track: BridgeNowPlayingTrack,
         reason: BridgePlaybackPauseReason
     ) {
-        preparePlaybackPosition(for: track)
         setNowPlaying(.paused(track, reason: reason))
     }
 
     public func play(track: BridgeNowPlayingTrack) {
-        preparePlaybackPosition(for: track)
         setNowPlaying(.playing(track))
-    }
-
-    @discardableResult
-    public func updatePlaybackProgress(
-        trackId: String,
-        positionMs: Int64,
-        durationMs: UInt64?,
-        progress: Double
-    ) -> PlaybackPositionSnapshot? {
-        guard acceptsPlaybackPosition(trackId: trackId) else {
-            return playbackPosition?.snapshot
-        }
-        if case .projected(let projected, let pendingSeek) = playbackPosition {
-            if pendingSeek.matches(trackId: trackId) {
-                return projected
-            }
-        }
-        return publishCurrentPosition(
-            positionMs: positionMs,
-            durationMs: durationMs,
-            progress: progress
-        )
-    }
-
-    @discardableResult
-    public func updatePlaybackSeeked(
-        trackId: String,
-        positionMs: Int64,
-        durationMs: UInt64?,
-        progress: Double
-    ) -> PlaybackPositionSnapshot? {
-        guard acceptsPlaybackPosition(trackId: trackId) else {
-            return playbackPosition?.snapshot
-        }
-        return publishCurrentPosition(
-            positionMs: positionMs,
-            durationMs: durationMs,
-            progress: progress
-        )
-    }
-
-    private func publishCurrentPosition(
-        positionMs: Int64,
-        durationMs: UInt64?,
-        progress: Double
-    ) -> PlaybackPositionSnapshot {
-        let snapshot = PlaybackPositionSnapshot(
-            positionMs: positionMs,
-            durationMs: durationMs,
-            progress: progress
-        )
-        return publish(snapshot, state: .current(snapshot))
-    }
-
-    private func acceptsPlaybackPosition(trackId: String) -> Bool {
-        guard let currentTrackId = nowPlaying.track?.track.trackId,
-            currentTrackId != trackId
-        else {
-            return true
-        }
-        // Positions arrive on their own subscription, so one for the next
-        // track can come before the value that shows it, and one for the
-        // last track after; `PlaybackValueHandler` offers the next track's
-        // again once it shows.
-        logger.debug(
-            "not showing playback position for \(trackId); current track is \(currentTrackId)"
-        )
-        return false
-    }
-
-    @discardableResult
-    public func projectSeek(ratio: Double) -> PlaybackPositionSnapshot? {
-        guard let currentPosition = playbackPosition?.snapshot,
-            let durationMs = currentPosition.durationMs
-        else {
-            logger.warning(
-                "Seek projection ignored for ratio \(ratio): no known playback duration"
-            )
-            return nil
-        }
-        let clampedRatio = min(1.0, max(0.0, ratio))
-        let targetPositionMs = Int64(
-            (clampedRatio * Double(durationMs)).rounded()
-        )
-        let snapshot = PlaybackPositionSnapshot(
-            positionMs: targetPositionMs,
-            durationMs: currentPosition.durationMs,
-            progress: clampedRatio
-        )
-        let pendingSeek = PendingSeek(
-            trackId: nowPlaying.track?.track.trackId
-        )
-        return publish(snapshot, state: .projected(snapshot, pendingSeek))
-    }
-
-    public func resetPlaybackPosition() {
-        playbackPosition = nil
-        playbackPositionSubject.send(.reset)
     }
 
     func publishQueueItemsAdded(_ count: Int) {
         queueItemsAddedSubject.send(count)
-    }
-
-    private func preparePlaybackPosition(for track: BridgeNowPlayingTrack) {
-        if track.track.trackId != nowPlaying.track?.track.trackId {
-            playbackPosition = playbackPosition?.withoutProjection
-        }
     }
 
     private func setNowPlaying(_ next: NowPlaying) {
@@ -279,15 +165,6 @@ public class PlaybackStore {
             dismissedSidePausePromptId = nil
         }
         nowPlaying = next
-    }
-
-    private func publish(
-        _ snapshot: PlaybackPositionSnapshot,
-        state: PlaybackPositionState
-    ) -> PlaybackPositionSnapshot {
-        playbackPosition = state
-        playbackPositionSubject.send(snapshot.event)
-        return snapshot
     }
 }
 
@@ -456,30 +333,6 @@ extension PlaybackStore {
         if index < range.lowerBound { return range.lowerBound - index }
         if index >= range.upperBound { return index - range.upperBound + 1 }
         return 0
-    }
-}
-
-private enum PlaybackPositionState {
-    case current(PlaybackPositionSnapshot)
-    case projected(PlaybackPositionSnapshot, PendingSeek)
-
-    var snapshot: PlaybackPositionSnapshot {
-        switch self {
-        case .current(let snapshot), .projected(let snapshot, _):
-            snapshot
-        }
-    }
-
-    var withoutProjection: PlaybackPositionState {
-        .current(snapshot)
-    }
-}
-
-private struct PendingSeek {
-    let trackId: String?
-
-    func matches(trackId: String) -> Bool {
-        self.trackId == nil || self.trackId == trackId
     }
 }
 

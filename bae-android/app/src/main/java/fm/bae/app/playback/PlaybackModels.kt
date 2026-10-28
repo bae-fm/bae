@@ -39,17 +39,6 @@ data class SidePausePrompt(
     }
 }
 
-/**
- * The seek bar's position: [progress] in [0,1] for the slider, and milliseconds
- * the bar turns into clock labels through the bridge. [positionMs] is null when
- * nothing is playing; [durationMs] is null when the length is unknown.
- */
-data class PlaybackPosition(
-    val progress: Double,
-    val positionMs: Long?,
-    val durationMs: Long?,
-)
-
 /** The release or library the queue plays from, and the not-yet-played tracks after the current
  *  one: [upcomingTotal] of them, of which [upcoming] holds those read through
  *  [BaeCorePlayer.loadUpcomingRange], keyed by index in the whole tail. */

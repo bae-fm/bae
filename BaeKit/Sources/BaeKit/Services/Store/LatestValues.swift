@@ -7,7 +7,7 @@ import os
 
 // The one place the app touches the bridge's `KeyedValueStream`: values core
 // sends many times a second (transfer bytes and rates, file shares, export
-// percents) arrive in a stream the bridge holds and writes itself, and the
+// percents, playback and preview positions) arrive in a stream the bridge holds and writes itself, and the
 // only reader of a value is `FrameFollowing`, which hands it to the native
 // view drawing that key once per display frame. App code passes streams and
 // sources around; it never holds a value, so nothing SwiftUI observes can
@@ -24,17 +24,29 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         case fed(KeyedValueStream)
     }
 
+    /// A value the app shows in place of a key's own, while each value of
+    /// the key's own leaves it standing.
+    private struct Hold: Sendable {
+        let value: Value
+        let stands: @Sendable (Value) -> Bool
+    }
+
     fileprivate let activity = KeyActivity()
     private let read: @Sendable (BridgeFastValue) -> Value?
     private let backing: OSAllocatedUnfairLock<Backing>
+    private let holds = OSAllocatedUnfairLock<[String: Hold]>(
+        initialState: [:]
+    )
 
     private init(
         holding values: [String: Value],
+        written: Bool = false,
         read: @escaping @Sendable (BridgeFastValue) -> Value?
     ) {
         self.read = read
         backing = OSAllocatedUnfairLock(
-            uncheckedState: values.isEmpty ? .unfed : .preview(values)
+            uncheckedState: values.isEmpty && !written
+                ? .unfed : .preview(values)
         )
     }
 
@@ -43,7 +55,30 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         LatestSource(stream: self, key: key)
     }
 
+    /// The key's latest value: one the app holds in front of it while it
+    /// stands, else the key's own.
     fileprivate func latest(for key: String) -> Value? {
+        let own = own(for: key)
+        return holds.withLock { holds in
+            guard let hold = holds[key] else { return own }
+            if let own, hold.stands(own) { return hold.value }
+            holds[key] = nil
+            return own
+        }
+    }
+
+    /// Show `value` for `key` in place of its own, until one of its own
+    /// values does not leave it `standing`; a key holding none drops it.
+    fileprivate func hold(
+        _ value: Value,
+        for key: String,
+        while standing: @escaping @Sendable (Value) -> Bool
+    ) {
+        holds.withLock { $0[key] = Hold(value: value, stands: standing) }
+    }
+
+    /// What the key's feed, or the preview, holds for it.
+    fileprivate func own(for key: String) -> Value? {
         switch backing.withLockUnchecked({ $0 }) {
         case .unfed:
             return nil
@@ -77,6 +112,56 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         return LatestFeed(stream: stream)
     }
 }
+
+#if DEBUG
+    /// A test's writing of a stream that nothing feeds, in place of core: a
+    /// key starting or stopping is told, a value moving is read on the next
+    /// frame, as from a fed stream.
+    public final class LatestTestWriter<Value: Sendable & Equatable>: Sendable {
+        public let stream: LatestStream<Value>
+
+        fileprivate init(stream: LatestStream<Value>) {
+            self.stream = stream
+        }
+
+        /// Set `key`'s value; a stream that holds one value holds it under
+        /// `""`.
+        public func set(_ value: Value, for key: String = "") {
+            stream.write(key) { $0[key] = value }
+        }
+
+        public func remove(_ key: String = "") {
+            stream.write(key) { $0.removeValue(forKey: key) }
+        }
+    }
+
+    extension LatestStream {
+        /// A stream a test writes, through the writer it hands back.
+        public static func written() -> LatestTestWriter<Value> {
+            LatestTestWriter(
+                stream: LatestStream(holding: [:], written: true) { _ in nil }
+            )
+        }
+
+        fileprivate func write(
+            _ key: String,
+            _ change: (inout [String: Value]) -> Void
+        ) {
+            let started = backing.withLockUnchecked { backing in
+                guard case .preview(var values) = backing else {
+                    preconditionFailure("only a written stream is written")
+                }
+                let held = values[key] != nil
+                change(&values)
+                backing = .preview(values)
+                return held != (values[key] != nil)
+            }
+            if started {
+                activity.onKeysChanged(keys: [key])
+            }
+        }
+    }
+#endif
 
 /// A fed stream's feed, which stops when it is cancelled or dropped; the
 /// stream then holds nothing.
@@ -143,9 +228,6 @@ extension LatestStream where Value == BridgeUploadTransfer {
             }
         }
     }
-
-    /// The stream's one value, for the native view that draws it.
-    public var only: LatestSource<Value> { source(for: onlyKey) }
 
     /// Fill from core, telling `onError` each failed read.
     public func feed(
@@ -230,6 +312,89 @@ extension LatestStream where Value == UInt8 {
         /// Fill from core.
         public func feed(from appHandle: AppHandle) -> LatestFeed {
             fed { appHandle.feedExportPercents(activity: $0) }
+        }
+    #endif
+}
+
+extension LatestStream {
+    /// The value of a stream that holds one, for the native view that draws
+    /// it.
+    public var only: LatestSource<Value> { source(for: onlyKey) }
+}
+
+extension LatestStream where Value == BridgeTrackPosition {
+    /// Where the playing track is, under its track id; a preview's holds
+    /// `values` and nothing feeds it.
+    public static func trackPositions(holding values: [String: Value] = [:])
+        -> LatestStream
+    {
+        LatestStream(holding: values) {
+            if case .trackPosition(let position) = $0 {
+                position
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill from core.
+    public func feed(from appHandle: AppHandle) -> LatestFeed {
+        fed { appHandle.feedPlaybackPositions(activity: $0) }
+    }
+
+    /// Show `key` at `progress` of its length, as the seek the person just
+    /// made there, until a position of a later applied seek arrives, for
+    /// every view drawing that track. Nothing while the key holds no
+    /// position of a known length.
+    fileprivate func holdSeek(_ key: String, at progress: Double) {
+        guard let current = own(for: key),
+            let durationMs = current.durationMs
+        else {
+            return
+        }
+        let progress = max(0, min(1, progress))
+        let seekRevision = current.seekRevision
+        hold(
+            BridgeTrackPosition(
+                positionMs: Int64(progress * Double(durationMs)),
+                durationMs: durationMs,
+                progress: progress,
+                seekRevision: seekRevision
+            ),
+            for: key
+        ) { $0.seekRevision == seekRevision }
+    }
+}
+
+extension LatestSource where Value == BridgeTrackPosition {
+    /// Show this track at `progress` of its length, as the seek the person
+    /// just made, until core has applied it.
+    public func holdSeek(at progress: Double) {
+        stream.holdSeek(key, at: progress)
+    }
+}
+
+extension LatestStream where Value == BridgePreviewPosition {
+    /// Where the preview is in its clip, while one is loaded; a preview's
+    /// holds `value` and nothing feeds it.
+    public static func previewPosition(holding value: Value? = nil)
+        -> LatestStream
+    {
+        LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+            if case .previewPosition(let position) = $0 {
+                position
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    #if os(macOS)
+        /// Fill from core.
+        public func feed(from appHandle: AppHandle) -> LatestFeed {
+            fed { appHandle.feedPreviewPosition(activity: $0) }
         }
     #endif
 }
@@ -326,7 +491,7 @@ private final class StreamFailureSink: StreamFailureCallback, Sendable {
         private var watch: KeyActivity.Watch?
         private var link: CADisplayLink?
         private lazy var ticker = FrameTicker { [weak self] in
-            self?.showLatest()
+            self?.frame()
         }
         /// What was last shown; `.none` until something is.
         private var shown: Value??
@@ -376,6 +541,15 @@ private final class StreamFailureSink: StreamFailureCallback, Sendable {
                 link?.invalidate()
                 link = nil
             }
+        }
+
+        /// One display frame, as the display link runs it: show the key's
+        /// latest value if it changed. A view runs one itself to show at once
+        /// what it just did to the key, such as a seek; a test's hosted
+        /// window is past every display, where no link runs, so the test
+        /// runs its frames itself.
+        public func frame() {
+            showLatest()
         }
 
         /// Show the key's latest value if it changed, and answer it.

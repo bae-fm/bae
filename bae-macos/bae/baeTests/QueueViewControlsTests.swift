@@ -78,6 +78,7 @@ struct QueueViewControlsTests {
         try await SnapshotTestSupport.withHostedWindow(
             QueueView(
                 isActive: store.nowPlaying.isActive,
+                nowPlayingTrackId: store.nowPlaying.track?.track.trackId,
                 nowPlayingTitle: store.nowPlaying.track?.display.title,
                 nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,

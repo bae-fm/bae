@@ -38,20 +38,4 @@ final class DesktopEventHandler {
         guard importStore.previewState != state else { return }
         importStore.previewState = state
     }
-
-    /// Show where the preview is in its clip, or clear the bar while no
-    /// preview is loaded.
-    func applyPreviewPosition(_ position: BridgePreviewPosition?) {
-        guard let position else {
-            importStore.previewProgressSubject.send(.reset)
-            return
-        }
-        importStore.previewProgressSubject.send(
-            .position(
-                progress: position.progress,
-                positionMs: Int64(position.positionMs),
-                durationMs: position.durationMs
-            )
-        )
-    }
 }

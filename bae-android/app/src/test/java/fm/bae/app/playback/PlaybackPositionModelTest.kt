@@ -8,40 +8,40 @@ class PlaybackPositionModelTest {
     @Test
     fun inTrackSeekProjectsDroppedPositionUntilSeekedCatchesUp() {
         val model = playingModel(durationMs = 100_000)
-        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 10_000, progress = 0.10))
-        assertPosition(model, progress = 0.10, positionMs = 10_000, durationMs = 100_000)
+        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 10_000))
+        assertPosition(model, positionMs = 10_000, durationMs = 100_000)
 
         val ratio = model.beginInTrackSeek(TRACK, requestedPositionMs = 75_000)
         assertEquals(0.75, ratio!!, 0.0)
         assertEquals(75_000, model.effectivePositionMs)
-        assertPosition(model, progress = 0.75, positionMs = 75_000, durationMs = 100_000)
+        assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
         // Live progress is held by the projection until core confirms the seek.
-        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 20_000, progress = 0.20))
-        assertPosition(model, progress = 0.75, positionMs = 75_000, durationMs = 100_000)
+        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 20_000))
+        assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
         // Progress overshooting the target is still held until the seek confirms.
-        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 80_000, progress = 0.80))
-        assertPosition(model, progress = 0.75, positionMs = 75_000, durationMs = 100_000)
+        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 80_000))
+        assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
-        assertEquals(PositionUpdate.Applied, model.seeked(positionMs = 75_000, progress = 0.75))
-        assertPosition(model, progress = 0.75, positionMs = 75_000, durationMs = 100_000)
+        assertEquals(PositionUpdate.Applied, model.seeked(positionMs = 75_000))
+        assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
         // With the seek confirmed, live progress advances the anchor again.
-        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 80_000, progress = 0.80))
-        assertPosition(model, progress = 0.80, positionMs = 80_000, durationMs = 100_000)
+        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 80_000))
+        assertPosition(model, positionMs = 80_000, durationMs = 100_000)
     }
 
     @Test
     fun backwardSeekHoldsStaleForwardProgress() {
         val model = playingModel(durationMs = 100_000)
-        model.progress(positionMs = 80_000, progress = 0.80)
+        model.progress(positionMs = 80_000)
 
         assertEquals(0.25, model.beginInTrackSeek(TRACK, requestedPositionMs = 25_000)!!, 0.0)
-        assertPosition(model, progress = 0.25, positionMs = 25_000, durationMs = 100_000)
+        assertPosition(model, positionMs = 25_000, durationMs = 100_000)
 
-        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 82_000, progress = 0.82))
-        assertPosition(model, progress = 0.25, positionMs = 25_000, durationMs = 100_000)
+        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 82_000))
+        assertPosition(model, positionMs = 25_000, durationMs = 100_000)
     }
 
     @Test
@@ -51,7 +51,7 @@ class PlaybackPositionModelTest {
 
         model.setActiveTrack(trackChanged = false, durationMs = 100_000)
 
-        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 20_000, progress = 0.20))
+        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 20_000))
         assertEquals(75_000, model.effectivePositionMs)
     }
 
@@ -63,14 +63,14 @@ class PlaybackPositionModelTest {
         model.setActiveTrack(trackChanged = true, durationMs = 100_000)
 
         // The seek projection is gone, so live progress applies immediately.
-        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 20_000, progress = 0.20))
+        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 20_000))
         assertEquals(20_000, model.effectivePositionMs)
     }
 
     @Test
     fun seekWithoutDurationIsIgnored() {
         val model = playingModel(durationMs = null)
-        model.progress(positionMs = 10_000, durationMs = null, progress = 0.0)
+        model.progress(positionMs = 10_000, durationMs = null)
 
         assertNull(model.beginInTrackSeek(TRACK, requestedPositionMs = 75_000))
         // No projection formed, so the anchor stays where the last progress left it.
@@ -94,11 +94,11 @@ class PlaybackPositionModelTest {
 
         assertEquals(
             PositionUpdate.StaleTrack,
-            model.onProgress(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, progress = 0.30),
+            model.onProgress(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, moving = true),
         )
         assertEquals(
             PositionUpdate.StaleTrack,
-            model.onSeeked(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, progress = 0.30),
+            model.onSeeked(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, moving = true),
         )
         // A stale update never moved the anchor.
         assertEquals(0, model.effectivePositionMs)
@@ -110,32 +110,20 @@ class PlaybackPositionModelTest {
 
         assertEquals(
             PositionUpdate.Applied,
-            model.onProgress(currentTrackId = null, trackId = TRACK, positionMs = 30_000, durationMs = 100_000, progress = 0.30),
+            model.onProgress(currentTrackId = null, trackId = TRACK, positionMs = 30_000, durationMs = 100_000, moving = true),
         )
         assertEquals(30_000, model.effectivePositionMs)
     }
 
     @Test
-    fun unknownDurationUsesRawProgressForSlider() {
-        val model = playingModel(durationMs = null)
-        model.progress(positionMs = 10_000, durationMs = null, progress = 0.33)
-
-        val position = model.position(hasCurrentTrack = true)
-        assertEquals(0.33, position.progress, 0.0)
-        assertEquals(10_000L, position.positionMs)
-        assertNull(position.durationMs)
-    }
-
-    @Test
     fun resetClearsPositionState() {
         val model = playingModel(durationMs = 100_000)
-        model.progress(positionMs = 25_000, progress = 0.25)
+        model.progress(positionMs = 25_000)
 
         model.reset()
 
         assertEquals(0, model.effectivePositionMs)
         assertNull(model.durationMs)
-        assertPosition(model, progress = 0.0, positionMs = 0, durationMs = null, hasCurrentTrack = false)
     }
 
     private fun playingModel(durationMs: Long?): PlaybackPositionModel =
@@ -144,27 +132,19 @@ class PlaybackPositionModelTest {
     private fun PlaybackPositionModel.progress(
         positionMs: Long,
         durationMs: Long? = 100_000,
-        progress: Double,
-    ): PositionUpdate =
-        onProgress(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = durationMs, progress = progress)
+    ): PositionUpdate = onProgress(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = durationMs, moving = true)
 
-    private fun PlaybackPositionModel.seeked(
-        positionMs: Long,
-        progress: Double,
-    ): PositionUpdate =
-        onSeeked(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = 100_000, progress = progress)
+    private fun PlaybackPositionModel.seeked(positionMs: Long): PositionUpdate =
+        onSeeked(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = 100_000, moving = true)
 
+    /** Where the model puts Media3's position, and the length it holds. */
     private fun assertPosition(
         model: PlaybackPositionModel,
-        progress: Double,
         positionMs: Long,
         durationMs: Long?,
-        hasCurrentTrack: Boolean = true,
     ) {
-        val position = model.position(hasCurrentTrack)
-        assertEquals(progress, position.progress, 0.0)
-        assertEquals(if (hasCurrentTrack) positionMs else null, position.positionMs)
-        assertEquals(if (hasCurrentTrack) durationMs else null, position.durationMs)
+        assertEquals(positionMs, model.effectivePositionMs)
+        assertEquals(durationMs, model.durationMs)
     }
 
     private companion object {
