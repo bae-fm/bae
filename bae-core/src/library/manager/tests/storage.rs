@@ -778,6 +778,7 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
                 queued: 2,
                 uploading: 0
             },
+            stored: 0,
             bar: None,
         })
     );

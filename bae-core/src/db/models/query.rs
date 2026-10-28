@@ -351,6 +351,8 @@ pub struct DbReleaseSummary {
 pub struct DbReleaseUpload {
     pub queued: i64,
     pub sending: i64,
+    /// How many of the release's files are stored: those not queued.
+    pub stored: i64,
     pub bytes_done: i64,
     pub bytes_total: i64,
 }

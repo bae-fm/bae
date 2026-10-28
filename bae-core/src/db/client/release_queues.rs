@@ -268,8 +268,7 @@ fn release_queue_counts_on<P: QueuedPayload>(
     })
 }
 
-/// `release_id`'s entries in the download and export queues, and whether
-/// each queue is paused.
+/// `release_id`'s entries in the download and export queues.
 #[cfg(desktop)]
 fn release_queue_entries_on(
     sql: &SqlReadContext<'_>,
@@ -282,12 +281,7 @@ fn release_queue_entries_on(
         ),
         None => (None, None),
     };
-    Ok(crate::library::ReleaseQueueEntries {
-        download,
-        downloads_paused: paused_on(sql, <() as QueuedPayload>::QUEUE)?,
-        output,
-        outputs_paused: paused_on(sql, OutputRequest::QUEUE)?,
-    })
+    Ok(crate::library::ReleaseQueueEntries { download, output })
 }
 
 /// The download queue's phase for `release_id`, `None` when it is not

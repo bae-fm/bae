@@ -122,15 +122,13 @@ pub struct ReleaseQueueWindows<Extra> {
     pub total_count: u64,
 }
 
-/// One release's entries in the download and export queues, and whether each
-/// queue is paused: what the storage inspector shows of the release.
+/// One release's entries in the download and export queues: what the
+/// storage inspector shows of the release.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueEntries {
     pub download: Option<super::DownloadRow>,
-    pub downloads_paused: bool,
     pub output: Option<super::OutputPhaseRow>,
-    pub outputs_paused: bool,
 }
 
 impl<Extra> ReleaseQueueSnapshot<Extra, ()> {

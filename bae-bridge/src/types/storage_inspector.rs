@@ -34,16 +34,13 @@ pub struct BridgeFileUpload {
 pub enum BridgeStorageInspectorTransfer {
     Download {
         operation: BridgeDownloadOp,
-        paused: bool,
     },
     Output {
         operation: BridgeOutputOp,
-        paused: bool,
     },
     /// The release's files waiting in this device's upload queue.
     Upload {
         release_id: String,
         upload: super::BridgeReleaseUpload,
-        paused: bool,
     },
 }

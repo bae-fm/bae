@@ -189,8 +189,8 @@ async fn inspector_until(
 }
 
 /// The Storage Manager inspector shows each of its release's files beside
-/// its upload while one waits, whether the queue is paused, and the error a
-/// failed upload met while this process holds it.
+/// its upload while one waits, and the error a failed upload met while this
+/// process holds it.
 #[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_upload_and_its_error() {
@@ -207,7 +207,7 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
     .await;
     assert!(waiting.transfers.iter().any(|transfer| matches!(
         transfer,
-        StorageInspectorTransfer::Upload { paused: true, .. }
+        StorageInspectorTransfer::Upload { .. }
     )));
 
     // The upload can't read a source that moved, so it waits on the file

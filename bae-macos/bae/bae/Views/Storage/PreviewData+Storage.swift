@@ -175,6 +175,7 @@
                     uploading: 1,
                     activity: .uploading
                 ),
+                stored: 0,
                 bar: BridgeUploadBar(
                     bytesDone: 12_400_000,
                     bytesTotal: 36_400_000
@@ -208,6 +209,7 @@
                     uploading: 0,
                     activity: .queued
                 ),
+                stored: 0,
                 bar: nil
             ),
             files: [
@@ -229,6 +231,7 @@
                     uploading: 0,
                     activity: .queued
                 ),
+                stored: 0,
                 bar: nil
             ),
             files: [
@@ -533,7 +536,7 @@
         }
 
         /// What core's inspector read delivers for `release` beside its
-        /// queue entries, every queue running. The fixture uploads name no
+        /// queue entries. The fixture uploads name no
         /// release file, so they list after the release's files.
         private static func storageInspector(
             release: BridgeRelease,
@@ -543,17 +546,16 @@
         ) -> BridgeStorageInspector {
             var transfers: [BridgeStorageInspectorTransfer] = []
             if let download {
-                transfers.append(.download(operation: download, paused: false))
+                transfers.append(.download(operation: download))
             }
             if let output {
-                transfers.append(.output(operation: output, paused: false))
+                transfers.append(.output(operation: output))
             }
             if let upload {
                 transfers.append(
                     .upload(
                         releaseId: upload.releaseId,
-                        upload: upload.upload,
-                        paused: false
+                        upload: upload.upload
                     )
                 )
             }

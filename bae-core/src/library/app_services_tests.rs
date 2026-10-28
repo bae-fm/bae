@@ -408,8 +408,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
 }
 
 /// The inspector reads the release it is set to in core: its entry in each
-/// queue beside that queue's pause state, and nothing of a release the
-/// library does not hold.
+/// queue, and nothing of a release the library does not hold.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[tokio::test(flavor = "multi_thread")]
 async fn the_storage_inspector_reads_the_release_it_is_set_to() {
@@ -439,15 +438,13 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
             break value;
         }
     };
-    let [StorageInspectorTransfer::Output { operation, paused }] = shown.transfers.as_slice()
-    else {
+    let [StorageInspectorTransfer::Output { operation }] = shown.transfers.as_slice() else {
         panic!(
             "only the export queue holds the release: {:?}",
             shown.transfers
         );
     };
     assert_eq!(operation.op.release_id, release_id);
-    assert!(*paused, "the export queue's own pause state");
     assert!(shown.files.is_empty(), "the seeded release has no files");
 
     let missing = "f0a5c8e2-7d61-4b9e-a3c4-1e2d3f4a5b6c";

@@ -162,6 +162,12 @@ KEYED_STREAMS = (
         "now, which core sends as it moves and keeps in no table",
     ),
     KeyedStream(
+        "OutboxStore",
+        "throughput",
+        "how fast a release's or a file's upload goes, which core measures "
+        "from confirmed parts and keeps in no table",
+    ),
+    KeyedStream(
         "DownloadStore",
         "transfer",
         "the bytes a release's download has moved, which core sends as they "

@@ -50,12 +50,13 @@ pub(super) const RELEASES_SENDING: &str = concat!(
 
 /// The columns a release's upload reads beside `release_listing listing`
 /// joined to [`RELEASES_SENDING`] as `sending`, which
-/// [`release_upload_in_row`] maps: how many of its files wait and how many
-/// are being sent, and of its whole size, the bytes of its files stored and
+/// [`release_upload_in_row`] maps: how many of its files wait, how many are
+/// being sent and how many are stored, and of its whole size, the bytes of its files stored and
 /// those sent of the files being sent. The files queued are read only for a
 /// release with any.
 pub(super) const RELEASE_UPLOAD_COLUMNS: &str = "listing.queued_count AS queued_count, \
      COALESCE(sending.files, 0) AS sending_files, \
+     listing.file_count - listing.queued_count AS stored_files, \
      CASE WHEN listing.queued_count > 0 THEN listing.total_size \
          - (SELECT SUM(f.file_size) FROM release_files AS f \
             JOIN coven_upload_queue AS queued \
@@ -74,6 +75,7 @@ pub(super) fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<Db
     Ok(Some(DbReleaseUpload {
         queued,
         sending: row.get("sending_files")?,
+        stored: row.get("stored_files")?,
         bytes_done: row.get("upload_bytes_done")?,
         bytes_total: row.get("upload_bytes_total")?,
     }))

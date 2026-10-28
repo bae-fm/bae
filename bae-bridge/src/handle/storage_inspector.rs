@@ -24,22 +24,15 @@ impl crate::types::BridgeStorageInspectorTransfer {
     fn from_core(transfer: bae_core::library::storage_inspector::StorageInspectorTransfer) -> Self {
         use bae_core::library::storage_inspector::StorageInspectorTransfer;
         match transfer {
-            StorageInspectorTransfer::Download { operation, paused } => Self::Download {
+            StorageInspectorTransfer::Download { operation } => Self::Download {
                 operation: crate::types::BridgeDownloadOp::from_core(operation),
-                paused,
             },
-            StorageInspectorTransfer::Output { operation, paused } => Self::Output {
+            StorageInspectorTransfer::Output { operation } => Self::Output {
                 operation: crate::types::BridgeOutputOp::from_core(operation),
-                paused,
             },
-            StorageInspectorTransfer::Upload {
-                release_id,
-                upload,
-                paused,
-            } => Self::Upload {
+            StorageInspectorTransfer::Upload { release_id, upload } => Self::Upload {
                 release_id,
                 upload: crate::types::BridgeReleaseUpload::from_core(upload),
-                paused,
             },
         }
     }

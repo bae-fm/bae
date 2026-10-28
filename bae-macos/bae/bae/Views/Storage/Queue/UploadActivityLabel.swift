@@ -12,13 +12,6 @@ struct UploadActivityLabel: View {
         text = activity.phaseText
     }
 
-    /// The phase with how many files are in it ("2 uploading"), above the
-    /// list of those files.
-    init(fileCountOf progress: BridgeUploadProgress) {
-        activity = progress.heldActivity
-        text = progress.fileCountText
-    }
-
     var body: some View {
         StatusChip(
             verbatim: text,

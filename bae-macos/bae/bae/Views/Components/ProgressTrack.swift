@@ -147,17 +147,21 @@ struct ProgressTrackBar: NSViewRepresentable {
     private var colorScheme
     /// 0...1 for a determinate fill; nil for the indeterminate marching pill.
     var progress: Double?
+    /// The fill's colour, where the bar stands for one kind of transfer;
+    /// `nil` fills with the window's accent.
+    var tint: Color?
 
     func makeNSView(context _: Context) -> ProgressTrackNSView {
-        ProgressTrackNSView(
-            progress: progress,
-            accent: NSColor(accent.color(in: colorScheme))
-        )
+        ProgressTrackNSView(progress: progress, accent: fill)
     }
 
     func updateNSView(_ view: ProgressTrackNSView, context _: Context) {
-        view.accent = NSColor(accent.color(in: colorScheme))
+        view.accent = fill
         view.progress = progress
+    }
+
+    private var fill: NSColor {
+        NSColor(tint ?? accent.color(in: colorScheme))
     }
 
     func sizeThatFits(

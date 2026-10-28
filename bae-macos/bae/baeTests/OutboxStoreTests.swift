@@ -87,6 +87,7 @@ struct StorageUploadPresentationTests {
                 uploading: uploading,
                 activity: uploading > 0 ? .uploading : .queued
             ),
+            stored: 0,
             bar: bar
         )
     }
@@ -128,17 +129,6 @@ struct StorageUploadPresentationTests {
         #expect(observation.progressDetailText?.contains(done) == true)
         #expect(observation.progressDetailText?.contains(total) == true)
         #expect(observation.throughputText == nil)
-    }
-
-    @Test("a release's file list summary counts the files in its phase")
-    func fileListSummaryCountsFiles() {
-        let progress = BridgeUploadProgress(
-            queued: 3,
-            uploading: 2,
-            activity: .uploading
-        )
-
-        #expect(progress.fileCountText == "2 uploading")
     }
 
     /// Queued files nothing is moving, as with no storage connected, would

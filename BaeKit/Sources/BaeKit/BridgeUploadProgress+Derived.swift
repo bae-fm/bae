@@ -19,15 +19,6 @@ extension BridgeUploadProgress {
         return activity
     }
 
-    /// The phase with how many files are in it ("2 uploading"), for a line
-    /// that summarizes a list of those files.
-    public var fileCountText: String {
-        switch heldActivity {
-        case .uploading:
-            QueueSummary.countLabel("core.queue.uploading", uploading)
-        case .queued: QueueSummary.countLabel("core.queue.queued", queued)
-        }
-    }
 }
 
 extension BridgeUploadBar {

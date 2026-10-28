@@ -625,6 +625,7 @@ impl crate::types::BridgeReleaseUpload {
     pub(super) fn from_core(upload: bae_core::album_detail::ReleaseUpload) -> Self {
         Self {
             progress: crate::types::BridgeUploadProgress::from_core(upload.progress),
+            stored: upload.stored,
             bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
         }
     }

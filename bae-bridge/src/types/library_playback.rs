@@ -359,6 +359,8 @@ pub struct BridgeReleaseSummary {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeReleaseUpload {
     pub progress: crate::types::BridgeUploadProgress,
+    /// How many of the release's files are stored already.
+    pub stored: u32,
     pub bar: Option<crate::types::BridgeUploadBar>,
 }
 

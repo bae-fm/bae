@@ -36,23 +36,20 @@ pub struct StorageInspectorUpload {
     pub bar: Option<UploadBar>,
 }
 
-/// The release's entry in one transfer queue, beside whether that queue is
-/// paused: each queue has its own pause state.
+/// The release's entry in one transfer queue. Pausing a whole queue is the
+/// Storage Manager's footer's, not the release's.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StorageInspectorTransfer {
     Download {
         operation: DownloadRow,
-        paused: bool,
     },
     Output {
         operation: OutputPhaseRow,
-        paused: bool,
     },
     /// The release's files waiting in this device's upload queue.
     Upload {
         release_id: String,
         upload: ReleaseUpload,
-        paused: bool,
     },
 }
 
@@ -84,32 +81,27 @@ impl StorageInspector {
 }
 
 /// The release's entry in each queue, downloads first, then exports, then
-/// its files waiting to upload (`upload`, from a queue paused when
-/// `uploads_paused`).
+/// its files waiting to upload (`upload`).
 pub(crate) fn storage_inspector_transfers(
     release_id: &str,
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
-    uploads_paused: bool,
 ) -> Vec<StorageInspectorTransfer> {
     let mut items = Vec::new();
     if let Some(operation) = &entries.download {
         items.push(StorageInspectorTransfer::Download {
             operation: operation.clone(),
-            paused: entries.downloads_paused,
         });
     }
     if let Some(operation) = &entries.output {
         items.push(StorageInspectorTransfer::Output {
             operation: operation.clone(),
-            paused: entries.outputs_paused,
         });
     }
     if let Some(upload) = upload {
         items.push(StorageInspectorTransfer::Upload {
             release_id: release_id.to_string(),
             upload,
-            paused: uploads_paused,
         });
     }
     items

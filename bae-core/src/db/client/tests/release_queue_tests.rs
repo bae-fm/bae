@@ -372,8 +372,6 @@ async fn a_releases_entries_are_read_for_it_alone() {
         Some(RELEASE_B)
     );
     assert!(read.output.is_none(), "only RELEASE_A is exporting");
-    assert!(read.outputs_paused);
-    assert!(!read.downloads_paused);
 
     live.requests()
         .set(Some(RELEASE_A.to_string()))

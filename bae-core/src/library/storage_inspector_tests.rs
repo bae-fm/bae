@@ -29,42 +29,40 @@ fn waiting() -> ReleaseUpload {
             queued: 1,
             uploading: 0,
         },
+        stored: 0,
         bar: None,
     }
 }
 
 #[test]
-fn each_queue_shows_the_selected_releases_entry_with_its_own_pause_state() {
+fn each_queue_shows_the_selected_releases_entry() {
     let transfers = storage_inspector_transfers(
         "selected",
         &ReleaseQueueEntries {
             download: Some(row((), "selected")),
-            downloads_paused: false,
             output: Some(row(export(), "selected")),
-            outputs_paused: true,
         },
         Some(waiting()),
-        false,
     );
     assert_eq!(
         transfers
             .iter()
             .map(|transfer| match transfer {
-                StorageInspectorTransfer::Download { operation, paused } => {
-                    ("download", operation.op.release_id.as_str(), *paused)
+                StorageInspectorTransfer::Download { operation } => {
+                    ("download", operation.op.release_id.as_str())
                 }
-                StorageInspectorTransfer::Output { operation, paused } => {
-                    ("output", operation.op.release_id.as_str(), *paused)
+                StorageInspectorTransfer::Output { operation } => {
+                    ("output", operation.op.release_id.as_str())
                 }
-                StorageInspectorTransfer::Upload {
-                    release_id, paused, ..
-                } => ("upload", release_id.as_str(), *paused),
+                StorageInspectorTransfer::Upload { release_id, .. } => {
+                    ("upload", release_id.as_str())
+                }
             })
             .collect::<Vec<_>>(),
         vec![
-            ("download", "selected", false),
-            ("output", "selected", true),
-            ("upload", "selected", false),
+            ("download", "selected"),
+            ("output", "selected"),
+            ("upload", "selected"),
         ]
     );
 }
@@ -75,12 +73,9 @@ fn a_release_no_queue_holds_has_no_transfers() {
         "selected",
         &ReleaseQueueEntries {
             download: None,
-            downloads_paused: false,
             output: None,
-            outputs_paused: false,
         },
         None,
-        false,
     )
     .is_empty());
 }

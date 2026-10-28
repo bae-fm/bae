@@ -2614,7 +2614,11 @@ Reads come two ways:
   its upload while one waits (whether it is being sent, what it waits for with
   the error behind that while this process holds it, and while it is sent,
   the bytes of it sent), and its entry in the download, export and
-  upload queues with whether each is paused, all read for that release alone.
+  upload queues, all read for that release alone. It shows nothing of a
+  whole queue, which the list's footer pauses (§4.2): its upload shows how
+  many of its files are uploading, queued and stored, a control that
+  cancels it, and while files are sent, the bytes of its size stored or sent
+  and how fast they go.
   The upload queue's own subscription says only whether it is paused; how
   fast each upload goes, the bytes each download moves, and the percent each
   export reaches arrive apart, per file and per release.
