@@ -20,10 +20,10 @@ export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 # install when a real device is plugged in. Boot an emulator only when nothing is
 # connected. Exporting ANDROID_SERIAL pins both gradle's installDebug and the adb
 # launch below to that one device (otherwise either fails when more than one
-# device is attached).
+# device is attached). Split on tabs: a wireless device's name can hold spaces.
 if [[ -z "${ANDROID_SERIAL:-}" ]]; then
-    ANDROID_SERIAL=$(adb devices | awk '$2 == "device" && $1 !~ /^emulator-/ { print $1; exit }')
-    [[ -z "$ANDROID_SERIAL" ]] && ANDROID_SERIAL=$(adb devices | awk '$2 == "device" { print $1; exit }')
+    ANDROID_SERIAL=$(adb devices | awk -F'\t' '$2 == "device" && $1 !~ /^emulator-/ { print $1; exit }')
+    [[ -z "$ANDROID_SERIAL" ]] && ANDROID_SERIAL=$(adb devices | awk -F'\t' '$2 == "device" { print $1; exit }')
 fi
 if [[ -z "$ANDROID_SERIAL" ]]; then
     AVD=$(emulator -list-avds | head -1)
@@ -32,7 +32,7 @@ if [[ -z "$ANDROID_SERIAL" ]]; then
     adb wait-for-device
     # Wait for boot to complete
     while [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do sleep 1; done
-    ANDROID_SERIAL=$(adb devices | awk '$2 == "device" { print $1; exit }')
+    ANDROID_SERIAL=$(adb devices | awk -F'\t' '$2 == "device" { print $1; exit }')
 fi
 export ANDROID_SERIAL
 echo "Target device: $ANDROID_SERIAL"
