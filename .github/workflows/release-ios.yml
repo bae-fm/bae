@@ -189,6 +189,7 @@ jobs:
           ls -la build/bae.xcarchive/Products/Applications || true
           exit 1
         fi
+        python3 scripts/check-bundled-libraries.py "$APP"
         rm -rf Payload && mkdir -p Payload
         cp -R "$APP" "Payload/"
         # An IPA is a zip with a top-level Payload/<App>.app.

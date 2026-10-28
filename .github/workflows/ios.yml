@@ -115,6 +115,15 @@ jobs:
           -derivedDataPath bae-ios/bae/.build/derivedData \
           build
 
+    - name: Check the app loads only bundled or system libraries
+      if: ${{ !cancelled() && steps.build_ios.conclusion == 'success' }}
+      # A Debug build also carries Xcode's own runpath to the build products'
+      # PackageFrameworks.
+      run: |
+        PRODUCTS="$PWD/bae-ios/bae/.build/derivedData/Build/Products/Debug-iphonesimulator"
+        python3 scripts/check-bundled-libraries.py \
+          --allow-rpath "$PRODUCTS/PackageFrameworks" "$PRODUCTS"/*.app
+
     - name: Check Swift formatting
       if: ${{ inputs.edition == 'full' && !cancelled() }}
       run: |

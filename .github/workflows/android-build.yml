@@ -235,6 +235,17 @@ jobs:
         cp "$APK" "$EDITION_APK"
         echo "Verified signed APK: $APK -> $EDITION_APK"
 
+    - name: Check the APK loads only bundled or Android libraries
+      # Every lib/<abi>/ folder must also ship the same libraries, or a device
+      # of that ABI installs an app that can't load the bridge.
+      run: |
+        if [[ "${{ inputs.profile }}" == release ]]; then
+          APK="$EDITION_APK"
+        else
+          APK="bae-android/app/build/outputs/apk/${APK_FLAVOR}/debug/app-${APK_FLAVOR}-debug.apk"
+        fi
+        python3 scripts/check-bundled-libraries.py --platform android "$APK"
+
     - name: Upload Android native symbols to Sentry
       if: inputs.profile == 'release' && inputs.edition == 'full'
       env:
