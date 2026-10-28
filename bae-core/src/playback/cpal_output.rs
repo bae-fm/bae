@@ -31,8 +31,8 @@ impl CpalAudioOutput {
     /// Build a cpal output. Verifies a default output device exists up front so
     /// construction fails fast when there's no audio hardware. Which device the
     /// samples land on is resolved per stream build, so an output switch takes
-    /// effect at the next rebuild — on macOS the service forces one by watching
-    /// the default device (see `watch_default_output_device`, macOS-only).
+    /// effect at the next rebuild — on macOS and Windows the service forces one
+    /// by watching the default device (see `watch_default_output_device`).
     pub fn new() -> Result<Self, AudioError> {
         let host = cpal::default_host();
         host.default_output_device()
@@ -51,9 +51,10 @@ impl CpalAudioOutput {
 ///
 /// This watches the *system*, not any one output, which is why it lives beside
 /// the outputs rather than inside one — the service opens two (main and
-/// preview) and exactly one listener may exist. macOS-only: other platforms have
-/// no such notification and follow the default device at the next rebuild.
-#[cfg(target_os = "macos")]
+/// preview) and exactly one listener may exist. macOS and Windows only: there a
+/// cpal stream stays bound to the device it opened on, so without a rebuild the
+/// samples keep going to the old device.
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub(crate) fn watch_default_output_device(
     on_change: impl Fn() + Send + Sync + 'static,
 ) -> Result<device_listener::DefaultDeviceListener, AudioError> {
@@ -233,6 +234,222 @@ pub(crate) mod device_listener {
                      the default-device listener may keep firing until process exit"
                 );
             }
+        }
+    }
+}
+
+/// Windows default-output-device change listener. Registers an
+/// `IMMNotificationClient` with the MMDevice enumerator; Windows calls
+/// `OnDefaultDeviceChanged` on a thread of its own for every flow and role, and
+/// the client runs the registered callback only for the device cpal opens — the
+/// default render endpoint for the console role
+/// (`GetDefaultAudioEndpoint(eRender, eConsole)`). The callback does nothing but
+/// dispatch an internal command, which keeps the notification non-blocking as
+/// the interface requires; the rebuild happens on the service's command loop.
+#[cfg(target_os = "windows")]
+pub(crate) mod device_listener {
+    use super::AudioError;
+    use windows::core::{implement, PCWSTR};
+    use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
+    use windows::Win32::Media::Audio::{
+        eConsole, eRender, EDataFlow, ERole, IMMDeviceEnumerator, IMMNotificationClient,
+        IMMNotificationClient_Impl, MMDeviceEnumerator, DEVICE_STATE,
+    };
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_ALL, COINIT_MULTITHREADED,
+    };
+    use windows::Win32::UI::Shell::PropertiesSystem::PROPERTYKEY;
+
+    type Callback = Box<dyn Fn() + Send + Sync>;
+
+    /// The notification client Windows calls. Only a change of the default
+    /// console render endpoint reaches the callback.
+    #[implement(IMMNotificationClient)]
+    struct DefaultOutputNotifications {
+        on_change: Callback,
+    }
+
+    impl IMMNotificationClient_Impl for DefaultOutputNotifications {
+        fn OnDefaultDeviceChanged(
+            &self,
+            flow: EDataFlow,
+            role: ERole,
+            _default_device_id: &PCWSTR,
+        ) -> windows::core::Result<()> {
+            if flow == eRender && role == eConsole {
+                (self.on_change)();
+            }
+            Ok(())
+        }
+
+        fn OnDeviceStateChanged(
+            &self,
+            _device_id: &PCWSTR,
+            _new_state: DEVICE_STATE,
+        ) -> windows::core::Result<()> {
+            Ok(())
+        }
+
+        fn OnDeviceAdded(&self, _device_id: &PCWSTR) -> windows::core::Result<()> {
+            Ok(())
+        }
+
+        fn OnDeviceRemoved(&self, _device_id: &PCWSTR) -> windows::core::Result<()> {
+            Ok(())
+        }
+
+        fn OnPropertyValueChanged(
+            &self,
+            _device_id: &PCWSTR,
+            _key: &PROPERTYKEY,
+        ) -> windows::core::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// This thread's use of COM, which creating the enumerator needs. The
+    /// service thread joins the multithreaded apartment, since it runs no
+    /// message loop; a thread already in a single-threaded apartment
+    /// (`RPC_E_CHANGED_MODE`) serves as it is, and is not ours to uninitialize.
+    struct ComApartment {
+        initialized_here: bool,
+    }
+
+    impl ComApartment {
+        fn enter() -> Result<Self, AudioError> {
+            // SAFETY: no reserved pointer; balanced by `CoUninitialize` in `Drop`
+            // when this call initialized COM.
+            let result = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+            if result == RPC_E_CHANGED_MODE {
+                return Ok(Self {
+                    initialized_here: false,
+                });
+            }
+            result.ok().map_err(|error| {
+                AudioError::Unexpected(format!("CoInitializeEx failed: {error}"))
+            })?;
+            Ok(Self {
+                initialized_here: true,
+            })
+        }
+    }
+
+    impl Drop for ComApartment {
+        fn drop(&mut self) {
+            if self.initialized_here {
+                // SAFETY: balances the successful `CoInitializeEx` in `enter`, on
+                // the thread that made it (the listener never leaves the service
+                // thread).
+                unsafe { CoUninitialize() };
+            }
+        }
+    }
+
+    /// A registered notification client. Unregisters on drop, then releases the
+    /// client, the enumerator and COM, in field order.
+    pub(crate) struct DefaultDeviceListener {
+        enumerator: IMMDeviceEnumerator,
+        client: IMMNotificationClient,
+        _com: ComApartment,
+    }
+
+    // The listener is opened on the service thread and dropped there; `Send` is
+    // needed only because the device it belongs to is held behind
+    // `AudioOutputDevice: Send`. The client's callback is `Send + Sync`, as
+    // Windows calls it from a thread of its own.
+    unsafe impl Send for DefaultDeviceListener {}
+
+    impl DefaultDeviceListener {
+        pub(super) fn register(callback: Callback) -> Result<Self, AudioError> {
+            let com = ComApartment::enter()?;
+            // SAFETY: COM is initialized on this thread (`com`).
+            let enumerator: IMMDeviceEnumerator =
+                unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }.map_err(
+                    |error| {
+                        AudioError::Unexpected(format!(
+                            "creating the MMDevice enumerator failed: {error}"
+                        ))
+                    },
+                )?;
+            let client: IMMNotificationClient = DefaultOutputNotifications {
+                on_change: callback,
+            }
+            .into();
+            // SAFETY: `client` is held in the returned listener, so it outlives
+            // the registration; `Drop` unregisters before releasing it, as the
+            // registration (which takes no reference of its own) requires.
+            unsafe { enumerator.RegisterEndpointNotificationCallback(&client) }.map_err(
+                |error| {
+                    AudioError::Unexpected(format!(
+                        "RegisterEndpointNotificationCallback failed: {error}"
+                    ))
+                },
+            )?;
+            Ok(Self {
+                enumerator,
+                client,
+                _com: com,
+            })
+        }
+    }
+
+    impl Drop for DefaultDeviceListener {
+        fn drop(&mut self) {
+            // SAFETY: unregister the exact client registered in `register`.
+            // Unregistering from inside a notification deadlocks (the interface
+            // forbids it), so unregistering waits for a notification in progress
+            // to return: once this returns, no callback is running and the
+            // client can be released.
+            if let Err(error) = unsafe {
+                self.enumerator
+                    .UnregisterEndpointNotificationCallback(&self.client)
+            } {
+                tracing::warn!(
+                    "UnregisterEndpointNotificationCallback failed: {error}; \
+                     the default-device listener may keep firing until process exit"
+                );
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        use windows::Win32::Media::Audio::{eCapture, eCommunications, eMultimedia};
+
+        /// Windows reports a new default for every flow and role. Only the
+        /// console render default is the device cpal opens, so only its change
+        /// rebuilds the stream; the others would rebuild it for nothing, three
+        /// times over for one switch.
+        #[test]
+        fn only_the_console_render_default_reaches_the_callback() {
+            let changes = Arc::new(AtomicUsize::new(0));
+            let counted = changes.clone();
+            let notifications = DefaultOutputNotifications {
+                on_change: Box::new(move || {
+                    counted.fetch_add(1, Ordering::Relaxed);
+                }),
+            };
+            let id = PCWSTR::null();
+
+            for (flow, role) in [
+                (eCapture, eConsole),
+                (eCapture, eMultimedia),
+                (eRender, eMultimedia),
+                (eRender, eCommunications),
+            ] {
+                notifications
+                    .OnDefaultDeviceChanged(flow, role, &id)
+                    .unwrap();
+            }
+            assert_eq!(changes.load(Ordering::Relaxed), 0);
+
+            notifications
+                .OnDefaultDeviceChanged(eRender, eConsole, &id)
+                .unwrap();
+            assert_eq!(changes.load(Ordering::Relaxed), 1);
         }
     }
 }

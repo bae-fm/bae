@@ -887,7 +887,7 @@ impl PlaybackService {
                 PlaybackCommand::ReadFailed { buffer_id, error } => {
                     self.handle_read_failed(buffer_id, error).await;
                 }
-                #[cfg(target_os = "macos")]
+                #[cfg(any(target_os = "macos", target_os = "windows"))]
                 PlaybackCommand::OutputDeviceChanged => {
                     self.handle_output_device_changed().await;
                 }

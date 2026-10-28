@@ -231,7 +231,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
 /// default without losing position or state — the only path that rebuilds a
 /// live stream mid-playback. Builds go up by one, no source swap (the source is
 /// reused, not replaced), and the callback's play state is untouched.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tokio::test]
 async fn output_device_changed_rebuilds_over_the_same_source() {
     use std::sync::atomic::Ordering;
@@ -287,7 +287,7 @@ async fn output_device_changed_rebuilds_over_the_same_source() {
 
 /// A device change with nothing playing has no stream to move, so it's a no-op:
 /// no build, no source, no error.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tokio::test]
 async fn output_device_changed_is_a_noop_when_stopped() {
     use std::sync::atomic::Ordering;
@@ -480,7 +480,7 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
 /// already set), so losing it wedges auto-advance at the end of that track.
 /// Sabotage — drop the old receiver without carrying its events — and no
 /// `TrackCompleted` survives the rebuild.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tokio::test]
 async fn device_change_carries_a_queued_completion_forward() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;

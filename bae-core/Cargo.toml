@@ -96,6 +96,17 @@ cpal = "0.15"
 # `GetDriveTypeW` tells it apart.
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
+# The default-output-device change listener (src/playback/cpal_output.rs): an
+# `IMMNotificationClient` that has playback rebuild its output stream on the new
+# default device. `implement` builds the COM object. Pinned to the version cpal
+# already links for WASAPI so there's no second copy.
+windows = { version = "0.54", features = [
+    "implement",
+    "Win32_Foundation",
+    "Win32_Media_Audio",
+    "Win32_System_Com",
+    "Win32_UI_Shell_PropertiesSystem",
+] }
 
 [dev-dependencies]
 # The test codec helpers (WAV reader, whole-buffer encoder), and the

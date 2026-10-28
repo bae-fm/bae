@@ -2477,8 +2477,9 @@ A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
 log names its address.
 
-**This device.** On macOS, playback follows a change of the default output
-device. Volume and mute live in core, so unmuting restores the level last set.
+**This device.** On macOS and Windows, playback follows a change of the
+default output device: it moves to the new one at the same position. Volume
+and mute live in core, so unmuting restores the level last set.
 
 **When the output won't start.** Playback that can't start its output — on
 this device or a receiver — stops and says why: the audio device was

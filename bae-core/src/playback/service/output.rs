@@ -183,9 +183,9 @@ impl PlaybackService {
     /// state ride on the source and the shared atomic, so they survive the swap;
     /// a brief glitch at the switch is acceptable. A rebuild that can't get a
     /// device fails loud — emit a `PlaybackError` and stop — rather than leaving a
-    /// silently dead stream. macOS-only: it's driven by the CoreAudio
-    /// default-device listener, which only exists there.
-    #[cfg(target_os = "macos")]
+    /// silently dead stream. Driven by the default-device watch, which exists on
+    /// macOS and Windows.
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     pub(super) async fn handle_output_device_changed(&mut self) {
         let Some(out) = self.output.take() else {
             debug!("output device changed with nothing playing; no stream to rebuild");
