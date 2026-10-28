@@ -1409,10 +1409,14 @@ local, pinned, and in the cloud only — either way, ties going by album title,
 then when the release was added, then id. The upload queue and the pins are
 coven's, which the list's query reads beside the library's rows. Whether a
 release is pinned, here and in the album and release details, is read from
-how many of its files coven's `coven_pins` lists, a count bae keeps per
-release in the transaction that changes a pin, so each view's own query
-follows a pin as it lands. How many of a release's files wait in the upload
-queue, and the place of the first, are counts bae keeps the same way from
+how many of its files coven's `coven_pins` lists as kept, whole on this
+device, a count bae keeps per release in the transaction that changes a pin,
+so each view's own query follows a pin as it lands. A pin that waits for its
+copy is not counted: a file pinned while it uploads is kept from its queued
+copy, and once its upload completes without keeping a copy of its own, coven
+carries its pin to the stored file, which counts again only as its copy from
+storage lands. How many of a release's files wait in the upload queue, and
+the place of the first, are counts bae keeps the same way from
 coven's `coven_upload_queue`, in the transaction that queues or dequeues a
 file; the import list's Done tab reads them in queue order (§3.2). Whether
 the download queue holds a release waiting or downloading is a flag bae keeps
@@ -2943,18 +2947,19 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
+| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
 Local triggers write every table here after the first two in the same write as the library rows they
 come from, on this device or applied from another, so they always match those
-rows. A release's pinned count follows coven's `coven_pins` the same way, in
-the transaction that changes a pin, whether this device's own write, another
-device's applied, or coven's as a file is pinned, downloads, uploads or is
-unpinned. A write applied from another device can hold a row before a row it
-references; the triggers count a row once what it references is there. An
+rows. A release's pinned count follows the pins coven's `coven_pins` lists as
+kept the same way, in the transaction that changes a pin or its kept copy,
+whether this device's own write, another device's applied, or coven's as a
+file is pinned, downloads, uploads or is unpinned. A write applied from
+another device can hold a row before a row it references; the triggers count
+a row once what it references is there. An
 album's listing row is written only when one of its values changes, and its
 releases' rows only when its title or credits do, so a release added to an
 album, even a box set of thousands, rewrites no other release's row.

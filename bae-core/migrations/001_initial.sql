@@ -1155,7 +1155,8 @@ END;
 -- row; `media_empty` (1 for a release stating no medium) and `media_key`
 -- (every stated medium with its count, in order); its files' count and total
 -- size; `stored`, 1 when it has files and every one names its stored file;
--- `pinned_count`, how many of its files coven's `coven_pins` lists;
+-- `pinned_count`, how many of its files coven's `coven_pins` lists as kept
+-- whole on this device, leaving out a pin still waiting for its copy;
 -- `queued_count` and `first_queued_position`, how many of its files coven's
 -- `coven_upload_queue` lists and the place of the first of them (NULL with
 -- none); `pinning`, 1 while this device's download queue holds it waiting or
@@ -1285,7 +1286,7 @@ BEGIN
              AND NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL),
            (SELECT COUNT(*) FROM release_files f
             JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id)
-            WHERE f.release_id = r.id),
+            WHERE f.release_id = r.id AND pin.kept = 1),
            (SELECT COUNT(*) FROM release_files f
             JOIN coven_upload_queue queued
                 ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
@@ -1366,23 +1367,32 @@ CREATE INDEX IF NOT EXISTS idx_release_files_coven_key ON release_files (coven_k
 -- release by it.
 CREATE INDEX IF NOT EXISTS idx_releases_coven_key ON releases (coven_key(id));
 
--- A pin beginning or ending on a release file moves its release's pinned
--- count, in the transaction that changes the pin: this device's own write,
--- another device's applied, or coven's own as a file is pinned, downloads,
--- uploads or is unpinned. Completing an upload ends the queued file's pin and
--- begins the stored file's, which leaves the count as it was. A file whose
--- row is gone, or whose release is not listed yet, moves nothing: the
--- refresh above counts its release's pins from `coven_pins` as it writes the
--- release's row.
+-- A release file's pin moves its release's pinned count as the file
+-- becomes kept whole on this device or stops being kept, in the transaction
+-- that changes the pin: this device's own write, another device's applied,
+-- or coven's own as a file is pinned, downloads, uploads or is unpinned. A
+-- pin begins kept (a pinned file still queued here, or a pinned whole copy)
+-- or waiting for its copy (a pin carried from a completed upload that kept
+-- no copy of its own), and a waiting pin's `kept` turns to 1 as its copy
+-- lands. A file whose row is gone, or whose release is not listed yet,
+-- moves nothing: the refresh above counts its release's kept pins from
+-- `coven_pins` as it writes the release's row.
 CREATE TRIGGER IF NOT EXISTS release_listing_file_pinned AFTER INSERT ON coven_pins
-WHEN NEW.table_name = 'release_files'
+WHEN NEW.table_name = 'release_files' AND NEW.kept = 1
 BEGIN
     UPDATE release_listing SET pinned_count = pinned_count + 1
     WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
 END;
 
+CREATE TRIGGER IF NOT EXISTS release_listing_file_kept AFTER UPDATE OF kept ON coven_pins
+WHEN NEW.table_name = 'release_files' AND OLD.kept <> NEW.kept
+BEGIN
+    UPDATE release_listing SET pinned_count = pinned_count + NEW.kept - OLD.kept
+    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
+END;
+
 CREATE TRIGGER IF NOT EXISTS release_listing_file_unpinned AFTER DELETE ON coven_pins
-WHEN OLD.table_name = 'release_files'
+WHEN OLD.table_name = 'release_files' AND OLD.kept = 1
 BEGIN
     UPDATE release_listing SET pinned_count = pinned_count - 1
     WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = OLD.key);

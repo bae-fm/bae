@@ -210,6 +210,23 @@ async fn test_multiple_releases_independent_completion() {
     .await
     .expect("both offline copies finish");
     assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
+    // Each completed upload carried its file's pin to the stored file, which
+    // is pinned once its copy from storage lands.
+    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    for release_id in [&release_a, &release_b] {
+        let release = services.subscribe_release_detail();
+        release.set(Some(release_id.clone())).unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let value = release.next().await.expect("the release detail resolves");
+                if value.value.is_some_and(|detail| detail.summary.pinned) {
+                    break;
+                }
+            }
+        })
+        .await
+        .expect("each release's copy lands");
+    }
 
     assert_eq!(
         storage(&mgr, &release_a).await,

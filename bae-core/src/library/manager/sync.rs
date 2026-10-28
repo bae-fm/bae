@@ -162,9 +162,10 @@ impl LibraryManager {
     /// with its own locale's plural rules from the `core.sync.cloud_only_releases`
     /// catalog key.
     ///
-    /// A release counts as pinned only when every one of its files is. Pin
-    /// state belongs to coven: the count reads the pinned count local
-    /// triggers keep per release from coven's `coven_pins` table.
+    /// A release counts as pinned only when every one of its files is pinned
+    /// and whole on this device. Pin state belongs to coven: the count reads
+    /// the pinned count local triggers keep per release from the pins coven's
+    /// `coven_pins` table lists as kept.
     pub async fn cloud_only_release_count(&self) -> Result<u64, LibraryError> {
         Ok(self.database.cloud_only_release_count().await?)
     }

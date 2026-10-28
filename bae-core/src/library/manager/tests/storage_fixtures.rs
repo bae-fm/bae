@@ -119,7 +119,40 @@ async fn uploaded_release_with_files(
     }
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release file uploaded");
+    if pin {
+        wait_for_kept_release(manager, &release.id).await;
+    }
     release.id
+}
+
+/// The coven file each of a release's files carries.
+#[cfg(feature = "test-utils")]
+async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<coven::FileRef> {
+    let mut refs = Vec::new();
+    for file in release_files(manager, release_id).await {
+        refs.push(manager.release_file_ref(&file.id).await.unwrap());
+    }
+    refs
+}
+
+/// Wait for every file of a release pinned as it uploaded to be kept whole on
+/// this device. Completing an upload carries each file's pin to the stored
+/// file, and coven fetches its copy from storage after that.
+#[cfg(feature = "test-utils")]
+async fn wait_for_kept_release(manager: &LibraryManager, release_id: &str) {
+    let mut progress = manager
+        .database
+        .subscribe_pin_progress(release_file_refs(manager, release_id).await);
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            let progress = progress.next().await.expect("the query stays open").unwrap();
+            if progress.files_completed == progress.files_total {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("every pinned file is kept whole");
 }
 
 /// [`uploaded_release`] for a test connected with
@@ -145,6 +178,9 @@ async fn upload_release_under_sync_loop(
         wait_for_offline_copy_request(manager, &release.id).await;
     }
     wait_for_landed_upload(manager, &release.id).await;
+    if pin {
+        wait_for_kept_release(manager, &release.id).await;
+    }
     release.id
 }
 

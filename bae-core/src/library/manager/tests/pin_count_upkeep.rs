@@ -1,7 +1,8 @@
-// The pinned count `release_listing` keeps per release, against the count
-// probed from `coven_pins` file by file, through random library writes and
-// pins: uploads that keep their copy or not, their completion, pins, unpins,
-// evictions, a file moving between releases, and deletes.
+// The pinned count `release_listing` keeps per release, against the count of
+// files `coven_pins` lists as kept, probed file by file, through random
+// library writes and pins: uploads that keep their copy or not, their
+// completion, pins, unpins, evictions, a file moving between releases, and
+// deletes.
 //
 // `include!`d into `manager::tests`.
 
@@ -35,7 +36,7 @@ async fn listing_disagreements(manager: &LibraryManager) -> Vec<String> {
                      (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id) AS files, \
                      (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id \
                         AND EXISTS (SELECT 1 FROM coven_pins p \
-                                    WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id))) AS pinned \
+                                    WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id) AND p.kept = 1)) AS pinned \
                    FROM releases r2) probe ON probe.release_id = r.id \
              WHERE l.release_id IS NULL OR l.pinned_count <> probe.pinned OR l.file_count <> probe.files",
         )
@@ -43,7 +44,8 @@ async fn listing_disagreements(manager: &LibraryManager) -> Vec<String> {
         .unwrap()
 }
 
-/// The releases whose every file `coven_pins` lists, probed file by file.
+/// The releases whose every file `coven_pins` lists as kept, probed file by
+/// file.
 #[cfg(feature = "test-utils")]
 async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
     manager
@@ -53,7 +55,7 @@ async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::B
              WHERE EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) \
                AND NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id \
                    AND NOT EXISTS (SELECT 1 FROM coven_pins p \
-                                   WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id)))",
+                                   WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id) AND p.kept = 1))",
         )
         .await
         .unwrap()
@@ -61,8 +63,8 @@ async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::B
         .collect()
 }
 
-/// The uploaded releases with a file `coven_pins` doesn't list, probed file by
-/// file.
+/// The uploaded releases with a file `coven_pins` doesn't list as kept, probed
+/// file by file.
 #[cfg(feature = "test-utils")]
 async fn probed_cloud_only_count(manager: &LibraryManager) -> u64 {
     manager
@@ -71,7 +73,7 @@ async fn probed_cloud_only_count(manager: &LibraryManager) -> u64 {
             "SELECT CAST(COUNT(*) AS TEXT) FROM release_listing l WHERE l.stored = 1 \
                AND EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = l.release_id \
                    AND NOT EXISTS (SELECT 1 FROM coven_pins p \
-                                   WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id)))",
+                                   WHERE p.table_name = 'release_files' AND p.key = coven_key(f.id) AND p.kept = 1))",
         )
         .await
         .unwrap()[0]
@@ -99,15 +101,6 @@ async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::B
         .filter(|row| row.release.pinned)
         .map(|row| row.release.id)
         .collect()
-}
-
-#[cfg(feature = "test-utils")]
-async fn harness_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<coven::FileRef> {
-    let mut refs = Vec::new();
-    for file in release_files(manager, release_id).await {
-        refs.push(manager.release_file_ref(&file.id).await.unwrap());
-    }
-    refs
 }
 
 /// Random writes against the probe: after each, every release's listed pinned
@@ -180,7 +173,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let Some(index) = pick(&mut rng, &releases, HarnessStage::Remote) else {
                     continue;
                 };
-                let refs = harness_file_refs(&manager, &releases[index].id).await;
+                let refs = release_file_refs(&manager, &releases[index].id).await;
                 let count = rng.random_range(1..=refs.len());
                 manager.database.pin(&refs[..count]).await.unwrap();
                 "pin"
@@ -189,7 +182,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let Some(index) = pick(&mut rng, &releases, HarnessStage::Remote) else {
                     continue;
                 };
-                let refs = harness_file_refs(&manager, &releases[index].id).await;
+                let refs = release_file_refs(&manager, &releases[index].id).await;
                 let one = rng.random_range(0..refs.len());
                 if rng.random_bool(0.5) {
                     manager.database.unpin(&refs[one..=one]).await.unwrap();

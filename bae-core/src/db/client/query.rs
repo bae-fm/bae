@@ -685,8 +685,8 @@ pub(super) const CLOUD_ONLY_RELEASE_COUNT: &str =
      WHERE listing.stored = 1 AND listing.pinned_count < listing.file_count";
 
 /// Whether this device keeps every file of the release `listing` lists
-/// pinned: its pinned count, which local triggers keep from coven's
-/// `coven_pins`, has reached its file count.
+/// pinned and whole here: its pinned count, which local triggers keep from
+/// the pins coven's `coven_pins` lists as kept, has reached its file count.
 pub(super) const RELEASE_LISTING_PINNED: &str =
     "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
 
