@@ -421,3 +421,44 @@ async fn release_records_are_read_in_catalog_order() {
         "the read sorts after reading: {plan:?}"
     );
 }
+
+/// A release's index among its album's releases is how many come before it
+/// in the album's order, by place and then id, counted on the album's
+/// releases index.
+#[tokio::test]
+async fn a_releases_index_counts_the_releases_before_it() {
+    let (db, _tmp) = aggregate_db().await;
+    // Places 0, 1, 1: the two at place 1 go by id.
+    for (release_id, index) in [
+        ("8aa66d48-65a0-42e4-8c1d-e7481e8c1861", 0),
+        ("0252dedb-ee39-4547-8803-438dbeb57a64", 1),
+        ("64e79a1f-404a-4c34-809a-a3cb44bf1942", 2),
+    ] {
+        let context = db
+            .find_release_detail_context(release_id)
+            .await
+            .unwrap()
+            .expect("the release exists");
+        assert_eq!(context.release_index, index, "{release_id}");
+    }
+
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::release_projection::RELEASE_INDEX_IN_ALBUM
+                ),
+                ["8aa66d48-65a0-42e4-8c1d-e7481e8c1861"],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter()
+            .any(|step| step.contains("idx_releases_album_id")),
+        "the count reads the album's releases index: {plan:?}"
+    );
+}

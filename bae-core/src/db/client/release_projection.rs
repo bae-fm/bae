@@ -45,6 +45,15 @@ pub(super) fn storage_page_on(
     .map_err(DbError::from)
 }
 
+/// How many releases of its album come before the release `?1` in the
+/// album's order (`album_order`, then id): its index among them, counted on
+/// the album's releases index.
+pub(super) const RELEASE_INDEX_IN_ALBUM: &str = "SELECT COUNT(*) FROM releases AS shown \
+     JOIN releases AS earlier ON earlier.album_id = shown.album_id \
+      AND (earlier.album_order < shown.album_order \
+           OR (earlier.album_order = shown.album_order AND earlier.id < shown.id)) \
+     WHERE shown.id = ?1";
+
 pub(super) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
@@ -53,10 +62,11 @@ pub(super) fn find_release_detail_context_on(
         return Ok(None);
     };
     let album_artists = get_artists_for_album_on(sql, &release.album_id)?;
-    let releases = get_releases_for_album_on(sql, &release.album_id)?;
-    let Some(release_index) = releases.iter().position(|row| row.id == release_id) else {
-        return Ok(None);
-    };
+    let release_index: i64 = sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release.id], |row| {
+        row.get(0)
+    })?;
+    let release_index = usize::try_from(release_index)
+        .map_err(|error| DbError::Message(format!("release index {release_index}: {error}")))?;
     let is_compilation =
         find_album_by_id_on(sql, &release.album_id)?.is_some_and(|album| album.is_compilation);
     Ok(Some(ReleaseContextRows {
