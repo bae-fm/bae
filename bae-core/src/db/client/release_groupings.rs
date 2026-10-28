@@ -378,6 +378,13 @@ impl ParentFiles {
     }
 }
 
+/// The other release reading the files of the folder a grouping sits in, by
+/// its name, found by the index of each folder's one reader.
+pub(super) const PARENT_FILES_READER: &str = "SELECT COALESCE(candidate.name, other.key) \
+     FROM release_grouping AS other \
+     LEFT JOIN scan_candidate AS candidate ON candidate.path = other.key \
+     WHERE other.parent_folder = ?1 AND other.reads_parent_files = 1 AND other.key != ?2";
+
 /// What the grouping `key`, sitting in `folder`, reads of that folder's files,
 /// or why it cannot read them yet; `reading` means it already reads them.
 ///
@@ -401,15 +408,14 @@ fn parent_files_on(
         .map_or_else(|| folder.to_string_lossy(), |name| name.to_string_lossy())
         .into_owned();
     if !reading {
-        let others: Vec<(bool, String)> = sql.query(
-            "SELECT other.reads_parent_files, COALESCE(candidate.name, other.key) \
-             FROM release_grouping AS other \
-             LEFT JOIN scan_candidate AS candidate ON candidate.path = other.key \
-             WHERE other.parent_folder = ? AND other.key != ? ORDER BY other.key",
-            params![folder.to_string_lossy(), key],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?;
-        if let Some((_, reader)) = others.into_iter().find(|(reads, _)| *reads) {
+        let reader: Option<String> = sql
+            .query_row(
+                PARENT_FILES_READER,
+                params![folder.to_string_lossy(), key],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if let Some(reader) = reader {
             return Ok(Err(GroupingBlock::FolderFilesTaken {
                 folder: named,
                 release: reader,

@@ -511,3 +511,29 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
         ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
     );
 }
+
+/// The release reading a folder's files is found by the index of each
+/// folder's one reader, not by reading every grouping in the folder.
+#[tokio::test]
+async fn the_folder_files_reader_is_found_by_its_index() {
+    let (db, _tmp) = super::temp_db().await;
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::release_groupings::PARENT_FILES_READER
+                ),
+                ["/music/Album", "grouping"],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(crate::db::DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        plan.iter()
+            .any(|step| step.contains("USING INDEX release_grouping_parent_reader")),
+        "the reader is found by its index: {plan:?}"
+    );
+}
