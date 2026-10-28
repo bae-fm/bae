@@ -284,3 +284,57 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
         initial.result.unwrap().windows[0].items
     );
 }
+
+/// The scan progress lists the watched folders in the order they are
+/// listed, read in that order from their positions' index: the folder added
+/// first comes first, whatever its path.
+#[tokio::test]
+async fn folder_scan_progress_lists_the_folders_in_their_order() {
+    let (db, _temp) = live_db().await;
+    let roots = [
+        crate::import::watched_folder::host_root("/zeta"),
+        crate::import::watched_folder::host_root("/alpha"),
+    ];
+    for root in &roots {
+        db.add_watched_import_folder(root).await.unwrap();
+    }
+    for root in roots.iter().rev() {
+        db.begin_folder_scan(root, crate::import::VolumeKind::Local)
+            .await
+            .unwrap();
+    }
+
+    let progress = db
+        .subscribe_folder_scan_progress()
+        .next()
+        .await
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(
+        progress
+            .statuses
+            .iter()
+            .map(|status| status.watched_folder_name.as_str())
+            .collect::<Vec<_>>(),
+        ["zeta", "alpha"]
+    );
+
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    super::super::folder_scans::FOLDER_SCAN_PROGRESS
+                ),
+                [],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(crate::db::DbError::from)
+        })
+        .await
+        .unwrap();
+    assert!(
+        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+        "the read sorts after reading: {plan:?}"
+    );
+}
