@@ -122,3 +122,71 @@ public final class KeyedValueFollowing<Value> {
         observation = nil
     }
 }
+
+/// The latest value of a fast stream with one value, such as the files
+/// being sent together, for native views that draw it straight from the
+/// stream; nothing SwiftUI observes.
+@MainActor
+public final class LatestValue<Value> {
+    /// A view's registration, which it hands back to stop.
+    public struct Observation: Hashable, Sendable {
+        let id: Int
+    }
+
+    public private(set) var value: Value?
+    private var observers: [Int: (Value?) -> Void] = [:]
+    private var nextId = 0
+
+    public init() {}
+
+    public func set(_ value: Value) {
+        self.value = value
+        for apply in observers.values {
+            apply(value)
+        }
+    }
+
+    /// Tell `apply` the value now, then each value after, until
+    /// `stopObserving`.
+    public func observe(_ apply: @escaping (Value?) -> Void) -> Observation {
+        let observation = Observation(id: nextId)
+        nextId += 1
+        observers[observation.id] = apply
+        apply(value)
+        return observation
+    }
+
+    public func stopObserving(_ observation: Observation) {
+        observers.removeValue(forKey: observation.id)
+    }
+}
+
+/// A native view's following of a stream with one value; it stops when the
+/// view goes.
+@MainActor
+public final class LatestValueFollowing<Value> {
+    private var stream: LatestValue<Value>?
+    private var observation: LatestValue<Value>.Observation?
+
+    public init() {}
+
+    /// Tell `apply` the stream's value now and each one after; the stream
+    /// already followed changes nothing.
+    public func follow(
+        _ stream: LatestValue<Value>,
+        _ apply: @escaping (Value?) -> Void
+    ) {
+        if self.stream === stream { return }
+        stop()
+        self.stream = stream
+        observation = stream.observe(apply)
+    }
+
+    public func stop() {
+        if let stream, let observation {
+            stream.stopObserving(observation)
+        }
+        stream = nil
+        observation = nil
+    }
+}

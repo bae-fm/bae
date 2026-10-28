@@ -45,6 +45,9 @@ public class OutboxStore {
     /// Each release with files being sent, its transfer, by release, for the
     /// native views that draw it; nothing SwiftUI observes.
     private let releaseTransfers = KeyedValues<BridgeReleaseUploadTransfer>()
+    /// The files being sent together, for the native views that draw them;
+    /// nothing SwiftUI observes.
+    public let totalTransferStream = LatestValue<BridgeUploadTransfer>()
 
     public init(uploadsPaused: Bool) {
         self.uploadsPaused = uploadsPaused
@@ -88,6 +91,7 @@ public class OutboxStore {
     }
 
     private func setTotal(_ transfer: BridgeUploadTransfer) {
+        totalTransferStream.set(transfer)
         if let totalTransfer {
             totalTransfer.transfer = transfer
         }

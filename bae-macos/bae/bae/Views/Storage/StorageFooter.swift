@@ -143,46 +143,44 @@ private struct StorageQueueControl<Progress: View>: View {
     }
 }
 
-/// How fast every file being sent goes together, read alone so a confirmed
-/// part redraws only it. A zero reading shows nothing.
+/// How fast every file being sent goes together, which a native label sets
+/// from the total's stream. A zero reading shows nothing.
 private struct StorageUploadRate: View {
     @Environment(OutboxStore.self)
     private var outboxStore
 
     var body: some View {
-        if let throughputText = outboxStore.throughputText {
-            Text(throughputText)
-        }
+        StreamLabel(stream: .uploadRate(outboxStore.totalTransferStream))
     }
 }
 
-/// How fast the pin queue's running release has downloaded, read alone by
-/// its release.
+/// How fast the pin queue's running release has downloaded, which a native
+/// label sets from the release's stream.
 private struct StoragePinRate: View {
     let releaseId: String
     @Environment(DownloadStore.self)
     private var downloadStore
 
     var body: some View {
-        if let rate = downloadStore.transfer(forRelease: releaseId)?.progress
-            .throughputBps
-        {
-            Text(QueueSummary.throughputText(bytesPerSecond: rate))
-        }
+        StreamLabel(
+            stream: .pinRate(
+                downloadStore.releaseTransfer(forRelease: releaseId)
+            )
+        )
     }
 }
 
-/// How far the output queue's running release has been written, read alone
-/// by its release.
+/// How far the output queue's running release has been written, which a
+/// native label sets from the release's stream.
 private struct StorageOutputPercent: View {
     let releaseId: String
     @Environment(OutputStore.self)
     private var outputStore
 
     var body: some View {
-        if let transfer = outputStore.transfer(forRelease: releaseId) {
-            Text(Double(transfer.percent) / 100, format: .percent)
-        }
+        StreamLabel(
+            stream: .exportPercent(outputStore.percent(forRelease: releaseId))
+        )
     }
 }
 
