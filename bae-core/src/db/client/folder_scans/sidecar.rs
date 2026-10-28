@@ -14,7 +14,6 @@ use crate::import::folder_scanner::{
     CandidateFile, FileRole, FileVersion, FolderSidecar, ProposedRole, ScanItem, ScannedFile,
     SidecarFiles, SkippedFile,
 };
-use std::collections::BTreeSet;
 
 /// The sidecar stored for `folder`.
 pub(crate) fn load_sidecar(
@@ -186,43 +185,32 @@ pub(super) fn write_sidecar(
             .collect::<Result<_, DbError>>()?,
         SidecarFiles::Downloading => Vec::new(),
     };
-    let mut superseded_keys = BTreeSet::new();
-    for entry in &files {
-        superseded_keys.extend(sql.query(
-            "SELECT file.candidate_path FROM scan_candidate_file AS file \
-             JOIN scan_candidate AS candidate \
-               ON candidate.watched_folder_path = file.watched_folder_path \
-              AND candidate.path = file.candidate_path \
-             WHERE file.absolute_path = ? AND candidate.source_kind = 'folder'",
-            [entry.path.to_string_lossy()],
-            |row| row.get::<_, String>(0),
-        )?);
-    }
-    let superseded_keys: Vec<String> = superseded_keys.into_iter().collect();
+    let paths = json_paths(files.iter().map(|entry| entry.path));
+    let superseded_keys: Vec<String> = sql.query(
+        "SELECT DISTINCT file.candidate_path FROM scan_candidate_file AS file \
+         JOIN scan_candidate AS candidate \
+           ON candidate.watched_folder_path = file.watched_folder_path \
+          AND candidate.path = file.candidate_path \
+         WHERE file.absolute_path IN (SELECT value FROM json_each(?)) \
+           AND candidate.source_kind = 'folder' \
+         ORDER BY file.candidate_path",
+        [&paths],
+        |row| row.get(0),
+    )?;
     for key in &superseded_keys {
         delete_entry(sql, watched_folder_path, key)?;
     }
     // A sidecar an earlier reading stored for another folder that held one
     // of these files — the folder above, before this one held audio below
     // it — is replaced the same way.
-    let mut touched = BTreeSet::from([sidecar.folder.clone()]);
-    for entry in &files {
-        touched.extend(
-            sql.query(
-                "SELECT folder FROM scan_sidecar_file WHERE absolute_path = ?",
-                [entry.path.to_string_lossy()],
-                |row| row.get::<_, String>(0),
-            )?
-            .into_iter()
-            .map(PathBuf::from),
-        );
-    }
-    for folder in &touched {
-        sql.execute(
-            "DELETE FROM scan_sidecar WHERE folder = ?",
-            [folder.to_string_lossy()],
-        )?;
-    }
+    let touched: Vec<String> = sql.query(
+        "SELECT ? UNION SELECT folder FROM scan_sidecar_file \
+         WHERE absolute_path IN (SELECT value FROM json_each(?)) \
+         ORDER BY 1",
+        params![folder_text, paths],
+        |row| row.get(0),
+    )?;
+    delete_sidecars_at(sql, &touched)?;
     let state = match &sidecar.files {
         SidecarFiles::Valid(_) => "valid",
         SidecarFiles::Downloading => "downloading",
@@ -251,7 +239,6 @@ pub(super) fn write_sidecar(
             ],
         )?;
     }
-    let touched: Vec<PathBuf> = touched.into_iter().collect();
     let regrouped =
         super::super::release_groupings::rebuild_groupings(sql, &superseded_keys, &touched)?;
     Ok(ScanItemWrite::Stored {
@@ -271,53 +258,82 @@ struct StoredSidecarFile<'a> {
     damage: Option<&'static str>,
 }
 
+/// `paths` as a JSON array of their text, for `json_each`.
+fn json_paths<'a>(paths: impl Iterator<Item = &'a Path>) -> String {
+    serde_json::to_string(&paths.map(Path::to_string_lossy).collect::<Vec<_>>())
+        .expect("path text serializes as JSON")
+}
+
+/// Delete the sidecars stored for `folders`.
+fn delete_sidecars_at(sql: &SqlContext<'_, '_>, folders: &[String]) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM scan_sidecar WHERE folder IN (SELECT value FROM json_each(?))",
+        [serde_json::to_string(folders).expect("folder text serializes as JSON")],
+    )?;
+    Ok(())
+}
+
 /// Delete every sidecar holding one of `item`'s files, now that a scanned
 /// release holds them, and say which folders lost theirs.
 pub(super) fn delete_sidecars_holding(
     sql: &SqlContext<'_, '_>,
     item: &ScanItem,
-) -> Result<Vec<PathBuf>, DbError> {
+) -> Result<Vec<String>, DbError> {
     let ScanItem::Valid(candidate) = item else {
         return Ok(Vec::new());
     };
-    let mut held = BTreeSet::new();
-    for entry in &candidate.files.files {
-        held.extend(sql.query(
-            "SELECT folder FROM scan_sidecar_file WHERE absolute_path = ?",
-            [entry.file.path.to_string_lossy()],
-            |row| row.get::<_, String>(0),
-        )?);
-    }
-    for folder in &held {
-        sql.execute("DELETE FROM scan_sidecar WHERE folder = ?", [folder])?;
-    }
-    Ok(held.into_iter().map(PathBuf::from).collect())
+    let held: Vec<String> = sql.query(
+        "SELECT DISTINCT folder FROM scan_sidecar_file \
+         WHERE absolute_path IN (SELECT value FROM json_each(?)) \
+         ORDER BY folder",
+        [json_paths(
+            candidate
+                .files
+                .files
+                .iter()
+                .map(|entry| entry.file.path.as_path()),
+        )],
+        |row| row.get(0),
+    )?;
+    delete_sidecars_at(sql, &held)?;
+    Ok(held)
 }
 
-/// Delete every sidecar under `watched_folder_path` — below `under`, when
-/// given — that `generation` did not write, and say which folders lost theirs.
+/// Delete every sidecar under `watched_folder_path` — at or below `under`,
+/// when given — that `generation` did not write, and say which folders lost
+/// theirs.
 pub(super) fn prune_sidecars(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
     generation: i64,
     under: Option<&Path>,
-) -> Result<Vec<PathBuf>, DbError> {
-    let pruned: Vec<PathBuf> = sql
-        .query(
+) -> Result<Vec<String>, DbError> {
+    let pruned: Vec<String> = match under {
+        None => sql.query(
             "SELECT folder FROM scan_sidecar WHERE watched_folder_path = ? AND generation != ? \
              ORDER BY folder",
             params![watched_folder_path, generation],
-            |row| row.get::<_, String>(0),
-        )?
-        .into_iter()
-        .map(PathBuf::from)
-        .filter(|folder| under.is_none_or(|under| folder.starts_with(under)))
-        .collect();
-    for folder in &pruned {
-        sql.execute(
-            "DELETE FROM scan_sidecar WHERE folder = ?",
-            [folder.to_string_lossy()],
-        )?;
-    }
+            |row| row.get(0),
+        )?,
+        Some(under) => {
+            let under = under.to_string_lossy();
+            let (below_first, below_past) = crate::import::folder_path::paths_below(&under);
+            sql.query(
+                "SELECT folder FROM scan_sidecar \
+                 WHERE (folder = :folder OR (folder >= :below_first AND folder < :below_past)) \
+                   AND watched_folder_path = :root AND generation != :generation \
+                 ORDER BY folder",
+                rusqlite::named_params! {
+                    ":folder": under,
+                    ":below_first": below_first,
+                    ":below_past": below_past,
+                    ":root": watched_folder_path,
+                    ":generation": generation,
+                },
+                |row| row.get(0),
+            )?
+        }
+    };
+    delete_sidecars_at(sql, &pruned)?;
     Ok(pruned)
 }

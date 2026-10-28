@@ -18,8 +18,7 @@ use crate::import::folder_scanner::{
     InvalidCandidate, ProposedRole, ScanItem, SidecarFiles, SkippedFile,
 };
 use crate::import::grouping::GroupingBlock;
-use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// A stored release, whether it may be worked on, and why not when it is a
 /// grouping's release that is blocked.
@@ -119,26 +118,23 @@ pub(super) fn skipped_on(
 pub(super) fn rebuild_groupings(
     sql: &SqlContext<'_, '_>,
     touched: &[String],
-    sidecars: &[PathBuf],
+    sidecars: &[String],
 ) -> Result<GroupingChanges, DbError> {
-    let mut groupings = BTreeSet::new();
-    for key in touched {
-        groupings.extend(sql.query(
-            "SELECT grouping_key FROM release_grouping_member WHERE member_key = ?",
-            [key],
-            |row| row.get::<_, String>(0),
-        )?);
-    }
-    for folder in sidecars {
-        groupings.extend(sql.query(
-            "SELECT key FROM release_grouping WHERE parent_folder = ?",
-            [folder.to_string_lossy()],
-            |row| row.get::<_, String>(0),
-        )?);
-    }
+    let groupings: Vec<String> = sql.query(
+        "SELECT grouping_key FROM release_grouping_member \
+         WHERE member_key IN (SELECT value FROM json_each(?)) \
+         UNION SELECT key FROM release_grouping \
+         WHERE parent_folder IN (SELECT value FROM json_each(?)) \
+         ORDER BY 1",
+        [
+            serde_json::to_string(touched).expect("release keys serialize as JSON"),
+            serde_json::to_string(sidecars).expect("folder text serializes as JSON"),
+        ],
+        |row| row.get(0),
+    )?;
     let mut changes = GroupingChanges::default();
-    for grouping in groupings {
-        changes.extend(rebuild_grouping(sql, &grouping)?);
+    for grouping in &groupings {
+        changes.extend(rebuild_grouping(sql, grouping)?);
     }
     Ok(changes)
 }
