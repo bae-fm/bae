@@ -8,9 +8,6 @@
         var releaseId: String
         var source: BridgeCatalog
         var title: String
-        var artist: String?
-        var year: Int32?
-        var facts: BridgePressingFacts
         var defaultCover: BridgeCoverChoice?
     }
 
@@ -181,12 +178,6 @@
             releaseId: "rel-123",
             source: .musicBrainz,
             title: "Album Title One",
-            artist: "Artist Name",
-            year: 1996,
-            facts: PreviewData.pressingFacts(
-                country: "US",
-                media: PreviewData.media(.cd)
-            ),
             defaultCover: BridgeCoverChoice(
                 selection: .releaseImage(fileId: "Front.png"),
                 image: .local(file: previewArtFile("Front.png"))

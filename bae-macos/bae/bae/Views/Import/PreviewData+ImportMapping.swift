@@ -159,12 +159,6 @@
             releaseId: "rel-more-tracks",
             source: .musicBrainz,
             title: moreTracksEditValues.albumTitle,
-            artist: "Artist Name",
-            year: 1997,
-            facts: PreviewData.pressingFacts(
-                country: "US",
-                media: PreviewData.media(.cd)
-            ),
             defaultCover: nil
         )
 
