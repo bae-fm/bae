@@ -1429,9 +1429,10 @@ file sent in one request has no session, so it counts once it lands. All of
 it is read in the same query as the row: which files are being sent comes from coven's
 `coven_sending`, a live view of the uploads in flight. Only how fast they
 go is kept beside the database, measured from the bytes a live query of the
-files being sent reads as each part is confirmed: a rate for each file being
-sent, for its release as its files' together, and for every file being sent
-together, beside the bytes those have moved. A file that only waits has no
+files being sent reads as each part is confirmed, file by file: a rate for
+each release, its files being sent together, and for every file being sent
+together, beside the bytes those have moved; no screen shows one file's
+rate, so none is sent. A file that only waits has no
 rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
 otherwise; moving a release to the cloud shows that transfer until its files
@@ -2623,8 +2624,8 @@ Reads come two ways:
   ring filling as it is sent; a file waiting on a reason says why when the
   pointer rests on it.
   The upload queue's own subscription says only whether it is paused; how
-  fast each upload goes, the bytes each download moves, and the percent each
-  export reaches arrive apart, per file and per release.
+  fast each release's upload goes, the bytes and speed each download moves,
+  and the percent each export reaches arrive apart, per release.
 
 What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A

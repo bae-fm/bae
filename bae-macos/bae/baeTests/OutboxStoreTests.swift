@@ -23,9 +23,7 @@ struct OutboxStorePauseTests {
 @Suite("OutboxStore transfers")
 @MainActor
 struct OutboxStoreTransferTests {
-    private let release = BridgeUploadTransferKey.release(
-        releaseId: "release-a"
-    )
+    private let release = "release-a"
 
     private func transfer(_ bytesDone: UInt64) -> BridgeUploadTransfer {
         BridgeUploadTransfer(
@@ -40,17 +38,19 @@ struct OutboxStoreTransferTests {
         store.applyTransferChange(
             .reset(
                 rates: [
-                    BridgeKeyedUploadRate(key: release, throughputBps: 10)
+                    BridgeKeyedUploadRate(releaseId: release, throughputBps: 10)
                 ],
                 total: transfer(10)
             )
         )
         #expect(store.throughput(forRelease: "release-a") == 10)
 
-        store.applyTransferChange(.updated(key: release, throughputBps: 40))
+        store.applyTransferChange(
+            .updated(releaseId: release, throughputBps: 40)
+        )
         #expect(store.throughput(forRelease: "release-a") == 40)
 
-        store.applyTransferChange(.removed(key: release))
+        store.applyTransferChange(.removed(releaseId: release))
         #expect(store.throughput(forRelease: "release-a") == nil)
     }
 

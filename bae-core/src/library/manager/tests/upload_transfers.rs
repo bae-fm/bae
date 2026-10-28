@@ -14,19 +14,19 @@ fn apply_transfer_changes(
         match change {
             OutboxTransferChange::Reset(transfers) => *held = Some(transfers),
             OutboxTransferChange::Updated {
-                key,
+                release_id,
                 throughput_bps,
             } => {
                 held.as_mut()
                     .expect("a reset comes first")
                     .rates
-                    .insert(key, throughput_bps);
+                    .insert(release_id, throughput_bps);
             }
-            OutboxTransferChange::Removed { key } => {
+            OutboxTransferChange::Removed { release_id } => {
                 held.as_mut()
                     .expect("a reset comes first")
                     .rates
-                    .remove(&key);
+                    .remove(&release_id);
             }
             OutboxTransferChange::TotalUpdated(total) => {
                 held.as_mut().expect("a reset comes first").total = total;
@@ -35,13 +35,12 @@ fn apply_transfer_changes(
     }
 }
 
-/// Only the files being sent have a transfer, beside their release's: files
-/// that only wait have none. While a file is sent the total has a bar, and
+/// Only the releases with files being sent have a transfer: files that only
+/// wait have none. While a file is sent the total has a bar, and
 /// once every file is sent the file and its release leave and the bar goes.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_transfers_name_only_the_files_being_sent() {
-    use crate::library::UploadTransferKey;
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
     let release = insert_release_with_queued_uploads(
@@ -90,16 +89,8 @@ async fn the_transfers_name_only_the_files_being_sent() {
     })
     .await
     .expect("the transfers tell the file being sent");
-    let files: Vec<_> = sending
-        .rates
-        .keys()
-        .filter(|key| matches!(key, UploadTransferKey::File(_)))
-        .collect();
-    assert_eq!(files.len(), 1, "one file is sent at a time: {sending:?}");
     assert!(
-        sending
-            .rates
-            .contains_key(&UploadTransferKey::Release(release.id.clone())),
+        sending.rates.contains_key(&release.id),
         "the release of the file being sent has its rate: {sending:?}"
     );
 

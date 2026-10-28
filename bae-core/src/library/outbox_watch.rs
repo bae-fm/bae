@@ -1,6 +1,6 @@
-//! How fast the uploads go, for a reader that draws it: each file being sent,
-//! each release with files being sent, and the files being sent together,
-//! with the bytes the provider confirmed of those. A live query of the files
+//! How fast the uploads go, for a reader that draws it: each release with
+//! files being sent, and the files being sent together, with the bytes the
+//! provider confirmed of those. A live query of the files
 //! being sent reads their bytes; the rates measured from them are the only
 //! upload values no table holds.
 
@@ -8,14 +8,6 @@ use super::upload_throughput::UploadThroughput;
 use super::UploadBar;
 use crate::db::DbSendingUploads;
 use std::collections::HashMap;
-
-/// What a rate is of: one file being sent, or a release's files being sent
-/// together.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum UploadTransferKey {
-    File(coven::FileId),
-    Release(String),
-}
 
 /// How far the files being sent have gone together and how fast they go.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,19 +19,20 @@ pub struct UploadTransfer {
     pub throughput_bps: u64,
 }
 
-/// How fast each file being sent and each release with files being sent
-/// goes, and the files being sent together. They change with each part a
-/// provider confirms.
+/// How fast each release with files being sent goes, its files together, and
+/// every file being sent together. They change with each part a provider
+/// confirms.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutboxTransfers {
-    /// Bytes per second, by what they are of.
-    pub rates: HashMap<UploadTransferKey, u64>,
+    /// Bytes per second, by release id.
+    pub rates: HashMap<String, u64>,
     pub total: UploadTransfer,
 }
 
 impl OutboxTransfers {
     /// The transfers of the files `sending` lists, each file at its rate in
-    /// `rates`. A file no rate was measured for moves nothing yet.
+    /// `rates`, a release at its files' together. A file no rate was
+    /// measured for moves nothing yet.
     pub(crate) fn of(sending: &DbSendingUploads, rates: &HashMap<coven::FileId, u64>) -> Self {
         let add = |sum: &mut u64, rate: u64| {
             *sum = sum.checked_add(rate).expect("upload rate overflow");
@@ -48,14 +41,8 @@ impl OutboxTransfers {
         let mut total_bps = 0;
         for file in &sending.files {
             let rate = rates.get(&file.file).copied().unwrap_or(0);
-            keyed.insert(UploadTransferKey::File(file.file), rate);
             if let Some(release_id) = &file.release_id {
-                add(
-                    keyed
-                        .entry(UploadTransferKey::Release(release_id.clone()))
-                        .or_default(),
-                    rate,
-                );
+                add(keyed.entry(release_id.clone()).or_default(), rate);
             }
             add(&mut total_bps, rate);
         }
@@ -77,11 +64,11 @@ impl OutboxTransfers {
 #[derive(Debug, Clone, PartialEq)]
 pub enum OutboxTransferChange {
     Updated {
-        key: UploadTransferKey,
+        release_id: String,
         throughput_bps: u64,
     },
-    /// The file or release has nothing being sent any more.
-    Removed { key: UploadTransferKey },
+    /// The release has nothing being sent any more.
+    Removed { release_id: String },
     /// The files being sent together.
     TotalUpdated(UploadTransfer),
     /// Every transfer, as a reader first reads them.
@@ -160,8 +147,8 @@ impl OutboxTransfersWatch {
 }
 
 /// The files being sent together, for a reader that draws only that: as it
-/// stands first, then each time it moves. A file's or a release's rate
-/// moving while the total holds wakes nothing here.
+/// stands first, then each time it moves. A release's rate moving while the
+/// total holds wakes nothing here.
 pub struct OutboxTotalTransferWatch {
     transfers: SendingTransfers,
     /// What the reader was last told; `None` before the first read.
@@ -199,15 +186,17 @@ fn changes_between(told: &OutboxTransfers, next: &OutboxTransfers) -> Vec<Outbox
     let mut changes: Vec<OutboxTransferChange> = told
         .rates
         .keys()
-        .filter(|key| !next.rates.contains_key(*key))
-        .map(|key| OutboxTransferChange::Removed { key: key.clone() })
+        .filter(|release_id| !next.rates.contains_key(*release_id))
+        .map(|release_id| OutboxTransferChange::Removed {
+            release_id: release_id.clone(),
+        })
         .collect();
     changes.extend(
         next.rates
             .iter()
-            .filter(|(key, rate)| told.rates.get(*key) != Some(*rate))
-            .map(|(key, rate)| OutboxTransferChange::Updated {
-                key: key.clone(),
+            .filter(|(release_id, rate)| told.rates.get(*release_id) != Some(*rate))
+            .map(|(release_id, rate)| OutboxTransferChange::Updated {
+                release_id: release_id.clone(),
                 throughput_bps: *rate,
             }),
     );

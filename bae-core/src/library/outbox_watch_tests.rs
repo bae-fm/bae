@@ -15,7 +15,7 @@ fn total(bytes_done: u64, throughput_bps: u64) -> UploadTransfer {
     }
 }
 
-fn transfers(rates: Vec<(UploadTransferKey, u64)>, total: UploadTransfer) -> OutboxTransfers {
+fn transfers(rates: Vec<(String, u64)>, total: UploadTransfer) -> OutboxTransfers {
     OutboxTransfers {
         rates: rates.into_iter().collect(),
         total,
@@ -33,17 +33,17 @@ fn sending(file: coven::FileId, release_id: Option<&str>) -> DbSendingFile {
 
 #[test]
 fn a_reader_hears_each_rate_that_moved_and_each_that_left() {
-    let first = UploadTransferKey::Release("release-1".into());
-    let second = UploadTransferKey::Release("release-2".into());
+    let first = "release-1".to_string();
+    let second = "release-2".to_string();
     let told = transfers(vec![(first.clone(), 5), (second.clone(), 5)], total(30, 10));
     let next = transfers(vec![(first.clone(), 8)], total(40, 8));
 
     let changes = changes_between(&told, &next);
 
     assert_eq!(changes.len(), 3, "{changes:?}");
-    assert!(changes.contains(&OutboxTransferChange::Removed { key: second }));
+    assert!(changes.contains(&OutboxTransferChange::Removed { release_id: second }));
     assert!(changes.contains(&OutboxTransferChange::Updated {
-        key: first,
+        release_id: first,
         throughput_bps: 8,
     }));
     assert!(changes.contains(&OutboxTransferChange::TotalUpdated(total(40, 8))));
@@ -51,15 +51,13 @@ fn a_reader_hears_each_rate_that_moved_and_each_that_left() {
 
 #[test]
 fn transfers_that_did_not_move_say_nothing() {
-    let key = UploadTransferKey::Release("release-1".into());
-    let told = transfers(vec![(key, 5)], total(10, 5));
+    let told = transfers(vec![("release-1".to_string(), 5)], total(10, 5));
 
     assert!(changes_between(&told, &told.clone()).is_empty());
 }
 
-/// Each file being sent has its rate, a release goes at its files' rates
-/// together, and the total at every file's; an image no release owns counts
-/// only in the total. The total's bytes are the ones read for the files
+/// A release goes at its files' rates together, and the total at every
+/// file's; an image no release owns counts only in the total. The total's bytes are the ones read for the files
 /// being sent.
 #[test]
 fn a_release_goes_at_its_files_rates_together() {
@@ -80,14 +78,7 @@ fn a_release_goes_at_its_files_rates_together() {
 
     assert_eq!(
         measured.rates,
-        [
-            (UploadTransferKey::File(a), 10),
-            (UploadTransferKey::File(b), 20),
-            (UploadTransferKey::File(cover), 5),
-            (UploadTransferKey::Release("release-1".into()), 30),
-        ]
-        .into_iter()
-        .collect()
+        [("release-1".to_string(), 30)].into_iter().collect()
     );
     assert_eq!(
         measured.total,
@@ -101,7 +92,7 @@ fn a_release_goes_at_its_files_rates_together() {
     );
 }
 
-/// A file no rate was measured for goes at none yet, and with nothing being
+/// A file no rate was measured for moves its release at none yet, and with nothing being
 /// sent there is no rate and no bar.
 #[test]
 fn a_file_with_no_measured_rate_goes_at_none() {
@@ -113,7 +104,7 @@ fn a_file_with_no_measured_rate_goes_at_none() {
         paused: false,
     };
     let measured = OutboxTransfers::of(&one, &HashMap::new());
-    assert_eq!(measured.rates[&UploadTransferKey::File(a)], 0);
+    assert_eq!(measured.rates["release-1"], 0);
     assert_eq!(
         measured.total.bar,
         Some(UploadBar {

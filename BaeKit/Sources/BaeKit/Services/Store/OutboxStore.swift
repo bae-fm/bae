@@ -26,17 +26,17 @@ public final class UploadTransferValue {
 /// the uploads go. The retained subscription lands the pause each time it
 /// changes. What of a release waits to upload, and the bytes its files being
 /// sent have moved, are its row's `upload`, read with the row. The transfer
-/// subscription lands each file's and release's rate into that key's own
-/// value, so a rate change redraws only what draws that key. Views read both
-/// at the leaf.
+/// subscription lands each release's rate into that release's own value, so
+/// a rate change redraws only what draws that release. Views read both at
+/// the leaf.
 @Observable
 public class OutboxStore {
     /// Whether the person paused uploads, as the retained subscription last
     /// said.
     public private(set) var uploadsPaused: Bool
-    /// Each file being sent and each release with files being sent, its rate;
-    /// the map changes only as keys come and go.
-    private var rates: [BridgeUploadTransferKey: UploadRateValue] = [:]
+    /// Each release with files being sent, its rate, by release id; the map
+    /// changes only as releases come and go.
+    private var rates: [String: UploadRateValue] = [:]
     /// The files being sent together; `nil` until the transfers first arrive.
     private var totalTransfer: UploadTransferValue?
 
@@ -51,21 +51,21 @@ public class OutboxStore {
     /// Apply one change the transfer subscription delivered.
     public func applyTransferChange(_ change: BridgeOutboxTransferChange) {
         switch change {
-        case .updated(let key, let throughputBps):
-            if let value = rates[key] {
+        case .updated(let releaseId, let throughputBps):
+            if let value = rates[releaseId] {
                 value.throughputBps = throughputBps
             }
             else {
-                rates[key] = UploadRateValue(throughputBps)
+                rates[releaseId] = UploadRateValue(throughputBps)
             }
-        case .removed(let key):
-            rates.removeValue(forKey: key)
+        case .removed(let releaseId):
+            rates.removeValue(forKey: releaseId)
         case .totalUpdated(let transfer):
             setTotal(transfer)
         case .reset(let keyed, let total):
             rates = Dictionary(
                 uniqueKeysWithValues: keyed.map {
-                    ($0.key, UploadRateValue($0.throughputBps))
+                    ($0.releaseId, UploadRateValue($0.throughputBps))
                 }
             )
             setTotal(total)
@@ -84,12 +84,7 @@ public class OutboxStore {
     /// How fast a release's files being sent go together; `nil` while none
     /// of them is being sent.
     public func throughput(forRelease releaseId: String) -> UInt64? {
-        rates[.release(releaseId: releaseId)]?.throughputBps
-    }
-
-    /// How fast one file being sent goes; `nil` while it is not being sent.
-    public func throughput(forFile fileId: String) -> UInt64? {
-        rates[.file(fileId: fileId)]?.throughputBps
+        rates[releaseId]?.throughputBps
     }
 
     /// How far the files being sent have gone together; `nil` until the

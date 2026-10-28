@@ -10,33 +10,18 @@ mirror_struct! {
     fields: { bar: (opt crate::types::BridgeUploadBar), throughput_bps },
 }
 
-impl crate::types::BridgeUploadTransferKey {
-    fn from_core(key: bae_core::library::UploadTransferKey) -> Self {
-        match key {
-            bae_core::library::UploadTransferKey::File(file_id) => Self::File {
-                file_id: file_id.to_string(),
-            },
-            bae_core::library::UploadTransferKey::Release(release_id) => {
-                Self::Release { release_id }
-            }
-        }
-    }
-}
-
 impl crate::types::BridgeOutboxTransferChange {
     pub(super) fn from_core(change: bae_core::library::OutboxTransferChange) -> Self {
         use bae_core::library::OutboxTransferChange;
         match change {
             OutboxTransferChange::Updated {
-                key,
+                release_id,
                 throughput_bps,
             } => Self::Updated {
-                key: crate::types::BridgeUploadTransferKey::from_core(key),
+                release_id,
                 throughput_bps,
             },
-            OutboxTransferChange::Removed { key } => Self::Removed {
-                key: crate::types::BridgeUploadTransferKey::from_core(key),
-            },
+            OutboxTransferChange::Removed { release_id } => Self::Removed { release_id },
             OutboxTransferChange::TotalUpdated(transfer) => Self::TotalUpdated {
                 transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
             },
@@ -45,8 +30,8 @@ impl crate::types::BridgeOutboxTransferChange {
                     .rates
                     .into_iter()
                     .map(
-                        |(key, throughput_bps)| crate::types::BridgeKeyedUploadRate {
-                            key: crate::types::BridgeUploadTransferKey::from_core(key),
+                        |(release_id, throughput_bps)| crate::types::BridgeKeyedUploadRate {
+                            release_id,
                             throughput_bps,
                         },
                     )

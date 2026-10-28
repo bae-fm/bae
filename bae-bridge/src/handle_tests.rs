@@ -361,53 +361,6 @@ fn extracted_signals_cross_with_their_key() {
     assert_eq!(catalogs, vec!["CAT-1".to_string()]);
 }
 
-#[tokio::test]
-async fn a_file_rate_is_keyed_by_its_file_id() {
-    let directory = tempfile::tempdir().unwrap();
-    let handle=coven::TestCoven::new().builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout())
-        .synced_tables(vec![coven::SyncedTable::new("release_files",coven::RowIdentity::SharedKey)
-            .carries_files(coven::FileDecl::new("release_files",1024,coven::Provenance::AppProvided))])
-        .migrations(vec![coven::Migration::addition(1,"file fixture","CREATE TABLE release_files(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);")])
-        .create_store("Upload Test").await.unwrap();
-    handle
-        .write_with_files(
-            |batch| {
-                batch.put_file("release_files", "row", vec![7; 100]);
-                Ok(())
-            },
-            |sql| {
-                sql.execute("INSERT INTO release_files(id) VALUES('row')", [])?;
-                Ok(())
-            },
-        )
-        .await
-        .unwrap();
-    let upload = handle.uploads().await.unwrap().files.pop().unwrap();
-    let id = upload.file.id().to_string();
-    let change = crate::types::BridgeOutboxTransferChange::from_core(
-        bae_core::library::OutboxTransferChange::Updated {
-            key: bae_core::library::UploadTransferKey::File(upload.file.id()),
-            throughput_bps: 20,
-        },
-    );
-    let crate::types::BridgeOutboxTransferChange::Updated {
-        key,
-        throughput_bps,
-    } = change
-    else {
-        panic!("an update stays an update");
-    };
-    assert_eq!(
-        key,
-        crate::types::BridgeUploadTransferKey::File {
-            file_id: id.clone()
-        },
-        "a file's rate is keyed by the file id its queue row names"
-    );
-    assert_eq!(throughput_bps, 20);
-    handle.close().await.unwrap();
-}
-
 #[test]
 fn upload_progress_keeps_the_counts_and_their_phase() {
     let value = crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {

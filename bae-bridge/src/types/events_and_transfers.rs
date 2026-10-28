@@ -132,17 +132,10 @@ pub struct BridgeUploadTransfer {
     pub throughput_bps: u64,
 }
 
-/// What a rate is of: one file being sent, by its `file_id`, or a release's
-/// files being sent together.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgeUploadTransferKey {
-    File { file_id: String },
-    Release { release_id: String },
-}
-
+/// How fast a release's files being sent go together.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeKeyedUploadRate {
-    pub key: BridgeUploadTransferKey,
+    pub release_id: String,
     /// Bytes per second.
     pub throughput_bps: u64,
 }
@@ -152,11 +145,11 @@ pub struct BridgeKeyedUploadRate {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeOutboxTransferChange {
     Updated {
-        key: BridgeUploadTransferKey,
+        release_id: String,
         throughput_bps: u64,
     },
-    /// The file or release has nothing being sent any more.
-    Removed { key: BridgeUploadTransferKey },
+    /// The release has nothing being sent any more.
+    Removed { release_id: String },
     /// The files being sent together.
     TotalUpdated { transfer: BridgeUploadTransfer },
     /// Every rate and the total; a key not listed has nothing being sent.

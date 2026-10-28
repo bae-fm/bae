@@ -48,7 +48,7 @@ pub use local_lifecycle::{
 pub use manager::*;
 pub use outbox_watch::{
     OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,
-    UploadTransfer, UploadTransferKey,
+    UploadTransfer,
 };
 pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
