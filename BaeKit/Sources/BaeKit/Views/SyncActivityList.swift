@@ -95,9 +95,9 @@ private struct TransferRows: View {
     }
 }
 
-/// The uploads' line, and the bytes the queue's transfer says they have
-/// moved when it counts any. It reads the transfer itself, which changes with
-/// each part a provider confirms, so only this line redraws for it.
+/// The uploads' line, and the bytes the files being sent have moved
+/// together, which a native label sets from the total's stream while it
+/// counts any.
 private struct UploadsLine: View {
     let title: String
 
@@ -107,17 +107,7 @@ private struct UploadsLine: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             Text(title)
-            if let bar = outboxStore.totalBar, bar.bytesTotal > 0 {
-                Text(
-                    formattedDownloadBytesProgress(
-                        done: bar.bytesDone,
-                        total: bar.bytesTotal
-                    )
-                )
-                .themeText(.detail)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-            }
+            UploadTotalBytesText(total: outboxStore.totalTransferStream)
         }
     }
 }

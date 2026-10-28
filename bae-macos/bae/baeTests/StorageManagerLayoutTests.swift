@@ -50,18 +50,16 @@ final class StorageManagerLayoutTests: XCTestCase {
                     $0.release.id == PreviewData.uploadingRelease.releaseId
                 }
             )
-            let observation = try XCTUnwrap(
-                outboxStore.uploadObservation(
-                    of: ReleaseSummary(from: row.release)
-                )
+            let release = outboxStore.releaseTransfer(
+                forRelease: row.release.id
             )
             XCTAssertEqual(
-                observation.throughputText,
-                QueueSummary.throughputText(bytesPerSecond: 3_200_000)
+                release.values.value(for: release.key)?.throughputBps,
+                3_200_000
             )
             XCTAssertEqual(
-                outboxStore.throughputText,
-                QueueSummary.throughputText(bytesPerSecond: 6_800_000)
+                outboxStore.totalTransferStream.value?.throughputBps,
+                6_800_000
             )
             let descendants = SnapshotTestSupport.descendants(of: host)
             XCTAssertFalse(descendants.contains { $0 is ProgressTrackNSView })
