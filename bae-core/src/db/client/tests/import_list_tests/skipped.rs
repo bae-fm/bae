@@ -133,3 +133,21 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         "the folder read the same is stored unchanged"
     );
 }
+
+/// The pane looking into a folder that failed validation reads nothing for a
+/// folder that passed it: the key is answered by its kind, without reading
+/// the folder whole.
+#[tokio::test]
+async fn the_skipped_pane_reads_nothing_for_a_valid_folder() {
+    let (db, _tmp, root) = watched_root().await;
+    let valid = super::scanned(&db, &root, "Passed").await;
+
+    let read = db
+        .subscribe_invalid_candidate(Some(valid.key()))
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert!(read.is_none(), "{read:?}");
+}

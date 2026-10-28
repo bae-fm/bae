@@ -403,7 +403,8 @@ impl Database {
 
     /// The folder that failed validation at the key the read is set to, as
     /// the pane looking into it reads it, live; `None` for no key, or a key
-    /// naming no such folder, which clears a selection.
+    /// naming no such folder, which clears a selection. Only a folder stored
+    /// as invalid is read whole: any other key is answered by its kind.
     pub(crate) fn subscribe_invalid_candidate(
         &self,
         initial: Option<String>,
@@ -414,6 +415,15 @@ impl Database {
             .subscribe_reconfigurable(initial, |key, sql| match key {
                 None => Ok(None),
                 Some(key) => {
+                    let invalid: bool = sql.query_row(
+                        "SELECT EXISTS (SELECT 1 FROM scan_candidate \
+                                        WHERE path = ? AND kind = 'invalid')",
+                        [key],
+                        |row| row.get(0),
+                    )?;
+                    if !invalid {
+                        return Ok(None);
+                    }
                     let stored =
                         folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)
                             .map_err(CovenError::from)?;
