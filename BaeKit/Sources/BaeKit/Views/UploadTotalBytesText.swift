@@ -1,153 +1,97 @@
-import SwiftUI
-
 #if os(macOS)
     import AppKit
+    import SwiftUI
 
-    private typealias PlatformLabel = NSTextField
-#else
-    import UIKit
+    /// The bytes the files being sent have moved together, as "3 MB of
+    /// 221.2 MB", read from the latest total once per display frame while
+    /// files are being sent: moving bytes run no SwiftUI update. It takes no
+    /// room while no bytes are counted, and asks for room again only as that
+    /// changes.
+    public struct UploadTotalBytesText: View {
+        private let total: LatestSource<BridgeUploadTransfer>
 
-    private typealias PlatformLabel = UILabel
-#endif
+        public init(total: LatestSource<BridgeUploadTransfer>) {
+            self.total = total
+        }
 
-/// The bytes the files being sent have moved together, as "3 MB of 221.2
-/// MB", set straight from the total's stream: a step of bytes sets the
-/// label's text and runs no SwiftUI update. It takes no room while no bytes
-/// are counted, and asks for room again only as that changes.
-public struct UploadTotalBytesText: View {
-    private let total: LatestValue<BridgeUploadTransfer>
-
-    public init(total: LatestValue<BridgeUploadTransfer>) {
-        self.total = total
+        public var body: some View {
+            Representable(total: total)
+        }
     }
 
-    public var body: some View {
-        Representable(total: total)
-    }
-}
+    /// The label, which reads the total on its own display frames.
+    private final class UploadTotalBytesField: NSTextField {
+        private lazy var following = FrameFollowing<BridgeUploadTransfer>(
+            view: self
+        ) { [weak self] transfer in self?.show(transfer?.bar) }
 
-/// A label that sets itself from the total's stream.
-@MainActor
-private final class UploadTotalBytesLabel {
-    let label: PlatformLabel
-    private let following = LatestValueFollowing<BridgeUploadTransfer>()
-
-    init() {
-        #if os(macOS)
-            label = NSTextField(labelWithString: "")
-            label.textColor = .secondaryLabelColor
-            label.font = .monospacedDigitSystemFont(
+        init() {
+            super.init(frame: .zero)
+            isEditable = false
+            isSelectable = false
+            isBordered = false
+            drawsBackground = false
+            textColor = .secondaryLabelColor
+            font = .monospacedDigitSystemFont(
                 ofSize: ThemeText.detail.nsFont.pointSize,
                 weight: ThemeText.detail.nsWeight
             )
-        #else
-            label = UILabel()
-            label.textColor = .secondaryLabel
-            label.font = .monospacedDigitSystemFont(
-                ofSize: UIFont.smallSystemFontSize,
-                weight: .regular
-            )
-        #endif
-    }
+        }
 
-    func follow(_ total: LatestValue<BridgeUploadTransfer>) {
-        following.follow(total) { [weak self] transfer in
-            self?.show(transfer?.bar)
+        @available(*, unavailable)
+        required init?(coder _: NSCoder) {
+            fatalError()
+        }
+
+        func follow(_ total: LatestSource<BridgeUploadTransfer>) {
+            following.follow(total)
+        }
+
+        func stopFollowing() {
+            following.stop()
+        }
+
+        /// The room the label takes: none while it counts no bytes.
+        var shownSize: CGSize {
+            stringValue.isEmpty ? .zero : intrinsicContentSize
+        }
+
+        private func show(_ bar: BridgeUploadBar?) {
+            let text = bar.flatMap { $0.bytesTotal > 0 ? $0.text : nil } ?? ""
+            let wasShown = !stringValue.isEmpty
+            stringValue = text
+            if wasShown != !text.isEmpty {
+                invalidateIntrinsicContentSize()
+            }
         }
     }
 
-    func stop() {
-        following.stop()
-    }
-
-    private func show(_ bar: BridgeUploadBar?) {
-        let text = bar.flatMap { $0.bytesTotal > 0 ? $0.text : nil } ?? ""
-        let shown = !currentText.isEmpty
-        #if os(macOS)
-            label.stringValue = text
-        #else
-            label.text = text
-        #endif
-        if shown != !text.isEmpty {
-            label.invalidateIntrinsicContentSize()
-        }
-    }
-
-    private var currentText: String {
-        #if os(macOS)
-            label.stringValue
-        #else
-            label.text ?? ""
-        #endif
-    }
-
-    var size: CGSize {
-        currentText.isEmpty ? .zero : label.intrinsicContentSize
-    }
-}
-
-#if os(macOS)
     private struct Representable: NSViewRepresentable {
-        let total: LatestValue<BridgeUploadTransfer>
+        let total: LatestSource<BridgeUploadTransfer>
 
-        func makeCoordinator() -> UploadTotalBytesLabel {
-            UploadTotalBytesLabel()
+        func makeNSView(context _: Context) -> UploadTotalBytesField {
+            let view = UploadTotalBytesField()
+            view.follow(total)
+            return view
         }
 
-        func makeNSView(context: Context) -> NSTextField {
-            context.coordinator.follow(total)
-            return context.coordinator.label
-        }
-
-        func updateNSView(_: NSTextField, context: Context) {
-            context.coordinator.follow(total)
+        func updateNSView(_ view: UploadTotalBytesField, context _: Context) {
+            view.follow(total)
         }
 
         static func dismantleNSView(
-            _: NSTextField,
-            coordinator: UploadTotalBytesLabel
+            _ view: UploadTotalBytesField,
+            coordinator _: ()
         ) {
-            coordinator.stop()
+            view.stopFollowing()
         }
 
         func sizeThatFits(
             _: ProposedViewSize,
-            nsView _: NSTextField,
-            context: Context
+            nsView view: UploadTotalBytesField,
+            context _: Context
         ) -> CGSize? {
-            context.coordinator.size
-        }
-    }
-#else
-    private struct Representable: UIViewRepresentable {
-        let total: LatestValue<BridgeUploadTransfer>
-
-        func makeCoordinator() -> UploadTotalBytesLabel {
-            UploadTotalBytesLabel()
-        }
-
-        func makeUIView(context: Context) -> UILabel {
-            context.coordinator.follow(total)
-            return context.coordinator.label
-        }
-
-        func updateUIView(_: UILabel, context: Context) {
-            context.coordinator.follow(total)
-        }
-
-        static func dismantleUIView(
-            _: UILabel,
-            coordinator: UploadTotalBytesLabel
-        ) {
-            coordinator.stop()
-        }
-
-        func sizeThatFits(
-            _: ProposedViewSize,
-            uiView _: UILabel,
-            context: Context
-        ) -> CGSize? {
-            context.coordinator.size
+            view.shownSize
         }
     }
 #endif
