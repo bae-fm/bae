@@ -75,8 +75,17 @@ impl ImportService {
                                 }
                             }
                             WatcherCommand::Rescan(path) => {
-                                if !is_watched(&library_manager, &path).await {
-                                    continue;
+                                match is_watched(&library_manager, &path).await {
+                                    Ok(true) => {}
+                                    Ok(false) => continue,
+                                    Err(error) => {
+                                        error!(
+                                            "could not read whether {} is watched, so it is not \
+                                             read again: {error}",
+                                            path.display()
+                                        );
+                                        continue;
+                                    }
                                 }
                                 active_roots.request_scan(
                                     path,
@@ -85,14 +94,18 @@ impl ImportService {
                                 );
                             }
                             WatcherCommand::Refresh { path, completion } => {
-                                if !is_watched(&library_manager, &path).await {
-                                    if completion
-                                        .send(Err(format!(
-                                            "{} is no longer watched",
-                                            path.display()
-                                        )))
-                                        .is_err()
-                                    {
+                                let refused = match is_watched(&library_manager, &path).await {
+                                    Ok(true) => None,
+                                    Ok(false) => {
+                                        Some(format!("{} is no longer watched", path.display()))
+                                    }
+                                    Err(error) => Some(format!(
+                                        "could not read whether {} is watched: {error}",
+                                        path.display()
+                                    )),
+                                };
+                                if let Some(refused) = refused {
+                                    if completion.send(Err(refused)).is_err() {
                                         debug!("folder refresh caller dropped after removal");
                                     }
                                     continue;
@@ -407,9 +420,12 @@ async fn watched_roots(library_manager: &LibraryManager) -> Vec<PathBuf> {
         .collect()
 }
 
-async fn is_watched(library_manager: &LibraryManager, path: &Path) -> bool {
-    watched_folders(library_manager)
+/// Whether `path` is a watched folder, by the watched folders' key.
+async fn is_watched(
+    library_manager: &LibraryManager,
+    path: &Path,
+) -> Result<bool, crate::library::LibraryError> {
+    library_manager
+        .is_watched_import_folder(&path.to_string_lossy())
         .await
-        .iter()
-        .any(|folder| folder.path == path.to_string_lossy())
 }

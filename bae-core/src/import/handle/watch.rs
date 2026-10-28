@@ -7,11 +7,7 @@ impl ImportServiceHandle {
     }
 
     async fn is_watched(&self, path: &str) -> Result<bool, crate::import::ImportError> {
-        Ok(self
-            .watched_folders()
-            .await?
-            .iter()
-            .any(|folder| folder.path == path))
+        Ok(self.library_manager.is_watched_import_folder(path).await?)
     }
 
     /// Send a command to the folder-watch coordinator; a closed channel is an
@@ -48,23 +44,23 @@ impl ImportServiceHandle {
         path: String,
     ) -> Result<(), crate::import::ImportError> {
         let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
-        let watched = self.watched_folders().await?;
-        if let Some(covering) = watched.iter().find(|folder| {
-            folder.path != path && std::path::Path::new(&path).starts_with(&folder.path)
-        }) {
-            info!(
-                "{path} is inside the watched folder {}; re-reading it",
-                covering.path
-            );
+        if let Some(covering) = self
+            .library_manager
+            .watched_import_folder_above(&path)
+            .await?
+        {
+            info!("{path} is inside the watched folder {covering}; re-reading it");
             return self.send_watcher_command(
-                WatcherCommand::Rescan(std::path::PathBuf::from(&covering.path)),
+                WatcherCommand::Rescan(std::path::PathBuf::from(&covering)),
                 "Failed to start watching folder",
             );
         }
-        let inner: Vec<std::path::PathBuf> = watched
+        let inner: Vec<std::path::PathBuf> = self
+            .library_manager
+            .watched_import_folders_below(&path)
+            .await?
             .into_iter()
-            .map(|folder| std::path::PathBuf::from(folder.path))
-            .filter(|root| root.as_path() != std::path::Path::new(&path) && root.starts_with(&path))
+            .map(std::path::PathBuf::from)
             .collect();
         if !inner.is_empty() {
             info!("{path} takes over the watched folders inside it: {inner:?}");

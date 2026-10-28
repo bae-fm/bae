@@ -319,6 +319,27 @@ impl LibraryManager {
         Ok(self.database.load_watched_import_folders().await?)
     }
 
+    /// The watched folder that holds `path` inside it, not `path` itself.
+    pub(crate) async fn watched_import_folder_above(
+        &self,
+        path: &str,
+    ) -> Result<Option<String>, LibraryError> {
+        Ok(self.database.watched_import_folder_above(path).await?)
+    }
+
+    /// The watched folders inside `path`, not `path` itself, in their order.
+    pub(crate) async fn watched_import_folders_below(
+        &self,
+        path: &str,
+    ) -> Result<Vec<String>, LibraryError> {
+        Ok(self.database.watched_import_folders_below(path).await?)
+    }
+
+    /// Whether `path`, spelled as the store keys it, is a watched folder.
+    pub(crate) async fn is_watched_import_folder(&self, path: &str) -> Result<bool, LibraryError> {
+        Ok(self.database.is_watched_import_folder(path).await?)
+    }
+
     pub(crate) async fn is_release_candidate_skipped(
         &self,
         candidate: &crate::import::folder_scanner::FolderCandidate,

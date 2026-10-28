@@ -72,3 +72,18 @@ pub(crate) fn folder_relative_below(
         .collect::<Result<Vec<_>, _>>()
         .map(|components| Some(components.join("/")))
 }
+
+/// The range of paths below `folder`: from its path and a separator up to,
+/// not including, its path and the character after the separator.
+#[cfg(desktop)]
+pub(crate) fn paths_below(folder: &str) -> (String, String) {
+    let separator = std::path::MAIN_SEPARATOR;
+    let first = match folder.ends_with(separator) {
+        true => folder.to_string(),
+        false => format!("{folder}{separator}"),
+    };
+    let mut past = first.clone();
+    past.pop();
+    past.push(char::from(separator as u8 + 1));
+    (first, past)
+}

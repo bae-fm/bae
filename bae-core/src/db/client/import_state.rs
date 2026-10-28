@@ -130,12 +130,31 @@ pub(super) fn relative_below(root: &str, folder: &str) -> Result<String, DbError
 /// with the watched folder covering it, so one stored outside every watched
 /// folder would never be deleted.
 pub(super) fn require_watched(sql: &SqlContext<'_, '_>, folder: &str) -> Result<String, DbError> {
-    let roots: Vec<String> = sql.query("SELECT path FROM watched_import_folders", [], |row| {
-        row.get(0)
-    })?;
-    crate::import::watched_folder::covering_root(&roots, folder)
-        .map(str::to_string)
+    watched_folder_among_on(sql, std::path::Path::new(folder).ancestors())?
         .ok_or_else(|| DbError::Message(format!("{folder} is under no watched folder")))
+}
+
+/// The watched folder among `folders`, each looked up by the watched
+/// folders' key. Watched folders never overlap, so the ancestors of one
+/// folder name at most one.
+pub(super) fn watched_folder_among_on<'a>(
+    sql: &(impl QueryOne + QueryRows),
+    folders: impl Iterator<Item = &'a std::path::Path>,
+) -> Result<Option<String>, DbError> {
+    let folders = serde_json::Value::from(
+        folders
+            .map(|folder| folder.to_string_lossy().into_owned())
+            .collect::<Vec<_>>(),
+    )
+    .to_string();
+    Ok(sql
+        .query_row(
+            "SELECT path FROM watched_import_folders \
+             WHERE path IN (SELECT value FROM json_each(?))",
+            [folders],
+            |row| row.get(0),
+        )
+        .optional()?)
 }
 
 /// The next scan generation. An upsert, so a missing seed row is created
@@ -204,6 +223,45 @@ impl Database {
     }
 
     /// Every watched root, in the order they were added.
+    /// Whether `path`, spelled as the store keys it, is a watched folder,
+    /// read by the watched folders' key.
+    pub async fn is_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
+        let path = path.to_string();
+        self.read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT EXISTS (SELECT 1 FROM watched_import_folders WHERE path = ?)",
+                [path],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+    }
+
+    /// The watched folder that holds `path` inside it, not `path` itself.
+    pub async fn watched_import_folder_above(&self, path: &str) -> Result<Option<String>, DbError> {
+        let path = path.to_string();
+        self.read(move |sql| {
+            watched_folder_among_on(&sql, std::path::Path::new(&path).ancestors().skip(1))
+        })
+        .await
+    }
+
+    /// The watched folders inside `path`, not `path` itself, in their order:
+    /// those whose key lies in the range of paths below it.
+    pub async fn watched_import_folders_below(&self, path: &str) -> Result<Vec<String>, DbError> {
+        let (first, past) = crate::import::folder_path::paths_below(path);
+        let path = path.to_string();
+        self.read(move |sql| {
+            Ok(sql.query(
+                "SELECT path FROM watched_import_folders \
+                 WHERE path >= ? AND path < ? AND path <> ? ORDER BY position",
+                params![first, past, path],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+    }
+
     async fn watched_import_roots(&self) -> Result<Vec<String>, DbError> {
         self.read(move |sql| {
             Ok(sql.query(
@@ -224,7 +282,7 @@ impl Database {
     /// folder watched in between fails the write.
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
         let path = crate::import::watched_folder::canonical_absolute_root(path)?;
-        if self.watched_import_roots().await?.contains(&path) {
+        if self.is_watched_import_folder(&path).await? {
             return Ok(false);
         }
         self.call(move |sql| {

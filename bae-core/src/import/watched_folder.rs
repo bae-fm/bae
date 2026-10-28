@@ -128,15 +128,6 @@ pub(crate) fn validate_stored_folder(path: &str) -> Result<(), WatchedPathError>
     Ok(())
 }
 
-/// The watched folder among `roots` that covers `folder`. Watched folders
-/// never overlap, so at most one does.
-pub(crate) fn covering_root<'a>(roots: &'a [String], folder: &str) -> Option<&'a str> {
-    roots
-        .iter()
-        .map(String::as_str)
-        .find(|root| Path::new(folder).starts_with(root))
-}
-
 /// `posix` as an absolute path on the running host (a `C:` prefix and `\` on
 /// Windows, where [`canonical_absolute_root`] refuses a `/`-rooted path).
 ///

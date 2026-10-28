@@ -173,7 +173,7 @@ impl Database {
                 writes.push((item.item, write));
             }
             let folder_text = folder_path.to_string_lossy().into_owned();
-            let (below_first, below_past) = super::read::paths_below(&folder_text);
+            let (below_first, below_past) = crate::import::folder_path::paths_below(&folder_text);
             let pruned: Vec<String> = sql.query(
                 "SELECT path FROM scan_candidate \
                  WHERE watched_folder_path = :root AND generation != :generation \

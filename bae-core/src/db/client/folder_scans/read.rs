@@ -461,7 +461,9 @@ pub(crate) fn entries_reading(
             .collect::<Vec<_>>(),
     )
     .to_string();
-    let below = coverage.whole_subtree.then(|| paths_below(&folder));
+    let below = coverage
+        .whole_subtree
+        .then(|| crate::import::folder_path::paths_below(&folder));
     let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![
         (":root", &watched_folder_path),
         (":folder", &folder),
@@ -495,20 +497,6 @@ pub(crate) fn entries_reading(
         params.as_slice(),
         |row| row.get::<_, String>(0),
     )?)
-}
-
-/// The range of paths below `folder`: from its path and a separator up to,
-/// not including, its path and the character after the separator.
-pub(super) fn paths_below(folder: &str) -> (String, String) {
-    let separator = std::path::MAIN_SEPARATOR;
-    let first = match folder.ends_with(separator) {
-        true => folder.to_string(),
-        false => format!("{folder}{separator}"),
-    };
-    let mut past = first.clone();
-    past.pop();
-    past.push(char::from(separator as u8 + 1));
-    (first, past)
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────

@@ -483,14 +483,14 @@ fn anchored_at(
     sql: &(impl QueryOne + QueryRows),
     anchor: &str,
 ) -> Result<FolderReleaseDecisionKey, DbError> {
-    let roots: Vec<String> = sql.query("SELECT path FROM watched_import_folders", [], |row| {
-        row.get(0)
-    })?;
-    let root = crate::import::watched_folder::covering_root(&roots, anchor)
-        .ok_or_else(|| DbError::Message(format!("{anchor} is under no watched folder")))?;
+    let root = super::import_state::watched_folder_among_on(
+        sql,
+        std::path::Path::new(anchor).ancestors(),
+    )?
+    .ok_or_else(|| DbError::Message(format!("{anchor} is under no watched folder")))?;
     Ok(FolderReleaseDecisionKey {
-        watched_folder_path: root.to_string(),
-        relative_folder_path: super::import_state::relative_below(root, anchor)?,
+        relative_folder_path: super::import_state::relative_below(&root, anchor)?,
+        watched_folder_path: root,
     })
 }
 
