@@ -184,7 +184,12 @@ async fn a_release_waiting_for_its_carried_pins_is_pinning() {
         .unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(waiting.id.clone())).unwrap();
-    let fetching = inspector_until(&inspector, |_| true).await;
+    // Coven tries to fetch the copy and fails while the stored file can't be
+    // read; between its tries the file's pin waits.
+    let fetching = inspector_until(&inspector, |value| {
+        value.files.iter().all(|file| file.pin == Some(FilePin::Waiting))
+    })
+    .await;
     let [StorageInspectorTransfer::PinFetch { summary }] = fetching.transfers.as_slice() else {
         panic!("coven's fetch counts the pinned files: {:?}", fetching.transfers);
     };
