@@ -1,12 +1,15 @@
 package fm.bae.app.ui.settings
 
 import android.app.Application
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import fm.bae.app.BugReports
+import fm.bae.app.LocalBugReports
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLiveSubscription
 import fm.bae.app.ui.BaeTheme
@@ -48,7 +51,9 @@ class AddDeviceDialogTest {
         var shown by mutableStateOf(true)
         compose.setContent {
             BaeTheme {
-                if (shown) AddDeviceDialog(appHandle = handle, onDismiss = { shown = false })
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
+                    if (shown) AddDeviceDialog(appHandle = handle, onDismiss = { shown = false })
+                }
             }
         }
         compose.waitForIdle()
