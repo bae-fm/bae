@@ -412,14 +412,13 @@ impl<'a> Items<'a> {
         }
     }
 
-    /// Run `statement` with each parameter it names.
-    fn query<T>(
+    /// Run `run` with each parameter `statement` names, bound.
+    fn bound<T>(
         &self,
-        sql: &(impl QueryOne + QueryRows),
         statement: &str,
         extra: &[(&'static str, &dyn ToSql)],
-        read: impl FnMut(&Row<'_>) -> rusqlite::Result<T>,
-    ) -> Result<Vec<T>, DbError> {
+        run: impl FnOnce(&[(&str, &dyn ToSql)]) -> Result<T, DbError>,
+    ) -> Result<T, DbError> {
         let (opened_root, opened_group) = match self.shown {
             Shown::Revealing {
                 opened: Some(opened),
@@ -443,7 +442,20 @@ impl<'a> Items<'a> {
             .into_iter()
             .filter(|(name, _)| names(statement, name))
             .collect();
-        Ok(sql.query(statement, bound.as_slice(), read)?)
+        run(bound.as_slice())
+    }
+
+    /// Run `statement` with each parameter it names.
+    fn query<T>(
+        &self,
+        sql: &(impl QueryOne + QueryRows),
+        statement: &str,
+        extra: &[(&'static str, &dyn ToSql)],
+        read: impl FnMut(&Row<'_>) -> rusqlite::Result<T>,
+    ) -> Result<Vec<T>, DbError> {
+        self.bound(statement, extra, |bound| {
+            Ok(sql.query(statement, bound, read)?)
+        })
     }
 
     fn count(&self, sql: &(impl QueryOne + QueryRows), part: Part) -> Result<u64, DbError> {
@@ -512,6 +524,38 @@ impl<'a> Items<'a> {
             .collect()
     }
 
+    /// Each part `window` reaches into, with the offset and limit it reads
+    /// that part at, clamped to what the list holds.
+    fn window_parts(
+        &self,
+        sql: &(impl QueryOne + QueryRows),
+        window: &LibraryPageWindow,
+    ) -> Result<Vec<(Part, u64, u64)>, DbError> {
+        let mut reached = Vec::new();
+        let mut offset = window.offset;
+        let mut limit = window.limit;
+        let parts = self.parts();
+        for (at, &part) in parts.iter().enumerate() {
+            if limit == 0 {
+                break;
+            }
+            if at + 1 == parts.len() {
+                reached.push((part, offset, limit));
+                break;
+            }
+            let held = self.count(sql, part)?;
+            if offset >= held {
+                offset -= held;
+                continue;
+            }
+            let read = limit.min(held - offset);
+            reached.push((part, offset, read));
+            limit -= read;
+            offset = 0;
+        }
+        Ok(reached)
+    }
+
     /// The items `window` covers, in order, clamped to what the list holds.
     pub(super) fn window(
         &self,
@@ -519,28 +563,37 @@ impl<'a> Items<'a> {
         window: &LibraryPageWindow,
     ) -> Result<Vec<ItemKey>, DbError> {
         let mut items = Vec::new();
-        let mut offset = window.offset;
-        let mut limit = window.limit;
-        for &part in self.parts() {
-            if limit == 0 {
-                break;
-            }
-            let last = part == *self.parts().last().expect("a tab runs in a part");
-            let held = match last {
-                true => None,
-                false => Some(self.count(sql, part)?),
-            };
-            match held {
-                Some(held) if offset >= held => offset -= held,
-                _ => {
-                    let read = self.window_of(sql, part, offset, limit)?;
-                    limit = limit.saturating_sub(read.len() as u64);
-                    offset = 0;
-                    items.extend(read);
-                }
-            }
+        for (part, offset, limit) in self.window_parts(sql, window)? {
+            items.extend(self.window_of(sql, part, offset, limit)?);
         }
         Ok(items)
+    }
+
+    /// Add to the list's selection every release `window` covers, its
+    /// groups' headers left out.
+    pub(super) fn select_window(
+        &self,
+        sql: &SqlContext<'_, '_>,
+        window: &LibraryPageWindow,
+    ) -> Result<(), DbError> {
+        for (part, offset, limit) in self.window_parts(sql, window)? {
+            let (offset, limit) = (sql_bound(offset), sql_bound(limit));
+            let statement = format!(
+                "INSERT INTO import_list_selection (list_id, key) \
+                 SELECT :list, w.key FROM ({}) AS w WHERE w.item <> 'group' \
+                 ON CONFLICT (list_id, key) DO NOTHING",
+                self.window_statement(part)
+            );
+            self.bound(
+                &statement,
+                &[(":limit", &limit), (":offset", &offset)],
+                |bound| {
+                    sql.execute(&statement, bound)?;
+                    Ok(())
+                },
+            )?;
+        }
+        Ok(())
     }
 
     /// Where the header of the group each of `keys` is listed under sits in

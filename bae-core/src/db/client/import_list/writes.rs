@@ -3,7 +3,7 @@
 //! is one write the list's live query answers, and each answers with the
 //! revision the read that reflects it carries.
 
-use super::order::{order_column, tab_column, Item, Shown};
+use super::order::{order_column, tab_column, Shown};
 use super::*;
 use crate::import::selection::SelectionChange;
 use crate::import::FolderReleaseDecisionKey;
@@ -273,19 +273,13 @@ impl Database {
                     else {
                         return Ok(SelectionWrite::RunNotShown);
                     };
-                    let run = items.window(
+                    items.select_window(
                         sql,
                         &LibraryPageWindow {
                             offset: from.min(to),
                             limit: from.abs_diff(to) + 1,
                         },
                     )?;
-                    let keys: Vec<String> = run
-                        .into_iter()
-                        .filter(|item| item.item != Item::Group)
-                        .map(|item| item.key)
-                        .collect();
-                    select_shown(sql, list, &keys)?;
                 }
             }
             Ok(SelectionWrite::Changed {

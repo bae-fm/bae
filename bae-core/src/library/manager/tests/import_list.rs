@@ -142,6 +142,46 @@ async fn done_runs_the_releases_still_uploading_first() {
     );
 }
 
+/// A run of rows selected on Done takes the rows between its ends across the
+/// part still uploading and the rest, both ends included.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn extending_on_done_selects_the_run_across_its_two_parts() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
+    let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
+    let list = manager
+        .open_import_list(crate::import::ImportListView {
+            tab: crate::import::TriageTab::Done,
+            order: crate::import::ImportListOrder::NewestFirst,
+            ..crate::import::ImportListView::default()
+        })
+        .await
+        .unwrap();
+    manager
+        .change_import_list_selection(
+            list,
+            crate::import::selection::SelectionChange::Extend {
+                from: key("A"),
+                to: key("B"),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        manager
+            .load_import_list_selected(list)
+            .await
+            .unwrap()
+            .candidates
+            .into_iter()
+            .map(|candidate| candidate.name)
+            .collect::<Vec<_>>(),
+        ["B", "D", "A"],
+        "C, B, D, A from B to A"
+    );
+}
+
 /// The windows are the query's request: asking for one reruns the read as a
 /// request change, and leaves the view's revision where it was.
 #[tokio::test]
