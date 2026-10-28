@@ -107,27 +107,32 @@ struct AddDeviceSheet: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Holds the result the presenter normally writes after the sheet is up,
-    /// over the person's devices, where `addedDevice` has joined.
+    /// Holds the result the presenter normally writes after the sheet is up.
     private struct AddDeviceSheetPreview: View {
         @State
         var result: Result<BridgeRestoreCodeShare, Error>?
-        var addedDevice: BridgeActiveDevice?
 
         var body: some View {
             AddDeviceSheet(result: $result, onDismiss: {})
-                .environment(
-                    MembershipStore.stub(
-                        people: PreviewData.members,
-                        selfIsAdmin: true,
-                        addedDevice: addedDevice
-                    )
-                )
+        }
+
+        /// The person's devices, where `addedDevice` has joined.
+        static func members(addedDevice: BridgeActiveDevice? = nil)
+            -> MembershipStore
+        {
+            MembershipStore.stub(
+                people: PreviewData.members,
+                selfIsAdmin: true,
+                addedDevice: addedDevice
+            )
         }
     }
 
+    // The environment sits on each #Preview root because the missing-environment
+    // audit reads only the preview closure's modifier chain.
     #Preview("Loading") {
         AddDeviceSheetPreview(result: nil)
+            .environment(AddDeviceSheetPreview.members())
     }
 
     #Preview("Code") {
@@ -140,6 +145,7 @@ struct AddDeviceSheet: View {
                 )
             )
         )
+        .environment(AddDeviceSheetPreview.members())
     }
 
     #Preview("Code with S3 key") {
@@ -152,6 +158,7 @@ struct AddDeviceSheet: View {
                 )
             )
         )
+        .environment(AddDeviceSheetPreview.members())
     }
 
     #Preview("Device added") {
@@ -162,12 +169,16 @@ struct AddDeviceSheet: View {
                     qrText: PreviewData.recoveryCode,
                     qrCarriesS3Key: false
                 )
-            ),
-            addedDevice: BridgeActiveDevice(
-                id: 7,
-                name: "New Phone",
-                isSelf: false,
-                canRemove: true
+            )
+        )
+        .environment(
+            AddDeviceSheetPreview.members(
+                addedDevice: BridgeActiveDevice(
+                    id: 7,
+                    name: "New Phone",
+                    isSelf: false,
+                    canRemove: true
+                )
             )
         )
     }
@@ -185,5 +196,6 @@ struct AddDeviceSheet: View {
                 )
             )
         )
+        .environment(AddDeviceSheetPreview.members())
     }
 #endif
