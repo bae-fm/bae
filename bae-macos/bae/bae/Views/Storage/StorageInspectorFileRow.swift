@@ -2,10 +2,11 @@ import BaeKit
 import SwiftUI
 
 /// One file in the storage inspector, on one line: a mark for where its
-/// bytes are going, its name and its size. A stored file has no mark; a
-/// queued one a dashed circle, its name dimmed; one being sent a ring that
-/// fills as it goes, its name in the upload's colour. A file waiting on a
-/// reason says why in its tooltip.
+/// bytes are going, its name and its size. A file at rest, stored or kept,
+/// has no mark; one queued to upload, or waiting to be kept while its
+/// release pins, a dashed circle, its name dimmed; one being sent a ring
+/// that fills as it goes, its name in the upload's colour. A file waiting on
+/// a reason says why in its tooltip.
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
 
@@ -43,10 +44,16 @@ struct StorageInspectorFileRow: View {
     }
 
     private var state: StorageFileMark.State {
-        guard let upload = row.upload else { return .stored }
-        switch upload.state {
+        if let upload = row.upload {
+            switch upload.state {
+            case .waiting: return .queued
+            case .uploading:
+                return .moving(.upload, fraction: upload.bar?.fraction)
+            }
+        }
+        switch row.pin {
         case .waiting: return .queued
-        case .uploading: return .moving(.upload, fraction: upload.bar?.fraction)
+        case .kept, nil: return .stored
         }
     }
 

@@ -33,8 +33,14 @@ struct StorageTransferControls: View {
         -> some View
     {
         switch item {
-        case .download(let operation, _):
-            // The row alone reads the bytes the download moves.
+        case .download(let operation, let files?):
+            StoragePinSummary(releaseId: operation.releaseId, files: files) {
+                run {
+                    try await downloads.cancelDownload(operation.releaseId)
+                }
+            }
+        case .download(let operation, nil):
+            // A failed download: the row says why and offers its cancel.
             DownloadRow(
                 op: operation,
                 transfer: downloadStore.transfer(

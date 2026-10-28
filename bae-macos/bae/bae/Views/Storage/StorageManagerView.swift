@@ -451,4 +451,38 @@ struct StorageManagerView: View {
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
+    /// A release pinning, the table's other rows uploading and pinning too.
+    #Preview("Pinning — inspector open") {
+        let fixture = StorageManagerPreviewFixture(
+            selectedReleaseId: "rel-row-5",
+            inspectorPresented: true,
+            downloads: [
+                BridgeDownloadOp(
+                    releaseId: "rel-row-5",
+                    release: nil,
+                    createdAt: PreviewData.queuedAt(minutesAgo: 1),
+                    state: .active
+                )
+            ],
+            outputs: []
+        )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(Importer.stub())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
+    }
 #endif

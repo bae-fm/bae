@@ -532,17 +532,40 @@
         }
 
         /// What core's inspector read delivers for `release` beside its
-        /// queue entries. The fixture uploads name no
-        /// release file, so they list after the release's files.
+        /// queue entries. While its download waits or runs, its images are
+        /// kept and its audio waits, as core counts them.
         private static func storageInspector(
             release: BridgeRelease,
             download: BridgeDownloadOp?,
             output: BridgeOutputOp?,
             upload: PreviewReleaseUpload?
         ) -> BridgeStorageInspector {
+            let pinning =
+                download.map {
+                    if case .failed = $0.state {
+                        false
+                    }
+                    else {
+                        true
+                    }
+                } == true
+            let pin = { (file: BridgeFile) -> BridgeFilePin? in
+                pinning ? (file.isImage ? .kept : .waiting) : nil
+            }
             var transfers: [BridgeStorageInspectorTransfer] = []
             if let download {
-                transfers.append(.download(operation: download, files: nil))
+                let kept = release.files.filter { pin($0) == .kept }.count
+                let waiting = release.files.filter { pin($0) == .waiting }.count
+                transfers.append(
+                    .download(
+                        operation: download,
+                        files: pinning
+                            ? BridgePinFiles(
+                                kept: UInt32(kept),
+                                waiting: UInt32(waiting)
+                            ) : nil
+                    )
+                )
             }
             if let output {
                 transfers.append(.output(operation: output))
@@ -561,7 +584,7 @@
                     BridgeStorageInspectorFile(
                         file: $0,
                         upload: upload?.files[$0.id],
-                        pin: nil
+                        pin: pin($0)
                     )
                 }
             )

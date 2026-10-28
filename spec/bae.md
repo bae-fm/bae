@@ -2626,7 +2626,11 @@ Reads come two ways:
   and how fast they go. Each file is one line, its name and size after a
   mark: none for a file at rest, a dashed circle for one waiting its turn, a
   ring filling as it is sent; a file waiting on a reason says why when the
-  pointer rests on it. Selecting a file shows its details under the list,
+  pointer rests on it. While the release pins, its download shows the same
+  way: how many of its files are kept and how many wait, a control that
+  cancels the pin, and while it downloads the bytes it holds of its size and
+  how fast it goes; a file not kept yet shows a dashed circle. A failed pin
+  shows its error instead. Selecting a file shows its details under the list,
   closed by a button or by selecting nothing: its name and the folder it
   sits in within the release's folder, what kind of file it is, its audio
   format, and its size. Core reads a file's kind from its content type, and

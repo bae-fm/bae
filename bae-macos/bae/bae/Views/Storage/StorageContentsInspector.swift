@@ -10,6 +10,11 @@ struct StorageContentsInspector: View {
 
     let releaseId: String
 
+    init(releaseId: String, initialSelectedFileId: String? = nil) {
+        self.releaseId = releaseId
+        _selectedFileId = State(initialValue: initialSelectedFileId)
+    }
+
     /// The inspector's one read, moved as `releaseId` changes.
     @State
     private var reader: DetailReader<BridgeStorageInspector>?
@@ -96,3 +101,38 @@ struct StorageContentsInspector: View {
         reader.show(releaseId)
     }
 }
+
+#if DEBUG
+    /// A release uploading, its audio file selected.
+    #Preview("File selected") {
+        let library = PreviewData.storageLibrary(downloads: [], outputs: [])
+        StorageContentsInspector(
+            releaseId: "rel-row-1",
+            initialSelectedFileId: "rel-row-1-audio"
+        )
+        .frame(width: 440, height: 614)
+        .environment(library)
+        .environment(PreviewData.downloadStore())
+        .environment(PreviewData.outputStore())
+        .environment(PreviewData.outboxStore())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(Sync.stub())
+        .environment(UiStore())
+    }
+
+    /// A release pinning: its cover kept, its audio waiting.
+    #Preview("Pinning") {
+        let library = PreviewData.storageLibrary(outputs: [], uploads: [])
+        StorageContentsInspector(releaseId: "rel-row-1")
+            .frame(width: 440, height: 614)
+            .environment(library)
+            .environment(PreviewData.downloadStore())
+            .environment(PreviewData.outputStore())
+            .environment(PreviewData.outboxStore())
+            .environment(Downloads.stub())
+            .environment(Outputs.stub())
+            .environment(Sync.stub())
+            .environment(UiStore())
+    }
+#endif
