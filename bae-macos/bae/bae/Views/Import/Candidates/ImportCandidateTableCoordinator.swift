@@ -28,9 +28,12 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private var content: ImportCandidateTableContent?
     /// Each row in view's hold on its page, by row.
     private var rowHolds: [Int: Task<Void, Never>] = [:]
-    /// Each row drawn before its page landed asking for the page, by row,
-    /// for as long as the table draws it.
+    /// Each row drawn for display before its page landed asking for the
+    /// page, by row, for as long as the table draws it.
     private var drawnHolds: [Int: Task<Void, Never>] = [:]
+    /// Each row drawn off screen before its page landed asking for the page,
+    /// by row, until the page answers.
+    private var offScreenAsks: [Int: Task<Void, Never>] = [:]
     /// The key of the row the person last pointed at without Shift.
     var anchorKey: String?
     /// Set while an update moves the rows and scrolls to keep the place, so
@@ -267,16 +270,9 @@ extension ImportCandidateTableCoordinator {
         row: Int
     ) -> NSView? {
         guard let item = item(at: row) else {
-            // A row drawn before its page lands asks for the page while the
-            // table draws it, and the page's delivery reloads the table. The
-            // table draws rows before the rows in view take their holds, and
-            // draws rows off screen for accessibility to read; a row a fast
-            // scroll carries past stops being drawn a frame later and lets
-            // its page go.
-            if drawnHolds[row] == nil {
-                let list = list
-                drawnHolds[row] = Task { await list.holdPage(containing: row) }
-            }
+            // A row drawn before its page lands asks for the page, and the
+            // page's delivery reloads the table.
+            askForPage(ofDrawnRow: row, in: tableView)
             return reused(tableView, Self.placeholder) { _ in
                 NSTableCellView()
             }
@@ -385,6 +381,30 @@ extension ImportCandidateTableCoordinator {
         releaseDrawnHolds()
     }
 
+    /// A row drawn for display, which the table draws before the rows in
+    /// view take their holds, asks for its page while the table draws it: a
+    /// row a fast scroll carries past stops being drawn a frame later and
+    /// lets its page go. A row drawn off screen is one accessibility reads,
+    /// which the table stops drawing as soon as it is made, so it asks until
+    /// its page answers.
+    private func askForPage(ofDrawnRow row: Int, in tableView: NSTableView) {
+        let list = list
+        if tableView.preparedContentRect.intersects(tableView.rect(ofRow: row))
+        {
+            if drawnHolds[row] == nil {
+                drawnHolds[row] = Task { await list.holdPage(containing: row) }
+            }
+        }
+        else if offScreenAsks[row] == nil {
+            offScreenAsks[row] = Task { [weak self] in
+                await list.withPage(containing: row) {}
+                // A cancelled ask was taken out with its list's holds.
+                guard !Task.isCancelled else { return }
+                self?.offScreenAsks.removeValue(forKey: row)
+            }
+        }
+    }
+
     /// A row the table stops drawing lets its page go.
     func tableView(
         _: NSTableView,
@@ -401,6 +421,10 @@ extension ImportCandidateTableCoordinator {
             hold.cancel()
         }
         drawnHolds.removeAll()
+        for ask in offScreenAsks.values {
+            ask.cancel()
+        }
+        offScreenAsks.removeAll()
     }
 }
 
