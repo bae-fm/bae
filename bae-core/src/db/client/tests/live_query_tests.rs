@@ -37,7 +37,7 @@ pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
 
 /// Store an artist image holding `content` and return the version reads
 /// report for it.
-async fn write_artist_image(db: &Database, artist: &str, content: &str) -> String {
+pub(super) async fn write_artist_image(db: &Database, artist: &str, content: &str) -> String {
     let bytes = content.as_bytes();
     db.write_library_image(
         &DbLibraryImage {

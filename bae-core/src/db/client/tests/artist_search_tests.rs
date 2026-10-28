@@ -38,11 +38,13 @@ fn view(text: &str, windows: &[LibraryPageWindow]) -> ArtistSearchView {
     }
 }
 
-fn ids(window: &crate::library::LibraryBrowseWindow<DbArtist>) -> Vec<&str> {
+fn ids(
+    window: &crate::library::LibraryBrowseWindow<super::super::artist_search::DbArtistSearchRow>,
+) -> Vec<&str> {
     window
         .rows
         .iter()
-        .map(|artist| artist.id.as_str())
+        .map(|row| row.artist.id.as_str())
         .collect()
 }
 
@@ -101,7 +103,11 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .result
         .unwrap();
     assert_eq!(first.total_count, 3);
-    assert!(first.credit_names.is_empty());
+    assert!(first
+        .windows
+        .iter()
+        .flat_map(|window| &window.rows)
+        .all(|row| row.credit_names.is_empty()));
 
     exec(
         &db,
@@ -127,10 +133,47 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .expect("the query stays open")
         .result
         .unwrap();
-    let names = named
-        .credit_names
-        .get(FIRST)
-        .expect("the artist's other names");
+    let names = &named
+        .windows
+        .iter()
+        .flat_map(|window| &window.rows)
+        .find(|row| row.artist.id == FIRST)
+        .expect("the artist is found")
+        .credit_names;
     assert_eq!(names.len(), 1);
     assert_eq!(names[0].credit.name, "Artist Alias");
+}
+
+/// A found artist carries, in its own row, its image's version and its other
+/// printed names in name order.
+#[tokio::test]
+async fn a_found_artist_reads_its_image_and_names_in_its_row() {
+    let (db, _tmp) = seeded().await;
+    db.add_artist_credit_name(FIRST, "Zed Alias").await.unwrap();
+    db.add_artist_credit_name(FIRST, "Alpha Alias")
+        .await
+        .unwrap();
+    let image = super::live_query_tests::write_artist_image(&db, FIRST, "artist image bytes").await;
+
+    let found = db
+        .subscribe_artist_search(view("artist name", &[window(0, 10)]))
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let first = found.windows[0]
+        .rows
+        .iter()
+        .find(|row| row.artist.id == FIRST)
+        .expect("the artist is found");
+    assert_eq!(first.image_version.as_deref(), Some(image.as_str()));
+    assert_eq!(
+        first
+            .credit_names
+            .iter()
+            .map(|name| name.credit.name.as_str())
+            .collect::<Vec<_>>(),
+        ["Alpha Alias", "Zed Alias"]
+    );
 }

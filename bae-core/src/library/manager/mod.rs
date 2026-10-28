@@ -27,10 +27,10 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::album_detail::{
-    image_refs, AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary,
-    ComposerDetail, ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail,
-    ReleaseResolveCtx, ReleaseStorageAction, ReleaseStorageState, ReleaseStorageSummary,
-    SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary, WorkSummary,
+    AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary, ComposerDetail,
+    ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
+    ReleaseStorageAction, ReleaseStorageState, ReleaseStorageSummary, SearchResults, StoragePage,
+    StorageRow, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
 use crate::config::ConfigHandle;
 use crate::db::{

@@ -264,31 +264,3 @@ fn image_revision_on<Q: QueryOne>(
         )
         .optional()?)
 }
-
-/// `ids` is a whole page's worth of releases (or, for the storage page, each row's
-/// release plus its album's), so it is unbounded and must be chunked under
-/// SQLite's variable limit like every other batched `IN` query here.
-pub(super) fn image_versions_on(
-    sql: &SqlReadContext<'_>,
-    image_type: LibraryImageType,
-    ids: &[String],
-) -> Result<HashMap<String, String>, DbError> {
-    let table = image_table(&image_type);
-    let mut map = HashMap::new();
-    for chunk in ids.chunks(SQL_MAX_IN_VARS) {
-        let placeholders = in_clause_placeholders(chunk.len());
-        let query = format!("SELECT id, revision, hash FROM {table} WHERE id IN ({placeholders})");
-        map.extend(
-            sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    image_version(
-                        &row.get::<_, String>(1)?,
-                        row.get::<_, Option<Vec<u8>>>(2)?.as_deref(),
-                    ),
-                ))
-            })?,
-        );
-    }
-    Ok(map)
-}

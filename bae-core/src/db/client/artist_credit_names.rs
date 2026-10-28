@@ -61,6 +61,53 @@ fn relink_credit_name(
     Ok(())
 }
 
+/// The other printed names of the artist `artist_id` shows as (a SQL
+/// expression), in name order, as a JSON array: its own rows and those of the
+/// artists merged into it, read by the artists' shown-as index.
+pub(super) fn credit_names_json_sql(artist_id: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object('artist_id', credit_name.artist_id, \
+                                              'key', credit_name.name_key, \
+                                              'name', credit_name.name) \
+                                  ORDER BY credit_name.name COLLATE NOCASE, credit_name.name_key) \
+          FROM artist_shown_as shown \
+          JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
+          WHERE shown.shown_artist_id = {artist_id})"
+    )
+}
+
+/// The other printed names [`credit_names_json_sql`] reads into `column`.
+pub(super) fn credit_names_column(
+    row: &Row<'_>,
+    column: &str,
+) -> rusqlite::Result<Vec<ArtistCreditName>> {
+    #[derive(serde::Deserialize)]
+    struct Stored {
+        artist_id: String,
+        key: String,
+        name: String,
+    }
+    let index = row.as_ref().column_index(column)?;
+    let json: String = row.get(index)?;
+    let stored: Vec<Stored> = serde_json::from_str(&json).map_err(|error| {
+        rusqlite::Error::FromSqlConversionFailure(
+            index,
+            rusqlite::types::Type::Text,
+            Box::new(error),
+        )
+    })?;
+    Ok(stored
+        .into_iter()
+        .map(|stored| ArtistCreditName {
+            artist_id: stored.artist_id,
+            credit: CreditName {
+                key: stored.key,
+                name: stored.name,
+            },
+        })
+        .collect())
+}
+
 /// The other printed names of each of `artist_ids` (artists as they show,
 /// after merges), each artist's in name order: its own rows and those of the
 /// artists merged into it.

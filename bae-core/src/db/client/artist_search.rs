@@ -4,15 +4,21 @@
 
 use super::*;
 
-/// Every requested window of an artist search, with the found artists' other
-/// printed names and image versions, and how many artists it found.
+/// Every requested window of an artist search, and how many artists it
+/// found.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistSearchProjection {
-    pub windows: Vec<crate::library::LibraryBrowseWindow<DbArtist>>,
-    /// The other printed names of each artist the windows hold, by artist id.
-    pub credit_names: HashMap<String, Vec<crate::credits::ArtistCreditName>>,
-    pub image_versions: HashMap<String, String>,
+    pub windows: Vec<crate::library::LibraryBrowseWindow<DbArtistSearchRow>>,
     pub total_count: u64,
+}
+
+/// One artist an artist search found, with its image's version and its other
+/// printed names in name order, read in the artist's own row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbArtistSearchRow {
+    pub artist: DbArtist,
+    pub image_version: Option<String>,
+    pub credit_names: Vec<crate::credits::ArtistCreditName>,
 }
 
 impl Database {
@@ -25,8 +31,13 @@ impl Database {
         window: crate::library::LibraryPageWindow,
     ) -> Result<Vec<DbArtist>, DbError> {
         let query = query.clone();
-        self.read(move |sql| artist_search_rows_on(&sql, &query, &window))
-            .await
+        self.read(move |sql| {
+            Ok(artist_search_rows_on(&sql, &query, &window)?
+                .into_iter()
+                .map(|row| row.artist)
+                .collect())
+        })
+        .await
     }
 
     /// Follow what an artist search finds, in the windows it asks for. No
@@ -51,8 +62,6 @@ impl Database {
                                 rows: Vec::new(),
                             })
                             .collect(),
-                        credit_names: HashMap::new(),
-                        image_versions: HashMap::new(),
                         total_count: 0,
                     });
                 };
@@ -68,22 +77,8 @@ impl Database {
                     })
                     .collect::<Result<Vec<_>, DbError>>()
                     .map_err(CovenError::from)?;
-                // Only the artists the windows hold are shown, so only their
-                // names and images are read and followed.
-                let artist_ids = windows
-                    .iter()
-                    .flat_map(|window| window.rows.iter().map(|artist| artist.id.clone()))
-                    .collect::<Vec<_>>();
-                let credit_names =
-                    super::artist_credit_names::credit_names_of_on(&sql, &artist_ids)
-                        .map_err(CovenError::from)?;
-                let image_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
-                        .map_err(CovenError::from)?;
                 Ok(ArtistSearchProjection {
                     windows,
-                    credit_names,
-                    image_versions,
                     total_count,
                 })
             })
@@ -134,11 +129,13 @@ fn artist_search_rows_on(
     sql: &SqlReadContext<'_>,
     query: &crate::library::LibrarySearchQuery,
     window: &crate::library::LibraryPageWindow,
-) -> Result<Vec<DbArtist>, DbError> {
+) -> Result<Vec<DbArtistSearchRow>, DbError> {
     sql.query(
         &format!(
             r#"
-            SELECT *
+            SELECT *,
+                   {image} AS image_version,
+                   {credit_names} AS credit_names_json
             FROM artists
             WHERE {filter}
             ORDER BY
@@ -156,10 +153,21 @@ fn artist_search_rows_on(
                 id
             LIMIT ?2 OFFSET ?3
             "#,
-            filter = artist_search_filter()
+            filter = artist_search_filter(),
+            image = super::files::artist_image_version_sql("artists.id"),
+            credit_names = super::artist_credit_names::credit_names_json_sql("artists.id"),
         ),
         params![query.as_str(), window.limit as i64, window.offset as i64],
-        row_to_artist,
+        |row| {
+            Ok(DbArtistSearchRow {
+                artist: row_to_artist(row)?,
+                image_version: row.get("image_version")?,
+                credit_names: super::artist_credit_names::credit_names_column(
+                    row,
+                    "credit_names_json",
+                )?,
+            })
+        },
     )
     .map_err(DbError::from)
 }

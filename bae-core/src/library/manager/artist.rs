@@ -68,11 +68,8 @@ impl LibraryManager {
     ) -> crate::library::ArtistSearchSnapshot {
         let crate::db::ArtistSearchProjection {
             windows,
-            mut credit_names,
-            image_versions,
             total_count,
         } = projection;
-        let images = image_refs(image_versions, LibraryImageType::Artist);
         crate::library::ArtistSearchSnapshot {
             windows: windows
                 .into_iter()
@@ -81,10 +78,13 @@ impl LibraryManager {
                     rows: window
                         .rows
                         .into_iter()
-                        .map(|artist| ArtistSearchResult {
-                            image: images.get(&artist.id).cloned(),
-                            credit_names: credit_names.remove(&artist.id).unwrap_or_default(),
-                            artist,
+                        .map(|row| ArtistSearchResult {
+                            image: crate::album_detail::artist_image_ref(
+                                &row.artist.id,
+                                row.image_version,
+                            ),
+                            credit_names: row.credit_names,
+                            artist: row.artist,
                         })
                         .collect(),
                 })
