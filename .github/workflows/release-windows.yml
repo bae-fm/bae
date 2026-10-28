@@ -162,9 +162,13 @@ jobs:
           $version = "0.13.8"
           curl.exe -fsSL --retry 5 --retry-delay 3 "https://github.com/getsentry/sentry-native/releases/download/$version/sentry-native.zip" -o sentry-native.zip
           Expand-Archive -Path sentry-native.zip -DestinationPath sentry-native-src -Force
+          # RUNTIMESTATIC links the MSVC runtime into sentry.dll and
+          # crashpad_handler.exe, which otherwise import vcruntime140.dll and
+          # msvcp140.dll, the Visual C++ redistributable's and not Windows'.
           cmake -S sentry-native-src -B sentry-native-build -A ${{ matrix.arch.cmake_platform }} `
             -DSENTRY_BACKEND=crashpad `
             -DSENTRY_BUILD_SHARED_LIBS=ON `
+            -DSENTRY_BUILD_RUNTIMESTATIC=ON `
             -DSENTRY_BUILD_TESTS=OFF `
             -DSENTRY_BUILD_EXAMPLES=OFF `
             -DSENTRY_BUILD_BENCHMARKS=OFF
@@ -282,6 +286,12 @@ jobs:
           if (-not (Test-Path "$PWD\velopack\$env:SETUP_NAME")) { Write-Host "FAIL: $env:SETUP_NAME missing"; exit 1 }
           if (-not (Test-Path "$PWD\velopack\$env:PORTABLE_NAME")) { Write-Host "FAIL: $env:PORTABLE_NAME missing"; exit 1 }
           Write-Host "PASS: packed bae ($env:CHANNEL)"
+
+      - name: Check the package loads only bundled or Windows libraries
+        shell: pwsh
+        run: |
+          python scripts\check-bundled-libraries.py "$PWD\velopack\$env:PORTABLE_NAME"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7

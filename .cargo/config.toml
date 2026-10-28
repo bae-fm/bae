@@ -23,3 +23,13 @@ FFMPEG_DIR = { value = "bae-ffmpeg/dist", relative = true, force = false }
 # connections through one mutex. coven sets the same for its own builds; the
 # workspace that builds libsqlite3-sys decides, so bae sets it here.
 LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0", force = true }
+
+# A Windows build links the C runtime into each binary. The default links it
+# dynamically, making bae's DLL import vcruntime140.dll, which is the Visual
+# C++ redistributable's and not part of Windows: a machine without it could
+# not load the bridge. cc-built C dependencies follow this flag too.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

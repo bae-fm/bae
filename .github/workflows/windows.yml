@@ -113,6 +113,13 @@ jobs:
             if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
             else { Write-Host "FAIL: $dll not found"; exit 1 }
           }
+          # The bridge and the FFmpeg DLLs it links, side by side as the app
+          # ships them, may import only each other and Windows' own DLLs.
+          $staged = "$env:RUNNER_TEMP\bridge-libraries"
+          New-Item -ItemType Directory -Force -Path $staged | Out-Null
+          Copy-Item "$dir\uniffi_bae_bridge.dll", "$env:FFMPEG_DIR\bin\*.dll" $staged
+          python scripts\check-bundled-libraries.py $staged
+          if ($LASTEXITCODE -ne 0) { exit 1 }
           # Put the bridge on PATH for every later step, the same way the FFmpeg
           # DLLs above are. `dotnet test` probes the test binary's own directory
           # and PATH, and nothing copies the bridge into the former, so the smoke
