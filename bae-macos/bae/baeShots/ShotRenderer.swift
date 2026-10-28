@@ -54,6 +54,15 @@ enum ShotRenderer {
 
         await settle(host: host)
 
+        return try png(of: host, bounds: bounds, scene: scene)
+    }
+
+    /// `host`'s pixels at `scale`, over the window background, as PNG bytes.
+    private static func png(
+        of host: NSView,
+        bounds: NSRect,
+        scene: ShotScene
+    ) throws -> Data {
         guard
             let rep = NSBitmapImageRep(
                 bitmapDataPlanes: nil,
@@ -74,8 +83,16 @@ enum ShotRenderer {
         // Point size on a 2x-pixel backing → cacheDisplay renders at 2x.
         rep.size = scene.size
         host.cacheDisplay(in: bounds, to: rep)
+        // The app draws the window's background under what the view leaves
+        // unpainted; the capture alone would leave it transparent.
+        let composed = try WindowBackdrop.composite(
+            rep,
+            of: host,
+            size: scene.size
+        )
 
-        guard let data = rep.representation(using: .png, properties: [:]) else {
+        guard let data = composed.representation(using: .png, properties: [:])
+        else {
             throw ShotError.pngEncodingFailed(scene.id)
         }
         return data

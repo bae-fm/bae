@@ -6,52 +6,19 @@ import Vision
 /// Shared AppKit hosting + snapshot helpers for the view tests.
 enum SnapshotTestSupport {
     /// `host`'s pixels once they hold still, as PNG bytes over its window's
-    /// background: the way a person sees it.
-    ///
-    /// The window's background is painted under the view because the view
-    /// alone is transparent where it draws nothing, and text in a label
-    /// colour over transparency reads by appearance: the recognizer sees the
-    /// light text of the dark appearance and misses the dark text of the
-    /// light one, so a capture that read on a dark development machine read
-    /// as empty on a light hosted runner. Over the window's own colour the
-    /// words have the same contrast in either appearance.
-    ///
-    /// Composed in a Core Graphics context addressed in pixels: a fill
-    /// through the bitmap's AppKit graphics context painted nothing on the
-    /// hosted runner and left the capture transparent, while the same fill
-    /// painted on a development machine.
+    /// background: the way a person sees it (`WindowBackdrop`). Text over
+    /// transparency reads by appearance: the recognizer sees the light text
+    /// of the dark appearance and misses the dark text of the light one, so
+    /// a capture that read on a dark development machine read as empty on a
+    /// light hosted runner. Over the window's own colour the words have the
+    /// same contrast in either appearance.
     @MainActor
     static func capturePNG(
         _ host: NSView,
         size: NSSize
     ) async throws -> Data {
         let view = try await steadyBitmap(of: host, size: size)
-        let viewImage = try #require(view.cgImage)
-        let pixels = CGRect(
-            x: 0,
-            y: 0,
-            width: view.pixelsWide,
-            height: view.pixelsHigh
-        )
-        let space = try #require(view.colorSpace.cgColorSpace)
-        let context = try #require(
-            CGContext(
-                data: nil,
-                width: view.pixelsWide,
-                height: view.pixelsHigh,
-                bitsPerComponent: 8,
-                bytesPerRow: 0,
-                space: space,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            )
-        )
-        let backdrop = try windowBackground(for: host, in: view.colorSpace)
-        context.setFillColor(backdrop.cgColor)
-        context.fill(pixels)
-        context.draw(viewImage, in: pixels)
-        let composedImage = try #require(context.makeImage())
-        let composed = NSBitmapImageRep(cgImage: composedImage)
-        composed.size = size
+        let composed = try WindowBackdrop.composite(view, of: host, size: size)
         return try #require(
             composed.representation(using: .png, properties: [:])
         )
@@ -146,24 +113,6 @@ enum SnapshotTestSupport {
     private static func holdsImage(_ layer: CALayer) -> Bool {
         guard let contents = layer.contents else { return false }
         return CFGetTypeID(contents as CFTypeRef) == CGImage.typeID
-    }
-
-    /// The window background colour under `host`'s appearance, as concrete
-    /// components in `space`: a dynamic colour resolves against the
-    /// appearance current when it is drawn, and a bitmap context has none of
-    /// its own.
-    @MainActor
-    private static func windowBackground(
-        for host: NSView,
-        in space: NSColorSpace
-    ) throws -> NSColor {
-        var resolved: NSColor?
-        host.effectiveAppearance.performAsCurrentDrawingAppearance {
-            resolved = NSColor.windowBackgroundColor.usingColorSpace(space)
-        }
-        let backdrop = try #require(resolved)
-        try #require(backdrop.alphaComponent == 1)
-        return backdrop
     }
 
     /// An empty bitmap in `space`, `captureScale` pixels per point of `size`.
