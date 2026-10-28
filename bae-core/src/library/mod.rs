@@ -144,6 +144,29 @@ impl CreateLibraryError {
     }
 }
 
+/// Why the folder for SQLite's temporary tables couldn't be named.
+#[cfg(target_os = "android")]
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub struct TemporaryDirectoryError(#[from] coven::TemporaryDirectoryError);
+
+#[cfg(target_os = "android")]
+impl TemporaryDirectoryError {
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        crate::ui::UiErrorCategory::Config
+    }
+}
+
+/// Keep SQLite's temporary tables in `directory`, the app's cache folder, for
+/// every library this process opens. SQLite finds no such folder on Android
+/// by itself, and a temporary table that outgrows its connection's cache, as
+/// a staged snapshot does, fails without one. Called at launch, before the
+/// first library opens.
+#[cfg(target_os = "android")]
+pub fn set_temporary_directory(directory: &std::path::Path) -> Result<(), TemporaryDirectoryError> {
+    Ok(coven::Coven::set_temporary_directory(directory)?)
+}
+
 /// Where this process keeps coven's keys, credentials and saved restore
 /// codes: the OS keychain, or for UI and bridge tests an in-memory keychain of
 /// their own, so a test never reads or writes the person's login keychain.

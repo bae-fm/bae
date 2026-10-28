@@ -8,6 +8,7 @@ import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.initKeyring
+import uniffi.bae_bridge.setTemporaryDirectory
 
 private const val TAG = "bae.BaeApp"
 private val logger = BaeLogger(TAG)
@@ -76,10 +77,13 @@ class BaeApp : Application() {
         // bae's directory lives under the app's private files dir: Android app
         // processes have no home directory of their own to put it under.
         // Building it creates it. The host's one failure is the OS refusing its
-        // onboarding runtime's worker threads. Any of these failing stops the
-        // launch at the startup error, titled by the step that was running.
+        // onboarding runtime's worker threads. SQLite finds no folder for its
+        // temporary tables on Android, so the app's cache folder is named
+        // before any library opens. Any of these failing stops the launch at
+        // the startup error, titled by the step that was running.
         var step = FailedStep.STARTUP
         try {
+            setTemporaryDirectory(cacheDir.absolutePath)
             audioFocus = AudioFocus(this)
             host = BridgeHost(diagnostics, BridgeAppDir(filesDir.absolutePath), audioFocus)
             step = FailedStep.SECURE_STORAGE

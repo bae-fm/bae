@@ -370,6 +370,19 @@ impl BridgeHost {
     }
 }
 
+/// Keep SQLite's temporary tables in the app's cache folder, `directory`.
+/// The Android app calls it at launch, before the host opens any library.
+#[cfg(target_os = "android")]
+#[uniffi::export]
+pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
+    bae_core::library::set_temporary_directory(std::path::Path::new(&directory)).map_err(|error| {
+        BridgeError::diagnostic(
+            crate::BridgeErrorCategory::from_core(error.category()),
+            error,
+        )
+    })
+}
+
 #[uniffi::export]
 pub fn init_app(
     library_id: String,
