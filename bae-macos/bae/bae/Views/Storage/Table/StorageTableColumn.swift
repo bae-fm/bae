@@ -4,10 +4,9 @@ import SwiftUI
 
 // MARK: - Columns
 
-/// Identifiers and seed metadata for the six storage columns. The widths are
-/// the initial layout only; the table view owns resize/reorder at runtime.
-/// The storage column has no sort field — storage state isn't a sort key the
-/// core exposes.
+/// Identifiers and seed metadata for the six storage columns, each with the
+/// field core sorts it by. The widths are the initial layout only; the table
+/// view owns resize/reorder at runtime.
 enum StorageTableColumn: String, CaseIterable {
     case release
     case artist
@@ -22,7 +21,7 @@ enum StorageTableColumn: String, CaseIterable {
         let title: String
         let width: CGFloat
         let minWidth: CGFloat
-        let sortField: BridgeStorageSortField?
+        let sortField: BridgeStorageSortField
     }
 
     private var spec: Spec {
@@ -53,7 +52,7 @@ enum StorageTableColumn: String, CaseIterable {
                 title: String(localized: "Storage"),
                 width: 190,
                 minWidth: 150,
-                sortField: nil
+                sortField: .storage
             )
         case .files:
             Spec(
@@ -75,12 +74,11 @@ enum StorageTableColumn: String, CaseIterable {
     var title: String { spec.title }
     var width: CGFloat { spec.width }
     var minWidth: CGFloat { spec.minWidth }
-    var sortField: BridgeStorageSortField? { spec.sortField }
+    var sortField: BridgeStorageSortField { spec.sortField }
 }
 
-/// `NSSortDescriptor.key` values for the sortable columns: the column raw
-/// value, mapped back to a `BridgeStorageSortField` when the user clicks a
-/// header.
+/// `NSSortDescriptor.key` values for the columns: the column raw value,
+/// mapped back to a `BridgeStorageSortField` when the user clicks a header.
 func sortField(forDescriptorKey key: String) -> BridgeStorageSortField? {
     StorageTableColumn(rawValue: key)?.sortField
 }

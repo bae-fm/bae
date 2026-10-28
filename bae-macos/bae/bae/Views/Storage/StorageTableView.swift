@@ -82,9 +82,10 @@ struct StorageTableView: NSViewRepresentable {
             tableColumn.width = column.width
             tableColumn.minWidth = column.minWidth
             tableColumn.isEditable = false
-            tableColumn.sortDescriptorPrototype = column.sortField.map { _ in
-                NSSortDescriptor(key: column.rawValue, ascending: true)
-            }
+            tableColumn.sortDescriptorPrototype = NSSortDescriptor(
+                key: column.rawValue,
+                ascending: true
+            )
             tableView.addTableColumn(tableColumn)
         }
         coordinator.applySortIndicator(to: tableView, sort: sort)
