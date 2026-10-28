@@ -87,7 +87,7 @@ struct StorageUploadPresentationTests {
                 uploading: uploading,
                 activity: uploading > 0 ? .uploading : .queued
             ),
-            stored: 0,
+            summary: [],
             bar: bar
         )
     }

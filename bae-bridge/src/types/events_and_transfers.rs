@@ -289,6 +289,37 @@ mirror_struct! {
     fields: { key, count },
 }
 
+/// One count of a release transfer's summary line, and where the files it
+/// counts stand. Mirrors `TransferCount`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeTransferCount {
+    pub label: BridgeCountLabel,
+    pub stage: BridgeTransferStage,
+}
+
+/// Mirrors `TransferStage`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTransferStage {
+    Moving,
+    Waiting,
+    Done,
+}
+
+mirror_enum! {
+    BridgeTransferStage = bae_core::library::TransferStage,
+    from_core: fn,
+    variants: { Moving, Waiting, Done },
+}
+
+mirror_struct! {
+    BridgeTransferCount = bae_core::library::TransferCount,
+    from_core: pub(crate) fn,
+    fields: {
+        label: (BridgeCountLabel),
+        stage: (BridgeTransferStage),
+    },
+}
+
 /// A queued export's phase. Mirrors `OutputPhase`; how far an active one
 /// has got is its transfer.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

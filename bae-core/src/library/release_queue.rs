@@ -75,6 +75,41 @@ pub struct CountLabel {
     pub count: u32,
 }
 
+/// One count of a release transfer's summary line, and where the files it
+/// counts stand: on the move, waiting their turn, or done. Core decides which
+/// counts appear, in what order, and that a zero drops out
+/// (`transfer_summary`); the UI words each and draws it by its stage.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TransferCount {
+    pub label: CountLabel,
+    pub stage: TransferStage,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransferStage {
+    Moving,
+    Waiting,
+    Done,
+}
+
+/// A release transfer's summary from its counts, in order, each with its
+/// catalog key and stage, each dropped when its count is zero.
+pub(crate) fn transfer_summary<const N: usize>(
+    counts: [(&str, u32, TransferStage); N],
+) -> Vec<TransferCount> {
+    counts
+        .into_iter()
+        .filter(|(_, count, _)| *count > 0)
+        .map(|(key, count, stage)| TransferCount {
+            label: CountLabel {
+                key: key.to_string(),
+                count,
+            },
+            stage,
+        })
+        .collect()
+}
+
 impl ReleaseQueueProgress {
     /// The summary parts for a release queue: its active verb (`active_key`,
     /// e.g. downloading vs uploading), then failed, then queued — each part
@@ -176,6 +211,28 @@ mod tests {
     /// The summary parts read active-then-failed-then-queued, drop any zero, and
     /// take the active verb the caller names — so every queue line shares this
     /// one decision and differs only in that verb.
+    /// A release transfer's summary keeps its order and leaves out every
+    /// count that is zero, so a release with nothing being sent reads only
+    /// what waits and what is done.
+    #[test]
+    fn a_transfer_summary_leaves_out_zero_counts() {
+        let summary = transfer_summary([
+            ("core.queue.uploading", 0, TransferStage::Moving),
+            ("core.queue.queued", 4, TransferStage::Waiting),
+            ("core.queue.stored", 105, TransferStage::Done),
+        ]);
+        assert_eq!(
+            summary
+                .iter()
+                .map(|count| (count.label.key.as_str(), count.label.count, count.stage))
+                .collect::<Vec<_>>(),
+            vec![
+                ("core.queue.queued", 4, TransferStage::Waiting),
+                ("core.queue.stored", 105, TransferStage::Done),
+            ]
+        );
+    }
+
     #[test]
     fn summary_parts_order_drop_and_active_verb() {
         let progress = ReleaseQueueProgress {

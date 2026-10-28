@@ -30,13 +30,6 @@ pub struct StorageInspectorFile {
     pub pin: Option<FilePin>,
 }
 
-/// How many of a release pinning's files are kept and how many wait.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PinFiles {
-    pub kept: u32,
-    pub waiting: u32,
-}
-
 /// A release file's queued upload as the inspector shows it: which file,
 /// whether it is being sent now, why it waits when it does, with the error
 /// behind that while this process holds it, and while it is sent, the bytes
@@ -53,16 +46,18 @@ pub struct StorageInspectorUpload {
 /// Storage Manager's footer's, not the release's.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StorageInspectorTransfer {
-    /// `files` counts the release's files while its download waits or runs.
+    /// `summary` counts the release's files waiting and kept, each left out
+    /// at zero, while its download waits or runs.
     Download {
         operation: DownloadRow,
-        files: Option<PinFiles>,
+        summary: Option<Vec<crate::library::TransferCount>>,
     },
     /// Coven fetching the copies the release's pins wait for, outside the
     /// download queue, as it does for the pins an upload carries to the
-    /// stored files: `files` counts the pinned files kept and waiting.
+    /// stored files: `summary` counts the pinned files waiting and kept, each
+    /// left out at zero.
     PinFetch {
-        files: PinFiles,
+        summary: Vec<crate::library::TransferCount>,
     },
     Output {
         operation: OutputPhaseRow,
@@ -124,12 +119,21 @@ impl StorageInspector {
                 .expect("a release's file count")
         };
         let pins = pinning.map(|pinning| {
+            use crate::library::TransferStage;
             (
                 pinning,
-                PinFiles {
-                    kept: count(FilePin::Kept),
-                    waiting: count(FilePin::Waiting),
-                },
+                crate::library::release_queue::transfer_summary([
+                    (
+                        "core.queue.waiting",
+                        count(FilePin::Waiting),
+                        TransferStage::Waiting,
+                    ),
+                    (
+                        "core.queue.pinned",
+                        count(FilePin::Kept),
+                        TransferStage::Done,
+                    ),
+                ]),
             )
         });
         Self {
@@ -150,24 +154,27 @@ enum Pinning {
 
 /// The release's entry in each queue, downloads first, then coven's fetch of
 /// the copies its pins wait for, then exports, then its files waiting to
-/// upload (`upload`); `pins` counts its files for whichever pins them.
+/// upload (`upload`); `pins` summarizes its files for whichever pins them.
 fn storage_inspector_transfers(
     release_id: &str,
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
-    pins: Option<(Pinning, PinFiles)>,
+    pins: Option<(Pinning, Vec<crate::library::TransferCount>)>,
 ) -> Vec<StorageInspectorTransfer> {
     let mut items = Vec::new();
+    let (download_summary, fetch_summary) = match pins {
+        Some((Pinning::Download, summary)) => (Some(summary), None),
+        Some((Pinning::Fetch, summary)) => (None, Some(summary)),
+        None => (None, None),
+    };
     if let Some(operation) = &entries.download {
         items.push(StorageInspectorTransfer::Download {
             operation: operation.clone(),
-            files: pins
-                .filter(|(pinning, _)| *pinning == Pinning::Download)
-                .map(|(_, files)| files),
+            summary: download_summary,
         });
     }
-    if let Some((Pinning::Fetch, files)) = pins {
-        items.push(StorageInspectorTransfer::PinFetch { files });
+    if let Some(summary) = fetch_summary {
+        items.push(StorageInspectorTransfer::PinFetch { summary });
     }
     if let Some(operation) = &entries.output {
         items.push(StorageInspectorTransfer::Output {

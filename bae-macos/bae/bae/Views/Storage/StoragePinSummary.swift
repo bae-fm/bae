@@ -2,14 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// The selected release's pin while its files come to this device: how many
-/// of its files are kept and how many wait. While its download waits or
-/// runs, the button that cancels the pin, and while it downloads, the bytes
-/// it holds of its size and how fast it goes, over a bar of the same bytes.
-/// While coven fetches the copies its pins wait for, outside the download
-/// queue, the counts alone: no queue entry holds that fetch to cancel or
-/// measure.
+/// of its files wait and how many are kept, as core counts them. While its
+/// download waits or runs, the button that cancels the pin, and while it
+/// downloads, the bytes it holds of its size and how fast it goes, over a bar
+/// of the same bytes. While coven fetches the copies its pins wait for,
+/// outside the download queue, the counts alone: no queue entry holds that
+/// fetch to cancel or measure.
 struct StoragePinSummary: View {
-    let files: BridgePinFiles
+    let summary: [BridgeTransferCount]
     let download: Download?
 
     /// The download pinning the release, and what cancels it.
@@ -28,13 +28,10 @@ struct StoragePinSummary: View {
                 Text("Pinning")
                     .fontWeight(.semibold)
                     .foregroundStyle(StorageTransferKind.pin.color)
-                separator
-                Text(
-                    QueueSummary.countLabel("core.queue.waiting", files.waiting)
-                )
-                separator
-                Text(QueueSummary.countLabel("core.queue.pinned", files.kept))
-                    .foregroundStyle(.secondary)
+                if !summary.isEmpty {
+                    separator
+                }
+                StorageTransferCounts(counts: summary, kind: .pin)
                 Spacer()
                 if let download {
                     Button("Cancel", action: download.onCancel)

@@ -2634,18 +2634,21 @@ Reads come two ways:
   coven's `coven_pins` says, or out of that queue, while any of its pins
   waits for coven to fetch its copy, whether each pinned file is kept yet),
   and its entry in the download, export and upload queues, a download with
-  how many of its files are kept and how many wait, and coven's fetch of the
+  how many of its files wait and how many are kept, and coven's fetch of the
   copies its pins wait for, with the same counts, all read for that release
   alone. Which of the files not kept
   coven is fetching now, and how far each has got, coven doesn't say. It shows nothing of a
   whole queue, which the list's footer pauses (§4.2): its upload shows how
-  many of its files are uploading, queued and stored, a control that
+  many of its files are uploading, queued and stored, a count of none left
+  out, so a release with nothing being sent reads only what waits and what
+  is stored; a control that
   cancels it, and while files are sent, the bytes of its size stored or sent
   and how fast they go. Each file is one line, its name and size after a
   mark: none for a file at rest, a dashed circle for one waiting its turn, a
   ring filling as it is sent; a file waiting on a reason says why when the
   pointer rests on it. While the release pins, its download shows the same
-  way: how many of its files are kept and how many wait, a control that
+  way: how many of its files wait and how many are kept, again leaving out
+  a count of none; a control that
   cancels the pin, and while it downloads the bytes it holds of its size and
   how fast it goes; a file not kept yet shows a dashed circle. Coven's fetch
   shows the same counts and marks, with no control and no bytes: no queue

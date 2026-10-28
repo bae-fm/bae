@@ -2,9 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// The selected release's upload: how many of its files are uploading,
-/// queued and stored, with the button that cancels its upload; while files
-/// are being sent, the bytes of its size stored or sent and how fast they go,
-/// over a bar of the same bytes.
+/// queued and stored, as core counts them, with the button that cancels its
+/// upload; while files are being sent, the bytes of its size stored or sent
+/// and how fast they go, over a bar of the same bytes.
 struct StorageUploadSummary: View {
     let releaseId: String
     let upload: BridgeReleaseUpload
@@ -17,26 +17,7 @@ struct StorageUploadSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Self.lineGap) {
             HStack(spacing: ThemeSpace.related) {
-                Text(
-                    QueueSummary.countLabel(
-                        "core.queue.uploading",
-                        upload.progress.uploading
-                    )
-                )
-                .fontWeight(.semibold)
-                .foregroundStyle(StorageTransferKind.upload.color)
-                separator
-                Text(
-                    QueueSummary.countLabel(
-                        "core.queue.queued",
-                        upload.progress.queued
-                    )
-                )
-                separator
-                Text(
-                    QueueSummary.countLabel("core.queue.stored", upload.stored)
-                )
-                .foregroundStyle(.secondary)
+                StorageTransferCounts(counts: upload.summary, kind: .upload)
                 Spacer()
                 Button("Cancel", action: onCancel)
                     .controlSize(.small)
@@ -58,10 +39,6 @@ struct StorageUploadSummary: View {
         .themeText(.detail)
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, Self.verticalInset)
-    }
-
-    private var separator: some View {
-        Text(verbatim: "\u{00B7}").foregroundStyle(.secondary)
     }
 }
 

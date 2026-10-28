@@ -98,14 +98,16 @@ impl ReleaseSummary {
 }
 
 /// A release's files in this device's upload queue: how many wait and how
-/// many are being sent now, how many of its files are stored, and, while any is, of the release's whole size,
+/// many are being sent now, its summary of those and of its stored files,
+/// and, while any is, of the release's whole size,
 /// the bytes of its files stored and those sent of the files being sent. How
 /// fast they go is the release's transfer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseUpload {
     pub progress: crate::library::UploadProgress,
-    /// How many of the release's files are stored already.
-    pub stored: u32,
+    /// How many of the release's files are uploading, queued and stored,
+    /// each left out at zero.
+    pub summary: Vec<crate::library::TransferCount>,
     pub bar: Option<crate::library::UploadBar>,
 }
 
@@ -113,12 +115,22 @@ impl ReleaseUpload {
     fn from_raw(raw: crate::db::DbReleaseUpload) -> Self {
         let count = |value: i64| u32::try_from(value).expect("a release's queued file count");
         let bytes = |value: i64| u64::try_from(value).expect("an upload's confirmed bytes");
+        let progress = crate::library::UploadProgress {
+            queued: count(raw.queued - raw.sending),
+            uploading: count(raw.sending),
+        };
+        use crate::library::TransferStage;
         Self {
-            progress: crate::library::UploadProgress {
-                queued: count(raw.queued - raw.sending),
-                uploading: count(raw.sending),
-            },
-            stored: count(raw.stored),
+            summary: crate::library::release_queue::transfer_summary([
+                (
+                    "core.queue.uploading",
+                    progress.uploading,
+                    TransferStage::Moving,
+                ),
+                ("core.queue.queued", progress.queued, TransferStage::Waiting),
+                ("core.queue.stored", count(raw.stored), TransferStage::Done),
+            ]),
+            progress,
             bar: (raw.sending > 0).then(|| crate::library::UploadBar {
                 bytes_done: bytes(raw.bytes_done),
                 bytes_total: bytes(raw.bytes_total),

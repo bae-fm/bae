@@ -778,7 +778,13 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
                 queued: 2,
                 uploading: 0
             },
-            stored: 0,
+            summary: vec![crate::library::TransferCount {
+                label: crate::library::CountLabel {
+                    key: "core.queue.queued".into(),
+                    count: 2,
+                },
+                stage: crate::library::TransferStage::Waiting,
+            }],
             bar: None,
         })
     );

@@ -34,7 +34,7 @@ fn waiting() -> ReleaseUpload {
             queued: 1,
             uploading: 0,
         },
-        stored: 0,
+        summary: Vec::new(),
         bar: None,
     }
 }
@@ -54,6 +54,14 @@ fn file(id: &str, pin: Option<FilePin>) -> FileDetail {
         upload: None,
         pin,
     }
+}
+
+/// Each count of a summary, by its label's key.
+fn counts(summary: &[crate::library::TransferCount]) -> Vec<(&str, u32)> {
+    summary
+        .iter()
+        .map(|count| (count.label.key.as_str(), count.label.count))
+        .collect()
 }
 
 fn shown(
@@ -158,16 +166,17 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
                 Some(FilePin::Waiting)
             ]
         );
-        assert!(matches!(
-            inspector.transfers.as_slice(),
-            [StorageInspectorTransfer::Download {
-                files: Some(PinFiles {
-                    kept: 1,
-                    waiting: 2
-                }),
-                ..
-            }]
-        ));
+        let [StorageInspectorTransfer::Download {
+            summary: Some(summary),
+            ..
+        }] = inspector.transfers.as_slice()
+        else {
+            panic!("a pinning release's download counts its files");
+        };
+        assert_eq!(
+            counts(summary),
+            vec![("core.queue.waiting", 2), ("core.queue.pinned", 1)]
+        );
     }
 
     let failed = shown(
@@ -189,18 +198,15 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
         vec![Some(FilePin::Kept), Some(FilePin::Waiting), None],
         "coven still fetches the copy the pin waits for"
     );
-    assert!(matches!(
-        failed.transfers.as_slice(),
-        [
-            StorageInspectorTransfer::Download { files: None, .. },
-            StorageInspectorTransfer::PinFetch {
-                files: PinFiles {
-                    kept: 1,
-                    waiting: 1
-                }
-            }
-        ]
-    ));
+    let [StorageInspectorTransfer::Download { summary: None, .. }, StorageInspectorTransfer::PinFetch { summary }] =
+        failed.transfers.as_slice()
+    else {
+        panic!("a failed download leaves its waiting pin to coven's fetch");
+    };
+    assert_eq!(
+        counts(summary),
+        vec![("core.queue.waiting", 1), ("core.queue.pinned", 1)]
+    );
 }
 
 /// Out of the download queue, a release whose pins wait for coven to fetch
@@ -230,14 +236,12 @@ fn a_release_whose_pins_wait_for_their_copies_shows_coven_fetching_them() {
             .collect::<Vec<_>>(),
         vec![Some(FilePin::Kept), Some(FilePin::Waiting), None]
     );
+    let [StorageInspectorTransfer::PinFetch { summary }] = fetching.transfers.as_slice() else {
+        panic!("coven's fetch counts the pinned files");
+    };
     assert_eq!(
-        fetching.transfers,
-        vec![StorageInspectorTransfer::PinFetch {
-            files: PinFiles {
-                kept: 1,
-                waiting: 1
-            }
-        }]
+        counts(summary),
+        vec![("core.queue.waiting", 1), ("core.queue.pinned", 1)]
     );
 
     let kept = shown(

@@ -29,14 +29,6 @@ pub enum BridgeFilePin {
     Waiting,
 }
 
-/// How many of a pinning release's files are kept and how many wait.
-/// Mirrors `PinFiles`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgePinFiles {
-    pub kept: u32,
-    pub waiting: u32,
-}
-
 /// A release file's queued upload: which file, whether it is being sent,
 /// why it waits when it does, and while it is sent, the bytes of its size
 /// sent. How fast it goes is the transfer keyed by its `file_id`. Mirrors
@@ -51,15 +43,17 @@ pub struct BridgeFileUpload {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeStorageInspectorTransfer {
-    /// `files` counts the release's files while its download waits or runs.
+    /// `summary` counts the release's files waiting and kept, each left out
+    /// at zero, while its download waits or runs.
     Download {
         operation: BridgeDownloadOp,
-        files: Option<BridgePinFiles>,
+        summary: Option<Vec<super::BridgeTransferCount>>,
     },
     /// Coven fetching the copies the release's pins wait for, outside the
-    /// download queue: `files` counts the pinned files kept and waiting.
+    /// download queue: `summary` counts the pinned files waiting and kept,
+    /// each left out at zero.
     PinFetch {
-        files: BridgePinFiles,
+        summary: Vec<super::BridgeTransferCount>,
     },
     Output {
         operation: BridgeOutputOp,

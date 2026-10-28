@@ -24,12 +24,20 @@ impl crate::types::BridgeStorageInspectorTransfer {
     fn from_core(transfer: bae_core::library::storage_inspector::StorageInspectorTransfer) -> Self {
         use bae_core::library::storage_inspector::StorageInspectorTransfer;
         match transfer {
-            StorageInspectorTransfer::Download { operation, files } => Self::Download {
+            StorageInspectorTransfer::Download { operation, summary } => Self::Download {
                 operation: crate::types::BridgeDownloadOp::from_core(operation),
-                files: files.map(crate::types::BridgePinFiles::from_core),
+                summary: summary.map(|summary| {
+                    summary
+                        .into_iter()
+                        .map(crate::types::BridgeTransferCount::from_core)
+                        .collect()
+                }),
             },
-            StorageInspectorTransfer::PinFetch { files } => Self::PinFetch {
-                files: crate::types::BridgePinFiles::from_core(files),
+            StorageInspectorTransfer::PinFetch { summary } => Self::PinFetch {
+                summary: summary
+                    .into_iter()
+                    .map(crate::types::BridgeTransferCount::from_core)
+                    .collect(),
             },
             StorageInspectorTransfer::Output { operation } => Self::Output {
                 operation: crate::types::BridgeOutputOp::from_core(operation),
@@ -38,15 +46,6 @@ impl crate::types::BridgeStorageInspectorTransfer {
                 release_id,
                 upload: crate::types::BridgeReleaseUpload::from_core(upload),
             },
-        }
-    }
-}
-
-impl crate::types::BridgePinFiles {
-    fn from_core(files: bae_core::library::storage_inspector::PinFiles) -> Self {
-        Self {
-            kept: files.kept,
-            waiting: files.waiting,
         }
     }
 }

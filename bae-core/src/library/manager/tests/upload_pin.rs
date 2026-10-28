@@ -178,18 +178,22 @@ async fn a_release_waiting_for_its_carried_pins_is_pinning() {
         ]
     );
     use crate::album_detail::FilePin;
-    use crate::library::storage_inspector::{PinFiles, StorageInspectorTransfer};
+    use crate::library::storage_inspector::StorageInspectorTransfer;
     let services = crate::library::AppServices::for_test(manager.library.clone())
         .await
         .unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(waiting.id.clone())).unwrap();
     let fetching = inspector_until(&inspector, |_| true).await;
+    let [StorageInspectorTransfer::PinFetch { summary }] = fetching.transfers.as_slice() else {
+        panic!("coven's fetch counts the pinned files: {:?}", fetching.transfers);
+    };
     assert_eq!(
-        fetching.transfers,
-        [StorageInspectorTransfer::PinFetch {
-            files: PinFiles { kept: 0, waiting: 1 }
-        }]
+        summary
+            .iter()
+            .map(|count| (count.label.key.as_str(), count.label.count))
+            .collect::<Vec<_>>(),
+        vec![("core.queue.waiting", 1)]
     );
     assert!(fetching.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
 

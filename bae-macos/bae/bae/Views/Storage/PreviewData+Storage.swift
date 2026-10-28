@@ -164,6 +164,18 @@
             let files: [String: BridgeFileUpload]
         }
 
+        /// One count of a transfer summary, as core words it.
+        static func transferCount(
+            _ key: String,
+            _ count: UInt32,
+            _ stage: BridgeTransferStage
+        ) -> BridgeTransferCount {
+            BridgeTransferCount(
+                label: BridgeCountLabel(key: key, count: count),
+                stage: stage
+            )
+        }
+
         /// A release whose audio is being sent, a third of it so far, and
         /// whose cover waits its turn: of the release's 36.4 MB, the 12.4 MB
         /// of its audio sent.
@@ -175,7 +187,10 @@
                     uploading: 1,
                     activity: .uploading
                 ),
-                stored: 0,
+                summary: [
+                    transferCount("core.queue.uploading", 1, .moving),
+                    transferCount("core.queue.queued", 1, .waiting),
+                ],
                 bar: BridgeUploadBar(
                     bytesDone: 12_400_000,
                     bytesTotal: 36_400_000
@@ -209,7 +224,7 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                stored: 0,
+                summary: [transferCount("core.queue.queued", 1, .waiting)],
                 bar: nil
             ),
             files: [
@@ -231,7 +246,7 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                stored: 0,
+                summary: [transferCount("core.queue.queued", 1, .waiting)],
                 bar: nil
             ),
             files: [
@@ -554,16 +569,20 @@
             }
             var transfers: [BridgeStorageInspectorTransfer] = []
             if let download {
-                let kept = release.files.filter { pin($0) == .kept }.count
-                let waiting = release.files.filter { pin($0) == .waiting }.count
+                // Core leaves out a zero count; the fixture's release has
+                // one image kept and one audio file waiting.
                 transfers.append(
                     .download(
                         operation: download,
-                        files: pinning
-                            ? BridgePinFiles(
-                                kept: UInt32(kept),
-                                waiting: UInt32(waiting)
-                            ) : nil
+                        summary: pinning
+                            ? [
+                                transferCount(
+                                    "core.queue.waiting",
+                                    1,
+                                    .waiting
+                                ),
+                                transferCount("core.queue.pinned", 1, .done),
+                            ] : nil
                     )
                 )
             }

@@ -235,7 +235,7 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     use crate::album_detail::FilePin;
-    use crate::library::storage_inspector::{PinFiles, StorageInspectorTransfer};
+    use crate::library::storage_inspector::StorageInspectorTransfer;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
@@ -251,13 +251,21 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
     let pinning = inspector_until(&inspector, |value| !value.transfers.is_empty()).await;
     assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
-    assert!(matches!(
-        pinning.transfers.as_slice(),
-        [StorageInspectorTransfer::Download {
-            files: Some(PinFiles { kept: 0, waiting: 1 }),
-            ..
-        }]
-    ));
+    let [StorageInspectorTransfer::Download {
+        summary: Some(summary),
+        ..
+    }] = pinning.transfers.as_slice()
+    else {
+        panic!("the pinning release's download counts its files");
+    };
+    assert_eq!(
+        summary
+            .iter()
+            .map(|count| (count.label.key.as_str(), count.label.count))
+            .collect::<Vec<_>>(),
+        vec![("core.queue.waiting", 1)],
+        "no file is kept yet, so none counts as pinned"
+    );
 
     manager.set_downloads_paused(false).await.unwrap();
     let pinned = inspector_until(&inspector, |value| value.transfers.is_empty()).await;
