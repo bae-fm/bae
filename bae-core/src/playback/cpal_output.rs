@@ -62,6 +62,12 @@ impl CpalAudioOutput {
 /// `default.audio.sink` changes, and PulseAudio 14 and later move the streams on
 /// the old default sink to the new one. With ALSA alone, `default` is fixed
 /// configuration rather than a device that changes.
+///
+/// iOS needs none either. cpal's iOS stream is a RemoteIO unit, which plays on
+/// the audio session's current route: the system changes the route itself when
+/// headphones, a Bluetooth device or AirPlay come or go, and playback continues
+/// on the new one. RemoteIO converts the stream's sample rate to the new
+/// hardware's (Apple QA1777), so the stream bae built still fits.
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 pub(crate) fn watch_default_output_device(
     on_change: impl Fn() + Send + Sync + 'static,
