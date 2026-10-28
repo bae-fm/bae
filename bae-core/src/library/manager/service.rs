@@ -24,7 +24,8 @@ fn subscription_unstarted(error: &LibraryError) {
     tracing::warn!(%error, "a subscription asked for as its library closed ends unstarted");
 }
 
-/// The manager's background tasks, and the signal that ends them.
+/// The manager's background tasks, and the signal that ends them and the
+/// subscriptions [`LibraryManager::until_closed`] made.
 #[derive(Clone, Default)]
 pub(super) struct BackgroundTasks {
     tracker: tokio_util::task::TaskTracker,
@@ -277,6 +278,22 @@ impl LibraryManager {
         }
     }
 
+    /// `query` as a subscription a surface reads by pulling its values,
+    /// which closing the library ends before the store closes: a read waiting
+    /// on it then answers that it was cancelled, and it takes no more
+    /// requests. One opened while the library closes is cancelled from the
+    /// start.
+    pub(crate) fn until_closed<Request, Projection>(
+        &self,
+        query: coven::ReconfigurableLiveQuery<Request, Projection>,
+    ) -> crate::live_query::CancellableLiveQuery<Request, Projection>
+    where
+        Request: Clone + PartialEq + Send + Sync + 'static,
+        Projection: Clone + PartialEq + Send + 'static,
+    {
+        crate::live_query::CancellableLiveQuery::new(query, self.tasks.closing.child_token())
+    }
+
     /// A file operation owns its rollback even when its caller disappears.
     pub(super) async fn run_file_operation<T, F, Fut>(
         &self,
@@ -310,10 +327,11 @@ impl LibraryManager {
     }
 
     /// Close the library: stop the sync loop, end every background task the
-    /// manager runs, then close the store, so when this returns nothing of
-    /// the manager holds a file in the library directory. The services built
-    /// on the manager (playback, import) end their own work when they are
-    /// dropped.
+    /// manager runs and every subscription `until_closed` made, then close
+    /// the store, so when this returns nothing of the manager holds a file in
+    /// the library directory and nothing reads the closed store. The services
+    /// built on the manager (playback, import) end their own work when they
+    /// are dropped.
     pub async fn close(&self) -> Result<(), LibraryError> {
         self.database.stop_sync();
         self.tasks.close().await;

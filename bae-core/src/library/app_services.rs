@@ -214,11 +214,11 @@ impl AppServices {
         group_by_artist: bool,
     ) -> crate::library::AlbumBrowseSubscription {
         let manager = self.inner.manager.clone();
-        let query = manager.subscribe_album_browse(
+        let query = manager.until_closed(manager.subscribe_album_browse(
             sort,
             group_by_artist,
             std::collections::BTreeSet::new(),
-        );
+        ));
         crate::library::LibraryBrowseSubscription::new(
             query,
             move |projection, request_revision, cause| {
@@ -231,10 +231,10 @@ impl AppServices {
     /// as one live query whose ids move in place as the selection changes; it
     /// starts with none.
     pub fn subscribe_album_selection(&self) -> crate::library::AlbumSelectionSubscription {
+        let manager = &self.inner.manager;
         crate::library::AlbumSelectionSubscription::new(
-            self.inner
-                .manager
-                .subscribe_album_selection(std::collections::BTreeSet::new()),
+            manager
+                .until_closed(manager.subscribe_album_selection(std::collections::BTreeSet::new())),
         )
     }
 
@@ -242,7 +242,7 @@ impl AppServices {
     /// person types; it starts with no query.
     pub fn subscribe_library_search(&self) -> crate::library::LibrarySearchSubscription {
         let manager = self.inner.manager.clone();
-        let query = manager.subscribe_library_search(None);
+        let query = manager.until_closed(manager.subscribe_library_search(None));
         crate::library::LibrarySearchSubscription::new(query, move |projection| {
             manager.resolve_library_search_projection(projection)
         })
@@ -252,13 +252,14 @@ impl AppServices {
     /// pointed at a new text and new windows in place as the person types and
     /// scrolls; it starts with no text and no windows.
     pub fn subscribe_artist_search(&self) -> crate::library::ArtistSearchSubscription {
+        let manager = &self.inner.manager;
         crate::library::ArtistSearchSubscription::new(
-            self.inner
-                .manager
-                .subscribe_artist_search(crate::library::ArtistSearchView {
+            manager.until_closed(manager.subscribe_artist_search(
+                crate::library::ArtistSearchView {
                     query: None,
                     windows: crate::library::LibraryPageWindows::new(),
-                }),
+                },
+            )),
             LibraryManager::resolve_artist_search,
         )
     }
@@ -267,10 +268,11 @@ impl AppServices {
     /// live query whose checks move in place as the pane's offers change; it
     /// starts with none.
     pub fn subscribe_library_statuses(&self) -> crate::library::LibraryStatusSubscription {
+        let manager = &self.inner.manager;
         crate::library::LibraryStatusSubscription::new(
-            self.inner
-                .manager
-                .subscribe_library_statuses(std::collections::BTreeSet::new()),
+            manager.until_closed(
+                manager.subscribe_library_statuses(std::collections::BTreeSet::new()),
+            ),
         )
     }
 
@@ -279,7 +281,8 @@ impl AppServices {
         sort: &[crate::db::ArtistSortCriterion],
     ) -> crate::library::ArtistBrowseSubscription {
         let manager = self.inner.manager.clone();
-        let query = manager.subscribe_artist_browse(sort, std::collections::BTreeSet::new());
+        let query = manager
+            .until_closed(manager.subscribe_artist_browse(sort, std::collections::BTreeSet::new()));
         crate::library::LibraryBrowseSubscription::new(
             query,
             move |projection, request_revision, cause| {
@@ -293,7 +296,9 @@ impl AppServices {
         sort: &[crate::db::ComposerSortCriterion],
     ) -> crate::library::ComposerBrowseSubscription {
         let manager = self.inner.manager.clone();
-        let query = manager.subscribe_composer_browse(sort, std::collections::BTreeSet::new());
+        let query = manager.until_closed(
+            manager.subscribe_composer_browse(sort, std::collections::BTreeSet::new()),
+        );
         crate::library::LibraryBrowseSubscription::new(
             query,
             move |projection, request_revision, cause| {

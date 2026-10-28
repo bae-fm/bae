@@ -37,11 +37,9 @@ pub struct LibraryStatusSubscription {
 
 impl LibraryStatusSubscription {
     pub(crate) fn new(
-        query: coven::ReconfigurableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>,
+        query: CancellableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>,
     ) -> Self {
-        Self {
-            query: CancellableLiveQuery::new(query),
-        }
+        Self { query }
     }
 
     /// Check `checks` from now on. Returns the revision the answer will

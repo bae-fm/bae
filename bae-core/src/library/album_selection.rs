@@ -36,12 +36,8 @@ pub struct AlbumSelectionSubscription {
 }
 
 impl AlbumSelectionSubscription {
-    pub(crate) fn new(
-        query: coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>>,
-    ) -> Self {
-        Self {
-            query: CancellableLiveQuery::new(query),
-        }
+    pub(crate) fn new(query: CancellableLiveQuery<BTreeSet<String>, Vec<String>>) -> Self {
+        Self { query }
     }
 
     /// Read `album_ids` from now on.

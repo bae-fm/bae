@@ -2713,6 +2713,14 @@ to compile in the bridge until it is carried across.
   and merge its values, so closing or removing the library stops them all
   before the store closes, and none hears from a closed store. One opened on
   a closed library delivers nothing and is reported as a bug.
+- **Pulled subscriptions** — the browse and download lists, the searches,
+  the import list, and the reads of which selected albums are gone and which
+  offered releases the library holds — are objects the app asks for each
+  next value and points at new windows or a new query in place. Closing or
+  removing the library cancels every one before the store closes: a read
+  waiting on one, or asked of it after, answers that it was cancelled, never
+  with the closed store, and it takes no new request. One opened as the
+  library closes is cancelled from the start.
 - **Callbacks the app provides**: UI events, the artwork reader, and on phones
   the sign-in presenter, which shows the provider's page and returns where it
   redirected. Desktops sign in through coven's own browser flow; iCloud runs in

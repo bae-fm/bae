@@ -80,14 +80,14 @@ where
     Row: Send + 'static,
 {
     pub(crate) fn new(
-        query: coven::ReconfigurableLiveQuery<LibraryPageWindows, Projection>,
+        query: CancellableLiveQuery<LibraryPageWindows, Projection>,
         resolve: impl Fn(Projection, u64, coven::LiveQueryCause) -> LibraryBrowseSnapshot<Row>
             + Send
             + Sync
             + 'static,
     ) -> Self {
         Self {
-            query: CancellableLiveQuery::new(query),
+            query,
             resolve: Arc::new(resolve),
         }
     }

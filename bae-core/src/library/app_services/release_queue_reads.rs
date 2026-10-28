@@ -14,10 +14,10 @@ impl AppServices {
     /// One query serves every window, and reads them again as an entry
     /// comes, goes, starts or fails, or a release a window shows changes.
     pub fn subscribe_download_browse(&self) -> crate::library::DownloadBrowseSubscription {
-        let query = self
-            .inner
-            .manager
-            .subscribe_download_windows(crate::library::LibraryPageWindows::new());
+        let manager = &self.inner.manager;
+        let query = manager.until_closed(
+            manager.subscribe_download_windows(crate::library::LibraryPageWindows::new()),
+        );
         crate::library::LibraryBrowseSubscription::new(
             query,
             |read: crate::library::ReleaseQueueWindows<()>, request_revision, cause| {

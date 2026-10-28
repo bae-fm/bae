@@ -71,7 +71,7 @@ pub struct LibrarySearchSubscription {
 
 impl LibrarySearchSubscription {
     pub(crate) fn new(
-        query: coven::ReconfigurableLiveQuery<
+        query: crate::live_query::CancellableLiveQuery<
             Option<LibrarySearchQuery>,
             crate::db::LibrarySearchProjection,
         >,
@@ -81,7 +81,7 @@ impl LibrarySearchSubscription {
             + 'static,
     ) -> Self {
         Self {
-            query: crate::live_query::CancellableLiveQuery::new(query),
+            query,
             resolve: std::sync::Arc::new(resolve),
         }
     }

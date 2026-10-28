@@ -215,3 +215,43 @@ async fn cancelling_closes_the_list() {
         Err(crate::import::ImportListSubscriptionError::Cancelled)
     ));
 }
+
+/// Closing the library ends a list's waiting read before the store closes:
+/// the read answers that the list was cancelled, never that the store it read
+/// is closed. The app quits with the import tab's read waiting like this.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let subscription = Arc::new(
+        crate::import::ImportListSubscription::open(
+            manager.library.clone(),
+            crate::import::ImportListView::default(),
+            crate::library::LibraryPageWindows::default(),
+        )
+        .await
+        .unwrap(),
+    );
+    subscription.next().await.expect("the initial value");
+    let waiting = tokio::spawn({
+        let subscription = subscription.clone();
+        async move { subscription.next().await }
+    });
+
+    manager.library.close().await.unwrap();
+
+    let read = tokio::time::timeout(bae_test_support::HANG_GUARD, waiting)
+        .await
+        .expect("the waiting read ends")
+        .unwrap();
+    assert!(
+        matches!(read, Err(crate::import::ImportListSubscriptionError::Cancelled)),
+        "the waiting read is cancelled: {read:?}"
+    );
+    assert!(
+        matches!(
+            subscription.next().await,
+            Err(crate::import::ImportListSubscriptionError::Cancelled)
+        ),
+        "a read after the close is cancelled too"
+    );
+}

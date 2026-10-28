@@ -41,8 +41,9 @@ impl From<crate::live_query::LiveQueryCancelled> for ImportListSubscriptionError
     }
 }
 
-/// One open list. Dropped without [`Self::cancel`], its live query ends and
-/// its row stays until the library next opens, when every list closes.
+/// One open list. Closing the library ends its live query before the store
+/// closes. Dropped without [`Self::cancel`], its live query ends and its row
+/// stays until the library next opens, when every list closes.
 pub struct ImportListSubscription {
     list: ImportListId,
     manager: LibraryManager,
@@ -58,11 +59,12 @@ impl ImportListSubscription {
         windows: LibraryPageWindows,
     ) -> Result<Self, LibraryError> {
         let list = manager.open_import_list(view).await?;
-        let query = manager.subscribe_import_list(ImportListRequest { list, windows });
+        let query = manager
+            .until_closed(manager.subscribe_import_list(ImportListRequest { list, windows }));
         Ok(Self {
             list,
             manager,
-            query: CancellableLiveQuery::new(query),
+            query,
         })
     }
 

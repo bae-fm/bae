@@ -3,8 +3,14 @@
 //! A subscription hands a UI a stream of values and takes back requests for
 //! different ones. Three things make that work: the query, the handle that
 //! replaces its request, and a cancellation that refuses every later request
-//! and settles the read a caller is already waiting on. The library browse and
-//! the import list each own exactly this, and both own it through here.
+//! and settles the read a caller is already waiting on. Every subscription a
+//! surface pulls values from — the browse lists, the searches, the import
+//! list — owns exactly this, and owns it through here.
+//!
+//! The cancellation is the library's too: one is made only by
+//! [`LibraryManager::until_closed`](crate::library::LibraryManager::until_closed),
+//! and closing the library cancels it before the store closes, so no
+//! subscription answers with the closed store.
 
 use tokio_util::sync::CancellationToken;
 
@@ -24,11 +30,15 @@ where
     Request: Clone + PartialEq + Send + Sync + 'static,
     Projection: Clone + PartialEq + Send + 'static,
 {
-    pub(crate) fn new(query: coven::ReconfigurableLiveQuery<Request, Projection>) -> Self {
+    /// `query`, ended by [`Self::cancel`] or by `cancellation`.
+    pub(crate) fn new(
+        query: coven::ReconfigurableLiveQuery<Request, Projection>,
+        cancellation: CancellationToken,
+    ) -> Self {
         Self {
             requests: std::sync::Mutex::new(Some(query.requests())),
             query: tokio::sync::Mutex::new(Some(query)),
-            cancellation: CancellationToken::new(),
+            cancellation,
         }
     }
 

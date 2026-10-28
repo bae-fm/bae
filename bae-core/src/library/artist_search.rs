@@ -39,14 +39,17 @@ pub struct ArtistSearchSubscription {
 
 impl ArtistSearchSubscription {
     pub(crate) fn new(
-        query: coven::ReconfigurableLiveQuery<ArtistSearchView, crate::db::ArtistSearchProjection>,
+        query: crate::live_query::CancellableLiveQuery<
+            ArtistSearchView,
+            crate::db::ArtistSearchProjection,
+        >,
         resolve: impl Fn(crate::db::ArtistSearchProjection, u64) -> ArtistSearchSnapshot
             + Send
             + Sync
             + 'static,
     ) -> Self {
         Self {
-            query: crate::live_query::CancellableLiveQuery::new(query),
+            query,
             resolve: std::sync::Arc::new(resolve),
         }
     }
