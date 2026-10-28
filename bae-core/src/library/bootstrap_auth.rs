@@ -21,8 +21,9 @@ pub(super) async fn authenticate(
     }
 }
 
-pub(super) fn code_access(code: &str) -> Result<Option<coven::OAuthAccess>, RestoreFromCodeError> {
+/// The store and sign-in either kind of code names.
+pub(super) fn code_metadata(code: &str) -> Result<coven::CodeMetadata, RestoreFromCodeError> {
     coven::decode_code_info(code)
-        .map(|info| info.metadata().oauth_access)
+        .map(|info| info.metadata().clone())
         .map_err(|error| restore_error(coven::BootstrapError::Code(error)))
 }

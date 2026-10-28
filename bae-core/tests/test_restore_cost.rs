@@ -181,6 +181,7 @@ async fn restore_cost(library: Library) {
             .builder(device_app_dir.store_layout())
             .clock(clock.clone())
             .storage_connector(Arc::new(storage.for_device())),
+        &device_app_dir,
         &code,
         None,
         "Ana's phone",

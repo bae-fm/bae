@@ -341,6 +341,16 @@ pub struct Preferences {
     pub subsonic: SubsonicConfig,
 }
 
+impl Preferences {
+    /// The file transfers the library's store runs at once, per direction.
+    pub fn transfer_limits(&self) -> coven::TransferLimits {
+        coven::TransferLimits {
+            uploads: usize_bound(self.max_concurrent_uploads),
+            downloads: usize_bound(self.max_concurrent_downloads),
+        }
+    }
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
@@ -414,6 +424,12 @@ impl Config {
         let store_id = coven::StoreId(uuid::Uuid::parse_str(library_id).map_err(|error| {
             ConfigError::Config(format!("invalid library id {library_id}: {error}"))
         })?);
+        Self::load(app_dir, store_id)
+    }
+
+    /// The preferences this device keeps for `store_id`: the defaults for a
+    /// library it has none for yet, such as one being restored or joined.
+    pub fn load(app_dir: &AppDir, store_id: coven::StoreId) -> Result<Self, ConfigError> {
         let library_path = app_dir.registered_library(&store_id.to_string());
         let prefs = read_preferences(&library_path)?;
         Ok(Self {

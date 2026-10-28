@@ -190,11 +190,8 @@ impl LibraryManager {
     /// Hand the stored transfer limits to the open store. The builder reads
     /// them at open; this is what a change after open does.
     fn apply_transfer_limits(&self) {
-        let config = self.config_handle.config();
-        self.database.set_transfer_limits(coven::TransferLimits {
-            uploads: crate::config::usize_bound(config.prefs.max_concurrent_uploads),
-            downloads: crate::config::usize_bound(config.prefs.max_concurrent_downloads),
-        });
+        self.database
+            .set_transfer_limits(self.config_handle.config().prefs.transfer_limits());
     }
 
     /// The limits the open store runs under — what a change through the

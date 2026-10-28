@@ -265,8 +265,10 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
         let control = bae_core::library::JoinControl::new();
+        let device_app_dir = bae_core::config::AppDir::at(guest_dir.path()).unwrap();
         let joining = bae_core::library::join_with_invite(
             household.device(&guest, &guest_dir),
+            &device_app_dir,
             &invite.code,
             "Guest Device",
             household.clock.clone(),
@@ -325,8 +327,10 @@ fn a_replacement_invite_writes_no_profile() {
         let first_dir = tempfile::tempdir().unwrap();
         let first = coven::TestCoven::new();
         let control = bae_core::library::JoinControl::new();
+        let device_app_dir = bae_core::config::AppDir::at(first_dir.path()).unwrap();
         let joining = bae_core::library::join_with_invite(
             household.device(&first, &first_dir),
+            &device_app_dir,
             &invite.code,
             "Guest Device",
             household.clock.clone(),
@@ -357,8 +361,10 @@ fn a_replacement_invite_writes_no_profile() {
             .await;
         let second_dir = tempfile::tempdir().unwrap();
         let second = coven::TestCoven::new();
+        let device_app_dir = bae_core::config::AppDir::at(second_dir.path()).unwrap();
         let joining = bae_core::library::join_with_invite(
             household.device(&second, &second_dir),
+            &device_app_dir,
             &again.code,
             "Replacement Device",
             household.clock.clone(),
@@ -393,8 +399,10 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         let guest = coven::TestCoven::new();
         let control = bae_core::library::JoinControl::new();
         let (waiting, mut waits) = tokio::sync::watch::channel(false);
+        let device_app_dir = bae_core::config::AppDir::at(guest_dir.path()).unwrap();
         let joining = bae_core::library::join_with_invite(
             household.device(&guest, &guest_dir),
+            &device_app_dir,
             &invite.code,
             "Guest Device",
             household.clock.clone(),
@@ -421,8 +429,10 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             (join.store_name.as_str(), join.invitee.as_deref()),
             ("Household", Some("Rowan"))
         );
+        let device_app_dir = bae_core::config::AppDir::at(guest_dir.path()).unwrap();
         let resuming = bae_core::library::resume_join(
             || household.device(&guest, &guest_dir),
+            &device_app_dir,
             join,
             household.clock.clone(),
             |_| {},
@@ -553,8 +563,10 @@ async fn stopped_dropbox_join(
     use std::time::Duration;
     let invite = household.invite(new_member("Rowan"), "").await;
     let (waiting, mut waits) = tokio::sync::watch::channel(false);
+    let device_app_dir = bae_core::config::AppDir::at(guest_dir.path()).unwrap();
     let joining = bae_core::library::join_with_invite(
         sign_in.configure(household.device(guest, guest_dir)),
+        &device_app_dir,
         &invite.code,
         "Guest Device",
         household.clock.clone(),
@@ -596,8 +608,10 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         let control = bae_core::library::JoinControl::new();
         let join = stopped_dropbox_join(&household, &sign_in, &guest, &guest_dir, &control).await;
         let presented = sign_in.presented();
+        let device_app_dir = bae_core::config::AppDir::at(guest_dir.path()).unwrap();
         let resuming = bae_core::library::resume_join(
             || sign_in.configure(household.device(&guest, &guest_dir)),
+            &device_app_dir,
             &join,
             household.clock.clone(),
             |_| {},
@@ -632,8 +646,10 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         // The owner's sign-in was the first; Rowan's join kept the second.
         household.storage.reject_access_token("access-1").await;
         let presented = sign_in.presented();
+        let device_app_dir = bae_core::config::AppDir::at(guest_dir.path()).unwrap();
         let resuming = bae_core::library::resume_join(
             || sign_in.configure(household.device(&guest, &guest_dir)),
+            &device_app_dir,
             &join,
             household.clock.clone(),
             |_| {},

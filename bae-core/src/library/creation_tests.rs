@@ -60,6 +60,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     handle.close().await.unwrap();
     let reopened = reset_device(
         installation.builder(app_dir.store_layout()),
+        &app_dir,
         store,
         "Replacement",
     )
@@ -126,12 +127,14 @@ async fn keys_replaced_elsewhere(
     let (store, device, stale_code) =
         connected_library(installation, app_dir, storage, "Household").await;
     let phone_dir = tempfile::TempDir::new().unwrap();
+    let phone_app_dir = AppDir::at(phone_dir.path()).unwrap();
     let (_sender, cancel) = watch::channel(false);
     let phone = restore_from_code(
         installation
             .another_device()
-            .builder(AppDir::at(phone_dir.path()).unwrap().store_layout())
+            .builder(phone_app_dir.store_layout())
             .storage_connector(std::sync::Arc::new(storage.for_device())),
+        &phone_app_dir,
         &stale_code,
         Some(owner_key()),
         "Phone",
@@ -202,10 +205,12 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
     let store = replaced.store;
     let restore = |code: String| {
         let builder = builder();
+        let app_dir = &app_dir;
         let cancel = cancel.clone();
         async move {
             restore_replacing_device(
                 builder,
+                app_dir,
                 store,
                 &code,
                 Some(owner_key()),
@@ -272,6 +277,7 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
 
     let restored = restore_replacing_device(
         builder(),
+        &app_dir,
         replaced.store,
         &replaced.current_code,
         Some(owner_key()),
@@ -357,11 +363,13 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     let store = replaced.store;
     let restore = || {
         let builder = builder();
+        let app_dir = &app_dir;
         let cancel = cancel.clone();
         let code = replaced.current_code.clone();
         async move {
             restore_replacing_device(
                 builder,
+                app_dir,
                 store,
                 &code,
                 Some(owner_key()),
@@ -466,6 +474,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
         &app_dir,
         restore_replacing_device(
             builder(),
+            &app_dir,
             store,
             &replaced.current_code,
             Some(owner_key()),
@@ -559,4 +568,81 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
         offered,
         vec![code(elsewhere), unreadable(unreadable_elsewhere)]
     );
+}
+
+/// A library restored onto a new device reads its history from storage under
+/// the transfer limits a library starts at, which it opens under too.
+#[tokio::test]
+async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::TestCoven::new();
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let (_, _, code) = connected_library(&installation, &app_dir, &storage, "Household").await;
+    let phone_dir = tempfile::TempDir::new().unwrap();
+    let phone_app_dir = AppDir::at(phone_dir.path()).unwrap();
+    let (_sender, cancel) = watch::channel(false);
+
+    let phone = restore_from_code(
+        installation
+            .another_device()
+            .builder(phone_app_dir.store_layout())
+            .storage_connector(std::sync::Arc::new(storage.for_device())),
+        &phone_app_dir,
+        &code,
+        Some(owner_key()),
+        "Phone",
+        |_| {},
+        &cancel,
+    )
+    .await
+    .unwrap();
+    let default = std::num::NonZeroUsize::new(crate::config::DEFAULT_CONCURRENT_TRANSFERS as usize);
+    assert_eq!(
+        phone.transfer_limits(),
+        coven::TransferLimits {
+            uploads: default.unwrap(),
+            downloads: default.unwrap(),
+        }
+    );
+    phone.close().await.unwrap();
+}
+
+/// Restoring over this device's copy reads the library's history under the
+/// transfer limits this device keeps for it.
+#[tokio::test]
+async fn a_restore_over_this_devices_copy_loads_at_its_transfer_limits() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::TestCoven::new();
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
+    let mut config = crate::config::Config::load(&app_dir, replaced.store).unwrap();
+    config.prefs.max_concurrent_uploads = std::num::NonZeroU32::new(2).unwrap();
+    config.prefs.max_concurrent_downloads = std::num::NonZeroU32::new(5).unwrap();
+    config.save_preferences().unwrap();
+    let (_sender, cancel) = watch::channel(false);
+
+    let restored = restore_replacing_device(
+        installation
+            .builder(app_dir.store_layout())
+            .storage_connector(std::sync::Arc::new(storage.for_device())),
+        &app_dir,
+        replaced.store,
+        &replaced.current_code,
+        Some(owner_key()),
+        "Laptop",
+        |_| {},
+        &cancel,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        restored.transfer_limits(),
+        coven::TransferLimits {
+            uploads: std::num::NonZeroUsize::new(2).unwrap(),
+            downloads: std::num::NonZeroUsize::new(5).unwrap(),
+        }
+    );
+    restored.close().await.unwrap();
 }

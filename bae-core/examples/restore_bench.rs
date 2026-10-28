@@ -170,6 +170,7 @@ async fn restore_runs(
         let started = Instant::now();
         let restored = bae_core::library::restore_from_code(
             installation.builder(new_app_dir.store_layout()),
+            &new_app_dir,
             code,
             s3.clone(),
             &format!("Restore bench {run}"),

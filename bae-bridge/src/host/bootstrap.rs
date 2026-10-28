@@ -131,6 +131,7 @@ impl BridgeHost {
             move || async move {
                 match bae_core::library::restore_from_code(
                     self.builder(),
+                    &self.app_dir,
                     &code,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
@@ -176,6 +177,7 @@ impl BridgeHost {
                 self.closed(store).await?;
                 match bae_core::library::restore_replacing_device(
                     self.builder(),
+                    &self.app_dir,
                     store,
                     &code,
                     credentials.map(BridgeS3Credentials::into_core),
@@ -213,6 +215,7 @@ impl BridgeHost {
             move || async move {
                 match bae_core::library::restore_from_keychain(
                     self.builder(),
+                    &self.app_dir,
                     &saved.saved,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
@@ -249,6 +252,7 @@ impl BridgeHost {
             move || async move {
                 let joined = bae_core::library::join_with_invite(
                     self.builder(),
+                    &self.app_dir,
                     &code,
                     &device_name,
                     Arc::new(coven::SystemClock),
@@ -310,6 +314,7 @@ impl BridgeHost {
             move || async move {
                 let joined = bae_core::library::resume_join(
                     || self.builder(),
+                    &self.app_dir,
                     &join.join,
                     Arc::new(coven::SystemClock),
                     |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
@@ -362,6 +367,7 @@ impl BridgeDeviceReset {
                 self.host.closed(self.store).await?;
                 match bae_core::library::reset_device(
                     self.host.builder(),
+                    &self.host.app_dir,
                     self.store,
                     &self.device_name,
                 )

@@ -114,6 +114,10 @@ pub enum RestoreFromCodeError {
     Profile(#[from] crate::people::ProfileError),
     #[error("restore cancelled")]
     Cancelled,
+    /// This device's preferences for the library, which set its transfer
+    /// limits, couldn't be read.
+    #[error("read the library's preferences: {0}")]
+    Preferences(#[source] crate::config::ConfigError),
     #[error("restore failed: {0}")]
     Restore(#[source] Box<coven::BootstrapError>),
 }
@@ -125,6 +129,7 @@ impl RestoreFromCodeError {
         match self {
             Self::Profile(error) => error.category(),
             Self::Cancelled => crate::ui::UiErrorCategory::Internal,
+            Self::Preferences(_) => crate::ui::UiErrorCategory::Config,
             Self::Restore(error) => manager::bootstrap_category(error),
         }
     }
@@ -243,6 +248,42 @@ impl Keychain {
         }
         Ok(())
     }
+}
+
+/// `builder` with its file transfers limited as `limits` says, per direction.
+pub(crate) fn with_transfer_limits(
+    builder: coven::CovenBuilder,
+    limits: coven::TransferLimits,
+) -> coven::CovenBuilder {
+    builder
+        .max_concurrent_uploads(limits.uploads)
+        .max_concurrent_downloads(limits.downloads)
+}
+
+/// The transfer limits this device's preferences for `store` set, which the
+/// library runs under once open. A restore or join runs under them too: it
+/// reads the library's history from storage under the download limit.
+fn library_transfers(
+    app_dir: &AppDir,
+    store: coven::StoreId,
+) -> Result<coven::TransferLimits, RestoreFromCodeError> {
+    Ok(crate::config::Config::load(app_dir, store)
+        .map_err(RestoreFromCodeError::Preferences)?
+        .prefs
+        .transfer_limits())
+}
+
+/// `builder` configured as bae's store for loading `store` from storage,
+/// under [`library_transfers`].
+fn loading_builder(
+    builder: coven::CovenBuilder,
+    app_dir: &AppDir,
+    store: coven::StoreId,
+) -> Result<coven::CovenBuilder, RestoreFromCodeError> {
+    Ok(with_transfer_limits(
+        configure_store(builder),
+        library_transfers(app_dir, store)?,
+    ))
 }
 
 /// bae's store as every handle opens it: its synced tables, its schema, and
@@ -419,15 +460,17 @@ pub async fn create_library_default(
 /// running library instead of reopening from a second configuration copy.
 pub async fn restore_from_code(
     mut builder: coven::CovenBuilder,
+    app_dir: &AppDir,
     code: &str,
     s3_credentials: Option<coven::S3Credentials>,
     device_name: &str,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
-    bootstrap_auth::authenticate(&mut builder, bootstrap_auth::code_access(code)?, cancel).await?;
+    let metadata = bootstrap_auth::code_metadata(code)?;
+    bootstrap_auth::authenticate(&mut builder, metadata.oauth_access, cancel).await?;
     coven::restore_from_code(
-        configure_store(builder),
+        loading_builder(builder, app_dir, metadata.store_id)?,
         code,
         s3_credentials,
         device_name,
@@ -440,6 +483,7 @@ pub async fn restore_from_code(
 
 pub async fn restore_from_keychain(
     mut builder: coven::CovenBuilder,
+    app_dir: &AppDir,
     saved: &coven::SavedRestoreCode,
     s3_credentials: Option<coven::S3Credentials>,
     device_name: &str,
@@ -448,7 +492,7 @@ pub async fn restore_from_keychain(
 ) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
     bootstrap_auth::authenticate(&mut builder, saved.location.oauth_access(), cancel).await?;
     coven::restore_from_keychain(
-        configure_store(builder),
+        loading_builder(builder, app_dir, saved.store_id)?,
         saved,
         s3_credentials,
         device_name,
@@ -508,6 +552,7 @@ impl Default for JoinControl {
 /// `resume_join`.
 pub async fn join_with_invite(
     mut builder: coven::CovenBuilder,
+    app_dir: &AppDir,
     code: &str,
     device_name: &str,
     clock: coven::ClockRef,
@@ -522,7 +567,7 @@ pub async fn join_with_invite(
     )
     .await?;
     let joined = Box::pin(coven::join_with_invite(
-        configure_store(builder),
+        loading_builder(builder, app_dir, invite.metadata.store_id)?,
         code,
         device_name,
         on_status,
@@ -551,14 +596,22 @@ pub async fn unfinished_joins(
 /// for each (§5.6).
 pub async fn resume_join(
     builder: impl Fn() -> coven::CovenBuilder,
+    app_dir: &AppDir,
     join: &coven::InviteInfo,
     clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
     control: &JoinControl,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
     let (store, on_status, coven_control) = (join.metadata.store_id, &on_status, &control.join);
+    let limits = library_transfers(app_dir, store)?;
     let resume = move |builder: coven::CovenBuilder| {
-        Box::pin(configure_store(builder).resume_join(store, on_status, coven_control))
+        Box::pin(
+            with_transfer_limits(configure_store(builder), limits).resume_join(
+                store,
+                on_status,
+                coven_control,
+            ),
+        )
     };
     let joined = match resume(builder()).await {
         Err(coven::BootstrapError::OAuth(coven::OAuthError::Reauthorize(_))) => {
@@ -620,10 +673,11 @@ async fn with_profile(
 /// notification.
 pub async fn reset_device(
     builder: coven::CovenBuilder,
+    app_dir: &AppDir,
     store: coven::StoreId,
     device_name: &str,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
-    configure_store(builder)
+    loading_builder(builder, app_dir, store)?
         .reset_device(store, device_name)
         .await
         .map_err(restore_error)
@@ -641,6 +695,7 @@ pub async fn reset_device(
 /// synced are discarded.
 pub async fn restore_replacing_device(
     mut builder: coven::CovenBuilder,
+    app_dir: &AppDir,
     store: coven::StoreId,
     code: &str,
     s3_credentials: Option<coven::S3Credentials>,
@@ -668,7 +723,7 @@ pub async fn restore_replacing_device(
         }
     };
     bootstrap_auth::authenticate(&mut builder, access, cancel).await?;
-    configure_store(builder)
+    loading_builder(builder, app_dir, store)?
         .restore_device(store, code, s3_credentials, device_name, on_status, cancel)
         .await
         .map_err(restore_error)

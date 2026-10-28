@@ -3193,7 +3193,7 @@ shows the complete TOML layout.
 | `default_track_save_preset`, `default_release_save_preset` | FLAC | which preset a save starts with |
 | `pause_between_sides` | on | pausing between sides and discs (§7.3) |
 | `side_pause_countdown` | off | when such a pause ends on its own |
-| `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8 |
+| `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage under the download limit, a library new to the device at the default |
 | `show_remaining_time` | off | the seek bar counts down |
 | `library_full_width` | off | the library page spans the window |
 | `verify_decode_on_import` | on | the decode check at import (§3.7) |

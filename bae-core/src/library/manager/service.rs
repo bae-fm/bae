@@ -60,28 +60,20 @@ impl LibraryManager {
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
-        let (max_uploads, max_downloads) = {
-            let config = config_handle.config();
-            (
-                crate::config::usize_bound(config.prefs.max_concurrent_uploads),
-                crate::config::usize_bound(config.prefs.max_concurrent_downloads),
-            )
-        };
+        let limits = config_handle.config().prefs.transfer_limits();
         let store_id = config_handle.config().store_id;
         let handle = match opening.into() {
             LibraryOpening::Registered(builder) => {
-                crate::library::configure_store(builder)
-                    .clock(clock.clone())
-                    .max_concurrent_uploads(max_uploads)
-                    .max_concurrent_downloads(max_downloads)
-                    .open(store_id)
-                    .await?
+                crate::library::with_transfer_limits(
+                    crate::library::configure_store(builder),
+                    limits,
+                )
+                .clock(clock.clone())
+                .open(store_id)
+                .await?
             }
             LibraryOpening::Open(handle) => {
-                handle.set_transfer_limits(coven::TransferLimits {
-                    uploads: max_uploads,
-                    downloads: max_downloads,
-                });
+                handle.set_transfer_limits(limits);
                 handle
             }
         };
