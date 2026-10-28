@@ -79,8 +79,10 @@ impl PlaybackService {
     }
 
     /// The output stopped sending partway through a track — a conversion for
-    /// the receiver failed. That is bae's own failure: report it, tell the
-    /// person, and stop rather than play on with audio missing.
+    /// the AirPlay receiver failed, or the Android device stream failed or
+    /// couldn't be reopened on a new default device. That is bae's own
+    /// failure: report it, tell the person, and stop rather than play on with
+    /// audio missing.
     pub(super) async fn output_stopped_sending(&mut self, detail: String) {
         self.library_manager
             .report_bug("keep the audio output playing", &detail);

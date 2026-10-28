@@ -574,9 +574,10 @@ fn spawn_preview_listener(
                         dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
                         completed = true;
                     }
-                    // Only an AirPlay output stops sending partway, and a
-                    // preview never plays to one; were it to, the preview
-                    // ends with the reason rather than going quiet.
+                    // The output stopped sending partway (on Android, its
+                    // device stream failed or couldn't be reopened on a new
+                    // default device): the preview ends with the reason
+                    // rather than going quiet.
                     AudioEvent::OutputFailed { detail } => {
                         emit_progress(
                             &progress_tx,

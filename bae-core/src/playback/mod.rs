@@ -7,7 +7,10 @@ mod clock;
 mod context;
 #[cfg(not(target_os = "android"))]
 pub mod cpal_output;
+// The blocking-write device writer is AAudio's; its tests run on the host.
 pub mod data_source;
+#[cfg(any(target_os = "android", test))]
+mod device_writer;
 mod error;
 mod now_playing;
 mod preview_player;
