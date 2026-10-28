@@ -64,7 +64,9 @@ struct StorageTransferControls: View {
             // reaches.
             OutputRow(
                 op: operation,
-                percent: outputStore.percent(forRelease: operation.releaseId)
+                percent: outputStore.exportProgress(
+                    forRelease: operation.releaseId
+                )
             ) {
                 run { try await outputs.cancelOutput(operation.releaseId) }
             }

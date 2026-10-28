@@ -55,7 +55,11 @@ struct StorageStatusBand: View {
                 .layoutPriority(1)
             StreamBar(stream: .upload(source))
                 .frame(minWidth: 48)
-            StreamLabel(stream: .uploadBytes(source))
+            StreamLabel(
+                stream: .uploadBytes(
+                    outboxStore.uploadProgress(forRelease: release.summary.id)
+                )
+            )
         }
     }
 

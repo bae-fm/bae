@@ -2,16 +2,27 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// A label a fast stream sets straight: each value lands as the field's
-/// text, with no SwiftUI update. Its width is the widest text the stream can
-/// show, so a changing value never asks SwiftUI to lay the row out again.
+/// A label that reads a fast stream's latest value once per display frame
+/// while the stream is active, with no SwiftUI update. Its width is the
+/// widest text the stream can show, so a changing value never asks SwiftUI
+/// to lay the row out again.
 final class StreamLabelNSView: NSTextField {
-    private let releases = KeyedValueFollowing<BridgeDownloadTransferProgress>()
-    private let releaseUploads = KeyedValueFollowing<
+    private lazy var downloads = FrameFollowing<BridgeDownloadTransferProgress>(
+        view: self
+    ) { [weak self] progress in self?.showRate(progress?.throughputBps) }
+    private lazy var releaseUploads = FrameFollowing<
         BridgeReleaseUploadTransfer
-    >()
-    private let percents = KeyedValueFollowing<UInt8>()
-    private let uploads = LatestValueFollowing<BridgeUploadTransfer>()
+    >(view: self) { [weak self] transfer in
+        self?.stringValue = transfer?.bar.text ?? ""
+    }
+    private lazy var percents = FrameFollowing<UInt8>(view: self) {
+        [weak self] percent in
+        self?.stringValue =
+            percent.map { (Double($0) / 100).formatted(.percent) } ?? ""
+    }
+    private lazy var uploads = FrameFollowing<BridgeUploadTransfer>(
+        view: self
+    ) { [weak self] transfer in self?.showRate(transfer?.throughputBps) }
 
     init() {
         super.init(frame: .zero)
@@ -37,42 +48,31 @@ final class StreamLabelNSView: NSTextField {
         switch stream {
         case .uploadRate(let total):
             releaseUploads.stop()
-            releases.stop()
+            downloads.stop()
             percents.stop()
-            uploads.follow(total) { [weak self] transfer in
-                self?.showRate(transfer?.throughputBps)
-            }
+            uploads.follow(total)
         case .uploadBytes(let source):
             uploads.stop()
-            releases.stop()
+            downloads.stop()
             percents.stop()
-            releaseUploads.follow(source) { [weak self] transfer in
-                self?.stringValue = transfer?.bar.text ?? ""
-            }
+            releaseUploads.follow(source)
         case .pinRate(let source):
             uploads.stop()
             releaseUploads.stop()
             percents.stop()
-            releases.follow(source) { [weak self] progress in
-                self?.showRate(progress?.throughputBps)
-            }
+            downloads.follow(source)
         case .exportPercent(let source):
             uploads.stop()
             releaseUploads.stop()
-            releases.stop()
-            percents.follow(source) { [weak self] percent in
-                self?.stringValue =
-                    percent.map {
-                        (Double($0) / 100).formatted(.percent)
-                    } ?? ""
-            }
+            downloads.stop()
+            percents.follow(source)
         }
     }
 
     func stopFollowing() {
         uploads.stop()
         releaseUploads.stop()
-        releases.stop()
+        downloads.stop()
         percents.stop()
     }
 
@@ -85,20 +85,20 @@ final class StreamLabelNSView: NSTextField {
     }
 }
 
-/// SwiftUI's place for a footer queue's rate or percent: it hands the label
+/// SwiftUI's place for a stream's rate, bytes or percent: it hands the label
 /// its stream, never a value, and sizes it for the widest text the stream
 /// can show.
 struct StreamLabel: NSViewRepresentable {
     /// The stream a footer label shows.
     enum Stream {
         /// How fast every file being sent goes together.
-        case uploadRate(LatestValue<BridgeUploadTransfer>)
+        case uploadRate(LatestSource<BridgeUploadTransfer>)
         /// The bytes a release holds of its size while its files are sent.
-        case uploadBytes(KeyedValueSource<BridgeReleaseUploadTransfer>)
+        case uploadBytes(LatestSource<BridgeReleaseUploadTransfer>)
         /// How fast the pin queue's running release downloads.
-        case pinRate(KeyedValueSource<BridgeDownloadTransferProgress>)
+        case pinRate(LatestSource<BridgeDownloadTransferProgress>)
         /// How far the export queue's running release has been written.
-        case exportPercent(KeyedValueSource<UInt8>)
+        case exportPercent(LatestSource<UInt8>)
     }
 
     let stream: Stream

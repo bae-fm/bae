@@ -11,23 +11,34 @@ import SwiftUI
 final class OutputStore {
     /// Each exporting release's percent, by release.
     private let percents = KeyedValues<UInt8>()
+    /// The latest percent of each exporting release, which the release's
+    /// native views read each display frame.
+    private nonisolated let latestPercents = LatestByKey<UInt8>()
 
     /// Apply one change the transfer subscription delivered.
     func applyTransferChange(_ change: BridgeOutputTransferChange) {
         switch change {
         case .updated(let releaseId, let percent):
             percents.set(percent, for: releaseId)
+            latestPercents.set(percent, for: releaseId)
         case .removed(let releaseId):
             percents.remove(releaseId)
+            latestPercents.remove(releaseId)
         case .reset(let keyed):
-            percents.reset(
-                Dictionary(
-                    uniqueKeysWithValues: keyed.map {
-                        ($0.releaseId, $0.percent)
-                    }
-                )
+            let all = Dictionary(
+                uniqueKeysWithValues: keyed.map { ($0.releaseId, $0.percent) }
             )
+            percents.reset(all)
+            latestPercents.reset(all)
         }
+    }
+
+    /// The latest percent of an exporting release, for the native views that
+    /// read it each display frame.
+    nonisolated func exportProgress(forRelease releaseId: String)
+        -> LatestSource<UInt8>
+    {
+        LatestSource(store: latestPercents, key: releaseId)
     }
 
     /// The stream of a release's export percent, for the native view that

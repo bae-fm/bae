@@ -24,6 +24,9 @@ public class OutboxStore {
         LatestByKey<BridgeReleaseUploadTransfer>()
     /// The files being sent together, for the native views that draw them.
     public let totalTransferStream = LatestValue<BridgeUploadTransfer>()
+    /// The files being sent together while any is, which native views read
+    /// each display frame.
+    private nonisolated let filesBeingSent = LatestOne<BridgeUploadTransfer>()
 
     public init(uploadsPaused: Bool) {
         self.uploadsPaused = uploadsPaused
@@ -44,6 +47,7 @@ public class OutboxStore {
             releaseProgress.remove(releaseId)
         case .totalUpdated(let transfer):
             totalTransferStream.set(transfer)
+            setFilesBeingSent(transfer)
         case .reset(let keyed, let total):
             let all = Dictionary(
                 uniqueKeysWithValues: keyed.map { ($0.releaseId, $0.transfer) }
@@ -51,6 +55,7 @@ public class OutboxStore {
             releaseTransfers.reset(all)
             releaseProgress.reset(all)
             totalTransferStream.set(total)
+            setFilesBeingSent(total)
         }
     }
 
@@ -78,6 +83,24 @@ public class OutboxStore {
         -> KeyedValueSource<BridgeReleaseUploadTransfer>
     {
         KeyedValueSource(values: releaseTransfers, key: releaseId)
+    }
+
+    /// The files being sent together hold a bar while any is; with none they
+    /// are idle.
+    private nonisolated func setFilesBeingSent(_ transfer: BridgeUploadTransfer)
+    {
+        if transfer.bar == nil {
+            filesBeingSent.clear()
+        }
+        else {
+            filesBeingSent.set(transfer)
+        }
+    }
+
+    /// The latest of the files being sent together, while any is, for the
+    /// native views that read it each display frame.
+    public nonisolated var totalProgress: LatestSource<BridgeUploadTransfer> {
+        filesBeingSent.source
     }
 
     /// The latest transfer of a release with files being sent, for the

@@ -143,19 +143,19 @@ private struct StorageQueueControl<Progress: View>: View {
     }
 }
 
-/// How fast every file being sent goes together, which a native label sets
-/// from the total's stream. A zero reading shows nothing.
+/// How fast every file being sent goes together, which a native label reads
+/// from the latest total each frame. A zero reading shows nothing.
 private struct StorageUploadRate: View {
     @Environment(OutboxStore.self)
     private var outboxStore
 
     var body: some View {
-        StreamLabel(stream: .uploadRate(outboxStore.totalTransferStream))
+        StreamLabel(stream: .uploadRate(outboxStore.totalProgress))
     }
 }
 
 /// How fast the pin queue's running release has downloaded, which a native
-/// label sets from the release's stream.
+/// label reads from the release's latest progress each frame.
 private struct StoragePinRate: View {
     let releaseId: String
     @Environment(DownloadStore.self)
@@ -164,14 +164,14 @@ private struct StoragePinRate: View {
     var body: some View {
         StreamLabel(
             stream: .pinRate(
-                downloadStore.releaseTransfer(forRelease: releaseId)
+                downloadStore.downloadProgress(forRelease: releaseId)
             )
         )
     }
 }
 
 /// How far the output queue's running release has been written, which a
-/// native label sets from the release's stream.
+/// native label reads from the release's latest percent each frame.
 private struct StorageOutputPercent: View {
     let releaseId: String
     @Environment(OutputStore.self)
@@ -179,7 +179,9 @@ private struct StorageOutputPercent: View {
 
     var body: some View {
         StreamLabel(
-            stream: .exportPercent(outputStore.percent(forRelease: releaseId))
+            stream: .exportPercent(
+                outputStore.exportProgress(forRelease: releaseId)
+            )
         )
     }
 }

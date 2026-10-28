@@ -5,9 +5,9 @@ import SwiftUI
 /// save, a state badge, and a cancel button.
 struct OutputRow: View {
     let op: BridgeOutputOp
-    /// The stream of how far the export has got, which a native label beside
-    /// the badge sets itself from while the export runs.
-    let percent: KeyedValueSource<UInt8>
+    /// The latest percent of the export, which a native label beside the
+    /// badge reads each display frame while the export runs.
+    let percent: LatestSource<UInt8>
     let onCancel: () -> Void
 
     private var presetName: String? {
@@ -97,7 +97,7 @@ struct OutputRow: View {
                 OutputRow(
                     op: op,
                     percent: PreviewData.outputStore()
-                        .percent(forRelease: op.releaseId),
+                        .exportProgress(forRelease: op.releaseId),
                     onCancel: {}
                 )
                 Divider()
