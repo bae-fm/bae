@@ -33,7 +33,7 @@ enum ProgressTrackDrawing {
 
 /// The shared progress bar: a fill for 0...1, or for `nil` a marching pill
 /// animated by Core Animation so nothing ticks the view hierarchy.
-final class ProgressTrackNSView: NSView {
+class ProgressTrackNSView: NSView {
     /// Height of the drawn track and of the view.
     static let trackHeight: CGFloat = 4
 
