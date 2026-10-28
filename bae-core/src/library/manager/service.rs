@@ -540,11 +540,12 @@ impl LibraryManager {
             .retain(|reader| reader.send(track_ids.clone()).is_ok());
     }
 
-    /// How fast each file being sent and each release with files being sent
-    /// goes, and the files being sent together, told as each one moves.
+    /// How far and how fast each release with files being sent goes, and
+    /// the files being sent together, told as each one moves.
     pub fn watch_outbox_transfers(&self) -> crate::library::OutboxTransfersWatch {
         crate::library::OutboxTransfersWatch::of(
             self.database.subscribe_sending_uploads(),
+            self.database.subscribe_upload_transfers(),
             self.clock.clone(),
         )
     }
@@ -553,8 +554,15 @@ impl LibraryManager {
     pub fn watch_outbox_total_transfer(&self) -> crate::library::OutboxTotalTransferWatch {
         crate::library::OutboxTotalTransferWatch::of(
             self.database.subscribe_sending_uploads(),
+            self.database.subscribe_upload_transfers(),
             self.clock.clone(),
         )
+    }
+
+    /// How far each file being sent has got, by file, told as each one
+    /// moves.
+    pub fn watch_upload_file_transfers(&self) -> crate::library::FileTransfersWatch {
+        crate::library::FileTransfersWatch::of(self.database.subscribe_upload_transfers())
     }
 
     /// Every entry of the download queue now, for a test that reads the

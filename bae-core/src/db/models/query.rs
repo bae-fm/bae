@@ -259,8 +259,8 @@ pub struct DbReleaseDetail {
 }
 
 /// One release file waiting in this device's upload queue, read with its
-/// row: the file being uploaded, whether this process is sending it now,
-/// the record of what it waits for, its size, and the bytes of it sent.
+/// row: the file being uploaded, whether this process is sending it now, and
+/// the record of what it waits for.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbFileUpload {
     /// The release file row whose file it is.
@@ -268,29 +268,35 @@ pub struct DbFileUpload {
     pub file: coven::FileId,
     pub sending: bool,
     pub pending: Option<coven::PendingRecord>,
-    pub file_size: i64,
-    pub bytes_sent: i64,
 }
 
-/// One file this process is sending now: its release, when it is one of a
-/// release's files, and the bytes its upload session has had confirmed, while
-/// it is sent in parts.
+/// One file this process is sending now: when it is one of a release's
+/// files, its release and size, and the bytes its upload session has had
+/// confirmed, while it is sent in parts.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbSendingFile {
     pub file: coven::FileId,
     pub release_id: Option<String>,
+    pub file_size: Option<i64>,
     pub bytes_confirmed: Option<i64>,
     pub bytes_total: Option<i64>,
 }
 
-/// The files this process is sending now, the bytes confirmed of them
-/// together and in all, and whether uploads are paused, as one read finds
-/// them.
+/// A release with files this process is sending now: of its whole size, the
+/// bytes of its files stored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbSendingRelease {
+    pub release_id: String,
+    pub bytes_stored: i64,
+    pub bytes_total: i64,
+}
+
+/// The files this process is sending now, the releases they belong to, and
+/// whether uploads are paused, as one read finds them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbSendingUploads {
     pub files: Vec<DbSendingFile>,
-    pub bytes_confirmed: i64,
-    pub bytes_total: i64,
+    pub releases: Vec<DbSendingRelease>,
     pub paused: bool,
 }
 
@@ -349,15 +355,13 @@ pub struct DbReleaseSummary {
 
 /// A release's files in this device's upload queue, as one read finds them:
 /// how many wait there, how many of those this process is sending now, and
-/// of the release's whole size, the bytes stored or sent.
+/// how many are stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbReleaseUpload {
     pub queued: i64,
     pub sending: i64,
     /// How many of the release's files are stored: those not queued.
     pub stored: i64,
-    pub bytes_done: i64,
-    pub bytes_total: i64,
 }
 
 /// Raw storage-page row: a release summary joined with its parent album summary,

@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A release row's content for one column; needs `DownloadStore` and
-/// `ImageStore` in the environment.
+/// A release row's content for one column; needs `DownloadStore`,
+/// `OutboxStore` and `ImageStore` in the environment.
 struct StorageReleaseCell: View {
     let release: ReleaseSummary
     let album: BridgeAlbum
@@ -68,6 +68,7 @@ struct StorageReleaseCell: View {
         .frame(width: 700)
         .padding(.vertical)
         .environment(PreviewData.downloadStore())
+        .environment(PreviewData.outboxStore())
         .environment(ImageStore.stub())
     }
 #endif

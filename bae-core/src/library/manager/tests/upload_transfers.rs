@@ -1,5 +1,6 @@
-// The upload rates and the bytes of the files being sent, as the transfer
-// watches tell them from the live query of the files being sent.
+// How far and how fast the files being sent go, as the transfer watches
+// tell them from the live query of the files being sent and coven's upload
+// watch.
 //
 // `include!`d into `manager::tests`.
 
@@ -15,17 +16,17 @@ fn apply_transfer_changes(
             OutboxTransferChange::Reset(transfers) => *held = Some(transfers),
             OutboxTransferChange::Updated {
                 release_id,
-                throughput_bps,
+                transfer,
             } => {
                 held.as_mut()
                     .expect("a reset comes first")
-                    .rates
-                    .insert(release_id, throughput_bps);
+                    .releases
+                    .insert(release_id, transfer);
             }
             OutboxTransferChange::Removed { release_id } => {
                 held.as_mut()
                     .expect("a reset comes first")
-                    .rates
+                    .releases
                     .remove(&release_id);
             }
             OutboxTransferChange::TotalUpdated(total) => {
@@ -60,7 +61,7 @@ async fn the_transfers_name_only_the_files_being_sent() {
     assert_eq!(
         held,
         Some(crate::library::OutboxTransfers {
-            rates: Default::default(),
+            releases: Default::default(),
             total: crate::library::UploadTransfer {
                 bar: None,
                 throughput_bps: 0,
@@ -90,15 +91,15 @@ async fn the_transfers_name_only_the_files_being_sent() {
     .await
     .expect("the transfers tell the file being sent");
     assert!(
-        sending.rates.contains_key(&release.id),
-        "the release of the file being sent has its rate: {sending:?}"
+        sending.releases.contains_key(&release.id),
+        "the release of the file being sent has its transfer: {sending:?}"
     );
 
     drain.await.unwrap().unwrap();
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             let current = held.as_ref().unwrap();
-            if current.rates.is_empty() && current.total.bar.is_none() {
+            if current.releases.is_empty() && current.total.bar.is_none() {
                 break;
             }
             apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
@@ -145,10 +146,95 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
         .unwrap();
     assert!(sending.bar.is_some(), "{sending:?}");
     drain.await.unwrap().unwrap();
-    let sent = tokio::time::timeout(std::time::Duration::from_secs(10), total.next())
-        .await
-        .expect("the file sent moves the total")
-        .unwrap()
-        .unwrap();
-    assert_eq!(sent, idle);
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        let mut told = sending;
+        while told != idle {
+            let next = total.next().await.unwrap().unwrap();
+            assert_ne!(next, told, "the total is told only as it changes");
+            told = next;
+        }
+    })
+    .await
+    .expect("the file sent leaves the total idle");
+}
+
+/// A release being sent reads its bytes against its whole size from the
+/// moment its send starts: its stored files count as done, and a file sent in
+/// one request counts its share as its object goes, before the provider
+/// answers. Its file's own share is told by file.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("sending"),
+        "Album Title",
+        &[("a.flac", b"bytes-a")],
+    )
+    .await;
+    let mut transfers = manager.watch_outbox_transfers();
+    let mut files = manager.watch_upload_file_transfers();
+    let mut held = None;
+    apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
+
+    // The memory provider takes a request's bytes as it starts, then holds
+    // the answer.
+    home.set_faults(coven::Faults {
+        delay: std::time::Duration::from_secs(2),
+        ..coven::Faults::none()
+    })
+    .await;
+    let drain = tokio::spawn({
+        let manager = manager.library.clone();
+        async move { manager.drain_uploads_for_test().await }
+    });
+    let bar = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
+            let bar = held
+                .as_ref()
+                .unwrap()
+                .releases
+                .get(&release.id)
+                .map(|transfer| transfer.bar);
+            if bar.is_some_and(|bar| bar.bytes_done > 0) {
+                break bar.unwrap();
+            }
+        }
+    })
+    .await
+    .expect("the release moves while its one request goes");
+    assert_eq!(
+        bar,
+        crate::library::UploadBar {
+            bytes_done: 7,
+            bytes_total: 7,
+        },
+        "the file's whole share counts once its request has taken it"
+    );
+    let fraction = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        let mut held = std::collections::BTreeMap::new();
+        loop {
+            for change in files.next().await.unwrap() {
+                match change {
+                    crate::library::FileTransferChange::Reset(all) => held = all,
+                    crate::library::FileTransferChange::Updated { file, fraction } => {
+                        held.insert(file, fraction);
+                    }
+                    crate::library::FileTransferChange::Removed { file } => {
+                        held.remove(&file);
+                    }
+                }
+            }
+            if let Some(fraction) = held.values().next() {
+                break *fraction;
+            }
+        }
+    })
+    .await
+    .expect("the file being sent is told by file");
+    assert_eq!(fraction, 1.0);
+    drain.await.unwrap().unwrap();
 }

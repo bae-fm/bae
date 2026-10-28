@@ -30,6 +30,8 @@ struct StorageTableView: NSViewRepresentable {
     private var imageStore
     @Environment(DownloadStore.self)
     private var downloadStore
+    @Environment(OutboxStore.self)
+    private var outboxStore
     @Environment(StorageManagerStore.self)
     private var storageManagerStore
     @Environment(\.surfaceTone)
@@ -47,6 +49,7 @@ struct StorageTableView: NSViewRepresentable {
             runner: runner,
             imageStore: imageStore,
             downloadStore: downloadStore,
+            outboxStore: outboxStore,
             appearance: appearance,
         )
     }
@@ -123,6 +126,7 @@ struct StorageTableView: NSViewRepresentable {
             list: list,
             imageStore: imageStore,
             downloadStore: downloadStore,
+            outboxStore: outboxStore,
         )
         let appearanceChanged = coordinator.updateAppearance(appearance)
 
@@ -170,6 +174,7 @@ extension StorageTableView {
         private let runner: StorageActionRunner
         private var imageStore: ImageStore
         private var downloadStore: DownloadStore
+        private var outboxStore: OutboxStore
         /// The tone and accent of the window the table is in, which its
         /// hosted cells draw in.
         private var appearance: HostedAppearance
@@ -194,6 +199,7 @@ extension StorageTableView {
             runner: StorageActionRunner,
             imageStore: ImageStore,
             downloadStore: DownloadStore,
+            outboxStore: OutboxStore,
             appearance: HostedAppearance,
         ) {
             self.list = list
@@ -204,6 +210,7 @@ extension StorageTableView {
             self.runner = runner
             self.imageStore = imageStore
             self.downloadStore = downloadStore
+            self.outboxStore = outboxStore
             self.appearance = appearance
         }
 
@@ -211,10 +218,12 @@ extension StorageTableView {
             list: StorageList,
             imageStore: ImageStore,
             downloadStore: DownloadStore,
+            outboxStore: OutboxStore,
         ) {
             self.list = list
             self.imageStore = imageStore
             self.downloadStore = downloadStore
+            self.outboxStore = outboxStore
         }
 
         /// Take the window's tone and accent. Returns whether either changed,
@@ -468,8 +477,8 @@ extension StorageTableView.Coordinator {
 
     /// SwiftUI content for a cell, wrapped with the environment values the
     /// hosted cell views read at the leaf (`ImageView` needs `ImageStore`;
-    /// the storage chip reads `DownloadStore`), and the window's tone and
-    /// accent, which a hosted cell doesn't inherit.
+    /// the storage chip reads `DownloadStore` and `OutboxStore`), and the
+    /// window's tone and accent, which a hosted cell doesn't inherit.
     @ViewBuilder
     private func content(
         forRow row: Int,
@@ -478,6 +487,7 @@ extension StorageTableView.Coordinator {
         StorageListCell(list: list, position: row, column: column)
             .environment(imageStore)
             .environment(downloadStore)
+            .environment(outboxStore)
             .hostedAppearance(appearance)
     }
 

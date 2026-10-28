@@ -5,6 +5,7 @@ mod bootstrap_auth;
 mod browse;
 mod detail;
 pub mod download_snapshot;
+mod file_transfers;
 mod library_status;
 mod live_read;
 mod local_lifecycle;
@@ -37,6 +38,7 @@ pub use download_snapshot::{
     DownloadEntry, DownloadPhase, DownloadProgress, DownloadRow, DownloadSnapshot,
     DownloadTransferProgress, QueuedDownload,
 };
+pub use file_transfers::{FileTransferChange, FileTransfersWatch};
 pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };
@@ -48,7 +50,7 @@ pub use local_lifecycle::{
 pub use manager::*;
 pub use outbox_watch::{
     OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,
-    UploadTransfer,
+    ReleaseUploadTransfer, UploadTransfer,
 };
 pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,

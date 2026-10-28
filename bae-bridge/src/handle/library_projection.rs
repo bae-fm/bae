@@ -650,7 +650,6 @@ impl crate::types::BridgeReleaseUpload {
                 .into_iter()
                 .map(crate::types::BridgeTransferCount::from_core)
                 .collect(),
-            bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
         }
     }
 }

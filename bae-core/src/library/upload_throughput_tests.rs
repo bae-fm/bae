@@ -119,12 +119,12 @@ fn sending(files: &[(FileId, Option<(i64, i64)>)], paused: bool) -> DbSendingUpl
             .map(|(file, bytes)| crate::db::DbSendingFile {
                 file: *file,
                 release_id: None,
+                file_size: None,
                 bytes_confirmed: bytes.map(|(confirmed, _)| confirmed),
                 bytes_total: bytes.map(|(_, total)| total),
             })
             .collect(),
-        bytes_confirmed: 0,
-        bytes_total: 0,
+        releases: Vec::new(),
         paused,
     }
 }

@@ -188,9 +188,9 @@
             )
         }
 
-        /// A release whose audio is being sent, a third of it so far, and
-        /// whose cover waits its turn: of the release's 36.4 MB, the 12.4 MB
-        /// of its audio sent.
+        /// A release whose audio is being sent and whose cover waits its
+        /// turn. How far the audio has got is the preview's upload
+        /// transfers.
         static let uploadingRelease = PreviewReleaseUpload(
             releaseId: "rel-row-1",
             upload: BridgeReleaseUpload(
@@ -202,27 +202,18 @@
                 summary: [
                     transferCount("core.queue.uploading", 1, .moving),
                     transferCount("core.queue.queued", 1, .waiting),
-                ],
-                bar: BridgeUploadBar(
-                    bytesDone: 12_400_000,
-                    bytesTotal: 36_400_000
-                )
+                ]
             ),
             files: [
                 "rel-row-1-audio": BridgeFileUpload(
                     fileId: "upload-rel-row-1-audio",
                     state: .uploading,
-                    pending: nil,
-                    bar: BridgeUploadBar(
-                        bytesDone: 12_400_000,
-                        bytesTotal: 34_000_000
-                    )
+                    pending: nil
                 ),
                 "rel-row-1-image": BridgeFileUpload(
                     fileId: "upload-rel-row-1-image",
                     state: .waiting,
-                    pending: nil,
-                    bar: nil
+                    pending: nil
                 ),
             ]
         )
@@ -236,15 +227,13 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                summary: [transferCount("core.queue.queued", 1, .waiting)],
-                bar: nil
+                summary: [transferCount("core.queue.queued", 1, .waiting)]
             ),
             files: [
                 "rel-row-2-audio": BridgeFileUpload(
                     fileId: "upload-rel-row-2-audio",
                     state: .waiting,
-                    pending: nil,
-                    bar: nil
+                    pending: nil
                 )
             ]
         )
@@ -258,15 +247,13 @@
                     uploading: 0,
                     activity: .queued
                 ),
-                summary: [transferCount("core.queue.queued", 1, .waiting)],
-                bar: nil
+                summary: [transferCount("core.queue.queued", 1, .waiting)]
             ),
             files: [
                 "rel-row-3-audio": BridgeFileUpload(
                     fileId: "upload-rel-row-3-audio",
                     state: .waiting,
-                    pending: unavailableFilePending,
-                    bar: nil
+                    pending: unavailableFilePending
                 )
             ]
         )
@@ -292,13 +279,20 @@
             }
         }
 
-        /// How fast the preview's uploading release goes, and the bytes the
-        /// files being sent have moved together.
+        /// How far and how fast the preview's uploading release goes: of its
+        /// 36.4 MB, the 12.4 MB of its audio sent; and the bytes the files
+        /// being sent have moved together.
         static let uploadTransfers: BridgeOutboxTransferChange = .reset(
-            rates: [
-                BridgeKeyedUploadRate(
+            releases: [
+                BridgeKeyedReleaseUploadTransfer(
                     releaseId: "rel-row-1",
-                    throughputBps: 3_200_000
+                    transfer: BridgeReleaseUploadTransfer(
+                        bar: BridgeUploadBar(
+                            bytesDone: 12_400_000,
+                            bytesTotal: 36_400_000
+                        ),
+                        throughputBps: 3_200_000
+                    )
                 )
             ],
             total: BridgeUploadTransfer(
@@ -310,10 +304,22 @@
             )
         )
 
+        /// How far the preview's file being sent has got: 12.4 MB of its
+        /// 34 MB.
+        static let uploadFileTransfers: BridgeFileTransferChange = .reset(
+            files: [
+                BridgeKeyedFileTransfer(
+                    fileId: "upload-rel-row-1-audio",
+                    fraction: 12_400_000 / 34_000_000
+                )
+            ]
+        )
+
         @MainActor
         static func outboxStore() -> OutboxStore {
             let store = OutboxStore(uploadsPaused: false)
             store.applyTransferChange(uploadTransfers)
+            store.applyFileTransferChange(uploadFileTransfers)
             return store
         }
 

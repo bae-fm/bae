@@ -22,48 +22,22 @@ pub(super) const RELEASE_FILE_QUEUED: &str =
     "SELECT EXISTS (SELECT 1 FROM coven_uploads AS upload \
      WHERE upload.table_name = 'release_files' AND upload.key = coven_key(?1))";
 
-/// The bytes of the release file `f` its upload `upload` has sent: its size
-/// in the share of the upload session the provider confirmed. A file sent in
-/// one request has no session, and nothing counts as sent until it lands; a
-/// session records its total once the provider confirms its first part.
-macro_rules! sent_bytes {
-    () => {
-        "CASE WHEN upload.bytes_total > 0 \
-             THEN CAST(f.file_size * (CAST(upload.bytes_confirmed AS REAL) / upload.bytes_total) AS INTEGER) \
-             ELSE 0 END"
-    };
-}
-
-/// Each release with files this process is sending now: how many, and the
-/// bytes of them sent so far. One row per upload in flight is read, each
-/// found by its place in the queue.
-pub(super) const RELEASES_SENDING: &str = concat!(
-    "SELECT f.release_id, COUNT(*) AS files, SUM(",
-    sent_bytes!(),
-    ") AS bytes_sent \
+/// Each release with files this process is sending now, and how many. One
+/// row per upload in flight is read, each file found by its key.
+pub(super) const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
      FROM coven_sending AS sending \
      JOIN release_files AS f \
          ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key \
-     JOIN coven_uploads AS upload ON upload.position = sending.position \
-     GROUP BY f.release_id"
-);
+     GROUP BY f.release_id";
 
 /// The columns a release's upload reads beside `release_listing listing`
 /// joined to [`RELEASES_SENDING`] as `sending`, which
 /// [`release_upload_in_row`] maps: how many of its files wait, how many are
-/// being sent and how many are stored, and of its whole size, the bytes of its files stored and
-/// those sent of the files being sent. The files queued are read only for a
-/// release with any.
+/// being sent and how many are stored. How far the files being sent have
+/// got is the release's transfer.
 pub(super) const RELEASE_UPLOAD_COLUMNS: &str = "listing.queued_count AS queued_count, \
      COALESCE(sending.files, 0) AS sending_files, \
-     listing.file_count - listing.queued_count AS stored_files, \
-     CASE WHEN listing.queued_count > 0 THEN listing.total_size \
-         - (SELECT SUM(f.file_size) FROM release_files AS f \
-            JOIN coven_upload_queue AS queued \
-                ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id) \
-            WHERE f.release_id = listing.release_id) \
-         + COALESCE(sending.bytes_sent, 0) END AS upload_bytes_done, \
-     listing.total_size AS upload_bytes_total";
+     listing.file_count - listing.queued_count AS stored_files";
 
 /// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
 /// none of its files waits.
@@ -76,8 +50,6 @@ pub(super) fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<Db
         queued,
         sending: row.get("sending_files")?,
         stored: row.get("stored_files")?,
-        bytes_done: row.get("upload_bytes_done")?,
-        bytes_total: row.get("upload_bytes_total")?,
     }))
 }
 
@@ -101,21 +73,19 @@ pub(super) fn release_upload_on(
 }
 
 /// Each of the release `release_id`'s files waiting in this device's upload
-/// queue, in queue order, with its size and the bytes of it sent.
+/// queue, in queue order. How far one being sent has got is its file's
+/// transfer.
 pub(super) fn release_file_uploads_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbFileUpload>, DbError> {
     Ok(sql.query(
-        concat!(
-            "SELECT f.id, upload.file, upload.sending, upload.pending, f.file_size, ",
-            sent_bytes!(),
-            " FROM release_files AS f \
-             JOIN coven_uploads AS upload \
-                 ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
-             WHERE f.release_id = ?1 \
-             ORDER BY upload.position"
-        ),
+        "SELECT f.id, upload.file, upload.sending, upload.pending \
+         FROM release_files AS f \
+         JOIN coven_uploads AS upload \
+             ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
+         WHERE f.release_id = ?1 \
+         ORDER BY upload.position",
         [release_id],
         |row| {
             Ok(DbFileUpload {
@@ -123,8 +93,6 @@ pub(super) fn release_file_uploads_on(
                 file: row.get(1)?,
                 sending: row.get(2)?,
                 pending: row.get(3)?,
-                file_size: row.get(4)?,
-                bytes_sent: row.get(5)?,
             })
         },
     )?)
@@ -140,23 +108,30 @@ pub(super) const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
 /// Whether the person paused uploads, as coven's one row says.
 const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 
-/// Each file this process is sending now, its release when it is one of a
-/// release's files, and the bytes its upload session has had confirmed. One
-/// row per upload in flight is read, each found by its place in the queue.
-const FILES_SENDING: &str = "SELECT sending.file, f.release_id, \
+/// Each file this process is sending now: when it is one of a release's
+/// files, its release and size, and the bytes its upload session has had
+/// confirmed. One row per upload in flight is read, each found by its place
+/// in the queue.
+const FILES_SENDING: &str = "SELECT sending.file, f.release_id, f.file_size, \
          upload.bytes_confirmed, upload.bytes_total \
      FROM coven_sending AS sending \
      JOIN coven_uploads AS upload ON upload.position = sending.position \
      LEFT JOIN release_files AS f \
          ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key";
 
-/// The bytes confirmed of the files this process is sending now, together
-/// and in all, and whether uploads are paused.
-const SENDING_TOTAL: &str = "SELECT \
-         COALESCE(SUM(upload.bytes_confirmed), 0), COALESCE(SUM(upload.bytes_total), 0), \
-         (SELECT paused FROM coven_upload_pause) \
-     FROM coven_sending AS sending \
-     JOIN coven_uploads AS upload ON upload.position = sending.position";
+/// Each release with files this process is sending now: of its whole size,
+/// the bytes of its files stored, those not queued. Each release is found by
+/// its key from the files in flight.
+const RELEASES_SENDING_BYTES: &str = "SELECT listing.release_id, \
+         listing.total_size - (SELECT SUM(f.file_size) FROM release_files AS f \
+             JOIN coven_upload_queue AS queued \
+                 ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id) \
+             WHERE f.release_id = listing.release_id), \
+         listing.total_size \
+     FROM release_listing AS listing \
+     WHERE listing.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
+         JOIN release_files AS f \
+             ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key)";
 
 impl Database {
     /// How many of the release's files still wait to upload from this device.
@@ -200,28 +175,40 @@ impl Database {
         })
     }
 
-    /// The files this process is sending now and the bytes confirmed of
-    /// them, live: it reruns with each part a provider confirms, and as files
-    /// start and stop being sent or the person pauses uploads.
+    /// The files this process is sending now, the releases they belong to
+    /// with the bytes of each stored, and the bytes confirmed of each file,
+    /// live: it reruns with each part a provider confirms, and as files start
+    /// and stop being sent or the person pauses uploads.
     pub(crate) fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads> {
         self.inner.handle.subscribe(|sql| {
             let files = sql.query(FILES_SENDING, [], |row| {
                 Ok(DbSendingFile {
                     file: row.get(0)?,
                     release_id: row.get(1)?,
-                    bytes_confirmed: row.get(2)?,
-                    bytes_total: row.get(3)?,
+                    file_size: row.get(2)?,
+                    bytes_confirmed: row.get(3)?,
+                    bytes_total: row.get(4)?,
                 })
             })?;
-            Ok(sql.query_row(SENDING_TOTAL, [], |row| {
-                Ok(DbSendingUploads {
-                    files,
-                    bytes_confirmed: row.get(0)?,
-                    bytes_total: row.get(1)?,
-                    paused: row.get(2)?,
+            let releases = sql.query(RELEASES_SENDING_BYTES, [], |row| {
+                Ok(DbSendingRelease {
+                    release_id: row.get(0)?,
+                    bytes_stored: row.get(1)?,
+                    bytes_total: row.get(2)?,
                 })
-            })?)
+            })?;
+            Ok(DbSendingUploads {
+                files,
+                releases,
+                paused: sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))?,
+            })
         })
+    }
+
+    /// How far each file this process is sending has got, by file, from
+    /// coven's upload watch.
+    pub(crate) fn subscribe_upload_transfers(&self) -> coven::TransferWatch {
+        self.inner.handle.subscribe_upload_transfers()
     }
 
     /// Whether the person paused uploads, live, whether or not anything is

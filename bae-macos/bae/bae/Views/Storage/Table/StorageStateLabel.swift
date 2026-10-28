@@ -11,11 +11,7 @@ struct StorageStateLabel: View {
     var body: some View {
         switch status {
         case .uploading:
-            StorageProgressChip(
-                label: "Uploading",
-                kind: .upload,
-                fraction: release.upload?.bar?.fraction
-            )
+            StorageUploadingChip(releaseId: release.id)
         case .pinning:
             StoragePinningChip(releaseId: release.id)
         case .transferring(let action):
@@ -27,6 +23,22 @@ struct StorageStateLabel: View {
         case .cloud:
             StatusChip("Cloud", symbol: "cloud")
         }
+    }
+}
+
+/// An uploading release's chip, filled as far as its bytes have come while
+/// any file is being sent. It alone reads the release's upload transfer.
+private struct StorageUploadingChip: View {
+    let releaseId: String
+    @Environment(OutboxStore.self)
+    private var outboxStore
+
+    var body: some View {
+        StorageProgressChip(
+            label: "Uploading",
+            kind: .upload,
+            fraction: outboxStore.transfer(forRelease: releaseId)?.bar.fraction
+        )
     }
 }
 
@@ -104,5 +116,6 @@ private struct StoragePinningChip: View {
         }
         .padding()
         .environment(PreviewData.downloadStore())
+        .environment(PreviewData.outboxStore())
     }
 #endif

@@ -10,29 +10,61 @@ mirror_struct! {
     fields: { bar: (opt crate::types::BridgeUploadBar), throughput_bps },
 }
 
+mirror_struct! {
+    crate::types::BridgeReleaseUploadTransfer = bae_core::library::ReleaseUploadTransfer,
+    from_core: pub(super) fn,
+    fields: { bar: (crate::types::BridgeUploadBar), throughput_bps },
+}
+
+impl crate::types::BridgeFileTransferChange {
+    pub(super) fn from_core(change: bae_core::library::FileTransferChange) -> Self {
+        use bae_core::library::FileTransferChange;
+        match change {
+            FileTransferChange::Updated { file, fraction } => Self::Updated {
+                file_id: file.to_string(),
+                fraction,
+            },
+            FileTransferChange::Removed { file } => Self::Removed {
+                file_id: file.to_string(),
+            },
+            FileTransferChange::Reset(files) => Self::Reset {
+                files: files
+                    .into_iter()
+                    .map(|(file, fraction)| crate::types::BridgeKeyedFileTransfer {
+                        file_id: file.to_string(),
+                        fraction,
+                    })
+                    .collect(),
+            },
+        }
+    }
+}
+
 impl crate::types::BridgeOutboxTransferChange {
     pub(super) fn from_core(change: bae_core::library::OutboxTransferChange) -> Self {
         use bae_core::library::OutboxTransferChange;
         match change {
             OutboxTransferChange::Updated {
                 release_id,
-                throughput_bps,
+                transfer,
             } => Self::Updated {
                 release_id,
-                throughput_bps,
+                transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
             },
             OutboxTransferChange::Removed { release_id } => Self::Removed { release_id },
             OutboxTransferChange::TotalUpdated(transfer) => Self::TotalUpdated {
                 transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
             },
             OutboxTransferChange::Reset(transfers) => Self::Reset {
-                rates: transfers
-                    .rates
+                releases: transfers
+                    .releases
                     .into_iter()
                     .map(
-                        |(release_id, throughput_bps)| crate::types::BridgeKeyedUploadRate {
+                        |(release_id, transfer)| crate::types::BridgeKeyedReleaseUploadTransfer {
                             release_id,
-                            throughput_bps,
+                            transfer: crate::types::BridgeReleaseUploadTransfer::from_core(
+                                transfer,
+                            ),
                         },
                     )
                     .collect(),

@@ -39,6 +39,24 @@ private final class OutputTransfersSink: OutputTransfersCallback,
     }
 }
 
+private final class FileTransfersSink: FileTransfersCallback,
+    @unchecked Sendable
+{
+    private let apply: @MainActor @Sendable (BridgeFileTransferChange) -> Void
+
+    init(
+        apply:
+            @escaping @MainActor @Sendable (BridgeFileTransferChange) -> Void
+    ) {
+        self.apply = apply
+    }
+
+    /// One batch lands in one main-actor turn, applied in order.
+    func onChanges(changes: [BridgeFileTransferChange]) {
+        Task { @MainActor in changes.forEach(apply) }
+    }
+}
+
 private final class FolderScansSink: FolderScansCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeFolderScans) -> Void
     private let fail: @MainActor @Sendable (any Error) -> Void
@@ -228,6 +246,7 @@ final class DesktopSubscriptions {
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let outputStore: OutputStore
+    private let outboxStore: OutboxStore
     private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
@@ -237,11 +256,13 @@ final class DesktopSubscriptions {
         appHandle: AppHandle,
         importStore: ImportStore,
         outputStore: OutputStore,
+        outboxStore: OutboxStore,
         uiStore: UiStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
         self.outputStore = outputStore
+        self.outboxStore = outboxStore
         self.uiStore = uiStore
         // The list's selection sink is the observations' one owner: it lives
         // as long as the list slot that calls it.
@@ -344,6 +365,11 @@ final class DesktopSubscriptions {
             appHandle.subscribeOutputTransfers(
                 callback: OutputTransfersSink { [outputStore] change in
                     outputStore.applyTransferChange(change)
+                }
+            ),
+            appHandle.subscribeUploadFileTransfers(
+                callback: FileTransfersSink { [outboxStore] change in
+                    outboxStore.applyFileTransferChange(change)
                 }
             ),
             appHandle.subscribeCandidateRuntime(

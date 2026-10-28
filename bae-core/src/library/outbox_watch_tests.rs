@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::DbSendingFile;
+use crate::db::{DbSendingFile, DbSendingRelease};
 
 fn file(n: u128) -> coven::FileId {
     coven::FileId(uuid::Uuid::from_u128(n))
@@ -15,28 +15,57 @@ fn total(bytes_done: u64, throughput_bps: u64) -> UploadTransfer {
     }
 }
 
-fn transfers(rates: Vec<(String, u64)>, total: UploadTransfer) -> OutboxTransfers {
+fn release(bytes_done: u64, throughput_bps: u64) -> ReleaseUploadTransfer {
+    ReleaseUploadTransfer {
+        bar: UploadBar {
+            bytes_done,
+            bytes_total: 1_000,
+        },
+        throughput_bps,
+    }
+}
+
+fn transfers(
+    releases: Vec<(String, ReleaseUploadTransfer)>,
+    total: UploadTransfer,
+) -> OutboxTransfers {
     OutboxTransfers {
-        rates: rates.into_iter().collect(),
+        releases: releases.into_iter().collect(),
         total,
     }
 }
 
-fn sending(file: coven::FileId, release_id: Option<&str>) -> DbSendingFile {
+/// A file being sent: a release's of `file_size` bytes, or one no release
+/// owns.
+fn sending(file: coven::FileId, release: Option<(&str, i64)>) -> DbSendingFile {
     DbSendingFile {
         file,
-        release_id: release_id.map(str::to_string),
-        bytes_confirmed: Some(10),
-        bytes_total: Some(100),
+        release_id: release.map(|(id, _)| id.to_string()),
+        file_size: release.map(|(_, size)| size),
+        bytes_confirmed: None,
+        bytes_total: None,
+    }
+}
+
+fn moved(bytes_transferred: u64, bytes_total: u64) -> coven::TransferProgress {
+    coven::TransferProgress {
+        bytes_transferred,
+        bytes_total,
     }
 }
 
 #[test]
-fn a_reader_hears_each_rate_that_moved_and_each_that_left() {
+fn a_reader_hears_each_release_that_moved_and_each_that_left() {
     let first = "release-1".to_string();
     let second = "release-2".to_string();
-    let told = transfers(vec![(first.clone(), 5), (second.clone(), 5)], total(30, 10));
-    let next = transfers(vec![(first.clone(), 8)], total(40, 8));
+    let told = transfers(
+        vec![
+            (first.clone(), release(100, 5)),
+            (second.clone(), release(100, 5)),
+        ],
+        total(30, 10),
+    );
+    let next = transfers(vec![(first.clone(), release(200, 8))], total(40, 8));
 
     let changes = changes_between(&told, &next);
 
@@ -44,84 +73,102 @@ fn a_reader_hears_each_rate_that_moved_and_each_that_left() {
     assert!(changes.contains(&OutboxTransferChange::Removed { release_id: second }));
     assert!(changes.contains(&OutboxTransferChange::Updated {
         release_id: first,
-        throughput_bps: 8,
+        transfer: release(200, 8),
     }));
     assert!(changes.contains(&OutboxTransferChange::TotalUpdated(total(40, 8))));
 }
 
 #[test]
 fn transfers_that_did_not_move_say_nothing() {
-    let told = transfers(vec![("release-1".to_string(), 5)], total(10, 5));
+    let told = transfers(
+        vec![("release-1".to_string(), release(100, 5))],
+        total(10, 5),
+    );
 
     assert!(changes_between(&told, &told.clone()).is_empty());
 }
 
-/// A release goes at its files' rates together, and the total at every
-/// file's; an image no release owns counts only in the total. The total's bytes are the ones read for the files
-/// being sent.
+/// A release's bar holds its stored bytes and, of each file being sent, the
+/// share of its size its object has moved; it goes at its files' rates
+/// together. An image no release owns counts only in the total, which holds
+/// the bytes every file's object has moved, at every file's rate.
 #[test]
-fn a_release_goes_at_its_files_rates_together() {
+fn a_release_holds_its_stored_bytes_and_its_files_shares() {
     let (a, b, cover) = (file(1), file(2), file(3));
     let sending = DbSendingUploads {
         files: vec![
-            sending(a, Some("release-1")),
-            sending(b, Some("release-1")),
+            sending(a, Some(("release-1", 200))),
+            sending(b, Some(("release-1", 100))),
             sending(cover, None),
         ],
-        bytes_confirmed: 30,
-        bytes_total: 300,
+        releases: vec![DbSendingRelease {
+            release_id: "release-1".into(),
+            bytes_stored: 400,
+            bytes_total: 1_000,
+        }],
         paused: false,
     };
     let rates = [(a, 10), (b, 20), (cover, 5)].into_iter().collect();
+    let progress = [
+        (a, moved(55, 220)),
+        (b, moved(110, 110)),
+        (cover, moved(5, 50)),
+    ]
+    .into_iter()
+    .collect();
 
-    let measured = OutboxTransfers::of(&sending, &rates);
+    let measured = OutboxTransfers::of(&sending, &rates, &progress);
 
     assert_eq!(
-        measured.rates,
-        [("release-1".to_string(), 30)].into_iter().collect()
+        measured.releases,
+        [("release-1".to_string(), release(400 + 50 + 100, 30))]
+            .into_iter()
+            .collect()
     );
     assert_eq!(
         measured.total,
         UploadTransfer {
             bar: Some(UploadBar {
-                bytes_done: 30,
-                bytes_total: 300,
+                bytes_done: 55 + 110 + 5,
+                bytes_total: 220 + 110 + 50,
             }),
             throughput_bps: 35,
         }
     );
 }
 
-/// A file no rate was measured for moves its release at none yet, and with nothing being
-/// sent there is no rate and no bar.
+/// A file the watch and the rates don't name yet has moved nothing: its
+/// release holds only what is stored, and the total is a bar of nothing.
+/// With nothing being sent there is no release and no bar.
 #[test]
-fn a_file_with_no_measured_rate_goes_at_none() {
+fn a_file_not_yet_heard_has_moved_nothing() {
     let a = file(1);
     let one = DbSendingUploads {
-        files: vec![sending(a, Some("release-1"))],
-        bytes_confirmed: 0,
-        bytes_total: 0,
+        files: vec![sending(a, Some(("release-1", 200)))],
+        releases: vec![DbSendingRelease {
+            release_id: "release-1".into(),
+            bytes_stored: 400,
+            bytes_total: 1_000,
+        }],
         paused: false,
     };
-    let measured = OutboxTransfers::of(&one, &HashMap::new());
-    assert_eq!(measured.rates["release-1"], 0);
+    let measured = OutboxTransfers::of(&one, &HashMap::new(), &BTreeMap::new());
+    assert_eq!(measured.releases["release-1"], release(400, 0));
     assert_eq!(
         measured.total.bar,
         Some(UploadBar {
             bytes_done: 0,
             bytes_total: 0,
         }),
-        "a file sent in one request is being sent with no bytes to count"
     );
 
     let none = DbSendingUploads {
         files: Vec::new(),
-        bytes_confirmed: 0,
-        bytes_total: 0,
+        releases: Vec::new(),
         paused: false,
     };
     assert_eq!(
-        OutboxTransfers::of(&none, &HashMap::new()),
+        OutboxTransfers::of(&none, &HashMap::new(), &BTreeMap::new()),
         transfers(
             Vec::new(),
             UploadTransfer {

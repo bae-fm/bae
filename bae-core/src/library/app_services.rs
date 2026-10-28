@@ -645,6 +645,7 @@ impl AppServices {
 
     delegate_sync!(manager, watch_outbox_transfers => watch_outbox_transfers() -> crate::library::OutboxTransfersWatch);
     delegate_sync!(manager, watch_outbox_total_transfer => watch_outbox_total_transfer() -> crate::library::OutboxTotalTransferWatch);
+    delegate_sync!(manager, watch_upload_file_transfers => watch_upload_file_transfers() -> crate::library::FileTransfersWatch);
 
     pub fn subscribe_transfer_values(
         &self,

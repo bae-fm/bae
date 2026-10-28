@@ -2,9 +2,7 @@
 //! upload while one waits, and the release's entry in each transfer queue.
 
 use super::release_queue::ReleaseQueueState;
-use super::{
-    DownloadRow, OutputPhaseRow, PendingWait, ReleaseQueueEntries, UploadBar, UploadState,
-};
+use super::{DownloadRow, OutputPhaseRow, PendingWait, ReleaseQueueEntries, UploadState};
 use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
 
 /// What the inspector shows of one release, read in core for the release id
@@ -31,15 +29,14 @@ pub struct StorageInspectorFile {
 }
 
 /// A release file's queued upload as the inspector shows it: which file,
-/// whether it is being sent now, why it waits when it does, with the error
-/// behind that while this process holds it, and while it is sent, the bytes
-/// of its size sent. How fast it goes is its transfer.
+/// whether it is being sent now, and why it waits when it does, with the
+/// error behind that while this process holds it. How far it has got is its
+/// file's transfer, keyed by `file`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspectorUpload {
     pub file: coven::FileId,
     pub phase: UploadState,
     pub pending: Option<PendingWait>,
-    pub bar: Option<UploadBar>,
 }
 
 /// The release's entry in one transfer queue. Pausing a whole queue is the
@@ -104,7 +101,6 @@ impl StorageInspector {
                         record.cause = causes.cause(&record);
                         PendingWait::of(&record)
                     }),
-                    bar: upload.bar,
                 }),
                 pin: match pinning {
                     Some(Pinning::Download) => Some(file.pin.unwrap_or(FilePin::Waiting)),

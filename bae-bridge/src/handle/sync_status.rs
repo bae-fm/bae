@@ -58,9 +58,9 @@ impl AppHandle {
         )
     }
 
-    /// How fast each file being sent and each release with files being sent
-    /// goes, and the files being sent together: all of it now, then each one
-    /// as it moves or leaves.
+    /// How far and how fast each release with files being sent goes, and the
+    /// files being sent together: all of it now, then each one as it moves
+    /// or leaves.
     pub fn subscribe_outbox_transfers(
         &self,
         callback: Box<dyn crate::types::OutboxTransfersCallback>,
@@ -77,6 +77,25 @@ impl AppHandle {
                     ),
                     Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
+            }
+        })
+    }
+
+    /// How far each file being sent has got, by file: every one now, then
+    /// each as it moves, starts or ends.
+    pub fn subscribe_upload_file_transfers(
+        &self,
+        callback: Box<dyn crate::types::FileTransfersCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.live_subscription(move |services| async move {
+            let mut files = services.watch_upload_file_transfers();
+            while let Some(changes) = files.next().await {
+                callback.on_changes(
+                    changes
+                        .into_iter()
+                        .map(crate::types::BridgeFileTransferChange::from_core)
+                        .collect(),
+                );
             }
         })
     }

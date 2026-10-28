@@ -313,8 +313,8 @@ pub enum FilePin {
 
 /// A release file's file waiting in this device's upload queue, read with the
 /// release: which file coven uploads, whether this process is sending it now,
-/// the record of what it waits for, and while it is being sent, the bytes of
-/// it sent. How fast it goes is its transfer.
+/// and the record of what it waits for. How far it has got is its file's
+/// transfer, keyed by `file`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileUpload {
     pub file: coven::FileId,
@@ -322,14 +322,10 @@ pub struct FileUpload {
     /// What it waits for, without the error behind it, which only this
     /// process holds.
     pub pending: Option<coven::PendingRecord>,
-    /// Of the file's size, the bytes sent, while it is being sent: nothing
-    /// until the provider confirms a part.
-    pub bar: Option<crate::library::UploadBar>,
 }
 
 impl FileUpload {
     pub(crate) fn from_raw(raw: crate::db::DbFileUpload) -> Self {
-        let bytes = |value: i64| u64::try_from(value).expect("a file's byte count");
         Self {
             file: raw.file,
             phase: if raw.sending {
@@ -338,10 +334,6 @@ impl FileUpload {
                 crate::library::UploadState::Waiting
             },
             pending: raw.pending,
-            bar: raw.sending.then(|| crate::library::UploadBar {
-                bytes_done: bytes(raw.bytes_sent),
-                bytes_total: bytes(raw.file_size),
-            }),
         }
     }
 }

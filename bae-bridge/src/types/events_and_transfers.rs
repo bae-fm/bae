@@ -132,31 +132,59 @@ pub struct BridgeUploadTransfer {
     pub throughput_bps: u64,
 }
 
-/// How fast a release's files being sent go together.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeKeyedUploadRate {
-    pub release_id: String,
+/// How far a release's upload has got, of its whole size, and how fast its
+/// files being sent go together. Mirrors `ReleaseUploadTransfer`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeReleaseUploadTransfer {
+    pub bar: BridgeUploadBar,
     /// Bytes per second.
     pub throughput_bps: u64,
 }
 
-/// A change to one rate, or every transfer. Mirrors
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeKeyedReleaseUploadTransfer {
+    pub release_id: String,
+    pub transfer: BridgeReleaseUploadTransfer,
+}
+
+/// A change to one release's transfer, or every transfer. Mirrors
 /// `OutboxTransferChange`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeOutboxTransferChange {
     Updated {
         release_id: String,
-        throughput_bps: u64,
+        transfer: BridgeReleaseUploadTransfer,
     },
     /// The release has nothing being sent any more.
     Removed { release_id: String },
     /// The files being sent together.
     TotalUpdated { transfer: BridgeUploadTransfer },
-    /// Every rate and the total; a key not listed has nothing being sent.
+    /// Every release's transfer and the total; a key not listed has nothing
+    /// being sent.
     Reset {
-        rates: Vec<BridgeKeyedUploadRate>,
+        releases: Vec<BridgeKeyedReleaseUploadTransfer>,
         total: BridgeUploadTransfer,
     },
+}
+
+/// How far one file in flight has got: the share of its object moved, from
+/// 0 to 1.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeKeyedFileTransfer {
+    pub file_id: String,
+    pub fraction: f64,
+}
+
+/// A change to one file's share moved, or every file's. Mirrors
+/// `FileTransferChange`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeFileTransferChange {
+    /// The file started, or its share moved.
+    Updated { file_id: String, fraction: f64 },
+    /// The file's transfer ended, whether it finished or not.
+    Removed { file_id: String },
+    /// Every file in flight; a file not listed has nothing in flight.
+    Reset { files: Vec<BridgeKeyedFileTransfer> },
 }
 
 /// A queued download's phase. How far an active one has gone is its

@@ -1437,18 +1437,21 @@ sort reads an index like every other.
 
 A release with files waiting to upload shows, in its row and in its album's
 storage band, how many wait and how many are being sent, and while any is
-being sent, how many bytes of its whole size are stored or sent: a file
-being sent counts the share of its size its upload session has had
-confirmed, which is nothing until the provider confirms a first part, and a
-file sent in one request has no session, so it counts once it lands. All of
-it is read in the same query as the row: which files are being sent comes from coven's
-`coven_sending`, a live view of the uploads in flight. Only how fast they
-go is kept beside the database, measured from the bytes a live query of the
-files being sent reads as each part is confirmed, file by file: a rate for
-each release, its files being sent together, and for every file being sent
-together, beside the bytes those have moved; no screen shows one file's
-rate, so none is sent. A file that only waits has no
-rate, and a pause ends every measurement. While its files wait, or a transfer runs,
+being sent, how many bytes of its whole size are stored or sent. The counts
+are read in the same query as the row: which files are being sent comes
+from coven's `coven_sending`, a live view of the uploads in flight. How far
+the bytes have got is not in any table: coven's upload watch tells, file by
+file, how much of each file's encrypted object has gone to the connection,
+whether the file goes in parts or in one request. A release's bytes are its
+stored files' sizes and, of each file being sent, that share of its size,
+beside the stored bytes a live query of the files being sent reads; the
+files being sent together count their objects' bytes. Each file's share is
+told by file too, for the Storage Manager's rings. How fast they go is
+measured beside the database from the bytes a live query of the files
+being sent reads as each part is confirmed, file by file: a rate for each
+release, its files being sent together, and for every file being sent
+together; no screen shows one file's rate, so none is sent. A file that
+only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
 otherwise; moving a release to the cloud shows that transfer until its files
 are queued.
@@ -2627,9 +2630,9 @@ Reads come two ways:
   or is deleted leaves the inspector and the actions' targets as it leaves the
   list, including while an action's confirmation or folder prompt is open.
   The inspector reads its release live by id: the release's files, each beside
-  its upload while one waits (whether it is being sent, what it waits for with
-  the error behind that while this process holds it, and while it is sent,
-  the bytes of it sent, and while the release waits in or runs through the
+  its upload while one waits (whether it is being sent, and what it waits for
+  with the error behind that while this process holds it; how far it has got
+  arrives apart, by file; and while the release waits in or runs through the
   download queue, whether the file is kept whole on this device yet, as
   coven's `coven_pins` says, or out of that queue, while any of its pins
   waits for coven to fetch its copy, whether each pinned file is kept yet),

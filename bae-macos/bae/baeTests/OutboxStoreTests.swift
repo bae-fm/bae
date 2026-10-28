@@ -32,26 +32,61 @@ struct OutboxStoreTransferTests {
         )
     }
 
-    @Test("a release's rate follows each change that names it")
-    func releaseRateFollowsItsChanges() {
+    private func releaseTransfer(
+        _ bytesDone: UInt64,
+        _ throughputBps: UInt64
+    ) -> BridgeReleaseUploadTransfer {
+        BridgeReleaseUploadTransfer(
+            bar: BridgeUploadBar(bytesDone: bytesDone, bytesTotal: 100),
+            throughputBps: throughputBps
+        )
+    }
+
+    @Test("a release's bytes and rate follow each change that names it")
+    func releaseTransferFollowsItsChanges() {
         let store = OutboxStore(uploadsPaused: false)
         store.applyTransferChange(
             .reset(
-                rates: [
-                    BridgeKeyedUploadRate(releaseId: release, throughputBps: 10)
+                releases: [
+                    BridgeKeyedReleaseUploadTransfer(
+                        releaseId: release,
+                        transfer: releaseTransfer(20, 10)
+                    )
                 ],
                 total: transfer(10)
             )
         )
-        #expect(store.throughput(forRelease: "release-a") == 10)
+        #expect(store.transfer(forRelease: release)?.throughputBps == 10)
+        #expect(store.transfer(forRelease: release)?.bar.bytesDone == 20)
 
         store.applyTransferChange(
-            .updated(releaseId: release, throughputBps: 40)
+            .updated(releaseId: release, transfer: releaseTransfer(60, 40))
         )
-        #expect(store.throughput(forRelease: "release-a") == 40)
+        #expect(store.transfer(forRelease: release)?.throughputBps == 40)
+        #expect(store.transfer(forRelease: release)?.bar.bytesDone == 60)
 
         store.applyTransferChange(.removed(releaseId: release))
-        #expect(store.throughput(forRelease: "release-a") == nil)
+        #expect(store.transfer(forRelease: release)?.throughputBps == nil)
+        #expect(store.transfer(forRelease: release)?.bar == nil)
+    }
+
+    @Test("a file's share follows each change that names it")
+    func fileShareFollowsItsChanges() {
+        let store = OutboxStore(uploadsPaused: false)
+        store.applyFileTransferChange(
+            .reset(files: [BridgeKeyedFileTransfer(fileId: "a", fraction: 0.25)]
+            )
+        )
+        #expect(store.fileTransfer(forFile: "a") == 0.25)
+        #expect(store.fileTransfer(forFile: "b") == nil)
+
+        store.applyFileTransferChange(.updated(fileId: "a", fraction: 0.5))
+        store.applyFileTransferChange(.updated(fileId: "b", fraction: 0.1))
+        #expect(store.fileTransfer(forFile: "a") == 0.5)
+        #expect(store.fileTransfer(forFile: "b") == 0.1)
+
+        store.applyFileTransferChange(.removed(fileId: "a"))
+        #expect(store.fileTransfer(forFile: "a") == nil)
     }
 
     @Test("the queue's rate shows only while bytes move")
@@ -78,8 +113,7 @@ struct OutboxStoreTransferTests {
 struct StorageUploadPresentationTests {
     private func upload(
         queued: UInt32,
-        uploading: UInt32,
-        bar: BridgeUploadBar?
+        uploading: UInt32
     ) -> BridgeReleaseUpload {
         BridgeReleaseUpload(
             progress: BridgeUploadProgress(
@@ -87,19 +121,15 @@ struct StorageUploadPresentationTests {
                 uploading: uploading,
                 activity: uploading > 0 ? .uploading : .queued
             ),
-            summary: [],
-            bar: bar
+            summary: []
         )
     }
 
     @Test("a row being sent carries its release rate and progress")
     func sendingRowCarriesRateAndProgress() {
         let observation = StorageUploadObservation(
-            upload: upload(
-                queued: 0,
-                uploading: 1,
-                bar: BridgeUploadBar(bytesDone: 32, bytesTotal: 100)
-            ),
+            upload: upload(queued: 0, uploading: 1),
+            bar: BridgeUploadBar(bytesDone: 32, bytesTotal: 100),
             throughputBps: 3_200_000
         )
 
@@ -115,11 +145,8 @@ struct StorageUploadPresentationTests {
     @Test("an active upload line is its phase and encrypted bytes, no count")
     func activeUploadIncludesPhaseAndBytes() {
         let observation = StorageUploadObservation(
-            upload: upload(
-                queued: 3,
-                uploading: 2,
-                bar: BridgeUploadBar(bytesDone: 600, bytesTotal: 1016)
-            ),
+            upload: upload(queued: 3, uploading: 2),
+            bar: BridgeUploadBar(bytesDone: 600, bytesTotal: 1016),
             throughputBps: 0
         )
         let done = Int64(600).formatted(.byteCount(style: .file))
@@ -136,7 +163,8 @@ struct StorageUploadPresentationTests {
     @Test("files that are only waiting are queued and draw no bar")
     func waitingFilesDrawNoBar() {
         let observation = StorageUploadObservation(
-            upload: upload(queued: 2, uploading: 0, bar: nil),
+            upload: upload(queued: 2, uploading: 0),
+            bar: nil,
             throughputBps: nil
         )
 

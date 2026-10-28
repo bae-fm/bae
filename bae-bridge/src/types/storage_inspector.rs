@@ -29,16 +29,14 @@ pub enum BridgeFilePin {
     Waiting,
 }
 
-/// A release file's queued upload: which file, whether it is being sent,
-/// why it waits when it does, and while it is sent, the bytes of its size
-/// sent. How fast it goes is the transfer keyed by its `file_id`. Mirrors
-/// `StorageInspectorUpload`.
+/// A release file's queued upload: which file, whether it is being sent, and
+/// why it waits when it does. How far it has got is the upload file transfer
+/// keyed by its `file_id`. Mirrors `StorageInspectorUpload`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFileUpload {
     pub file_id: String,
     pub state: super::BridgeUploadFileState,
     pub pending: Option<super::BridgePendingWait>,
-    pub bar: Option<super::BridgeUploadBar>,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

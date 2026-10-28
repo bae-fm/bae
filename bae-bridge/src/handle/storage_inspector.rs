@@ -64,7 +64,6 @@ impl crate::types::BridgeStorageInspectorFile {
                 pending: upload
                     .pending
                     .map(crate::types::BridgePendingWait::from_core),
-                bar: upload.bar.map(crate::types::BridgeUploadBar::from_core),
             }),
             pin: pin.map(|pin| match pin {
                 bae_core::album_detail::FilePin::Kept => crate::types::BridgeFilePin::Kept,

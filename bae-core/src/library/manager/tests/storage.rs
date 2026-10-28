@@ -785,7 +785,6 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
                 },
                 stage: crate::library::TransferStage::Waiting,
             }],
-            bar: None,
         })
     );
     assert!(queued.transitioning);
@@ -846,84 +845,6 @@ async fn a_storage_row_counts_the_file_being_sent() {
     })
     .await
     .expect("the row counts the file being sent");
-    drain.await.unwrap().unwrap();
-}
-
-/// A release being sent reads its bytes against its whole size, and the file
-/// being sent against its own, from the moment its send starts: before the
-/// provider confirms any part, its stored files count as done and the file
-/// being sent as nothing yet, never a total of zero.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn a_release_being_sent_reads_its_bytes_against_its_size() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    let release = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("sending"),
-        "Album Title",
-        &[("a.flac", b"bytes-a")],
-    )
-    .await;
-    let file = release_files(&manager, &release.id).await.remove(0);
-    let mut browse = manager.database.subscribe_storage_browse(crate::db::StorageBrowseRequest {
-        sort: crate::db::StorageSortCriterion {
-            field: crate::db::StorageSortField::AlbumTitle,
-            direction: crate::db::SortDirection::Ascending,
-        },
-        filter: crate::db::StorageFilter::All,
-        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
-            .into_iter()
-            .collect(),
-        selected: Default::default(),
-    });
-    home.set_faults(coven::Faults {
-        delay: std::time::Duration::from_secs(2),
-        ..coven::Faults::none()
-    })
-    .await;
-    let drain = tokio::spawn({
-        let manager = manager.library.clone();
-        async move { manager.drain_uploads_for_test().await }
-    });
-    let upload = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        loop {
-            let event = browse.next().await.expect("the browse query answers");
-            let projection = event.result.unwrap();
-            let sending = projection
-                .windows
-                .iter()
-                .flat_map(|window| &window.rows)
-                .find(|row| row.release.id == release.id)
-                .and_then(|row| row.release.upload)
-                .filter(|upload| upload.sending == 1);
-            if let Some(upload) = sending {
-                break upload;
-            }
-        }
-    })
-    .await
-    .expect("the row counts the file being sent");
-    assert_eq!((upload.bytes_done, upload.bytes_total), (0, 7), "the row's bytes");
-
-    let detail = manager.find_release_detail(&release.id).await.unwrap().unwrap();
-    let bar = detail.summary.upload.and_then(|upload| upload.bar);
-    assert_eq!(
-        bar,
-        Some(crate::library::UploadBar { bytes_done: 0, bytes_total: 7 }),
-        "the release's bar"
-    );
-    let file_bar = detail
-        .files
-        .iter()
-        .find(|detail| detail.id == file.id)
-        .and_then(|detail| detail.upload.as_ref())
-        .and_then(|upload| upload.bar);
-    assert_eq!(
-        file_bar,
-        Some(crate::library::UploadBar { bytes_done: 0, bytes_total: 7 }),
-        "the file's bar"
-    );
     drain.await.unwrap().unwrap();
 }
 

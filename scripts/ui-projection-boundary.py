@@ -163,9 +163,15 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "OutboxStore",
-        "throughput",
-        "how fast a release's or a file's upload goes, which core measures "
-        "from confirmed parts and keeps in no table",
+        "transfer",
+        "how far and how fast a release's upload goes, which core measures "
+        "from coven's upload watch and keeps in no table",
+    ),
+    KeyedStream(
+        "OutboxStore",
+        "fileTransfer",
+        "how far a file being sent has got, which coven's upload watch tells "
+        "and no table keeps",
     ),
     KeyedStream(
         "DownloadStore",

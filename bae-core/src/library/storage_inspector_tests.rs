@@ -35,7 +35,6 @@ fn waiting() -> ReleaseUpload {
             uploading: 0,
         },
         summary: Vec::new(),
-        bar: None,
     }
 }
 

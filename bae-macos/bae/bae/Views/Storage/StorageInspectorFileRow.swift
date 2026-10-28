@@ -17,7 +17,7 @@ struct StorageInspectorFileRow: View {
 
     var body: some View {
         HStack(spacing: Self.columnGap) {
-            StorageFileMark(state: state)
+            mark
                 .frame(width: Self.markSize, height: Self.markSize)
             Text(row.file.originalFilename)
                 .lineLimit(1)
@@ -43,12 +43,19 @@ struct StorageInspectorFileRow: View {
         .accessibilityIdentifier("file:\(row.file.id)")
     }
 
-    private var state: StorageFileMark.State {
+    /// Where the file's bytes are going, without how far: a moving file's
+    /// mark reads that alone, by its file.
+    private enum Place {
+        case stored
+        case queued
+        case sending(fileId: String)
+    }
+
+    private var place: Place {
         if let upload = row.upload {
             switch upload.state {
             case .waiting: return .queued
-            case .uploading:
-                return .moving(.upload, fraction: upload.bar?.fraction)
+            case .uploading: return .sending(fileId: upload.fileId)
             }
         }
         switch row.pin {
@@ -57,11 +64,20 @@ struct StorageInspectorFileRow: View {
         }
     }
 
+    @ViewBuilder
+    private var mark: some View {
+        switch place {
+        case .stored: StorageFileMark(state: .stored)
+        case .queued: StorageFileMark(state: .queued)
+        case .sending(let fileId): StorageSendingFileMark(fileId: fileId)
+        }
+    }
+
     private var nameStyle: AnyShapeStyle {
-        switch state {
+        switch place {
         case .stored: AnyShapeStyle(.primary)
         case .queued: AnyShapeStyle(.secondary)
-        case .moving(let kind, _): AnyShapeStyle(kind.color)
+        case .sending: AnyShapeStyle(StorageTransferKind.upload.color)
         }
     }
 
@@ -75,13 +91,30 @@ struct StorageInspectorFileRow: View {
     }
 }
 
+/// A file being sent's ring, filled as far as its object has gone, read
+/// alone by its file so moving bytes redraw only it.
+private struct StorageSendingFileMark: View {
+    let fileId: String
+    @Environment(OutboxStore.self)
+    private var outboxStore
+
+    var body: some View {
+        StorageFileMark(
+            state: .moving(
+                .upload,
+                fraction: outboxStore.fileTransfer(forFile: fileId)
+            )
+        )
+    }
+}
+
 /// A file row's mark: nothing for a file at rest, a dashed circle for one
 /// waiting its turn, a ring filling as far as its transfer has come.
 struct StorageFileMark: View {
     enum State: Equatable {
         case stored
         case queued
-        /// `fraction` is `nil` while nothing has been confirmed sent.
+        /// `fraction` is `nil` while nothing of the file has moved.
         case moving(StorageTransferKind, fraction: Double?)
     }
 
@@ -129,7 +162,7 @@ struct StorageFileMark: View {
     }
 
     /// How much of the ring fills: as far as the transfer has come, none
-    /// before anything is confirmed and for a mark that shows no ring.
+    /// before anything has moved and for a mark that shows no ring.
     private var ringFraction: Double {
         switch state {
         case .moving(_, let fraction?): fraction
