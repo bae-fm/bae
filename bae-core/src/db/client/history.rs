@@ -12,15 +12,12 @@ impl Database {
         duration: Option<Duration>,
         started_at: DateTime<Utc>,
     ) -> Result<HistoryPlay, DbError> {
-        let audience = match self.current_member().await? {
-            Some(member) => match self.profile(member).await? {
-                Some(profile) => HistoryAudience::Person {
-                    person: member,
-                    audience: profile.history_sharing.audience(profile.private_circle),
-                },
-                None => HistoryAudience::DevicePrivate,
+        let audience = match self.own_member().await? {
+            Some((member, Some(profile))) => HistoryAudience::Person {
+                person: member,
+                audience: profile.history_sharing.audience(profile.private_circle),
             },
-            None => HistoryAudience::DevicePrivate,
+            Some((_, None)) | None => HistoryAudience::DevicePrivate,
         };
         Ok(HistoryPlay {
             entry: HistoryEntry {
@@ -42,16 +39,15 @@ impl Database {
         }
         let _registration = self.inner.history_registration.lock().await;
         let mut entry = play.entry.clone();
-        let member = self.current_member().await?;
+        let own = self.own_member().await?;
+        let member = own.as_ref().map(|(member, _)| *member);
         match entry.audience {
             HistoryAudience::DevicePrivate => {
-                if let Some(member) = member {
-                    if let Some(profile) = self.profile(member).await? {
-                        entry.audience = HistoryAudience::Person {
-                            person: member,
-                            audience: coven::Audience::Circle(profile.private_circle),
-                        };
-                    }
+                if let Some((member, Some(profile))) = own {
+                    entry.audience = HistoryAudience::Person {
+                        person: member,
+                        audience: coven::Audience::Circle(profile.private_circle),
+                    };
                 }
             }
             HistoryAudience::Person { person, .. } if Some(person) != member => {

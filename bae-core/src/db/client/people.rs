@@ -10,15 +10,20 @@ macro_rules! profile_columns {
 const PROFILE_COLUMNS: &str = profile_columns!();
 
 impl Database {
+    /// The member using this device, once its registration has applied.
     pub(crate) async fn current_member(&self) -> Result<Option<coven::MemberId>, DbError> {
         Ok(self
-            .inner
-            .handle
-            .members()
+            .read(|sql| Ok(own_member_on(&sql)?))
             .await?
-            .into_iter()
-            .find(|member| member.is_self)
-            .map(|member| member.id))
+            .map(|(member, _)| member))
+    }
+
+    /// The member using this device and their profile, read together: what
+    /// a play is recorded for.
+    pub(crate) async fn own_member(
+        &self,
+    ) -> Result<Option<(coven::MemberId, Option<PersonProfile>)>, DbError> {
+        self.read(|sql| Ok(own_member_on(&sql)?)).await
     }
 
     pub async fn profiles(&self) -> Result<Vec<PersonProfile>, DbError> {
@@ -43,11 +48,11 @@ impl Database {
     }
 
     pub(crate) async fn own_profile(&self) -> Result<PersonProfile, ProfileError> {
-        let member = self
-            .current_member()
+        let (_, profile) = self
+            .own_member()
             .await?
             .ok_or(ProfileError::NotRegistered)?;
-        self.profile(member).await?.ok_or(ProfileError::Missing)
+        profile.ok_or(ProfileError::Missing)
     }
 
     /// A failed profile write can retry using the same named, self-only circle.
@@ -231,6 +236,28 @@ fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
         history_sharing: Sharing::from_sql(&row.get::<_, String>(3)?)?,
         avatar_id: row.get(4)?,
     })
+}
+
+/// The member using this device, with their profile when they made one. The
+/// view's columns and the profile's share no name.
+const OWN_MEMBER_SQL: &str = concat!(
+    "SELECT ",
+    profile_columns!(),
+    ", member FROM coven_members LEFT JOIN people ON people.id = coven_members.member \
+     WHERE is_self AND NOT removed"
+);
+
+fn own_member_on(
+    sql: &SqlReadContext<'_>,
+) -> rusqlite::Result<Option<(coven::MemberId, Option<PersonProfile>)>> {
+    sql.query_row(OWN_MEMBER_SQL, [], |row| {
+        let profile = match row.get::<_, Option<String>>(0)? {
+            Some(_) => Some(profile_row(row)?),
+            None => None,
+        };
+        Ok((row.get(5)?, profile))
+    })
+    .optional()
 }
 
 /// Every profile, by name; `people_name` serves the order.
