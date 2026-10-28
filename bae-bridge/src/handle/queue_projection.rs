@@ -16,64 +16,6 @@ mirror_struct! {
     fields: { bar: (crate::types::BridgeUploadBar), throughput_bps },
 }
 
-impl crate::types::BridgeFileTransferChange {
-    pub(super) fn from_core(change: bae_core::library::FileTransferChange) -> Self {
-        use bae_core::library::FileTransferChange;
-        match change {
-            FileTransferChange::Updated { file, fraction } => Self::Updated {
-                file_id: file.to_string(),
-                fraction,
-            },
-            FileTransferChange::Removed { file } => Self::Removed {
-                file_id: file.to_string(),
-            },
-            FileTransferChange::Reset(files) => Self::Reset {
-                files: files
-                    .into_iter()
-                    .map(|(file, fraction)| crate::types::BridgeKeyedFileTransfer {
-                        file_id: file.to_string(),
-                        fraction,
-                    })
-                    .collect(),
-            },
-        }
-    }
-}
-
-impl crate::types::BridgeOutboxTransferChange {
-    pub(super) fn from_core(change: bae_core::library::OutboxTransferChange) -> Self {
-        use bae_core::library::OutboxTransferChange;
-        match change {
-            OutboxTransferChange::Updated {
-                release_id,
-                transfer,
-            } => Self::Updated {
-                release_id,
-                transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
-            },
-            OutboxTransferChange::Removed { release_id } => Self::Removed { release_id },
-            OutboxTransferChange::TotalUpdated(transfer) => Self::TotalUpdated {
-                transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
-            },
-            OutboxTransferChange::Reset(transfers) => Self::Reset {
-                releases: transfers
-                    .releases
-                    .into_iter()
-                    .map(
-                        |(release_id, transfer)| crate::types::BridgeKeyedReleaseUploadTransfer {
-                            release_id,
-                            transfer: crate::types::BridgeReleaseUploadTransfer::from_core(
-                                transfer,
-                            ),
-                        },
-                    )
-                    .collect(),
-                total: crate::types::BridgeUploadTransfer::from_core(transfers.total),
-            },
-        }
-    }
-}
-
 impl crate::types::BridgeUploadProgress {
     pub(super) fn from_core(progress: bae_core::library::UploadProgress) -> Self {
         let activity = progress
@@ -105,35 +47,6 @@ impl crate::types::BridgeDownloadState {
             bae_core::library::DownloadPhase::Queued => Self::Queued,
             bae_core::library::DownloadPhase::Active { progress: () } => Self::Active,
             bae_core::library::DownloadPhase::Failed { error } => Self::Failed { error },
-        }
-    }
-}
-
-impl crate::types::BridgeDownloadTransferChange {
-    pub(super) fn from_core(change: bae_core::library::DownloadTransferChange) -> Self {
-        use bae_core::library::ReleaseTransferChange;
-        match change {
-            ReleaseTransferChange::Updated {
-                release_id,
-                progress,
-            } => Self::Updated {
-                release_id,
-                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-            },
-            ReleaseTransferChange::Removed { release_id } => Self::Removed { release_id },
-            ReleaseTransferChange::Reset(transfers) => Self::Reset {
-                transfers: transfers
-                    .into_iter()
-                    .map(
-                        |(release_id, progress)| crate::types::BridgeKeyedDownloadTransfer {
-                            release_id,
-                            progress: crate::types::BridgeDownloadTransferProgress::from_core(
-                                progress,
-                            ),
-                        },
-                    )
-                    .collect(),
-            },
         }
     }
 }
@@ -198,34 +111,6 @@ impl crate::types::BridgeOutputState {
             OutputPhase::Queued => BridgeOutputState::Queued,
             OutputPhase::Active { progress: () } => BridgeOutputState::Active,
             OutputPhase::Failed { error } => BridgeOutputState::Failed { error },
-        }
-    }
-}
-
-#[cfg(desktop)]
-impl crate::types::BridgeOutputTransferChange {
-    pub(super) fn from_core(change: bae_core::library::OutputTransferChange) -> Self {
-        use bae_core::library::ReleaseTransferChange;
-        match change {
-            ReleaseTransferChange::Updated {
-                release_id,
-                progress,
-            } => Self::Updated {
-                release_id,
-                percent: progress,
-            },
-            ReleaseTransferChange::Removed { release_id } => Self::Removed { release_id },
-            ReleaseTransferChange::Reset(transfers) => Self::Reset {
-                transfers: transfers
-                    .into_iter()
-                    .map(
-                        |(release_id, percent)| crate::types::BridgeKeyedOutputTransfer {
-                            release_id,
-                            percent,
-                        },
-                    )
-                    .collect(),
-            },
         }
     }
 }

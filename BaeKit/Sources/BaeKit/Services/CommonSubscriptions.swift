@@ -132,49 +132,6 @@ private final class UploadsPausedSink: UploadsPausedCallback,
     }
 }
 
-private final class OutboxTransfersSink: OutboxTransfersCallback,
-    @unchecked Sendable
-{
-    private let apply: @Sendable (BridgeOutboxTransferChange) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @Sendable (BridgeOutboxTransferChange) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    /// One batch lands on the thread it arrives on, applied in order: the
-    /// values go to stores the views drawing them read on their own frames,
-    /// so no change hops to the main thread.
-    func onChanges(changes: [BridgeOutboxTransferChange]) {
-        changes.forEach(apply)
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
-private final class DownloadTransfersSink: DownloadTransfersCallback,
-    @unchecked Sendable
-{
-    private let apply: @Sendable (BridgeDownloadTransferChange) -> Void
-
-    init(apply: @escaping @Sendable (BridgeDownloadTransferChange) -> Void) {
-        self.apply = apply
-    }
-
-    /// One batch lands on the thread it arrives on, applied in order: the
-    /// values go to stores the views drawing them read on their own frames,
-    /// so no change hops to the main thread.
-    func onChanges(changes: [BridgeDownloadTransferChange]) {
-        changes.forEach(apply)
-    }
-}
-
 private final class CastDevicesValueSink: CastDevicesCallback,
     @unchecked Sendable
 {
@@ -201,6 +158,8 @@ final class CommonSubscriptions {
     private let downloadStore: DownloadStore
     private let castStore: CastStore
     private var subscriptions: [LiveSubscription] = []
+    /// The fast streams' feeds, which stop with these subscriptions.
+    private var feeds: [LatestFeed] = []
 
     init(
         appHandle: AppHandle,
@@ -230,6 +189,11 @@ final class CommonSubscriptions {
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         precondition(subscriptions.isEmpty)
+        feeds = [
+            outboxStore.releaseProgress.feed(from: appHandle, onError: onError),
+            outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
+            downloadStore.releaseProgress.feed(from: appHandle),
+        ]
         subscriptions =
             libraryStatusSubscriptions(onError: onError) + [
                 appHandle.subscribePlaybackValues(
@@ -254,19 +218,6 @@ final class CommonSubscriptions {
                         },
                         fail: onError
                     )
-                ),
-                appHandle.subscribeOutboxTransfers(
-                    callback: OutboxTransfersSink(
-                        apply: { [outboxStore] change in
-                            outboxStore.applyTransferChange(change)
-                        },
-                        fail: onError
-                    )
-                ),
-                appHandle.subscribeDownloadTransfers(
-                    callback: DownloadTransfersSink { [downloadStore] change in
-                        downloadStore.applyTransferChange(change)
-                    }
                 ),
                 appHandle.subscribeCastDevices(
                     callback: CastDevicesValueSink { [castStore] devices in

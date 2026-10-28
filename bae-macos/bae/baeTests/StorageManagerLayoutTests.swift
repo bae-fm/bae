@@ -40,7 +40,6 @@ final class StorageManagerLayoutTests: XCTestCase {
         ) { _, host in
 
             try await SnapshotTestSupport.settle(host)
-            let outboxStore = PreviewData.outboxStore()
             let row = try XCTUnwrap(
                 PreviewData.storageRows(
                     PreviewData.storageRows,
@@ -50,15 +49,12 @@ final class StorageManagerLayoutTests: XCTestCase {
                     $0.release.id == PreviewData.uploadingRelease.releaseId
                 }
             )
+            // The scene's outbox moves this row's release and the total.
             XCTAssertEqual(
-                outboxStore.uploadProgress(forRelease: row.release.id).latest?
-                    .throughputBps,
+                PreviewData.uploadTransfers[row.release.id]?.throughputBps,
                 3_200_000
             )
-            XCTAssertEqual(
-                outboxStore.totalProgress.latest?.throughputBps,
-                6_800_000
-            )
+            XCTAssertEqual(PreviewData.uploadTotal.throughputBps, 6_800_000)
             let descendants = SnapshotTestSupport.descendants(of: host)
             XCTAssertFalse(descendants.contains { $0 is ProgressTrackNSView })
         }

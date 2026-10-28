@@ -2795,6 +2795,16 @@ to compile in the bridge until it is carried across.
   and merge its values, so closing or removing the library stops them all
   before the store closes, and none hears from a closed store. One opened on
   a closed library delivers nothing and is reported as a bug.
+- **Fast values** — transfer bytes and rates, file shares and export
+  percents, which core sends many times a second — reach an app only in a
+  `KeyedValueStream`, keyed by release or file, never in a callback, a
+  record field or a subscription value. A `feed_*` call starts writing one
+  on the bridge's side and returns it; cancelling or dropping it, or closing
+  the library, stops it, and it then holds nothing. A read that fails empties
+  it until the next read fills it whole. Its one callback names the keys that
+  started or stopped holding a value, never a value that moved. The native
+  view drawing a key reads the key's latest value once per display frame
+  while it holds one; nothing the UI framework observes holds a fast value.
 - **Pulled subscriptions** — the browse and download lists, the searches,
   the import list, and the reads of which selected albums are gone and which
   offered releases the library holds — are objects the app asks for each

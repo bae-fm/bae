@@ -22,6 +22,7 @@ import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCoverSelection
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeFastValue
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeInvite
@@ -70,15 +71,14 @@ import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadBrowseSubscription
 import uniffi.bae_bridge.DownloadCountsCallback
-import uniffi.bae_bridge.DownloadTransfersCallback
-import uniffi.bae_bridge.FileTransfersCallback
 import uniffi.bae_bridge.InvitesCallback
+import uniffi.bae_bridge.KeyActivityCallback
+import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.LibraryNameCallback
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.MembershipCallback
-import uniffi.bae_bridge.OutboxTotalTransferCallback
-import uniffi.bae_bridge.OutboxTransfersCallback
+import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.PlaylistEntriesCallback
@@ -89,6 +89,7 @@ import uniffi.bae_bridge.QueueUpcomingSubscription
 import uniffi.bae_bridge.RatingsCallback
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
+import uniffi.bae_bridge.StreamFailureCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
@@ -156,17 +157,23 @@ internal open class FakeAppHandle(
 
     override fun subscribeDownloadBrowse(): DownloadBrowseSubscription = unfaked("subscribeDownloadBrowse")
 
-    override fun subscribeDownloadTransfers(callback: DownloadTransfersCallback): LiveSubscription = liveSubscription()
+    override fun feedDownloadTransfers(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
 
     override fun subscribeUploadsPaused(callback: UploadsPausedCallback): LiveSubscription = liveSubscription()
 
-    override fun subscribeOutboxTransfers(callback: OutboxTransfersCallback): LiveSubscription = liveSubscription()
+    override fun feedReleaseUploadTransfers(
+        activity: KeyActivityCallback,
+        failure: StreamFailureCallback,
+    ): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun subscribeOutboxTotalTransfer(callback: OutboxTotalTransferCallback): LiveSubscription = liveSubscription()
+    override fun feedUploadTotalTransfer(
+        activity: KeyActivityCallback,
+        failure: StreamFailureCallback,
+    ): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun subscribeUploadFileTransfers(callback: FileTransfersCallback): LiveSubscription = liveSubscription()
+    override fun feedUploadFileShares(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun subscribePinFileTransfers(callback: FileTransfersCallback): LiveSubscription = liveSubscription()
+    override fun feedPinFileShares(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
 
     override fun subscribeCastDevices(callback: CastDevicesCallback): LiveSubscription = liveSubscription()
 
@@ -733,4 +740,11 @@ internal open class FakeAppHandle(
     override suspend fun setSyncPaused(paused: Boolean) {
         unfaked("setSyncPaused")
     }
+}
+
+/** A stream nothing feeds, which holds nothing. */
+internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
+    override fun latest(key: String): BridgeFastValue? = null
+
+    override fun cancel() = Unit
 }

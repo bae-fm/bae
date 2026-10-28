@@ -48,8 +48,7 @@ impl BridgeSyncActivity {
 }
 
 /// The files this device is sending now, out of its whole upload queue. The
-/// bytes they have moved are the queue's transfer
-/// (`BridgeOutboxTransferChange`).
+/// bytes they have moved are the upload total's `KeyedValueStream`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadsInFlight {
     /// The list's line: the counts sending and waiting, a zero dropped.

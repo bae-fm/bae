@@ -115,7 +115,7 @@ pub enum BridgeUploadFileState {
 }
 
 /// How many files wait and how many are being sent, and the phase that
-/// makes. How far they have gone is their transfer.
+/// makes. How far they have gone is in the upload `KeyedValueStream`s.
 #[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
@@ -141,54 +141,46 @@ pub struct BridgeReleaseUploadTransfer {
     pub throughput_bps: u64,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeKeyedReleaseUploadTransfer {
-    pub release_id: String,
-    pub transfer: BridgeReleaseUploadTransfer,
-}
-
-/// A change to one release's transfer, or every transfer. Mirrors
-/// `OutboxTransferChange`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeOutboxTransferChange {
-    Updated {
-        release_id: String,
+/// A value core sends many times a second, as one key of a
+/// `KeyedValueStream` holds it. A stream holds one variant for every key.
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum BridgeFastValue {
+    /// How far a release's upload has got, of its whole size, and how fast
+    /// its files being sent go together; keyed by release.
+    ReleaseUpload {
         transfer: BridgeReleaseUploadTransfer,
     },
-    /// The release has nothing being sent any more.
-    Removed { release_id: String },
-    /// The files being sent together.
-    TotalUpdated { transfer: BridgeUploadTransfer },
-    /// Every release's transfer and the total; a key not listed has nothing
-    /// being sent.
-    Reset {
-        releases: Vec<BridgeKeyedReleaseUploadTransfer>,
-        total: BridgeUploadTransfer,
+    /// How far the files being sent have gone together, and how fast; a
+    /// stream's one key, `""`, while any file is being sent.
+    UploadTotal { transfer: BridgeUploadTransfer },
+    /// The share of a file in flight its object has moved, from 0 to 1;
+    /// keyed by file.
+    FileShare { fraction: f64 },
+    /// A downloading release's bytes and rate; keyed by release.
+    Download {
+        progress: BridgeDownloadTransferProgress,
     },
+    /// An exporting release's percent; keyed by release.
+    ExportPercent { percent: u8 },
 }
 
-/// How far one file in flight has got: the share of its object moved, from
-/// 0 to 1.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeKeyedFileTransfer {
-    pub file_id: String,
-    pub fraction: f64,
+/// Which keys of a stream started or stopped holding a value.
+#[uniffi::export(callback_interface)]
+pub trait KeyActivityCallback: Send + Sync {
+    /// These keys started or stopped holding a value; `latest` says which.
+    /// Called on the thread that writes the stream.
+    fn on_keys_changed(&self, keys: Vec<String>);
 }
 
-/// A change to one file's share moved, or every file's. Mirrors
-/// `FileTransferChange`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeFileTransferChange {
-    /// The file started, or its share moved.
-    Updated { file_id: String, fraction: f64 },
-    /// The file's transfer ended, whether it finished or not.
-    Removed { file_id: String },
-    /// Every file in flight; a file not listed has nothing in flight.
-    Reset { files: Vec<BridgeKeyedFileTransfer> },
+/// A stream's read failing. The stream holds nothing until a read succeeds
+/// again.
+#[uniffi::export(callback_interface)]
+pub trait StreamFailureCallback: Send + Sync {
+    fn on_error(&self, error: BridgeError);
 }
 
 /// A queued download's phase. How far an active one has gone is its
-/// release's download transfer.
+/// release's value in the download `KeyedValueStream`.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeDownloadState {
     Queued,
@@ -204,28 +196,6 @@ pub struct BridgeDownloadTransferProgress {
     pub bytes_total: u64,
     pub fraction: f64,
     pub throughput_bps: Option<u64>,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeKeyedDownloadTransfer {
-    pub release_id: String,
-    pub progress: BridgeDownloadTransferProgress,
-}
-
-/// A change to one release's download progress, or every release's.
-/// Mirrors `DownloadTransferChange`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeDownloadTransferChange {
-    Updated {
-        release_id: String,
-        progress: BridgeDownloadTransferProgress,
-    },
-    /// The release is no longer downloading.
-    Removed { release_id: String },
-    /// Every downloading release's progress; a release not listed has none.
-    Reset {
-        transfers: Vec<BridgeKeyedDownloadTransfer>,
-    },
 }
 
 /// What the library holds now for a queued release: what its queue row
@@ -263,7 +233,8 @@ pub struct BridgeDownloadOp {
 pub enum BridgeReleaseDownloadStatus {
     Downloaded,
     Queued,
-    /// Bytes are arriving; how many is the release's download transfer.
+    /// Bytes are arriving; how many is the release's value in the download
+    /// `KeyedValueStream`.
     Downloading,
     Failed {
         error: String,
@@ -349,36 +320,12 @@ mirror_struct! {
 }
 
 /// A queued export's phase. Mirrors `OutputPhase`; how far an active one
-/// has got is its transfer.
+/// has got is its value in the export `KeyedValueStream`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeOutputState {
     Queued,
     Active,
     Failed { error: String },
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeKeyedOutputTransfer {
-    pub release_id: String,
-    pub percent: u8,
-}
-
-/// A change to one release's export percent, or every release's. Mirrors
-/// `OutputTransferChange`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeOutputTransferChange {
-    Updated {
-        release_id: String,
-        percent: u8,
-    },
-    /// The release is no longer exporting.
-    Removed {
-        release_id: String,
-    },
-    /// Every exporting release's percent; a release not listed has none.
-    Reset {
-        transfers: Vec<BridgeKeyedOutputTransfer>,
-    },
 }
 
 /// What a queued output produces; a save carries its preset's name as it was

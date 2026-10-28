@@ -1,8 +1,9 @@
 package fm.bae.app.ui
 
 import fm.bae.app.data.DownloadStore
-import fm.bae.app.data.LatestOne
 import fm.bae.app.data.LatestSource
+import fm.bae.app.data.LatestStream
+import fm.bae.app.data.only
 import fm.bae.app.playback.SidePausePrompt
 import uniffi.bae_bridge.BridgeAbandonedAttachments
 import uniffi.bae_bridge.BridgeActiveDevice
@@ -18,7 +19,6 @@ import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadState
-import uniffi.bae_bridge.BridgeDownloadTransferChange
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeFactTerm
@@ -27,7 +27,6 @@ import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeKeyedDownloadTransfer
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryImageType
@@ -329,8 +328,7 @@ object PreviewData {
         )
 
     /** The files being sent together, as the sync activity's upload line reads them. */
-    fun uploadTransferSource(): LatestSource<BridgeUploadTransfer> =
-        LatestOne<BridgeUploadTransfer>().apply { set(uploadTransfer()) }.source
+    fun uploadTransferSource(): LatestSource<BridgeUploadTransfer> = LatestStream.uploadTotal(uploadTransfer()).only
 
     fun downloadCounts(
         queued: UInt = 1u,
@@ -362,13 +360,10 @@ object PreviewData {
         counts: BridgeDownloadCounts = downloadCounts(),
         downloadingReleaseId: String = "rel-1",
     ): DownloadStore =
-        DownloadStore(counts).apply {
-            val transfers =
-                BridgeDownloadTransferChange.Reset(
-                    listOf(BridgeKeyedDownloadTransfer(downloadingReleaseId, downloadTransferProgress())),
-                )
-            applyTransferChange(transfers)
-        }
+        DownloadStore(
+            counts,
+            releaseProgress = LatestStream.downloads(mapOf(downloadingReleaseId to downloadTransferProgress())),
+        )
 
     fun downloadTransferProgress(
         bytesDone: ULong = 120_000_000uL,

@@ -1,33 +1,21 @@
 import BaeKit
 import SwiftUI
 
-/// The percent each exporting release has reached. The transfer subscription
-/// writes each latest percent on the thread it arrives on, and the native
-/// view drawing that release's export reads it once per display frame, so a
-/// step runs no SwiftUI update and no main-thread hop. The queue's entries
-/// are the Storage Manager inspector's, read for one release in core.
+/// The stream of the percent each exporting release has reached. The bridge
+/// holds each latest percent, and the native view drawing that release's
+/// export reads it once per display frame, so a step runs no SwiftUI update
+/// and no main-thread hop. The queue's entries are the Storage Manager
+/// inspector's, read for one release in core.
 @MainActor
 @Observable
 final class OutputStore {
     /// The latest percent of each exporting release.
-    private nonisolated let percents = LatestByKey<UInt8>()
+    nonisolated let percents: LatestStream<UInt8>
 
-    /// Apply one change the transfer subscription delivered, on any thread.
-    nonisolated func applyTransferChange(_ change: BridgeOutputTransferChange) {
-        switch change {
-        case .updated(let releaseId, let percent):
-            percents.set(percent, for: releaseId)
-        case .removed(let releaseId):
-            percents.remove(releaseId)
-        case .reset(let keyed):
-            percents.reset(
-                Dictionary(
-                    uniqueKeysWithValues: keyed.map {
-                        ($0.releaseId, $0.percent)
-                    }
-                )
-            )
-        }
+    /// A store whose stream the subscription fills, or, for a preview, a
+    /// stream holding fixed percents.
+    init(percents: LatestStream<UInt8> = .exportPercents()) {
+        self.percents = percents
     }
 
     /// The latest percent of an exporting release, for the native views that
@@ -35,6 +23,6 @@ final class OutputStore {
     nonisolated func exportProgress(forRelease releaseId: String)
         -> LatestSource<UInt8>
     {
-        LatestSource(store: percents, key: releaseId)
+        percents.source(for: releaseId)
     }
 }

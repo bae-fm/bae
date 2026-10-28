@@ -35,12 +35,12 @@ class FrameFollowing<V : Any>(
         if (source == this.source) return
         stop()
         this.source = source
-        source.store.watch(source.key, changed)
+        source.stream.activity.watch(source.key, changed)
         activityChanged()
     }
 
     fun stop() {
-        source?.let { it.store.stopWatching(it.key, changed) }
+        source?.let { it.stream.activity.stopWatching(it.key, changed) }
         stopTicking()
         source = null
         shown = UNSHOWN

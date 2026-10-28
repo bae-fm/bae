@@ -20,40 +20,6 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     }
 }
 
-private final class OutputTransfersSink: OutputTransfersCallback,
-    @unchecked Sendable
-{
-    private let apply: @Sendable (BridgeOutputTransferChange) -> Void
-
-    init(apply: @escaping @Sendable (BridgeOutputTransferChange) -> Void) {
-        self.apply = apply
-    }
-
-    /// One batch lands on the thread it arrives on, applied in order: the
-    /// values go to stores the views drawing them read on their own frames,
-    /// so no change hops to the main thread.
-    func onChanges(changes: [BridgeOutputTransferChange]) {
-        changes.forEach(apply)
-    }
-}
-
-private final class FileTransfersSink: FileTransfersCallback,
-    @unchecked Sendable
-{
-    private let apply: @Sendable (BridgeFileTransferChange) -> Void
-
-    init(apply: @escaping @Sendable (BridgeFileTransferChange) -> Void) {
-        self.apply = apply
-    }
-
-    /// One batch lands on the thread it arrives on, applied in order: the
-    /// shares go to a store each file's view reads on its own frames, so no
-    /// change hops to the main thread.
-    func onChanges(changes: [BridgeFileTransferChange]) {
-        changes.forEach(apply)
-    }
-}
-
 private final class FolderScansSink: FolderScansCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeFolderScans) -> Void
     private let fail: @MainActor @Sendable (any Error) -> Void
@@ -249,6 +215,8 @@ final class DesktopSubscriptions {
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
     private var subscriptions: [LiveSubscription] = []
+    /// The fast streams' feeds, which stop with these subscriptions.
+    private var feeds: [LatestFeed] = []
 
     init(
         appHandle: AppHandle,
@@ -361,22 +329,12 @@ final class DesktopSubscriptions {
 
     func start() {
         precondition(subscriptions.isEmpty)
+        feeds = [
+            outputStore.percents.feed(from: appHandle),
+            outboxStore.fileShares.feedUploads(from: appHandle),
+            downloadStore.fileShares.feedPins(from: appHandle),
+        ]
         subscriptions = [
-            appHandle.subscribeOutputTransfers(
-                callback: OutputTransfersSink { [outputStore] change in
-                    outputStore.applyTransferChange(change)
-                }
-            ),
-            appHandle.subscribeUploadFileTransfers(
-                callback: FileTransfersSink { [outboxStore] change in
-                    outboxStore.applyFileTransferChange(change)
-                }
-            ),
-            appHandle.subscribePinFileTransfers(
-                callback: FileTransfersSink { [downloadStore] change in
-                    downloadStore.applyFileTransferChange(change)
-                }
-            ),
             appHandle.subscribeCandidateRuntime(
                 callback: CandidateRuntimeSink { [importStore] changes in
                     importStore.candidateRuntimeSubject.send(changes)

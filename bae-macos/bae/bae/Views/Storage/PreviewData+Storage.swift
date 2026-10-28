@@ -21,28 +21,21 @@
 
         /// The bytes the previews' downloads have moved: the download
         /// queue's active entry, and the storage rows' release pinning.
-        static let downloadTransfers: BridgeDownloadTransferChange = .reset(
-            transfers: [
-                BridgeKeyedDownloadTransfer(
-                    releaseId: "rel-row-1",
-                    progress: BridgeDownloadTransferProgress(
-                        bytesDone: 140_000_000,
-                        bytesTotal: 367_000_000,
-                        fraction: 140.0 / 367.0,
-                        throughputBps: 12_100_000
-                    )
+        static let downloadTransfers: [String: BridgeDownloadTransferProgress] =
+            [
+                "rel-row-1": BridgeDownloadTransferProgress(
+                    bytesDone: 140_000_000,
+                    bytesTotal: 367_000_000,
+                    fraction: 140.0 / 367.0,
+                    throughputBps: 12_100_000
                 ),
-                BridgeKeyedDownloadTransfer(
-                    releaseId: "rel-row-5",
-                    progress: BridgeDownloadTransferProgress(
-                        bytesDone: 151_000_000,
-                        bytesTotal: 463_000_000,
-                        fraction: 151.0 / 463.0,
-                        throughputBps: 12_100_000
-                    )
+                "rel-row-5": BridgeDownloadTransferProgress(
+                    bytesDone: 151_000_000,
+                    bytesTotal: 463_000_000,
+                    fraction: 151.0 / 463.0,
+                    throughputBps: 12_100_000
                 ),
             ]
-        )
 
         /// One active, one queued, one failed — the three download-row states.
         static let downloadOps: [BridgeDownloadOp] = [
@@ -106,14 +99,9 @@
 
         /// How far the previews' files being downloaded to be kept have
         /// got: the pinning release's audio, as its inspector shows it.
-        static let pinFileTransfers: BridgeFileTransferChange = .reset(
-            files: [
-                BridgeKeyedFileTransfer(
-                    fileId: pinningFileId("rel-row-5-audio"),
-                    fraction: 0.42
-                )
-            ]
-        )
+        static let pinFileTransfers: [String: Double] = [
+            pinningFileId("rel-row-5-audio"): 0.42
+        ]
 
         /// The file coven downloads for a storage row release's file.
         static func pinningFileId(_ releaseFileId: String) -> String {
@@ -138,27 +126,20 @@
                 }
                 .map(\.releaseId)
             )
-            let store = DownloadStore()
-            guard case .reset(let transfers) = downloadTransfers,
-                case .reset(let files) = pinFileTransfers
-            else { preconditionFailure("the preview transfers are resets") }
-            store.applyTransferChange(
-                .reset(
-                    transfers: transfers.filter {
-                        !resting.contains($0.releaseId)
-                    }
-                )
-            )
-            store.applyFileTransferChange(
-                .reset(
-                    files: files.filter { file in
+            return DownloadStore(
+                fileShares: .fileShares(
+                    holding: pinFileTransfers.filter { fileId, _ in
                         !resting.contains {
-                            file.fileId.hasPrefix(pinningFileId($0))
+                            fileId.hasPrefix(pinningFileId($0))
                         }
                     }
+                ),
+                releaseProgress: .downloads(
+                    holding: downloadTransfers.filter { releaseId, _ in
+                        !resting.contains(releaseId)
+                    }
                 )
             )
-            return store
         }
 
         // MARK: - Export / save queue
@@ -205,17 +186,11 @@
         ]
 
         /// The percent the preview's active save has reached.
-        static let outputTransfers: BridgeOutputTransferChange = .reset(
-            transfers: [
-                BridgeKeyedOutputTransfer(releaseId: "rel-row-1", percent: 62)
-            ]
-        )
+        static let outputTransfers: [String: UInt8] = ["rel-row-1": 62]
 
         @MainActor
         static func outputStore() -> OutputStore {
-            let store = OutputStore()
-            store.applyTransferChange(outputTransfers)
-            return store
+            OutputStore(percents: .exportPercents(holding: outputTransfers))
         }
 
         // MARK: - Cloud outbox
@@ -345,45 +320,39 @@
         /// How far and how fast the preview's uploading release goes: of its
         /// 36.4 MB, the 12.4 MB of its audio sent; and the bytes the files
         /// being sent have moved together.
-        static let uploadTransfers: BridgeOutboxTransferChange = .reset(
-            releases: [
-                BridgeKeyedReleaseUploadTransfer(
-                    releaseId: "rel-row-1",
-                    transfer: BridgeReleaseUploadTransfer(
-                        bar: BridgeUploadBar(
-                            bytesDone: 12_400_000,
-                            bytesTotal: 36_400_000
-                        ),
-                        throughputBps: 3_200_000
-                    )
-                )
-            ],
-            total: BridgeUploadTransfer(
+        static let uploadTransfers: [String: BridgeReleaseUploadTransfer] = [
+            "rel-row-1": BridgeReleaseUploadTransfer(
                 bar: BridgeUploadBar(
-                    bytesDone: 22_400_000,
-                    bytesTotal: 57_100_000
+                    bytesDone: 12_400_000,
+                    bytesTotal: 36_400_000
                 ),
-                throughputBps: 6_800_000
+                throughputBps: 3_200_000
             )
+        ]
+
+        /// The bytes the preview's files being sent have moved together.
+        static let uploadTotal = BridgeUploadTransfer(
+            bar: BridgeUploadBar(
+                bytesDone: 22_400_000,
+                bytesTotal: 57_100_000
+            ),
+            throughputBps: 6_800_000
         )
 
         /// How far the preview's file being sent has got: 12.4 MB of its
         /// 34 MB.
-        static let uploadFileTransfers: BridgeFileTransferChange = .reset(
-            files: [
-                BridgeKeyedFileTransfer(
-                    fileId: "upload-rel-row-1-audio",
-                    fraction: 12_400_000 / 34_000_000
-                )
-            ]
-        )
+        static let uploadFileTransfers: [String: Double] = [
+            "upload-rel-row-1-audio": 12_400_000 / 34_000_000
+        ]
 
         @MainActor
         static func outboxStore() -> OutboxStore {
-            let store = OutboxStore(uploadsPaused: false)
-            store.applyTransferChange(uploadTransfers)
-            store.applyFileTransferChange(uploadFileTransfers)
-            return store
+            OutboxStore(
+                uploadsPaused: false,
+                fileShares: .fileShares(holding: uploadFileTransfers),
+                releaseProgress: .releaseUploads(holding: uploadTransfers),
+                filesBeingSent: .uploadTotal(holding: uploadTotal)
+            )
         }
 
         // MARK: - Storage table rows

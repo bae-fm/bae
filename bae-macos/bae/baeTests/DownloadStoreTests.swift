@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import Testing
 
@@ -16,31 +17,26 @@ struct DownloadStoreTransferTests {
         )
     }
 
-    /// A release's latest progress is each change that names it, and none
-    /// once the release stops downloading.
-    @Test("a release's progress follows each change that names it")
-    func releaseProgressFollowsItsChanges() {
-        let store = DownloadStore()
-        store.applyTransferChange(
-            .reset(transfers: [
-                BridgeKeyedDownloadTransfer(
-                    releaseId: "release-a",
-                    progress: progress(10)
-                )
-            ])
+    /// A native view following one release's download is shown what the
+    /// stream holds for that release, and nothing once it follows a release
+    /// the stream holds nothing for.
+    @Test("a release's view is shown that release's progress")
+    func releaseViewIsShownItsProgress() {
+        let store = DownloadStore(
+            releaseProgress: .downloads(
+                holding: ["release-a": progress(10), "release-b": progress(70)]
+            )
         )
-        let source = store.downloadProgress(forRelease: "release-a")
-        #expect(source.latest == progress(10))
+        let view = NSView()
+        var shown: [BridgeDownloadTransferProgress?] = []
+        let following = FrameFollowing<BridgeDownloadTransferProgress>(
+            view: view
+        ) { shown.append($0) }
 
-        store.applyTransferChange(
-            .updated(releaseId: "release-a", progress: progress(40))
-        )
-        store.applyTransferChange(
-            .updated(releaseId: "release-b", progress: progress(70))
-        )
-        #expect(source.latest == progress(40))
+        following.follow(store.downloadProgress(forRelease: "release-a"))
+        following.follow(store.downloadProgress(forRelease: "release-c"))
+        following.stop()
 
-        store.applyTransferChange(.removed(releaseId: "release-a"))
-        #expect(source.latest == nil)
+        #expect(shown == [progress(10), nil])
     }
 }

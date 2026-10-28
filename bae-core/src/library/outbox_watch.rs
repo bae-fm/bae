@@ -195,13 +195,17 @@ impl OutboxTransfersWatch {
 
     /// Every transfer as one `Reset` on the first read; after that, wait for
     /// transfers to change and name each one. A failed read is handed on,
-    /// and the next read is told against what the reader last held. `None`
-    /// once the query has ended with its store.
+    /// and the next read that succeeds is a `Reset` again: a reader holds
+    /// nothing it knows to be current once a read failed. `None` once the
+    /// query has ended with its store.
     pub async fn next(&mut self) -> Option<coven::CovenResult<Vec<OutboxTransferChange>>> {
         loop {
             let next = match self.transfers.next().await? {
                 Ok(next) => next,
-                Err(error) => return Some(Err(error)),
+                Err(error) => {
+                    self.told = None;
+                    return Some(Err(error));
+                }
             };
             let Some(told) = &self.told else {
                 self.told = Some(next.clone());
@@ -238,13 +242,17 @@ impl OutboxTotalTransferWatch {
     }
 
     /// The total on the first read, then the next total that differs. A
-    /// failed read is handed on. `None` once the query has ended with its
-    /// store.
+    /// failed read is handed on, and the next read that succeeds tells the
+    /// total whether or not it moved. `None` once the query has ended with
+    /// its store.
     pub async fn next(&mut self) -> Option<coven::CovenResult<UploadTransfer>> {
         loop {
             let total = match self.transfers.next().await? {
                 Ok(next) => next.total,
-                Err(error) => return Some(Err(error)),
+                Err(error) => {
+                    self.told = None;
+                    return Some(Err(error));
+                }
             };
             if self.told == Some(total) {
                 continue;

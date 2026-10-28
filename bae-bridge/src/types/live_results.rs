@@ -50,17 +50,6 @@ pub enum BridgeLiveQueryCause {
 callbacks! {
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
     UploadsPausedCallback: on_value(paused: bool) + on_error;
-    /// Every release's upload transfer and the total as a `Reset` when the
-    /// subscription opens, then each batch of the ones that moved or left,
-    /// in one call.
-    OutboxTransfersCallback: on_changes(changes: Vec<super::BridgeOutboxTransferChange>) + on_error;
-    /// Every file in flight one way as a `Reset` when the subscription
-    /// opens, then each batch of the ones that moved, started or ended, in
-    /// one call.
-    FileTransfersCallback: on_changes(changes: Vec<super::BridgeFileTransferChange>);
-    /// The files being sent together when the subscription opens, then each
-    /// time they move.
-    OutboxTotalTransferCallback: on_value(transfer: super::BridgeUploadTransfer) + on_error;
 
     #[cfg(feature = "cast")]
     CastDevicesCallback: on_value(devices: Vec<super::BridgeCastDevice>);
@@ -70,14 +59,6 @@ callbacks! {
     PlaybackValuesCallback: on_value(value: BridgePlaybackValues) + on_error;
     PlaybackPositionsCallback: on_value(value: BridgePlaybackPositions);
     DownloadCountsCallback: on_value(value: super::BridgeDownloadCounts) + on_error;
-    /// Every downloading release's progress as a `Reset` when the
-    /// subscription opens, then each batch of the ones that moved or ended,
-    /// in one call.
-    DownloadTransfersCallback: on_changes(changes: Vec<super::BridgeDownloadTransferChange>);
-    /// Every exporting release's percent as a `Reset` when the subscription
-    /// opens, then each batch of the ones that moved or ended, in one call.
-    #[cfg(desktop)]
-    OutputTransfersCallback: on_changes(changes: Vec<super::BridgeOutputTransferChange>);
 
     /// What every candidate has in flight: a `Reset` with every running key
     /// when the subscription opens, then `Updated` as a key advances and

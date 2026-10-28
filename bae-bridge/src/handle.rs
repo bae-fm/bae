@@ -119,6 +119,7 @@ mod desktop;
 mod desktop_services;
 #[cfg(feature = "desktop")]
 mod editing_projection;
+mod fast_values;
 #[cfg(feature = "desktop")]
 mod import_list;
 #[cfg(feature = "desktop")]

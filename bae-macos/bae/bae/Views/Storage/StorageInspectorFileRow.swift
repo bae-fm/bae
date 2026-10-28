@@ -168,28 +168,28 @@ struct StorageFileMark: View {
 
 #if DEBUG
     #Preview("File marks") {
-        let shares = LatestByKey<Double>()
-        shares.set(0.38, for: "sending")
-        shares.set(0.64, for: "pinning")
+        let shares = LatestStream.fileShares(
+            holding: ["sending": 0.38, "pinning": 0.64]
+        )
         return HStack(spacing: ThemeSpace.group) {
             StorageFileMark(state: .stored)
             StorageFileMark(state: .queued)
             StorageFileMark(
                 state: .moving(
                     .upload,
-                    LatestSource(store: shares, key: "sending")
+                    shares.source(for: "sending")
                 )
             )
             StorageFileMark(
                 state: .moving(
                     .pin,
-                    LatestSource(store: shares, key: "pinning")
+                    shares.source(for: "pinning")
                 )
             )
             StorageFileMark(
                 state: .moving(
                     .upload,
-                    LatestSource(store: shares, key: "unheard")
+                    shares.source(for: "unheard")
                 )
             )
         }

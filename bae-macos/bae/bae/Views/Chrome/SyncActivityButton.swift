@@ -86,10 +86,10 @@ private struct SyncActivityGlyph: View {
     }
 
     #Preview("Sync activity list") {
-        let outbox = OutboxStore(uploadsPaused: false)
-        outbox.applyTransferChange(
-            .totalUpdated(
-                transfer: BridgeUploadTransfer(
+        let outbox = OutboxStore(
+            uploadsPaused: false,
+            filesBeingSent: .uploadTotal(
+                holding: BridgeUploadTransfer(
                     bar: BridgeUploadBar(
                         bytesDone: 3_200_000,
                         bytesTotal: 8_400_000

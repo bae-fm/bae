@@ -11,6 +11,7 @@ import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LatestFeed
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
@@ -20,6 +21,7 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.data.castEndedFailure
+import fm.bae.app.data.feed
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
 import fm.bae.app.widget.NowPlayingWidget
@@ -46,9 +48,7 @@ import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
-import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.OutboxTotalTransferCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
@@ -126,6 +126,9 @@ class OpenLibrary internal constructor(
      */
     private val shownScreens = MutableStateFlow(0)
     private val valueSubscriptions = mutableListOf<LiveSubscription>()
+
+    /** The fast streams' feeds, which stop with [valueSubscriptions]. */
+    private val streamFeeds = mutableListOf<LatestFeed>()
     private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
     /**
@@ -256,15 +259,9 @@ class OpenLibrary internal constructor(
                     }
                 },
             )
-        valueSubscriptions +=
-            appHandle.subscribeDownloadTransfers(
-                object : DownloadTransfersCallback {
-                    override fun onChanges(changes: List<uniffi.bae_bridge.BridgeDownloadTransferChange>) {
-                        // The latest values on the thread they arrive on, which the Views drawing them read each frame.
-                        changes.forEach(stores.transfers.downloads::applyTransferChange)
-                    }
-                },
-            )
+        streamFeeds +=
+            stores.transfers.downloads.releaseProgress
+                .feed(appHandle)
         valueSubscriptions +=
             appHandle.subscribeUploadsPaused(
                 object : UploadsPausedCallback {
@@ -279,23 +276,11 @@ class OpenLibrary internal constructor(
                     }
                 },
             )
-        valueSubscriptions +=
-            // Nothing on Android draws one file's or release's upload, so only the total crosses.
-            appHandle.subscribeOutboxTotalTransfer(
-                object : OutboxTotalTransferCallback {
-                    // Written on the thread it arrives on: the View drawing it reads the latest each frame.
-                    override fun onValue(transfer: uniffi.bae_bridge.BridgeUploadTransfer) {
-                        stores.transfers.outbox.setTotalTransfer(transfer)
-                    }
-
-                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
-                        scope.launch(Dispatchers.Main.immediate) {
-                            subscriptionFailed("upload transfer", error)
-                            stores.transfers.outbox.forgetTotalTransfer()
-                        }
-                    }
-                },
-            )
+        // Nothing on Android draws one file's or release's upload, so only the total crosses.
+        streamFeeds +=
+            stores.transfers.outbox.filesBeingSent.feed(appHandle) { error ->
+                subscriptionFailed("upload transfer", error)
+            }
         valueSubscriptions +=
             appHandle.subscribeCastDevices(
                 object : CastDevicesCallback {
@@ -439,6 +424,8 @@ class OpenLibrary internal constructor(
         eventChannel = null
         valueSubscriptions.forEach(LiveSubscription::cancel)
         valueSubscriptions.clear()
+        streamFeeds.forEach(LatestFeed::cancel)
+        streamFeeds.clear()
         appContext.stopService(Intent(appContext, PlaybackService::class.java))
         NowPlayingWidget().updateAll(appContext)
     }

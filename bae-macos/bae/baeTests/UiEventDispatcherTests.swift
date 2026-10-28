@@ -331,10 +331,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
-    override func subscribeDownloadTransfers(
-        callback _: any DownloadTransfersCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func feedDownloadTransfers(
+        activity _: any KeyActivityCallback
+    ) -> KeyedValueStream {
+        NoopKeyedValueStream()
     }
 
     override func subscribeSyncActivity(
@@ -363,10 +363,18 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
-    override func subscribeOutboxTransfers(
-        callback _: any OutboxTransfersCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func feedReleaseUploadTransfers(
+        activity _: any KeyActivityCallback,
+        failure _: any StreamFailureCallback
+    ) -> KeyedValueStream {
+        NoopKeyedValueStream()
+    }
+
+    override func feedUploadTotalTransfer(
+        activity _: any KeyActivityCallback,
+        failure _: any StreamFailureCallback
+    ) -> KeyedValueStream {
+        NoopKeyedValueStream()
     }
 
     override func subscribeCastDevices(
@@ -429,6 +437,25 @@ private final class NoopLiveSubscription: LiveSubscription,
 
     required init(unsafeFromHandle handle: UInt64) {
         super.init(unsafeFromHandle: handle)
+    }
+
+    override func cancel() {}
+}
+
+/// A stream nothing feeds, which holds nothing.
+private final class NoopKeyedValueStream: KeyedValueStream,
+    @unchecked Sendable
+{
+    init() {
+        super.init(noHandle: KeyedValueStream.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func latest(key _: String) -> BridgeFastValue? {
+        nil
     }
 
     override func cancel() {}

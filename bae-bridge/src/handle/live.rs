@@ -17,17 +17,29 @@ impl AppHandle {
     where
         Fut: std::future::Future<Output = ()> + Send + 'static,
     {
-        let services = self.services.clone();
         let stop = bae_core::library::CancellationToken::new();
+        self.deliver_until(stop.clone(), body);
+        std::sync::Arc::new(crate::LiveSubscription::new(stop))
+    }
+
+    /// Run `body` as the library's own work until `stop` is cancelled or the
+    /// library closes.
+    pub(super) fn deliver_until<Fut>(
+        &self,
+        stop: bae_core::library::CancellationToken,
+        body: impl FnOnce(AppServices) -> Fut + Send + 'static,
+    ) where
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        let services = self.services.clone();
         let delivery = async move { body(services).await };
         // A host subscribes only while the library is open.
-        if let Err(error) =
-            self.services
-                .spawn_library_task("live subscription", stop.clone(), delivery)
+        if let Err(error) = self
+            .services
+            .spawn_library_task("live subscription", stop, delivery)
         {
             self.services.report_bug("open a live subscription", &error);
         }
-        std::sync::Arc::new(crate::LiveSubscription::new(stop))
     }
 
     /// Hand `deliver` every value core sends on a subscription channel. The loop
