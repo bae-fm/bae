@@ -27,13 +27,19 @@
 //! device. A code that carries no S3 key takes one from
 //! `BAE_RESTORE_S3_KEY_ID` and `BAE_RESTORE_S3_SECRET`.
 //!
-//! Usage: restore_bench [--runs 3] [--keep-devices]
+//! With `--downloads <n>`, each new device keeps the library's download
+//! setting at `n` before it restores, as Settings would set it there, so the
+//! restore reads the library's history from storage `n` requests at a time.
+//! Without it, the new device restores at a new library's default.
+//!
+//! Usage: restore_bench [--runs 3] [--keep-devices] [--downloads <n>]
 
 use std::time::Instant;
 
 fn main() {
     let mut runs: usize = 3;
     let mut remove_devices = true;
+    let mut downloads = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -47,6 +53,16 @@ fn main() {
                     })
             }
             "--keep-devices" => remove_devices = false,
+            "--downloads" => {
+                downloads = Some(
+                    args.next()
+                        .and_then(|value| value.parse::<std::num::NonZeroU32>().ok())
+                        .unwrap_or_else(|| {
+                            eprintln!("--downloads requires a number of at least 1");
+                            std::process::exit(2);
+                        }),
+                )
+            }
             other => {
                 eprintln!("unknown argument {other}");
                 std::process::exit(2);
@@ -105,13 +121,14 @@ fn main() {
             }),
             _ => None,
         };
-        if let Err(error) = runtime.block_on(restore_runs(&code, s3, runs, None)) {
+        if let Err(error) = runtime.block_on(restore_runs(&code, s3, runs, downloads, None)) {
             eprintln!("{error}");
             std::process::exit(1);
         }
         return;
     }
-    if let Err(error) = runtime.block_on(bench(&app_dir, store_id, runs, remove_devices)) {
+    if let Err(error) = runtime.block_on(bench(&app_dir, store_id, runs, downloads, remove_devices))
+    {
         eprintln!("{error}");
         std::process::exit(1);
     }
@@ -121,6 +138,7 @@ async fn bench(
     app_dir: &bae_core::config::AppDir,
     store_id: coven::StoreId,
     runs: usize,
+    downloads: Option<std::num::NonZeroU32>,
     remove_devices: bool,
 ) -> Result<(), String> {
     let opening = Instant::now();
@@ -148,23 +166,44 @@ async fn bench(
         .restore_code_for_transfer()
         .await
         .map_err(|error| format!("restore_code_for_transfer failed: {error}"))?;
-    restore_runs(&code, None, runs, remove_devices.then_some(&source)).await?;
+    restore_runs(
+        &code,
+        None,
+        runs,
+        downloads,
+        remove_devices.then_some(&source),
+    )
+    .await?;
     source.close().await.map_err(|error| error.to_string())
 }
 
-/// Restore `code` `runs` times, each on a new temporary device, removing each
-/// new device through `source` when given.
+/// Restore `code` `runs` times, each on a new temporary device keeping the
+/// library's download setting at `downloads` when given, removing each new
+/// device through `source` when given.
 async fn restore_runs(
     code: &str,
     s3: Option<coven::S3Credentials>,
     runs: usize,
+    downloads: Option<std::num::NonZeroU32>,
     source: Option<&coven::CovenHandle>,
 ) -> Result<(), String> {
+    let store_id = coven::decode_code_info(code)
+        .map_err(|error| format!("read the restore code: {error}"))?
+        .metadata()
+        .store_id;
     let mut times = Vec::new();
     for run in 1..=runs {
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
         let new_app_dir = bae_core::config::AppDir::under_home(directory.path())
             .map_err(|error| error.to_string())?;
+        if let Some(downloads) = downloads {
+            let mut config = bae_core::config::Config::load(&new_app_dir, store_id)
+                .map_err(|error| error.to_string())?;
+            config.prefs.max_concurrent_downloads = downloads;
+            config
+                .save_preferences()
+                .map_err(|error| error.to_string())?;
+        }
         let installation = coven::TestCoven::new();
         let (_cancelling, cancel) = tokio::sync::watch::channel(false);
         let started = Instant::now();
@@ -189,6 +228,7 @@ async fn restore_runs(
             .await
             .map_err(|error| error.to_string())?;
         let device = restored.device_id();
+        let downloads = restored.transfer_limits().downloads;
         let closing = Instant::now();
         restored.close().await.map_err(|error| error.to_string())?;
         let closing = closing.elapsed();
@@ -203,8 +243,8 @@ async fn restore_runs(
             None
         };
         eprintln!(
-            "run {run}: restored {tracks} tracks in {restoring:?}; closed in {closing:?}; \
-             removed the device in {removing:?}"
+            "run {run}: restored {tracks} tracks in {restoring:?}, {downloads} downloads at \
+             once; closed in {closing:?}; removed the device in {removing:?}"
         );
         times.push(restoring);
     }
