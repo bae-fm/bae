@@ -14,13 +14,16 @@ pub(super) async fn admit_found(context: &Context, queue: &mut Queue, keys: Vec<
         };
         match context
             .library_manager
-            .load_import_candidate_state(&candidate.files.content_hash())
+            .verdict_stored_for(
+                &candidate.files.content_hash(),
+                candidate.file_edit_revision,
+            )
             .await
         {
-            Ok(row) if usable_stored_answer(row.as_ref(), &candidate) => {
+            Ok(true) => {
                 info!("identification: {key} was found with its files already answered");
             }
-            Ok(_) => admitted.push(candidate),
+            Ok(false) => admitted.push(candidate),
             Err(error) => warn!(
                 "identification: cannot read the stored state of {key} ({error}); leaving it \
                  unidentified"
@@ -30,13 +33,6 @@ pub(super) async fn admit_found(context: &Context, queue: &mut Queue, keys: Vec<
     if !admitted.is_empty() {
         admit(context, queue, admitted, Admission::Automatic).await;
     }
-}
-
-/// Whether a result is stored for the files this candidate has now.
-fn usable_stored_answer(row: Option<&DbImportCandidateState>, candidate: &FolderCandidate) -> bool {
-    row.is_some_and(|row| {
-        row.file_edits.revision == candidate.file_edit_revision && row.identify.is_some()
-    })
 }
 
 /// The candidate at `key` if an answer can still be stored for it: not set

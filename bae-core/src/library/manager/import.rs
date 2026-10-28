@@ -724,6 +724,19 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Whether a verdict is stored for the files at `content_hash` as their
+    /// file decisions stand at `edit_revision`.
+    pub(crate) async fn verdict_stored_for(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .verdict_stored_for(content_hash, edit_revision)
+            .await?)
+    }
+
     /// Everything a person settled about one candidate through its pane.
     pub async fn load_import_candidate_pane_rows(
         &self,

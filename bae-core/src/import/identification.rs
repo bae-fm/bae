@@ -27,7 +27,7 @@
 
 use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
-use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
+use crate::db::NewImportCandidateVerdict;
 use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::{Admission, CandidateFiles};
 use crate::import::LookupChoices;

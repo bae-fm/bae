@@ -678,6 +678,28 @@ impl Database {
         .process(|(process, content_hash)| Ok(process()?.remove(&content_hash)))
         .await
     }
+
+    /// Whether a verdict is stored for the files at `content_hash` as their
+    /// file decisions stand at `edit_revision`.
+    pub(crate) async fn verdict_stored_for(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+    ) -> Result<bool, DbError> {
+        let content_hash = content_hash.to_string();
+        let edit_revision = to_i64(edit_revision, "a candidate's file edit revision")?;
+        self.read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT EXISTS (SELECT 1 FROM import_candidate_state AS state \
+                     JOIN import_candidate_verdict AS verdict \
+                       ON verdict.content_hash = state.content_hash \
+                     WHERE state.content_hash = ? AND state.edit_revision = ?)",
+                params![content_hash, edit_revision],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+    }
 }
 
 /// Give every candidate sharing the preparation its settled files and rebuild
