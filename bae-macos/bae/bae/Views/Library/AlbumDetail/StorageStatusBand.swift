@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// A release's storage state, transfer or upload progress, and storage
-/// actions. An upload's bar and bytes are native views that set themselves
-/// from the release's stream, so moving bytes run no SwiftUI update.
+/// actions. An upload's bar and bytes are native views that read the
+/// release's latest progress each frame, so moving bytes run no SwiftUI
+/// update.
 struct StorageStatusBand: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
@@ -44,9 +45,9 @@ struct StorageStatusBand: View {
     }
 
     /// The phase, then a bar and the bytes the release holds of its size,
-    /// both set from the release's upload stream.
+    /// both read from the release's latest upload progress each frame.
     private func uploadLine(_ progress: BridgeUploadProgress) -> some View {
-        let source = outboxStore.releaseTransfer(forRelease: release.summary.id)
+        let source = outboxStore.uploadProgress(forRelease: release.summary.id)
         return HStack(spacing: ThemeSpace.related) {
             UploadActivityLabel(phaseOf: progress)
                 .lineLimit(1)
@@ -55,11 +56,7 @@ struct StorageStatusBand: View {
                 .layoutPriority(1)
             StreamBar(stream: .upload(source))
                 .frame(minWidth: 48)
-            StreamLabel(
-                stream: .uploadBytes(
-                    outboxStore.uploadProgress(forRelease: release.summary.id)
-                )
-            )
+            StreamLabel(stream: .uploadBytes(source))
         }
     }
 

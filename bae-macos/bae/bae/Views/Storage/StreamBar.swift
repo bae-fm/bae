@@ -2,25 +2,25 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// A bar set straight from a release transfer's keyed stream: each value
-/// moves the bar's fill and runs no SwiftUI update. Before the stream names
-/// the release the bar is empty.
+/// A bar that reads a release transfer's latest progress once per display
+/// frame while the release moves, with no SwiftUI update. Before the stream
+/// names the release the bar is empty.
 final class StreamBarNSView: ProgressTrackNSView {
-    private let uploads = KeyedValueFollowing<BridgeReleaseUploadTransfer>()
-    private let pins = KeyedValueFollowing<BridgeDownloadTransferProgress>()
+    private lazy var uploads = FrameFollowing<BridgeReleaseUploadTransfer>(
+        view: self
+    ) { [weak self] transfer in self?.progress = transfer?.bar.fraction ?? 0 }
+    private lazy var pins = FrameFollowing<BridgeDownloadTransferProgress>(
+        view: self
+    ) { [weak self] progress in self?.progress = progress?.fraction ?? 0 }
 
-    func follow(_ stream: ReleaseTransferStream) {
+    func follow(_ stream: ReleaseProgressSource) {
         switch stream {
         case .upload(let source):
             pins.stop()
-            uploads.follow(source) { [weak self] transfer in
-                self?.progress = transfer?.bar.fraction ?? 0
-            }
+            uploads.follow(source)
         case .pin(let source):
             uploads.stop()
-            pins.follow(source) { [weak self] progress in
-                self?.progress = progress?.fraction ?? 0
-            }
+            pins.follow(source)
         }
     }
 
@@ -38,7 +38,7 @@ struct StreamBar: NSViewRepresentable {
     private var accent
     @Environment(\.colorScheme)
     private var colorScheme
-    let stream: ReleaseTransferStream
+    let stream: ReleaseProgressSource
     var tint: Color?
 
     func makeNSView(context _: Context) -> StreamBarNSView {
