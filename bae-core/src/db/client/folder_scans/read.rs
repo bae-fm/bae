@@ -499,7 +499,7 @@ pub(crate) fn entries_reading(
 
 /// The range of paths below `folder`: from its path and a separator up to,
 /// not including, its path and the character after the separator.
-fn paths_below(folder: &str) -> (String, String) {
+pub(super) fn paths_below(folder: &str) -> (String, String) {
     let separator = std::path::MAIN_SEPARATOR;
     let first = match folder.ends_with(separator) {
         true => folder.to_string(),

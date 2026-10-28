@@ -172,19 +172,24 @@ impl Database {
                 )?;
                 writes.push((item.item, write));
             }
-            let mut pruned: Vec<String> = sql
-                .query(
-                    "SELECT path, folder FROM scan_candidate \
-                     WHERE watched_folder_path = ? AND generation != ? \
-                       AND source_kind = 'folder'",
-                    params![watched_folder_path, generation],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-                )?
-                .into_iter()
-                .filter(|(_, folder)| Path::new(folder).starts_with(&folder_path))
-                .map(|(key, _)| key)
-                .collect();
-            pruned.sort();
+            let folder_text = folder_path.to_string_lossy().into_owned();
+            let (below_first, below_past) = super::read::paths_below(&folder_text);
+            let pruned: Vec<String> = sql.query(
+                "SELECT path FROM scan_candidate \
+                 WHERE watched_folder_path = :root AND generation != :generation \
+                   AND source_kind = 'folder' \
+                   AND (folder = :folder \
+                        OR (folder >= :below_first AND folder < :below_past)) \
+                 ORDER BY path",
+                rusqlite::named_params! {
+                    ":root": watched_folder_path,
+                    ":generation": generation,
+                    ":folder": folder_text,
+                    ":below_first": below_first,
+                    ":below_past": below_past,
+                },
+                |row| row.get::<_, String>(0),
+            )?;
             for key in &pruned {
                 delete_entry(sql, &watched_folder_path, key)?;
             }
@@ -194,23 +199,20 @@ impl Database {
                 generation,
                 Some(&folder_path),
             )?;
-            let recorded: Vec<String> = sql.query(
-                "SELECT path FROM folder_scan_directory WHERE watched_folder_path = ?",
-                [&watched_folder_path],
-                |row| row.get::<_, String>(0),
-            )?;
             match &directories {
                 Some(directories) => {
-                    for path in recorded
-                        .iter()
-                        .filter(|path| Path::new(path).starts_with(&folder_path))
-                    {
-                        sql.execute(
-                            "DELETE FROM folder_scan_directory \
-                             WHERE watched_folder_path = ? AND path = ?",
-                            params![watched_folder_path, path],
-                        )?;
-                    }
+                    sql.execute(
+                        "DELETE FROM folder_scan_directory \
+                         WHERE watched_folder_path = :root \
+                           AND (path = :folder \
+                                OR (path >= :below_first AND path < :below_past))",
+                        rusqlite::named_params! {
+                            ":root": watched_folder_path,
+                            ":folder": folder_text,
+                            ":below_first": below_first,
+                            ":below_past": below_past,
+                        },
+                    )?;
                     for (path, modified_at) in directories {
                         if !Path::new(path).starts_with(&folder_path) {
                             return Err(DbError::Message(format!(

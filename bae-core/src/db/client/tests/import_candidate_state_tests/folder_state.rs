@@ -288,6 +288,60 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
     assert_eq!(row_generation(&db, root, "Other").await, sibling_generation);
 }
 
+/// A folder reading takes out the folder's own entries and those below it,
+/// and leaves a sibling whose name only begins with the folder's.
+#[tokio::test]
+async fn a_folder_reading_prunes_only_the_folder_and_below() {
+    use crate::import::folder_scanner::FolderReleaseDecision;
+
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    for name in ["Box/CD2", "Box 2", "Box/CD1"] {
+        db.save_folder_scan_item(root, generation, &scanned_candidate(root, name))
+            .await
+            .unwrap()
+            .expect("the scan generation is current");
+    }
+    db.finish_folder_scan(root, generation, None)
+        .await
+        .unwrap()
+        .expect("the scan generation is current");
+
+    let combined = commit_reading(
+        &db,
+        root,
+        "Box",
+        FolderReleaseDecision::CombineAsOneRelease,
+        vec![combined_candidate(root, "Box")],
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        removed_by(&combined),
+        vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]
+    );
+    assert_eq!(
+        stored_keys(&db, root).await,
+        vec![key_of(root, "Box"), key_of(root, "Box 2")]
+    );
+
+    // Read with nothing found, the folder's own entry is pruned and the
+    // sibling stays.
+    let emptied = commit_reading(
+        &db,
+        root,
+        "Box",
+        FolderReleaseDecision::KeepAsSeparateReleases,
+        Vec::new(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(emptied.pruned, vec![key_of(root, "Box")]);
+    assert_eq!(stored_keys(&db, root).await, vec![key_of(root, "Box 2")]);
+}
+
 /// A reading begun before another write to the root fails and writes nothing.
 #[tokio::test]
 async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {

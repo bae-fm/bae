@@ -160,9 +160,10 @@ pub(super) fn prune_other_generations(
     watched_folder_path: &str,
     generation: i64,
 ) -> Result<Vec<String>, DbError> {
-    let mut pruned: Vec<String> = sql.query(
+    let pruned: Vec<String> = sql.query(
         "SELECT path FROM scan_candidate \
-         WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder'",
+         WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder' \
+         ORDER BY path",
         params![watched_folder_path, generation],
         |row| row.get::<_, String>(0),
     )?;
@@ -175,7 +176,6 @@ pub(super) fn prune_other_generations(
     for key in &pruned {
         super::super::import_state::end_identification_unless_of_on(sql, key, None)?;
     }
-    pruned.sort();
     Ok(pruned)
 }
 
