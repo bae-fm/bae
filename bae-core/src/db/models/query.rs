@@ -381,12 +381,12 @@ pub struct StorageSortCriterion {
     pub direction: SortDirection,
 }
 
-/// Filter applied to a storage-page query — the four mutually-exclusive chips
-/// the Storage Manager shows.
+/// Filter applied to a storage-page query — the three mutually-exclusive
+/// choices the Storage Manager shows: every release, the local ones, or the
+/// uploaded ones.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageFilter {
     All,
     Remote,
     Local,
-    Uploading,
 }

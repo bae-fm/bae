@@ -235,14 +235,13 @@ pub struct BridgeStorageSort {
     pub direction: BridgeStorageSortDirection,
 }
 
-/// Filter chip applied to the Storage Manager list. Mirrors the four
-/// mutually-exclusive chips the UI exposes.
+/// Filter applied to the Storage Manager list: every release, the uploaded
+/// ones, or the local ones. Mirrors `StorageFilter`.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgeStorageFilter {
     All,
     Remote,
     Local,
-    Uploading,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

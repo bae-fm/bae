@@ -8,13 +8,13 @@ struct StorageReleaseCell: View {
     let album: BridgeAlbum
     let column: StorageTableColumn
 
-    /// The album column's cover side.
+    /// The release column's cover side.
     private static let coverSize: CGFloat = 24
 
     var body: some View {
         Group {
             switch column {
-            case .album:
+            case .release:
                 HStack(spacing: ThemeSpace.related) {
                     ImageView(
                         imageRef: release.cover,

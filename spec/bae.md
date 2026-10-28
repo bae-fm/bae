@@ -602,8 +602,8 @@ The import list shows every candidate in one of three tabs:
 
 Done runs the releases coven still has files of in its upload queue first,
 the first queued first, and then the rest in the list's order. Only a
-release's own files count, as the Storage Manager's Uploading filter counts
-them (§4.2); the list reads the queue as coven's state view `coven_uploads`
+release's own files count, as the Storage Manager counts them (§4.2); the
+list reads the queue as coven's state view `coven_uploads`
 holds it, so it is never waiting on it and never out of step with it.
 
 Each tab sorts newest first, oldest first, or by path either way. A date order
@@ -1400,13 +1400,12 @@ storage stays until nothing refers to it; coven then deletes it
 
 **The Storage Manager** lists every release with its album's title and
 credits, its media, its files' count and total size, whether it is uploaded,
-and whether this device keeps all its files pinned (§4.3). It filters to the
-uploaded releases, the local ones, or those with files in this device's upload
-queue, and shows the filtered list's count and total size. It sorts by album
-title (ignoring ASCII case), artist (§2.3), media (a release stating none
-last), file count or size, either way, ties going by album title, then when
-the release was added, then id; the upload filter lists its releases in the
-order their first files wait in the queue. The upload queue and the pins are
+and whether this device keeps all its files pinned (§4.3). It shows every
+release, or only the local ones, or only the uploaded ones, and shows the
+shown list's count and total size. It sorts by album title (ignoring ASCII
+case), artist (§2.3), media (a release stating none last), file count or
+size, either way, ties going by album title, then when the release was added,
+then id. The upload queue and the pins are
 coven's, which the list's query reads beside the library's rows. Whether a
 release is pinned, here and in the album and release details, is read from
 how many of its files coven's `coven_pins` lists, a count bae keeps per
@@ -1414,7 +1413,7 @@ release in the transaction that changes a pin, so each view's own query
 follows a pin as it lands. How many of a release's files wait in the upload
 queue, and the place of the first, are counts bae keeps the same way from
 coven's `coven_upload_queue`, in the transaction that queues or dequeues a
-file; the upload filter reads them in queue order.
+file; the import list's Done tab reads them in queue order (§3.2).
 
 A release with files waiting to upload shows, in its row and in its album's
 storage band, how many wait and how many are being sent, and while any is
@@ -2582,7 +2581,7 @@ Reads come two ways:
   one of those allows: a selection is offered only those. Its inspector
   shows, and its storage actions act on, a selected release only while the
   list holds it: a release
-  that finishes uploading out of the sync queue, no longer matches the filter,
+  that finishes uploading out of the Local list, no longer matches the filter,
   or is deleted leaves the inspector and the actions' targets as it leaves the
   list, including while an action's confirmation or folder prompt is open.
   The inspector reads its release live by id: the release's files, each beside
@@ -2898,7 +2897,7 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order |
+| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |

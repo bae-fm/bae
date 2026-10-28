@@ -275,8 +275,8 @@ fn folded_run(order: ImportListOrder) -> String {
 
 /// The releases with uploads coven still has queued, by key, and where the
 /// first of each release's files stands in the queue: what Done runs first.
-/// Only a release's own files count, as the Storage Manager's Uploading filter
-/// counts them.
+/// Only a release's own files count, as the Storage Manager's upload counts
+/// count them.
 pub(super) fn uploading_cte() -> String {
     format!(
         "uploading (key, position) AS ( \

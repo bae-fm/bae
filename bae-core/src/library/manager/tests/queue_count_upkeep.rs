@@ -49,30 +49,9 @@ async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
         .unwrap()
 }
 
-/// The Storage Manager's Uploading filter, in its order.
-#[cfg(feature = "test-utils")]
-async fn listed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
-    manager
-        .database
-        .get_storage_page(
-            &crate::db::StorageSortCriterion {
-                field: crate::db::StorageSortField::AlbumTitle,
-                direction: crate::db::SortDirection::Ascending,
-            },
-            crate::db::StorageFilter::Uploading,
-            0,
-            100,
-        )
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|row| row.release.id)
-        .collect()
-}
-
 /// Random writes against the probe: after each, every release's listed
 /// queued count and first place are the probed ones, and so are the
-/// Uploading filter's releases, order and count read from them.
+/// releases uploading, in the order read from them.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
@@ -209,18 +188,9 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
         let probed = probed_uploading_releases(&manager).await;
         most_uploading = most_uploading.max(probed.len());
         assert_eq!(
-            listed_uploading_releases(&manager).await,
+            manager.database.uploading_releases().await.unwrap(),
             probed,
-            "the Uploading filter after step {step}, {op}"
-        );
-        assert_eq!(
-            manager
-                .database
-                .get_storage_count(crate::db::StorageFilter::Uploading)
-                .await
-                .unwrap(),
-            probed.len() as u64,
-            "the Uploading count after step {step}, {op}"
+            "the releases uploading after step {step}, {op}"
         );
     }
     for op in [

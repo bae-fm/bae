@@ -1,14 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// A not-yet-loaded row's cell: a placeholder bar in the album column, empty
-/// elsewhere.
+/// A not-yet-loaded row's cell: a placeholder bar in the release column,
+/// empty elsewhere.
 struct StorageRowPlaceholderCell: View {
     let column: StorageTableColumn
 
     var body: some View {
         Group {
-            if column == .album {
+            if column == .release {
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(height: 14)

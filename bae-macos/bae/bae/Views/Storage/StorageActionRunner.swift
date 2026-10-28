@@ -6,11 +6,12 @@ import SwiftUI
 /// Runs Storage Manager row context-menu actions against a set of releases.
 ///
 /// The Storage Manager rows render the `storageActions` the core already
-/// computed per release (plus the Uploading tab's outbox cancel); this type
-/// performs the chosen transition for every targeted release, reusing the same
-/// `ReleaseEditor` / `Sync` service calls the album-detail "Storage…" sheet
-/// uses. Errors surface through `UiStore` (shown by the Storage Manager
-/// window's alert); subscribed rows and outbox values carry transition results.
+/// computed per release (plus the cancel a transitioning release offers);
+/// this type performs the chosen transition for every targeted release,
+/// reusing the same `ReleaseEditor` / `Sync` service calls the album-detail
+/// "Storage…" sheet uses. Errors surface through `UiStore` (shown by the
+/// Storage Manager window's alert); subscribed rows and outbox values carry
+/// transition results.
 ///
 /// Moving to cloud storage is confirmed first, beside the stored pin choice,
 /// so it stashes the targets in `pendingMoveToCloud` and the view presents

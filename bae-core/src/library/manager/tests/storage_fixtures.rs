@@ -28,7 +28,7 @@ async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryS
 }
 
 /// An attached release whose files are queued in coven and have not uploaded.
-/// The Uploading filter and each release's upload read this committed queue.
+/// The releases uploading and each release's upload read this committed queue.
 /// The manager must already be connected via [`connect_test_cloud`].
 #[cfg(feature = "test-utils")]
 async fn insert_release_with_queued_uploads(

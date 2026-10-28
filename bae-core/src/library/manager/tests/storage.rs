@@ -264,13 +264,6 @@ async fn storage_count_matches_filtered_page_total() {
             .unwrap(),
         2
     );
-    assert_eq!(
-        manager
-            .get_storage_count(crate::db::StorageFilter::Uploading)
-            .await
-            .unwrap(),
-        0
-    );
 
     let all_page = storage_page(&manager, crate::db::StorageFilter::All, 0, 10).await;
     assert_eq!(all_page.total_count, 3);
@@ -298,7 +291,6 @@ async fn storage_total_size_matches_page_total_size_sum() {
         crate::db::StorageFilter::All,
         crate::db::StorageFilter::Local,
         crate::db::StorageFilter::Remote,
-        crate::db::StorageFilter::Uploading,
     ] {
         let page = manager
             .get_storage_page(&sort_by_album_title_asc(), filter, 0, 10)
@@ -335,13 +327,6 @@ async fn storage_total_size_matches_page_total_size_sum() {
             .await
             .unwrap(),
         100
-    );
-    assert_eq!(
-        manager
-            .get_storage_total_size(crate::db::StorageFilter::Uploading)
-            .await
-            .unwrap(),
-        10_000
     );
 }
 
@@ -824,7 +809,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
             field: crate::db::StorageSortField::AlbumTitle,
             direction: crate::db::SortDirection::Ascending,
         },
-        filter: crate::db::StorageFilter::Uploading,
+        filter: crate::db::StorageFilter::All,
         windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
             .into_iter()
             .collect(),

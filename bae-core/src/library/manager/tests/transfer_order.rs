@@ -1,6 +1,8 @@
+/// The releases uploading run in the order their uploads were admitted, not
+/// in their titles' order.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn storage_page_uploading_filter_preserves_transition_admission_order() {
+async fn uploading_releases_keep_their_admission_order() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
 
@@ -19,25 +21,9 @@ async fn storage_page_uploading_filter_preserves_transition_admission_order() {
     )
     .await;
 
-    let page = manager
-        .get_storage_page(
-            &crate::db::StorageSortCriterion {
-                field: crate::db::StorageSortField::AlbumTitle,
-                direction: crate::db::SortDirection::Ascending,
-            },
-            crate::db::StorageFilter::Uploading,
-            0,
-            10,
-        )
-        .await
-        .unwrap();
-
     assert_eq!(
-        page.rows
-            .iter()
-            .map(|row| row.release.id.as_str())
-            .collect::<Vec<_>>(),
-        vec![first.id.as_str(), second.id.as_str()],
+        manager.database.uploading_releases().await.unwrap(),
+        vec![first.id, second.id],
     );
 }
 

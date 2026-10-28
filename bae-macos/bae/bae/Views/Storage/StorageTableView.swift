@@ -24,7 +24,6 @@ struct StorageTableView: NSViewRepresentable {
     var sort: BridgeStorageSort
     @Binding
     var inspectorPresented: Bool
-    let sortingEnabled: Bool
     let runner: StorageActionRunner
 
     @Environment(ImageStore.self)
@@ -44,7 +43,6 @@ struct StorageTableView: NSViewRepresentable {
             selection: $selection,
             sort: $sort,
             inspectorPresented: $inspectorPresented,
-            sortingEnabled: sortingEnabled,
             storageManagerStore: storageManagerStore,
             runner: runner,
             imageStore: imageStore,
@@ -84,9 +82,12 @@ struct StorageTableView: NSViewRepresentable {
             tableColumn.width = column.width
             tableColumn.minWidth = column.minWidth
             tableColumn.isEditable = false
+            tableColumn.sortDescriptorPrototype = column.sortField.map { _ in
+                NSSortDescriptor(key: column.rawValue, ascending: true)
+            }
             tableView.addTableColumn(tableColumn)
         }
-        coordinator.configureSorting(on: tableView, sort: sort)
+        coordinator.applySortIndicator(to: tableView, sort: sort)
 
         let scrollView = NSScrollView()
         scrollView.documentView = tableView
@@ -121,7 +122,6 @@ struct StorageTableView: NSViewRepresentable {
             list: list,
             imageStore: imageStore,
             outboxStore: outboxStore,
-            sortingEnabled: sortingEnabled,
         )
         let appearanceChanged = coordinator.updateAppearance(appearance)
 
@@ -139,7 +139,7 @@ struct StorageTableView: NSViewRepresentable {
         }
         coordinator.holdRowsInView()
 
-        coordinator.configureSorting(on: tableView, sort: sort)
+        coordinator.applySortIndicator(to: tableView, sort: sort)
         coordinator.applySelection(selection, to: tableView)
     }
 
@@ -162,7 +162,6 @@ extension StorageTableView {
         private let selection: Binding<Set<String>>
         private let sort: Binding<BridgeStorageSort>
         private let inspectorPresented: Binding<Bool>
-        private var sortingEnabled: Bool
         /// Narrows the selection to the releases the list holds, and answers
         /// with each one's row: nothing here acts on or counts a selected
         /// release the list no longer shows.
@@ -190,7 +189,6 @@ extension StorageTableView {
             selection: Binding<Set<String>>,
             sort: Binding<BridgeStorageSort>,
             inspectorPresented: Binding<Bool>,
-            sortingEnabled: Bool,
             storageManagerStore: StorageManagerStore,
             runner: StorageActionRunner,
             imageStore: ImageStore,
@@ -201,7 +199,6 @@ extension StorageTableView {
             self.selection = selection
             self.sort = sort
             self.inspectorPresented = inspectorPresented
-            self.sortingEnabled = sortingEnabled
             self.storageManagerStore = storageManagerStore
             self.runner = runner
             self.imageStore = imageStore
@@ -213,12 +210,10 @@ extension StorageTableView {
             list: StorageList,
             imageStore: ImageStore,
             outboxStore: OutboxStore,
-            sortingEnabled: Bool,
         ) {
             self.list = list
             self.imageStore = imageStore
             self.outboxStore = outboxStore
-            self.sortingEnabled = sortingEnabled
         }
 
         /// Take the window's tone and accent. Returns whether either changed,
@@ -324,8 +319,7 @@ extension StorageTableView.Coordinator {
         _ tableView: NSTableView,
         sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
     ) {
-        guard sortingEnabled,
-            let descriptor = tableView.sortDescriptors.first,
+        guard let descriptor = tableView.sortDescriptors.first,
             let key = descriptor.key,
             let field = sortField(forDescriptorKey: key)
         else {
@@ -338,34 +332,6 @@ extension StorageTableView.Coordinator {
             field: field,
             direction: descriptor.ascending ? .ascending : .descending
         )
-    }
-
-    func configureSorting(
-        on tableView: NSTableView,
-        sort: BridgeStorageSort
-    ) {
-        for column in StorageTableColumn.allCases {
-            guard
-                let tableColumn = tableView.tableColumn(
-                    withIdentifier: NSUserInterfaceItemIdentifier(
-                        column.rawValue
-                    )
-                )
-            else { continue }
-            tableColumn.sortDescriptorPrototype =
-                sortingEnabled
-                ? column.sortField.map { _ in
-                    NSSortDescriptor(key: column.rawValue, ascending: true)
-                }
-                : nil
-        }
-        guard sortingEnabled else {
-            if !tableView.sortDescriptors.isEmpty {
-                tableView.sortDescriptors = []
-            }
-            return
-        }
-        applySortIndicator(to: tableView, sort: sort)
     }
 
     /// Reflect the active `BridgeStorageSort` in the header indicator

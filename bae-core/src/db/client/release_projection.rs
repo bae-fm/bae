@@ -100,9 +100,6 @@ pub(super) fn storage_count_query(filter: StorageFilter) -> String {
             "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals WHERE stored = 0"
                 .to_string()
         }
-        StorageFilter::Uploading => {
-            format!("SELECT COUNT(*) FROM release_listing listing {UPLOADING_WHERE}")
-        }
     }
 }
 
@@ -133,10 +130,6 @@ pub(super) fn storage_total_size_query(filter: StorageFilter) -> String {
             "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals WHERE stored = 0"
                 .to_string()
         }
-        StorageFilter::Uploading => format!(
-            "SELECT COALESCE(SUM(listing.total_size), 0) FROM release_listing listing \
-             {UPLOADING_WHERE}"
-        ),
     }
 }
 

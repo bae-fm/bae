@@ -9,7 +9,7 @@ import SwiftUI
 /// The storage column has no sort field — storage state isn't a sort key the
 /// core exposes.
 enum StorageTableColumn: String, CaseIterable {
-    case album
+    case release
     case artist
     case media
     case storage
@@ -27,9 +27,9 @@ enum StorageTableColumn: String, CaseIterable {
 
     private var spec: Spec {
         switch self {
-        case .album:
+        case .release:
             Spec(
-                title: String(localized: "Album"),
+                title: String(localized: "Release"),
                 width: 280,
                 minWidth: 160,
                 sortField: .albumTitle

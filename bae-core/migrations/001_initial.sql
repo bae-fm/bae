@@ -1145,9 +1145,10 @@ END;
 -- The Storage Manager (§4.2) lists every release with its album's title and
 -- credits, its media, its files' count and size, whether they are stored and
 -- whether this device keeps them all pinned, and how many of its files wait
--- in this device's upload queue, sorted and filtered by any of them. `release_listing` holds those values, kept by the triggers below,
--- with an index for each sort, alone and after `stored` for the Remote and
--- Local filters.
+-- in this device's upload queue, sorted by them and filtered by whether they
+-- are stored. `release_listing` holds those values, kept by the triggers
+-- below, with an index for each sort, alone and after `stored` for the Remote
+-- and Local filters.
 
 -- Each release, with what the Storage Manager sorts and filters it by:
 -- `album_title` and the credit keys copied from its album's `album_listing`
@@ -1207,9 +1208,8 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_cloud_only ON release_listing (st
     WHERE stored = 1 AND pinned_count < file_count;
 
 -- The releases with files waiting in this device's upload queue, in the order
--- their first files wait: the Storage Manager's Uploading filter, its count
--- and its total size.
-CREATE INDEX IF NOT EXISTS idx_release_listing_uploading ON release_listing (first_queued_position, total_size)
+-- their first files wait: what the import list's Done tab runs first (§3.2).
+CREATE INDEX IF NOT EXISTS idx_release_listing_uploading ON release_listing (first_queued_position, release_id)
     WHERE first_queued_position IS NOT NULL;
 
 -- How many releases are stored and how many aren't, and their files' total

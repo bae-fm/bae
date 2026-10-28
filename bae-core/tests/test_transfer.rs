@@ -547,10 +547,10 @@ async fn transition_completions_deliver_storage_values() {
 /// The Storage Manager's inspector shows, and its actions act on, a release
 /// only while the list holds it: the list answers with the row of each
 /// selected release it holds wherever it sits, in a window or not, and a
-/// selected release whose upload finishes leaves the Uploading list and the
+/// selected release whose upload finishes leaves the Local list and the
 /// answer together.
 #[tokio::test]
-async fn selected_releases_leave_the_uploading_list_with_their_upload() {
+async fn selected_releases_leave_the_local_list_with_their_upload() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
@@ -569,7 +569,7 @@ async fn selected_releases_leave_the_uploading_list_with_their_upload() {
             field: StorageSortField::AlbumTitle,
             direction: SortDirection::Ascending,
         },
-        filter: StorageFilter::Uploading,
+        filter: StorageFilter::Local,
         // One row on screen, so one selected release sits outside it.
         windows: [bae_core::library::LibraryPageWindow {
             offset: 0,
@@ -615,7 +615,7 @@ async fn selected_releases_leave_the_uploading_list_with_their_upload() {
         if value.total_count == 0 {
             assert!(
                 value.selected.is_empty(),
-                "an uploaded release is no longer in the Uploading list"
+                "an uploaded release is no longer in the Local list"
             );
             break;
         }

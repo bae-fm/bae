@@ -645,8 +645,8 @@ pub(super) fn build_order_by(sort: &[AlbumSortCriterion], artist: ArtistOrder) -
     format!("{clause}, listing.album_id")
 }
 
-/// ORDER BY for the Storage Manager list over `release_listing listing`,
-/// under any filter but Uploading. Every clause ends with the album title,
+/// ORDER BY for the Storage Manager list over `release_listing listing`.
+/// Every clause ends with the album title,
 /// then `created_at` and the release id, which keep pagination deterministic
 /// when two releases share a title and a timestamp (bulk imports, tests). An
 /// index of `release_listing` serves each, alone and after `stored`.
@@ -690,26 +690,21 @@ pub(super) const RELEASE_LISTING_PINNED: &str =
     "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
 
 /// What a Storage Manager filter keeps of `release_listing listing`: the
-/// joins and the WHERE clause that follow its FROM.
-pub(super) fn storage_filter(filter: StorageFilter) -> (String, &'static str) {
+/// WHERE clause that follows its FROM.
+fn storage_filter(filter: StorageFilter) -> &'static str {
     match filter {
-        StorageFilter::All => (String::new(), ""),
-        StorageFilter::Remote => (String::new(), "WHERE listing.stored = 1"),
-        StorageFilter::Local => (String::new(), "WHERE listing.stored = 0"),
-        StorageFilter::Uploading => (String::new(), UPLOADING_WHERE),
+        StorageFilter::All => "",
+        StorageFilter::Remote => "WHERE listing.stored = 1",
+        StorageFilter::Local => "WHERE listing.stored = 0",
     }
 }
-
-/// The Uploading filter's condition on `release_listing listing`, which its
-/// partial index serves.
-pub(super) const UPLOADING_WHERE: &str = "WHERE listing.first_queued_position IS NOT NULL";
 
 /// One Storage Manager row per release the filter keeps: the release's half
 /// and its album's, the raw aggregates the resolver maps to `ReleaseSummary` /
 /// `AlbumSummary`, and whether it is pinned.
 fn storage_row_select(filter: StorageFilter) -> String {
     let album_columns = album_summary_columns();
-    let (joins, where_clause) = storage_filter(filter);
+    let where_clause = storage_filter(filter);
     format!(
         "SELECT \
             r.id AS release_id, \
@@ -725,23 +720,18 @@ fn storage_row_select(filter: StorageFilter) -> String {
         JOIN releases r ON r.id = listing.release_id \
         JOIN albums a ON a.id = listing.album_id \
         LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
-        {joins} \
         {where_clause}",
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
         releases_sending = super::queued_uploads::RELEASES_SENDING,
     )
 }
 
-/// One window of the Storage Manager list under `filter`, in `sort`'s order,
-/// or in upload queue order under the Uploading filter.
+/// One window of the Storage Manager list under `filter`, in `sort`'s order.
 pub(super) fn storage_page_query(sort: &StorageSortCriterion, filter: StorageFilter) -> String {
-    let order_by = match filter {
-        StorageFilter::Uploading => "listing.first_queued_position".to_string(),
-        _ => storage_order_by(sort),
-    };
     format!(
-        "{} ORDER BY {order_by} LIMIT ? OFFSET ?",
-        storage_row_select(filter)
+        "{} ORDER BY {} LIMIT ? OFFSET ?",
+        storage_row_select(filter),
+        storage_order_by(sort)
     )
 }
 

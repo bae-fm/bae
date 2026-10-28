@@ -127,48 +127,6 @@ async fn surfaces_local_release_with_no_local_files() {
         .is_some());
 }
 
-
-/// The Uploading filter is coven's upload queue, not a bae column: only the
-/// release whose upload is still enqueued appears under it.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn storage_page_uploading_filter_matches_the_upload_queue() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-
-    let album_quiet = create_test_album();
-    let release_quiet = create_test_release(&album_quiet.id);
-    manager.database.insert_album(&album_quiet).await.unwrap();
-    insert_release(&manager, &release_quiet).await;
-
-    let uploading = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("uploading"),
-        "Uploading Album",
-        &[("a.flac", b"a-bytes")],
-    )
-    .await;
-
-    let sort = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::AlbumTitle,
-        direction: crate::db::SortDirection::Ascending,
-    };
-    let page = manager
-        .get_storage_page(&sort, crate::db::StorageFilter::Uploading, 0, 10)
-        .await
-        .unwrap();
-    assert_eq!(page.total_count, 1);
-    assert_eq!(page.rows.len(), 1);
-    assert_eq!(page.rows[0].release.id, uploading.id);
-    assert_eq!(
-        manager
-            .get_storage_count(crate::db::StorageFilter::Uploading)
-            .await
-            .unwrap(),
-        1
-    );
-}
-
 #[tokio::test]
 async fn cancel_release_transition_fires_a_registered_transfer_token() {
     let (manager, _temp_dir) = setup_test_manager().await;

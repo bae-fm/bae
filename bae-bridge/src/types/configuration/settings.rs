@@ -715,7 +715,7 @@ mirror_enum! {
     BridgeStorageFilter = bae_core::db::StorageFilter,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { All, Remote, Local, Uploading },
+    variants: { All, Remote, Local },
 }
 
 mirror_enum! {

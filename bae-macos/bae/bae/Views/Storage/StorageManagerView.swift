@@ -33,7 +33,7 @@ struct StorageManagerView: View {
     @State
     private var runner: StorageActionRunner?
 
-    /// The smallest window the list and its filter bar fit.
+    /// The smallest window the list and its inspector fit.
     fileprivate static let minimumWidth: CGFloat = 700
     fileprivate static let minimumHeight: CGFloat = 400
 
@@ -67,6 +67,15 @@ struct StorageManagerView: View {
             minHeight: Self.minimumHeight
         )
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("Filter", selection: $filter) {
+                    Text("All").tag(BridgeStorageFilter.all)
+                    Text("Local").tag(BridgeStorageFilter.local)
+                    Text("Cloud").tag(BridgeStorageFilter.remote)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
             ToolbarItem(placement: .primaryAction) {
                 Toggle(isOn: $inspectorPresented) {
                     Label("Inspector", systemImage: "sidebar.trailing")
@@ -122,15 +131,6 @@ struct StorageManagerView: View {
 
     private var releaseList: some View {
         VStack(spacing: 0) {
-            Picker("Filter", selection: $filter) {
-                Text("All").tag(BridgeStorageFilter.all)
-                Text("Local").tag(BridgeStorageFilter.local)
-                Text("Cloud").tag(BridgeStorageFilter.remote)
-                Text("Sync queue").tag(BridgeStorageFilter.uploading)
-            }
-            .pickerStyle(.segmented)
-            .padding()
-
             if let list = storageManagerStore.list, let runner {
                 if let error = list.initialLoadError {
                     LoadFailureView(error: error) {
@@ -143,7 +143,6 @@ struct StorageManagerView: View {
                         selection: $selection,
                         sort: $sort,
                         inspectorPresented: $inspectorPresented,
-                        sortingEnabled: filter != .uploading,
                         runner: runner,
                     )
                     Divider()

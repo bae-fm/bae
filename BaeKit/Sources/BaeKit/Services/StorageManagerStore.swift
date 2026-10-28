@@ -91,7 +91,7 @@ public final class StorageManagerStore {
 
     /// The part of `selection` the list holds: a row it has loaded, or a
     /// release core says it holds. A selected release the list no longer
-    /// holds — uploaded out of the sync queue, filtered out, deleted — is
+    /// holds — uploaded out of the Local list, filtered out, deleted — is
     /// never in it, so nothing showing this set shows a release the list
     /// doesn't.
     public func shown(_ selection: Set<String>) -> Set<String> {
