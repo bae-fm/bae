@@ -356,12 +356,14 @@ pub struct DbReleaseUpload {
 }
 
 /// Raw storage-page row: a release summary joined with its parent album summary,
-/// both halves from one SQL query. The resolver in `LibraryManager` turns them
-/// into `ReleaseSummary` / `AlbumSummary`, which the UI normalizes into slices.
+/// both halves from one SQL query, and where the release's files are, as the
+/// list sorts by storage. The resolver in `LibraryManager` turns them into
+/// `ReleaseSummary` / `AlbumSummary`, which the UI normalizes into slices.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
     pub album: DbAlbumSummary,
+    pub place: crate::album_detail::StoragePlace,
 }
 
 /// The columns the Storage Manager view renders, as sort keys.

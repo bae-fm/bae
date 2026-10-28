@@ -141,10 +141,10 @@ impl Database {
                         .chain(selected.iter())
                 };
                 let album_ids = rows()
-                    .map(|(_, album)| album.id.clone())
+                    .map(|(_, album, _)| album.id.clone())
                     .collect::<Vec<_>>();
                 let release_ids = rows()
-                    .map(|(release, _)| release.id.clone())
+                    .map(|(release, _, _)| release.id.clone())
                     .collect::<Vec<_>>();
                 let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 cover_versions.extend(super::files::image_versions_on(

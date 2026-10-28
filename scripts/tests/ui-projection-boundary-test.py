@@ -393,16 +393,59 @@ struct FixtureScopedStoreReader: View {
                 ],
             )
 
-    def test_open_child_finding_that_stops_reading_fails(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
+    OPEN_LIST = """
+import SwiftUI
+
+struct FixtureOpenRow: View {
+    let row: FixtureProjection
+    var body: some View {
+        FixtureOpenReader(key: row.id)
+    }
+}
+
+struct FixtureOpenList: View {
+    let rows: [FixtureProjection]
+    var body: some View {
+        ForEach(rows) { row in
+            FixtureOpenRow(row: row)
+        }
+    }
+}
+
+struct FixtureOpenReader: View {
+    let key: String
+    @Environment(ImportStore.self)
+    private var importStore
+    var body: some View {
+        Text(importStore.title(key))
+    }
+}
+"""
+
+    def test_open_child_finding_passes_and_fails_once_it_stops_reading(
+        self,
+    ) -> None:
+        relative = Path("bae-macos/bae/bae/Views/FixtureOpenList.swift")
+        finding = BOUNDARY.OpenFinding(
+            "swift",
+            relative.as_posix(),
+            "FixtureOpenReader",
+            "ImportStore",
+            "a fixture reading its owner under a repeated row",
+        )
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            BOUNDARY, "OPEN_CHILD_FINDINGS", (finding,)
+        ):
             root = Path(directory)
             self.copied_inventory(root)
-            finding = BOUNDARY.OPEN_CHILD_FINDINGS[0]
-            path = root / finding.path
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(self.OPEN_LIST)
+            self.assertEqual(BOUNDARY.check(root), [])
             path.write_text(
-                path.read_text().replace(
-                    f"@Environment({finding.owner}.self)", ""
-                ).replace(finding.owner, "Placeholder")
+                self.OPEN_LIST.replace("@Environment(ImportStore.self)", "")
+                .replace("importStore.title(key)", "key")
+                .replace("    private var importStore\n", "")
             )
             self.assertEqual(
                 BOUNDARY.check(root),
@@ -466,6 +509,27 @@ struct FixtureKeyedProgress: View {
             root = Path(directory)
             self.copied_inventory(root)
             self.keyed_fixture(root, self.KEYED_LIST)
+            self.assertEqual(BOUNDARY.check(root), [])
+
+    def test_leaf_reading_its_own_keyed_stream_by_a_labelled_key_passes(
+        self,
+    ) -> None:
+        unread = BOUNDARY.KeyedStream(
+            "Importer", "candidateSignals", "a stream read by a labelled key"
+        )
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            BOUNDARY, "KEYED_STREAMS", (*BOUNDARY.KEYED_STREAMS, unread)
+        ):
+            root = Path(directory)
+            self.copied_inventory(root)
+            self.keyed_fixture(
+                root,
+                self.KEYED_LIST.replace(
+                    "runtime = importer.candidateRuntime(key)",
+                    "runtime = importer.candidateRuntime(key)\n"
+                    "                _ = importer.candidateSignals(forCandidate: key)",
+                ),
+            )
             self.assertEqual(BOUNDARY.check(root), [])
 
     def test_keyed_stream_read_by_a_key_not_passed_in_fails(self) -> None:

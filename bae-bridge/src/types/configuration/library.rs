@@ -203,13 +203,29 @@ pub struct BridgeArtistSortCriterion {
 }
 
 /// One row on the Storage Manager: a release paired with its parent
-/// album. The UI splits these into separate slices (releases +
-/// summaries) so in-band metadata changes (album rename, pin toggle)
-/// re-render affected rows without list rebuilds.
+/// album, and what its storage state shows. The UI splits these into
+/// separate slices (releases + summaries) so in-band metadata changes (album
+/// rename, pin toggle) re-render affected rows without list rebuilds.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageRow {
     pub release: BridgeReleaseSummary,
     pub album: BridgeAlbum,
+    pub status: BridgeStorageRowStatus,
+}
+
+/// What a Storage Manager row's storage state shows: where its files are, in
+/// the order the list sorts by storage, or a transition this process runs
+/// while they rest. Mirrors `StorageRowStatus`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeStorageRowStatus {
+    Uploading,
+    Pinning,
+    Transferring {
+        action: crate::types::BridgeReleaseStorageAction,
+    },
+    Local,
+    Pinned,
+    Cloud,
 }
 
 /// Column the Storage Manager can sort by. Mirrors `StorageSortField`.

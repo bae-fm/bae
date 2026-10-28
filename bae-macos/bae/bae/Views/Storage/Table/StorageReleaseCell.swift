@@ -1,11 +1,12 @@
 import BaeKit
 import SwiftUI
 
-/// A release row's content for one column; needs `OutboxStore` and
+/// A release row's content for one column; needs `DownloadStore` and
 /// `ImageStore` in the environment.
 struct StorageReleaseCell: View {
     let release: ReleaseSummary
     let album: BridgeAlbum
+    let status: BridgeStorageRowStatus
     let column: StorageTableColumn
 
     /// The release column's cover side.
@@ -31,7 +32,7 @@ struct StorageReleaseCell: View {
             case .media:
                 Text(release.media.isEmpty ? "\u{2014}" : release.mediaText)
             case .storage:
-                StorageStateLabel(release: release)
+                StorageStateLabel(release: release, status: status)
             case .files:
                 Text(verbatim: release.fileCount.formatted())
                     .monospacedDigit()
@@ -58,6 +59,7 @@ struct StorageReleaseCell: View {
                         pinned: true
                     ),
                     album: PreviewData.storageAlbum,
+                    status: .pinned,
                     column: column
                 )
                 .frame(width: 110)
@@ -65,9 +67,7 @@ struct StorageReleaseCell: View {
         }
         .frame(width: 700)
         .padding(.vertical)
-        .environment(
-            PreviewData.outboxStore()
-        )
+        .environment(PreviewData.downloadStore())
         .environment(ImageStore.stub())
     }
 #endif

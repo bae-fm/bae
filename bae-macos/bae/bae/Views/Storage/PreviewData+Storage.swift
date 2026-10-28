@@ -19,7 +19,8 @@
 
         // MARK: - Download (pin) queue
 
-        /// The bytes the preview's active download has moved.
+        /// The bytes the previews' downloads have moved: the download
+        /// queue's active entry, and the storage rows' release pinning.
         static let downloadTransfers: BridgeDownloadTransferChange = .reset(
             transfers: [
                 BridgeKeyedDownloadTransfer(
@@ -29,7 +30,15 @@
                         bytesTotal: 367_000_000,
                         fraction: 140.0 / 367.0
                     )
-                )
+                ),
+                BridgeKeyedDownloadTransfer(
+                    releaseId: "rel-row-5",
+                    progress: BridgeDownloadTransferProgress(
+                        bytesDone: 151_000_000,
+                        bytesTotal: 463_000_000,
+                        fraction: 151.0 / 463.0
+                    )
+                ),
             ]
         )
 
@@ -246,6 +255,7 @@
                 var row = row
                 row.release.upload = upload.upload
                 row.release.transitioning = true
+                row.status = .uploading
                 return row
             }
         }
@@ -358,25 +368,30 @@
             return (1...28)
                 .map { index in
                     let isRemote = index % 3 != 0
+                    let pinned = isRemote && index % 4 == 0
+                    let pinning = index == 5
                     return storageRow(
-                        releaseId: "rel-row-\(index)",
-                        albumId: "album-row-\(index)",
+                        index: index,
                         title: titles[(index - 1) % titles.count],
                         artist: artists[(index - 1) % artists.count],
                         year: index % 7 == 0 ? nil : Int32(1980 + index),
                         media: media[(index - 1) % media.count],
                         storageState: isRemote ? .remote : .local,
-                        pinned: isRemote && index % 4 == 0,
-                        transfer: index == 5 ? .pin : nil,
+                        pinned: pinned,
+                        transfer: pinning ? .pin : nil,
+                        status: pinning
+                            ? .pinning
+                            : isRemote ? (pinned ? .pinned : .cloud) : .local,
                         fileCount: Int64(1 + index % 24),
                         totalSize: Int64(48_000_000 + index * 83_000_000)
                     )
                 }
         }()
 
+        /// The storage row of release `rel-row-<index>`, on album
+        /// `album-row-<index>`.
         private static func storageRow(
-            releaseId: String,
-            albumId: String,
+            index: Int,
             title: String,
             artist: String,
             year: Int32? = 2021,
@@ -384,11 +399,14 @@
             storageState: BridgeReleaseStorageState,
             pinned: Bool = false,
             transfer: BridgeReleaseStorageAction? = nil,
+            status: BridgeStorageRowStatus,
             upload: BridgeReleaseUpload? = nil,
             fileCount: Int64 = 12,
             totalSize: Int64 = 210_000_000
         ) -> BridgeStorageRow {
-            BridgeStorageRow(
+            let releaseId = "rel-row-\(index)"
+            let albumId = "album-row-\(index)"
+            return BridgeStorageRow(
                 release: BridgeReleaseSummary(
                     id: releaseId,
                     albumId: albumId,
@@ -413,7 +431,8 @@
                     releaseIds: [releaseId],
                     primaryReleaseId: releaseId,
                     cover: nil
-                )
+                ),
+                status: status
             )
         }
 

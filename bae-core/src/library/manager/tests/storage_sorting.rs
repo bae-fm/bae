@@ -235,6 +235,29 @@ async fn storage_page_sort_by_storage_state() {
         by_storage(&manager, StorageFilter::All, SortDirection::Ascending).await,
         ascending
     );
+    let sort = crate::db::StorageSortCriterion {
+        field: crate::db::StorageSortField::Storage,
+        direction: SortDirection::Ascending,
+    };
+    use crate::album_detail::StorageRowStatus;
+    assert_eq!(
+        manager
+            .get_storage_page(&sort, StorageFilter::All, 0, 10)
+            .await
+            .unwrap()
+            .rows
+            .iter()
+            .map(|row| row.status)
+            .collect::<Vec<_>>(),
+        vec![
+            StorageRowStatus::Uploading,
+            StorageRowStatus::Pinning,
+            StorageRowStatus::Local,
+            StorageRowStatus::Pinned,
+            StorageRowStatus::Cloud,
+        ],
+        "each row shows where it sorts"
+    );
     let mut descending = ascending.clone();
     descending.reverse();
     assert_eq!(

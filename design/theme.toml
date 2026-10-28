@@ -190,8 +190,9 @@ dark = "#80CCCE"
 fill = "#277A7C"
 
 # Colours that mean the same in every tone. `activity` marks work in progress,
-# such as a transfer; `onFill` and `onFillSecondary` sit on accent and status
-# fills, on artwork and on the image viewer's `backdrop`.
+# such as a transfer, an upload among them; `pinning` marks files downloading
+# to stay on this device; `onFill` and `onFillSecondary` sit on accent and
+# status fills, on artwork and on the image viewer's `backdrop`.
 [semantics.light]
 textPrimary = "#202124"
 textSecondary = "#62656C"
@@ -200,6 +201,7 @@ success = "#2D7447"
 warning = "#8C5D14"
 info = "#2463C7"
 activity = "#1F7274"
+pinning = "#4553B5"
 hairline = "#1A000000"
 hairlineStrong = "#2E000000"
 hover = "#0F000000"
@@ -218,6 +220,7 @@ success = "#8BCBA4"
 warning = "#E6BE77"
 info = "#87B5FF"
 activity = "#80CCCE"
+pinning = "#A9B8FF"
 hairline = "#1AFFFFFF"
 hairlineStrong = "#2EFFFFFF"
 hover = "#0FFFFFFF"

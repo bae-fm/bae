@@ -1,96 +1,108 @@
 import BaeKit
 import SwiftUI
 
-/// The storage state chip: an in-flight transfer or queued upload wins over
-/// the resting storage state.
+/// The storage state chip: what core says the row's storage shows. Files on
+/// the move fill their chip as far as they have come; a transition this
+/// process runs while they rest shows its own words.
 struct StorageStateLabel: View {
     let release: ReleaseSummary
-    @Environment(OutboxStore.self)
-    private var outboxStore
+    let status: BridgeStorageRowStatus
 
     var body: some View {
-        if let transfer = release.transfer {
-            StatusChip(
-                verbatim: transfer.label,
-                tone: .activity,
-                symbol: "arrow.down.circle"
+        switch status {
+        case .uploading:
+            StorageProgressChip(
+                label: "Uploading",
+                kind: .upload,
+                fraction: release.upload?.bar?.fraction
             )
+        case .pinning:
+            StoragePinningChip(releaseId: release.id)
+        case .transferring(let action):
+            StatusChip(verbatim: action.transferLabel, tone: .activity)
+        case .local:
+            StatusChip("Local", symbol: "folder")
+        case .pinned:
+            StatusChip("Pinned", symbol: "pin.fill")
+        case .cloud:
+            StatusChip("Cloud", symbol: "cloud")
         }
-        else if let observation = outboxStore.uploadObservation(of: release) {
-            if let fraction = observation.progressFraction {
-                ProgressLine(
-                    progress: fraction,
-                    detail: observation.throughputText
-                ) {
-                    UploadActivityLabel(phaseOf: observation.progress)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(observation.transitionStatusText)
-                .accessibilityValue(observation.throughputText ?? "")
-            }
-            else {
-                // Files only waiting: nothing is moving to measure.
-                UploadActivityLabel(phaseOf: observation.progress)
-            }
-        }
-        else {
-            switch release.storageState {
-            case .local:
-                StatusChip("Local", symbol: "folder")
-            case .remote:
-                if release.pinned {
-                    StatusChip("Pinned", symbol: "pin.fill")
-                }
-                else {
-                    StatusChip("Cloud", symbol: "cloud")
-                }
-            }
-        }
+    }
+}
+
+/// A pinning release's chip, filled as far as its download has come; a
+/// release still waiting its turn has moved nothing. It alone reads the
+/// bytes the download moves, by its release.
+private struct StoragePinningChip: View {
+    let releaseId: String
+    @Environment(DownloadStore.self)
+    private var downloadStore
+
+    var body: some View {
+        StorageProgressChip(
+            label: "Pinning",
+            kind: .pin,
+            fraction: downloadStore.transfer(forRelease: releaseId)?.progress
+                .fraction
+        )
     }
 }
 
 #if DEBUG
     #Preview("Storage states") {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            // Resting states: local, cloud, pinned.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-local",
                     storageState: .local
-                )
+                ),
+                status: .local
             )
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-cloud",
                     storageState: .remote,
                     pinned: false
-                )
+                ),
+                status: .cloud
             )
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-pinned",
                     storageState: .remote,
                     pinned: true
-                )
+                ),
+                status: .pinned
             )
-            // An in-flight transition wins over the resting state.
+            // A release downloading to stay on this device.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
-                    id: "r-transfer",
+                    id: "rel-row-5",
                     storageState: .remote,
                     transfer: .pin
-                )
+                ),
+                status: .pinning
             )
-            // Files waiting or being sent win over the resting state.
+            // A transition this process runs while the files rest.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-detach",
+                    storageState: .remote,
+                    transfer: .detachAudio
+                ),
+                status: .transferring(action: .detachAudio)
+            )
+            // Files being sent.
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: PreviewData.uploadingRelease.releaseId,
                     storageState: .local,
                     upload: PreviewData.uploadingRelease.upload
-                )
+                ),
+                status: .uploading
             )
         }
         .padding()
-        .environment(PreviewData.outboxStore())
+        .environment(PreviewData.downloadStore())
     }
 #endif

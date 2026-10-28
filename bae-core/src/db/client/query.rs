@@ -702,7 +702,7 @@ fn storage_filter(filter: StorageFilter) -> &'static str {
 
 /// One Storage Manager row per release the filter keeps: the release's half
 /// and its album's, the raw aggregates the resolver maps to `ReleaseSummary` /
-/// `AlbumSummary`, and whether it is pinned.
+/// `AlbumSummary`, whether it is pinned, and where it sorts by storage.
 fn storage_row_select(filter: StorageFilter) -> String {
     let album_columns = album_summary_columns();
     let where_clause = storage_filter(filter);
@@ -715,6 +715,7 @@ fn storage_row_select(filter: StorageFilter) -> String {
             listing.file_count, \
             listing.total_size, \
             {RELEASE_LISTING_PINNED} AS pinned, \
+            listing.storage_order, \
             {upload_columns}, \
             {album_columns} \
         FROM release_listing listing \

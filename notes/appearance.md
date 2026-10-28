@@ -21,8 +21,9 @@ Primary buttons use the separate fill color with white text to preserve
 contrast in both modes. The macOS mode selector uses that fill for its selected
 segment.
 Semantic colours do not change with the tone or accent: danger for errors,
-warning for what needs attention, success, info, and activity for work in
-progress such as a transfer. Hover, pressed, hairline, scrim, shadow and the
+warning for what needs attention, success, info, activity for work in
+progress such as a transfer, an upload among them, and pinning for files
+downloading to stay on a device. Hover, pressed, hairline, scrim, shadow and the
 image viewer's backdrop are semantic too, as are onFill and onFillSecondary for
 text on fills, artwork and the backdrop. A colour laid behind its own text,
 such as a status chip's fill, uses it at the `tint` opacity.

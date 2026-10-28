@@ -1,13 +1,36 @@
 use super::*;
 
-/// One Storage Manager row as read: the release's half and the album's half.
-pub(super) type StorageRowParts = (DbReleaseSummary, AlbumSummaryRow);
+/// One Storage Manager row as read: the release's half, the album's half, and
+/// where the release's files are.
+pub(super) type StorageRowParts = (
+    DbReleaseSummary,
+    AlbumSummaryRow,
+    crate::album_detail::StoragePlace,
+);
 
 fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
     Ok((
         row_to_release_summary(sql, row)?,
         AlbumSummaryRow::read(row)?,
+        storage_place(row)?,
     ))
+}
+
+/// Where the row's release's files are, from the listing's `storage_order`.
+fn storage_place(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::StoragePlace> {
+    let column = row.as_ref().column_index("storage_order")?;
+    match row.get::<_, i64>(column)? {
+        0 => Ok(crate::album_detail::StoragePlace::Uploading),
+        1 => Ok(crate::album_detail::StoragePlace::Pinning),
+        2 => Ok(crate::album_detail::StoragePlace::Local),
+        3 => Ok(crate::album_detail::StoragePlace::Pinned),
+        4 => Ok(crate::album_detail::StoragePlace::Cloud),
+        order => Err(rusqlite::Error::FromSqlConversionFailure(
+            column,
+            rusqlite::types::Type::Integer,
+            format!("storage order {order} names no place").into(),
+        )),
+    }
 }
 
 pub(super) fn storage_page_on(
@@ -67,10 +90,11 @@ pub(super) fn process_storage_rows(
     rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter()
-        .map(|(release, album)| {
+        .map(|(release, album, place)| {
             Ok(DbStorageRow {
                 release,
                 album: album.process()?,
+                place,
             })
         })
         .collect()

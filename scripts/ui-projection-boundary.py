@@ -136,17 +136,7 @@ class OpenFinding:
 # can hand them the value as an input: each names what it reads and why the
 # row's placement cannot read it instead. Frozen: any other finding fails, and
 # an entry that stops producing its finding fails until it is removed.
-OPEN_CHILD_FINDINGS = (
-    OpenFinding(
-        "swift",
-        "bae-macos/bae/bae/Views/Storage/Table/StorageStateLabel.swift",
-        "StorageStateLabel",
-        "OutboxStore",
-        "reads a release's upload observation inside an NSTableView cell; "
-        "AppKit places the row, so no SwiftUI parent observes the outbox to "
-        "pass it in",
-    ),
-)
+OPEN_CHILD_FINDINGS: tuple[OpenFinding, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -170,6 +160,12 @@ KEYED_STREAMS = (
         "candidateRuntime",
         "what identification and the import are doing for a candidate right "
         "now, which core sends as it moves and keeps in no table",
+    ),
+    KeyedStream(
+        "DownloadStore",
+        "transfer",
+        "the bytes a release's download has moved, which core sends as they "
+        "arrive and keeps in no table",
     ),
 )
 
@@ -394,10 +390,11 @@ def keyed_read(
     inputs: set[str],
 ) -> KeyedStream | None:
     """The stream `use`, which starts at the owner's instance `name`, reads:
-    one of `streams` called with one of the view's `inputs` as its key."""
+    one of `streams` called with one of the view's `inputs` as its key, its
+    argument labelled or not."""
     call = re.match(
         rf"{re.escape(name)}\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)"
-        r"\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)",
+        r"\s*\(\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\)",
         use,
     )
     if call is None or call.group(2) not in inputs:

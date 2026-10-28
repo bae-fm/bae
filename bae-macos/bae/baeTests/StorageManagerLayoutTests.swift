@@ -29,7 +29,9 @@ final class StorageManagerLayoutTests: XCTestCase {
         }
     }
 
-    func testStorageManagerShowsReleaseAndTotalUploadRates() async throws {
+    /// The rates stay the outbox's to report; the table draws an upload in
+    /// its row's chip, with no bar or rate beside it.
+    func testStorageTableDrawsUploadsInTheirChipsWithoutBars() async throws {
         let size = NSSize(width: 940, height: 600)
         try await SnapshotTestSupport.withHostedWindow(
             StorageManagerPreviewScene()
@@ -62,7 +64,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 QueueSummary.throughputText(bytesPerSecond: 6_800_000)
             )
             let descendants = SnapshotTestSupport.descendants(of: host)
-            XCTAssertTrue(descendants.contains { $0 is ProgressTrackNSView })
+            XCTAssertFalse(descendants.contains { $0 is ProgressTrackNSView })
         }
     }
 

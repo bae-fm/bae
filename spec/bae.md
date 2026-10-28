@@ -1437,6 +1437,13 @@ the release offers no storage action but cancelling, which would race it
 otherwise; moving a release to the cloud shows that transfer until its files
 are queued.
 
+Each row's storage state is the place it sorts by, which core reads with the
+row: Uploading, its chip filled as far as its bytes have come while any file
+is being sent; Pinning, filled as far as its download has come once it
+starts; Local, Pinned or Cloud at rest, or, while another transition this
+process runs leaves the files where they are, that transition's words. No
+rate shows beside it.
+
 ### 4.3 Pinning and the cache
 
 An uploaded release can be pinned to stay on a device; otherwise its files are

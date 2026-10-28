@@ -12,9 +12,9 @@ use crate::types::{
     BridgeGalleryItem, BridgeGallerySource, BridgePlaybackValues, BridgePreviewTarget,
     BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
     BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
-    BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort, BridgeStoreKeyState,
-    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
-    BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
+    BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus, BridgeStorageSort,
+    BridgeStoreKeyState, BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup,
+    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
     BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]

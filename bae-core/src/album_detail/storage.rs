@@ -65,11 +65,57 @@ impl ReleaseStorageSummary {
     }
 }
 
-/// One row on the Storage Manager view: a release with its parent album.
+/// Where a release's files are, as the Storage Manager sorts its rows by
+/// storage, in that order: its listing works it out from the upload queue,
+/// the download queue, and its stored and pinned files, in the write that
+/// changes any of them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoragePlace {
+    /// Files of it wait in this device's upload queue.
+    Uploading,
+    /// This device's download queue holds it, waiting or downloading.
+    Pinning,
+    Local,
+    /// Uploaded, every file pinned on this device.
+    Pinned,
+    /// Uploaded, and not wholly pinned on this device.
+    Cloud,
+}
+
+/// What a Storage Manager row's storage state shows: where its files are,
+/// and while they rest, a transition this process runs for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageRowStatus {
+    Uploading,
+    Pinning,
+    /// A transition under way while the files rest where they are: unpinning,
+    /// making the release local, or admitting it for upload.
+    Transferring(ReleaseStorageAction),
+    Local,
+    Pinned,
+    Cloud,
+}
+
+impl StorageRowStatus {
+    fn of(place: StoragePlace, transfer: Option<ReleaseStorageAction>) -> Self {
+        match (place, transfer) {
+            (StoragePlace::Uploading, _) => Self::Uploading,
+            (StoragePlace::Pinning, _) => Self::Pinning,
+            (_, Some(action)) => Self::Transferring(action),
+            (StoragePlace::Local, None) => Self::Local,
+            (StoragePlace::Pinned, None) => Self::Pinned,
+            (StoragePlace::Cloud, None) => Self::Cloud,
+        }
+    }
+}
+
+/// One row on the Storage Manager view: a release with its parent album, and
+/// what its storage state shows.
 #[derive(Debug, Clone)]
 pub struct StorageRow {
     pub release: ReleaseSummary,
     pub album: AlbumSummary,
+    pub status: StorageRowStatus,
 }
 
 /// The storage actions every one of `rows` allows, in the order
@@ -116,6 +162,7 @@ impl StorageRow {
         StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),
             album: AlbumSummary::from_raw(raw.album, &resolve_cover),
+            status: StorageRowStatus::of(raw.place, transfer_action),
         }
     }
 }
@@ -126,4 +173,32 @@ impl StorageRow {
 pub struct StoragePage {
     pub rows: Vec<StorageRow>,
     pub total_count: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A transition this process runs shows while the files rest, and the
+    /// queues' places show over it.
+    #[test]
+    fn a_running_transition_shows_only_while_the_files_rest() {
+        let detach = Some(ReleaseStorageAction::DetachAudio);
+        assert_eq!(
+            StorageRowStatus::of(StoragePlace::Pinned, detach),
+            StorageRowStatus::Transferring(ReleaseStorageAction::DetachAudio)
+        );
+        assert_eq!(
+            StorageRowStatus::of(StoragePlace::Pinning, Some(ReleaseStorageAction::Pin)),
+            StorageRowStatus::Pinning
+        );
+        assert_eq!(
+            StorageRowStatus::of(StoragePlace::Uploading, Some(ReleaseStorageAction::Upload)),
+            StorageRowStatus::Uploading
+        );
+        assert_eq!(
+            StorageRowStatus::of(StoragePlace::Cloud, None),
+            StorageRowStatus::Cloud
+        );
+    }
 }

@@ -216,6 +216,20 @@ mirror_struct! {
     fields: {
         release: (BridgeReleaseSummary),
         album: (BridgeAlbum),
+        status: (BridgeStorageRowStatus),
+    },
+}
+
+mirror_enum! {
+    BridgeStorageRowStatus = bae_core::album_detail::StorageRowStatus,
+    from_core: fn,
+    variants: {
+        Uploading,
+        Pinning,
+        Transferring(action: (crate::types::BridgeReleaseStorageAction)),
+        Local,
+        Pinned,
+        Cloud,
     },
 }
 
