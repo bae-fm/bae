@@ -316,6 +316,38 @@ impl Database {
         .await
     }
 
+    /// Queue to pin, in the order given, each of `release_ids` that is
+    /// uploaded and not wholly pinned on this device, as its listing says,
+    /// passing over one already in the queue in any phase, one the library no
+    /// longer holds, and one local: decided in the write that queues them.
+    /// `true` when any went in.
+    pub(crate) async fn enqueue_pinnable_releases(
+        &self,
+        release_ids: Vec<String>,
+        created_at: i64,
+    ) -> Result<bool, DbError> {
+        let release_ids = serde_json::Value::from(release_ids).to_string();
+        self.call(move |sql| {
+            Ok(sql.execute(
+                &format!(
+                    "INSERT INTO download_queue (release_id, created_at, state) \
+                     SELECT requested.value, :created_at, 'queued' \
+                     FROM json_each(:release_ids) AS requested \
+                     JOIN release_listing AS listing ON listing.release_id = requested.value \
+                     WHERE listing.stored = 1 AND NOT {pinned} \
+                     ORDER BY requested.key \
+                     ON CONFLICT (release_id) DO NOTHING",
+                    pinned = super::query::RELEASE_LISTING_PINNED,
+                ),
+                rusqlite::named_params! {
+                    ":created_at": created_at,
+                    ":release_ids": release_ids,
+                },
+            )? > 0)
+        })
+        .await
+    }
+
     /// Whether the queue holds `release_id`, in any phase.
     pub(crate) async fn release_queued<P: QueuedPayload>(
         &self,

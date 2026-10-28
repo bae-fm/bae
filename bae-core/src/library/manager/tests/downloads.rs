@@ -77,30 +77,34 @@ async fn download_queue_skips_already_pinned() {
     assert!(download_queue_now(&manager).await.rows.is_empty());
 }
 
-/// A release whose storage can't be read fails the whole pin request before
-/// anything is queued — not a skip that leaves the pin silently doing nothing.
+/// A pin request queues, in the order asked, each release it can, in one
+/// write: an unknown id, a repeat and one already queued are passed over.
 #[tokio::test]
-async fn a_failed_release_read_fails_the_whole_pin_request() {
+async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let readable = insert_pinnable_release(&manager).await;
-    let source = manager.get_config().library_path().join("unreadable-source");
-    let unreadable = uploaded_release(&manager, &source, "Album Title", false).await;
+    let first = insert_pinnable_release(&manager).await;
+    let source = manager.get_config().library_path().join("second-source");
+    let second = uploaded_release(&manager, &source, "Album Title", false).await;
     manager.set_downloads_paused(true).await.unwrap();
+
     manager
-        .database
-        .set_release_media_text_for_test(&unreadable, r#"[{"medium":"not-a-medium","count":1}]"#)
+        .enqueue_pins(vec![
+            second.clone(),
+            "4b9f0e0e-7d3a-4f2a-9c51-1f0c2b3a4d5e".to_string(),
+            first.clone(),
+            second.clone(),
+        ])
         .await
         .unwrap();
 
-    let error = manager
-        .enqueue_pins(vec![readable.clone(), unreadable.clone()])
-        .await
-        .expect_err("a release that can't be read fails the request");
-
-    assert!(error.to_string().contains("not-a-medium"), "{error}");
-    assert!(
-        download_queue_now(&manager).await.rows.is_empty(),
-        "nothing is queued when the request fails"
+    assert_eq!(
+        download_queue_now(&manager)
+            .await
+            .rows
+            .iter()
+            .map(|row| row.op.release_id.clone())
+            .collect::<Vec<_>>(),
+        [second, first]
     );
 }
 

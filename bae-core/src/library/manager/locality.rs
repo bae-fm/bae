@@ -109,57 +109,32 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Enqueue releases to pin for offline. Skips ids already in the queue (in any
-    /// state), missing from the library (deleted meanwhile), local, or already
-    /// pinned. A release whose storage can't be read fails the whole request
-    /// before anything is queued, reported as a bug: the library's own rows
-    /// failed to read. The entry names the release by id only; the Downloads
-    /// pane reads its title, file count, and size from the library as it shows
-    /// the row. Wakes the parked worker.
+    /// Enqueue releases to pin for offline, in one write that passes over ids
+    /// already in the queue (in any state), missing from the library (deleted
+    /// meanwhile), local, or already pinned. A write that fails queues nothing
+    /// and is reported as a bug: the library's own rows failed to read. The
+    /// entry names the release by id only; the Downloads pane reads its title,
+    /// file count, and size from the library as it shows the row. Wakes the
+    /// parked worker.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
-        // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at =
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis();
-        let mut entries = Vec::with_capacity(release_ids.len());
-        for release_id in release_ids {
-            if self.downloads.contains(&release_id).await? {
-                debug!("enqueue_pins: {release_id} already queued, skipping");
-                continue;
+        match self
+            .database
+            .enqueue_pinnable_releases(release_ids, enqueued_at)
+            .await
+        {
+            Ok(true) => self.downloads.queued(),
+            Ok(false) => debug!("enqueue_pins: nothing to pin"),
+            Err(error) => {
+                let error = LibraryError::from(error);
+                self.diagnostics.report_bug(
+                    "queue releases to pin",
+                    &bae_util::error_text::CauseChain(&error),
+                );
+                return Err(error);
             }
-            let summary = match self.find_release_storage_summary(&release_id).await {
-                Ok(Some(summary)) => summary,
-                Ok(None) => {
-                    debug!("enqueue_pins: release {release_id} is gone from the library, skipping");
-                    continue;
-                }
-                Err(error) => {
-                    self.diagnostics.report_bug(
-                        &format!("read release {release_id}'s storage to pin it"),
-                        &bae_util::error_text::CauseChain(&error),
-                    );
-                    return Err(error);
-                }
-            };
-            if summary.storage_state == ReleaseStorageState::Local {
-                // Pinning keeps a *cloud* release offline; a local release is
-                // already on disk, so there is nothing to download. Callers that
-                // can't see storage state (the album grid's bulk pin) arrive with a
-                // mixed selection, so skip rather than enqueue a doomed download.
-                debug!("enqueue_pins: {release_id} is local (nothing to pin), skipping");
-                continue;
-            }
-            if summary.pinned {
-                debug!("enqueue_pins: {release_id} already pinned, skipping");
-                continue;
-            }
-
-            entries.push(crate::library::DownloadEntry {
-                release_id: release_id.clone(),
-                created_at: enqueued_at,
-                payload: (),
-            });
         }
-        self.downloads.enqueue_all(entries).await?;
         Ok(())
     }
 

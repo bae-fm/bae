@@ -104,6 +104,11 @@ where
         Ok(added)
     }
 
+    /// Wake the worker after entries went into its queue elsewhere.
+    pub(crate) fn queued(&self) {
+        self.shared.wake.notify_one();
+    }
+
     /// Pause or resume. While paused the worker parks instead of starting
     /// the next release; the in-flight one runs to completion. Resuming
     /// wakes the worker.
