@@ -79,6 +79,18 @@
             ),
         ]
 
+        /// The storage rows' release pinning (`rel-row-5`), downloading.
+        static var pinningDownloads: [BridgeDownloadOp] {
+            [
+                BridgeDownloadOp(
+                    releaseId: "rel-row-5",
+                    release: nil,
+                    createdAt: queuedAt(minutesAgo: 1),
+                    state: .active
+                )
+            ]
+        }
+
         @MainActor
         static func downloadStore() -> DownloadStore {
             let store = DownloadStore()

@@ -11,244 +11,175 @@ import SwiftUI
 @MainActor
 struct ShotScene {
     let id: String
+    /// The view's size, in points; a scene shown in its window adds the
+    /// window's title bar.
     let size: CGSize
+    var frame: ShotFrame = .content
     let makeView: () -> AnyView
 
     /// Every macOS scene, in gallery order. Scene ids are desktop-story ids
     /// (notes/desktop-stories.md) — the gallery is the stories' per-platform
     /// verification sheet. A scene is present only when it has a real staging;
     /// a missing scene is a deliberate omission, never a swallowed failure.
-    static let all: [ShotScene] = [
-        importMetadataDraft,
-        importSearchResults,
-        ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
-            AnyView(AppearanceSettingsTab())
-        },
-        ShotScene(
-            id: "artwork-lightbox",
-            size: CGSize(width: 1_148, height: 868)
-        ) {
-            AnyView(CoverPickerPreviewScene.lightbox())
-        },
-        ShotScene(
-            id: "cover-picker-wide",
-            size: CGSize(width: 1_148, height: 868)
-        ) {
-            AnyView(CoverPickerPreviewScene())
-        },
-        ShotScene(
-            id: "cover-picker-short",
-            size: CGSize(width: 800, height: 520)
-        ) {
-            AnyView(CoverPickerPreviewScene())
-        },
-        ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
-            AnyView(PreviewScenes.welcome(initialMode: .choose))
-        },
-        ShotScene(
-            id: "cover-picker-unlinked",
-            size: CGSize(width: 1_148, height: 868)
-        ) {
-            AnyView(CoverPickerPreviewScene.unlinked())
-        },
-        ShotScene(id: "album-detail", size: CGSize(width: 1100, height: 800)) {
-            AnyView(PreviewScenes.albumDetail())
-        },
-        ShotScene(
-            id: "album-detail-mixed-columns",
-            size: CGSize(width: 1100, height: 800)
-        ) {
-            AnyView(PreviewScenes.albumDetailMixedColumns())
-        },
-        ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize) {
-            AnyView(PreviewScenes.libraryEmpty())
-        },
-        ShotScene(
-            id: "import-release-queue",
-            size: CGSize(width: 900, height: 700)
-        ) {
-            AnyView(
-                PreviewScenes.importReleaseQueue(
-                    scene: PreviewData.releaseQueueScene(),
-                    tab: .pending,
-                    collapsePendingGroup: false,
-                    refreshingWatchedFolderPath: nil
+    static let all: [ShotScene] =
+        [
+            importMetadataDraft,
+            importSearchResults,
+            ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
+                AnyView(AppearanceSettingsTab())
+            },
+            ShotScene(
+                id: "artwork-lightbox",
+                size: CGSize(width: 1_148, height: 868)
+            ) {
+                AnyView(CoverPickerPreviewScene.lightbox())
+            },
+            ShotScene(
+                id: "cover-picker-wide",
+                size: CGSize(width: 1_148, height: 868)
+            ) {
+                AnyView(CoverPickerPreviewScene())
+            },
+            ShotScene(
+                id: "cover-picker-short",
+                size: CGSize(width: 800, height: 520)
+            ) {
+                AnyView(CoverPickerPreviewScene())
+            },
+            ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
+                AnyView(PreviewScenes.welcome(initialMode: .choose))
+            },
+            ShotScene(
+                id: "cover-picker-unlinked",
+                size: CGSize(width: 1_148, height: 868)
+            ) {
+                AnyView(CoverPickerPreviewScene.unlinked())
+            },
+            ShotScene(
+                id: "album-detail",
+                size: CGSize(width: 1100, height: 800)
+            ) {
+                AnyView(PreviewScenes.albumDetail())
+            },
+            ShotScene(
+                id: "album-detail-mixed-columns",
+                size: CGSize(width: 1100, height: 800)
+            ) {
+                AnyView(PreviewScenes.albumDetailMixedColumns())
+            },
+            ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize)
+            {
+                AnyView(PreviewScenes.libraryEmpty())
+            },
+            ShotScene(
+                id: "import-release-queue",
+                size: CGSize(width: 900, height: 700)
+            ) {
+                AnyView(
+                    PreviewScenes.importReleaseQueue(
+                        scene: PreviewData.releaseQueueScene(),
+                        tab: .pending,
+                        collapsePendingGroup: false,
+                        refreshingWatchedFolderPath: nil
+                    )
                 )
-            )
-        },
-        ShotScene(
-            id: "import-release-ambiguity-narrow",
-            size: CGSize(width: 520, height: 700)
-        ) {
-            AnyView(
-                PreviewScenes.importReleaseQueue(
-                    scene: PreviewData.releaseQueueScene(),
-                    tab: .pending,
-                    collapsePendingGroup: false,
-                    refreshingWatchedFolderPath: nil
+            },
+            ShotScene(
+                id: "import-release-ambiguity-narrow",
+                size: CGSize(width: 520, height: 700)
+            ) {
+                AnyView(
+                    PreviewScenes.importReleaseQueue(
+                        scene: PreviewData.releaseQueueScene(),
+                        tab: .pending,
+                        collapsePendingGroup: false,
+                        refreshingWatchedFolderPath: nil
+                    )
                 )
-            )
-        },
-        ShotScene(
-            id: "import-release-queue-collapsed",
-            size: CGSize(width: 900, height: 700)
-        ) {
-            AnyView(
-                PreviewScenes.importReleaseQueue(
-                    scene: PreviewData.releaseQueueScene(),
-                    tab: .pending,
-                    collapsePendingGroup: true,
-                    refreshingWatchedFolderPath: nil
+            },
+            ShotScene(
+                id: "import-release-queue-collapsed",
+                size: CGSize(width: 900, height: 700)
+            ) {
+                AnyView(
+                    PreviewScenes.importReleaseQueue(
+                        scene: PreviewData.releaseQueueScene(),
+                        tab: .pending,
+                        collapsePendingGroup: true,
+                        refreshingWatchedFolderPath: nil
+                    )
                 )
-            )
-        },
-        ShotScene(
-            id: "import-release-scanning-refresh",
-            size: CGSize(width: 900, height: 700)
-        ) {
-            AnyView(
-                PreviewScenes.importReleaseQueue(
-                    scene: PreviewData.releaseQueueScanningScene(),
-                    tab: .pending,
-                    collapsePendingGroup: false,
-                    refreshingWatchedFolderPath:
-                        PreviewData.releaseQueueWatchedFolder.path
+            },
+            ShotScene(
+                id: "import-release-scanning-refresh",
+                size: CGSize(width: 900, height: 700)
+            ) {
+                AnyView(
+                    PreviewScenes.importReleaseQueue(
+                        scene: PreviewData.releaseQueueScanningScene(),
+                        tab: .pending,
+                        collapsePendingGroup: false,
+                        refreshingWatchedFolderPath:
+                            PreviewData.releaseQueueWatchedFolder.path
+                    )
                 )
-            )
-        },
-        ShotScene(
-            id: "import-release-resolved-reversal",
-            size: CGSize(width: 900, height: 700)
-        ) {
-            AnyView(
-                PreviewScenes.importReleaseQueue(
-                    scene: PreviewData.releaseQueueResolvedScene(),
-                    tab: .pending,
-                    collapsePendingGroup: false,
-                    refreshingWatchedFolderPath: nil
+            },
+            ShotScene(
+                id: "import-release-resolved-reversal",
+                size: CGSize(width: 900, height: 700)
+            ) {
+                AnyView(
+                    PreviewScenes.importReleaseQueue(
+                        scene: PreviewData.releaseQueueResolvedScene(),
+                        tab: .pending,
+                        collapsePendingGroup: false,
+                        refreshingWatchedFolderPath: nil
+                    )
                 )
-            )
-        },
-        ShotScene(
-            id: "import-bulk-selection",
-            size: CGSize(width: 936, height: 696)
-        ) {
-            AnyView(PreviewScenes.importBulkSelection())
-        },
-        ShotScene(
-            id: "import-mapping-cue-wide",
-            size: CGSize(width: 1212, height: 900)
-        ) {
-            AnyView(ImportMappingCuePreviewScene(width: 1212))
-        },
-        ShotScene(
-            id: "import-mapping-cue-narrow",
-            size: CGSize(width: 760, height: 900)
-        ) {
-            AnyView(ImportMappingCuePreviewScene(width: 760))
-        },
-        ShotScene(
-            id: "queue-pane-standard",
-            size: CGSize(width: 420, height: 720)
-        ) {
-            let fixture = QueueViewPreviewScene.fixture(for: .populated)
-            return AnyView(
-                QueueViewPreviewScene(width: 420)
-                    .environment(fixture.store)
-                    .environment(fixture.queue)
-                    .environment(ImageStore.stub())
-            )
-        },
-        ShotScene(
-            id: "queue-pane-narrow",
-            size: CGSize(width: 320, height: 720)
-        ) {
-            let fixture = QueueViewPreviewScene.fixture(for: .populated)
-            return AnyView(
-                QueueViewPreviewScene(width: 320)
-                    .environment(fixture.store)
-                    .environment(fixture.queue)
-                    .environment(ImageStore.stub())
-            )
-        },
-        ShotScene(
-            id: "storage-manager-dense",
-            size: CGSize(width: 1_440, height: 900)
-        ) {
-            AnyView(
-                StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
-            )
-        },
-        ShotScene(
-            id: "storage-manager-empty",
-            size: CGSize(width: 940, height: 600)
-        ) {
-            AnyView(StorageManagerPreviewScene(rows: []))
-        },
-        ShotScene(
-            id: "storage-manager-empty-ish",
-            size: CGSize(width: 940, height: 600)
-        ) {
-            AnyView(
-                StorageManagerPreviewScene(
-                    rows: Array(PreviewData.storageRows.prefix(2))
+            },
+            ShotScene(
+                id: "import-bulk-selection",
+                size: CGSize(width: 936, height: 696)
+            ) {
+                AnyView(PreviewScenes.importBulkSelection())
+            },
+            ShotScene(
+                id: "import-mapping-cue-wide",
+                size: CGSize(width: 1212, height: 900)
+            ) {
+                AnyView(ImportMappingCuePreviewScene(width: 1212))
+            },
+            ShotScene(
+                id: "import-mapping-cue-narrow",
+                size: CGSize(width: 760, height: 900)
+            ) {
+                AnyView(ImportMappingCuePreviewScene(width: 760))
+            },
+            ShotScene(
+                id: "queue-pane-standard",
+                size: CGSize(width: 420, height: 720)
+            ) {
+                let fixture = QueueViewPreviewScene.fixture(for: .populated)
+                return AnyView(
+                    QueueViewPreviewScene(width: 420)
+                        .environment(fixture.store)
+                        .environment(fixture.queue)
+                        .environment(ImageStore.stub())
                 )
-            )
-        },
-        ShotScene(
-            id: "storage-manager-empty-ish-inspector",
-            size: CGSize(width: 940, height: 600)
-        ) {
-            AnyView(
-                StorageManagerPreviewScene(
-                    rows: Array(PreviewData.storageRows.prefix(2)),
-                    inspectorPresented: true
+            },
+            ShotScene(
+                id: "queue-pane-narrow",
+                size: CGSize(width: 320, height: 720)
+            ) {
+                let fixture = QueueViewPreviewScene.fixture(for: .populated)
+                return AnyView(
+                    QueueViewPreviewScene(width: 320)
+                        .environment(fixture.store)
+                        .environment(fixture.queue)
+                        .environment(ImageStore.stub())
                 )
-            )
-        },
-        ShotScene(
-            id: "storage-manager-active-file-inspector",
-            size: CGSize(width: 940, height: 700)
-        ) {
-            AnyView(
-                StorageManagerPreviewScene(
-                    selectedReleaseId: "rel-row-1",
-                    inspectorPresented: true,
-                    downloads: [],
-                    outputs: []
-                )
-            )
-        },
-        ShotScene(
-            id: "storage-manager-idle-file-inspector",
-            size: CGSize(width: 940, height: 700)
-        ) {
-            AnyView(
-                StorageManagerPreviewScene(
-                    selectedReleaseId: "rel-row-1",
-                    inspectorPresented: true,
-                    downloads: [],
-                    outputs: [],
-                    uploads: []
-                )
-            )
-        },
-        ShotScene(
-            id: "storage-manager-one-sync-inspector",
-            size: CGSize(width: 940, height: 600)
-        ) {
-            AnyView(
-                StorageManagerPreviewScene(
-                    rows: Array(PreviewData.storageRows.prefix(2)),
-                    selectedReleaseId: "rel-row-2",
-                    inspectorPresented: true,
-                    downloads: [],
-                    outputs: [],
-                    uploads: [PreviewData.queuedRelease]
-                )
-            )
-        },
-    ]
+            },
+        ] + storageManagerScenes
 }
 
 extension ShotScene {
@@ -283,4 +214,12 @@ extension ShotScene {
             .importPreviewEnvironment()
         )
     }
+}
+
+/// What a shot takes in: the scene's view alone, or the window it is shown
+/// in, title bar and toolbar included, for a scene whose toolbar is part of
+/// what it shows.
+enum ShotFrame {
+    case content
+    case window(title: String)
 }

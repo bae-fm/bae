@@ -37,14 +37,20 @@ struct StorageManagerView: View {
     fileprivate static let minimumWidth: CGFloat = 700
     fileprivate static let minimumHeight: CGFloat = 400
 
+    /// The file whose details the inspector opens on, for the release it
+    /// first shows.
+    private let initialSelectedFileId: String?
+
     init(
         initialSelection: Set<String> = [],
-        initialInspectorPresented: Bool = false
+        initialInspectorPresented: Bool = false,
+        initialSelectedFileId: String? = nil
     ) {
         _selection = State(initialValue: initialSelection)
         _inspectorPresented = State(
             initialValue: initialInspectorPresented
         )
+        self.initialSelectedFileId = initialSelectedFileId
     }
 
     var body: some View {
@@ -58,7 +64,8 @@ struct StorageManagerView: View {
                 StorageInspector(
                     releaseId: StorageInspector.releaseId(
                         in: storageManagerStore.shown(selection)
-                    )
+                    ),
+                    initialSelectedFileId: initialSelectedFileId
                 )
             }
         }
@@ -177,11 +184,13 @@ struct StorageManagerView: View {
 
         let initialSelection: Set<String>
         let initialInspectorPresented: Bool
+        let initialSelectedFileId: String?
 
         init(
             rows: [BridgeStorageRow] = PreviewData.storageRows,
             selectedReleaseId: String? = nil,
             inspectorPresented: Bool = false,
+            selectedFileId: String? = nil,
             downloads: [BridgeDownloadOp] = PreviewData.downloadOps,
             outputs: [BridgeOutputOp] = PreviewData.outputOps,
             uploads: [PreviewData.PreviewReleaseUpload] =
@@ -202,6 +211,7 @@ struct StorageManagerView: View {
             self.uiStore = uiStore
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
+            initialSelectedFileId = selectedFileId
             downloadStore = PreviewData.downloadStore()
             outputStore = PreviewData.outputStore()
             outboxStore = PreviewData.outboxStore()
@@ -456,14 +466,7 @@ struct StorageManagerView: View {
         let fixture = StorageManagerPreviewFixture(
             selectedReleaseId: "rel-row-5",
             inspectorPresented: true,
-            downloads: [
-                BridgeDownloadOp(
-                    releaseId: "rel-row-5",
-                    release: nil,
-                    createdAt: PreviewData.queuedAt(minutesAgo: 1),
-                    state: .active
-                )
-            ],
+            downloads: PreviewData.pinningDownloads,
             outputs: []
         )
         StorageManagerView(

@@ -78,7 +78,11 @@ for scene in \
     storage-manager-empty-ish-inspector \
     storage-manager-active-file-inspector \
     storage-manager-idle-file-inspector \
-    storage-manager-one-sync-inspector
+    storage-manager-one-sync-inspector \
+    storage-manager-pinning-inspector \
+    storage-manager-uploads-and-pinning \
+    storage-manager-file-details \
+    storage-manager-window
 do
     png="$OUT_DIR/${scene}@macos.png"
     if [[ ! -s "$png" ]]; then

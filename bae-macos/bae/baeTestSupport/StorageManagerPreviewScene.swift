@@ -11,6 +11,7 @@ struct StorageManagerPreviewScene: View {
         rows: [BridgeStorageRow] = PreviewData.storageRows,
         selectedReleaseId: String? = nil,
         inspectorPresented: Bool = false,
+        selectedFileId: String? = nil,
         downloads: [BridgeDownloadOp] = PreviewData.downloadOps,
         outputs: [BridgeOutputOp] = PreviewData.outputOps,
         uploads: [PreviewData.PreviewReleaseUpload] =
@@ -20,6 +21,7 @@ struct StorageManagerPreviewScene: View {
             rows: rows,
             selectedReleaseId: selectedReleaseId,
             inspectorPresented: inspectorPresented,
+            selectedFileId: selectedFileId,
             downloads: downloads,
             outputs: outputs,
             uploads: uploads
@@ -29,7 +31,8 @@ struct StorageManagerPreviewScene: View {
     var body: some View {
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialSelectedFileId: fixture.initialSelectedFileId
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)

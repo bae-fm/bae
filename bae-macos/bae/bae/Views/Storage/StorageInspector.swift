@@ -3,6 +3,8 @@ import SwiftUI
 /// The selected release's files and their live transfer activity.
 struct StorageInspector: View {
     let releaseId: String?
+    /// The file whose details open with the first release shown.
+    let initialSelectedFileId: String?
 
     static func releaseId(in selection: Set<String>) -> String? {
         guard selection.count == 1 else { return nil }
@@ -12,7 +14,10 @@ struct StorageInspector: View {
     var body: some View {
         VStack(spacing: 0) {
             if let releaseId {
-                StorageContentsInspector(releaseId: releaseId)
+                StorageContentsInspector(
+                    releaseId: releaseId,
+                    initialSelectedFileId: initialSelectedFileId
+                )
             }
             else {
                 ContentUnavailableView {
