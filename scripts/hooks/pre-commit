@@ -125,6 +125,14 @@ if staged_path_under ".github/workflows" || staged_path_under ".github/actions";
     }
 fi
 
+if staged_file_in_list "scripts/check-bundled-libraries.py" \
+    || staged_file_in_list "scripts/tests/check-bundled-libraries-test.py"; then
+    run_check "bundled-library checker tests" \
+        python3 scripts/tests/check-bundled-libraries-test.py || {
+        exit 1
+    }
+fi
+
 RUST_SOURCE_OR_MANIFEST_CHANGED=0
 RUST_DEPENDENCY_INPUT_CHANGED=0
 while IFS= read -r file; do

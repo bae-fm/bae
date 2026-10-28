@@ -100,6 +100,7 @@ check "cargo fmt"                   cargo fmt --all -- --check
 check "source file layout"          scripts/check-source-file-size.py
 check "restricted-path visibility"  scripts/check-rust-visibility.sh
 check "reqwest error causes"       scripts/check-reqwest-error-display.py
+check "bundled-library checker"     python3 scripts/tests/check-bundled-libraries-test.py
 check "owner dependency boundary"   scripts/owner-dependency-boundary.sh
 check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
 check "macOS native Cargo cache"     scripts/check-macos-build-cache.sh

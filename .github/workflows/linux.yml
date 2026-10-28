@@ -52,6 +52,9 @@ jobs:
     - name: Check reqwest error causes
       run: scripts/check-reqwest-error-display.py
 
+    - name: Test the bundled-library checker
+      run: python3 scripts/tests/check-bundled-libraries-test.py
+
     - name: Check owner dependency boundaries
       run: scripts/owner-dependency-boundary.sh
 
