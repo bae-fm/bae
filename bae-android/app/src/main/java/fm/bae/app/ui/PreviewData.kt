@@ -373,6 +373,7 @@ object PreviewData {
             bytesDone = bytesDone,
             bytesTotal = bytesTotal,
             fraction = fraction,
+            throughputBps = 4_800_000uL,
         )
 
     /** The prompt after side B of a record ends, with the keys the bridge gives a side. */

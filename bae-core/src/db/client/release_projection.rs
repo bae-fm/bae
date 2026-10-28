@@ -200,6 +200,7 @@ pub struct StorageBrowseProjection {
     pub total_size: u64,
     pub selected: Vec<DbStorageRow>,
     pub cover_versions: HashMap<String, String>,
+    pub queues: crate::library::StorageQueues,
 }
 
 #[derive(Debug, Clone, PartialEq)]

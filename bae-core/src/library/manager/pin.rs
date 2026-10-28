@@ -43,6 +43,7 @@ impl LibraryManager {
                 let mut progress = manager.database.subscribe_pin_progress(files.clone());
                 let pin = manager.database.pin(&files);
                 tokio::pin!(pin);
+                let mut rate: Option<crate::library::download_snapshot::DownloadRate> = None;
                 loop {
                     let (next, finished) = tokio::select! {
                         _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
@@ -59,6 +60,10 @@ impl LibraryManager {
                     let next = crate::library::DownloadTransferProgress::new(
                         &release, next.bytes_cached, next.bytes_total,
                     )?;
+                    let now = manager.clock.now();
+                    let next = rate
+                        .get_or_insert_with(|| crate::library::download_snapshot::DownloadRate::begin(now, next.bytes_done))
+                        .measure(next, now);
                     progress_tx.send(next).map_err(|error| LibraryError::Storage(format!("pinning release was cancelled: {error}")))?;
                     if finished {
                         return Ok(());

@@ -132,6 +132,7 @@ impl Database {
                     storage_total_size_on(&sql, request.filter).map_err(CovenError::from)?;
                 let selected = storage_selected_on(&sql, request.filter, &request.selected)
                     .map_err(CovenError::from)?;
+                let queues = storage_queues_on(&sql).map_err(CovenError::from)?;
                 // A row shows its own release's cover and its album's; only
                 // those covers are read.
                 let rows = || {
@@ -159,10 +160,11 @@ impl Database {
                     total_size,
                     selected,
                     cover_versions,
+                    queues,
                 ))
             })
             .process(
-                |(request, windows, total_count, total_size, selected, cover_versions)| {
+                |(request, windows, total_count, total_size, selected, cover_versions, queues)| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -180,10 +182,56 @@ impl Database {
                         total_size,
                         selected: super::release_projection::process_storage_rows(selected)?,
                         cover_versions,
+                        queues,
                     })
                 },
             )
     }
+}
+
+/// The transfer queues holding files waiting or on the move, each with
+/// whether it is paused, and for the pin and output queues the release
+/// running. A queue holding only failed entries holds no work.
+pub(super) fn storage_queues_on(
+    sql: &SqlReadContext<'_>,
+) -> Result<crate::library::StorageQueues, DbError> {
+    let uploads = sql.query_row(
+        "SELECT EXISTS (SELECT 1 FROM coven_upload_queue), \
+             (SELECT paused FROM coven_upload_pause)",
+        [],
+        |row| {
+            Ok(row
+                .get::<_, bool>(0)?
+                .then_some(crate::library::UploadQueueRun {
+                    paused: row.get(1)?,
+                }))
+        },
+    )?;
+    let release_queue = |table: &str, queue: &str| {
+        sql.query_row(
+            &format!(
+                "SELECT EXISTS (SELECT 1 FROM {table} WHERE state IN ('queued', 'active')), \
+                     (SELECT paused FROM release_queues WHERE queue = ?1), \
+                     (SELECT release_id FROM {table} WHERE state = 'active')"
+            ),
+            [queue],
+            |row| {
+                Ok(if row.get::<_, bool>(0)? {
+                    Some(crate::library::ReleaseQueueRun {
+                        paused: row.get(1)?,
+                        active: row.get(2)?,
+                    })
+                } else {
+                    None
+                })
+            },
+        )
+    };
+    Ok(crate::library::StorageQueues {
+        uploads,
+        pins: release_queue("download_queue", "download")?,
+        outputs: release_queue("output_queue", "output")?,
+    })
 }
 
 /// The title, file count, and size of each of `release_ids` the library

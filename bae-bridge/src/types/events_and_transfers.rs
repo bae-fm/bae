@@ -175,12 +175,14 @@ pub enum BridgeDownloadState {
     Failed { error: String },
 }
 
-/// Byte progress for the active download.
+/// Byte progress for the active download, and how fast it has gone since it
+/// began, in bytes per second, once it has moved bytes.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeDownloadTransferProgress {
     pub bytes_done: u64,
     pub bytes_total: u64,
     pub fraction: f64,
+    pub throughput_bps: Option<u64>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

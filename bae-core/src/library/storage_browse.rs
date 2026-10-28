@@ -19,7 +19,8 @@ pub struct StorageBrowseView {
 /// set holds, in a window or not, by release id, and the storage actions every
 /// one of those allows: a selected release the list no longer holds is
 /// absent, so the inspector never shows, and the storage actions never act
-/// on, a release the list doesn't.
+/// on, a release the list doesn't. Beside the list, the transfer queues that
+/// hold work.
 #[derive(Debug, Clone)]
 pub struct StorageBrowseSnapshot {
     pub sort: crate::db::StorageSortCriterion,
@@ -29,6 +30,33 @@ pub struct StorageBrowseSnapshot {
     pub total_size: u64,
     pub selected: Vec<crate::album_detail::StorageRow>,
     pub selection_actions: Vec<crate::album_detail::ReleaseStorageAction>,
+    pub queues: StorageQueues,
+}
+
+/// The transfer queues holding files waiting or on the move, each with
+/// whether the person paused it: this device's uploads, its pins (downloads
+/// to keep releases here), and its exports and saves. A queue holding no
+/// work, or only failed entries, is absent.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageQueues {
+    pub uploads: Option<UploadQueueRun>,
+    pub pins: Option<ReleaseQueueRun>,
+    pub outputs: Option<ReleaseQueueRun>,
+}
+
+/// The upload queue while it holds files: whether it is paused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UploadQueueRun {
+    pub paused: bool,
+}
+
+/// A queue that works through one release at a time, while it holds work:
+/// whether it is paused, and the release it runs, if any; how fast that goes,
+/// or how far, arrives apart, keyed by the release.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseQueueRun {
+    pub paused: bool,
+    pub active: Option<String>,
 }
 
 /// A live read of the Storage Manager list. The view changes in place

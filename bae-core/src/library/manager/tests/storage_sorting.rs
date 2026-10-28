@@ -349,3 +349,102 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     manager.database.clear_release_queues().await.unwrap();
     assert_eq!(ascending().await, resting, "emptied as the library opens");
 }
+
+/// The queues the Storage Manager's list value carries, as one read of it
+/// finds them.
+#[cfg(feature = "test-utils")]
+async fn listed_queues(manager: &LibraryManager) -> crate::library::StorageQueues {
+    let mut browse = manager.database.subscribe_storage_browse(crate::db::StorageBrowseRequest {
+        sort: crate::db::StorageSortCriterion {
+            field: crate::db::StorageSortField::Storage,
+            direction: crate::db::SortDirection::Ascending,
+        },
+        filter: crate::db::StorageFilter::All,
+        windows: Default::default(),
+        selected: Default::default(),
+    });
+    browse
+        .next()
+        .await
+        .expect("the browse query answers")
+        .result
+        .unwrap()
+        .queues
+}
+
+/// The list's value carries each transfer queue while it holds work waiting
+/// or under way, with whether it is paused and the release a serial queue
+/// runs; a queue holding only a failed entry holds none.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_storage_list_carries_the_queues_holding_work() {
+    use crate::library::{ReleaseQueueRun, StorageQueues, UploadQueueRun};
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let pinning = uploaded_release(&manager, &temp_dir.path().join("pin"), "Album Title", false).await;
+    let idle = StorageQueues {
+        uploads: None,
+        pins: None,
+        outputs: None,
+    };
+    assert_eq!(listed_queues(&manager).await, idle);
+
+    manager.set_sync_paused(true).await.unwrap();
+    insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("upload"),
+        "Album Title B",
+        &[("track.flac", b"uploading")],
+    )
+    .await;
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![pinning.clone()]).await.unwrap();
+    let uploads = Some(UploadQueueRun { paused: true });
+    assert_eq!(
+        listed_queues(&manager).await,
+        StorageQueues {
+            uploads,
+            pins: Some(ReleaseQueueRun { paused: true, active: None }),
+            outputs: None,
+        }
+    );
+
+    assert!(manager
+        .database
+        .activate_queued_release::<()>(&pinning)
+        .await
+        .unwrap());
+    manager
+        .database
+        .execute_for_test(
+            "INSERT INTO output_queue (release_id, created_at, state, target_dir, kind) \
+             VALUES (?1, 0, 'queued', '/exports', 'export')",
+            vec![pinning.clone()],
+        )
+        .await
+        .unwrap();
+    let outputs = Some(ReleaseQueueRun { paused: false, active: None });
+    assert_eq!(
+        listed_queues(&manager).await,
+        StorageQueues {
+            uploads,
+            pins: Some(ReleaseQueueRun { paused: true, active: Some(pinning.clone()) }),
+            outputs: outputs.clone(),
+        }
+    );
+
+    assert!(manager
+        .database
+        .fail_queued_release::<()>(&pinning, "the network connection was lost".into())
+        .await
+        .unwrap());
+    assert_eq!(
+        listed_queues(&manager).await,
+        StorageQueues {
+            uploads,
+            pins: None,
+            outputs,
+        },
+        "a failed pin is no work"
+    );
+}

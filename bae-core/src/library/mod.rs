@@ -67,7 +67,10 @@ pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LibrarySearchSubscription,
     LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,
 };
-pub use storage_browse::{StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseView};
+pub use storage_browse::{
+    ReleaseQueueRun, StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseView,
+    StorageQueues, UploadQueueRun,
+};
 pub use sync_activity::{
     DownloadsInFlight, SyncActivity, SyncActivityStream, UploadQueueCounts, UploadsInFlight,
 };

@@ -12,7 +12,8 @@ pub struct BridgeStorageBrowseWindow {
 /// filter it was read for — a UI that has since moved to another drops it —
 /// with the filtered set's row count and total size, the row of each
 /// selected release the filtered set holds, in a window or not, by release
-/// id, and the storage actions every one of those allows.
+/// id, the storage actions every one of those allows, and the transfer
+/// queues holding work.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageBrowseSnapshot {
     pub sort: BridgeStorageSort,
@@ -22,6 +23,47 @@ pub struct BridgeStorageBrowseSnapshot {
     pub total_size: u64,
     pub selected: Vec<BridgeStorageRow>,
     pub selection_actions: Vec<crate::types::BridgeReleaseStorageAction>,
+    pub queues: BridgeStorageQueues,
+}
+
+/// The transfer queues holding files waiting or on the move, each with
+/// whether it is paused; the pin and output queues name the release they
+/// run. Mirrors `StorageQueues`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeStorageQueues {
+    pub uploads: Option<BridgeUploadQueueRun>,
+    pub pins: Option<BridgeReleaseQueueRun>,
+    pub outputs: Option<BridgeReleaseQueueRun>,
+}
+
+/// The upload queue while it holds files. Mirrors `UploadQueueRun`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeUploadQueueRun {
+    pub paused: bool,
+}
+
+/// A one-release-at-a-time queue while it holds work. Mirrors
+/// `ReleaseQueueRun`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeReleaseQueueRun {
+    pub paused: bool,
+    pub active: Option<String>,
+}
+
+impl BridgeStorageQueues {
+    fn from_core(queues: bae_core::library::StorageQueues) -> Self {
+        let release = |run: bae_core::library::ReleaseQueueRun| BridgeReleaseQueueRun {
+            paused: run.paused,
+            active: run.active,
+        };
+        Self {
+            uploads: queues
+                .uploads
+                .map(|run| BridgeUploadQueueRun { paused: run.paused }),
+            pins: queues.pins.map(release),
+            outputs: queues.outputs.map(release),
+        }
+    }
 }
 
 /// The Storage Manager list read live: one query for as long as the manager
@@ -114,6 +156,7 @@ impl StorageBrowseSubscription {
                         .into_iter()
                         .map(crate::types::BridgeReleaseStorageAction::from_core)
                         .collect(),
+                    queues: BridgeStorageQueues::from_core(snapshot.queues),
                 })
                 .map_err(live_read_error)
         })

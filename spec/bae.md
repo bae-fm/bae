@@ -1444,6 +1444,15 @@ starts; Local, Pinned or Cloud at rest, or, while another transition this
 process runs leaves the files where they are, that transition's words. No
 rate shows beside it.
 
+Under the list, beside its count and total size, each transfer queue
+holding files waiting or on the move shows while it does: uploads, pins
+(§4.3), and exports and saves (§4.6), each with how fast it goes, an export
+with how far its release has been written, and a control that pauses or
+resumes the whole queue. A queue holding only failed entries shows nothing.
+The list's own query reads which queues hold work, whether each is paused,
+and the release a pin or export queue runs, from their tables beside the
+rows; how fast and how far arrive apart, keyed by that release.
+
 ### 4.3 Pinning and the cache
 
 An uploaded release can be pinned to stay on a device; otherwise its files are
@@ -1471,8 +1480,10 @@ Pins download one release at a time from a queue that can be paused,
 cancelled and retried. A release becomes pinned only once every file lands. The
 queue is kept on the device and emptied as the library opens: after a restart
 it is empty and running, and a release that wasn't fully pinned stays as it
-was. How far the release downloading has got is not kept. Unpinning moves the files into the cache, still
-readable, now evictable.
+was. How far the release downloading has got is not kept, nor how fast it
+goes: its rate is what it has moved since it began over the time since,
+measured as each of its files lands. Unpinning moves the files into the
+cache, still readable, now evictable.
 
 Asking to pin several releases queues each that can be: one already queued,
 pinned, local, or deleted meanwhile is passed over. If one of them can't be

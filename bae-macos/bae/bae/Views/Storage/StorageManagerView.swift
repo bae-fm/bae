@@ -148,7 +148,8 @@ struct StorageManagerView: View {
                     Divider()
                     StorageFooter(
                         list: list,
-                        totalSize: storageManagerStore.totalSize
+                        totalSize: storageManagerStore.totalSize,
+                        queues: storageManagerStore.queues
                     )
                 }
             }

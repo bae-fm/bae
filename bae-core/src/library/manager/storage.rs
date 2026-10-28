@@ -276,6 +276,7 @@ impl LibraryManager {
             total_size: projection.total_size,
             selection_actions: crate::album_detail::common_storage_actions(&selected),
             selected,
+            queues: projection.queues,
         }
     }
 

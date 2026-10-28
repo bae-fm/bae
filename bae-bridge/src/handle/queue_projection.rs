@@ -79,7 +79,7 @@ mirror_enum! {
 mirror_struct! {
     crate::types::BridgeDownloadTransferProgress = bae_core::library::DownloadTransferProgress,
     from_core: pub(crate) fn,
-    fields: { bytes_done, bytes_total, fraction },
+    fields: { bytes_done, bytes_total, fraction, throughput_bps },
 }
 
 impl crate::types::BridgeDownloadState {

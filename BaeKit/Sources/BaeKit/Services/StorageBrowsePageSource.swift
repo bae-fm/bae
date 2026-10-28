@@ -23,12 +23,13 @@ public struct StorageBrowseView: Equatable, Sendable {
 
 /// What one value of the Storage Manager list says of the whole filtered
 /// list rather than of a window: its total size, the row of each selected
-/// release it holds, wherever it sits in the list, and the storage actions
-/// every one of those allows.
+/// release it holds, wherever it sits in the list, the storage actions
+/// every one of those allows, and the transfer queues holding work.
 public struct StorageListValue: Sendable {
     public let totalSize: UInt64
     public let selected: [BridgeStorageRow]
     public let selectionActions: [BridgeReleaseStorageAction]
+    public let queues: BridgeStorageQueues
 }
 
 /// The Storage Manager list read live through one query: its sort, filter,
@@ -69,8 +70,11 @@ public struct StorageBrowseQuery: Sendable {
 extension StorageBrowseQuery {
     /// A query over a fixed, already-sorted list, for previews and tests:
     /// every view is answered with its windows' slices of `rows`, whatever
-    /// the sort and filter.
-    public static func fixed(_ rows: [BridgeStorageRow]) -> StorageBrowseQuery {
+    /// the sort and filter, beside `queues`.
+    public static func fixed(
+        _ rows: [BridgeStorageRow],
+        queues: BridgeStorageQueues
+    ) -> StorageBrowseQuery {
         let requests = FixedRequests<StorageBrowseView>()
         return StorageBrowseQuery(
             setView: { requests.request($0) },
@@ -101,7 +105,8 @@ extension StorageBrowseQuery {
                                 $0.release.storageActions.contains(action)
                             }
                         }
-                    } ?? []
+                    } ?? [],
+                    queues: queues
                 )
             },
             cancel: { requests.close() }
@@ -301,7 +306,8 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
                         StorageListValue(
                             totalSize: snapshot.totalSize,
                             selected: snapshot.selected,
-                            selectionActions: snapshot.selectionActions
+                            selectionActions: snapshot.selectionActions,
+                            queues: snapshot.queues
                         )
                     )
                     for window in snapshot.windows {

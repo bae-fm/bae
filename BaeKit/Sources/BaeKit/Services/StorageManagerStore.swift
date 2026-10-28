@@ -6,6 +6,9 @@ import Observation
 public final class StorageManagerStore {
     public private(set) var list: StorageList?
     public private(set) var totalSize: UInt64?
+    /// The transfer queues holding work, by core's last answer; `nil` until
+    /// it answers.
+    public private(set) var queues: BridgeStorageQueues?
     /// The row of each selected release the list holds, by core's answer,
     /// wherever in the list it sits — loaded or not — by release id.
     private var selectedRows: [String: BridgeStorageRow] = [:]
@@ -62,6 +65,7 @@ public final class StorageManagerStore {
                 selected: selection,
                 onListValue: { [weak self] value in
                     self?.totalSize = value.totalSize
+                    self?.queues = value.queues
                     self?.selectedRows = Dictionary(
                         uniqueKeysWithValues: value.selected.map { ($0.id, $0) }
                     )

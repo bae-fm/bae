@@ -11,7 +11,8 @@ struct DownloadStoreTransferTests {
         BridgeDownloadTransferProgress(
             bytesDone: bytesDone,
             bytesTotal: 100,
-            fraction: Double(bytesDone) / 100
+            fraction: Double(bytesDone) / 100,
+            throughputBps: nil
         )
     }
 

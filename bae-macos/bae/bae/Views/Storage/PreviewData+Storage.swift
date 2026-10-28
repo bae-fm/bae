@@ -28,7 +28,8 @@
                     progress: BridgeDownloadTransferProgress(
                         bytesDone: 140_000_000,
                         bytesTotal: 367_000_000,
-                        fraction: 140.0 / 367.0
+                        fraction: 140.0 / 367.0,
+                        throughputBps: 12_100_000
                     )
                 ),
                 BridgeKeyedDownloadTransfer(
@@ -36,7 +37,8 @@
                     progress: BridgeDownloadTransferProgress(
                         bytesDone: 151_000_000,
                         bytesTotal: 463_000_000,
-                        fraction: 151.0 / 463.0
+                        fraction: 151.0 / 463.0,
+                        throughputBps: 12_100_000
                     )
                 ),
             ]
@@ -477,10 +479,56 @@
                     upload: uploads.first { $0.releaseId == detail.id }
                 )
             }
+            let queues = storageQueues(
+                downloads: downloads,
+                outputs: outputs,
+                uploads: uploads
+            )
             return Library(
                 releaseDetail: { .fixed { details[$0] } },
-                storageBrowse: { _, _ in .fixed(rows) },
+                storageBrowse: { _, _ in .fixed(rows, queues: queues) },
                 storageInspector: { .fixed { inspectors[$0] } }
+            )
+        }
+
+        /// The queues holding the fixture's entries, as core's list value
+        /// names them: each running, the serial ones at their active entry.
+        private static func storageQueues(
+            downloads: [BridgeDownloadOp],
+            outputs: [BridgeOutputOp],
+            uploads: [PreviewReleaseUpload]
+        ) -> BridgeStorageQueues {
+            BridgeStorageQueues(
+                uploads: uploads.isEmpty
+                    ? nil : BridgeUploadQueueRun(paused: false),
+                pins: downloads.isEmpty
+                    ? nil
+                    : BridgeReleaseQueueRun(
+                        paused: false,
+                        active: downloads.first {
+                            if case .active = $0.state {
+                                true
+                            }
+                            else {
+                                false
+                            }
+                        }?
+                        .releaseId
+                    ),
+                outputs: outputs.isEmpty
+                    ? nil
+                    : BridgeReleaseQueueRun(
+                        paused: false,
+                        active: outputs.first {
+                            if case .active = $0.state {
+                                true
+                            }
+                            else {
+                                false
+                            }
+                        }?
+                        .releaseId
+                    )
             )
         }
 
