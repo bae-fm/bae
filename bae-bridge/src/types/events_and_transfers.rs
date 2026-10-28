@@ -169,6 +169,12 @@ pub enum BridgeFastValue {
     PreviewPosition { position: BridgePreviewPosition },
     /// How far through its step a running import is; keyed by candidate.
     ImportPercent { percent: u32 },
+    /// How far a bulk action over an import list's selection has got; a
+    /// stream's one key, `""`, while the action runs.
+    #[cfg(feature = "desktop")]
+    SelectionActionProgress {
+        progress: super::BridgeSelectionActionProgress,
+    },
 }
 
 /// Which keys of a stream started or stopped holding a value.

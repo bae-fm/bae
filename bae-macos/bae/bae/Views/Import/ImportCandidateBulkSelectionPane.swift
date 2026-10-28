@@ -33,13 +33,11 @@ struct ImportCandidateBulkSelectionPane: View {
                         storagePinned: $storagePinned,
                         onPerform: onPerform
                     )
-                    if let progress = selection.progress {
-                        ProgressView(
-                            value: Double(progress.completed),
-                            total: Double(progress.total)
-                        ) {
-                            Text(progress.action.label(count: progress.total))
-                        }
+                    if let running = selection.running {
+                        SelectionActionProgressLine(
+                            action: running.action,
+                            progress: running.progress
+                        )
                     }
                     if selection.isRunning {
                         Button("Cancel") { selection.cancel() }

@@ -18,31 +18,65 @@ use crate::types::{BridgeFastValue, KeyActivityCallback};
 
 /// The latest value of each key, and who hears keys come and go.
 pub(crate) struct StreamValues {
-    values: Mutex<HashMap<String, BridgeFastValue>>,
+    held: Mutex<Held>,
     activity: Box<dyn KeyActivityCallback>,
+}
+
+/// What a stream holds: each key's value until the stream is cancelled,
+/// and nothing from then on.
+enum Held {
+    Open(HashMap<String, BridgeFastValue>),
+    Cancelled,
 }
 
 impl StreamValues {
     pub(crate) fn new(activity: Box<dyn KeyActivityCallback>) -> Arc<Self> {
         Arc::new(Self {
-            values: Mutex::new(HashMap::new()),
+            held: Mutex::new(Held::Open(HashMap::new())),
             activity,
         })
     }
 
+    fn latest(&self, key: &str) -> Option<BridgeFastValue> {
+        match &*self.held.lock().unwrap() {
+            Held::Open(values) => values.get(key).cloned(),
+            Held::Cancelled => None,
+        }
+    }
+
     /// Change the values, then tell the keys `change` says started or
-    /// stopped holding one.
+    /// stopped holding one. A cancelled stream takes no change.
     fn write(&self, change: impl FnOnce(&mut HashMap<String, BridgeFastValue>) -> Vec<String>) {
-        let started_or_stopped = change(&mut self.values.lock().unwrap());
+        let started_or_stopped = match &mut *self.held.lock().unwrap() {
+            Held::Open(values) => change(values),
+            Held::Cancelled => Vec::new(),
+        };
         if !started_or_stopped.is_empty() {
             self.activity.on_keys_changed(started_or_stopped);
+        }
+    }
+
+    /// Hold nothing from now on, whatever writes it, and tell the keys that
+    /// held a value.
+    fn cancel(&self) {
+        let stopped = match std::mem::replace(&mut *self.held.lock().unwrap(), Held::Cancelled) {
+            Held::Open(values) => {
+                let mut keys: Vec<String> = values.into_keys().collect();
+                keys.sort();
+                keys
+            }
+            Held::Cancelled => Vec::new(),
+        };
+        if !stopped.is_empty() {
+            self.activity.on_keys_changed(stopped);
         }
     }
 }
 
 /// The latest value of each key one fast stream names, written by the feed
 /// that made it until the stream is cancelled or dropped, or the library
-/// closes. Any thread reads it.
+/// closes. Cancelled, it holds nothing and nothing writes it. Any thread
+/// reads it.
 #[derive(uniffi::Object)]
 pub struct KeyedValueStream {
     values: Arc<StreamValues>,
@@ -59,18 +93,20 @@ impl KeyedValueStream {
 impl KeyedValueStream {
     /// The key's latest value; `None` while the stream names none for it.
     pub fn latest(&self, key: String) -> Option<BridgeFastValue> {
-        self.values.values.lock().unwrap().get(&key).cloned()
+        self.values.latest(&key)
     }
 
-    /// Stop writing the stream; it holds nothing once its feed has ended.
+    /// End the stream's feed: from now on it holds nothing, and nothing
+    /// writes it.
     pub fn cancel(&self) {
         self.stop.cancel();
+        self.values.cancel();
     }
 }
 
 impl Drop for KeyedValueStream {
     fn drop(&mut self) {
-        self.stop.cancel();
+        self.cancel();
     }
 }
 

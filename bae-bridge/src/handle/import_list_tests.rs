@@ -136,3 +136,104 @@ fn separating_the_selection_selects_the_releases_it_returns() {
         .block_on(list.clone().cancel())
         .expect("cancel the list");
 }
+
+/// Every batch of keys a stream says started or stopped.
+#[derive(Default)]
+struct HeardKeys(std::sync::Mutex<Vec<Vec<String>>>);
+
+struct Activity(Arc<HeardKeys>);
+
+impl crate::types::KeyActivityCallback for Activity {
+    fn on_keys_changed(&self, keys: Vec<String>) {
+        self.0 .0.lock().unwrap().push(keys);
+    }
+}
+
+/// A bulk action writes its progress into the stream the app reads while it
+/// runs, and the stream empties as it ends; once the app cancels that
+/// stream, an action run after writes nothing into it.
+#[test]
+fn a_cancelled_progress_stream_hears_no_later_action() {
+    let (handle, root) = super::super::tests::fresh_bridge_handle("cancelled-selection-progress");
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../bae-core/tests/fixtures/flac/01 Test Track 1.flac");
+    let music = root.join("music");
+    let folder = music.join("Album");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
+    let music = std::fs::canonicalize(&music).unwrap();
+    let key = music.join("Album").to_string_lossy().into_owned();
+    handle.runtime.block_on(async {
+        handle
+            .services
+            .set_identify_automatically(false)
+            .await
+            .unwrap();
+        handle
+            .services
+            .import_add_watched_folder(music.to_string_lossy().into_owned())
+            .await
+            .unwrap();
+    });
+    let list = handle
+        .runtime
+        .block_on(handle.subscribe_import_list(BridgeImportListView {
+            tab: BridgeTriageTab::Pending,
+            filter_text: String::new(),
+            pending_filter: BridgePendingFilter::All,
+            order: BridgeImportListOrder::PathAscending,
+        }))
+        .expect("the list opens");
+    list.set_windows(vec![BridgeLibraryPageWindow {
+        offset: 0,
+        limit: 50,
+    }])
+    .unwrap();
+    until(&handle, &list, |snapshot| rows(snapshot).0 == [key.clone()]);
+    let revision = handle
+        .runtime
+        .block_on(
+            list.clone()
+                .change_selection(BridgeSelectionChange::Replace {
+                    keys: vec![key.clone()],
+                }),
+        )
+        .unwrap();
+    until(&handle, &list, |snapshot| {
+        snapshot.selection_revision >= revision && snapshot.selection.count == 1
+    });
+
+    let read = Arc::new(HeardKeys::default());
+    let progress = list.selection_action_progress(Box::new(Activity(read.clone())));
+    handle
+        .runtime
+        .block_on(
+            list.clone()
+                .run_selection_action(crate::types::BridgeCandidateAction::Skip),
+        )
+        .unwrap();
+    assert_eq!(
+        std::mem::take(&mut *read.0.lock().unwrap()),
+        vec![vec![String::new()], vec![String::new()]],
+        "the action's progress came and went"
+    );
+    assert_eq!(progress.latest(String::new()), None);
+
+    progress.cancel();
+    handle
+        .runtime
+        .block_on(
+            list.clone()
+                .run_selection_action(crate::types::BridgeCandidateAction::Skip),
+        )
+        .unwrap();
+    assert!(
+        read.0.lock().unwrap().is_empty(),
+        "a cancelled stream hears no later action"
+    );
+    assert_eq!(progress.latest(String::new()), None);
+    handle
+        .runtime
+        .block_on(list.clone().cancel())
+        .expect("cancel the list");
+}

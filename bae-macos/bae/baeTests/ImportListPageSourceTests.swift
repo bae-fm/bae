@@ -139,9 +139,13 @@ struct ImportListPageSourceTests {
             throw StubError.notImplemented
         }
         func runSelectionAction(
-            action _: BridgeCandidateAction,
-            progress _: SelectionActionProgressCallback
+            action _: BridgeCandidateAction
         ) async throws -> [BridgeSelectionActionFailure] { [] }
+        func selectionActionProgress(
+            activity _: any KeyActivityCallback
+        ) -> KeyedValueStream {
+            KeyedValueStream(noHandle: KeyedValueStream.NoHandle())
+        }
 
         func deliver(_ snapshot: BridgeImportListSnapshot) {
             lock.lock()

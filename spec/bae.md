@@ -688,7 +688,10 @@ comes back unselected. A release the scan reads again with changed files is
 the same row: it stays selected, under a group as folded as it was. The pane a selection opens reads only that selection,
 so with nothing shown selected it shows nothing selected. A bulk action runs
 in core over the selected rows that offer it, in the order the list shows
-them. A broken folder offers no action, so selected among others it counts
+them, and answers with the rows it failed on; how many it has done moves
+with each row, so it reaches the app only in a `KeyedValueStream` (§10.2)
+the list hands out, holding it while the action runs. A broken folder offers
+no action, so selected among others it counts
 toward the selection but holds back combining it.
 
 Another tab, filter, search or order is a view the list has not read yet:
@@ -2823,12 +2826,14 @@ to compile in the bridge until it is carried across.
   before the store closes, and none hears from a closed store. One opened on
   a closed library delivers nothing and is reported as a bug.
 - **Fast values** — transfer bytes and rates, file shares, export
-  percents, playback and preview positions, and import percents, which core
-  sends many times a second — reach an app only in a `KeyedValueStream`,
-  keyed by release, file, track or candidate, never in a callback, a
+  percents, playback and preview positions, import percents, and how far a
+  bulk action has got, which core sends many times a second — reach an app
+  only in a `KeyedValueStream`, keyed by release, file, track or candidate,
+  never in a callback, a
   record field or a subscription value. A `feed_*` call starts writing one
   on the bridge's side and returns it; cancelling or dropping it, or closing
-  the library, stops it, and it then holds nothing. A read that fails empties
+  the library, stops it, and it then holds nothing, whatever still runs that
+  wrote it — a bulk action's stream included. A read that fails empties
   it until the next read fills it whole. Its one callback names the keys that
   started or stopped holding a value, never a value that moved. The native
   view drawing a key reads the key's latest value once per display frame

@@ -69,7 +69,4 @@ callbacks! {
     /// Where each watched folder's scan stands, now and as it changes.
     #[cfg(feature = "desktop")]
     FolderScansCallback: on_value(value: BridgeFolderScans) + on_error;
-    /// How far a bulk action over the selection has got.
-    #[cfg(feature = "desktop")]
-    SelectionActionProgressCallback: on_progress(progress: BridgeSelectionActionProgress);
 }

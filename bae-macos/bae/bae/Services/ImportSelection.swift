@@ -5,11 +5,12 @@ import os.log
 
 private let importSelectionLogger = Logger.bae("ImportSelection")
 
-/// How far a bulk action over the selection has got.
-struct ImportCandidateActionProgress {
+/// A bulk action over the selection while it runs: what it does, and the
+/// stream of how far it has got, which only the native line drawing it
+/// reads.
+struct RunningSelectionAction {
     let action: BridgeCandidateAction
-    let total: Int
-    var completed: Int
+    let progress: LatestSource<BridgeSelectionActionProgress>
 }
 
 /// The calls the selection makes, as values a test can replace. Each goes to
@@ -22,10 +23,16 @@ struct ImportSelectionOperations: Sendable {
     let sourceFolders: @Sendable () async throws -> [String]
     let combine: @Sendable () async throws -> String
     let separate: @Sendable () async throws -> [String]
+    /// A new stream for one action's progress: unfed until `run` feeds it
+    /// from the list it runs on.
+    let progressStream:
+        @Sendable () -> LatestStream<
+            BridgeSelectionActionProgress
+        >
     let run:
         @Sendable (
             BridgeCandidateAction,
-            @escaping @Sendable (BridgeSelectionActionProgress) -> Void
+            LatestStream<BridgeSelectionActionProgress>
         ) async throws -> [BridgeSelectionActionFailure]
 
     static func live(list: ImportListSelectionOwner)
@@ -39,12 +46,12 @@ struct ImportSelectionOperations: Sendable {
             },
             combine: { try await list.current().combineSelection() },
             separate: { try await list.current().separateSelection() },
+            progressStream: { .selectionActionProgress() },
             run: { action, progress in
-                try await list.current()
-                    .runSelectionAction(
-                        action: action,
-                        progress: SelectionActionProgressSink(apply: progress)
-                    )
+                let list = try list.current()
+                let feed = progress.feed(from: list)
+                defer { feed.cancel() }
+                return try await list.runSelectionAction(action: action)
             }
         )
     }
@@ -57,6 +64,7 @@ struct ImportSelectionOperations: Sendable {
         sourceFolders: { [] },
         combine: { throw StubError.notImplemented },
         separate: { throw StubError.notImplemented },
+        progressStream: { .selectionActionProgress() },
         run: { _, _ in [] }
     )
 }
@@ -87,21 +95,6 @@ enum ImportListSelectionOwnerError: Error {
     case noList
 }
 
-private final class SelectionActionProgressSink:
-    SelectionActionProgressCallback,
-    @unchecked Sendable
-{
-    private let apply: @Sendable (BridgeSelectionActionProgress) -> Void
-
-    init(apply: @escaping @Sendable (BridgeSelectionActionProgress) -> Void) {
-        self.apply = apply
-    }
-
-    func onProgress(progress: BridgeSelectionActionProgress) {
-        apply(progress)
-    }
-}
-
 /// The import list's selection. Core's import list holds it, and only ever
 /// with rows the list shows, so a selection of any size is one core call to
 /// change and one to act on; what it holds and can be told to do arrives here
@@ -115,14 +108,10 @@ final class ImportSelection {
         single: nil,
         offers: []
     )
-    /// How far the running bulk action has got, while one runs.
-    private(set) var progress: ImportCandidateActionProgress?
+    /// The running bulk action, while one runs.
+    private(set) var running: RunningSelectionAction?
     @ObservationIgnored
     private var task: Task<Void, Never>?
-    /// The run core's progress reports belong to; a report that arrives once
-    /// its run has ended is dropped.
-    @ObservationIgnored
-    private var currentRun: UUID?
     @ObservationIgnored
     private let operations: ImportSelectionOperations
 
@@ -130,7 +119,7 @@ final class ImportSelection {
         self.operations = operations
     }
 
-    var isRunning: Bool { task != nil || progress != nil }
+    var isRunning: Bool { task != nil || running != nil }
 
     /// Take core's latest summary.
     func apply(_ summary: BridgeSelectionSummary) {
@@ -191,32 +180,15 @@ final class ImportSelection {
         _ action: BridgeCandidateAction,
         uiStore: UiStore
     ) async {
-        let run = UUID()
-        currentRun = run
-        progress = ImportCandidateActionProgress(
+        let progress = operations.progressStream()
+        running = RunningSelectionAction(
             action: action,
-            total: 0,
-            completed: 0
+            progress: progress.only
         )
-        defer {
-            currentRun = nil
-            progress = nil
-        }
+        defer { running = nil }
         let failures: [BridgeSelectionActionFailure]
         do {
-            failures = try await operations.run(action) { reported in
-                Task { @MainActor [weak self] in
-                    guard let self, self.currentRun == run,
-                        Int(reported.completed)
-                            >= self.progress?.completed ?? 0
-                    else { return }
-                    self.progress = ImportCandidateActionProgress(
-                        action: action,
-                        total: Int(reported.total),
-                        completed: Int(reported.completed)
-                    )
-                }
-            }
+            failures = try await operations.run(action, progress)
         }
         catch is CancellationError { return }
         catch {

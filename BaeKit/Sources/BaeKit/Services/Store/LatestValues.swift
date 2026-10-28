@@ -340,6 +340,32 @@ extension LatestStream where Value == UInt32 {
     #endif
 }
 
+#if os(macOS)
+    extension LatestStream where Value == BridgeSelectionActionProgress {
+        /// How far a bulk action over an import list's selection has got,
+        /// while it runs; a preview's holds `value` and nothing feeds it.
+        public static func selectionActionProgress(holding value: Value? = nil)
+            -> LatestStream
+        {
+            LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+                if case .selectionActionProgress(let progress) = $0 {
+                    progress
+                }
+                else {
+                    nil
+                }
+            }
+        }
+
+        /// Fill with the next bulk action over `list`'s selection.
+        public func feed(from list: any ImportListSubscriptionProtocol)
+            -> LatestFeed
+        {
+            fed { list.selectionActionProgress(activity: $0) }
+        }
+    }
+#endif
+
 extension LatestStream {
     /// The value of a stream that holds one, for the native view that draws
     /// it.

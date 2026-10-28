@@ -28,6 +28,9 @@ pub struct ImportListSubscription {
     inner: bae_core::import::ImportListSubscription,
     services: AppServices,
     runtime: tokio::runtime::Handle,
+    /// Where the next bulk action reports how far it has got: the stream
+    /// [`Self::selection_action_progress`] last handed out.
+    selection_progress: std::sync::Mutex<Option<std::sync::Arc<crate::keyed_values::StreamValues>>>,
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -49,6 +52,7 @@ impl AppHandle {
                 inner,
                 services,
                 runtime,
+                selection_progress: std::sync::Mutex::new(None),
             }))
         })
         .await
@@ -98,6 +102,26 @@ impl AppHandle {
                 );
             }
         })
+    }
+}
+
+#[uniffi::export]
+impl ImportListSubscription {
+    /// The stream the bulk actions over the selection report how far they
+    /// have got in, from now until it is cancelled: its one key, `""`, while
+    /// an action runs, and nothing once it ends. A stream handed out before
+    /// it holds no later action's progress, and a cancelled one holds
+    /// nothing from then on, a running action's included.
+    pub fn selection_action_progress(
+        &self,
+        activity: Box<dyn crate::types::KeyActivityCallback>,
+    ) -> std::sync::Arc<crate::keyed_values::KeyedValueStream> {
+        let values = crate::keyed_values::StreamValues::new(activity);
+        *self.selection_progress.lock().unwrap() = Some(values.clone());
+        std::sync::Arc::new(crate::keyed_values::KeyedValueStream::new(
+            values,
+            bae_core::library::CancellationToken::new(),
+        ))
     }
 }
 
@@ -283,25 +307,38 @@ impl ImportListSubscription {
     }
 
     /// Run `action` on every selected candidate that offers it, in the order
-    /// the list shows them, reporting how far it has got, and answer with the
-    /// candidates it failed on.
+    /// the list shows them, and answer with the candidates it failed on. How
+    /// far it has got is the stream [`Self::selection_action_progress`] last
+    /// handed out, which holds it while the action runs.
     pub async fn run_selection_action(
         self: std::sync::Arc<Self>,
         action: crate::types::BridgeCandidateAction,
-        progress: Box<dyn crate::types::SelectionActionProgressCallback>,
     ) -> Result<Vec<crate::types::BridgeSelectionActionFailure>, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
+            let progress = self
+                .selection_progress
+                .lock()
+                .unwrap()
+                .clone()
+                .map(crate::keyed_values::StreamWriter::new);
             let failures = self
                 .services
                 .run_import_selection_action(
                     &self.inner.selected().await.map_err(list_error)?,
                     action.into_core(),
                     |completed, total| {
-                        progress.on_progress(crate::types::BridgeSelectionActionProgress {
-                            completed,
-                            total,
-                        })
+                        if let Some(progress) = &progress {
+                            progress.set(
+                                String::new(),
+                                crate::types::BridgeFastValue::SelectionActionProgress {
+                                    progress: crate::types::BridgeSelectionActionProgress {
+                                        completed,
+                                        total,
+                                    },
+                                },
+                            );
+                        }
                     },
                 )
                 .await

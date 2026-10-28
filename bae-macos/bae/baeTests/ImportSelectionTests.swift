@@ -33,10 +33,14 @@ extension ImportSelectionOperations {
         separate: @escaping @Sendable () async throws -> [String] = {
             throw StubError.notImplemented
         },
+        progressStream:
+            @escaping @Sendable () -> LatestStream<
+                BridgeSelectionActionProgress
+            > = { .selectionActionProgress() },
         run:
             @escaping @Sendable (
                 BridgeCandidateAction,
-                @escaping @Sendable (BridgeSelectionActionProgress) -> Void
+                LatestStream<BridgeSelectionActionProgress>
             ) async throws -> [BridgeSelectionActionFailure] = { _, _ in [] }
     ) -> ImportSelectionOperations {
         ImportSelectionOperations(
@@ -45,6 +49,7 @@ extension ImportSelectionOperations {
             sourceFolders: inert.sourceFolders,
             combine: combine,
             separate: separate,
+            progressStream: progressStream,
             run: run
         )
     }
@@ -127,15 +132,23 @@ struct ImportSelectionTests {
         #expect(!selection.isRunning)
     }
 
-    @Test("Core's progress reaches the pane while the action runs")
+    /// The pane's native line follows the stream the action's run feeds,
+    /// and the action stops running once the run ends.
+    @Test("Core's progress reaches the pane's line while the action runs")
     func progressFollowsCore() async throws {
         let release = AsyncStream<Void>.makeStream()
+        let progress = LatestStream<BridgeSelectionActionProgress>.written()
         let selection = ImportSelection(
-            operations: .stub(run: { _, progress in
-                progress(BridgeSelectionActionProgress(completed: 1, total: 3))
-                for await _ in release.stream { break }
-                return []
-            })
+            operations: .stub(
+                progressStream: { progress.stream },
+                run: { _, _ in
+                    progress.set(
+                        BridgeSelectionActionProgress(completed: 1, total: 3)
+                    )
+                    for await _ in release.stream { break }
+                    return []
+                }
+            )
         )
         let started = selection.start(
             .skip,
@@ -143,11 +156,23 @@ struct ImportSelectionTests {
             before: {}
         )
         let task = try #require(started)
-        try await Wait.until { selection.progress?.completed == 1 }
-        #expect(selection.progress?.total == 3)
+        try await Wait.until { selection.running != nil }
+        let running = try #require(selection.running)
+        #expect(running.action == .skip)
+        let view = NSView()
+        var shown: [BridgeSelectionActionProgress?] = []
+        let following = FrameFollowing<BridgeSelectionActionProgress>(
+            view: view
+        ) { shown.append($0) }
+        following.follow(running.progress)
+        try await Wait.until {
+            shown.last == BridgeSelectionActionProgress(completed: 1, total: 3)
+        }
+        following.stop()
         release.continuation.yield(())
         await task.value
-        #expect(selection.progress == nil)
+        #expect(selection.running == nil)
+        #expect(!selection.isRunning)
     }
 
     @Test("The pane draws the selection's offers with their counts")

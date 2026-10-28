@@ -93,3 +93,21 @@ fn cancelling_or_dropping_a_stream_stops_its_feed() {
     drop(stream);
     assert!(stop.is_cancelled());
 }
+
+/// Cancelling a stream ends its feed: it holds nothing, says which keys
+/// stopped, and takes nothing its writer writes after.
+#[test]
+fn a_cancelled_stream_holds_nothing_and_takes_no_write() {
+    let (stream, writer, keys) = fed_stream();
+    writer.set("a".into(), share(0.5));
+    heard(&keys);
+
+    stream.cancel();
+    assert_eq!(stream.latest("a".into()), None);
+    assert_eq!(heard(&keys), vec![vec!["a".to_string()]]);
+
+    writer.set("b".into(), share(0.1));
+    drop(writer);
+    assert_eq!(stream.latest("b".into()), None);
+    assert!(heard(&keys).is_empty());
+}
