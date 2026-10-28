@@ -213,7 +213,10 @@ async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> St
         coven::FileStatus::Uploading => None,
         _ => Some(file.content_hash()),
     };
-    super::files::image_version(&revision, stored.as_ref().map(|hash| &hash.as_bytes()[..]))
+    match stored {
+        Some(hash) => format!("{revision}.{}", hex::encode(hash.as_bytes())),
+        None => revision,
+    }
 }
 
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.

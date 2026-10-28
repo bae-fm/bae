@@ -193,15 +193,10 @@ impl Database {
 /// names the new file only once its upload completes (coven §17.2), which
 /// changes the hash. So the version moves whenever any device's bytes for the
 /// image can, though not only then.
-pub(super) fn image_version(revision: &str, hash: Option<&[u8]>) -> String {
-    match hash {
-        Some(hash) => format!("{revision}.{}", hex::encode(hash)),
-        None => revision.to_string(),
-    }
-}
-
-/// [`image_version`] of the image row `alias` names, as a SQL expression.
-fn image_version_sql(alias: &str) -> String {
+///
+/// This is that version of the image row `alias` names, as a SQL expression:
+/// the revision, then a dot and the hash in lowercase hex once there is one.
+pub(super) fn image_version_sql(alias: &str) -> String {
     format!(
         "(CASE WHEN {alias}.hash IS NULL THEN {alias}.revision \
           ELSE {alias}.revision || '.' || lower(hex({alias}.hash)) END)"
@@ -236,14 +231,12 @@ pub(super) fn image_version_on<Q: QueryOne>(
     let table = image_table(image_type);
     Ok(sql
         .query_row(
-            &format!("SELECT revision, hash FROM {table} WHERE id = ?"),
+            &format!(
+                "SELECT {version} FROM {table} AS image WHERE image.id = ?",
+                version = image_version_sql("image")
+            ),
             params![id],
-            |row| {
-                Ok(image_version(
-                    &row.get::<_, String>(0)?,
-                    row.get::<_, Option<Vec<u8>>>(1)?.as_deref(),
-                ))
-            },
+            |row| row.get::<_, String>(0),
         )
         .optional()?)
 }

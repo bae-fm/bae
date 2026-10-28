@@ -173,8 +173,10 @@ pub(super) const TRACK_DISPLAY_JOINS: &str = "JOIN releases r ON r.id = t.releas
 pub(super) fn track_display_columns() -> String {
     format!(
         "t.id AS track_id, t.title, t.duration_ms, a.id AS album_id, \
-         a.title AS album_title, r.id AS release_id, c.revision AS cover_revision, \
-         c.hash AS cover_hash, {artist_names} AS artist_names",
+         a.title AS album_title, r.id AS release_id, \
+         {cover_version} AS cover_version, \
+         {artist_names} AS artist_names",
+        cover_version = super::files::image_version_sql("c"),
         artist_names = track_credits_json_sql("t"),
     )
 }
@@ -182,17 +184,7 @@ pub(super) fn track_display_columns() -> String {
 pub(super) fn track_queue_meta_from_row(row: &Row<'_>) -> rusqlite::Result<TrackQueueMeta> {
     let release_id: String = row.get("release_id")?;
     // A release's cover image is keyed by the release's id.
-    let cover_image = match row.get::<_, Option<String>>("cover_revision")? {
-        Some(revision) => Some(crate::album_detail::ImageRef {
-            id: release_id.clone(),
-            version: super::files::image_version(
-                &revision,
-                row.get::<_, Option<Vec<u8>>>("cover_hash")?.as_deref(),
-            ),
-            image_type: LibraryImageType::Cover,
-        }),
-        None => None,
-    };
+    let cover_image = crate::album_detail::cover_ref(&release_id, row.get("cover_version")?);
     Ok(TrackQueueMeta {
         display: crate::playback::TrackDisplay {
             title: row.get("title")?,
