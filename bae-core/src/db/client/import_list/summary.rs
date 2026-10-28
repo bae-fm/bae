@@ -301,11 +301,12 @@ pub(super) fn selected(
     let rows = sql.query(
         &format!(
             "WITH {uploading} \
-             SELECT p.item, p.key, c.name, {BASIS_COLUMNS} \
+             SELECT p.item, p.key, c.name, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS} \
              FROM import_list_selection AS s \
              JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
              JOIN scan_candidate AS c \
                  ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
+             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
              LEFT JOIN uploading AS u ON u.key = p.key \
              WHERE s.list_id = ? \
              ORDER BY u.position IS NULL, u.position, {terms}",
@@ -318,14 +319,16 @@ pub(super) fn selected(
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 BasisColumns::read(row, 3)?,
+                RuntimeFactColumns::read(row, 9)?,
             ))
         },
     )?;
     let mut selected = SelectedRows::default();
-    for (item, key, name, basis) in rows {
+    for (item, key, name, basis, facts) in rows {
         match Item::of(&item)? {
             Item::Candidate => selected.candidates.push(SelectedCandidate {
                 basis: basis.basis(&key)?,
+                facts: facts.facts(&key)?,
                 candidate_key: key,
                 name,
             }),

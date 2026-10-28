@@ -9,7 +9,6 @@
 //! action runs in core over the selected keys that offer it.
 
 use super::triage::{CandidateActionBasis, SelectionMember, SelectionOffer, TriageRuntimeFacts};
-use std::collections::HashMap;
 
 /// How a person changed the selection by pointing at rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,17 +26,19 @@ pub enum SelectionChange {
 
 /// One selected candidate as the tables place it: what its commands are
 /// decided from, and the name a report of a bulk action gives it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SelectedCandidate {
     pub candidate_key: String,
     pub name: String,
     pub basis: CandidateActionBasis,
+    /// What is running for it, as its standing says.
+    pub facts: TriageRuntimeFacts,
 }
 
 /// Every selected row as the tables place it: the candidates, and the folders
 /// that failed validation, which the person can select to look into but which
 /// offer nothing to do.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct SelectedRows {
     pub candidates: Vec<SelectedCandidate>,
     /// The keys of the selected folders that failed validation.
@@ -65,20 +66,12 @@ pub struct SelectionSummary {
 }
 
 /// The selected candidates with the actions each offers now.
-pub(crate) fn members(
-    selected: &[SelectedCandidate],
-    facts: &HashMap<String, TriageRuntimeFacts>,
-) -> Vec<SelectionMember> {
+pub(crate) fn members(selected: &[SelectedCandidate]) -> Vec<SelectionMember> {
     selected
         .iter()
         .map(|candidate| SelectionMember {
             candidate_key: candidate.candidate_key.clone(),
-            actions: candidate.basis.actions(
-                &facts
-                    .get(&candidate.candidate_key)
-                    .cloned()
-                    .unwrap_or_default(),
-            ),
+            actions: candidate.basis.actions(&candidate.facts),
         })
         .collect()
 }

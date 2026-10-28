@@ -796,15 +796,6 @@ impl LibraryManager {
         Ok(self.database.clear_candidate_standings().await?)
     }
 
-    /// Where every candidate something is running for stands, as the rows
-    /// read it.
-    pub(crate) async fn load_candidate_standing_facts(
-        &self,
-    ) -> Result<std::collections::HashMap<String, crate::import::TriageRuntimeFacts>, LibraryError>
-    {
-        Ok(self.database.load_candidate_standing_facts().await?)
-    }
-
     /// What the scans of `watched_folder_path` stored about each file they
     /// read, for the next pass over it to start from, reading any other
     /// track's tags through `tags`.

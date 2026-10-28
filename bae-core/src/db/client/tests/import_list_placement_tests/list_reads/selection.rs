@@ -10,9 +10,8 @@ use crate::import::CandidateAction;
 /// what is running for each.
 async fn keys_running(lib: &Library, list: ImportListId, action: CandidateAction) -> Vec<String> {
     let selected = lib.db.load_import_list_selected(list).await.unwrap();
-    let facts = lib.db.load_candidate_standing_facts().await.unwrap();
     keys_for(
-        &crate::import::selection::members(&selected.candidates, &facts),
+        &crate::import::selection::members(&selected.candidates),
         action,
     )
 }

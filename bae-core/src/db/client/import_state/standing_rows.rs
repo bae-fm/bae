@@ -252,17 +252,6 @@ pub(crate) fn load_standing_on(
     }
 }
 
-/// Where every candidate something is running for stands, as the rows read
-/// it.
-pub(crate) fn load_standing_facts_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<HashMap<String, TriageRuntimeFacts>, DbError> {
-    Ok(load_standings_on(sql)?
-        .into_iter()
-        .map(|(key, standing)| (key, standing.facts()))
-        .collect())
-}
-
 /// How far the batch of identifications in flight has got: ended of
 /// admitted. `(0, 0)` is no batch.
 fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32), DbError> {
@@ -549,14 +538,6 @@ impl Database {
         let candidate_key = candidate_key.to_string();
         self.read(move |sql| load_standing_on(&sql, &candidate_key))
             .await
-    }
-
-    /// Where every candidate something is running for stands, as the rows
-    /// read it.
-    pub(crate) async fn load_candidate_standing_facts(
-        &self,
-    ) -> Result<HashMap<String, TriageRuntimeFacts>, DbError> {
-        self.read(|sql| load_standing_facts_on(&sql)).await
     }
 
     /// How far the batch of identifications in flight has got, for a test;

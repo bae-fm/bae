@@ -79,8 +79,7 @@ impl AppServices {
         progress: impl Fn(u64, u64),
     ) -> Result<Vec<SelectionActionFailure>, ImportError> {
         let selected = &selected.candidates;
-        let standings = self.inner.manager.load_candidate_standing_facts().await?;
-        let members = crate::import::selection::members(selected, &standings);
+        let members = crate::import::selection::members(selected);
         let keys = keys_for(&members, action);
         let total = keys.len() as u64;
         let name_of = |key: &str| {
