@@ -107,12 +107,19 @@ struct ImportListPageSourceTests {
 
         func cancel() async throws {}
 
-        // The folds, the reads of where a candidate sits and the selection
-        // are not what these tests drive.
+        /// A fold is a change to the view, so it moves the revision too.
         func setGroupFolded(
             group _: BridgeFolderReleaseDecisionKey,
             folded _: Bool
-        ) async throws -> UInt64 { 0 }
+        ) async throws -> UInt64 {
+            lock.withLock {
+                viewRevision += 1
+                return viewRevision
+            }
+        }
+
+        // The reads of where a candidate sits and the selection are not what
+        // these tests drive.
         func setAllGroupsFolded(folded _: Bool) async throws -> UInt64 { 0 }
         func locateCandidate(
             candidateKey _: String
@@ -315,6 +322,56 @@ extension ImportListPageSourceTests {
         )
         try await Wait.until({ outcome.state != .waiting })
         #expect(outcome.state == .delivered)
+    }
+
+    /// The view the person just asked for is asked for once, and its wait
+    /// ends on the first read that reflects it, whatever moved the revision
+    /// past it first: a fold landing before that read is no reason to leave
+    /// the view unanswered.
+    @MainActor
+    @Test("a view just asked for is asked once, and a later read answers it")
+    func aWaitForTheViewJustAskedForAsksOnce() async throws {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
+            onSelection: { _, _ in }
+        )
+        let pages = source.pages
+        let view = BridgeImportListView(
+            tab: .done,
+            filterText: "",
+            pendingFilter: .identified,
+            order: .newestFirst
+        )
+        pages.setView(view)
+        let outcome = ViewDeliveryOutcome()
+        Task {
+            do {
+                try await pages.waitForView(view)
+                outcome.state = .delivered
+            }
+            catch {
+                outcome.state = .failed
+            }
+        }
+        try await Wait.until({ subscription.requestedViews == [view] })
+        try await pages.setGroupFolded(
+            BridgeFolderReleaseDecisionKey(
+                watchedFolderPath: "/w",
+                relativeFolderPath: "Box"
+            ),
+            true
+        )
+
+        subscription.deliver(
+            snapshot([], totalCount: 45, viewRevision: 2)
+        )
+        try await Wait.until({ outcome.state != .waiting })
+
+        #expect(outcome.state == .delivered)
+        #expect(subscription.requestedViews == [view])
     }
 
     @MainActor

@@ -63,8 +63,11 @@ import Foundation
             applyView(view)
         }
 
-        /// Apply `view` and wait until the live list has delivered the exact
-        /// revision that accepted it.
+        /// Wait until the live list has delivered a read that reflects
+        /// `view`: the read of the revision that accepted it, or a later one.
+        /// `view` is asked for first unless it is the view last asked for. A
+        /// later change of view answers the wait too, so the caller keeps
+        /// track of which view it shows.
         public func waitForView(_ view: BridgeImportListView) async throws {
             try await awaitAppliedView(view)
         }
@@ -155,6 +158,10 @@ import Foundation
         /// The last view change asked for — a view, a fold — which the next
         /// one waits on, so they reach core in the order they were made.
         private var viewWrite: Task<Void, Never>?
+        /// The last view asked for, and the write asking for it, which a wait
+        /// for that view waits on rather than asking for it again.
+        private var lastViewWrite:
+            (view: BridgeImportListView, write: Task<UInt64, any Error>)?
         /// The read failure this source died of, kept so a page registered
         /// after it hears about it.
         ///
@@ -200,9 +207,7 @@ import Foundation
             return ImportListPages(
                 source: self,
                 setView: { [self] view in
-                    let write = changeView {
-                        try await subscription.setView(view: view)
-                    }
+                    let write = writeView(view)
                     Task { [weak self] in
                         if case .failure(let error) = await write.result {
                             self?.failEveryPage(with: error)
@@ -236,25 +241,6 @@ import Foundation
                     try await subscription.firstIdentifyingCandidate()
                 }
             )
-        }
-
-        /// Run `write`, a change to what the list shows answering with its
-        /// view revision, once every change asked for before it has landed;
-        /// a wait for a view it supersedes ends.
-        private func changeView(
-            _ write: @escaping @Sendable () async throws -> UInt64
-        ) -> Task<UInt64, any Error> {
-            lock.withLock {
-                let previous = viewWrite
-                let task = Task { [weak self] in
-                    await previous?.value
-                    let revision = try await write()
-                    self?.cancelViewWaiters(before: revision)
-                    return revision
-                }
-                viewWrite = Task { _ = await task.result }
-                return task
-            }
         }
 
         public func subscribe(
@@ -401,14 +387,49 @@ import Foundation
     }
 
     extension ImportListPageSource {
+        /// Run `write`, a change to what the list shows answering with its
+        /// view revision, once every change asked for before it has landed.
+        private func changeView(
+            _ write: @escaping @Sendable () async throws -> UInt64
+        ) -> Task<UInt64, any Error> {
+            lock.withLock { changeViewLocked(write) }
+        }
+
+        /// Ask core for `view`, unless it is the view last asked for, whose
+        /// write is answered with instead.
+        private func writeView(
+            _ view: BridgeImportListView
+        ) -> Task<UInt64, any Error> {
+            let subscription = self.subscription
+            return lock.withLock {
+                if let last = lastViewWrite, last.view == view {
+                    return last.write
+                }
+                let write = changeViewLocked {
+                    try await subscription.setView(view: view)
+                }
+                lastViewWrite = (view, write)
+                return write
+            }
+        }
+
+        /// `changeView`, under the lock.
+        private func changeViewLocked(
+            _ write: @escaping @Sendable () async throws -> UInt64
+        ) -> Task<UInt64, any Error> {
+            let previous = viewWrite
+            let task = Task {
+                await previous?.value
+                return try await write()
+            }
+            viewWrite = Task { _ = await task.result }
+            return task
+        }
+
         private func deliveredSummary(
             afterApplying view: BridgeImportListView
         ) async throws -> BridgeImportQueueSummary {
-            let subscription = self.subscription
-            let revision = try await changeView {
-                try await subscription.setView(view: view)
-            }
-            .value
+            let revision = try await writeView(view).value
             let id = UUID()
             let failure = lock.withLock {
                 let failure = self.failure
@@ -467,17 +488,14 @@ import Foundation
             }
         }
 
+        /// The summary a waiter on `revision` takes once a read reflecting
+        /// it has been delivered: that revision's, or a later one's.
         private func deliveredViewResult(
             revision: UInt64
         ) -> Result<BridgeImportQueueSummary, any Error>? {
-            guard let delivered = latestSummary else { return nil }
-            if delivered.revision == revision {
-                return .success(delivered.summary)
-            }
-            if delivered.revision > revision {
-                return .failure(CancellationError())
-            }
-            return nil
+            guard let delivered = latestSummary, delivered.revision >= revision
+            else { return nil }
+            return .success(delivered.summary)
         }
 
         private func fulfillViewWaiters(
@@ -501,43 +519,7 @@ import Foundation
             }
             lock.unlock()
             for (_, waiter) in ready {
-                if waiter.revision == revision {
-                    waiter.continuation.resume(returning: summary)
-                }
-                else {
-                    waiter.continuation.resume(
-                        throwing: CancellationError()
-                    )
-                }
-            }
-        }
-
-        private func cancelViewWaiters(before revision: UInt64) {
-            lock.lock()
-            let cancelled: [(UUID, ViewWaiter)] =
-                viewWaiters.compactMap { element in
-                    guard case .waiting(let waiter) = element.value,
-                        waiter.revision < revision
-                    else { return nil }
-                    return (element.key, waiter)
-                }
-            let awaiting: [UUID] = viewWaiters.compactMap { element in
-                guard
-                    case .awaitingRegistration(let awaitingRevision) =
-                        element.value,
-                    awaitingRevision < revision
-                else { return nil }
-                return element.key
-            }
-            for (id, _) in cancelled {
-                viewWaiters.removeValue(forKey: id)
-            }
-            for id in awaiting {
-                viewWaiters[id] = .cancelled
-            }
-            lock.unlock()
-            for (_, waiter) in cancelled {
-                waiter.continuation.resume(throwing: CancellationError())
+                waiter.continuation.resume(returning: summary)
             }
         }
 

@@ -691,6 +691,10 @@ in core over the selected rows that offer it, in the order the list shows
 them. A broken folder offers no action, so selected among others it counts
 toward the selection but holds back combining it.
 
+Another tab, filter, search or order is a view the list has not read yet:
+until the read reflecting it lands, the list shows no rows rather than the
+previous view's, nor "No matches" for them.
+
 A list narrowed anew — another tab, filter or search — shows on top the row
 its view opened at: its first selected row as it sat when the view was set,
 or its top while no selected row is shown. The write that sets the view

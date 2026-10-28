@@ -227,12 +227,20 @@ struct ImportCandidateListContent: View {
                 .onTapGesture { filterFocused = true }
             }
         } content: {
-            if activeTabIsEmpty {
-                emptyState
+            Group {
+                if activeTabIsEmpty {
+                    emptyState
+                }
+                else {
+                    tabList
+                }
             }
-            else {
-                tabList
-            }
+            // Until the read answering the view the person asked for lands,
+            // the list holds the previous view's rows: they stay unshown and
+            // out of reach rather than standing in for this view's.
+            .opacity(listSlot.answersView ? 1 : 0)
+            .allowsHitTesting(listSlot.answersView)
+            .accessibilityHidden(!listSlot.answersView)
         }
         // Decode the covers of the rows the list has loaded as they land, so
         // a page scrolled to is not a column of spinners.

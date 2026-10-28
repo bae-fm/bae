@@ -12,8 +12,10 @@ private let importListLogger = Logger.bae("ImportListSlot")
 /// folded shut decide which items sit at which offsets, so they are core's
 /// list's rather than applied to a page after it arrives. Changing them
 /// therefore changes the one source instead of building a new list: the list
-/// re-reads the pages it holds when the changed value arrives. Which groups
-/// are folded is core's alone; each header says whether it is open.
+/// re-reads the pages it holds when the changed value arrives. Until then the
+/// rows it holds are the previous view's, which the list does not show as
+/// this one's. Which groups are folded is core's alone; each header says
+/// whether it is open.
 ///
 /// `UiStore` keeps the tab and the filter text as session state, so every
 /// setter of them here writes both: the store the sidebar renders from, and
@@ -22,6 +24,11 @@ private let importListLogger = Logger.bae("ImportListSlot")
 @Observable
 final class ImportListSlot {
     private(set) var list: PaginatedList<BridgeImportListItem>?
+    /// Whether the rows the list holds answer the view it shows: false from
+    /// the moment another tab, filter or order is asked for until the read
+    /// that reflects it has landed. Before then the list's rows are the
+    /// previous view's.
+    private(set) var answersView = true
     private(set) var sortOrder: BridgeImportListOrder
     /// Where the person is in the list, as the table last recorded it. Held
     /// here rather than by the table so the import tab finds it again after
@@ -56,6 +63,9 @@ final class ImportListSlot {
     private var foldTask: Task<Void, Never>?
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
+    /// The wait for the read that answers the view last asked for.
+    @ObservationIgnored
+    private var viewAnswer: Task<Void, Never>?
     /// Set when a page read failed. The subscription behind a failed read is
     /// finished, so the next view change has to build a new one rather than
     /// reconfigure the dead one.
@@ -174,7 +184,7 @@ final class ImportListSlot {
         view = next
         // The list keeps only the rows its view shows selected, so it is
         // asked for the view that shows the candidate before it selects it.
-        pages.setView(next)
+        show(next, on: pages)
         try await selectOnly(candidateKey)
         guard let list else { return nil }
         try await pages.waitForView(next)
@@ -193,18 +203,36 @@ final class ImportListSlot {
         // shows what it could not load, and the next thing the person does
         // with the list is what asks core again.
         if sourceFailed {
+            answersView = false
             startLoad()
             return
         }
-        pages?.setView(next)
+        guard let pages else { return }
+        show(next, on: pages)
+    }
+
+    /// Ask core's list for `next`, and take its rows as the view's once the
+    /// read that reflects it lands, unless another view was asked for since.
+    private func show(_ next: BridgeImportListView, on pages: ImportListPages) {
+        answersView = false
+        pages.setView(next)
+        viewAnswer?.cancel()
+        viewAnswer = Task { [weak self] in
+            // A failed write or read fails the list's pages, which report it.
+            guard (try? await pages.waitForView(next)) != nil,
+                let self, view == next
+            else { return }
+            answersView = true
+        }
     }
 
     private func reload() async {
         sourceFailed = false
         loadFailure = nil
+        let requested = view
         let pages: ImportListPages
         do {
-            pages = try await makeSource(view)
+            pages = try await makeSource(requested)
         }
         catch {
             sourceFailed = true
@@ -249,6 +277,14 @@ final class ImportListSlot {
         guard !Task.isCancelled else { return }
         self.pages = pages
         list = newList
+        // The list was read under the view asked for when it was built; one
+        // asked for since is asked for now.
+        if view == requested {
+            answersView = true
+        }
+        else {
+            show(view, on: pages)
+        }
     }
 
     #if DEBUG

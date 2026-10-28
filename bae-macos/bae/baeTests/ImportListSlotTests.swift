@@ -360,6 +360,38 @@ struct ImportListSlotTests {
         #expect(folds.all == ["Box true", "Box false", "all true"])
     }
 
+    /// Another tab is another view: until the read that reflects it lands,
+    /// the rows the list holds are the tab's before it, which the slot does
+    /// not take as this one's.
+    @Test("a new tab's rows are the list's only once the read for it lands")
+    func aNewTabIsAnsweredByItsOwnRead() async throws {
+        let delivery = AppliedViewResolver()
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: ImportSelection(),
+            makeSource: { _ in
+                .stub(
+                    source: ImportListPreviewPageSource(
+                        items: (0..<3).map(candidateItem)
+                    ),
+                    waitForView: { view in await delivery.wait(for: view) }
+                )
+            }
+        )
+        slot.startLoad()
+        try await Wait.until { slot.list != nil }
+        #expect(slot.answersView)
+
+        slot.setTab(.done)
+        #expect(!slot.answersView)
+        try await Wait.until { !delivery.requests.isEmpty }
+        #expect(delivery.requests.last?.tab == .done)
+
+        delivery.resolve()
+        try await Wait.until { slot.answersView }
+    }
+
     /// The slot asks core for the list under the entry the person chose, and
     /// keeps it as the sidebar's own.
     @Test("a chosen entry narrows the view")
