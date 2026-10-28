@@ -153,8 +153,9 @@
             let files: [String: BridgeFileUpload]
         }
 
-        /// A release whose audio is being sent with its bytes, and whose
-        /// cover waits its turn.
+        /// A release whose audio is being sent, a third of it so far, and
+        /// whose cover waits its turn: of the release's 36.4 MB, the 12.4 MB
+        /// of its audio sent.
         static let uploadingRelease = PreviewReleaseUpload(
             releaseId: "rel-row-1",
             upload: BridgeReleaseUpload(
@@ -165,7 +166,7 @@
                 ),
                 bar: BridgeUploadBar(
                     bytesDone: 12_400_000,
-                    bytesTotal: 26_100_000
+                    bytesTotal: 36_400_000
                 )
             ),
             files: [
@@ -175,7 +176,7 @@
                     pending: nil,
                     bar: BridgeUploadBar(
                         bytesDone: 12_400_000,
-                        bytesTotal: 26_100_000
+                        bytesTotal: 34_000_000
                     )
                 ),
                 "rel-row-1-image": BridgeFileUpload(

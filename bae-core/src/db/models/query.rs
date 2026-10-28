@@ -257,7 +257,7 @@ pub struct DbReleaseDetail {
 
 /// One release file waiting in this device's upload queue, read with its
 /// row: the file being uploaded, whether this process is sending it now,
-/// the record of what it waits for, and its session's confirmed bytes.
+/// the record of what it waits for, its size, and the bytes of it sent.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbFileUpload {
     /// The release file row whose file it is.
@@ -265,8 +265,8 @@ pub struct DbFileUpload {
     pub file: coven::FileId,
     pub sending: bool,
     pub pending: Option<coven::PendingRecord>,
-    pub bytes_confirmed: Option<i64>,
-    pub bytes_total: Option<i64>,
+    pub file_size: i64,
+    pub bytes_sent: i64,
 }
 
 /// One file this process is sending now: its release, when it is one of a
@@ -346,12 +346,12 @@ pub struct DbReleaseSummary {
 
 /// A release's files in this device's upload queue, as one read finds them:
 /// how many wait there, how many of those this process is sending now, and
-/// the bytes the provider confirmed of those being sent.
+/// of the release's whole size, the bytes stored or sent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbReleaseUpload {
     pub queued: i64,
     pub sending: i64,
-    pub bytes_confirmed: i64,
+    pub bytes_done: i64,
     pub bytes_total: i64,
 }
 

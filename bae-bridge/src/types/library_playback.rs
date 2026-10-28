@@ -353,9 +353,9 @@ pub struct BridgeReleaseSummary {
 }
 
 /// A release's files in this device's upload queue: how many wait and how
-/// many are being sent now, and, while any is, the bytes the provider
-/// confirmed of those being sent. Mirrors `ReleaseUpload`; how fast they go
-/// is the release's upload transfer.
+/// many are being sent now, and, while any is, of the release's whole size,
+/// the bytes stored or sent. Mirrors `ReleaseUpload`; how fast they go is the
+/// release's upload transfer.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeReleaseUpload {
     pub progress: crate::types::BridgeUploadProgress,

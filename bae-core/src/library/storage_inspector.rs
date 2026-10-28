@@ -26,8 +26,8 @@ pub struct StorageInspectorFile {
 
 /// A release file's queued upload as the inspector shows it: which file,
 /// whether it is being sent now, why it waits when it does, with the error
-/// behind that while this process holds it, and its session's confirmed
-/// bytes. How fast it goes is its transfer.
+/// behind that while this process holds it, and while it is sent, the bytes
+/// of its size sent. How fast it goes is its transfer.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspectorUpload {
     pub file: coven::FileId,

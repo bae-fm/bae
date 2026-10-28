@@ -19,8 +19,8 @@ pub struct BridgeStorageInspectorFile {
 }
 
 /// A release file's queued upload: which file, whether it is being sent,
-/// why it waits when it does, and its session's confirmed bytes. How fast it
-/// goes is the transfer keyed by its `file_id`. Mirrors
+/// why it waits when it does, and while it is sent, the bytes of its size
+/// sent. How fast it goes is the transfer keyed by its `file_id`. Mirrors
 /// `StorageInspectorUpload`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFileUpload {
