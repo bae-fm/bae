@@ -258,6 +258,15 @@ pub struct DbReleaseDetail {
     pub download: Option<crate::library::DownloadPhase>,
 }
 
+/// Where one release file stands for its pin: whether this device keeps it
+/// whole, and while this process downloads it to be kept, the file coven
+/// downloads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DbFilePin {
+    pub kept: bool,
+    pub downloading: Option<coven::FileId>,
+}
+
 /// One release file waiting in this device's upload queue, read with its
 /// row: the file being uploaded, whether this process is sending it now, and
 /// the record of what it waits for.

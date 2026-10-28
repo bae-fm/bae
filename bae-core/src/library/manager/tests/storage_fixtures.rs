@@ -192,13 +192,11 @@ async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<co
 /// file, and coven fetches its copy from storage after that.
 #[cfg(feature = "test-utils")]
 async fn wait_for_kept_release(manager: &LibraryManager, release_id: &str) {
-    let mut progress = manager
-        .database
-        .subscribe_pin_progress(release_file_refs(manager, release_id).await);
+    let mut pins = manager.database.subscribe_release_file_pins(release_id);
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
         loop {
-            let progress = progress.next().await.expect("the query stays open").unwrap();
-            if progress.files_completed == progress.files_total {
+            let pins = pins.next().await.expect("the query stays open").unwrap();
+            if pins.values().all(|pin| pin.kept) {
                 break;
             }
         }

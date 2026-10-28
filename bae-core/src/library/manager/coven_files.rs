@@ -248,7 +248,7 @@ impl LibraryManager {
 /// records — what a pin fetches, and what the Downloads pane counts.
 pub(super) struct PinnableFile {
     pub(super) file: coven::FileRef,
-    bytes: u64,
+    pub(super) bytes: u64,
 }
 
 fn pinnable_bytes(release_id: &str, row_id: &str, file_size: i64) -> Result<u64, LibraryError> {
@@ -259,7 +259,10 @@ fn pinnable_bytes(release_id: &str, row_id: &str, file_size: i64) -> Result<u64,
     })
 }
 
-fn total_bytes(release_id: &str, pinnable: &[PinnableFile]) -> Result<u64, LibraryError> {
+pub(super) fn total_bytes(
+    release_id: &str,
+    pinnable: &[PinnableFile],
+) -> Result<u64, LibraryError> {
     pinnable.iter().try_fold(0u64, |total, entry| {
         total.checked_add(entry.bytes).ok_or_else(|| {
             LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))

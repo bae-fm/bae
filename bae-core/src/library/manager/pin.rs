@@ -1,27 +1,60 @@
 //! Release pins restore their previous state if downloading fails or is cancelled.
 use super::*;
 
+/// Of the files `sizes` names, by release file id with its plaintext size,
+/// the bytes a pin holds: each file kept whole, and of each file downloading
+/// to be kept, the share of its size its object has moved as `moved` tells
+/// it. Counting each file's own share keeps the bytes moving as a file
+/// arrives, where the cache's coverage holds still until a file is kept.
+fn pinned_bytes(
+    sizes: &std::collections::BTreeMap<String, u64>,
+    pins: &std::collections::BTreeMap<String, crate::db::DbFilePin>,
+    moved: &std::collections::BTreeMap<coven::FileId, coven::TransferProgress>,
+) -> u64 {
+    sizes
+        .iter()
+        .map(|(id, size)| match pins.get(id) {
+            Some(pin) if pin.kept => *size,
+            Some(crate::db::DbFilePin {
+                downloading: Some(file),
+                ..
+            }) => moved.get(file).map_or(0, |progress| {
+                (*size as f64 * crate::library::file_transfers::fraction(*progress)) as u64
+            }),
+            _ => 0,
+        })
+        .try_fold(0u64, |total, bytes| total.checked_add(bytes))
+        .expect("a release's pinned bytes fit its total")
+}
+
 impl LibraryManager {
     pub(crate) async fn pin_release_files_with_progress(
         &self,
         release: &str,
         mut on_progress: impl FnMut(crate::library::DownloadTransferProgress) + Send,
     ) -> Result<(), LibraryError> {
-        let files = self
-            .release_pinnable_files(release)
-            .await?
-            .into_iter()
-            .map(|entry| entry.file)
-            .collect::<Vec<_>>();
-        let ids = files
+        let pinnable = self.release_pinnable_files(release).await?;
+        let total = super::coven_files::total_bytes(release, &pinnable)?;
+        let ids = pinnable
             .iter()
-            .map(|file| match file.key().values() {
+            .map(|entry| match entry.file.key().values() {
                 [rusqlite::types::Value::Text(id)] => Ok(id.clone()),
                 _ => Err(LibraryError::Storage(
                     "release file has a non-text key".into(),
                 )),
             })
             .collect::<Result<Vec<_>, _>>()?;
+        // Each file's plaintext size, by release file id, which its share of
+        // the download counts against.
+        let sizes: std::collections::BTreeMap<String, u64> = ids
+            .iter()
+            .cloned()
+            .zip(pinnable.iter().map(|entry| entry.bytes))
+            .collect();
+        let files = pinnable
+            .into_iter()
+            .map(|entry| entry.file)
+            .collect::<Vec<_>>();
         let previous = self
             .database
             .rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, ids)
@@ -40,25 +73,43 @@ impl LibraryManager {
             // Progress reads belong to the operation: if one fails, finish
             // rolling back its pins before reporting the failure.
             let result = async {
-                let mut progress = manager.database.subscribe_pin_progress(files.clone());
+                let mut pins = manager.database.subscribe_release_file_pins(&release);
+                let mut transfers = manager.database.subscribe_download_file_transfers();
+                // How far each file being downloaded has got, as the watch
+                // last told it.
+                let mut moved = std::collections::BTreeMap::new();
+                // Where each file stands, as the query last read it; `None`
+                // until it first does.
+                let mut read = None;
                 let pin = manager.database.pin(&files);
                 tokio::pin!(pin);
                 let mut rate: Option<crate::library::download_snapshot::DownloadRate> = None;
                 loop {
-                    let (next, finished) = tokio::select! {
+                    let finished = tokio::select! {
                         _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
                         _ = closing.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled because the library is closing".into())),
                         result = &mut pin => {
                             result.map_err(|error| LibraryError::file_read(format!("pin release {release}"), error))?;
-                            (manager.database.pin_progress(files.clone()).await?, true)
+                            read = Some(manager.database.release_file_pins(&release).await?);
+                            true
                         }
-                        next = progress.next() => (
-                            next.expect("a progress query reports why it ended, which returns first")?,
-                            false,
-                        ),
+                        next = pins.next() => {
+                            read = Some(next.expect("a pin query reports why it ended, which returns first")?);
+                            false
+                        }
+                        changes = transfers.next() => {
+                            let changes = changes.ok_or_else(|| LibraryError::Storage(format!("pin release {release}: the store closed")))?;
+                            crate::library::file_transfers::apply(&mut moved, changes);
+                            false
+                        }
+                    };
+                    let Some(read) = &read else {
+                        continue;
                     };
                     let next = crate::library::DownloadTransferProgress::new(
-                        &release, next.bytes_cached, next.bytes_total,
+                        &release,
+                        pinned_bytes(&sizes, read, &moved),
+                        total,
                     )?;
                     let now = manager.clock.now();
                     let next = rate
@@ -99,5 +150,51 @@ impl LibraryManager {
         };
         cancel_on_drop.disarm();
         result
+    }
+}
+
+#[cfg(test)]
+mod pinned_bytes_tests {
+    use super::pinned_bytes;
+    use crate::db::DbFilePin;
+    use std::collections::BTreeMap;
+
+    fn file(n: u128) -> coven::FileId {
+        coven::FileId(uuid::Uuid::from_u128(n))
+    }
+
+    /// A kept file counts its whole size, a file downloading the share of its
+    /// size its object has moved, and a file waiting, or downloading but not
+    /// yet told, counts none.
+    #[test]
+    fn a_pin_holds_its_kept_files_and_each_downloads_share() {
+        let sizes: BTreeMap<String, u64> = [
+            ("kept".to_string(), 1_000),
+            ("downloading".to_string(), 400),
+            ("untold".to_string(), 300),
+            ("waiting".to_string(), 200),
+        ]
+        .into_iter()
+        .collect();
+        let pin = |kept, downloading| DbFilePin { kept, downloading };
+        let pins: BTreeMap<String, DbFilePin> = [
+            ("kept".to_string(), pin(true, None)),
+            ("downloading".to_string(), pin(false, Some(file(1)))),
+            ("untold".to_string(), pin(false, Some(file(2)))),
+            ("waiting".to_string(), pin(false, None)),
+        ]
+        .into_iter()
+        .collect();
+        let moved = [(
+            file(1),
+            coven::TransferProgress {
+                bytes_transferred: 110,
+                bytes_total: 440,
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert_eq!(pinned_bytes(&sizes, &pins, &moved), 1_000 + 100);
     }
 }

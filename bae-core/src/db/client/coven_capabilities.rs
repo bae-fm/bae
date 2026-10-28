@@ -1,5 +1,36 @@
 use super::*;
 
+/// Where each of the release `?1`'s files stands for its pin: whether this
+/// device keeps it whole, as `coven_pins` says, and while this process
+/// downloads it to be kept, the file coven downloads, as `coven_downloading`
+/// lists it.
+const RELEASE_FILE_PINS: &str = "SELECT f.id, pin.kept IS 1, downloading.file \
+     FROM release_files AS f \
+     LEFT JOIN coven_pins AS pin \
+         ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
+     LEFT JOIN coven_downloading AS downloading \
+         ON downloading.table_name = 'release_files' AND downloading.key = coven_key(f.id) \
+     WHERE f.release_id = ?1";
+
+/// [`RELEASE_FILE_PINS`] for `release_id`, by release file id.
+fn release_file_pins_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
+    Ok(sql
+        .query(RELEASE_FILE_PINS, [release_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                DbFilePin {
+                    kept: row.get(1)?,
+                    downloading: row.get(2)?,
+                },
+            ))
+        })?
+        .into_iter()
+        .collect())
+}
+
 impl Database {
     pub(crate) fn store_id(&self) -> coven::StoreId {
         self.inner.handle.store_id()
@@ -226,18 +257,27 @@ impl Database {
         self.inner.handle.pin(files).await
     }
 
-    pub(crate) async fn pin_progress(
+    /// Where each of the release's files stands for its pin now, by release
+    /// file id.
+    pub(crate) async fn release_file_pins(
         &self,
-        files: Vec<coven::FileRef>,
-    ) -> Result<coven::PinProgress, DbError> {
-        Ok(self.inner.handle.pin_progress(files).await?)
+        release_id: &str,
+    ) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
+        let release_id = release_id.to_string();
+        self.read(move |sql| release_file_pins_on(&sql, &release_id))
+            .await
     }
 
-    pub(crate) fn subscribe_pin_progress(
+    /// Where each of the release's files stands for its pin, live: it reruns
+    /// as a file is kept and as a download to keep one starts or ends.
+    pub(crate) fn subscribe_release_file_pins(
         &self,
-        files: Vec<coven::FileRef>,
-    ) -> coven::LiveQuery<coven::PinProgress> {
-        self.inner.handle.subscribe_pin_progress(files)
+        release_id: &str,
+    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>> {
+        let release_id = release_id.to_string();
+        self.inner
+            .handle
+            .subscribe(move |sql| Ok(release_file_pins_on(&sql, &release_id)?))
     }
 
     /// How far each file this process is downloading to keep whole has got,
