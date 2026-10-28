@@ -21,7 +21,6 @@ mod triage_tests {
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
                 identification: None,
                 import: Some(bae_core::import::ImportInFlight {
-                    progress_percent: Some(40),
                     step: bae_core::import::ImportStep::Running(
                         bae_core::import::ImportPhase::ReadingFiles,
                     ),
@@ -29,10 +28,10 @@ mod triage_tests {
                 search: None,
             });
         assert!(idle.identification.is_none());
-        assert_eq!(
-            idle.import.map(|import| import.progress_percent),
-            Some(Some(40))
-        );
+        assert!(matches!(
+            idle.import.map(|import| import.step),
+            Some(crate::types::BridgeImportStep::Running { .. })
+        ));
     }
 
     /// A candidate waiting on the identification queue crosses as queued, so

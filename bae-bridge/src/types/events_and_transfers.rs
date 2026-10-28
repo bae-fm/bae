@@ -167,6 +167,8 @@ pub enum BridgeFastValue {
     /// Where the preview is in its clip; a stream's one key, `""`, while a
     /// preview is loaded.
     PreviewPosition { position: BridgePreviewPosition },
+    /// How far through its step a running import is; keyed by candidate.
+    ImportPercent { percent: u32 },
 }
 
 /// Which keys of a stream started or stopped holding a value.

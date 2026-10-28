@@ -156,12 +156,6 @@ class KeyedStream:
 # repeated row reads fails until it is removed.
 KEYED_STREAMS = (
     KeyedStream(
-        "Importer",
-        "candidateRuntime",
-        "what identification and the import are doing for a candidate right "
-        "now, which core sends as it moves and keeps in no table",
-    ),
-    KeyedStream(
         "OutboxStore",
         "fileShare",
         "the latest share a file being sent has moved, which coven's upload "

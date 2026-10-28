@@ -2701,7 +2701,11 @@ The import service (desktop only) owns the watched folders, the scan, the
 candidates, extraction, identification and the import worker. Its handle
 watches and unwatches folders, scans, groups and separates candidates, runs and
 cancels identification, searches, picks, edits drafts, binds CUE sheets,
-starts and cancels imports, and serves the import list's live query. Every
+starts and cancels imports, and serves the import list's live query. What
+each candidate has in flight — what its identification is doing, the step
+its import is at, its search — is a subscription by key, sent as it steps;
+how far through its step a running import is moves many times a second, so
+it reaches an app only in a `KeyedValueStream` (§10.2), by candidate. Every
 write to a candidate loads it whole, applies its rule, and saves it against
 the revisions it read, so two writers never disagree about which rows belong
 together.
@@ -2819,9 +2823,9 @@ to compile in the bridge until it is carried across.
   before the store closes, and none hears from a closed store. One opened on
   a closed library delivers nothing and is reported as a bug.
 - **Fast values** — transfer bytes and rates, file shares, export
-  percents, and playback and preview positions, which core sends many times
-  a second — reach an app only in a `KeyedValueStream`, keyed by release,
-  file or track, never in a callback, a
+  percents, playback and preview positions, and import percents, which core
+  sends many times a second — reach an app only in a `KeyedValueStream`,
+  keyed by release, file, track or candidate, never in a callback, a
   record field or a subscription value. A `feed_*` call starts writing one
   on the bridge's side and returns it; cancelling or dropping it, or closing
   the library, stops it, and it then holds nothing. A read that fails empties

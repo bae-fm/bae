@@ -262,7 +262,6 @@ async fn import_progress_is_held_per_key_beside_its_claim() {
             .unwrap()
             .and_then(|runtime| runtime.import),
         Some(ImportInFlight {
-            progress_percent: Some(42),
             step: ImportStep::Running(ImportPhase::MeasuringLoudness),
         })
     );
@@ -271,9 +270,10 @@ async fn import_progress_is_held_per_key_beside_its_claim() {
             .snapshot("/watch/a/rel2")
             .await
             .unwrap()
-            .and_then(|runtime| runtime.import)
-            .and_then(|import| import.progress_percent),
-        None,
+            .and_then(|runtime| runtime.import),
+        Some(ImportInFlight {
+            step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
+        }),
         "another key's progress is its own"
     );
 }
@@ -360,7 +360,6 @@ async fn a_late_reader_reads_every_running_key() {
     assert_eq!(
         running["/watch/a/rel1"].import,
         Some(ImportInFlight {
-            progress_percent: Some(10),
             step: ImportStep::Running(ImportPhase::MeasuringLoudness),
         })
     );
@@ -368,7 +367,7 @@ async fn a_late_reader_reads_every_running_key() {
 }
 
 #[tokio::test]
-async fn a_preparing_step_has_no_progress_fraction() {
+async fn a_preparing_step_is_the_step_it_reports() {
     let runtime = CandidateRuntime::for_test().await;
     let key = "/watch/a/rel1";
     claim(&runtime, key).await;
@@ -387,9 +386,10 @@ async fn a_preparing_step_has_no_progress_fraction() {
             .await
             .unwrap()
             .and_then(|runtime| runtime.import)
-            .expect("preparation is in flight")
-            .progress_percent,
-        None
+            .expect("preparation is in flight"),
+        ImportInFlight {
+            step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
+        }
     );
 }
 

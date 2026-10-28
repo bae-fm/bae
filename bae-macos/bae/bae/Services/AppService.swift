@@ -219,10 +219,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(outputStore)
             .environment(uiStore)
             .environment(\.previewPosition, importStore.previewPosition.only)
-            .environment(
-                \.candidateRuntimePublisher,
-                candidateRuntimePublisher
-            )
+            .environment(\.candidateRuntimes, importStore.candidateRuntimes)
+            .environment(\.importPercents, importStore.importPercents)
             .environment(
                 \.candidateSignalsPublisher,
                 candidateSignalsPublisher
@@ -230,12 +228,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             #if BAE_OAUTH_PROVIDERS
                 .environment(cloudSyncSetup)
             #endif
-    }
-
-    private var candidateRuntimePublisher:
-        AnyPublisher<[BridgeCandidateRuntimeChange], Never>
-    {
-        importStore.candidateRuntimeSubject.eraseToAnyPublisher()
     }
 
     private var candidateSignalsPublisher:

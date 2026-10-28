@@ -57,18 +57,6 @@ impl AppHandle {
 
 #[uniffi::export]
 impl AppHandle {
-    /// What is in flight for one key right now — the read a view does once
-    /// when it appears, after it has subscribed to the changes. It is the
-    /// value the runtime stream last delivered, so the two agree.
-    pub fn candidate_runtime(
-        &self,
-        candidate_key: String,
-    ) -> Option<crate::types::BridgeCandidateRuntimeSnapshot> {
-        self.services
-            .latest_candidate_runtime(&candidate_key)
-            .map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
-    }
-
     /// The signals extraction has found for one key so far — the read a form
     /// does once when it opens, after it has subscribed to the UI events. `None`
     /// before the first snapshot, and for a run that settled in an earlier

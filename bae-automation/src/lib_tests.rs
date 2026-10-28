@@ -260,9 +260,9 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
     let status = automation_import_status(
         None,
         Some(&ImportInFlight {
-            progress_percent: None,
             step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
         }),
+        None,
     )
     .expect("the importing row has a status");
 

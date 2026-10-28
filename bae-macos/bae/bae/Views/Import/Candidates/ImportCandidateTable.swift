@@ -30,8 +30,10 @@ struct ImportCandidateTable: NSViewRepresentable {
     private var imageStore
     @Environment(Importer.self)
     private var importer: Importer?
-    @Environment(\.candidateRuntimePublisher)
-    private var candidateRuntime
+    @Environment(\.candidateRuntimes)
+    private var candidateRuntimes
+    @Environment(\.importPercents)
+    private var importPercents
     @Environment(\.surfaceTone)
     private var tone
     @Environment(\.accentChoice)
@@ -41,7 +43,8 @@ struct ImportCandidateTable: NSViewRepresentable {
         ImportListRowEnvironment(
             imageStore: imageStore,
             importer: importer,
-            candidateRuntime: candidateRuntime,
+            candidateRuntimes: candidateRuntimes,
+            importPercents: importPercents,
             appearance: HostedAppearance(
                 tone: tone,
                 accent: accent

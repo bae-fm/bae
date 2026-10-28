@@ -20,6 +20,13 @@ private let importStoreLogger = Logger.bae("ImportStore")
 /// up by key without knowing its source.
 @Observable
 class ImportStore {
+    /// An empty store, made on the main actor, where the candidate runtimes
+    /// it holds are made and read.
+    @MainActor
+    init() {
+        candidateRuntimes = CandidateRuntimes()
+    }
+
     /// The list entries the sidebar has loaded, by stable key. The paged list
     /// holds the order; this holds what each key renders as.
     var items: [String: BridgeImportListItem] = [:]
@@ -171,15 +178,15 @@ class ImportStore {
         .previewPosition()
 
     /// What every candidate has in flight — a run's identify state, a running
-    /// import's progress — as one signal. Not a stored dictionary: a leaf that
-    /// draws one key subscribes and filters, the way the loudness bar does, so
-    /// a progress tick redraws that leaf rather than the sidebar. The latest
-    /// value per key lives in core, and a subscriber reads its own key from
-    /// there when it appears.
+    /// import's step — by key, each key observed on its own, so a key's change
+    /// redraws the views reading that key rather than the sidebar.
     @ObservationIgnored
-    let candidateRuntimeSubject = PassthroughSubject<
-        [BridgeCandidateRuntimeChange], Never
-    >()
+    let candidateRuntimes: CandidateRuntimes
+
+    /// How far through its step each running import is, for the native bars
+    /// that read it each display frame.
+    @ObservationIgnored
+    let importPercents = LatestStream<UInt32>.importPercents()
 
     /// Each candidate's extracted signals as extraction settles them. A
     /// signal rather than a stored value for the same reason the runtime is

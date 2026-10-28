@@ -7,7 +7,7 @@ import os
 
 // The one place the app touches the bridge's `KeyedValueStream`: values core
 // sends many times a second (transfer bytes and rates, file shares, export
-// percents, playback and preview positions) arrive in a stream the bridge holds and writes itself, and the
+// percents, playback and preview positions, import percents) arrive in a stream the bridge holds and writes itself, and the
 // only reader of a value is `FrameFollowing`, which hands it to the native
 // view drawing that key once per display frame. App code passes streams and
 // sources around; it never holds a value, so nothing SwiftUI observes can
@@ -312,6 +312,30 @@ extension LatestStream where Value == UInt8 {
         /// Fill from core.
         public func feed(from appHandle: AppHandle) -> LatestFeed {
             fed { appHandle.feedExportPercents(activity: $0) }
+        }
+    #endif
+}
+
+extension LatestStream where Value == UInt32 {
+    /// How far through its step each running import is, by candidate key;
+    /// a preview's holds `values` and nothing feeds it.
+    public static func importPercents(holding values: [String: Value] = [:])
+        -> LatestStream
+    {
+        LatestStream(holding: values) {
+            if case .importPercent(let percent) = $0 {
+                percent
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    #if os(macOS)
+        /// Fill from core.
+        public func feed(from appHandle: AppHandle) -> LatestFeed {
+            fed { appHandle.feedImportPercents(activity: $0) }
         }
     #endif
 }

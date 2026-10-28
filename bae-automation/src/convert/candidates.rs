@@ -17,6 +17,7 @@ use std::collections::HashMap;
 pub(crate) async fn automation_candidate_from_folder(
     folder: &ImportCandidateDetail,
     runtime: &HashMap<String, CandidateRuntimeSnapshot>,
+    percents: &HashMap<String, u32>,
     services: &bae_core::library::AppServices,
 ) -> Result<AutomationCandidate, AutomationError> {
     let candidate = &folder.candidate;
@@ -65,6 +66,7 @@ pub(crate) async fn automation_candidate_from_folder(
             import_status: automation_import_status(
                 folder.import_status.as_ref(),
                 live.and_then(|live| live.import.as_ref()),
+                percents.get(&candidate.key()).copied(),
             ),
         },
         picked_pressing: folder
@@ -191,15 +193,16 @@ fn automation_candidate_common(
     }
 }
 
-/// Where the candidate's import stands: the attempt running now, with its
-/// progress, or else what the last one left in the tables.
+/// Where the candidate's import stands: the attempt running now, with how
+/// far through its step it is, or else what the last one left in the tables.
 pub(crate) fn automation_import_status(
     status: Option<&CandidateImportStatus>,
     in_flight: Option<&ImportInFlight>,
+    percent: Option<u32>,
 ) -> Option<AutomationImportStatus> {
     if let Some(in_flight) = in_flight {
         return Some(AutomationImportStatus::Importing {
-            progress_percent: in_flight.progress_percent,
+            progress_percent: percent,
             step: Some(AutomationImportStep::from_core(in_flight.step)),
         });
     }

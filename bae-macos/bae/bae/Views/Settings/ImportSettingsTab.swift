@@ -152,7 +152,7 @@ struct ImportSettingsTab: View {
         ImportSettingsTab()
             .environment(PreviewData.configStore())
             .environment(Discogs.stub())
-            .environment(PreviewData.importTabImporter())
+            .environment(Importer.stub())
             .environment(UiStore())
             .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -166,7 +166,7 @@ struct ImportSettingsTab: View {
                 )
             )
             .environment(Discogs.stub())
-            .environment(PreviewData.importTabImporter())
+            .environment(Importer.stub())
             .environment(UiStore())
             .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }

@@ -189,16 +189,6 @@ impl AppServices {
         self.inner.import.candidate_runtime(key).await
     }
 
-    /// What is in flight for one key as the runtime stream last read it — the
-    /// read a view does once when it appears, after it has subscribed to the
-    /// stream ([`Self::watch_candidate_runtimes`]), so the two agree.
-    pub fn latest_candidate_runtime(
-        &self,
-        key: &str,
-    ) -> Option<crate::import::CandidateRuntimeSnapshot> {
-        self.inner.import.latest_candidate_runtime(key)
-    }
-
     /// Claim a candidate the way committing an import does, for a test with
     /// no worker behind it.
     #[cfg(any(test, feature = "test-utils"))]
@@ -243,6 +233,18 @@ impl AppServices {
     /// Every key with something in flight, and each key that changes after.
     pub fn watch_candidate_runtimes(&self) -> crate::import::RuntimeSnapshotsWatch {
         self.inner.import.watch_candidate_runtimes()
+    }
+
+    /// Each running import's percent, by candidate key, as it stands now.
+    pub fn import_percents(&self) -> std::collections::HashMap<String, u32> {
+        self.inner.import.watch_import_percents().borrow().clone()
+    }
+
+    /// Each running import's percent, by candidate key, now and as it moves.
+    pub fn watch_import_percents(
+        &self,
+    ) -> tokio::sync::watch::Receiver<std::collections::HashMap<String, u32>> {
+        self.inner.import.watch_import_percents()
     }
 
     /// Every key's runtime as each write of its standing leaves it, in the

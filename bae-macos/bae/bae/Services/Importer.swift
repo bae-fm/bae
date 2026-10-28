@@ -79,7 +79,6 @@ private struct ImportOperations: Sendable {
         @Sendable (String, [BridgeCredited]) async throws -> Void
     let setCandidateTrackEdit:
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
-    let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (String) async throws -> BridgePaneOutcome
     let chooseCandidateArtistIdentity:
@@ -266,9 +265,6 @@ extension ImportOperations {
                     track: $1
                 )
             },
-            candidateRuntime: {
-                handle.candidateRuntime(candidateKey: $0)
-            },
             candidateSignals: {
                 handle.candidateSignals(candidateKey: $0)
                     .map(Signals.init(bridge:))
@@ -427,10 +423,6 @@ final class Importer: Sendable, Observable {
         setCandidateTrackEdit:
             @escaping @Sendable (String, BridgeRawTrackEdit) async throws ->
             Void = { _, _ in },
-        candidateRuntime:
-            @escaping @Sendable (String) -> BridgeCandidateRuntimeSnapshot? = {
-                _ in nil
-            },
         candidateSignals: @escaping @Sendable (String) -> Signals? = { _ in nil
         },
         startImport:
@@ -492,7 +484,6 @@ final class Importer: Sendable, Observable {
             setCandidatePressingFact: setCandidatePressingFact,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
-            candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
             startImport: startImport,
             chooseCandidateArtistIdentity: { _, _, _ in
@@ -847,14 +838,6 @@ extension Importer {
 /// subscribed to the stream that keeps it current. Every one of these is a
 /// read: they start nothing and change nothing.
 extension Importer {
-    /// What is in flight for one key right now — the read a view does once
-    /// when it appears, after it has subscribed to the changes.
-    func candidateRuntime(_ candidateKey: String)
-        -> BridgeCandidateRuntimeSnapshot?
-    {
-        operations.candidateRuntime(candidateKey)
-    }
-
     /// The signals extraction has found for one key so far — the read a form
     /// does once when it opens, after it has subscribed to the changes.
     func candidateSignals(_ candidateKey: String) -> Signals? {

@@ -2,20 +2,16 @@ import BaeKit
 import SwiftUI
 
 /// A line of progress: the phase, a bar filling the rest of the line, and an
-/// optional count ("112 / 130"), in the surrounding font.
-struct ProgressLine<Label: View>: View {
-    /// 0...1 for a determinate fill; nil for the indeterminate marching pill.
-    let progress: Double?
+/// optional count ("112 / 130"), in the surrounding font. The bar is a fill
+/// the line is given, or one set straight from a fast stream.
+struct ProgressLine<Label: View, Bar: View>: View {
+    let bar: Bar
     /// The count after the bar. Nil when the line has only a phase to name.
     let detail: String?
     let label: Label
 
-    init(
-        progress: Double?,
-        detail: String? = nil,
-        @ViewBuilder label: () -> Label
-    ) {
-        self.progress = progress
+    init(bar: Bar, detail: String? = nil, @ViewBuilder label: () -> Label) {
+        self.bar = bar
         self.detail = detail
         self.label = label()
     }
@@ -36,7 +32,7 @@ struct ProgressLine<Label: View>: View {
                 // A long phase truncates rather than squeezing out the bar.
                 .truncationMode(.middle)
                 .layoutPriority(1)
-            ProgressTrackBar(progress: progress)
+            bar
                 .frame(minWidth: 48)
             if let detail {
                 Text(detail)
@@ -49,9 +45,31 @@ struct ProgressLine<Label: View>: View {
     }
 }
 
-extension ProgressLine where Label == Text {
+extension ProgressLine where Bar == ProgressTrackBar {
+    /// A line whose bar fills to `progress`: 0...1 for a determinate fill,
+    /// nil for the indeterminate marching pill.
+    init(
+        progress: Double?,
+        detail: String? = nil,
+        @ViewBuilder label: () -> Label
+    ) {
+        self.init(
+            bar: ProgressTrackBar(progress: progress),
+            detail: detail,
+            label: label
+        )
+    }
+}
+
+extension ProgressLine where Label == Text, Bar == ProgressTrackBar {
     init(_ label: String, progress: Double?, detail: String? = nil) {
         self.init(progress: progress, detail: detail) { Text(label) }
+    }
+}
+
+extension ProgressLine where Label == Text {
+    init(_ label: String, bar: Bar) {
+        self.init(bar: bar) { Text(label) }
     }
 }
 

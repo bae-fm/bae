@@ -476,14 +476,13 @@ struct FixtureKeyedList: View {
 
 struct FixtureKeyedProgress: View {
     let key: String
-    @Environment(Importer.self)
-    private var importer: Importer?
-    @State private var runtime: BridgeCandidateRuntimeSnapshot?
+    @Environment(OutboxStore.self)
+    private var outbox: OutboxStore?
     var body: some View {
         Text("")
             .task(id: key) {
-                guard let importer else { return }
-                runtime = importer.candidateRuntime(key)
+                guard let outbox else { return }
+                _ = outbox.fileShare(forFile: key)
             }
     }
 }
@@ -497,11 +496,11 @@ struct FixtureKeyedProgress: View {
         return relative
 
     def keyed_findings(self, relative: Path, source: str) -> list[str]:
-        line = source.count("\n", 0, source.index("@Environment(Importer.self)")) + 1
+        line = source.count("\n", 0, source.index("@Environment(OutboxStore.self)")) + 1
         under = "FixtureKeyedProgress (built under repeated FixtureKeyedRow)"
         return [
-            f"{relative}:{line}: {under} reaches entity-data owner Importer",
-            f"{relative}:{line}: {under} takes Importer from the environment",
+            f"{relative}:{line}: {under} reaches entity-data owner OutboxStore",
+            f"{relative}:{line}: {under} takes OutboxStore from the environment",
         ]
 
     def test_leaf_reading_its_own_keyed_stream_passes(self) -> None:
@@ -515,7 +514,7 @@ struct FixtureKeyedProgress: View {
         self,
     ) -> None:
         unread = BOUNDARY.KeyedStream(
-            "Importer", "candidateSignals", "a stream read by a labelled key"
+            "OutboxStore", "fixtureShare", "a stream read by a labelled key"
         )
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(
             BOUNDARY, "KEYED_STREAMS", (*BOUNDARY.KEYED_STREAMS, unread)
@@ -525,9 +524,9 @@ struct FixtureKeyedProgress: View {
             self.keyed_fixture(
                 root,
                 self.KEYED_LIST.replace(
-                    "runtime = importer.candidateRuntime(key)",
-                    "runtime = importer.candidateRuntime(key)\n"
-                    "                _ = importer.candidateSignals(forCandidate: key)",
+                    "_ = outbox.fileShare(forFile: key)",
+                    "_ = outbox.fileShare(forFile: key)\n"
+                    "                _ = outbox.fixtureShare(forKey: key)",
                 ),
             )
             self.assertEqual(BOUNDARY.check(root), [])
@@ -537,9 +536,9 @@ struct FixtureKeyedProgress: View {
             root = Path(directory)
             self.copied_inventory(root)
             source = self.KEYED_LIST.replace(
-                "runtime = importer.candidateRuntime(key)",
-                'let other = "candidate"\n'
-                "                runtime = importer.candidateRuntime(other)",
+                "_ = outbox.fileShare(forFile: key)",
+                'let other = "file"\n'
+                "                _ = outbox.fileShare(forFile: other)",
             )
             relative = self.keyed_fixture(root, source)
             self.assertEqual(
@@ -551,9 +550,9 @@ struct FixtureKeyedProgress: View {
             root = Path(directory)
             self.copied_inventory(root)
             source = self.KEYED_LIST.replace(
-                "runtime = importer.candidateRuntime(key)",
-                "runtime = importer.candidateRuntime(key)\n"
-                "                _ = importer.candidateSignals(key)",
+                "_ = outbox.fileShare(forFile: key)",
+                "_ = outbox.fileShare(forFile: key)\n"
+                "                _ = outbox.uploadsPaused",
             )
             relative = self.keyed_fixture(root, source)
             self.assertEqual(

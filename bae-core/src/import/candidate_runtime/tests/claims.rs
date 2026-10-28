@@ -40,7 +40,6 @@ async fn a_claim_is_the_queued_step_until_the_worker_takes_it_up() {
     assert_eq!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
         Some(ImportInFlight {
-            progress_percent: None,
             step: ImportStep::Preparing(PrepareStep::Queued),
         })
     );
@@ -70,7 +69,6 @@ async fn only_the_claiming_import_moves_its_claim() {
 
     runtime.claim_for_import(key, "imp-2", false).await.unwrap();
     let queued = Some(ImportInFlight {
-        progress_percent: None,
         step: ImportStep::Preparing(PrepareStep::Queued),
     });
     runtime.record_event(&progress(key, 80));

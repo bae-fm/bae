@@ -274,6 +274,33 @@ impl AppHandle {
             }
         })
     }
+
+    /// Write how far through its step each running import is into a stream
+    /// by candidate key.
+    pub fn feed_import_percents(
+        &self,
+        activity: Box<dyn KeyActivityCallback>,
+    ) -> Arc<KeyedValueStream> {
+        self.feed(activity, move |services, writer| async move {
+            let mut percents = services.watch_import_percents();
+            loop {
+                let held: HashMap<String, BridgeFastValue> = percents
+                    .borrow_and_update()
+                    .iter()
+                    .map(|(key, percent)| {
+                        (
+                            key.clone(),
+                            BridgeFastValue::ImportPercent { percent: *percent },
+                        )
+                    })
+                    .collect();
+                writer.reset(held);
+                if percents.changed().await.is_err() {
+                    return;
+                }
+            }
+        })
+    }
 }
 
 // Gated on the target, not on `desktop`: bae-core gates `mod export` itself on

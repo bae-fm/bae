@@ -75,11 +75,12 @@
                 onNavigateToPlacement: { _ in },
             )
             .environment(store)
-            // The pane's leaves read what is in flight from the importer.
+            .environment(Importer.stub())
+            // The pane's leaves read what is in flight by the candidate's key.
             .environment(
-                runtime.map { shown in
-                    Importer(candidateRuntime: { _ in shown })
-                } ?? PreviewData.importTabImporter()
+                \.candidateRuntimes,
+                runtime.map { CandidateRuntimes(holding: [candidate.key: $0]) }
+                    ?? PreviewData.importTabRuntimes()
             )
         }
     }

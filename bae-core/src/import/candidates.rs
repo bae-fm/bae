@@ -227,12 +227,13 @@ pub enum Admission {
     Requested,
 }
 
-/// How far a running import has got. It ends with the import: a finished one
+/// The step a running import is at. It ends with the import: a finished one
 /// leaves the runtime and reads back off the release row it wrote, or the
-/// failure row it wrote.
+/// failure row it wrote. How far through the step it is moves many times a
+/// second, so it is the key's percent in
+/// [`CandidateRuntime::watch_import_percents`](crate::import::CandidateRuntime::watch_import_percents).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportInFlight {
-    pub progress_percent: Option<u32>,
     pub step: ImportStep,
 }
 

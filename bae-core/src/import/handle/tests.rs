@@ -142,8 +142,10 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
             .await
             .unwrap()
             .and_then(|candidate| candidate.import)
-            .and_then(|import| import.progress_percent),
-        Some(40)
+            .map(|import| import.step),
+        Some(crate::import::ImportStep::Running(
+            crate::import::ImportPhase::ReadingFiles
+        ))
     );
 }
 

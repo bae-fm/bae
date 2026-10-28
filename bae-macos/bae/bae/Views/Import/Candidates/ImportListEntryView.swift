@@ -1,5 +1,4 @@
 import BaeKit
-import Combine
 import SwiftUI
 
 /// What the person can do from a row of the import list.
@@ -27,7 +26,10 @@ struct ImportListRowEnvironment {
     let imageStore: ImageStore
     /// `nil` in a preview or a test with no bridge behind it.
     let importer: Importer?
-    let candidateRuntime: AnyPublisher<[BridgeCandidateRuntimeChange], Never>
+    /// `nil` in a preview or a test with no import list behind it.
+    let candidateRuntimes: CandidateRuntimes?
+    /// `nil` in a preview or a test with no import list behind it.
+    let importPercents: LatestStream<UInt32>?
     /// The tone and accent the window draws in.
     let appearance: HostedAppearance
 }
@@ -62,9 +64,10 @@ struct ImportListEntryView: View {
             .environment(entry.environment.imageStore)
             .environment(entry.environment.importer)
             .environment(
-                \.candidateRuntimePublisher,
-                entry.environment.candidateRuntime
+                \.candidateRuntimes,
+                entry.environment.candidateRuntimes
             )
+            .environment(\.importPercents, entry.environment.importPercents)
             .hostedAppearance(entry.environment.appearance)
     }
 

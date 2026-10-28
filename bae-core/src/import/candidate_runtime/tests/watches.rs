@@ -46,7 +46,8 @@ async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
     }) && changed.iter().any(|change| {
         matches!(change, CandidateRuntimeChange::Updated { key, runtime }
             if key == "/watch/a/rel1"
-                && runtime.import.as_ref().and_then(|import| import.progress_percent) == Some(40))
+                && runtime.import.as_ref().map(|import| import.step)
+                    == Some(ImportStep::Running(ImportPhase::MeasuringLoudness)))
     })) {
         changed.extend(watch.next().await.expect("the runtime is there"));
     }
@@ -204,9 +205,65 @@ async fn a_snapshots_reader_is_told_only_the_key_that_moved() {
             next.as_slice(),
             [CandidateRuntimeChange::Updated { key, runtime }]
                 if key == "/watch/a/rel1"
-                    && runtime.import.as_ref().and_then(|import| import.progress_percent) == Some(40)
+                    && runtime.import.as_ref().map(|import| import.step)
+                        == Some(ImportStep::Running(ImportPhase::MeasuringLoudness))
         ),
         "{next:?}"
     );
+    live.abort();
+}
+
+/// A running import's percent moves in the percents watch by its key; the
+/// snapshot stream hears only the step it reached, so a percent tick at the
+/// same step tells it nothing.
+#[tokio::test]
+async fn an_import_percent_moves_the_percents_not_the_snapshots() {
+    let runtime = CandidateRuntime::for_test().await;
+    let live = keep_current(&runtime);
+    claim(&runtime, "/watch/a/rel1").await;
+    claim(&runtime, "/watch/a/rel2").await;
+    let mut percents = runtime.watch_import_percents();
+    // Each claim reaches the view queued, then running as a later read of
+    // the table says; a key the reader is told of later would be read as
+    // the percent's doing.
+    let mut view = runtime.watch_view();
+    view.wait_for(|view| {
+        view.snapshots.len() == 2
+            && view.snapshots.values().all(|snapshot| {
+                snapshot.import.as_ref().map(|import| import.step)
+                    == Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles))
+            })
+    })
+    .await
+    .unwrap();
+    runtime.record_event(&progress("/watch/a/rel1", 40));
+    percents
+        .wait_for(|percents| percents.get("/watch/a/rel1") == Some(&40))
+        .await
+        .unwrap();
+    let mut watch = RuntimeSnapshotsWatch::of(&runtime);
+    watch.next().await.expect("the runtime is there");
+
+    runtime.record_event(&progress("/watch/a/rel1", 41));
+    percents
+        .wait_for(|percents| percents.get("/watch/a/rel1") == Some(&41))
+        .await
+        .unwrap();
+    assert!(
+        !percents.borrow().contains_key("/watch/a/rel2"),
+        "a claim no report moved has no percent"
+    );
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(50), watch.next())
+            .await
+            .is_err(),
+        "a percent at the same step tells the snapshot stream nothing"
+    );
+
+    runtime.move_import("/watch/a/rel1", "imp-1", None).await.unwrap();
+    percents
+        .wait_for(|percents| !percents.contains_key("/watch/a/rel1"))
+        .await
+        .unwrap();
     live.abort();
 }

@@ -133,7 +133,6 @@ mirror_struct! {
     crate::types::BridgeImportInFlight = bae_core::import::ImportInFlight,
     from_core: fn,
     fields: {
-        progress_percent,
         step: (crate::types::BridgeImportStep),
     },
 }

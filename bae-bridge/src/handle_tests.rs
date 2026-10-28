@@ -698,7 +698,6 @@ mod candidate_runtime {
             bae_core::import::CandidateRuntimeSnapshot {
                 identification: None,
                 import: Some(bae_core::import::ImportInFlight {
-                    progress_percent: None,
                     step: bae_core::import::ImportStep::Running(
                         bae_core::import::ImportPhase::ReadingFiles,
                     ),
@@ -749,7 +748,6 @@ mod candidate_runtime {
             .import
             .clone()
             .expect("a claimed candidate has an import in flight");
-        assert_eq!(import.progress_percent, None);
         assert!(
             matches!(
                 import.step,
@@ -788,10 +786,6 @@ mod candidate_runtime {
         // A failed import is a row by the time it is announced, so the key
         // simply stops being in flight.
         wait_gone(&handle, &mut watching_changes, &key);
-        assert!(
-            handle.candidate_runtime(key).is_none(),
-            "and nothing is left to read for the key"
-        );
     }
 }
 

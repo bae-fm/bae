@@ -394,9 +394,8 @@
         private static let importTabDoneCandidate = folderCandidates[3]
         private static let importTabFailedCandidate = folderCandidates[4]
 
-        /// How far the preview's running import has got.
+        /// The step the preview's running import is at.
         static let importTabImportInFlight = BridgeImportInFlight(
-            progressPercent: 45,
             step: .running(phase: .measuringLoudness)
         )
 
@@ -665,20 +664,24 @@
             )
         }
 
+        /// What the preview's running import has in flight.
         @MainActor
-        static func importTabImporter() -> Importer {
-            let importingKey = importTabImportingCandidate.key
-            let inFlight = importTabImportInFlight
-            return Importer(
-                candidateRuntime: { key in
-                    guard key == importingKey else { return nil }
-                    return BridgeCandidateRuntimeSnapshot(
-                        identification: nil,
-                        import: inFlight,
-                        search: nil
-                    )
-                }
+        static func importTabRuntimes() -> CandidateRuntimes {
+            CandidateRuntimes(
+                holding: [
+                    importTabImportingCandidate.key:
+                        BridgeCandidateRuntimeSnapshot(
+                            identification: nil,
+                            import: importTabImportInFlight,
+                            search: nil
+                        )
+                ]
             )
+        }
+
+        /// How far the preview's running import has got.
+        static func importTabPercents() -> LatestStream<UInt32> {
+            .importPercents(holding: [importTabImportingCandidate.key: 45])
         }
 
     }

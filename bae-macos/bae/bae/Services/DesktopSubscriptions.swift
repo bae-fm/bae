@@ -334,11 +334,12 @@ final class DesktopSubscriptions {
             outboxStore.fileShares.feedUploads(from: appHandle),
             downloadStore.fileShares.feedPins(from: appHandle),
             importStore.previewPosition.feed(from: appHandle),
+            importStore.importPercents.feed(from: appHandle),
         ]
         subscriptions = [
             appHandle.subscribeCandidateRuntime(
                 callback: CandidateRuntimeSink { [importStore] changes in
-                    importStore.candidateRuntimeSubject.send(changes)
+                    importStore.candidateRuntimes.apply(changes)
                 }
             ),
             appHandle.subscribeFolderScans(

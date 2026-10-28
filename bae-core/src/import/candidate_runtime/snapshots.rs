@@ -1,10 +1,14 @@
 //! Each key's [`CandidateRuntimeSnapshot`]: where the standings table says it
 //! stands, with what the runtime holds beside it — the state the run the
-//! table names last published, how far its import has got, its search — and
-//! a library release's re-identify run, which only the runtime holds.
+//! table names last published, the step its import is at, its search — and
+//! a library release's re-identify run, which only the runtime holds. Beside
+//! it, each key's import percent, which moves too often for the snapshot.
 
 use super::change_log::ChangeLog;
-use super::{CandidateRuntime, CandidateRuntimeState, IdentificationStage, StoredStanding};
+use super::{
+    CandidateRuntime, CandidateRuntimeState, IdentificationStage, ImportReport, StoredImport,
+    StoredStanding,
+};
 use crate::import::candidates::{
     CandidateRuntimeSnapshot, IdentificationRuntime, ImportInFlight, SavingAnswer,
 };
@@ -26,16 +30,11 @@ fn compose(
     let import = stored
         .and_then(|stored| stored.import.as_ref())
         .map(|import| {
-            held.and_then(|held| held.import.as_ref())
-                .filter(|report| {
-                    report.import_id == import.import_id
-                        && ImportStanding::of_step(report.in_flight.step) == import.standing
-                })
+            current_report(import, held)
                 .map(|report| report.in_flight.clone())
                 // A claim no report has moved yet, or a report of the step
                 // before the table's: the standing's first step.
                 .unwrap_or(ImportInFlight {
-                    progress_percent: None,
                     step: import.standing.first_step(),
                 })
         });
@@ -50,6 +49,28 @@ fn compose(
         import,
         search,
     })
+}
+
+/// The report of the import the table names, at the step the table has it
+/// at; `None` for a report of another import, or of the step before.
+fn current_report<'a>(
+    import: &StoredImport,
+    held: Option<&'a CandidateRuntimeState>,
+) -> Option<&'a ImportReport> {
+    held.and_then(|held| held.import.as_ref()).filter(|report| {
+        report.import_id == import.import_id
+            && ImportStanding::of_step(report.in_flight.step) == import.standing
+    })
+}
+
+/// How far through its step the import the table names for a key is, once
+/// its current report counts any.
+fn compose_percent(
+    stored: Option<&StoredStanding>,
+    held: Option<&CandidateRuntimeState>,
+) -> Option<u32> {
+    let import = stored?.import.as_ref()?;
+    current_report(import, held)?.percent
 }
 
 /// A folder candidate's identification as the table holds it, with the
@@ -156,8 +177,8 @@ impl CandidateRuntime {
     }
 
     /// What is in flight for `key` as the live read last read the table, with
-    /// what the runtime holds now, for a reader that cannot wait for a read of
-    /// its own.
+    /// what the runtime holds now, for a test.
+    #[cfg(test)]
     pub(crate) fn latest_snapshot(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
         self.view.borrow().snapshots.get(key).cloned()
     }
@@ -169,14 +190,46 @@ impl CandidateRuntime {
         self.view.subscribe()
     }
 
+    /// Each key's import percent, now and as it moves.
+    pub fn watch_import_percents(&self) -> tokio::sync::watch::Receiver<HashMap<String, u32>> {
+        self.percents.subscribe()
+    }
+
     /// Compose `key` again from its standing as the table was last read and
     /// what the runtime holds for it now, and tell the view's readers if that
-    /// changed it.
+    /// changed it, and the percents' readers if its percent moved.
     pub(super) fn recompose(&self, key: &str) {
+        let mut percent = None;
         self.view.send_if_modified(|view| {
             let inner = self.inner.lock().unwrap();
-            let next = compose(key, view.stored.get(key), inner.runtime.get(key));
-            view.show(key, next)
+            let stored = view.stored.get(key);
+            let held = inner.runtime.get(key);
+            percent = compose_percent(stored, held);
+            view.show(key, compose(key, stored, held))
+        });
+        self.percents
+            .send_if_modified(|percents| show_percent(percents, key, percent));
+    }
+
+    /// Every key's import percent again from the table as last read and what
+    /// the runtime holds now.
+    fn recompose_percents(&self) {
+        let view = self.view.borrow();
+        let inner = self.inner.lock().unwrap();
+        let next: HashMap<String, u32> = view
+            .stored
+            .iter()
+            .filter_map(|(key, stored)| {
+                compose_percent(Some(stored), inner.runtime.get(key))
+                    .map(|percent| (key.clone(), percent))
+            })
+            .collect();
+        drop(inner);
+        drop(view);
+        self.percents.send_if_modified(|percents| {
+            let changed = *percents != next;
+            *percents = next;
+            changed
         });
     }
 
@@ -196,6 +249,7 @@ impl CandidateRuntime {
                             compose(key, stored, inner.runtime.get(key))
                         })
                     });
+                    self.recompose_percents();
                 }
                 // The stream has no reader to hand the failure to: a bug,
                 // reported as one. The next read that succeeds is delivered.
@@ -272,6 +326,15 @@ impl RuntimeView {
         self.changes.record(key);
         true
     }
+}
+
+/// Show `next` as `key`'s percent; whether that moved it.
+fn show_percent(percents: &mut HashMap<String, u32>, key: &str, next: Option<u32>) -> bool {
+    let previous = match next {
+        Some(next) => percents.insert(key.to_string(), next),
+        None => percents.remove(key),
+    };
+    previous != next
 }
 
 impl ImportStanding {

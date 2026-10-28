@@ -5,15 +5,10 @@ import SwiftUI
 // MARK: - Environment key
 
 extension EnvironmentValues {
-    /// What every candidate has in flight, as one signal of the batches core
-    /// sends. No store holds a copy: a view filters this to the key it draws,
-    /// the way the loudness bar does, so an import's progress ticks redraw one
-    /// leaf rather than every row in the list.
+    /// What every candidate has in flight, by key, for the views drawing one
+    /// key; `nil` where no import list is.
     @Entry
-    var candidateRuntimePublisher:
-        AnyPublisher<[BridgeCandidateRuntimeChange], Never> =
-            Empty()
-            .eraseToAnyPublisher()
+    var candidateRuntimes: CandidateRuntimes?
 
     /// Each candidate's extracted signals as extraction settles them, on the
     /// same terms: one signal, filtered to the key that reads it.
@@ -32,64 +27,28 @@ struct CandidateSignalsEvent {
 
 // MARK: - Reader
 
-/// Draws `content` with what is in flight for one key, kept current from the
-/// shared signal.
-///
-/// It subscribes first and reads the key's current value second, so a view
-/// that appears partway through a run shows what is happening instead of
-/// waiting for the next change. Both happen on the main actor in that order,
-/// so the read cannot be undone by a change that was already on its way.
+/// Draws `content` with what is in flight for one key: a run's identify state
+/// and a running import's step, which change as they step. It redraws as
+/// that key changes or as keys come and go; how far an import has got is not
+/// here but in the import percents' stream, which only a native bar reads.
 struct CandidateRuntimeReader<Content: View>: View {
     let key: String
     @ViewBuilder
     let content: (BridgeCandidateRuntimeSnapshot?) -> Content
 
-    @Environment(\.candidateRuntimePublisher)
-    private var publisher
-    @Environment(Importer.self)
-    private var importer: Importer?
-
-    @State
-    private var runtime: BridgeCandidateRuntimeSnapshot?
+    @Environment(\.candidateRuntimes)
+    private var runtimes
 
     var body: some View {
-        content(runtime)
-            .onReceive(publisher) { apply($0) }
-            .task(id: key) {
-                // No importer is a preview or a test with no bridge behind
-                // it: there is nothing to read, so whatever the signal said
-                // stands.
-                guard let importer else { return }
-                runtime = importer.candidateRuntime(key)
-            }
-    }
-
-    /// Draw the batch's last word on this key, written once; a batch that
-    /// says nothing of it leaves the view as it is.
-    private func apply(_ changes: [BridgeCandidateRuntimeChange]) {
-        var said: BridgeCandidateRuntimeSnapshot??
-        for change in changes {
-            switch change {
-            case .updated(let changed, let value):
-                if changed == key { said = .some(value) }
-            case .removed(let changed):
-                if changed == key { said = .some(nil) }
-            case .reset(let runtimes):
-                // The whole of what is running: a key it does not name has
-                // nothing running for it.
-                said = .some(runtimes.first { $0.key == key }?.runtime)
-            }
-        }
-        if let said { runtime = said }
+        content(runtimes?.runtime(forKey: key))
     }
 }
 
 /// Draws `content` with the signals extraction has found for one key, kept
 /// current from the shared signal.
 ///
-/// Subscribes first and reads second, like `CandidateRuntimeReader`, so a form
-/// opened partway through a run starts with the pool the run has built rather
-/// than filling in from empty.
+/// Subscribes first and reads second, so a form opened partway through a run
+/// starts with the pool the run has built rather than filling in from empty.
 struct CandidateSignalsReader<Content: View>: View {
     let key: String
     @ViewBuilder
@@ -138,19 +97,18 @@ func shownIdentifyState(
 
 #if DEBUG
     extension View {
-        /// Everything the two readers above take their values from: the shared
-        /// runtime and signals streams, and the importer they read the current
-        /// value off when they appear. A preview that draws a candidate — a
-        /// row with a running import, a pane, the release editor's search — mounts
-        /// them, so it provides them and renders the same chain the app does.
-        func candidateReaderPreviewEnvironment() -> some View {
+        /// Everything the two readers above take their values from: the
+        /// runtimes `runtimes` holds, the shared signals stream, and the
+        /// importer the signals reader reads the current value off when it
+        /// appears. A preview that draws a candidate — a row with a running
+        /// import, a pane, the release editor's search — mounts them, so it
+        /// provides them and renders the same chain the app does.
+        func candidateReaderPreviewEnvironment(
+            runtimes: CandidateRuntimes = CandidateRuntimes()
+        ) -> some View {
             self
                 .environment(Importer.stub())
-                .environment(
-                    \.candidateRuntimePublisher,
-                    Empty<[BridgeCandidateRuntimeChange], Never>()
-                        .eraseToAnyPublisher()
-                )
+                .environment(\.candidateRuntimes, runtimes)
                 .environment(
                     \.candidateSignalsPublisher,
                     Empty<CandidateSignalsEvent, Never>().eraseToAnyPublisher()

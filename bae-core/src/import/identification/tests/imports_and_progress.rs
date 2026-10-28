@@ -39,7 +39,6 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
             if key == candidate.to_string_lossy()
                 && runtime.import
                     == Some(crate::import::ImportInFlight {
-                        progress_percent: None,
                         step: crate::import::ImportStep::Preparing(
                             crate::import::PrepareStep::Queued
                         ),

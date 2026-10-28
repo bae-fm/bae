@@ -245,22 +245,21 @@ impl Drop for HeldProgress<'_> {
     }
 }
 
-/// How far along an import's step is, in the order an import takes them.
-fn import_position(import: &crate::import::candidates::ImportInFlight) -> (u8, u32) {
+/// Which step an import is at, in the order an import takes them.
+fn import_position(import: &crate::import::candidates::ImportInFlight) -> u8 {
     use crate::import::{ImportPhase, ImportStep, PrepareStep};
-    let step = match import.step {
+    match import.step {
         ImportStep::Preparing(PrepareStep::Queued) => 0,
         ImportStep::Preparing(PrepareStep::ValidatingSourceFiles) => 1,
         ImportStep::Preparing(PrepareStep::FetchingArtistPictures) => 2,
         ImportStep::Running(ImportPhase::ReadingFiles) => 3,
         ImportStep::Running(ImportPhase::MeasuringLoudness) => 4,
         ImportStep::Running(ImportPhase::Finalizing) => 5,
-    };
-    (step, import.progress_percent.unwrap_or(0))
+    }
 }
 
 /// Import `key` once more and follow what the candidate shows while it does:
-/// it starts from the queue with no progress, only ever moves forward, and
+/// it starts from the queue, its steps only ever move forward, and
 /// the release lands.
 async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: &str) {
     let mut events = handle.every_event();
@@ -287,12 +286,11 @@ async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: 
     assert_eq!(
         shown.first(),
         Some(&crate::import::candidates::ImportInFlight {
-            progress_percent: None,
             step: crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
         }),
         "the import starts from the queue, not where the last attempt stopped"
     );
-    let positions: Vec<(u8, u32)> = shown.iter().map(import_position).collect();
+    let positions: Vec<u8> = shown.iter().map(import_position).collect();
     assert!(
         positions.windows(2).all(|pair| pair[0] <= pair[1]),
         "the candidate's progress only moves forward: {shown:?}"

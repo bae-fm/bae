@@ -127,6 +127,8 @@ struct PublishedState {
 struct ImportReport {
     import_id: String,
     in_flight: ImportInFlight,
+    /// How far through its step it is, once the step counts any.
+    percent: Option<u32>,
 }
 
 /// What this runtime holds for one key.
@@ -184,6 +186,10 @@ pub struct CandidateRuntime {
     /// Every key's snapshot and the identification count, kept key by key
     /// from the live read of the table and what `inner` holds.
     view: Arc<watch::Sender<snapshots::RuntimeView>>,
+    /// The percent of each key's running import, composed beside its
+    /// snapshot: it moves many times a second, and the snapshot only as the
+    /// import's step does.
+    percents: Arc<watch::Sender<HashMap<String, u32>>>,
     /// Test readers that hear every move of the identification count, and
     /// every key's runtime as each write of its standing leaves it.
     #[cfg(any(test, feature = "test-utils"))]
@@ -215,6 +221,7 @@ impl CandidateRuntime {
             // The library opens with the table empty and nothing held, so
             // nothing is in flight until the first change.
             view: Arc::new(watch::Sender::new(snapshots::RuntimeView::default())),
+            percents: Arc::new(watch::Sender::new(HashMap::new())),
             #[cfg(any(test, feature = "test-utils"))]
             every_count: Arc::default(),
             #[cfg(any(test, feature = "test-utils"))]
@@ -566,14 +573,18 @@ impl CandidateRuntime {
                 progress,
             } => {
                 let in_flight = match progress {
-                    ImportProgress::Preparing { step, .. } => Some(ImportInFlight {
-                        progress_percent: None,
-                        step: ImportStep::Preparing(*step),
-                    }),
-                    ImportProgress::Progress { percent, phase, .. } => Some(ImportInFlight {
-                        progress_percent: percent.map(u32::from),
-                        step: ImportStep::Running(*phase),
-                    }),
+                    ImportProgress::Preparing { step, .. } => Some((
+                        ImportInFlight {
+                            step: ImportStep::Preparing(*step),
+                        },
+                        None,
+                    )),
+                    ImportProgress::Progress { percent, phase, .. } => Some((
+                        ImportInFlight {
+                            step: ImportStep::Running(*phase),
+                        },
+                        percent.map(u32::from),
+                    )),
                     ImportProgress::Complete { .. }
                     | ImportProgress::RemoteUploadQueued { .. }
                     | ImportProgress::Failed { .. }
@@ -581,10 +592,11 @@ impl CandidateRuntime {
                 };
                 let import_id = progress.import_id();
                 self.set(candidate_key, |_, runtime| match in_flight {
-                    Some(in_flight) => {
+                    Some((in_flight, percent)) => {
                         runtime.import = Some(ImportReport {
                             import_id: import_id.to_string(),
                             in_flight,
+                            percent,
                         });
                     }
                     // An ending clears only its own import's progress: a late

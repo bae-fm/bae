@@ -186,10 +186,11 @@ pub enum BridgeIdentificationInFlight {
     Run { state: BridgeIdentifyState },
 }
 
-/// How far a running import has got.
+/// The step a running import is at. How far through it is moves many times
+/// a second, so it is the candidate's value in the import percents'
+/// `KeyedValueStream`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportInFlight {
-    pub progress_percent: Option<u32>,
     pub step: BridgeImportStep,
 }
 
