@@ -202,8 +202,8 @@ impl BridgeDiagnostics {
 /// process start, before `init_keyring` / `BridgeHost` (both require the returned
 /// handle), so the sink exists for every launch step that could fail. The
 /// sink reports the bugs core finds to `bug_reporter`, the platform's crash
-/// reporter. Local
-/// logs go to the platform's native log (plus the terminal on the desktop).
+/// reporter. Local logs go to the platform's native log, and on the desktop
+/// also to stdout when it is a terminal.
 ///
 /// Infallible by contract: telemetry setup must never block a launch. Sink
 /// construction from an `Enabled` config can fail (incomplete config, worker
@@ -483,18 +483,23 @@ fn install_logging(sinks: Vec<LogSink>) {
     }
 }
 
-/// The terminal sink of the desktop apps: every line printed to stdout when
-/// bae runs from a terminal, down to debug — a terminal run is someone
-/// watching everything, and `RUST_LOG` quiets it. Mobile has no terminal.
+/// The terminal sink of the desktop apps: every line printed to stdout, down
+/// to debug, when stdout is a terminal — a terminal run is someone watching
+/// everything, and `RUST_LOG` quiets it. Launched any other way (Finder, the
+/// Dock, a desktop launcher) stdout goes nowhere anyone reads, and there is
+/// no sink, so no line is formatted for it. Mobile has no terminal.
 #[cfg(desktop)]
-fn terminal_log_sink() -> LogSink {
-    LogSink::new(
-        tracing_subscriber::fmt::layer()
-            .with_line_number(true)
-            .with_target(false)
-            .with_file(true),
-        LevelFilter::DEBUG,
-    )
+fn terminal_log_sink() -> Option<LogSink> {
+    use std::io::IsTerminal;
+    std::io::stdout().is_terminal().then(|| {
+        LogSink::new(
+            tracing_subscriber::fmt::layer()
+                .with_line_number(true)
+                .with_target(false)
+                .with_file(true),
+            LevelFilter::DEBUG,
+        )
+    })
 }
 
 /// The unified log, read back from a Debug build with
@@ -503,13 +508,15 @@ fn terminal_log_sink() -> LogSink {
 /// `log stream --level debug --predicate 'subsystem == "fm.bae.desktop"'`.
 #[cfg(target_os = "macos")]
 fn configure_logging() {
-    install_logging(vec![
-        terminal_log_sink(),
-        LogSink::new(
-            tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
-            LevelFilter::DEBUG,
-        ),
-    ])
+    install_logging(
+        terminal_log_sink()
+            .into_iter()
+            .chain([LogSink::new(
+                tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
+                LevelFilter::DEBUG,
+            )])
+            .collect(),
+    )
 }
 
 /// logcat, read with `adb logcat -s bae`.
@@ -547,14 +554,16 @@ fn configure_logging() {
     // "bae-core" (GUID derived from the name), captured with
     // `logman start ... -p "*bae-core"` — the `log stream` equivalent.
     match tracing_etw::LayerBuilder::new("bae-core").build() {
-        Ok(etw_layer) => install_logging(vec![
-            terminal_log_sink(),
-            LogSink::new(etw_layer, LevelFilter::DEBUG),
-        ]),
+        Ok(etw_layer) => install_logging(
+            terminal_log_sink()
+                .into_iter()
+                .chain([LogSink::new(etw_layer, LevelFilter::DEBUG)])
+                .collect(),
+        ),
         Err(error) => {
-            // The terminal is the only sink left to report this in; launch
-            // must not die over it.
-            install_logging(vec![terminal_log_sink()]);
+            // The terminal, when there is one, is the only sink left to report
+            // this in; launch must not die over it.
+            install_logging(terminal_log_sink().into_iter().collect());
             tracing::error!("ETW tracing layer initialization failed: {error}");
         }
     }
@@ -569,18 +578,20 @@ fn configure_logging() {
 )))]
 fn configure_logging() {
     match tracing_journald::layer() {
-        Ok(journald_layer) => install_logging(vec![
-            terminal_log_sink(),
-            LogSink::new(
-                journald_layer.with_syslog_identifier("bae".to_string()),
-                LevelFilter::INFO,
-            ),
-        ]),
+        Ok(journald_layer) => install_logging(
+            terminal_log_sink()
+                .into_iter()
+                .chain([LogSink::new(
+                    journald_layer.with_syslog_identifier("bae".to_string()),
+                    LevelFilter::INFO,
+                )])
+                .collect(),
+        ),
         Err(error) => {
             // No journald socket (a system without systemd, or a container):
-            // the terminal is the only sink left to report this in; launch
-            // must not die over it.
-            install_logging(vec![terminal_log_sink()]);
+            // the terminal, when there is one, is the only sink left to report
+            // this in; launch must not die over it.
+            install_logging(terminal_log_sink().into_iter().collect());
             tracing::error!("journald tracing layer initialization failed: {error}");
         }
     }
@@ -823,6 +834,40 @@ mod tests {
                 "dependency debug".to_string(),
                 "dependency info".to_string()
             ]
+        );
+    }
+
+    /// A desktop app whose stdout is no terminal — launched from Finder, the
+    /// Dock or a desktop launcher, where stdout goes nowhere anyone reads —
+    /// prints none of its lines there.
+    #[cfg(desktop)]
+    #[test]
+    fn no_line_is_printed_to_a_stdout_that_is_no_terminal() {
+        const CHILD_PROCESS: &str = "BAE_TEST_STDOUT_NO_TERMINAL";
+        const TEST_NAME: &str = "init::tests::no_line_is_printed_to_a_stdout_that_is_no_terminal";
+        const PROBE: &str = "terminal sink probe";
+
+        if std::env::var_os(CHILD_PROCESS).is_some() {
+            configure_logging();
+            tracing::debug!(target: "bae_bridge", "{PROBE}");
+            return;
+        }
+
+        // `output` hands the child a pipe for its stdout, not a terminal.
+        let output = std::process::Command::new(
+            std::env::current_exe().expect("resolve the bridge test executable"),
+        )
+        .args(["--exact", TEST_NAME, "--nocapture"])
+        .env(CHILD_PROCESS, "1")
+        .env_remove("RUST_LOG")
+        .output()
+        .expect("run the logging child process");
+
+        assert!(output.status.success(), "the child process logs and exits");
+        let printed = String::from_utf8(output.stdout).expect("the child prints UTF-8");
+        assert!(
+            !printed.contains(PROBE),
+            "nothing is printed to a stdout that is no terminal, got: {printed}"
         );
     }
 

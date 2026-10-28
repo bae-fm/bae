@@ -2826,8 +2826,9 @@ each device and hands playback the channel or sink.
   every level of its lines, so a running build is read after the fact with
   `log show`; a release keeps the system's defaults, which save default,
   error and fault lines and drop the rest, so bae doesn't fill a person's log
-  with its detail. A desktop app run from a terminal also prints its lines
-  there.
+  with its detail. A desktop app whose output is a terminal — run from one —
+  also prints its lines there; launched from Finder, the Dock or a desktop
+  launcher, it has no terminal and formats no line for one.
 - **Reporting needs its settings.** A bae-edition build missing a telemetry
   or crash-reporting setting turns that reporting off and logs a warning
   naming what's missing.
