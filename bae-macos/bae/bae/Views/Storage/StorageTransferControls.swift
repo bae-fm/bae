@@ -37,7 +37,8 @@ struct StorageTransferControls: View {
             StoragePinSummary(
                 summary: summary,
                 download: StoragePinSummary.Download(
-                    releaseId: operation.releaseId
+                    releaseId: operation.releaseId,
+                    running: operation.isRunning
                 ) {
                     run {
                         try await downloads.cancelDownload(operation.releaseId)
@@ -82,5 +83,14 @@ struct StorageTransferControls: View {
             do { try await command() }
             catch { uiStore.showError(error) }
         }
+    }
+}
+
+extension BridgeDownloadOp {
+    /// Whether the download runs now, rather than waiting its turn or
+    /// having failed.
+    fileprivate var isRunning: Bool {
+        if case .active = state { return true }
+        return false
     }
 }

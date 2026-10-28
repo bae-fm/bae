@@ -163,12 +163,6 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "OutboxStore",
-        "transfer",
-        "how far and how fast a release's upload goes, which core measures "
-        "from coven's upload watch and keeps in no table",
-    ),
-    KeyedStream(
-        "OutboxStore",
         "fileTransfer",
         "the stream of how far a file being sent has got, which coven's "
         "upload watch tells and no table keeps; the leaf hands it to a native "
@@ -194,12 +188,6 @@ KEYED_STREAMS = (
         "the stream of how far a file being downloaded to keep whole has got, "
         "which coven's download watch tells and no table keeps; the leaf hands "
         "it to a native view that sets itself from it",
-    ),
-    KeyedStream(
-        "DownloadStore",
-        "transfer",
-        "the bytes a release's download has moved, which core sends as they "
-        "arrive and keeps in no table",
     ),
 )
 

@@ -12,9 +12,11 @@ struct StoragePinSummary: View {
     let summary: [BridgeTransferCount]
     let download: Download?
 
-    /// The download pinning the release, and what cancels it.
+    /// The download pinning the release: whether it runs now, rather than
+    /// waiting its turn, and what cancels it.
     struct Download {
         let releaseId: String
+        let running: Bool
         let onCancel: () -> Void
     }
 
@@ -32,7 +34,7 @@ struct StoragePinSummary: View {
                         .controlSize(.small)
                 }
             }
-            if let download {
+            if let download, download.running {
                 StoragePinProgress(releaseId: download.releaseId)
             }
         }
@@ -43,30 +45,17 @@ struct StoragePinSummary: View {
 }
 
 /// The bytes the release's download holds of its size and how fast it has
-/// gone, over a bar of the same bytes, read alone by its release; nothing
-/// while the release waits its turn.
+/// gone, over a bar of the same bytes, which a native readout sets from the
+/// release's stream.
 private struct StoragePinProgress: View {
     let releaseId: String
     @Environment(DownloadStore.self)
     private var downloadStore
 
     var body: some View {
-        if let progress = downloadStore.transfer(forRelease: releaseId)?
-            .progress
-        {
-            HStack(alignment: .firstTextBaseline) {
-                Text(progress.bytesText)
-                Spacer()
-                if let rate = progress.throughputBps {
-                    Text(QueueSummary.throughputText(bytesPerSecond: rate))
-                }
-            }
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-            ProgressTrackBar(
-                progress: progress.fraction,
-                tint: StorageTransferKind.pin.color
-            )
-        }
+        TransferReadout(
+            stream: .pin(downloadStore.releaseTransfer(forRelease: releaseId)),
+            kind: .pin
+        )
     }
 }
