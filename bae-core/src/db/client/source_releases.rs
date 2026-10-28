@@ -575,28 +575,16 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         release: Vec::new(),
         album: Vec::new(),
     };
-    let mut copies: HashMap<(String, i64), Vec<DownscaledCopy>> = HashMap::new();
-    for (scope, position, max_edge, url) in sql.query(
-        "SELECT scope, position, max_edge, url FROM source_release_cover_copy \
-         WHERE catalog = ? AND release_id = ?",
-        params![catalog, key],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, u32>(2)?,
-                row.get::<_, String>(3)?,
-            ))
-        },
-    )? {
-        copies
-            .entry((scope, position))
-            .or_default()
-            .push(DownscaledCopy { url, max_edge });
-    }
-    for (scope, position, url, label, source, standing) in sql.query(
-        "SELECT scope, position, url, label, source, standing FROM source_release_cover \
-         WHERE catalog = ? AND release_id = ? ORDER BY scope, position",
+    for (scope, position, url, label, source, standing, copies_json) in sql.query(
+        "SELECT cover.scope, cover.position, cover.url, cover.label, cover.source, \
+                cover.standing, \
+                (SELECT json_group_array(json_object('url', copy.url, 'max_edge', copy.max_edge) \
+                                         ORDER BY copy.max_edge) \
+                 FROM source_release_cover_copy AS copy \
+                 WHERE copy.catalog = cover.catalog AND copy.release_id = cover.release_id \
+                   AND copy.scope = cover.scope AND copy.position = cover.position) \
+         FROM source_release_cover AS cover \
+         WHERE cover.catalog = ? AND cover.release_id = ? ORDER BY cover.scope, cover.position",
         params![catalog, key],
         |row| {
             Ok((
@@ -606,12 +594,23 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
                 row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
             ))
         },
     )? {
-        let downscaled = copies
-            .remove(&(scope.clone(), position))
-            .unwrap_or_default();
+        #[derive(serde::Deserialize)]
+        struct StoredCopy {
+            url: String,
+            max_edge: u32,
+        }
+        let downscaled = serde_json::from_str::<Vec<StoredCopy>>(&copies_json)
+            .map_err(|error| unreadable("cover copies", format!("{position}: {error}")))?
+            .into_iter()
+            .map(|copy| DownscaledCopy {
+                url: copy.url,
+                max_edge: copy.max_edge,
+            })
+            .collect();
         let cover = RemoteCover {
             image: RemoteImageSet::with_copies(url, downscaled),
             label,
