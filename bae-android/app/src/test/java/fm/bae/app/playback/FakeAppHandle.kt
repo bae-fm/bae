@@ -166,6 +166,8 @@ internal open class FakeAppHandle(
 
     override fun subscribeUploadFileTransfers(callback: FileTransfersCallback): LiveSubscription = liveSubscription()
 
+    override fun subscribePinFileTransfers(callback: FileTransfersCallback): LiveSubscription = liveSubscription()
+
     override fun subscribeCastDevices(callback: CastDevicesCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeQueue(callback: QueueCallback): LiveSubscription = liveSubscription()

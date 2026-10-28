@@ -2897,6 +2897,40 @@ da = "{count} gemt"
 nb = "{count} lagret"
 fi = "{count} tallennettu"
 
+[messages."core.queue.pinning"]
+comment = "Storage Manager inspector: how many of a pinning release's files are downloading now to be kept on this device."
+args = { count = "Int" }
+value = "{count} pinning"
+
+[messages."core.queue.pinning".translations]
+es = "{count} fijándose"
+fr = "{count} en cours d'épinglage"
+de = "{count} werden angeheftet"
+pt-BR = "{count} fixando"
+ja = "{count}件ピン留め中"
+ko = "{count}개 고정 중"
+zh-Hans = "{count} 个正在固定"
+ar = "{count} قيد التثبيت"
+he = "{count} ננעצים"
+uk = "{count} закріплюється"
+bg = "{count} се закачат"
+pl = "{count} przypinanych"
+cs = "{count} se připíná"
+hr = "{count} se prikvačuje"
+zh-Hant = "{count} 個釘選中"
+it = "{count} in fissaggio"
+tr = "{count} sabitleniyor"
+nl = "{count} wordt vastgezet"
+sk = "pripína sa: {count}"
+hu = "{count} rögzítése folyamatban"
+ro = "{count} în curs de fixare"
+el = "{count} καρφιτσώνονται"
+pt-PT = "{count} a fixar"
+sv = "{count} fästs"
+da = "{count} fastgøres"
+nb = "{count} festes"
+fi = "{count} kiinnitetään"
+
 [messages."core.queue.waiting"]
 comment = "Storage Manager inspector: how many of a pinning release's files still wait to be kept on this device."
 args = { count = "Int" }

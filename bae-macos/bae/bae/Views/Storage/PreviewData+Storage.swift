@@ -91,10 +91,73 @@
             ]
         }
 
+        /// The storage rows' release pinning (`rel-row-5`), waiting its
+        /// turn in the download queue.
+        static var queuedPinDownloads: [BridgeDownloadOp] {
+            [
+                BridgeDownloadOp(
+                    releaseId: "rel-row-5",
+                    release: nil,
+                    createdAt: queuedAt(minutesAgo: 1),
+                    state: .queued
+                )
+            ]
+        }
+
+        /// How far the previews' files being downloaded to be kept have
+        /// got: the pinning release's audio, as its inspector shows it.
+        static let pinFileTransfers: BridgeFileTransferChange = .reset(
+            files: [
+                BridgeKeyedFileTransfer(
+                    fileId: pinningFileId("rel-row-5-audio"),
+                    fraction: 0.42
+                )
+            ]
+        )
+
+        /// The file coven downloads for a storage row release's file.
+        static func pinningFileId(_ releaseFileId: String) -> String {
+            "pin-\(releaseFileId)"
+        }
+
+        /// The previews' download bytes, leaving out every release
+        /// `downloads` holds waiting or failed: one not running has moved
+        /// nothing.
         @MainActor
-        static func downloadStore() -> DownloadStore {
+        static func downloadStore(
+            downloads: [BridgeDownloadOp] = downloadOps
+        ) -> DownloadStore {
+            let resting = Set(
+                downloads.filter {
+                    if case .active = $0.state {
+                        false
+                    }
+                    else {
+                        true
+                    }
+                }
+                .map(\.releaseId)
+            )
             let store = DownloadStore()
-            store.applyTransferChange(downloadTransfers)
+            guard case .reset(let transfers) = downloadTransfers,
+                case .reset(let files) = pinFileTransfers
+            else { preconditionFailure("the preview transfers are resets") }
+            store.applyTransferChange(
+                .reset(
+                    transfers: transfers.filter {
+                        !resting.contains($0.releaseId)
+                    }
+                )
+            )
+            store.applyFileTransferChange(
+                .reset(
+                    files: files.filter { file in
+                        !resting.contains {
+                            file.fileId.hasPrefix(pinningFileId($0))
+                        }
+                    }
+                )
+            )
             return store
         }
 
@@ -566,39 +629,47 @@
 
         /// What core's inspector read delivers for `release` beside its
         /// queue entries. While its download waits or runs, its images are
-        /// kept and its audio waits, as core counts them.
+        /// kept, and its audio downloads while the download runs and waits
+        /// while it waits its turn, as core counts them.
         private static func storageInspector(
             release: BridgeRelease,
             download: BridgeDownloadOp?,
             output: BridgeOutputOp?,
             upload: PreviewReleaseUpload?
         ) -> BridgeStorageInspector {
-            let pinning =
-                download.map {
-                    if case .failed = $0.state {
-                        false
-                    }
-                    else {
-                        true
-                    }
-                } == true
+            let pinning: Bool
+            let downloading: Bool
+            switch download?.state {
+            case .active: (pinning, downloading) = (true, true)
+            case .queued: (pinning, downloading) = (true, false)
+            case .failed, nil: (pinning, downloading) = (false, false)
+            }
             let pin = { (file: BridgeFile) -> BridgeFilePin? in
-                pinning ? (file.isImage ? .kept : .waiting) : nil
+                guard pinning else { return nil }
+                if file.isImage { return .kept }
+                return downloading
+                    ? .downloading(fileId: pinningFileId(file.id)) : .waiting
             }
             var transfers: [BridgeStorageInspectorTransfer] = []
             if let download {
                 // Core leaves out a zero count; the fixture's release has
-                // one image kept and one audio file waiting.
+                // one image kept and one audio file downloading or waiting.
                 transfers.append(
                     .download(
                         operation: download,
                         summary: pinning
                             ? [
-                                transferCount(
-                                    "core.queue.waiting",
-                                    1,
-                                    .waiting
-                                ),
+                                downloading
+                                    ? transferCount(
+                                        "core.queue.pinning",
+                                        1,
+                                        .moving
+                                    )
+                                    : transferCount(
+                                        "core.queue.waiting",
+                                        1,
+                                        .waiting
+                                    ),
                                 transferCount("core.queue.pinned", 1, .done),
                             ] : nil
                     )

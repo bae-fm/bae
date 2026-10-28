@@ -177,15 +177,19 @@ pub(super) fn build_release_detail_on(
     let file_uploads = super::queued_uploads::release_file_uploads_on(sql, &release.id)?;
     let file_pins = sql
         .query(
-            "SELECT f.id, pin.kept FROM release_files f \
-             JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
-             WHERE f.release_id = ?1",
+            // A pin's download lists its file in `coven_downloading` before
+            // `coven_pins` holds a row for it.
+            "SELECT f.id, pin.kept IS 1, downloading.file FROM release_files f \
+             LEFT JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
+             LEFT JOIN coven_downloading downloading \
+                 ON downloading.table_name = 'release_files' AND downloading.key = coven_key(f.id) \
+             WHERE f.release_id = ?1 AND (pin.key IS NOT NULL OR downloading.key IS NOT NULL)",
             params![release.id],
             |row| {
-                let pin = if row.get::<_, bool>(1)? {
-                    crate::album_detail::FilePin::Kept
-                } else {
-                    crate::album_detail::FilePin::Waiting
+                let pin = match (row.get::<_, bool>(1)?, row.get::<_, Option<coven::FileId>>(2)?) {
+                    (true, _) => crate::album_detail::FilePin::Kept,
+                    (false, Some(file)) => crate::album_detail::FilePin::Downloading { file },
+                    (false, None) => crate::album_detail::FilePin::Waiting,
                 };
                 Ok((row.get::<_, String>(0)?, pin))
             },

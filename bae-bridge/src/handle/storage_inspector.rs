@@ -67,6 +67,11 @@ impl crate::types::BridgeStorageInspectorFile {
             }),
             pin: pin.map(|pin| match pin {
                 bae_core::album_detail::FilePin::Kept => crate::types::BridgeFilePin::Kept,
+                bae_core::album_detail::FilePin::Downloading { file } => {
+                    crate::types::BridgeFilePin::Downloading {
+                        file_id: file.to_string(),
+                    }
+                }
                 bae_core::album_detail::FilePin::Waiting => crate::types::BridgeFilePin::Waiting,
             }),
         }

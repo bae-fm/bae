@@ -212,7 +212,7 @@ struct StorageManagerView: View {
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
             initialSelectedFileId = selectedFileId
-            downloadStore = PreviewData.downloadStore()
+            downloadStore = PreviewData.downloadStore(downloads: downloads)
             outputStore = PreviewData.outputStore()
             outboxStore = PreviewData.outboxStore()
         }

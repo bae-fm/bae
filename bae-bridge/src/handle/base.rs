@@ -72,6 +72,25 @@ impl AppHandle {
         )
     }
 
+    /// How far each file being downloaded to keep whole has got, by file:
+    /// every one now, then each as it moves, starts or ends.
+    pub fn subscribe_pin_file_transfers(
+        &self,
+        callback: Box<dyn crate::types::FileTransfersCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.live_subscription(move |services| async move {
+            let mut files = services.watch_pin_file_transfers();
+            while let Some(changes) = files.next().await {
+                callback.on_changes(
+                    changes
+                        .into_iter()
+                        .map(crate::types::BridgeFileTransferChange::from_core)
+                        .collect(),
+                );
+            }
+        })
+    }
+
     /// The bytes each downloading release has moved, now and then as they
     /// move.
     pub fn subscribe_download_transfers(

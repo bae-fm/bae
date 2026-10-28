@@ -20,6 +20,9 @@ public class DownloadStore {
     /// Each downloading release's progress, one value per release; the map
     /// changes only as releases start and stop downloading.
     private var transfers: [String: DownloadTransferValue] = [:]
+    /// How far each file being downloaded to keep whole has got, by file,
+    /// for a surface that draws each file and subscribes to them.
+    private let files = FileTransfers()
 
     public init() {}
 
@@ -42,6 +45,17 @@ public class DownloadStore {
                 }
             )
         }
+    }
+
+    /// Apply one change the pin file transfer subscription delivered.
+    public func applyFileTransferChange(_ change: BridgeFileTransferChange) {
+        files.apply(change)
+    }
+
+    /// The share of a file being downloaded to keep whole its object has
+    /// moved; `nil` while nothing of it is in flight.
+    public func fileTransfer(forFile fileId: String) -> Double? {
+        files.fraction(forFile: fileId)
     }
 
     /// A release's download progress as its own observed value, for a view

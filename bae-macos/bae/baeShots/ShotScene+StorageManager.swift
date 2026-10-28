@@ -84,8 +84,9 @@ extension ShotScene {
                 )
             )
         },
-        // A release pinning, nothing else running: the pinning panel, and the
-        // footer's one pin group.
+        // A release pinning, nothing else running: the pinning panel with
+        // its audio downloading in a filling ring, and the footer's one pin
+        // group.
         ShotScene(
             id: "storage-manager-pinning-inspector",
             size: CGSize(width: 1_040, height: 654)
@@ -95,6 +96,22 @@ extension ShotScene {
                     selectedReleaseId: "rel-row-5",
                     inspectorPresented: true,
                     downloads: PreviewData.pinningDownloads,
+                    outputs: [],
+                    uploads: []
+                )
+            )
+        },
+        // A release whose pin waits its turn in the download queue: its
+        // files waiting and kept, and no bytes yet.
+        ShotScene(
+            id: "storage-manager-pin-queued-inspector",
+            size: CGSize(width: 1_040, height: 654)
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(
+                    selectedReleaseId: "rel-row-5",
+                    inspectorPresented: true,
+                    downloads: PreviewData.queuedPinDownloads,
                     outputs: [],
                     uploads: []
                 )

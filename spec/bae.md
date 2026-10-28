@@ -2635,12 +2635,13 @@ Reads come two ways:
   arrives apart, by file; and while the release waits in or runs through the
   download queue, whether the file is kept whole on this device yet, as
   coven's `coven_pins` says, or out of that queue, while any of its pins
-  waits for coven to fetch its copy, whether each pinned file is kept yet),
-  and its entry in the download, export and upload queues, a download with
-  how many of its files wait and how many are kept, and coven's fetch of the
-  copies its pins wait for, with the same counts, all read for that release
-  alone. Which of the files not kept
-  coven is fetching now, and how far each has got, coven doesn't say. It shows nothing of a
+  waits for coven to fetch its copy, whether each pinned file is kept yet;
+  and whether coven is downloading the file now to be kept, as
+  `coven_downloading` says, how far it has got arriving apart, by file, from
+  coven's download watch), and its entry in the download, export and upload
+  queues, a download with how many of its files are downloading, wait and
+  are kept, and coven's fetch of the copies its pins wait for, with the same
+  counts, all read for that release alone. It shows nothing of a
   whole queue, which the list's footer pauses (§4.2): its upload shows how
   many of its files are uploading, queued and stored, a count of none left
   out, so a release with nothing being sent reads only what waits and what
@@ -2650,10 +2651,11 @@ Reads come two ways:
   mark: none for a file at rest, a dashed circle for one waiting its turn, a
   ring filling as it is sent; a file waiting on a reason says why when the
   pointer rests on it. While the release pins, its download shows the same
-  way: how many of its files wait and how many are kept, again leaving out
-  a count of none; a control that
+  way: how many of its files are pinning, waiting and pinned, again leaving
+  out a count of none; a control that
   cancels the pin, and while it downloads the bytes it holds of its size and
-  how fast it goes; a file not kept yet shows a dashed circle. Coven's fetch
+  how fast it goes; a file downloading shows a ring filling as it comes, and
+  one waiting its turn a dashed circle. Coven's fetch
   shows the same counts and marks, with no control and no bytes: no queue
   entry of bae's holds it. A failed pin shows its error instead. Selecting a file shows its details under the list,
   closed by a button or by selecting nothing: its name and the folder it

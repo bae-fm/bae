@@ -565,6 +565,12 @@ impl LibraryManager {
         crate::library::FileTransfersWatch::of(self.database.subscribe_upload_transfers())
     }
 
+    /// How far each file being downloaded to keep whole has got, by file,
+    /// told as each one moves.
+    pub fn watch_pin_file_transfers(&self) -> crate::library::FileTransfersWatch {
+        crate::library::FileTransfersWatch::of(self.database.subscribe_download_file_transfers())
+    }
+
     /// Every entry of the download queue now, for a test that reads the
     /// whole queue.
     #[cfg(any(test, feature = "test-utils"))]

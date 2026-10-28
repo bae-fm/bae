@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The selected release's pin while its files come to this device: how many
-/// of its files wait and how many are kept, as core counts them. While its
+/// of its files are downloading, waiting and kept, as core counts them. While its
 /// download waits or runs, the button that cancels the pin, and while it
 /// downloads, the bytes it holds of its size and how fast it goes, over a bar
 /// of the same bytes. While coven fetches the copies its pins wait for,
@@ -25,12 +25,6 @@ struct StoragePinSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Self.lineGap) {
             HStack(spacing: ThemeSpace.related) {
-                Text("Pinning")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(StorageTransferKind.pin.color)
-                if !summary.isEmpty {
-                    separator
-                }
                 StorageTransferCounts(counts: summary, kind: .pin)
                 Spacer()
                 if let download {
@@ -45,10 +39,6 @@ struct StoragePinSummary: View {
         .themeText(.detail)
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, Self.verticalInset)
-    }
-
-    private var separator: some View {
-        Text(verbatim: "\u{00B7}").foregroundStyle(.secondary)
     }
 }
 

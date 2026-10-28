@@ -175,6 +175,12 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "DownloadStore",
+        "fileTransfer",
+        "how far a file being downloaded to keep whole has got, which coven's "
+        "download watch tells and no table keeps",
+    ),
+    KeyedStream(
+        "DownloadStore",
         "transfer",
         "the bytes a release's download has moved, which core sends as they "
         "arrive and keeps in no table",

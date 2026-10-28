@@ -21,11 +21,15 @@ pub struct BridgeStorageInspectorFile {
     pub pin: Option<BridgeFilePin>,
 }
 
-/// Whether a pinning release's file is kept whole on this device yet.
-/// Mirrors `FilePin`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+/// Where a pinning release's file stands: kept whole on this device,
+/// downloading now to be kept, or waiting its turn. Mirrors `FilePin`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeFilePin {
     Kept,
+    /// How far it has got is the pin file transfer keyed by `file_id`.
+    Downloading {
+        file_id: String,
+    },
     Waiting,
 }
 

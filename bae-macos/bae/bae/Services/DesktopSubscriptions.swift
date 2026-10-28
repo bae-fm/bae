@@ -247,6 +247,7 @@ final class DesktopSubscriptions {
     private let importStore: ImportStore
     private let outputStore: OutputStore
     private let outboxStore: OutboxStore
+    private let downloadStore: DownloadStore
     private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
@@ -257,12 +258,14 @@ final class DesktopSubscriptions {
         importStore: ImportStore,
         outputStore: OutputStore,
         outboxStore: OutboxStore,
+        downloadStore: DownloadStore,
         uiStore: UiStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
         self.outputStore = outputStore
         self.outboxStore = outboxStore
+        self.downloadStore = downloadStore
         self.uiStore = uiStore
         // The list's selection sink is the observations' one owner: it lives
         // as long as the list slot that calls it.
@@ -370,6 +373,11 @@ final class DesktopSubscriptions {
             appHandle.subscribeUploadFileTransfers(
                 callback: FileTransfersSink { [outboxStore] change in
                     outboxStore.applyFileTransferChange(change)
+                }
+            ),
+            appHandle.subscribePinFileTransfers(
+                callback: FileTransfersSink { [downloadStore] change in
+                    downloadStore.applyFileTransferChange(change)
                 }
             ),
             appHandle.subscribeCandidateRuntime(

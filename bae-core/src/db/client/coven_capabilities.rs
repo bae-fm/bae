@@ -240,6 +240,12 @@ impl Database {
         self.inner.handle.subscribe_pin_progress(files)
     }
 
+    /// How far each file this process is downloading to keep whole has got,
+    /// by file, from coven's download watch.
+    pub(crate) fn subscribe_download_file_transfers(&self) -> coven::TransferWatch {
+        self.inner.handle.subscribe_download_transfers()
+    }
+
     pub(crate) async fn unpin(&self, files: &[coven::FileRef]) -> Result<(), coven::FileReadError> {
         self.inner.handle.unpin(files).await
     }

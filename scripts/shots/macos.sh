@@ -80,6 +80,7 @@ for scene in \
     storage-manager-idle-file-inspector \
     storage-manager-one-sync-inspector \
     storage-manager-pinning-inspector \
+    storage-manager-pin-queued-inspector \
     storage-manager-uploads-and-pinning \
     storage-manager-file-details \
     storage-manager-window

@@ -129,16 +129,20 @@ fn a_release_no_queue_holds_has_no_transfers() {
     );
 }
 
-/// While its download waits or runs, each file says whether it is kept and
-/// the download counts them; a failed download shows neither, and leaves a
-/// pin waiting for its copy to coven's fetch.
+/// While its download waits or runs, each file says whether it is kept,
+/// downloading or waiting, and the download counts them; a failed download
+/// shows neither, and leaves the pins waiting for their copies to coven's
+/// fetch.
 #[test]
 fn a_release_pinning_shows_each_files_pin_and_counts_them() {
+    let fetched = coven::FileId(uuid::Uuid::from_u128(7));
+    let downloading = FilePin::Downloading { file: fetched };
     let files = || {
         vec![
             file("a", Some(FilePin::Kept)),
             file("b", Some(FilePin::Waiting)),
             file("c", None),
+            file("d", Some(downloading)),
         ]
     };
     for state in [
@@ -162,7 +166,8 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
             vec![
                 Some(FilePin::Kept),
                 Some(FilePin::Waiting),
-                Some(FilePin::Waiting)
+                Some(FilePin::Waiting),
+                Some(downloading),
             ]
         );
         let [StorageInspectorTransfer::Download {
@@ -174,7 +179,11 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
         };
         assert_eq!(
             counts(summary),
-            vec![("core.queue.waiting", 2), ("core.queue.pinned", 1)]
+            vec![
+                ("core.queue.pinning", 1),
+                ("core.queue.waiting", 2),
+                ("core.queue.pinned", 1)
+            ]
         );
     }
 
@@ -194,17 +203,26 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
     );
     assert_eq!(
         failed.files.iter().map(|file| file.pin).collect::<Vec<_>>(),
-        vec![Some(FilePin::Kept), Some(FilePin::Waiting), None],
-        "coven still fetches the copy the pin waits for"
+        vec![
+            Some(FilePin::Kept),
+            Some(FilePin::Waiting),
+            None,
+            Some(downloading)
+        ],
+        "coven still fetches the copies the pins wait for"
     );
     let [StorageInspectorTransfer::Download { summary: None, .. }, StorageInspectorTransfer::PinFetch { summary }] =
         failed.transfers.as_slice()
     else {
-        panic!("a failed download leaves its waiting pin to coven's fetch");
+        panic!("a failed download leaves its waiting pins to coven's fetch");
     };
     assert_eq!(
         counts(summary),
-        vec![("core.queue.waiting", 1), ("core.queue.pinned", 1)]
+        vec![
+            ("core.queue.pinning", 1),
+            ("core.queue.waiting", 1),
+            ("core.queue.pinned", 1)
+        ]
     );
 }
 

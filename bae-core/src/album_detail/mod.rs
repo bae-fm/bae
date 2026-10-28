@@ -302,12 +302,17 @@ pub struct FileDetail {
     pub pin: Option<FilePin>,
 }
 
-/// Where this device's pin of a file stands: kept whole on this device, or
-/// waiting for its copy to arrive. Which of the files waiting coven is
-/// fetching now, and how far each has got, coven doesn't say.
+/// Where this device's pin of a file stands: kept whole on this device,
+/// downloading now to be kept, as coven's `coven_downloading` lists it, or
+/// waiting for its copy to arrive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FilePin {
     Kept,
+    /// How far it has got is its file's transfer, keyed by `file`, the file
+    /// coven downloads.
+    Downloading {
+        file: coven::FileId,
+    },
     Waiting,
 }
 

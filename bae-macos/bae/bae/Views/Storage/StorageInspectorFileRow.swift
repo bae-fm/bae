@@ -4,9 +4,9 @@ import SwiftUI
 /// One file in the storage inspector, on one line: a mark for where its
 /// bytes are going, its name and its size. A file at rest, stored or kept,
 /// has no mark; one queued to upload, or waiting to be kept while its
-/// release pins, a dashed circle, its name dimmed; one being sent a ring
-/// that fills as it goes, its name in the upload's colour. A file waiting on
-/// a reason says why in its tooltip.
+/// release pins, a dashed circle, its name dimmed; one being sent or
+/// downloaded to be kept a ring that fills as it goes, its name in the
+/// transfer's colour. A file waiting on a reason says why in its tooltip.
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
 
@@ -49,6 +49,7 @@ struct StorageInspectorFileRow: View {
         case stored
         case queued
         case sending(fileId: String)
+        case pinning(fileId: String)
     }
 
     private var place: Place {
@@ -60,6 +61,7 @@ struct StorageInspectorFileRow: View {
         }
         switch row.pin {
         case .waiting: return .queued
+        case .downloading(let fileId): return .pinning(fileId: fileId)
         case .kept, nil: return .stored
         }
     }
@@ -70,6 +72,7 @@ struct StorageInspectorFileRow: View {
         case .stored: StorageFileMark(state: .stored)
         case .queued: StorageFileMark(state: .queued)
         case .sending(let fileId): StorageSendingFileMark(fileId: fileId)
+        case .pinning(let fileId): StoragePinningFileMark(fileId: fileId)
         }
     }
 
@@ -78,6 +81,7 @@ struct StorageInspectorFileRow: View {
         case .stored: AnyShapeStyle(.primary)
         case .queued: AnyShapeStyle(.secondary)
         case .sending: AnyShapeStyle(StorageTransferKind.upload.color)
+        case .pinning: AnyShapeStyle(StorageTransferKind.pin.color)
         }
     }
 
@@ -103,6 +107,23 @@ private struct StorageSendingFileMark: View {
             state: .moving(
                 .upload,
                 fraction: outboxStore.fileTransfer(forFile: fileId)
+            )
+        )
+    }
+}
+
+/// A file being downloaded to be kept's ring, filled as far as its object
+/// has come, read alone by its file so arriving bytes redraw only it.
+private struct StoragePinningFileMark: View {
+    let fileId: String
+    @Environment(DownloadStore.self)
+    private var downloadStore
+
+    var body: some View {
+        StorageFileMark(
+            state: .moving(
+                .pin,
+                fraction: downloadStore.fileTransfer(forFile: fileId)
             )
         )
     }

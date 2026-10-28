@@ -19,6 +19,7 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.failed",
     "core.queue.queued",
     "core.queue.stored",
+    "core.queue.pinning",
     "core.queue.waiting",
     "core.queue.pinned",
     // A queue row whose release the library no longer holds.

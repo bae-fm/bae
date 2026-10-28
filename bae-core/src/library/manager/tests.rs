@@ -274,6 +274,7 @@ include!("tests/queue_count_upkeep.rs");
 include!("tests/pending_list.rs");
 include!("tests/upload_transfers.rs");
 include!("tests/downloads.rs");
+include!("tests/pin_transfers.rs");
 include!("tests/output.rs");
 include!("tests/identity.rs");
 include!("tests/artist_resolution.rs");
