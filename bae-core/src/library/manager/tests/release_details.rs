@@ -635,3 +635,32 @@ async fn find_release_detail_returns_none_for_unknown_id() {
 }
 
 // ── Storage page tests ───────────────────────────────────────────
+
+/// A gallery read names a file of the release it reads from; a file of
+/// another release is refused, found by the release and file together.
+#[tokio::test]
+async fn a_gallery_read_refuses_another_releases_file() {
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
+    let other = create_test_release(&album.id);
+    insert_release(&manager, &other).await;
+    let file = DbFile::new(
+        &other.id,
+        "cover.jpg",
+        5,
+        bae_util::content_type::ContentType::Jpeg,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager.add_file(&file).await.unwrap();
+
+    let error = manager
+        .read_gallery_bytes(
+            &release.id,
+            &crate::album_detail::GallerySource::ReleaseFile {
+                file_id: file.id.clone(),
+            },
+        )
+        .await
+        .expect_err("the file is another release's");
+    assert!(matches!(error, LibraryError::Refused(_)), "{error}");
+}

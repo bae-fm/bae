@@ -438,6 +438,26 @@ impl Database {
         self.call_sql(move |sql| insert_scrub_points_row(&sql, &points))
             .await
     }
+    /// The file `file_id` of the release `release_id`, by the files' key;
+    /// `None` when the release has no such file.
+    pub async fn find_release_file(
+        &self,
+        release_id: &str,
+        file_id: &str,
+    ) -> Result<Option<DbFile>, DbError> {
+        let (release_id, file_id) = (release_id.to_string(), file_id.to_string());
+        self.read(move |sql| {
+            sql.query_row(
+                "SELECT * FROM release_files WHERE id = ? AND release_id = ?",
+                params![file_id, release_id],
+                row_to_file,
+            )
+            .optional()
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();

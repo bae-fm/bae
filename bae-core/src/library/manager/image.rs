@@ -32,10 +32,9 @@ impl LibraryManager {
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
         let file = self
-            .get_files_for_release(release_id)
+            .database
+            .find_release_file(release_id, file_id)
             .await?
-            .into_iter()
-            .find(|f| f.id == file_id)
             .ok_or_else(|| {
                 LibraryError::Refused(format!(
                     "Image file {file_id} is not part of release {release_id}"
