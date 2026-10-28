@@ -64,20 +64,13 @@ impl LibraryManager {
         projection: crate::db::ComposerDetailProjection,
     ) -> Option<ComposerDetail> {
         let raw = projection.detail?;
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let work_groups = raw
             .work_groups
             .into_iter()
             .map(|group| ComposerWorkGroup {
                 id: group.id,
-                parent: group
-                    .parent
-                    .map(|parent| work_summary_with_cover(parent, &covers)),
-                works: group
-                    .works
-                    .into_iter()
-                    .map(|work| work_summary_with_cover(work, &covers))
-                    .collect(),
+                parent: group.parent.map(WorkSummary::from_raw),
+                works: group.works.into_iter().map(WorkSummary::from_raw).collect(),
             })
             .collect::<Vec<_>>();
         let default_work_id = work_groups.first().and_then(|group| {
@@ -137,36 +130,7 @@ impl LibraryManager {
         let Some(raw) = self.database.find_work_detail(work_id).await? else {
             return Ok(None);
         };
-        let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release_id.clone()).collect();
-        let covers = self.cover_refs(&release_ids).await?;
-        let work_cover = raw
-            .work
-            .representative_release_id
-            .as_ref()
-            .and_then(|id| covers.get(id).cloned());
-        let child_release_ids: Vec<String> = raw
-            .child_works
-            .iter()
-            .filter_map(|work| work.representative_release_id.clone())
-            .collect();
-        let child_covers = self.cover_refs(&child_release_ids).await?;
-        Ok(Some(WorkDetail {
-            work: WorkSummary::from_raw(raw.work, work_cover),
-            child_works: raw
-                .child_works
-                .into_iter()
-                .map(|work| work_summary_with_cover(work, &child_covers))
-                .collect(),
-            releases: raw
-                .releases
-                .into_iter()
-                .map(|release| {
-                    let cover = covers.get(&release.release_id).cloned();
-                    WorkReleaseSummary::from_raw(release, cover)
-                })
-                .collect(),
-            tracks: raw.tracks,
-        }))
+        Ok(Some(work_detail_of(raw)))
     }
 
     pub(crate) fn subscribe_work_detail(
@@ -180,40 +144,24 @@ impl LibraryManager {
         &self,
         projection: crate::db::WorkDetailProjection,
     ) -> Option<WorkDetail> {
-        let raw = projection.detail?;
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        let work_cover = raw
-            .work
-            .representative_release_id
-            .as_ref()
-            .and_then(|id| covers.get(id).cloned());
-        Some(WorkDetail {
-            work: WorkSummary::from_raw(raw.work, work_cover),
-            child_works: raw
-                .child_works
-                .into_iter()
-                .map(|work| work_summary_with_cover(work, &covers))
-                .collect(),
-            releases: raw
-                .releases
-                .into_iter()
-                .map(|release| {
-                    let cover = covers.get(&release.release_id).cloned();
-                    WorkReleaseSummary::from_raw(release, cover)
-                })
-                .collect(),
-            tracks: raw.tracks,
-        })
+        projection.detail.map(work_detail_of)
     }
 }
 
-fn work_summary_with_cover(
-    work: crate::db::DbWorkSummary,
-    covers: &HashMap<String, ImageRef>,
-) -> WorkSummary {
-    let cover = work
-        .representative_release_id
-        .as_ref()
-        .and_then(|id| covers.get(id).cloned());
-    WorkSummary::from_raw(work, cover)
+/// A work's page as its rows read it, each with its cover's version.
+fn work_detail_of(raw: crate::db::DbWorkDetail) -> WorkDetail {
+    WorkDetail {
+        work: WorkSummary::from_raw(raw.work),
+        child_works: raw
+            .child_works
+            .into_iter()
+            .map(WorkSummary::from_raw)
+            .collect(),
+        releases: raw
+            .releases
+            .into_iter()
+            .map(WorkReleaseSummary::from_raw)
+            .collect(),
+        tracks: raw.tracks,
+    }
 }

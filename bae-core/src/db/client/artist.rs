@@ -244,27 +244,13 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |artist_id, sql| {
                 let Some(artist_id) = artist_id else {
-                    return Ok((None, HashMap::new()));
+                    return Ok(None);
                 };
-                let detail = find_composer_detail_on(&sql, artist_id).map_err(CovenError::from)?;
-                let release_ids = match &detail {
-                    Some(detail) => detail
-                        .works
-                        .iter()
-                        .chain(detail.parents.values())
-                        .filter_map(|work| work.representative_release_id.clone())
-                        .collect::<Vec<_>>(),
-                    None => Vec::new(),
-                };
-                let cover_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                        .map_err(CovenError::from)?;
-                Ok((detail, cover_versions))
+                find_composer_detail_on(&sql, artist_id).map_err(CovenError::from)
             })
-            .process(|(detail, cover_versions)| {
+            .process(|detail| {
                 Ok(ComposerDetailProjection {
                     detail: detail.map(ComposerDetailRows::process),
-                    cover_versions,
                 })
             })
     }
@@ -309,39 +295,10 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, |work_id, sql| {
                 let Some(work_id) = work_id else {
-                    return Ok(WorkDetailProjection {
-                        detail: None,
-                        cover_versions: HashMap::new(),
-                    });
+                    return Ok(WorkDetailProjection { detail: None });
                 };
-                let detail = find_work_detail_on(&sql, work_id).map_err(CovenError::from)?;
-                let release_ids = match &detail {
-                    Some(detail) => detail
-                        .work
-                        .representative_release_id
-                        .iter()
-                        .cloned()
-                        .chain(
-                            detail
-                                .child_works
-                                .iter()
-                                .filter_map(|work| work.representative_release_id.clone()),
-                        )
-                        .chain(
-                            detail
-                                .releases
-                                .iter()
-                                .map(|release| release.release_id.clone()),
-                        )
-                        .collect::<Vec<_>>(),
-                    None => Vec::new(),
-                };
-                let cover_versions =
-                    super::files::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
-                        .map_err(CovenError::from)?;
                 Ok(WorkDetailProjection {
-                    detail,
-                    cover_versions,
+                    detail: find_work_detail_on(&sql, work_id).map_err(CovenError::from)?,
                 })
             })
     }
@@ -684,7 +641,6 @@ pub struct ComposerBrowseProjection {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerDetailProjection {
     pub detail: Option<DbComposerDetail>,
-    pub cover_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -701,5 +657,4 @@ pub struct ArtistDetailProjection {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkDetailProjection {
     pub detail: Option<DbWorkDetail>,
-    pub cover_versions: HashMap<String, String>,
 }

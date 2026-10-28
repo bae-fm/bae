@@ -183,23 +183,7 @@ impl LibraryManager {
             .database
             .search_library(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
             .await?;
-        // Prefetch every release cover the resolver looks up, in one batch:
-        // each album's primary release, each track's own release,
-        // and each work's representative release — all keyed by release id,
-        // the same ids `SearchResults::from_raw` reads back.
-        let mut release_ids: Vec<String> = raw
-            .albums
-            .iter()
-            .map(|a| a.primary_release_id.clone())
-            .collect();
-        release_ids.extend(raw.tracks.iter().map(|t| t.release_id.clone()));
-        release_ids.extend(
-            raw.works
-                .iter()
-                .filter_map(|w| w.representative_release_id.clone()),
-        );
-        let release_covers = self.cover_refs(&release_ids).await?;
-        Ok(SearchResults::from_raw(raw, &release_covers))
+        Ok(SearchResults::from_raw(raw))
     }
 
     pub(crate) fn subscribe_library_search(
@@ -217,8 +201,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::LibrarySearchProjection,
     ) -> SearchResults {
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        SearchResults::from_raw(projection.results, &covers)
+        SearchResults::from_raw(projection.results)
     }
 
     /// Delete an album and its data: the rows go in one transaction, which

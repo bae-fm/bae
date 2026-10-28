@@ -20,6 +20,8 @@ pub struct DbAlbumSearchResult {
     pub year: Option<i32>,
     /// The album's lowest-ordered release.
     pub primary_release_id: String,
+    /// The version of that release's cover; `None` when it has none.
+    pub cover_version: Option<String>,
     pub artist_name: String,
 }
 
@@ -37,6 +39,8 @@ pub struct DbTrackSearchResult {
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,
+    /// The version of the release's cover; `None` when it has none.
+    pub cover_version: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,6 +78,9 @@ pub struct DbWorkSummary {
     pub work: DbWork,
     pub parent_work_id: Option<String>,
     pub representative_release_id: Option<String>,
+    /// That release's cover, at the version its row read; `None` when it has
+    /// none.
+    pub representative_cover: Option<crate::album_detail::ImageRef>,
     pub composer_names: Option<String>,
     pub linked_release_count: i64,
 }
@@ -110,6 +117,8 @@ pub struct DbWorkReleaseSummary {
     pub year: Option<i32>,
     pub media: Vec<bae_types::pressing::MediaCount>,
     pub release_index: i64,
+    /// The version of the release's cover; `None` when it has none.
+    pub cover_version: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

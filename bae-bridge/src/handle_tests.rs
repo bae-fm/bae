@@ -411,8 +411,8 @@ fn composer_detail_conversion_preserves_work_groups() {
                     composer_names: Some("Composer Name A".to_string()),
                     linked_release_count: 1,
                     representative_release_id: Some("release-a".to_string()),
+                    representative_cover: None,
                 },
-                representative_cover: None,
             }),
             works: vec![WorkSummary {
                 raw: DbWorkSummary {
@@ -428,8 +428,8 @@ fn composer_detail_conversion_preserves_work_groups() {
                     composer_names: Some("Composer Name A".to_string()),
                     linked_release_count: 1,
                     representative_release_id: Some("release-a".to_string()),
+                    representative_cover: None,
                 },
-                representative_cover: None,
             }],
         }],
         unlinked_release_roles: Vec::new(),
@@ -476,8 +476,8 @@ fn work_detail_conversion_preserves_work_release_rows() {
             composer_names: Some("Composer Name A".to_string()),
             linked_release_count: 1,
             representative_release_id: Some("release-a".to_string()),
+            representative_cover: None,
         },
-        representative_cover: None,
     };
     let detail = WorkDetail {
         work,

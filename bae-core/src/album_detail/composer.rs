@@ -21,15 +21,13 @@ impl ComposerSummary {
 #[derive(Debug, Clone)]
 pub struct WorkSummary {
     pub raw: DbWorkSummary,
-    pub representative_cover: Option<ImageRef>,
 }
 
 impl WorkSummary {
-    pub(crate) fn from_raw(raw: DbWorkSummary, representative_cover: Option<ImageRef>) -> Self {
-        Self {
-            raw,
-            representative_cover,
-        }
+    /// The work as its row reads it, its representative release's cover and
+    /// all.
+    pub(crate) fn from_raw(raw: DbWorkSummary) -> Self {
+        Self { raw }
     }
 }
 
@@ -68,7 +66,8 @@ pub struct WorkReleaseSummary {
 }
 
 impl WorkReleaseSummary {
-    pub(crate) fn from_raw(raw: DbWorkReleaseSummary, cover: Option<ImageRef>) -> Self {
+    pub(crate) fn from_raw(raw: DbWorkReleaseSummary) -> Self {
+        let cover = cover_ref(&raw.release_id, raw.cover_version);
         let name = ReleaseName::of(
             raw.release_name.as_deref(),
             raw.year,

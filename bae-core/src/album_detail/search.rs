@@ -2,8 +2,6 @@
 //! `TrackSearchResult`, composer hits, and work hits) and the pure projections
 //! that produce them.
 
-use std::collections::HashMap;
-
 use super::*;
 use crate::db::DbLibrarySearchResults;
 
@@ -17,20 +15,14 @@ pub struct SearchResults {
 }
 
 impl SearchResults {
-    /// `release_covers` is keyed by release id and serves every release-cover
-    /// lookup the raw rows need: album primary release ids, track release ids,
-    /// and work representative release ids. Artist and composer hits carry
-    /// their images' versions.
-    pub(crate) fn from_raw(
-        raw: DbLibrarySearchResults,
-        release_covers: &HashMap<String, ImageRef>,
-    ) -> SearchResults {
+    /// Each hit as its row reads it, with the version of its cover or image.
+    pub(crate) fn from_raw(raw: DbLibrarySearchResults) -> SearchResults {
         SearchResults {
             albums: raw
                 .albums
                 .into_iter()
                 .map(|raw| {
-                    let cover = release_covers.get(&raw.primary_release_id).cloned();
+                    let cover = cover_ref(&raw.primary_release_id, raw.cover_version);
                     AlbumSearchResult {
                         id: raw.id,
                         title: raw.title,
@@ -44,7 +36,7 @@ impl SearchResults {
                 .tracks
                 .into_iter()
                 .map(|raw| {
-                    let cover = release_covers.get(&raw.release_id).cloned();
+                    let cover = cover_ref(&raw.release_id, raw.cover_version);
                     TrackSearchResult {
                         id: raw.id,
                         title: raw.title,
@@ -67,17 +59,7 @@ impl SearchResults {
                 .into_iter()
                 .map(ComposerSummary::from_raw)
                 .collect(),
-            works: raw
-                .works
-                .into_iter()
-                .map(|work| {
-                    let cover = work
-                        .representative_release_id
-                        .as_ref()
-                        .and_then(|id| release_covers.get(id).cloned());
-                    WorkSummary::from_raw(work, cover)
-                })
-                .collect(),
+            works: raw.works.into_iter().map(WorkSummary::from_raw).collect(),
         }
     }
 }

@@ -361,6 +361,17 @@ fn sort_direction_sql(direction: SortDirection) -> &'static str {
     }
 }
 
+/// The release whose cover a work shows: the release of the first track,
+/// in track position, that performs it (a SQL expression over `w`).
+const WORK_REPRESENTATIVE_RELEASE: &str = "(
+                    SELECT tr.release_id
+                    FROM track_works tw_cover
+                    JOIN tracks tr ON tr.id = tw_cover.track_id
+                    WHERE tw_cover.work_id = w.id
+                    ORDER BY tr.position, tr.release_id
+                    LIMIT 1
+                )";
+
 pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let mut query = format!(
         "SELECT w.id AS work_id,
@@ -376,14 +387,8 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
                     ORDER BY wp.position, wp.parent_work_id
                     LIMIT 1
                 ) AS parent_work_id,
-                (
-                    SELECT tr.release_id
-                    FROM track_works tw_cover
-                    JOIN tracks tr ON tr.id = tw_cover.track_id
-                    WHERE tw_cover.work_id = w.id
-                    ORDER BY tr.position, tr.release_id
-                    LIMIT 1
-                ) AS representative_release_id,
+                {WORK_REPRESENTATIVE_RELEASE} AS representative_release_id,
+                {representative_cover} AS representative_cover_version,
                 (
                     SELECT GROUP_CONCAT(composer.name, ', ' ORDER BY credit.position)
                     FROM (
@@ -400,6 +405,7 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
          LEFT JOIN tracks tr ON tr.id = tw.track_id
          ",
         work_artist = shown_artist_id("wa.artist_id"),
+        representative_cover = super::files::cover_version_sql(WORK_REPRESENTATIVE_RELEASE),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -417,6 +423,11 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
 }
 
 pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
+    let representative_release_id: Option<String> = row.get("representative_release_id")?;
+    let representative_cover = match &representative_release_id {
+        Some(id) => crate::album_detail::cover_ref(id, row.get("representative_cover_version")?),
+        None => None,
+    };
     Ok(DbWorkSummary {
         work: DbWork {
             id: row.get("work_id")?,
@@ -427,7 +438,8 @@ pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
             created_at: rfc3339_column(row, "work_created_at")?,
         },
         parent_work_id: row.get("parent_work_id")?,
-        representative_release_id: row.get("representative_release_id")?,
+        representative_release_id,
+        representative_cover,
         composer_names: row.get("composer_names")?,
         linked_release_count: row.get("linked_release_count")?,
     })
@@ -479,7 +491,8 @@ pub(super) fn work_release_rows(
     work_id: &str,
 ) -> Result<Vec<DbWorkReleaseSummary>, DbError> {
     sql.query(
-        "SELECT DISTINCT
+        &format!(
+            "SELECT DISTINCT
             r.id AS release_id,
             r.album_id,
             a.title AS album_title,
@@ -497,13 +510,16 @@ pub(super) fn work_release_rows(
                           AND indexed_release.id <= r.id
                       )
                   )
-            ) AS release_index
+            ) AS release_index,
+            {cover} AS cover_version
          FROM track_works tw
          JOIN tracks t ON t.id = tw.track_id
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
          ORDER BY a.title, r.album_order, r.id",
+            cover = super::files::cover_version_sql("r.id"),
+        ),
         params![work_id],
         row_to_work_release_summary,
     )
@@ -519,6 +535,7 @@ pub(super) fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbW
         year: row.get("release_year")?,
         media: super::pressing_columns::read_media(row, "release_media")?,
         release_index: row.get("release_index")?,
+        cover_version: row.get("cover_version")?,
     })
 }
 
@@ -894,30 +911,4 @@ impl AlbumSummaryRow {
             cover_version: self.primary_cover_version,
         })
     }
-}
-
-/// The cover version of each album's primary release — the cover an album
-/// shows — keyed by that release's id. Only those releases' covers are read,
-/// so another release's cover changing is not a change to the albums read; an
-/// emptied album has none.
-pub(super) fn album_cover_versions_on(
-    sql: &SqlReadContext<'_>,
-    album_ids: &[String],
-) -> Result<HashMap<String, String>, DbError> {
-    let mut primaries = Vec::new();
-    for chunk in album_ids.chunks(SQL_MAX_IN_VARS) {
-        let query = format!(
-            "SELECT {} FROM albums a WHERE a.id IN ({})",
-            album_primary_release_sql(),
-            in_clause_placeholders(chunk.len())
-        );
-        primaries.extend(
-            sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
-                row.get::<_, Option<String>>(0)
-            })?
-            .into_iter()
-            .flatten(),
-        );
-    }
-    super::files::image_versions_on(sql, LibraryImageType::Cover, &primaries)
 }

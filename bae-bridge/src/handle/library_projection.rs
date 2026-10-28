@@ -424,14 +424,12 @@ mirror_struct! {
 
 impl BridgeWorkSummary {
     pub(super) fn from_core(s: bae_core::album_detail::WorkSummary) -> Self {
-        let bae_core::album_detail::WorkSummary {
-            raw,
-            representative_cover,
-        } = s;
+        let bae_core::album_detail::WorkSummary { raw } = s;
         let bae_core::db::DbWorkSummary {
             work,
             parent_work_id,
             representative_release_id,
+            representative_cover,
             composer_names,
             linked_release_count,
         } = raw;

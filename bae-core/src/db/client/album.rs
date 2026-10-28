@@ -65,40 +65,16 @@ impl Database {
                     return Ok(None);
                 };
                 let pattern = search_pattern(query.as_str());
-                let results =
-                    search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?;
-                let album_ids = results
-                    .albums
-                    .iter()
-                    .map(|album| album.id.clone())
-                    .collect::<Vec<_>>();
-                let release_ids = results
-                    .tracks
-                    .iter()
-                    .map(|track| track.release_id.clone())
-                    .chain(
-                        results
-                            .works
-                            .iter()
-                            .filter_map(|work| work.representative_release_id.clone()),
-                    )
-                    .collect::<Vec<_>>();
-                let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                cover_versions.extend(super::files::image_versions_on(
-                    &sql,
-                    LibraryImageType::Cover,
-                    &release_ids,
-                )?);
-                Ok(Some((results, cover_versions)))
+                Ok(Some(
+                    search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?,
+                ))
             })
             .process(|raw| {
-                let Some((results, cover_versions)) = raw else {
+                let Some(results) = raw else {
                     return Ok(LibrarySearchProjection::default());
                 };
-                let results = results.process()?;
                 Ok(LibrarySearchProjection {
-                    results,
-                    cover_versions,
+                    results: results.process()?,
                 })
             })
     }
@@ -495,6 +471,7 @@ fn search_library_on(
         r#"
             SELECT a.id, a.title, a.year,
                    {primary_release} AS primary_release_id,
+                   {primary_cover} AS cover_version,
                    {artist_names} AS artist_name
             FROM (
                 SELECT a.id, a.title, a.year FROM albums a
@@ -519,6 +496,7 @@ fn search_library_on(
             ORDER BY a.title, a.id
             "#,
         primary_release = album_primary_release_sql(),
+        primary_cover = super::files::cover_version_sql(album_primary_release_sql()),
         artist_names = album_credits_json_sql(),
     );
     let albums = sql.query(&album_query, params![pattern, limit], |row| {
@@ -527,6 +505,7 @@ fn search_library_on(
             title: row.get("title")?,
             year: row.get("year")?,
             primary_release_id: row.get("primary_release_id")?,
+            cover_version: row.get("cover_version")?,
             artist_name: credit_line_column(row, "artist_name")?,
         })
     })?;
@@ -534,7 +513,8 @@ fn search_library_on(
         &format!(
             r#"
             SELECT t.id, t.title, t.duration_ms, t.release_id,
-                   r.album_id, a.title as album_title, {} as artist_name
+                   r.album_id, a.title as album_title, {} as artist_name,
+                   {} as cover_version
             FROM tracks t
             JOIN releases r ON t.release_id = r.id
             JOIN albums a ON r.album_id = a.id
@@ -545,7 +525,8 @@ fn search_library_on(
             )
             ORDER BY t.title, t.id
             "#,
-            track_credits_json_sql("t")
+            track_credits_json_sql("t"),
+            super::files::cover_version_sql("t.release_id"),
         ),
         params![pattern, limit],
         |row| {
@@ -557,6 +538,7 @@ fn search_library_on(
                 album_id: row.get("album_id")?,
                 album_title: row.get("album_title")?,
                 artist_name: credit_line_column(row, "artist_name")?,
+                cover_version: row.get("cover_version")?,
             })
         },
     )?;
@@ -605,6 +587,7 @@ struct AlbumSearchRow {
     title: String,
     year: Option<i32>,
     primary_release_id: String,
+    cover_version: Option<String>,
     artist_name: String,
 }
 
@@ -628,6 +611,7 @@ impl LibrarySearchRows {
                     title: row.title,
                     year: row.year,
                     primary_release_id: row.primary_release_id,
+                    cover_version: row.cover_version,
                     artist_name: row.artist_name,
                 })
             })
@@ -730,5 +714,4 @@ pub struct AlbumDetailProjection {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LibrarySearchProjection {
     pub results: DbLibrarySearchResults,
-    pub cover_versions: HashMap<String, String>,
 }
