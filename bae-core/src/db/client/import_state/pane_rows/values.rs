@@ -100,203 +100,121 @@ pub(super) fn insert_draft_values(
     Ok(())
 }
 
-/// Every candidate's stored values, or those of the one `only` names.
-#[derive(Default)]
-pub(super) struct StoredDraftValues {
-    pub works: HashMap<String, WorkGraph>,
-    pub release_roles: HashMap<String, Vec<CreditedRole>>,
-    pub track_roles: HashMap<(String, String), Vec<CreditedRole>>,
-    pub track_works: HashMap<(String, String), Vec<String>>,
+/// The works the draft `edit` holds, each with its composers, as a JSON array
+/// in the draft's order; decoded by [`works_of`].
+pub(super) const WORKS_JSON: &str = "(SELECT json_group_array(json_object( \
+         'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
+         'disambiguation', work.disambiguation, 'work_type', work.work_type, \
+         'composers', json((SELECT json_group_array(json_object( \
+                 'name', composer.name, 'sort_name', composer.sort_name, \
+                 'musicbrainz_artist_id', composer.musicbrainz_artist_id, \
+                 'discogs_artist_id', composer.discogs_artist_id) ORDER BY composer.position) \
+             FROM import_candidate_work_composer AS composer \
+             WHERE composer.content_hash = work.content_hash \
+               AND composer.musicbrainz_work_id = work.musicbrainz_work_id))) \
+         ORDER BY work.position) \
+     FROM import_candidate_work AS work WHERE work.content_hash = edit.content_hash)";
+
+/// Which of the draft `edit`'s works is part of which, as a JSON array in
+/// the order the source relates them.
+pub(super) const WORK_PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
+         'parent', part.parent_work_id, 'child', part.child_work_id) ORDER BY part.position) \
+     FROM import_candidate_work_part AS part WHERE part.content_hash = edit.content_hash)";
+
+/// The roles the source credits on the draft `edit`'s release, as a JSON
+/// array in its order; decoded by [`roles_of`].
+pub(super) const RELEASE_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
+         'name', role.name, 'sort_name', role.sort_name, \
+         'musicbrainz_artist_id', role.musicbrainz_artist_id, \
+         'discogs_artist_id', role.discogs_artist_id, 'source', role.source, \
+         'role', role.role) ORDER BY role.position) \
+     FROM import_candidate_release_role AS role WHERE role.content_hash = edit.content_hash)";
+
+/// The roles the source credits on the draft track `track`, as a JSON array
+/// in its order; decoded by [`roles_of`].
+pub(super) const TRACK_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
+         'name', role.name, 'sort_name', role.sort_name, \
+         'musicbrainz_artist_id', role.musicbrainz_artist_id, \
+         'discogs_artist_id', role.discogs_artist_id, 'source', role.source, \
+         'role', role.role) ORDER BY role.position) \
+     FROM import_candidate_track_role AS role \
+     WHERE role.content_hash = track.content_hash AND role.track_id = track.track_id)";
+
+/// The works the draft track `track` performs, as a JSON array of their ids
+/// in its order.
+pub(super) const TRACK_WORKS_JSON: &str = "(SELECT json_group_array( \
+         performed.musicbrainz_work_id ORDER BY performed.position) \
+     FROM import_candidate_track_work AS performed \
+     WHERE performed.content_hash = track.content_hash AND performed.track_id = track.track_id)";
+
+/// One stored work as [`WORKS_JSON`] holds it.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredWork {
+    musicbrainz_work_id: String,
+    title: String,
+    disambiguation: Option<String>,
+    work_type: Option<String>,
+    composers: Vec<ArtistCredit>,
 }
 
-pub(super) fn load_draft_values_on(
-    sql: &SqlReadContext<'_>,
-    only: CandidateRows<'_>,
-) -> Result<StoredDraftValues, DbError> {
-    let filter = only.filter("content_hash");
-    let clause = &filter.clause;
-    let mut values = StoredDraftValues::default();
-    let works = sql.query(
-        &format!(
-            "SELECT content_hash, musicbrainz_work_id, title, disambiguation, work_type \
-             FROM import_candidate_work {clause} \
-             ORDER BY content_hash, position"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                GraphWork {
-                    musicbrainz_work_id: row.get(1)?,
-                    title: row.get(2)?,
-                    disambiguation: row.get(3)?,
-                    work_type: row.get(4)?,
-                    composers: Vec::new(),
-                },
-            ))
-        },
-    )?;
-    for (content_hash, work) in works {
-        values
-            .works
-            .entry(content_hash)
-            .or_default()
-            .works
-            .push(work);
-    }
-    let composers = sql.query(
-        &format!(
-            "SELECT content_hash, musicbrainz_work_id, name, sort_name, musicbrainz_artist_id, \
-                discogs_artist_id \
-             FROM import_candidate_work_composer {clause} \
-             ORDER BY content_hash, musicbrainz_work_id, position"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                ArtistCredit {
-                    name: row.get(2)?,
-                    sort_name: row.get(3)?,
-                    musicbrainz_artist_id: row.get(4)?,
-                    discogs_artist_id: row.get(5)?,
-                    credited_as: None,
-                },
-            ))
-        },
-    )?;
-    for (content_hash, work_id, composer) in composers {
-        values
-            .works
-            .get_mut(&content_hash)
-            .and_then(|graph| {
-                graph
-                    .works
-                    .iter_mut()
-                    .find(|work| work.musicbrainz_work_id == work_id)
+/// One stored part as [`WORK_PARTS_JSON`] holds it.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredPart {
+    parent: String,
+    child: String,
+}
+
+/// The work graph [`WORKS_JSON`] and [`WORK_PARTS_JSON`] hold.
+pub(super) fn works_of(works: Vec<StoredWork>, parts: Vec<StoredPart>) -> WorkGraph {
+    WorkGraph {
+        works: works
+            .into_iter()
+            .map(|work| GraphWork {
+                musicbrainz_work_id: work.musicbrainz_work_id,
+                title: work.title,
+                disambiguation: work.disambiguation,
+                work_type: work.work_type,
+                composers: work.composers,
             })
-            .ok_or_else(|| {
-                DbError::Message(format!(
-                    "candidate {content_hash} credits a composer on work {work_id}, which it does not hold"
-                ))
-            })?
-            .composers
-            .push(composer);
+            .collect(),
+        parts: parts
+            .into_iter()
+            .map(|part| WorkPart {
+                parent: part.parent,
+                child: part.child,
+            })
+            .collect(),
     }
-    let parts = sql.query(
-        &format!(
-            "SELECT content_hash, parent_work_id, child_work_id FROM import_candidate_work_part \
-             {clause} ORDER BY content_hash, position"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                WorkPart {
-                    parent: row.get(1)?,
-                    child: row.get(2)?,
-                },
-            ))
-        },
-    )?;
-    for (content_hash, part) in parts {
-        values
-            .works
-            .entry(content_hash)
-            .or_default()
-            .parts
-            .push(part);
-    }
-    for (content_hash, role) in sql.query(
-        &format!(
-            "SELECT content_hash, name, sort_name, musicbrainz_artist_id, discogs_artist_id, \
-                source, role \
-             FROM import_candidate_release_role {clause} \
-             ORDER BY content_hash, position"
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, role_columns(row, 1)?)),
-    )? {
-        values
-            .release_roles
-            .entry(content_hash)
-            .or_default()
-            .push(role.read()?);
-    }
-    for (content_hash, track_id, role) in sql.query(
-        &format!(
-            "SELECT content_hash, track_id, name, sort_name, musicbrainz_artist_id, \
-                discogs_artist_id, source, role \
-             FROM import_candidate_track_role {clause} \
-             ORDER BY content_hash, track_id, position"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                role_columns(row, 2)?,
-            ))
-        },
-    )? {
-        values
-            .track_roles
-            .entry((content_hash, track_id))
-            .or_default()
-            .push(role.read()?);
-    }
-    for (content_hash, track_id, work) in sql.query(
-        &format!(
-            "SELECT content_hash, track_id, musicbrainz_work_id FROM import_candidate_track_work \
-             {clause} \
-             ORDER BY content_hash, track_id, position"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )? {
-        values
-            .track_works
-            .entry((content_hash, track_id))
-            .or_default()
-            .push(work);
-    }
-    Ok(values)
 }
 
-/// A stored role as SQLite hands it over, its source not yet read.
-struct RoleColumns {
-    artist: ArtistCredit,
+/// One stored role as [`RELEASE_ROLES_JSON`] and [`TRACK_ROLES_JSON`] hold
+/// it, its source not yet read.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredRole {
+    name: String,
+    sort_name: Option<String>,
+    musicbrainz_artist_id: Option<String>,
+    discogs_artist_id: Option<String>,
     source: String,
     role: Option<String>,
 }
 
-impl RoleColumns {
-    fn read(self) -> Result<CreditedRole, DbError> {
-        Ok(CreditedRole {
-            artist: self.artist,
-            source: Catalog::from_str(&self.source).map_err(DbError::Message)?,
-            role: self.role,
+/// The credited roles a roles column holds.
+pub(super) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbError> {
+    roles
+        .into_iter()
+        .map(|stored| {
+            Ok(CreditedRole {
+                artist: ArtistCredit {
+                    name: stored.name,
+                    sort_name: stored.sort_name,
+                    musicbrainz_artist_id: stored.musicbrainz_artist_id,
+                    discogs_artist_id: stored.discogs_artist_id,
+                    credited_as: None,
+                },
+                source: Catalog::from_str(&stored.source).map_err(DbError::Message)?,
+                role: stored.role,
+            })
         })
-    }
-}
-
-fn role_columns(row: &rusqlite::Row<'_>, first: usize) -> rusqlite::Result<RoleColumns> {
-    Ok(RoleColumns {
-        artist: ArtistCredit {
-            name: row.get(first)?,
-            sort_name: row.get(first + 1)?,
-            musicbrainz_artist_id: row.get(first + 2)?,
-            discogs_artist_id: row.get(first + 3)?,
-            credited_as: None,
-        },
-        source: row.get(first + 4)?,
-        role: row.get(first + 5)?,
-    })
+        .collect()
 }
