@@ -23,6 +23,50 @@ const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin_
 
 const TEXT_LINE_COLUMNS: &str = "content_hash, position, text, origin";
 
+/// One list's values under the header joined as `signals`, as a JSON array
+/// in their order, each value as `value` gives it.
+fn signal_list_sql(list: &str, value: &str) -> String {
+    format!(
+        "(SELECT json_group_array({value} ORDER BY listed.position) \
+          FROM import_candidate_signal_value AS listed \
+          WHERE listed.content_hash = signals.content_hash AND listed.list = '{list}')"
+    )
+}
+
+/// A candidate's settled signals as columns of a read that joins their
+/// header row as `signals`, each list and the text lines riding on it as a
+/// JSON array; a Disc ID or barcode with the file it was read off. A
+/// candidate with no header row reads `signals_row` as NULL.
+pub(super) fn signals_read_columns() -> String {
+    let sourced = "json_object('value', listed.value, 'origin_path', listed.origin_path)";
+    format!(
+        "signals.content_hash AS signals_row, signals.audio_source AS signals_audio_source, \
+         signals.cd_rip_proof AS signals_cd_rip_proof, \
+         signals.download_proof AS signals_download_proof, \
+         signals.audio_source_file AS signals_audio_source_file, \
+         signals.not_cd_rate AS signals_not_cd_rate, \
+         signals.disc_id_state AS signals_disc_id_state, \
+         signals.disc_id_failure AS signals_disc_id_failure, \
+         signals.barcode_state AS signals_barcode_state, \
+         signals.barcode_failure AS signals_barcode_failure, \
+         signals.text_state AS signals_text_state, \
+         signals.text_failure AS signals_text_failure, \
+         {discs} AS signals_discs, {barcodes} AS signals_barcodes, \
+         {catalogs} AS signals_catalogs, {free_text} AS signals_free_text, \
+         {isrcs} AS signals_isrcs, {track_titles} AS signals_track_titles, \
+         (SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) \
+                                  ORDER BY line.position) \
+          FROM import_candidate_text_line AS line \
+          WHERE line.content_hash = signals.content_hash) AS signals_text_pool",
+        discs = signal_list_sql("disc_id", sourced),
+        barcodes = signal_list_sql("barcode", sourced),
+        catalogs = signal_list_sql("catalog", "listed.value"),
+        free_text = signal_list_sql("free_text", "listed.value"),
+        isrcs = signal_list_sql("isrc", "listed.value"),
+        track_titles = signal_list_sql("track_title", "listed.value"),
+    )
+}
+
 /// Every signal row under `content_hash`. The values cascade from the header.
 pub(super) fn delete_signals(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
@@ -166,200 +210,219 @@ fn free_text(text: &TextSignal) -> &[String] {
     }
 }
 
+/// One candidate's [`signals_read_columns`] as SQLite hands them over, its
+/// lists still JSON.
+pub(super) struct StoredSignals {
+    audio_source: Option<String>,
+    cd_rip_proof: Option<String>,
+    download_proof: Option<String>,
+    audio_source_file: Option<String>,
+    not_cd_rate: Option<u32>,
+    disc_id_state: String,
+    disc_id_failure: Option<String>,
+    barcode_state: String,
+    barcode_failure: Option<String>,
+    text_state: String,
+    text_failure: Option<String>,
+    discs: String,
+    barcodes: String,
+    catalogs: String,
+    free_text: String,
+    isrcs: String,
+    track_titles: String,
+    text_pool: String,
+}
+
+/// The [`signals_read_columns`] of `row`; none for a candidate whose signals
+/// were never settled.
+pub(super) fn read_signals(row: &Row<'_>) -> rusqlite::Result<Option<StoredSignals>> {
+    if row.get::<_, Option<String>>("signals_row")?.is_none() {
+        return Ok(None);
+    }
+    Ok(Some(StoredSignals {
+        audio_source: row.get("signals_audio_source")?,
+        cd_rip_proof: row.get("signals_cd_rip_proof")?,
+        download_proof: row.get("signals_download_proof")?,
+        audio_source_file: row.get("signals_audio_source_file")?,
+        not_cd_rate: row.get("signals_not_cd_rate")?,
+        disc_id_state: row.get("signals_disc_id_state")?,
+        disc_id_failure: row.get("signals_disc_id_failure")?,
+        barcode_state: row.get("signals_barcode_state")?,
+        barcode_failure: row.get("signals_barcode_failure")?,
+        text_state: row.get("signals_text_state")?,
+        text_failure: row.get("signals_text_failure")?,
+        discs: row.get("signals_discs")?,
+        barcodes: row.get("signals_barcodes")?,
+        catalogs: row.get("signals_catalogs")?,
+        free_text: row.get("signals_free_text")?,
+        isrcs: row.get("signals_isrcs")?,
+        track_titles: row.get("signals_track_titles")?,
+        text_pool: row.get("signals_text_pool")?,
+    }))
+}
+
+/// One sourced value of a list as [`signals_read_columns`] holds it.
+#[derive(serde::Deserialize)]
+struct StoredSourcedValue {
+    value: String,
+    origin_path: Option<String>,
+}
+
+/// One text line as [`signals_read_columns`] holds it.
+#[derive(serde::Deserialize)]
+struct StoredTextLine {
+    text: String,
+    origin: String,
+}
+
+fn list_of<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
+    serde_json::from_str(json)
+        .map_err(|error| DbError::Message(format!("stored signal {what} {json:?}: {error}")))
+}
+
+impl StoredSignals {
+    pub(super) fn signals(self) -> Result<Signals, DbError> {
+        let Self {
+            audio_source,
+            cd_rip_proof,
+            download_proof,
+            audio_source_file,
+            not_cd_rate,
+            disc_id_state,
+            disc_id_failure,
+            barcode_state,
+            barcode_failure,
+            text_state,
+            text_failure,
+            discs,
+            barcodes,
+            catalogs,
+            free_text,
+            isrcs,
+            track_titles,
+            text_pool,
+        } = self;
+        let failure_of = |detail: Option<String>, what: &str| {
+            detail
+                .map(|detail| InternalFailure { detail })
+                .ok_or_else(|| DbError::Message(format!("a failed {what} states no error")))
+        };
+        let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
+            (None, None, None) => None,
+            (Some("cd_rip"), Some(proof), None) => Some(AudioSource::CdRip {
+                proof: CdProof::from_key(&proof)
+                    .ok_or_else(|| unreadable("cd_rip_proof", &proof))?,
+                file: audio_source_file,
+            }),
+            (Some("download"), None, Some(proof)) if proof == DELIVERY_SET => {
+                Some(AudioSource::Download(DownloadProof::DeliverySet))
+            }
+            (Some("download"), None, Some(proof)) => {
+                let marker = StoreMarker::from_key(&proof)
+                    .ok_or_else(|| unreadable("download_proof", &proof))?;
+                let file = audio_source_file.ok_or_else(|| {
+                    DbError::Message("a stored store download names no file".into())
+                })?;
+                Some(AudioSource::Download(DownloadProof::Store { marker, file }))
+            }
+            (source, ..) => return Err(unreadable("audio_source", source.unwrap_or("NULL"))),
+        };
+        let origin = AudioOrigin {
+            source,
+            not_cd_rate,
+        };
+        let discs: Vec<ComputedDiscId> = list_of::<StoredSourcedValue>(&discs, "Disc IDs")?
+            .into_iter()
+            .map(|disc| ComputedDiscId {
+                disc_id: disc.value,
+                source_file: disc.origin_path,
+            })
+            .collect();
+        if (disc_id_state == "computed") == discs.is_empty() {
+            return Err(DbError::Message(format!(
+                "a {disc_id_state} Disc ID signal states {} Disc IDs",
+                discs.len()
+            )));
+        }
+        let disc_id = match disc_id_state.as_str() {
+            "computed" => DiscIdSignal::Computed { discs },
+            "absent" => DiscIdSignal::Absent,
+            "not_cd_audio" => DiscIdSignal::NotCdAudio,
+            "failed" => DiscIdSignal::Failed {
+                failure: failure_of(disc_id_failure, "Disc ID")?,
+            },
+            other => return Err(unreadable("disc_id_state", other)),
+        };
+        let codes: Vec<SourcedValue> = list_of::<StoredSourcedValue>(&barcodes, "barcodes")?
+            .into_iter()
+            .map(|code| SourcedValue {
+                value: code.value,
+                origin_path: code.origin_path,
+            })
+            .collect();
+        let barcode = match barcode_state.as_str() {
+            "settled" => BarcodeSignal::Settled { codes },
+            "absent" => BarcodeSignal::Absent,
+            "failed" => BarcodeSignal::Failed {
+                failure: failure_of(barcode_failure, "barcode")?,
+                codes,
+            },
+            other => return Err(unreadable("barcode_state", other)),
+        };
+        let catalogs = list_of(&catalogs, "catalog numbers")?;
+        let free_text = list_of(&free_text, "free text")?;
+        let text = match text_state.as_str() {
+            "settled" => TextSignal::Settled {
+                catalogs,
+                free_text,
+            },
+            "failed" => TextSignal::Failed {
+                failure: failure_of(text_failure, "text signal")?,
+                catalogs,
+                free_text,
+            },
+            other => return Err(unreadable("text_state", other)),
+        };
+        let text_pool = list_of::<StoredTextLine>(&text_pool, "text lines")?
+            .into_iter()
+            .map(|line| {
+                Ok(TextLine {
+                    origin: line.origin.parse().map_err(DbError::Message)?,
+                    text: line.text,
+                })
+            })
+            .collect::<Result<_, DbError>>()?;
+        Ok(Signals {
+            origin,
+            disc_id,
+            barcode,
+            text,
+            text_pool,
+            isrcs: list_of(&isrcs, "ISRCs")?,
+            track_titles: list_of(&track_titles, "track titles")?,
+        })
+    }
+}
+
 /// Every candidate's settled signals, or the one `only` names.
 pub(super) fn load_signals_on(
     sql: &SqlReadContext<'_>,
     only: CandidateRows<'_>,
 ) -> Result<impl FnOnce() -> Result<HashMap<String, Signals>, DbError> + Send + 'static, DbError> {
-    let filter = only.filter("content_hash");
-    let clause = &filter.clause;
-    let values = sql.query(
-        &format!(
-            "SELECT {SIGNAL_VALUE_COLUMNS} FROM import_candidate_signal_value \
-             {clause} \
-             ORDER BY content_hash, list, position"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, String>("list")?,
-                row.get::<_, String>("value")?,
-                row.get::<_, Option<String>>("origin_path")?,
-            ))
-        },
-    )?;
-    let text_lines = sql.query(
-        &format!(
-            "SELECT {TEXT_LINE_COLUMNS} FROM import_candidate_text_line \
-             {clause} \
-             ORDER BY content_hash, position"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, String>("text")?,
-                row.get::<_, String>("origin")?,
-            ))
-        },
-    )?;
+    let filter = only.filter("signals.content_hash");
     let rows = sql.query(
         &format!(
-            "SELECT {SIGNALS_COLUMNS} FROM import_candidate_signals \
-             {clause}"
+            "SELECT {} FROM import_candidate_signals AS signals {}",
+            signals_read_columns(),
+            filter.clause
         ),
         filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                (
-                    row.get::<_, Option<String>>("audio_source")?,
-                    row.get::<_, Option<String>>("cd_rip_proof")?,
-                    row.get::<_, Option<String>>("download_proof")?,
-                    row.get::<_, Option<String>>("audio_source_file")?,
-                    row.get::<_, Option<u32>>("not_cd_rate")?,
-                ),
-                row.get::<_, String>("disc_id_state")?,
-                row.get::<_, Option<String>>("disc_id_failure")?,
-                row.get::<_, String>("barcode_state")?,
-                row.get::<_, Option<String>>("barcode_failure")?,
-                row.get::<_, String>("text_state")?,
-                row.get::<_, Option<String>>("text_failure")?,
-            ))
-        },
+        |row| Ok((row.get::<_, String>("signals_row")?, read_signals(row)?)),
     )?;
-
     Ok(move || {
-        let mut lists: HashMap<String, SignalValues> = HashMap::new();
-        for (content_hash, list, value, origin_path) in values {
-            let entry = lists.entry(content_hash).or_default();
-            match list.as_str() {
-                "disc_id" => entry.discs.push(ComputedDiscId {
-                    disc_id: value,
-                    source_file: origin_path,
-                }),
-                "barcode" => entry.barcodes.push(SourcedValue { value, origin_path }),
-                "catalog" => entry.catalogs.push(value),
-                "free_text" => entry.free_text.push(value),
-                "isrc" => entry.isrcs.push(value),
-                "track_title" => entry.track_titles.push(value),
-                other => return Err(unreadable("list", other)),
-            }
-        }
-        let mut pools: HashMap<String, Vec<TextLine>> = HashMap::new();
-        for (content_hash, text, origin) in text_lines {
-            pools.entry(content_hash).or_default().push(TextLine {
-                origin: origin.parse().map_err(DbError::Message)?,
-                text,
-            });
-        }
-
-        let mut out = HashMap::with_capacity(rows.len());
-        for row in rows {
-            let (
-                content_hash,
-                (audio_source, cd_rip_proof, download_proof, audio_source_file, not_cd_rate),
-                disc_id_state,
-                disc_id_failure,
-                barcode_state,
-                barcode_failure,
-                text_state,
-                text_failure,
-            ) = row;
-            let failure_of = |detail: Option<String>, what: &str| {
-                detail
-                    .map(|detail| InternalFailure { detail })
-                    .ok_or_else(|| DbError::Message(format!("a failed {what} states no error")))
-            };
-            let mut values = lists.remove(&content_hash).unwrap_or_default();
-            let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
-                (None, None, None) => None,
-                (Some("cd_rip"), Some(proof), None) => Some(AudioSource::CdRip {
-                    proof: CdProof::from_key(&proof)
-                        .ok_or_else(|| unreadable("cd_rip_proof", &proof))?,
-                    file: audio_source_file,
-                }),
-                (Some("download"), None, Some(proof)) if proof == DELIVERY_SET => {
-                    Some(AudioSource::Download(DownloadProof::DeliverySet))
-                }
-                (Some("download"), None, Some(proof)) => {
-                    let marker = StoreMarker::from_key(&proof)
-                        .ok_or_else(|| unreadable("download_proof", &proof))?;
-                    let file = audio_source_file.ok_or_else(|| {
-                        DbError::Message("a stored store download names no file".into())
-                    })?;
-                    Some(AudioSource::Download(DownloadProof::Store { marker, file }))
-                }
-                (source, ..) => return Err(unreadable("audio_source", source.unwrap_or("NULL"))),
-            };
-            let origin = AudioOrigin {
-                source,
-                not_cd_rate,
-            };
-            let discs = std::mem::take(&mut values.discs);
-            if (disc_id_state == "computed") == discs.is_empty() {
-                return Err(DbError::Message(format!(
-                    "a {disc_id_state} Disc ID signal states {} Disc IDs",
-                    discs.len()
-                )));
-            }
-            let disc_id = match disc_id_state.as_str() {
-                "computed" => DiscIdSignal::Computed { discs },
-                "absent" => DiscIdSignal::Absent,
-                "not_cd_audio" => DiscIdSignal::NotCdAudio,
-                "failed" => DiscIdSignal::Failed {
-                    failure: failure_of(disc_id_failure, "Disc ID")?,
-                },
-                other => return Err(unreadable("disc_id_state", other)),
-            };
-            let barcode = match barcode_state.as_str() {
-                "settled" => BarcodeSignal::Settled {
-                    codes: values.barcodes,
-                },
-                "absent" => BarcodeSignal::Absent,
-                "failed" => BarcodeSignal::Failed {
-                    failure: failure_of(barcode_failure, "barcode")?,
-                    codes: values.barcodes,
-                },
-                other => return Err(unreadable("barcode_state", other)),
-            };
-            let text = match text_state.as_str() {
-                "settled" => TextSignal::Settled {
-                    catalogs: values.catalogs,
-                    free_text: values.free_text,
-                },
-                "failed" => TextSignal::Failed {
-                    failure: failure_of(text_failure, "text signal")?,
-                    catalogs: values.catalogs,
-                    free_text: values.free_text,
-                },
-                other => return Err(unreadable("text_state", other)),
-            };
-            let text_pool = pools.remove(&content_hash).unwrap_or_default();
-            out.insert(
-                content_hash,
-                Signals {
-                    origin,
-                    disc_id,
-                    barcode,
-                    text,
-                    text_pool,
-                    isrcs: values.isrcs,
-                    track_titles: values.track_titles,
-                },
-            );
-        }
-        Ok(out)
+        rows.into_iter()
+            .filter_map(|(content_hash, stored)| Some((content_hash, stored?)))
+            .map(|(content_hash, stored)| Ok((content_hash, stored.signals()?)))
+            .collect()
     })
-}
-
-#[derive(Default)]
-struct SignalValues {
-    discs: Vec<ComputedDiscId>,
-    barcodes: Vec<SourcedValue>,
-    catalogs: Vec<String>,
-    free_text: Vec<String>,
-    isrcs: Vec<String>,
-    track_titles: Vec<String>,
 }
