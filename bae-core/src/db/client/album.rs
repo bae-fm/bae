@@ -238,6 +238,34 @@ impl Database {
             })
     }
 
+    /// The albums of `album_ids` the browse lists, each once at its first
+    /// appearance in the browse order `sort` and `group_by_artist` name: the
+    /// grid's selection as the grid lists it, whatever order it was picked in.
+    pub async fn albums_in_browse_order(
+        &self,
+        sort: &[AlbumSortCriterion],
+        album_ids: Vec<String>,
+        group_by_artist: bool,
+    ) -> Result<Vec<DbAlbumSummary>, DbError> {
+        let (relation, order_by) = album_browse_order(sort, group_by_artist);
+        let query = format!(
+            "WITH appearance (album_id, idx) AS ( \
+                 SELECT a.id, ROW_NUMBER() OVER (ORDER BY {order_by}) \
+                 {relation} \
+                 WHERE a.id IN (SELECT value FROM json_each(?1))) \
+             {select} \
+             FROM (SELECT album_id, MIN(idx) AS idx FROM appearance GROUP BY album_id) AS first \
+             JOIN album_listing listing ON listing.album_id = first.album_id \
+             JOIN albums a ON a.id = first.album_id \
+             ORDER BY first.idx",
+            select = album_summary_select(),
+        );
+        let album_ids = serde_json::to_string(&album_ids).expect("album ids serialize as JSON");
+        self.read(move |sql| Ok(sql.query(&query, [album_ids], AlbumSummaryRow::read)?))
+            .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
+            .await
+    }
+
     /// The album's first appearance in the browse order, or `None` if absent.
     /// Uses the same relation and order as the live page query.
     pub async fn get_album_index(

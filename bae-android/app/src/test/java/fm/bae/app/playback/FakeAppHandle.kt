@@ -330,6 +330,12 @@ internal open class FakeAppHandle(
         groupByArtist: Boolean,
     ): ULong? = unfaked("getAlbumIndex")
 
+    override suspend fun albumsInBrowseOrder(
+        sortCriteria: List<BridgeSortCriterion>,
+        albumIds: List<String>,
+        groupByArtist: Boolean,
+    ): List<BridgeAlbum> = unfaked("albumsInBrowseOrder")
+
     override suspend fun getDownloadCounts(): BridgeDownloadCounts = unfaked("getDownloadCounts")
 
     override fun insertInQueue(

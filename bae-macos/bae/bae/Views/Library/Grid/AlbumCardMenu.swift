@@ -2,7 +2,7 @@ import Foundation
 
 /// The bulk-action menu a grid card presents: how many albums it targets and the
 /// three actions, each already bound to those targets. Built by the grid from
-/// `AlbumGridSelection.orderedTargets`; both the SwiftUI context menu and the
+/// `AlbumGridSelection.targets`; both the SwiftUI context menu and the
 /// AppKit ellipsis menu render from this one definition. Labels switch to the
 /// plural form (carrying the count) when more than one album is targeted.
 struct AlbumCardMenu {

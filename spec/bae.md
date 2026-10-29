@@ -2304,7 +2304,10 @@ When track 3 ends, Up Next drains first, then the release continues at track
 4.
 
 What's playing from is a release, several releases in the order chosen, or the
-whole library. Its rows are filled once, when playing starts; after that they
+whole library. Albums picked together in the album grid, played, queued or
+dragged to the queue, go in the grid's order under its sort and grouping,
+which core reads for the ids it is handed, whatever order they were picked
+in. Its rows are filled once, when playing starts; after that they
 can be removed and reordered but never grow. It holds each track once: a
 release named twice among several plays once, where it is first named.
 Removing the playing row leaves the track after it next. Up Next entries are

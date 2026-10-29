@@ -120,6 +120,24 @@ extension LibraryView {
     private static let listIdealWidth: CGFloat = 320
     private static let detailMinWidth: CGFloat = 420
 
+    /// Play the grid's albums `albumIds`, in the grid's order, which core
+    /// reads.
+    private func playAlbums(_ albumIds: [String]) {
+        let order = AlbumGridOrder(session: session)
+        let library = library
+        let playback = playback
+        let uiStore = uiStore
+        Task {
+            do {
+                let albums = try await order.albums(albumIds, in: library)
+                playback.playReleases(albums.map(\.primaryReleaseId))
+            }
+            catch {
+                uiStore.showError(error)
+            }
+        }
+    }
+
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
@@ -187,16 +205,18 @@ extension LibraryView {
                         groupByArtist: session.albumGrouping.byArtist,
                         fullWidth: fullWidth,
                         selection: session.albumSelection,
-                        onPlay: { albums in
-                            playback.playReleases(
-                                albums.map(\.primaryReleaseId)
+                        onPlay: { albumIds in playAlbums(albumIds) },
+                        onAddToQueue: { albumIds in
+                            queueActions.addAlbumsToQueue(
+                                albumIds,
+                                order: AlbumGridOrder(session: session)
                             )
                         },
-                        onAddToQueue: { albums in
-                            queueActions.addToQueue(albums.map(\.id))
-                        },
-                        onAddNext: { albums in
-                            queueActions.addNext(albums.map(\.id))
+                        onAddNext: { albumIds in
+                            queueActions.addAlbumsNext(
+                                albumIds,
+                                order: AlbumGridOrder(session: session)
+                            )
                         },
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)

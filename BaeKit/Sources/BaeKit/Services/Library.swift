@@ -17,6 +17,15 @@ public final class Library: Sendable, Observable {
             _ groupByArtist: Bool
         )
             async throws -> UInt64?
+    /// The albums of `albumIds` the album list holds, each once, in its order
+    /// under one sort and grouping: what an action on the grid's selection
+    /// acts on, in that order.
+    public let albumsInBrowseOrder:
+        @Sendable (
+            _ sortCriteria: [BridgeSortCriterion], _ albumIds: [String],
+            _ groupByArtist: Bool
+        )
+            async throws -> [BridgeAlbum]
     public let composerBrowse:
         @Sendable (_ sortCriteria: [BridgeComposerSortCriterion])
             -> LibraryBrowseQuery<BridgeComposerSummary>
@@ -73,6 +82,10 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable ([BridgeSortCriterion], String, Bool)
             async throws
             -> UInt64? = { _, _, _ in throw StubError.notImplemented },
+        albumsInBrowseOrder:
+            @escaping @Sendable ([BridgeSortCriterion], [String], Bool)
+            async throws
+            -> [BridgeAlbum] = { _, _, _ in throw StubError.notImplemented },
         composerBrowse:
             @escaping @Sendable ([BridgeComposerSortCriterion])
             -> LibraryBrowseQuery<BridgeComposerSummary> = { _ in
@@ -135,6 +148,7 @@ public final class Library: Sendable, Observable {
     ) {
         self.albumBrowse = albumBrowse
         self.getAlbumIndex = getAlbumIndex
+        self.albumsInBrowseOrder = albumsInBrowseOrder
         self.composerBrowse = composerBrowse
         self.artistBrowse = artistBrowse
         self.librarySearch = librarySearch
@@ -161,13 +175,8 @@ public final class Library: Sendable, Observable {
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 albumBrowse: Self.albumBrowse(handle),
-                getAlbumIndex: {
-                    try await handle.getAlbumIndex(
-                        sortCriteria: $0,
-                        albumId: $1,
-                        groupByArtist: $2
-                    )
-                },
+                getAlbumIndex: Self.albumIndex(handle),
+                albumsInBrowseOrder: Self.albumsInBrowseOrder(handle),
                 composerBrowse: {
                     LibraryBrowseQuery(
                         handle.subscribeComposerBrowse(sortCriteria: $0)
@@ -215,6 +224,39 @@ public final class Library: Sendable, Observable {
                     try await handle.setLibraryFullWidth(enabled: $0)
                 }
             )
+        }
+
+        /// Where an album sits in the album list, read through `handle`.
+        private static func albumIndex(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable ([BridgeSortCriterion], String, Bool) async throws
+            -> UInt64?
+        {
+            {
+                try await handle.getAlbumIndex(
+                    sortCriteria: $0,
+                    albumId: $1,
+                    groupByArtist: $2
+                )
+            }
+        }
+
+        /// The album list's albums of a selection in its order, read through
+        /// `handle`.
+        private static func albumsInBrowseOrder(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable ([BridgeSortCriterion], [String], Bool) async throws
+            -> [BridgeAlbum]
+        {
+            {
+                try await handle.albumsInBrowseOrder(
+                    sortCriteria: $0,
+                    albumIds: $1,
+                    groupByArtist: $2
+                )
+            }
         }
 
         /// The album list read through `handle`, under each sort and grouping

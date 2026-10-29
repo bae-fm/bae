@@ -35,6 +35,21 @@ impl LibraryManager {
             .await?)
     }
 
+    /// The albums of `album_ids` the grid lists, in its order under `sort`
+    /// and `group_by_artist`, each once.
+    pub async fn albums_in_browse_order(
+        &self,
+        sort: &[crate::db::AlbumSortCriterion],
+        album_ids: Vec<String>,
+        group_by_artist: bool,
+    ) -> Result<Vec<AlbumSummary>, LibraryError> {
+        let raws = self
+            .database
+            .albums_in_browse_order(sort, album_ids, group_by_artist)
+            .await?;
+        Ok(raws.into_iter().map(AlbumSummary::from_raw).collect())
+    }
+
     pub async fn get_album_count(&self) -> Result<u64, LibraryError> {
         Ok(self.database.get_album_count().await?)
     }

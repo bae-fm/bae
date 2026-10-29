@@ -98,20 +98,14 @@ final class AlbumGridSelection {
     }
 
     /// The menu/drag target rule: a card that is part of a multi-selection targets
-    /// the whole selection in visible grid order (ids that don't resolve to a
-    /// position are dropped); any other card targets just itself. Never mutates
-    /// the selection — merely opening a menu or starting a drag leaves it as is.
-    func orderedTargets(
-        for clickedId: String,
-        position: (String) -> Int?
-    ) -> [String] {
+    /// the whole selection; any other card targets just itself. The ids come in
+    /// no order: whatever acts on them hands them to core, which orders them as
+    /// the grid lists them. Never mutates the selection — merely opening a menu
+    /// or starting a drag leaves it as is.
+    func targets(for clickedId: String) -> [String] {
         guard selectedIds.contains(clickedId), selectedIds.count > 1 else {
             return [clickedId]
         }
-        return
-            selectedIds
-            .compactMap { id in position(id).map { (id, $0) } }
-            .sorted { $0.1 < $1.1 }
-            .map(\.0)
+        return Array(selectedIds)
     }
 }

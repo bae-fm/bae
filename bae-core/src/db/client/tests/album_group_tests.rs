@@ -300,3 +300,58 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
         1
     );
 }
+
+/// The grid's selection comes back in the grid's order, whatever order its
+/// albums were picked in: by title one way, by artist and then title grouped,
+/// each album once, and an album the library no longer holds left out.
+#[tokio::test]
+async fn a_selection_is_read_in_the_grids_order() {
+    let (db, _dir) = grouped_library().await;
+    let album = |index: u32| format!("00000000-0000-4000-8000-{index:012}");
+    let picked = vec![
+        album(3),
+        album(0),
+        "no-such-album".to_string(),
+        album(4),
+        album(1),
+    ];
+    let titles = |albums: Vec<DbAlbumSummary>| {
+        albums
+            .into_iter()
+            .map(|album| album.title)
+            .collect::<Vec<_>>()
+    };
+    let by_title = [AlbumSortCriterion {
+        field: AlbumSortField::Title,
+        direction: SortDirection::Descending,
+    }];
+    assert_eq!(
+        titles(
+            db.albums_in_browse_order(&by_title, picked.clone(), false)
+                .await
+                .unwrap()
+        ),
+        ["Album E", "Album D", "Album B", "Album A"]
+    );
+    let by_artist = [
+        AlbumSortCriterion {
+            field: AlbumSortField::Artist,
+            direction: SortDirection::Ascending,
+        },
+        AlbumSortCriterion {
+            field: AlbumSortField::Title,
+            direction: SortDirection::Ascending,
+        },
+    ];
+    let grouped = db
+        .albums_in_browse_order(&by_artist, picked, true)
+        .await
+        .unwrap();
+    let page = db.get_album_page(&by_artist, 0, 10).await.unwrap();
+    let expected: Vec<String> = page
+        .into_iter()
+        .filter(|album| grouped.iter().any(|picked| picked.id == album.id))
+        .map(|album| album.title)
+        .collect();
+    assert_eq!(titles(grouped), expected);
+}

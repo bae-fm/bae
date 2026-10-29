@@ -25,10 +25,7 @@ struct AlbumGridSelectionTests {
             idAt: { ids[$0] }
         )
         #expect(
-            selection.orderedTargets(
-                for: "shared",
-                position: { ids.firstIndex(of: $0) }
-            )
+            Set(selection.targets(for: "shared"))
                 == ["shared", "first", "second"]
         )
     }
@@ -115,53 +112,28 @@ struct AlbumGridSelectionTests {
         #expect(selection.anchor?.albumId == nil)
     }
 
-    @Test(
-        "orderedTargets returns visible order for a member of a multi-selection"
-    )
-    func orderedTargetsVisibleOrder() {
-        let positions = ["a": 0, "b": 1, "c": 2]
+    @Test("targets are the whole selection for a member of a multi-selection")
+    func targetsTheSelection() {
         let selection = AlbumGridSelection()
         selection.setSelected("c", selected: true)
         selection.setSelected("a", selected: true)
-        #expect(
-            selection.orderedTargets(for: "a", position: { positions[$0] })
-                == ["a", "c"]
-        )
+        // In no order: core orders them as the grid lists them.
+        #expect(Set(selection.targets(for: "a")) == ["a", "c"])
     }
 
-    @Test("orderedTargets drops ids that don't resolve to a position")
-    func orderedTargetsDropsUnresolvable() {
-        let selection = AlbumGridSelection()
-        selection.setSelected("a", selected: true)
-        selection.setSelected("b", selected: true)
-        #expect(
-            selection.orderedTargets(
-                for: "a",
-                position: { $0 == "a" ? 0 : nil }
-            )
-                == ["a"]
-        )
-    }
-
-    @Test("orderedTargets returns just the clicked id for a non-member click")
-    func orderedTargetsNonMember() {
-        let positions = ["a": 0, "b": 1, "c": 2]
+    @Test("targets are just the clicked id for a non-member click")
+    func targetsNonMember() {
         let selection = AlbumGridSelection()
         selection.setSelected("a", selected: true)
         selection.setSelected("c", selected: true)
-        #expect(
-            selection.orderedTargets(for: "b", position: { positions[$0] })
-                == ["b"]
-        )
+        #expect(selection.targets(for: "b") == ["b"])
     }
 
-    @Test("orderedTargets returns just the clicked id for a single selection")
-    func orderedTargetsSingleSelection() {
+    @Test("targets are just the clicked id for a single selection")
+    func targetsSingleSelection() {
         let selection = AlbumGridSelection()
         selection.setSelected("a", selected: true)
-        #expect(
-            selection.orderedTargets(for: "a", position: { _ in 0 }) == ["a"]
-        )
+        #expect(selection.targets(for: "a") == ["a"])
     }
 
     @Test("remove drops only the missing ids and clears a removed anchor")

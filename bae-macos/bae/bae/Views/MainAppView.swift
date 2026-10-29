@@ -22,6 +22,8 @@ struct MainAppView: View {
     var previewAudio
     @Environment(UiStore.self)
     var uiStore
+    @Environment(LibraryBrowseSession.self)
+    var session
     @State
     private var searchText: String = ""
     /// The dropdown card's frame in the search overlay's space, fed to the
@@ -67,8 +69,12 @@ struct MainAppView: View {
                             onClose: {
                                 uiStore.setQueuePresented(false)
                             },
-                            onInsertTracks: { ids, index in
-                                queueActions.insertInQueue(ids, at: index)
+                            onInsertTracks: { dropped, index in
+                                queueActions.insertDropped(
+                                    dropped,
+                                    at: index,
+                                    order: AlbumGridOrder(session: session)
+                                )
                             }
                         )
                         .transition(.move(edge: .trailing))
@@ -81,7 +87,12 @@ struct MainAppView: View {
 
                 Divider()
                 NowPlayingBarContainer(
-                    onDropToQueue: { ids in queueActions.addToQueue(ids) },
+                    onDropToQueue: { dropped in
+                        queueActions.addDropped(
+                            dropped,
+                            order: AlbumGridOrder(session: session)
+                        )
+                    },
                 )
             }
 

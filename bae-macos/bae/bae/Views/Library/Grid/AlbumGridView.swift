@@ -22,9 +22,11 @@ struct AlbumGridView<ExpansionContent: View>: View {
     let selection: AlbumGridSelection
     /// Bulk actions, each given the target albums in grid order, as the
     /// grid's query returned them.
-    let onPlay: ([BridgeAlbum]) -> Void
-    let onAddToQueue: ([BridgeAlbum]) -> Void
-    let onAddNext: ([BridgeAlbum]) -> Void
+    /// Each acts on album ids in no order; the receiver has core order them
+    /// as the grid lists them.
+    let onPlay: ([String]) -> Void
+    let onAddToQueue: ([String]) -> Void
+    let onAddNext: ([String]) -> Void
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
 
@@ -617,7 +619,7 @@ extension AlbumGridView {
 
     /// The card's menu, acting on the whole selection when the card is in it.
     private func cardMenu(for albumId: String) -> AlbumCardMenu {
-        let targets = targetAlbums(for: albumId)
+        let targets = selection.targets(for: albumId)
         return AlbumCardMenu(
             targetCount: targets.count,
             onPlay: { onPlay(targets) },
@@ -626,32 +628,9 @@ extension AlbumGridView {
         )
     }
 
-    /// The albums a card's menu acts on, in grid order: the whole selection
-    /// when the card is in it, else the card's own album. Each is the row the
-    /// grid's query returned, taken when the menu is built.
-    private func targetAlbums(for albumId: String) -> [BridgeAlbum] {
-        selection.orderedTargets(
-            for: albumId,
-            position: { list.position(of: $0) }
-        )
-        .map { id in
-            // `orderedTargets` keeps only ids the list holds at a position,
-            // so each has the row it holds there.
-            guard let album = list.row(of: id) else {
-                preconditionFailure("Album \(id) has a position but no row")
-            }
-            return album
-        }
-    }
-
     /// The card's drag payload: the whole selection when the card is in it.
     private func dragPayload(for albumId: String) -> String {
-        AlbumDragPayload.encode(
-            selection.orderedTargets(
-                for: albumId,
-                position: { list.position(of: $0) }
-            )
-        )
+        AlbumDragPayload.encode(selection.targets(for: albumId))
     }
 }
 

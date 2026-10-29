@@ -103,6 +103,28 @@ forward! { async this => {
             .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
+    /// The albums of `album_ids` the grid lists, each once, in the grid's
+    /// order under `sort_criteria` and `group_by_artist`: what an action on
+    /// the grid's selection acts on, in that order.
+    fn albums_in_browse_order(
+        sort_criteria: Vec<BridgeSortCriterion>,
+        album_ids: Vec<String>,
+        group_by_artist: bool,
+    ) -> Vec<BridgeAlbum> {
+        let sort: Vec<bae_core::db::AlbumSortCriterion> = sort_criteria
+            .into_iter()
+            .map(BridgeSortCriterion::into_core)
+            .collect();
+        Ok(this
+            .services
+            .albums_in_browse_order(&sort, album_ids, group_by_artist)
+            .await
+            .map_err(|e| BridgeError::database(format!("{e}")))?
+            .into_iter()
+            .map(BridgeAlbum::from_core)
+            .collect())
+    }
+
     /// Filesystem path for the user's own external file behind a library file
     /// (including the DiscID re-read of a rip's LOG/CUE evidence; retained
     /// source-audio facts supply its duration). Returns `Ok(None)` if the

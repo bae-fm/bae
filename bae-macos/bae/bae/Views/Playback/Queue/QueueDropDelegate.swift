@@ -63,11 +63,10 @@ struct QueueDropDelegate: DropDelegate {
         }
 
         group.notify(queue: .main) {
-            // A dragged album card may carry several ids joined by a newline (a
-            // multi-selection drag); split each back out before resolving.
-            let ids = collectedIds.flatMap(AlbumDragPayload.decode)
-            if !ids.isEmpty {
-                onInsertTracks(ids, insertAt)
+            // Each dropped string as it came: an album drag's payload, which
+            // the receiver has core order, or a track's id.
+            if !collectedIds.isEmpty {
+                onInsertTracks(collectedIds, insertAt)
             }
         }
 

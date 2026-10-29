@@ -57,13 +57,11 @@ struct QueueView: View {
                     Text("Drag tracks here or play an album")
                 }
                 .frame(maxHeight: .infinity)
-                .dropDestination(for: String.self) { droppedIds, _ in
-                    // A multi-selection drag carries several ids per payload.
-                    let ids = droppedIds.flatMap(AlbumDragPayload.decode)
-                    guard !ids.isEmpty else {
+                .dropDestination(for: String.self) { dropped, _ in
+                    guard !dropped.isEmpty else {
                         return false
                     }
-                    onInsertTracks(ids, 0)
+                    onInsertTracks(dropped, 0)
                     return true
                 }
             }

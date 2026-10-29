@@ -409,6 +409,7 @@ impl AppServices {
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, get_album_index => get_album_index(sort: &[crate::db::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Result<Option<u64>, crate::library::LibraryError>);
+    delegate_async!(manager, albums_in_browse_order => albums_in_browse_order(sort: &[crate::db::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Result<Vec<crate::album_detail::AlbumSummary>, crate::library::LibraryError>);
     delegate_async!(manager, find_album_detail => find_album_detail(album_id: &str) -> Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>);
     delegate_async!(manager, find_release_detail => find_release_detail(release_id: &str) -> Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>);
     delegate_async!(manager, get_albums => get_albums(sort: &[crate::db::AlbumSortCriterion]) -> Result<Vec<crate::db::DbAlbum>, crate::library::LibraryError>);
