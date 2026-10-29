@@ -234,6 +234,33 @@ impl CandidateLiveState {
             facts,
         }
     }
+
+    /// The lookup at work the row shows: the work its state counts, so only a
+    /// row Identifying shows one. A run reading the release it picked
+    /// unattended leaves its row Identified, which shows none.
+    pub fn identifying(&self) -> Option<IdentifyingStep> {
+        if self.standing != Some(PendingStanding::Identifying) {
+            return None;
+        }
+        // A row Identifying waits only while its lookup is queued.
+        Some(
+            if self.facts.identification == Some(IdentificationStatus::Queued) {
+                IdentifyingStep::Queued
+            } else {
+                IdentifyingStep::Running
+            },
+        )
+    }
+}
+
+/// How far the lookup of a row whose state is Identifying has got, which the
+/// row shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdentifyingStep {
+    /// Waiting for its run to start.
+    Queued,
+    /// Its run is going, or writing an answer that picks no release.
+    Running,
 }
 
 #[cfg(test)]

@@ -387,7 +387,12 @@
             for: importTabIdentifyingCandidate,
             placement: .pending,
             metadataSummary: nil,
-            live: triageLive([.skip], identification: .running)
+            live: triageLive(
+                [.skip],
+                identification: .running,
+                identifying: .running,
+                standing: .identifying
+            )
         )
 
         private static let importTabImportingCandidate = folderCandidates[2]
@@ -578,12 +583,14 @@
         static func triageLive(
             _ actions: [BridgeCandidateAction],
             identification: BridgeIdentificationStatus? = nil,
+            identifying: BridgeIdentifyingStep? = nil,
             importStanding: BridgeImportStanding? = nil,
             standing: BridgePendingStanding? = nil,
             badge: BridgeRowBadge? = nil
         ) -> BridgeCandidateLiveState {
             BridgeCandidateLiveState(
                 identification: identification,
+                identifying: identifying,
                 import: importStanding,
                 actions: actions,
                 standing: standing,

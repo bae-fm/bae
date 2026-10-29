@@ -598,3 +598,66 @@ async fn running_work_decides_over_the_tables() {
         );
     }
 }
+
+/// A row shows its lookup at work exactly while its state is Identifying,
+/// which In Progress counts: one waiting for its run shows it queued, one
+/// running or writing an answer that picks nothing shows it running, and one
+/// whose run picked its release unattended, read in full now, is Identified
+/// and shows none.
+#[tokio::test]
+async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
+    let lib = Library::new().await;
+    let releases = ["Queued", "Running", "Finalizing", "Reading"];
+    let mut sql = scanned_with_states(&lib, &releases);
+    for display_path in releases {
+        sql.push_str(&lib.verdict(display_path, "not_found", None));
+    }
+    sql.push_str(&lib.identifying("Queued", "queued"));
+    sql.push_str(&lib.identifying("Running", "running"));
+    sql.push_str(&lib.identifying("Finalizing", "finalizing"));
+    sql.push_str(&lib.reading_pick("Reading"));
+    lib.run(&sql).await;
+    let read = lib.shown(view(TriageTab::Pending)).await;
+    let shown = |display_path: &str| {
+        let live = row_at(&read, display_path).1;
+        (live.standing.clone(), live.identifying())
+    };
+    use crate::import::IdentifyingStep;
+    assert_eq!(
+        shown("Queued"),
+        (
+            Some(PendingStanding::Identifying),
+            Some(IdentifyingStep::Queued)
+        )
+    );
+    assert_eq!(
+        shown("Running"),
+        (
+            Some(PendingStanding::Identifying),
+            Some(IdentifyingStep::Running)
+        )
+    );
+    assert_eq!(
+        shown("Finalizing"),
+        (
+            Some(PendingStanding::Identifying),
+            Some(IdentifyingStep::Running)
+        )
+    );
+    assert_eq!(
+        shown("Reading"),
+        (Some(PendingStanding::Identified), None),
+        "a pick being read is Identified, and shows no lookup at work"
+    );
+    assert_eq!(
+        counts(&read.pending_filter_entries),
+        [
+            (PendingFilter::All, 4),
+            (PendingFilter::NeedsYou, 0),
+            (PendingFilter::InProgress, 3),
+            (PendingFilter::Identified, 1),
+            (PendingFilter::Unmatched, 0),
+            (PendingFilter::NotLookedUp, 0),
+        ]
+    );
+}

@@ -129,8 +129,8 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
 }
 
 /// The row of a run reading its pick is Identified, counted under Identified
-/// and not In Progress, and offers importing beside cancelling the run and
-/// skipping.
+/// and not In Progress, shows no lookup at work, and offers importing beside
+/// cancelling the run and skipping.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_row_whose_pick_is_being_read_is_identified() {
     let fixture = Fixture::new("reading-the-pick-row").await;
@@ -162,6 +162,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
 
     let live = &page_live(&reading)[&key];
     assert_eq!(live.standing, Some(crate::import::PendingStanding::Identified));
+    assert_eq!(live.identifying(), None, "an Identified row shows no lookup at work");
     assert_eq!(
         live.actions,
         vec![

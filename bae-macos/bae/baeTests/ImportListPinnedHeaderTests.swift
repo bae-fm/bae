@@ -95,6 +95,7 @@ extension ImportListPinnedHeaderTests {
                 placement: .pending,
                 live: BridgeCandidateLiveState(
                     identification: nil,
+                    identifying: nil,
                     import: nil,
                     actions: [],
                     standing: .notLookedUp,

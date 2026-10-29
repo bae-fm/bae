@@ -482,6 +482,8 @@ impl BridgeSelectionOffer {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateLiveState {
     pub identification: Option<BridgeIdentificationStatus>,
+    /// The lookup at work the row shows: only a row Identifying shows one.
+    pub identifying: Option<BridgeIdentifyingStep>,
     /// Where the import that owns the candidate stands; `None` when none does.
     pub import: Option<BridgeImportStanding>,
     pub actions: Vec<BridgeCandidateAction>,
@@ -490,6 +492,15 @@ pub struct BridgeCandidateLiveState {
     /// The one badge the row wears in that state; `None` unless it waits on
     /// the person.
     pub badge: Option<BridgeRowBadge>,
+}
+
+/// How far the lookup of a row Identifying has got.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeIdentifyingStep {
+    /// Waiting for its run to start.
+    Queued,
+    /// Its run is going, or writing an answer that picks no release.
+    Running,
 }
 
 /// Where the import that owns a candidate stands.

@@ -29,7 +29,9 @@ mod model;
 mod selection;
 mod standing;
 
-pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState, StoredLookup};
+pub use actions::{
+    CandidateAction, CandidateActionBasis, CandidateLiveState, IdentifyingStep, StoredLookup,
+};
 pub use model::*;
 pub use selection::{keys_for, selection_offers, SelectionMember, SelectionOffer, SelectionPart};
 pub use standing::{BadgeTone, NeedsYouReason, PendingBadge, PendingStanding, PendingState};

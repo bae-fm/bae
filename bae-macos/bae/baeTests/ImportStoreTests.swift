@@ -119,6 +119,7 @@ func identifiedRow(
         placement: .pending,
         live: BridgeCandidateLiveState(
             identification: nil,
+            identifying: nil,
             import: nil,
             actions: [],
             standing: .notLookedUp,
@@ -152,6 +153,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         placement: .skipped,
         live: BridgeCandidateLiveState(
             identification: nil,
+            identifying: nil,
             import: nil,
             actions: [],
             standing: .notLookedUp,
@@ -188,6 +190,7 @@ private func detail(
         placement: .pending(folderCheck: nil, records: []),
         live: BridgeCandidateLiveState(
             identification: nil,
+            identifying: nil,
             import: nil,
             actions: [
                 .import, .identify, .resetToFileMetadata, .clearMetadata,

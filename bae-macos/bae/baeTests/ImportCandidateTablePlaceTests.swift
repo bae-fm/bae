@@ -277,6 +277,7 @@ extension ImportCandidateTablePlaceTests {
                 placement: .skipped,
                 live: BridgeCandidateLiveState(
                     identification: nil,
+                    identifying: nil,
                     import: nil,
                     actions: [],
                     standing: .notLookedUp,

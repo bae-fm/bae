@@ -362,6 +362,7 @@
                 placement: .pending,
                 live: BridgeCandidateLiveState(
                     identification: nil,
+                    identifying: nil,
                     import: nil,
                     actions: [
                         .import, .identify, .resetToFileMetadata,

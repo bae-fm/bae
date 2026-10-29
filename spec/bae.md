@@ -631,7 +631,9 @@ Each Pending row is in exactly one state. The first that applies wins:
 2. **Identifying**: a lookup is queued, running, or writing an answer that
    picks nothing unattended. A lookup that picked its pressing unattended
    (§3.5) puts the row in **Identified** while bae reads that pressing in
-   full; the row offers Import then too (§3.7).
+   full; the row offers Import then too (§3.7). A row shows a lookup at
+   work, waiting for its run or running, only while it is Identifying, so
+   one whose pick is being read shows none, as Identified counts it.
 3. **Error**: bae could not store a lookup's answer.
 4. **Import error**: the last import failed, or the release can't be worked on
    as it stands.

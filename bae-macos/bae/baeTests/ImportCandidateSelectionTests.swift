@@ -68,6 +68,7 @@ struct ImportCandidateSelectionTests {
         var running = idle
         running.live = BridgeCandidateLiveState(
             identification: .running,
+            identifying: .running,
             import: nil,
             actions: [.cancelIdentification, .skip, .revealFolder],
             standing: .identifying,

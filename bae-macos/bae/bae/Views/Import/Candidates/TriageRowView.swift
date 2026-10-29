@@ -173,8 +173,8 @@ extension TriageRowView {
             if let badge = live.badge {
                 RowBadgeChip(badge: badge)
             }
-            else if let identification = live.identification {
-                identificationTrailing(identification)
+            else if let step = live.identifying {
+                identifyingTrailing(step)
             }
             else if let standing = live.import {
                 importStandingTrailing(standing)
@@ -183,38 +183,19 @@ extension TriageRowView {
         .fixedSize()
     }
 
+    /// The lookup at work, which only a row Identifying shows.
     @ViewBuilder
-    private func identificationTrailing(
-        _ status: BridgeIdentificationStatus
+    private func identifyingTrailing(
+        _ step: BridgeIdentifyingStep
     ) -> some View {
-        switch status {
+        switch step {
         case .queued:
             trailingIcon("clock", tint: .secondary)
                 .help(String(localized: "Waiting to be identified"))
-        case .running, .finalizing:
+        case .running:
             ProgressView()
                 .controlSize(.small)
                 .help(String(localized: "Identifying\u{2026}"))
-        // The run has picked its release, so the row stands as identified
-        // while the release is read in full.
-        case .readingPick:
-            ProgressView()
-                .controlSize(.small)
-                .help(String(localized: "Reading the release\u{2026}"))
-        case .finalizationFailed(let error):
-            if let shown = DisplayError(error) {
-                trailingIcon(
-                    "exclamationmark.triangle.fill",
-                    tint: Theme.warning
-                )
-                .help(shown.line)
-            }
-            else {
-                trailingIcon(
-                    "exclamationmark.triangle.fill",
-                    tint: Theme.warning
-                )
-            }
         }
     }
 

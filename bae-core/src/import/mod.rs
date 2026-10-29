@@ -320,9 +320,9 @@ pub use session::{
 #[cfg(desktop)]
 pub use triage::{
     BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
-    ImportStanding, NeedsYouReason, PendingBadge, PendingStanding, PendingState, StoredLookup,
-    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow,
-    TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
+    IdentifyingStep, ImportStanding, NeedsYouReason, PendingBadge, PendingStanding, PendingState,
+    StoredLookup, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
+    TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
 };
 #[cfg(desktop)]
 pub use types::ImportCommand;

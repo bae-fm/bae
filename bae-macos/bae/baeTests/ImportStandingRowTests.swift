@@ -84,6 +84,7 @@ struct ImportStandingRowTests {
         var row = row
         row.live = BridgeCandidateLiveState(
             identification: nil,
+            identifying: nil,
             import: standing,
             actions: [],
             standing: .notLookedUp,
@@ -105,6 +106,7 @@ struct ImportStandingRowTests {
         var row = row
         row.live = BridgeCandidateLiveState(
             identification: nil,
+            identifying: nil,
             import: standing,
             actions: [],
             standing: nil,
