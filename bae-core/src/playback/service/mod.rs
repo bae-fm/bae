@@ -497,7 +497,28 @@ fn side_boundary_between(
 /// iOS, AAudio on Android), opened afresh for each output. Every output is
 /// opened from it on the service thread, so thread-bound device handles live
 /// there.
-pub(crate) struct SystemAudioOutputDevice;
+pub(crate) struct SystemAudioOutputDevice {
+    /// The formats the outputs' streams set Mac output devices to, shared by
+    /// the main player's and the preview's, so a device goes back to the
+    /// format it had before bae only once neither plays on it.
+    #[cfg(target_os = "macos")]
+    device_formats: Arc<
+        crate::playback::device_formats::DeviceFormats<
+            crate::playback::device_formats::CoreAudioDeviceFormats,
+        >,
+    >,
+}
+
+impl SystemAudioOutputDevice {
+    pub(crate) fn new() -> Self {
+        Self {
+            #[cfg(target_os = "macos")]
+            device_formats: crate::playback::device_formats::DeviceFormats::new(
+                crate::playback::device_formats::CoreAudioDeviceFormats,
+            ),
+        }
+    }
+}
 
 impl AudioOutputDevice for SystemAudioOutputDevice {
     #[cfg(not(target_os = "android"))]
@@ -505,7 +526,10 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
         &self,
     ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
         Ok(Box::new(
-            crate::playback::cpal_output::CpalAudioOutput::new()?,
+            crate::playback::cpal_output::CpalAudioOutput::new(
+                #[cfg(target_os = "macos")]
+                self.device_formats.clone(),
+            )?,
         ))
     }
 
@@ -526,7 +550,7 @@ fn open_audio_device_and_output(
 ) -> Option<(Box<dyn AudioOutputDevice>, Box<dyn AudioOutput>)> {
     let audio_device: Box<dyn AudioOutputDevice> = match custom_device {
         Some(device) => device,
-        None => Box::new(SystemAudioOutputDevice),
+        None => Box::new(SystemAudioOutputDevice::new()),
     };
     match audio_device.open_output() {
         Ok(output) => Some((audio_device, output)),

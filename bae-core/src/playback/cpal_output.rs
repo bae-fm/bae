@@ -4,8 +4,12 @@
 //! change of it:
 //!
 //! - **macOS.** cpal plays a stream on the default device through CoreAudio's
-//!   default output unit, which moves to the new default by itself, at the same
-//!   position; cpal reports the move as `DeviceChanged`.
+//!   default output unit, which moves to the new default by itself and reports
+//!   the move as `DeviceChanged`, but plays there at the new device's own rate.
+//!   bae plays a track at its own rate (`output_rate`) and puts each device's
+//!   format back (`device_formats`), so a move is an
+//!   invalidation too: the stream is rebuilt on the new device, which cpal sets
+//!   to the stream's rate, and the old device goes back to its format.
 //! - **Windows.** cpal opens a stream on the default device through the
 //!   system's default render endpoint, and reports a change of the default as
 //!   `StreamInvalidated`. The stream's owner then builds a new one on the
@@ -24,7 +28,7 @@
 //!   configuration rather than a device that changes.
 //!
 //! On every platform a stream whose device went away reports
-//! `DeviceNotAvailable`. Both reports reach the stream's owner as an
+//! `DeviceNotAvailable`. These reports reach the stream's owner as an
 //! invalidation ([`AudioStream::take_invalidation`]): a new stream plays on the
 //! current default, or fails to build when there is none.
 
@@ -32,6 +36,8 @@ use super::audio_output::{
     AudioDrain, AudioError, AudioEventSender, AudioLockMissLog, AudioOutput, AudioOutputControls,
     AudioStream,
 };
+#[cfg(target_os = "macos")]
+use super::device_formats::{CoreAudioDeviceFormats, DeviceFormats, FormatLease};
 use super::resampling_drain::ResamplingDrain;
 use crate::playback::source::PlaybackSource;
 use cpal::traits::{DeviceTrait, HostTrait};
@@ -45,9 +51,12 @@ use tracing::{debug, error, info, warn};
 /// stopped playing it.
 struct CpalStream {
     /// Declared first so it drops first: dropping it stops cpal's threads,
-    /// which hold the sending side of `invalidations`.
+    /// which hold the sending side of `invalidations`, and stops playing on
+    /// the device before `_format` puts the device's format back.
     stream: cpal::Stream,
     invalidations: mpsc::Receiver<String>,
+    #[cfg(target_os = "macos")]
+    _format: FormatLease<CoreAudioDeviceFormats>,
 }
 
 impl AudioStream for CpalStream {
@@ -72,12 +81,13 @@ fn stream_error_handler(
 ) -> impl FnMut(cpal::Error) + Send + 'static {
     move |error| match error.kind() {
         ErrorKind::StreamInvalidated | ErrorKind::DeviceNotAvailable => {
-            if invalidations.send(error.to_string()).is_err() {
-                // The owner dropped this stream's receiver while tearing the
-                // stream down, so the stream is going away anyway.
-                debug!("the output stream was invalidated as it was torn down: {error}");
-            }
+            report_invalidation(&invalidations, error)
         }
+        // The default output unit moved to the new device, which plays the
+        // stream at its own rate: rebuild it there at the track's.
+        #[cfg(target_os = "macos")]
+        ErrorKind::DeviceChanged => report_invalidation(&invalidations, error),
+        #[cfg(not(target_os = "macos"))]
         ErrorKind::DeviceChanged => {
             info!("the output stream moved to the new default device: {error}");
         }
@@ -86,10 +96,19 @@ fn stream_error_handler(
     }
 }
 
+fn report_invalidation(invalidations: &mpsc::Sender<String>, error: cpal::Error) {
+    if invalidations.send(error.to_string()).is_err() {
+        // The owner dropped this stream's receiver while tearing the stream
+        // down, so the stream is going away anyway.
+        debug!("the output stream was invalidated as it was torn down: {error}");
+    }
+}
+
 /// The rate to build the stream at for a track at `track_rate`. On macOS cpal
 /// sets the output device to the stream's rate, so this is the track's own rate
 /// when the device runs at it — nothing converts — and otherwise the supported
-/// rate [`output_rate::output_rate`] picks, which bae converts the track to.
+/// rate [`crate::playback::output_rate::output_rate`] picks, which bae converts
+/// the track to.
 #[cfg(target_os = "macos")]
 fn output_rate(device: &cpal::Device, track_rate: u32, channels: u32) -> Result<u32, AudioError> {
     let device_rates: Vec<std::ops::RangeInclusive<u32>> = device
@@ -121,20 +140,58 @@ fn output_rate(_device: &cpal::Device, track_rate: u32, _channels: u32) -> Resul
 /// Audio output using the system audio device via CPAL.
 pub struct CpalAudioOutput {
     controls: AudioOutputControls,
+    /// The formats this output's streams, and every other output's on the
+    /// same system device, set Mac output devices to.
+    #[cfg(target_os = "macos")]
+    device_formats: Arc<DeviceFormats<CoreAudioDeviceFormats>>,
 }
 
 impl CpalAudioOutput {
     /// Build a cpal output. Verifies a default output device exists up front so
     /// construction fails fast when there's no audio hardware. Which device the
     /// samples land on is resolved per stream build.
-    pub fn new() -> Result<Self, AudioError> {
+    pub(crate) fn new(
+        #[cfg(target_os = "macos")] device_formats: Arc<DeviceFormats<CoreAudioDeviceFormats>>,
+    ) -> Result<Self, AudioError> {
         let host = cpal::default_host();
         host.default_output_device()
             .ok_or(AudioError::DeviceUnavailable)?;
 
         Ok(Self {
             controls: AudioOutputControls::new(1.0),
+            #[cfg(target_os = "macos")]
+            device_formats,
         })
+    }
+
+    /// A lease on the default output device cpal just resolved as `device`,
+    /// taken before cpal changes the device's format, so the stream's end puts
+    /// it back. The default is read before and after cpal resolves it: when the
+    /// two reads differ the default changed under the build, and which device
+    /// cpal resolved isn't known.
+    #[cfg(target_os = "macos")]
+    fn lease_default_device(
+        &self,
+        resolve: impl FnOnce() -> Result<cpal::Device, AudioError>,
+    ) -> Result<(cpal::Device, FormatLease<CoreAudioDeviceFormats>), AudioError> {
+        let before = CoreAudioDeviceFormats::default_output_device();
+        let device = resolve()?;
+        let after = CoreAudioDeviceFormats::default_output_device();
+        let device_id = match (before, after) {
+            (Some(before), Some(after)) if before == after => before,
+            (None, _) | (_, None) => return Err(AudioError::DeviceUnavailable),
+            (Some(before), Some(after)) => {
+                warn!(
+                    before,
+                    after, "the default output device changed while a stream was being built"
+                );
+                return Err(AudioError::DeviceUnavailable);
+            }
+        };
+        let lease = self.device_formats.lease(device_id).map_err(|error| {
+            AudioError::Unexpected(format!("reading the output device's format: {error}"))
+        })?;
+        Ok((device, lease))
     }
 }
 
@@ -151,10 +208,15 @@ impl AudioOutput for CpalAudioOutput {
         // the stream's sample rate on the device it resolved as the default, so
         // a device kept from an earlier build would set the rate of whatever was
         // default then, not of the device that plays.
-        let host = cpal::default_host();
-        let device = host
-            .default_output_device()
-            .ok_or(AudioError::DeviceUnavailable)?;
+        let resolve = || {
+            cpal::default_host()
+                .default_output_device()
+                .ok_or(AudioError::DeviceUnavailable)
+        };
+        #[cfg(target_os = "macos")]
+        let (device, format_lease) = self.lease_default_device(resolve)?;
+        #[cfg(not(target_os = "macos"))]
+        let device = resolve()?;
         let output_rate = output_rate(&device, source_sample_rate, source_channels)?;
         let stream_config = StreamConfig {
             channels: source_channels as u16,
@@ -216,9 +278,16 @@ impl AudioOutput for CpalAudioOutput {
                 _ => AudioError::Unexpected(format!("building the stream: {error}")),
             })?;
 
+        #[cfg(target_os = "macos")]
+        format_lease.settle().map_err(|error| {
+            AudioError::Unexpected(format!("reading the output device's new format: {error}"))
+        })?;
+
         Ok(Box::new(CpalStream {
             stream,
             invalidations,
+            #[cfg(target_os = "macos")]
+            _format: format_lease,
         }))
     }
 
@@ -233,20 +302,16 @@ mod tests {
 
     /// A stream cpal says must be rebuilt, or whose device went away, is
     /// reported to its owner, which builds a new one on the current default.
-    /// A move cpal made itself, a glitch, or any other error is only logged:
-    /// rebuilding for those would interrupt a stream that still plays.
-    /// Sabotage: drop `DeviceNotAvailable` from the reported kinds, and a stream
-    /// whose device was unplugged is never replaced.
+    /// A glitch or any other error is only logged: rebuilding for those would
+    /// interrupt a stream that still plays. Sabotage: drop `DeviceNotAvailable`
+    /// from the reported kinds, and a stream whose device was unplugged is
+    /// never replaced.
     #[test]
     fn only_a_stream_that_cant_go_on_is_reported_to_its_owner() {
         let (invalidated, invalidations) = mpsc::channel();
         let mut handle = stream_error_handler(invalidated);
 
-        for kind in [
-            ErrorKind::DeviceChanged,
-            ErrorKind::Xrun,
-            ErrorKind::BackendError,
-        ] {
+        for kind in [ErrorKind::Xrun, ErrorKind::BackendError] {
             handle(kind.into());
         }
         assert!(invalidations.try_recv().is_err());
@@ -263,5 +328,40 @@ mod tests {
             invalidations.try_iter().collect::<Vec<_>>(),
             ["default device changed", "device disconnected"]
         );
+    }
+
+    /// On a Mac, the default output unit moving a stream to a new default
+    /// device is reported too: the new device would play it at its own rate,
+    /// so the stream is rebuilt there at the track's, and the old device's
+    /// format goes back. Sabotage: only log `DeviceChanged`, and the new
+    /// device converts the track while the old one keeps the track's rate.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_move_to_a_new_default_device_is_reported_on_macos() {
+        let (invalidated, invalidations) = mpsc::channel();
+        let mut handle = stream_error_handler(invalidated);
+
+        handle(cpal::Error::with_message(
+            ErrorKind::DeviceChanged,
+            "default output device changed",
+        ));
+
+        assert_eq!(
+            invalidations.try_iter().collect::<Vec<_>>(),
+            ["default output device changed"]
+        );
+    }
+
+    /// Elsewhere the move needs nothing more: iOS reports one when headphones
+    /// are unplugged and the route already plays on the speaker.
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn a_move_to_a_new_device_is_only_logged_off_macos() {
+        let (invalidated, invalidations) = mpsc::channel();
+        let mut handle = stream_error_handler(invalidated);
+
+        handle(ErrorKind::DeviceChanged.into());
+
+        assert!(invalidations.try_recv().is_err());
     }
 }

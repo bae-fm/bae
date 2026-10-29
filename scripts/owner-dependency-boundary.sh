@@ -123,6 +123,7 @@ capability_types=(
 allowed_capability_outputs=(
   AirPlayStreamControl
   AudioDataReader
+  AudioOutput
   AudioStream
   FileStream
   DiscogsClient

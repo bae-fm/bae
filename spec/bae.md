@@ -2494,9 +2494,9 @@ log names its address.
 
 **This device.** On every platform, playback and a preview follow a change of
 the default output device: they move to the new one at the same position. On
-macOS the system moves them, playing or paused. On Windows bae starts them
-again on the new device, and on iOS it does so when the system changes the
-route in a way the stream doesn't follow; a paused one stays paused. On
+macOS and Windows bae starts them again on the new device, and on iOS it does
+so when the system changes the route in a way the stream doesn't follow; a
+paused one stays paused. On
 Android bae reopens the output on the new device, and a change while paused
 takes effect on resume. On Linux the sound server, PipeWire or PulseAudio,
 moves them; with ALSA alone there is no default device to follow. On the
@@ -2506,7 +2506,11 @@ and mute live in core, so unmuting restores the level last set.
 
 **Sample rates.** On macOS, a track or a preview that starts a stream sets the
 output device to the track's sample rate, so the track's samples reach the
-device unconverted; a device playback moves to keeps its own rate. On a device
+device unconverted, and playback that moves to another device sets that one.
+When the last of bae's streams on a device ends — playback stops, the app
+quits, or playback moves to another device — the device goes back to the rate
+and format it had before bae set it; while a preview plays over paused
+playback and then ends, the device goes back to the paused track's. On a device
 that can't run at the track's rate, bae sets it to one it can and converts the
 track to that rate: one of the track's family (whole multiples of 11.025 kHz,
 like 44.1 kHz, or of 8 kHz, like 48 kHz) when the device has one, the highest
