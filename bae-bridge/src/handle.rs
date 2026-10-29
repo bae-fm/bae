@@ -139,6 +139,8 @@ mod live;
 mod playback_persistence;
 mod queue_projection;
 mod queue_upcoming;
+#[cfg(desktop)]
+mod release_files;
 mod service_status;
 mod storage_browse;
 #[cfg(desktop)]

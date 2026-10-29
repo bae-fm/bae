@@ -512,3 +512,44 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
         }
     }
 }
+
+/// The Storage sheet's read of a release's files answers the request it is
+/// set to, naming it: the release's files in the order asked for, and none
+/// for a release the library does not hold.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[tokio::test(flavor = "multi_thread")]
+async fn the_release_files_read_answers_the_request_it_is_set_to() {
+    use crate::library::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
+    let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
+    let files = services.subscribe_release_files();
+    let request = |release_id: &str| ReleaseFilesRequest {
+        release_id: release_id.to_string(),
+        order: ReleaseFileOrder {
+            column: ReleaseFileColumn::Size,
+            descending: true,
+        },
+    };
+    let answer = |asked: ReleaseFilesRequest| {
+        let files = &files;
+        async move {
+            files.set(Some(asked.clone())).unwrap();
+            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                loop {
+                    let snapshot = files.next().await.expect("the read runs");
+                    if snapshot.request.as_ref() == Some(&asked) {
+                        break snapshot.files;
+                    }
+                }
+            })
+            .await
+            .expect("the read answers the request")
+        }
+    };
+    let held = answer(request("c61a9e19-f3ba-4728-842c-c59dbc82e238")).await;
+    assert_eq!(
+        held.map(|files| files.len()),
+        Some(0),
+        "the release holds no files"
+    );
+    assert!(answer(request("no-such-release")).await.is_none());
+}

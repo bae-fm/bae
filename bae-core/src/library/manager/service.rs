@@ -652,6 +652,18 @@ impl LibraryManager {
         self.outputs.subscribe()
     }
 
+    /// Follow the files of the release `initial` names in its order.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_release_files(
+        &self,
+        initial: Option<crate::library::ReleaseFilesRequest>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::library::ReleaseFilesRequest>,
+        Option<Vec<crate::db::DbFile>>,
+    > {
+        self.database.subscribe_release_files(initial)
+    }
+
     /// Follow the release `initial` names as the storage inspector shows it,
     /// each value read in one go.
     #[cfg(desktop)]

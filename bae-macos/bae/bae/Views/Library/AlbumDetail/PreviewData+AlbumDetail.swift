@@ -12,7 +12,28 @@
         /// A library whose album detail read answers each id with the preview
         /// album of that id, so `AlbumDetailView` runs its real read.
         static func albumDetailLibrary() -> Library {
-            Library(albumDetail: { .fixed { albumDetails[$0] } })
+            Library(
+                albumDetail: { .fixed { albumDetails[$0] } },
+                releaseFiles: { releaseFilesQuery(previewReleaseFiles) }
+            )
+        }
+
+        /// A read of a release's files that answers every request with
+        /// `files` as they are: a preview has no core to order them.
+        static func releaseFilesQuery(_ files: [BridgeFile])
+            -> ReleaseFilesQuery
+        {
+            let requests = PreviewRequests<BridgeReleaseFilesRequest?>()
+            return ReleaseFilesQuery(
+                setRequest: { requests.send($0) },
+                next: {
+                    BridgeReleaseFilesSnapshot(
+                        request: try await requests.next(),
+                        files: files
+                    )
+                },
+                cancel: { requests.finish() }
+            )
         }
 
         /// One preview album as its detail read returns it. Fails loud when
@@ -234,7 +255,6 @@
                 transitioning: false,
                 tracks: [],
                 trackGroups: [],
-                files: files,
                 sourceAudio: .uniform(
                     descriptor: BridgeSourceAudioDescriptor(
                         layout: .file,
@@ -287,6 +307,34 @@
                 .environment(ImportStore())
                 .environment(OutboxStore(uploadsPaused: false))
                 .environment(PreviewData.configStore())
+        }
+    }
+
+    /// The requests a preview's read is set to, handed to its one reader in
+    /// order: what the read answers next.
+    final class PreviewRequests<Request: Sendable>: @unchecked Sendable {
+        private let continuation: AsyncStream<Request>.Continuation
+        private var iterator: AsyncStream<Request>.AsyncIterator
+
+        init() {
+            let (stream, continuation) = AsyncStream<Request>.makeStream()
+            self.continuation = continuation
+            iterator = stream.makeAsyncIterator()
+        }
+
+        func send(_ request: Request) {
+            continuation.yield(request)
+        }
+
+        func next() async throws -> Request {
+            guard let request = await iterator.next() else {
+                throw CancellationError()
+            }
+            return request
+        }
+
+        func finish() {
+            continuation.finish()
         }
     }
 #endif

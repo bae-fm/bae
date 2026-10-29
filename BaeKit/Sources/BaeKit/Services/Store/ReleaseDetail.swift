@@ -22,7 +22,6 @@ public struct ReleaseDetail: Identifiable, Sendable {
     public var totalDuration: BridgeDurationUnits?
     public var tracks: [Track]
     public var trackGroups: [TrackGroup]
-    public var files: [BridgeFile]
     public var imageFiles: [BridgeFile]
     public var coverFiles: [BridgeFile]
     public var galleryItems: [BridgeGalleryItem]
@@ -64,7 +63,6 @@ public struct ReleaseDetail: Identifiable, Sendable {
         totalDuration = bridge.totalDuration
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
-        files = bridge.files
         imageFiles = bridge.imageFiles
         coverFiles = bridge.coverFiles
         galleryItems = bridge.galleryItems

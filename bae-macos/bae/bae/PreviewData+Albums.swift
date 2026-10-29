@@ -187,7 +187,6 @@
                 transitioning: false,
                 tracks: tracks,
                 trackGroups: groups,
-                files: [],
                 sourceAudio: nil,
                 imageFiles: [],
                 coverFiles: [],

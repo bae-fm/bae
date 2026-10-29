@@ -7,10 +7,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeAudioFormat
 import uniffi.bae_bridge.BridgeFactTerm
-import uniffi.bae_bridge.BridgeFile
-import uniffi.bae_bridge.BridgeFileKind
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeSourceAudioDifference
 import uniffi.bae_bridge.BridgeSourceAudioSummary
@@ -41,33 +38,11 @@ class BridgeReleaseFormatTest {
     }
 
     @Test
-    fun releaseMetadataUsesTheAllFilesSummaryInsteadOfTheFirstFile() {
-        val flac =
-            BridgeAudioFormat(
-                codec = "FLAC",
-                sampleRateHz = 44_100,
-                bitsPerSample = 16,
-                bitrateKbps = null,
-                channels = 2,
-            )
+    fun aMixedReleaseLineNamesWhatDiffers() {
         val release =
             BridgeFixtures.release(
                 id = "release-1",
                 albumId = "album-1",
-                files =
-                    listOf(
-                        BridgeFile(
-                            id = "file-1",
-                            originalFilename = "01.flac",
-                            name = "01.flac",
-                            folder = null,
-                            kind = BridgeFileKind.Audio(format = "FLAC"),
-                            fileSize = 1_000,
-                            contentType = "audio/flac",
-                            isImage = false,
-                            audioFormat = flac,
-                        ),
-                    ),
                 sourceAudio =
                     BridgeSourceAudioSummary.Mixed(
                         listOf(

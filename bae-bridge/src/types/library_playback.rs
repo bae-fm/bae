@@ -404,7 +404,6 @@ pub struct BridgeRelease {
     pub transitioning: bool,
     pub tracks: Vec<BridgeTrack>,
     pub track_groups: Vec<BridgeTrackGroup>,
-    pub files: Vec<BridgeFile>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
     pub image_files: Vec<BridgeFile>,
     /// Core-selected cover inputs; the gallery still contains every image.

@@ -52,6 +52,9 @@ public final class Library: Sendable, Observable {
     /// queue, read in core.
     public let storageInspector:
         @Sendable () -> DetailQuery<BridgeStorageInspector>
+    /// Open the Storage sheet's live read of a release's files, in the order
+    /// its file table sorts by, read in core.
+    public let releaseFiles: @Sendable () -> ReleaseFilesQuery
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
     /// Whether the library page spans the window's full width instead of
@@ -119,6 +122,9 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable () -> DetailQuery<BridgeStorageInspector> = {
                 fatalError("Library storage inspector is not installed")
             },
+        releaseFiles: @escaping @Sendable () -> ReleaseFilesQuery = {
+            fatalError("Library release files are not installed")
+        },
         resolveToTrackIds:
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
@@ -142,6 +148,7 @@ public final class Library: Sendable, Observable {
         self.resolveReleaseEditCredits = resolveReleaseEditCredits
         self.storageBrowse = storageBrowse
         self.storageInspector = storageInspector
+        self.releaseFiles = releaseFiles
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
     }
@@ -153,14 +160,7 @@ public final class Library: Sendable, Observable {
     #if os(macOS)
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                albumBrowse: {
-                    LibraryBrowseQuery(
-                        handle.subscribeAlbumBrowse(
-                            sortCriteria: $0,
-                            groupByArtist: $1
-                        )
-                    )
-                },
+                albumBrowse: Self.albumBrowse(handle),
                 getAlbumIndex: {
                     try await handle.getAlbumIndex(
                         sortCriteria: $0,
@@ -205,6 +205,9 @@ public final class Library: Sendable, Observable {
                 storageInspector: {
                     DetailQuery(handle.subscribeStorageInspector())
                 },
+                releaseFiles: {
+                    ReleaseFilesQuery(handle.subscribeReleaseFiles())
+                },
                 resolveToTrackIds: {
                     try await handle.resolveToTrackIds(ids: $0)
                 },
@@ -212,6 +215,25 @@ public final class Library: Sendable, Observable {
                     try await handle.setLibraryFullWidth(enabled: $0)
                 }
             )
+        }
+
+        /// The album list read through `handle`, under each sort and grouping
+        /// asked for.
+        private static func albumBrowse(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable ([BridgeSortCriterion], Bool) -> LibraryBrowseQuery<
+                BridgeAlbum
+            >
+        {
+            {
+                LibraryBrowseQuery(
+                    handle.subscribeAlbumBrowse(
+                        sortCriteria: $0,
+                        groupByArtist: $1
+                    )
+                )
+            }
         }
     #endif
 

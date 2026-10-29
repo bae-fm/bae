@@ -678,6 +678,8 @@ mod live_query_events;
 mod pane;
 mod playback_reads;
 mod queue_reads;
+#[cfg(desktop)]
+mod release_files_reads;
 mod release_queue_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod selection;

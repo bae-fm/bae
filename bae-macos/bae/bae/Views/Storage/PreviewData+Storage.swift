@@ -535,14 +535,26 @@
                     (row.id, storageReleaseDetail(for: row))
                 }
             )
-            let inspectors = details.mapValues { detail in
-                storageInspector(
-                    release: detail,
-                    download: downloads.first { $0.releaseId == detail.id },
-                    output: outputs.first { $0.releaseId == detail.id },
-                    upload: uploads.first { $0.releaseId == detail.id }
-                )
-            }
+            let inspectors = Dictionary(
+                uniqueKeysWithValues: rows.map { row in
+                    let (audioFile, imageFile) = storageReleaseFiles(for: row)
+                    return (
+                        row.id,
+                        storageInspector(
+                            files: [audioFile, imageFile],
+                            download: downloads.first {
+                                $0.releaseId == row.release.id
+                            },
+                            output: outputs.first {
+                                $0.releaseId == row.release.id
+                            },
+                            upload: uploads.first {
+                                $0.releaseId == row.release.id
+                            }
+                        )
+                    )
+                }
+            )
             let queues = storageQueues(
                 downloads: downloads,
                 outputs: outputs,
@@ -596,12 +608,12 @@
             )
         }
 
-        /// What core's inspector read delivers for `release` beside its
-        /// queue entries. While its download waits or runs, its images are
+        /// What core's inspector read delivers for a release's `files` beside
+        /// its queue entries. While its download waits or runs, its images are
         /// kept, and its audio downloads while the download runs and waits
         /// while it waits its turn, as core counts them.
         private static func storageInspector(
-            release: BridgeRelease,
+            files: [BridgeFile],
             download: BridgeDownloadOp?,
             output: BridgeOutputOp?,
             upload: PreviewReleaseUpload?
@@ -657,7 +669,7 @@
             }
             return BridgeStorageInspector(
                 transfers: transfers,
-                files: release.files.map {
+                files: files.map {
                     BridgeStorageInspectorFile(
                         file: $0,
                         upload: upload?.files[$0.id],
@@ -731,7 +743,6 @@
                 transitioning: row.release.transitioning,
                 tracks: [],
                 trackGroups: [],
-                files: files,
                 sourceAudio: .uniform(
                     descriptor: BridgeSourceAudioDescriptor(
                         layout: .file,

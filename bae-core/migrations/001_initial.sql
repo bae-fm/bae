@@ -310,6 +310,14 @@ CREATE TABLE IF NOT EXISTS release_files (
 CREATE INDEX IF NOT EXISTS idx_release_files_release_order
     ON release_files (release_id, original_filename COLLATE natural_order, id);
 
+-- Each release's files by size and by kind (content type), name and id
+-- breaking a tie: the other orders the Storage sheet's file table sorts by,
+-- each read from its index either way.
+CREATE INDEX IF NOT EXISTS idx_release_files_release_size
+    ON release_files (release_id, file_size, original_filename COLLATE natural_order, id);
+CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
+    ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
+
 -- The original of each release file this device imported, or the copy a
 -- detach made: its path and the modification time recorded then. These paths
 -- never leave this device. A row stays through an upload: until the row names

@@ -101,7 +101,9 @@ impl BridgeRelease {
             total_duration_ms,
             tracks,
             track_groups,
-            files,
+            // The Storage sheet reads the files in the order it sorts by
+            // (`subscribe_release_files`), not the detail's.
+            files: _,
             source_audio,
             image_files,
             cover_files,
@@ -159,7 +161,6 @@ impl BridgeRelease {
                 .collect(),
             image_files: image_files.into_iter().map(BridgeFile::from_core).collect(),
             cover_files: cover_files.into_iter().map(BridgeFile::from_core).collect(),
-            files: files.into_iter().map(BridgeFile::from_core).collect(),
             source_audio: source_audio.map(crate::types::BridgeSourceAudioSummary::from_core),
             gallery_items: gallery_items
                 .into_iter()

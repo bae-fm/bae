@@ -132,6 +132,8 @@ pub use release_deletion::ReleaseDeletion;
 mod release_projection;
 mod release_queues;
 pub(crate) use release_queues::QueuedPayload;
+#[cfg(desktop)]
+mod release_files;
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

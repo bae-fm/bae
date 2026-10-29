@@ -62,7 +62,6 @@ func makeBridgeRelease(
         transitioning: transferAction != nil,
         tracks: [],
         trackGroups: [],
-        files: [],
         sourceAudio: nil,
         imageFiles: [],
         coverFiles: [],

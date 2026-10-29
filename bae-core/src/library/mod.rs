@@ -14,6 +14,8 @@ mod outbox_watch;
 pub mod output_snapshot;
 mod queue_upcoming;
 pub mod queued_releases;
+#[cfg(desktop)]
+mod release_files;
 pub mod release_queue;
 mod release_transfers;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -58,6 +60,11 @@ pub use output_snapshot::{
 };
 pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
 pub(crate) use queued_releases::QueuedReleases;
+#[cfg(desktop)]
+pub use release_files::{
+    ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest, ReleaseFilesSnapshot,
+    ReleaseFilesSubscription,
+};
 #[cfg(desktop)]
 pub use release_queue::ReleaseQueueEntries;
 pub use release_queue::{

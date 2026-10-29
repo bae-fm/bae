@@ -107,7 +107,6 @@ struct CoverPickerTests {
             transitioning: false,
             tracks: [],
             trackGroups: [],
-            files: [file, bitmap],
             sourceAudio: nil,
             imageFiles: [file, bitmap],
             coverFiles: [file],

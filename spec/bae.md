@@ -2970,7 +2970,7 @@ All sync.
 | `work_parts` | work inside a larger work, in order |
 | `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name, album loudness and peak |
 | `covers` | release's cover, keyed by the release; carries a file |
-| `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index |
+| `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by size and by content type, name and id breaking a tie, the other orders a release's file table sorts by, each read from its index forward or backward |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |

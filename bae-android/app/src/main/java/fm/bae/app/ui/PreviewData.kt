@@ -168,7 +168,6 @@ object PreviewData {
             transitioning = false,
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,
-            files = emptyList(),
             sourceAudio = null,
             imageFiles = emptyList(),
             coverFiles = emptyList(),
