@@ -64,6 +64,55 @@ pub(super) fn insert_provenance(
     Ok(())
 }
 
+/// A candidate's draft provenance as columns of a read that joins its row as
+/// `provenance`. A candidate with none reads `provenance_row` as NULL.
+pub(super) const PROVENANCE_COLUMNS: &str = "provenance.content_hash AS provenance_row, \
+     provenance.kind AS provenance_kind, provenance.source AS provenance_source, \
+     provenance.release_id AS provenance_release_id";
+
+/// One candidate's [`PROVENANCE_COLUMNS`] as SQLite hands them over.
+pub(super) struct StoredProvenance {
+    kind: String,
+    source: Option<String>,
+    release_id: Option<String>,
+}
+
+/// The [`PROVENANCE_COLUMNS`] of `row`; none for a draft that records no
+/// provenance.
+pub(super) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredProvenance>> {
+    if row.get::<_, Option<String>>("provenance_row")?.is_none() {
+        return Ok(None);
+    }
+    Ok(Some(StoredProvenance {
+        kind: row.get("provenance_kind")?,
+        source: row.get("provenance_source")?,
+        release_id: row.get("provenance_release_id")?,
+    }))
+}
+
+impl StoredProvenance {
+    pub(super) fn provenance(self) -> Result<MetadataProvenance, DbError> {
+        match self.kind.as_str() {
+            "file_tags" => Ok(MetadataProvenance::FileMetadata),
+            "external_release" => {
+                let missing = |what: &str| {
+                    DbError::Message(format!(
+                        "stored external metadata provenance names no {what}"
+                    ))
+                };
+                Ok(MetadataProvenance::ExternalRelease {
+                    record: MetadataRef::new(
+                        Catalog::from_str(&self.source.ok_or_else(|| missing("catalog"))?)
+                            .map_err(DbError::Message)?,
+                        self.release_id.ok_or_else(|| missing("release"))?,
+                    ),
+                })
+            }
+            other => Err(unreadable("provenance kind", other)),
+        }
+    }
+}
+
 /// The draft provenance of every candidate `only` names.
 pub(crate) fn load_provenance_on(
     sql: &impl super::super::query::QueryRows,
@@ -76,47 +125,26 @@ pub(crate) fn load_provenance_rows_on(
     sql: &impl super::super::query::QueryRows,
     only: CandidateRows<'_>,
 ) -> Result<Box<dyn FnOnce() -> Result<CandidateProvenances, DbError> + Send + 'static>, DbError> {
-    let only = only.filter("content_hash");
+    let only = only.filter("provenance.content_hash");
     let rows = sql.query(
         &format!(
-            "SELECT content_hash, kind, source, release_id \
-             FROM import_candidate_draft_provenance {}",
+            "SELECT {PROVENANCE_COLUMNS} \
+             FROM import_candidate_draft_provenance AS provenance {}",
             only.clause
         ),
         only.params().as_slice(),
         |row| {
             Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
+                row.get::<_, String>("provenance_row")?,
+                read_provenance(row)?,
             ))
         },
     )?;
     Ok(Box::new(move || {
-        let mut out = HashMap::with_capacity(rows.len());
-        for (content_hash, kind, source, release_id) in rows {
-            let provenance = match kind.as_str() {
-                "file_tags" => MetadataProvenance::FileMetadata,
-                "external_release" => {
-                    let missing = |what: &str| {
-                        DbError::Message(format!(
-                            "stored external metadata provenance names no {what}"
-                        ))
-                    };
-                    MetadataProvenance::ExternalRelease {
-                        record: MetadataRef::new(
-                            Catalog::from_str(&source.ok_or_else(|| missing("catalog"))?)
-                                .map_err(DbError::Message)?,
-                            release_id.ok_or_else(|| missing("release"))?,
-                        ),
-                    }
-                }
-                other => return Err(unreadable("provenance kind", other)),
-            };
-            out.insert(content_hash, provenance);
-        }
-        Ok(out)
+        rows.into_iter()
+            .filter_map(|(content_hash, stored)| Some((content_hash, stored?)))
+            .map(|(content_hash, stored)| Ok((content_hash, stored.provenance()?)))
+            .collect()
     }))
 }
 
@@ -173,6 +201,92 @@ pub(super) fn replace_release_link(
     Ok(())
 }
 
+/// A candidate's release link as columns of a read that joins its row as
+/// `link`: a pressing's partners in the other catalogs, by catalog, and an
+/// album's album in each catalog, in catalog order, riding on it as JSON
+/// arrays. A candidate with no link reads `link_row` as NULL.
+pub(super) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
+     link.kind AS link_kind, link.source AS link_source, link.release_id AS link_release_id, \
+     (SELECT json_group_array(json_array(partner.source, partner.release_id) \
+                              ORDER BY partner.source) \
+      FROM import_candidate_release_link_partner AS partner \
+      WHERE partner.content_hash = link.content_hash) AS link_partners, \
+     (SELECT json_group_array(json_array(album.catalog, album.album_id) \
+                              ORDER BY bae_catalog_rank(album.catalog)) \
+      FROM import_candidate_release_link_album AS album \
+      WHERE album.content_hash = link.content_hash) AS link_albums";
+
+/// One candidate's [`RELEASE_LINK_COLUMNS`] as SQLite hands them over, its
+/// lists still JSON.
+pub(super) struct StoredReleaseLink {
+    content_hash: String,
+    kind: String,
+    source: Option<String>,
+    release_id: Option<String>,
+    partners: String,
+    albums: String,
+}
+
+/// The [`RELEASE_LINK_COLUMNS`] of `row`; none for an unlinked candidate.
+pub(super) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<StoredReleaseLink>> {
+    let Some(content_hash) = row.get::<_, Option<String>>("link_row")? else {
+        return Ok(None);
+    };
+    Ok(Some(StoredReleaseLink {
+        content_hash,
+        kind: row.get("link_kind")?,
+        source: row.get("link_source")?,
+        release_id: row.get("link_release_id")?,
+        partners: row.get("link_partners")?,
+        albums: row.get("link_albums")?,
+    }))
+}
+
+impl StoredReleaseLink {
+    pub(super) fn link(self) -> Result<ReleaseLink, DbError> {
+        let Self {
+            content_hash,
+            kind,
+            source,
+            release_id,
+            partners,
+            albums,
+        } = self;
+        let references = |json: &str, what: &str| {
+            serde_json::from_str::<Vec<(String, String)>>(json)
+                .map_err(|error| {
+                    DbError::Message(format!("{content_hash}'s stored {what} {json:?}: {error}"))
+                })?
+                .into_iter()
+                .map(|(catalog, key)| reference(catalog, key))
+                .collect::<Result<Vec<_>, DbError>>()
+        };
+        match (kind.as_str(), source, release_id) {
+            ("pressing", Some(source), Some(release_id)) => {
+                Ok(ReleaseLink::Pressing(PressingLink {
+                    record: reference(source, release_id)?,
+                    partners: references(&partners, "link partners")?,
+                }))
+            }
+            ("album", None, None) => Ok(ReleaseLink::Album(
+                AlbumLink::new(references(&albums, "linked albums")?).ok_or_else(|| {
+                    DbError::Message(format!(
+                        "{content_hash} is linked to an album no catalog names"
+                    ))
+                })?,
+            )),
+            (other, _, _) => Err(unreadable("release link", other)),
+        }
+    }
+}
+
+fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
+    Ok(MetadataRef::new(
+        Catalog::from_str(&catalog).map_err(DbError::Message)?,
+        key,
+    ))
+}
+
 /// The release link of every candidate `only` names, each with its partners
 /// or its albums.
 pub(crate) fn load_release_links_on(
@@ -186,90 +300,20 @@ pub(crate) fn load_release_link_rows_on(
     sql: &impl super::super::query::QueryRows,
     only: CandidateRows<'_>,
 ) -> Result<Box<dyn FnOnce() -> Result<CandidateLinks, DbError> + Send + 'static>, DbError> {
-    let only = only.filter("content_hash");
-    let read = |row: &Row<'_>| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-        ))
-    };
-    let partner_rows = sql.query(
-        &format!(
-            "SELECT content_hash, source, release_id FROM import_candidate_release_link_partner \
-             {} ORDER BY content_hash, source",
-            only.clause
-        ),
-        only.params().as_slice(),
-        read,
-    )?;
-    let album_rows = sql.query(
-        &format!(
-            "SELECT content_hash, catalog, album_id FROM import_candidate_release_link_album {}",
-            only.clause
-        ),
-        only.params().as_slice(),
-        read,
-    )?;
+    let only = only.filter("link.content_hash");
     let rows = sql.query(
         &format!(
-            "SELECT content_hash, kind, source, release_id FROM import_candidate_release_link {}",
+            "SELECT {RELEASE_LINK_COLUMNS} FROM import_candidate_release_link AS link {}",
             only.clause
         ),
         only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-            ))
-        },
+        read_release_link,
     )?;
     Ok(Box::new(move || {
-        let reference = |catalog: String, key: String| {
-            Ok::<_, DbError>(MetadataRef::new(
-                Catalog::from_str(&catalog).map_err(DbError::Message)?,
-                key,
-            ))
-        };
-        let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
-        for (content_hash, source, release_id) in partner_rows {
-            partners
-                .entry(content_hash)
-                .or_default()
-                .push(reference(source, release_id)?);
-        }
-        let mut albums: HashMap<String, Vec<MetadataRef>> = HashMap::new();
-        for (content_hash, catalog, album_id) in album_rows {
-            albums
-                .entry(content_hash)
-                .or_default()
-                .push(reference(catalog, album_id)?);
-        }
-        let mut out = HashMap::with_capacity(rows.len());
-        for (content_hash, kind, source, release_id) in rows {
-            let link = match (kind.as_str(), source, release_id) {
-                ("pressing", Some(source), Some(release_id)) => {
-                    ReleaseLink::Pressing(PressingLink {
-                        record: reference(source, release_id)?,
-                        partners: partners.remove(&content_hash).unwrap_or_default(),
-                    })
-                }
-                ("album", None, None) => ReleaseLink::Album(
-                    AlbumLink::new(albums.remove(&content_hash).unwrap_or_default()).ok_or_else(
-                        || {
-                            DbError::Message(format!(
-                                "{content_hash} is linked to an album no catalog names"
-                            ))
-                        },
-                    )?,
-                ),
-                (other, _, _) => return Err(unreadable("release link", other)),
-            };
-            out.insert(content_hash, link);
-        }
-        Ok(out)
+        rows.into_iter()
+            .flatten()
+            .map(|stored| Ok((stored.content_hash.clone(), stored.link()?)))
+            .collect()
     }))
 }
 
