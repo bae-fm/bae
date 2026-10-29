@@ -6,122 +6,73 @@
 //! the new value does not name is gone. A candidate with no header row has
 //! decided nothing, which reads back as [`LookupChoices::default`].
 
-use super::super::query::QueryRows;
 use super::*;
 use crate::import::{LookupChoices, SearchWords};
 
-/// The choices rows of every candidate, or of the one `only` names, read on
-/// whichever connection the caller holds — a read snapshot, or a candidate
-/// save's own transaction — and assembled after.
-pub(super) struct LookupChoiceRows {
-    catalogs: Vec<(String, String)>,
-    discounted: Vec<(String, String)>,
-    left_out: Vec<(String, String)>,
-    rows: Vec<(String, bool, Option<SearchWords>)>,
+/// A candidate's lookup choices as columns of a read that joins its header
+/// row as `choices`, its lists riding on it as JSON arrays: the chosen
+/// catalog numbers in their order, the struck-out ones and the left-out
+/// barcodes by value. A candidate with no header row reads `choices_row` as
+/// NULL.
+pub(super) const LOOKUP_CHOICES_COLUMNS: &str = "choices.content_hash AS choices_row, \
+     choices.disc_id_excluded AS choices_disc_id_excluded, \
+     choices.search_album AS choices_search_album, \
+     choices.search_artist AS choices_search_artist, \
+     (SELECT json_group_array(chosen.value ORDER BY chosen.position) \
+      FROM import_candidate_chosen_catalog AS chosen \
+      WHERE chosen.content_hash = choices.content_hash) AS choices_chosen_catalogs, \
+     (SELECT json_group_array(struck.value ORDER BY struck.value) \
+      FROM import_candidate_discounted_catalog AS struck \
+      WHERE struck.content_hash = choices.content_hash) AS choices_discounted_catalogs, \
+     (SELECT json_group_array(left_out.value ORDER BY left_out.value) \
+      FROM import_candidate_excluded_barcode AS left_out \
+      WHERE left_out.content_hash = choices.content_hash) AS choices_excluded_barcodes";
+
+/// One candidate's [`LOOKUP_CHOICES_COLUMNS`] as SQLite hands them over,
+/// its lists still JSON.
+pub(super) struct StoredLookupChoices {
+    disc_id_excluded: bool,
+    search_words: Option<SearchWords>,
+    chosen_catalogs: String,
+    discounted_catalogs: String,
+    excluded_barcodes: String,
 }
 
-pub(super) fn load_lookup_choice_rows_on(
-    sql: &impl QueryRows,
-    only: CandidateRows<'_>,
-) -> Result<LookupChoiceRows, DbError> {
-    let filter = only.filter("content_hash");
-    let clause = &filter.clause;
-    let catalogs = sql.query(
-        &format!(
-            "SELECT content_hash, value FROM import_candidate_chosen_catalog \
-             {clause} \
-             ORDER BY content_hash, position"
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?;
-    let discounted = sql.query(
-        &format!(
-            "SELECT content_hash, value FROM import_candidate_discounted_catalog \
-             {clause} \
-             ORDER BY content_hash, value"
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?;
-    let left_out = sql.query(
-        &format!(
-            "SELECT content_hash, value FROM import_candidate_excluded_barcode \
-             {clause} \
-             ORDER BY content_hash, value"
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?;
-    let rows = sql.query(
-        &format!(
-            "SELECT content_hash, disc_id_excluded, search_album, search_artist \
-             FROM import_candidate_lookup_choices \
-             {clause}"
-        ),
-        filter.params().as_slice(),
-        |row| {
-            let search_words = match (
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-            ) {
-                (Some(album), Some(artist)) => Some(SearchWords { album, artist }),
-                _ => None,
-            };
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)? != 0,
-                search_words,
-            ))
-        },
-    )?;
-    Ok(LookupChoiceRows {
-        catalogs,
-        discounted,
-        left_out,
-        rows,
-    })
+/// The [`LOOKUP_CHOICES_COLUMNS`] of `row`; none for a candidate that has
+/// decided nothing.
+pub(super) fn read_lookup_choices(row: &Row<'_>) -> rusqlite::Result<Option<StoredLookupChoices>> {
+    if row.get::<_, Option<String>>("choices_row")?.is_none() {
+        return Ok(None);
+    }
+    let search_words = match (
+        row.get::<_, Option<String>>("choices_search_album")?,
+        row.get::<_, Option<String>>("choices_search_artist")?,
+    ) {
+        (Some(album), Some(artist)) => Some(SearchWords { album, artist }),
+        _ => None,
+    };
+    Ok(Some(StoredLookupChoices {
+        disc_id_excluded: row.get("choices_disc_id_excluded")?,
+        search_words,
+        chosen_catalogs: row.get("choices_chosen_catalogs")?,
+        discounted_catalogs: row.get("choices_discounted_catalogs")?,
+        excluded_barcodes: row.get("choices_excluded_barcodes")?,
+    }))
 }
 
-impl LookupChoiceRows {
-    /// Each candidate's choices, keyed by hash. A candidate with no header
-    /// row is absent; the caller defaults it.
-    pub(super) fn assemble(self) -> HashMap<String, LookupChoices> {
-        let Self {
-            catalogs,
-            discounted,
-            left_out,
-            rows,
-        } = self;
-        let mut chosen: HashMap<String, Vec<String>> = HashMap::new();
-        for (content_hash, value) in catalogs {
-            chosen.entry(content_hash).or_default().push(value);
-        }
-        let mut struck_out: HashMap<String, Vec<String>> = HashMap::new();
-        for (content_hash, value) in discounted {
-            struck_out.entry(content_hash).or_default().push(value);
-        }
-        let mut barcodes: HashMap<String, Vec<String>> = HashMap::new();
-        for (content_hash, value) in left_out {
-            barcodes.entry(content_hash).or_default().push(value);
-        }
-        let mut out = HashMap::with_capacity(rows.len());
-        for (content_hash, disc_id_excluded, search_words) in rows {
-            let chosen_catalogs = chosen.remove(&content_hash).unwrap_or_default();
-            let discounted_catalogs = struck_out.remove(&content_hash).unwrap_or_default();
-            let excluded_barcodes = barcodes.remove(&content_hash).unwrap_or_default();
-            out.insert(
-                content_hash,
-                LookupChoices {
-                    disc_id_excluded,
-                    excluded_barcodes,
-                    chosen_catalogs,
-                    search_words,
-                    discounted_catalogs,
-                },
-            );
-        }
-        out
+impl StoredLookupChoices {
+    pub(super) fn choices(self) -> Result<LookupChoices, DbError> {
+        let list = |json: &str, what: &str| {
+            serde_json::from_str::<Vec<String>>(json)
+                .map_err(|error| DbError::Message(format!("stored {what} {json:?}: {error}")))
+        };
+        Ok(LookupChoices {
+            disc_id_excluded: self.disc_id_excluded,
+            excluded_barcodes: list(&self.excluded_barcodes, "left-out barcodes")?,
+            chosen_catalogs: list(&self.chosen_catalogs, "chosen catalog numbers")?,
+            search_words: self.search_words,
+            discounted_catalogs: list(&self.discounted_catalogs, "struck-out catalog numbers")?,
+        })
     }
 }
 
@@ -135,8 +86,26 @@ pub(super) fn load_lookup_choices_on(
     impl FnOnce() -> Result<HashMap<String, LookupChoices>, DbError> + Send + 'static,
     DbError,
 > {
-    let rows = load_lookup_choice_rows_on(sql, only)?;
-    Ok(move || Ok(rows.assemble()))
+    let filter = only.filter("choices.content_hash");
+    let rows = sql.query(
+        &format!(
+            "SELECT {LOOKUP_CHOICES_COLUMNS} FROM import_candidate_lookup_choices AS choices {}",
+            filter.clause
+        ),
+        filter.params().as_slice(),
+        |row| {
+            Ok((
+                row.get::<_, String>("choices_row")?,
+                read_lookup_choices(row)?,
+            ))
+        },
+    )?;
+    Ok(move || {
+        rows.into_iter()
+            .filter_map(|(content_hash, stored)| Some((content_hash, stored?)))
+            .map(|(content_hash, stored)| Ok((content_hash, stored.choices()?)))
+            .collect()
+    })
 }
 
 /// The rows under `content_hash` become exactly `choices`, on the
