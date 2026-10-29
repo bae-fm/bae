@@ -55,8 +55,6 @@ async fn a_release_found_after_its_key_was_removed_is_queued() {
     }));
     fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
         candidate,
-        skipped: false,
-        is_added: false,
         found_while_automatic: true,
     }));
     fixture.drain_automatic().await;
@@ -88,8 +86,6 @@ async fn a_found_release_whose_key_is_then_removed_is_not_identified() {
 
     fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
         candidate,
-        skipped: false,
-        is_added: false,
         found_while_automatic: true,
     }));
     fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::CandidateRemoved {

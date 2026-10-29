@@ -142,8 +142,6 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
         .import
         .emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
             candidate: claimed,
-            skipped: false,
-            is_added: false,
             found_while_automatic: false,
         }));
     fixture.provider.release();

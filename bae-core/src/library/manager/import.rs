@@ -350,6 +350,7 @@ impl LibraryManager {
             .await?)
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_skipped_import_candidates(
         &self,
         watched_folder_path: &str,

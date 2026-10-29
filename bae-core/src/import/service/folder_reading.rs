@@ -175,9 +175,6 @@ impl ImportService {
             decisions.insert(key.relative_folder_path.clone(), reading.clone());
             (key.clone(), reading)
         });
-        let skipped = library_manager
-            .load_skipped_import_candidates(&root_key)
-            .await?;
         let reads = Arc::new(
             library_manager
                 .load_file_reads(&root_key, services.file_tags.clone())
@@ -334,7 +331,7 @@ impl ImportService {
         let changed = writes.iter().filter(|(_, write)| write.changed()).count();
         let unchanged = writes.len() - changed;
         for (item, write) in writes {
-            Self::announce_scan_write(item, &write, &skipped, services).await?;
+            Self::announce_scan_write(item, &write, services).await?;
         }
         for candidate_key in &pruned {
             services

@@ -37,8 +37,7 @@ fn folder_candidate(path: &str, watched: &str) -> FolderCandidate {
 fn scanned(candidate: FolderCandidate) -> ImportEvent {
     ImportEvent::Scan(ScanEvent::FolderCandidate {
         candidate,
-        skipped: false,
-        is_added: false,
+
         found_while_automatic: false,
     })
 }

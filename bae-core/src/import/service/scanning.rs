@@ -151,7 +151,6 @@ impl ImportService {
     pub(super) async fn announce_scan_write(
         item: ScanItem,
         write: &crate::db::ScanItemWrite,
-        skipped: &HashSet<String>,
         services: &crate::import::ImportServices,
     ) -> Result<(), crate::import::ImportError> {
         if !write.changed() {
@@ -165,7 +164,7 @@ impl ImportService {
                 },
             ));
         }
-        Self::announce_item(item, write.found(), skipped, services).await?;
+        Self::announce_item(item, write.found(), services).await?;
         if let Some(regrouped) = write.regrouped() {
             Self::announce_regrouped(regrouped, services).await?;
         }
@@ -190,18 +189,16 @@ impl ImportService {
             let found = item
                 .persisted_key()
                 .is_some_and(|key| regrouped.found.contains(&key));
-            Self::announce_item(item.clone(), found, &HashSet::new(), services).await?;
+            Self::announce_item(item.clone(), found, services).await?;
         }
         Ok(())
     }
 
     /// Announce one stored entry as what it now is, and whether its write
-    /// `found` the release while identification runs on its own. A release's
-    /// skip stamp is its grouping's own, or its folder's in `skipped`.
+    /// `found` the release while identification runs on its own.
     async fn announce_item(
         item: ScanItem,
         found: bool,
-        skipped: &HashSet<String>,
         services: &crate::import::ImportServices,
     ) -> Result<(), crate::import::ImportError> {
         let event_tx = &services.event_tx;
@@ -209,44 +206,17 @@ impl ImportService {
         // variant, so the variant still says which announcement it earns.
         let actionable = matches!(item, ScanItem::Valid(_));
         match item {
-            // Registry skip state and imported content hashes are joined onto
-            // the walk's folder facts here, on the way out.
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                let skipped = match candidate.grouping {
-                    Some(_) => {
-                        services
-                            .library_manager
-                            .is_release_candidate_skipped(&candidate)
-                            .await?
-                    }
-                    None => {
-                        skipped.contains(&crate::import::watched_folder::candidate_relative_path(
-                            &candidate.watched_folder_path,
-                            &candidate.path,
-                        )?)
-                    }
-                };
-                let is_added = services
-                    .library_manager
-                    .is_content_hash_imported(&candidate.files.content_hash())
-                    .await?;
                 event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {
                     ScanEvent::FolderCandidate {
                         candidate,
-                        skipped,
-                        is_added,
                         found_while_automatic: found
                             && services.library_manager.identifies_automatically(),
                     }
                 } else {
-                    ScanEvent::CandidateDiscovered {
-                        candidate,
-                        skipped,
-                        is_added,
-                    }
+                    ScanEvent::CandidateDiscovered { candidate }
                 }));
             }
-            // Invalid candidates have no tab state, so they need no stamping.
             ScanItem::Invalid(candidate) => {
                 event_tx.send(crate::import::handle::ImportEvent::Scan(
                     ScanEvent::InvalidCandidate(candidate),
@@ -412,11 +382,6 @@ impl ImportService {
                 .await?,
         );
         let walk_reads = reads.clone();
-        // Which candidates under this root the person skipped, read once for
-        // the pass: the stamp each written candidate carries out to the list.
-        let skipped = library_manager
-            .load_skipped_import_candidates(root_key)
-            .await?;
         let root_buf = root.to_path_buf();
         let dropped_item_root = root.to_path_buf();
         let walk_cancellation = cancellation.clone();
@@ -547,7 +512,7 @@ impl ImportService {
             if let Some(display_path) = item.display_path() {
                 written_keys.push(display_path.to_string());
             }
-            Self::announce_scan_write(item, &write, &skipped, services).await?;
+            Self::announce_scan_write(item, &write, services).await?;
         }
 
         // The walk finished (or failed) once its sender dropped and closed the

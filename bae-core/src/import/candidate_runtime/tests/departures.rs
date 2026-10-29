@@ -33,8 +33,6 @@ async fn a_candidate_leaving_or_reshaped_ends_its_work() {
                 "reshaped while not yet actionable",
                 ImportEvent::Scan(ScanEvent::CandidateDiscovered {
                     candidate: reshaped,
-                    skipped: false,
-                    is_added: false,
                 }),
             ),
             (

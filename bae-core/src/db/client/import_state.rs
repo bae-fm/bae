@@ -197,8 +197,10 @@ impl Database {
             .collect())
     }
 
-    /// Every skipped candidate under one root, by its path below the root, read
-    /// once per scan pass. A stored path that is not canonical fails the read.
+    /// Every skipped candidate under one root, by its path below the root:
+    /// what the tests of skipping and of removing a watched folder read back.
+    /// A stored path that is not canonical fails the read.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_skipped_import_candidates(
         &self,
         watched_folder_path: &str,

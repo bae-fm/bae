@@ -197,28 +197,12 @@ impl ImportServiceHandle {
                     let event = match item {
                         // Each release a separation returns is found, as
                         // combining finds the release it makes.
-                        ScanItem::Valid(candidate) => {
-                            let standing = self
-                                .candidate_standing(&candidate.key(), &candidate)
-                                .await?;
-                            ScanEvent::FolderCandidate {
-                                candidate,
-                                skipped: standing.skipped,
-                                is_added: standing.imported,
-                                found_while_automatic: self
-                                    .library_manager
-                                    .identifies_automatically(),
-                            }
-                        }
+                        ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {
+                            candidate,
+                            found_while_automatic: self.library_manager.identifies_automatically(),
+                        },
                         ScanItem::Discovered(candidate) => {
-                            let standing = self
-                                .candidate_standing(&candidate.key(), &candidate)
-                                .await?;
-                            ScanEvent::CandidateDiscovered {
-                                candidate,
-                                skipped: standing.skipped,
-                                is_added: standing.imported,
-                            }
+                            ScanEvent::CandidateDiscovered { candidate }
                         }
                         ScanItem::Invalid(candidate) => ScanEvent::InvalidCandidate(candidate),
                         ScanItem::Decided { .. } | ScanItem::Sidecar(_) => continue,
@@ -248,18 +232,11 @@ impl ImportServiceHandle {
         }
         for item in &regrouped.written {
             let event = match item.clone() {
-                ScanItem::Valid(candidate) => {
-                    let standing = self
-                        .candidate_standing(&candidate.key(), &candidate)
-                        .await?;
-                    ScanEvent::FolderCandidate {
-                        found_while_automatic: regrouped.found.contains(&candidate.key())
-                            && self.library_manager.identifies_automatically(),
-                        candidate,
-                        skipped: standing.skipped,
-                        is_added: standing.imported,
-                    }
-                }
+                ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {
+                    found_while_automatic: regrouped.found.contains(&candidate.key())
+                        && self.library_manager.identifies_automatically(),
+                    candidate,
+                },
                 ScanItem::Invalid(candidate) => ScanEvent::InvalidCandidate(candidate),
                 ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
                     continue

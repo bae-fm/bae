@@ -364,8 +364,6 @@ pub enum ScanEvent {
     },
     FolderCandidate {
         candidate: FolderCandidate,
-        skipped: bool,
-        is_added: bool,
         /// The write this announces listed the release for the first time —
         /// new to the library, or listed anew by a person's decision about
         /// how its folder reads — while identification runs on its own.
@@ -373,8 +371,6 @@ pub enum ScanEvent {
     },
     CandidateDiscovered {
         candidate: FolderCandidate,
-        skipped: bool,
-        is_added: bool,
     },
     /// A folder that looks like a release but failed validation (corrupt or
     /// empty audio, corrupt image, a CUE sheet naming missing audio), keyed by
