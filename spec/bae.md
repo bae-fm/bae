@@ -969,7 +969,9 @@ A run *picks unattended* only when all of these hold:
 
 Ana's run finds one pressing, on both catalogs, read in full, eleven tracks.
 bae picks it, and her row reads Identified at once. bae reads the pressing in
-full beside the runs still going, then writes its metadata into her draft. A
+full beside the runs still going, then writes its metadata into her draft.
+Until that read ends, her pane shows the pressing selected and being read; an
+answer that picks nothing reads no pressing, and the pane shows none. A
 Disc ID often returns several pressings of one album: an exact clue is not a
 unique answer, and choosing between them is the person's.
 

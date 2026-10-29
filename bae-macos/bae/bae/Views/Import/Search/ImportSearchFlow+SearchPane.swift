@@ -268,8 +268,7 @@ extension ImportSearchFlow {
                 forKey: input.key
             ),
             isImporting: isImporting(candidate),
-            isFinalizing: candidate.live?.identification == .finalizing
-                || candidate.live?.identification == .readingPick,
+            isReadingPick: candidate.live?.readingPick == true,
             // Each offered release's library status, from the candidate's
             // live read of them.
             libraryStatuses: candidate.libraryStatuses,

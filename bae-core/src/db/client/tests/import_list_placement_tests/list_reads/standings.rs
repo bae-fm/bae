@@ -661,3 +661,45 @@ async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
         ]
     );
 }
+
+/// The pane shows the release a run picked as being read exactly while that
+/// pick is read in full, an Import asked of it or not: never while the lookup
+/// waits, runs, or writes an answer that picks nothing.
+#[tokio::test]
+async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
+    let lib = Library::new().await;
+    let releases = [
+        "Queued",
+        "Running",
+        "Finalizing",
+        "Reading",
+        "Asked",
+        "Idle",
+    ];
+    let mut sql = scanned_with_states(&lib, &releases);
+    sql.push_str(&lib.identifying("Queued", "queued"));
+    sql.push_str(&lib.identifying("Running", "running"));
+    sql.push_str(&lib.identifying("Finalizing", "finalizing"));
+    sql.push_str(&lib.reading_pick("Reading"));
+    sql.push_str(&lib.reading_pick("Asked"));
+    sql.push_str(&format!(
+        "UPDATE import_candidate_standing SET import_asked = 1 WHERE candidate_key = '{}';",
+        lib.path("Asked")
+    ));
+    lib.run(&sql).await;
+    let read = lib.shown(view(TriageTab::Pending)).await;
+    for (display_path, reading) in [
+        ("Queued", false),
+        ("Running", false),
+        ("Finalizing", false),
+        ("Reading", true),
+        ("Asked", true),
+        ("Idle", false),
+    ] {
+        assert_eq!(
+            row_at(&read, display_path).1.reading_pick(),
+            reading,
+            "{display_path}"
+        );
+    }
+}

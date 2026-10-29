@@ -273,9 +273,9 @@ struct FindOnlineAutomaticSection: View {
             libraryStatuses: state.libraryStatuses,
             agreements: state.identifiedAgreements,
             selectedReleaseId: state.selectedReleaseId
-                ?? state.finalizingPressing?.lead.releaseId,
+                ?? state.pickBeingRead?.lead.releaseId,
             loadingReleaseId: state.loadingReleaseId
-                ?? state.finalizingPressing?.lead.releaseId,
+                ?? state.pickBeingRead?.lead.releaseId,
             releaseSelectionFailure: state.releaseSelectionFailure,
             onRetryUnread: onRetryFailed,
             onSelect: onSelect,

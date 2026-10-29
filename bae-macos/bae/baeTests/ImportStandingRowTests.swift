@@ -83,8 +83,8 @@ struct ImportStandingRowTests {
     ) async throws -> Drawn {
         var row = row
         row.live = BridgeCandidateLiveState(
-            identification: nil,
             identifying: nil,
+            readingPick: false,
             import: standing,
             actions: [],
             standing: .notLookedUp,
@@ -105,8 +105,8 @@ struct ImportStandingRowTests {
     ) async throws -> Drawn {
         var row = row
         row.live = BridgeCandidateLiveState(
-            identification: nil,
             identifying: nil,
+            readingPick: false,
             import: standing,
             actions: [],
             standing: nil,

@@ -184,10 +184,7 @@ struct ImportPreviewDataTests {
             }
         )
         #expect(
-            live.contains { state in
-                if case .running = state.identification { return true }
-                return false
-            }
+            live.contains { $0.identifying == .running }
         )
         #expect(
             entries.filter {

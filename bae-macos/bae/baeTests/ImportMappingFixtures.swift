@@ -417,8 +417,8 @@ extension MappingFixtures {
             resumedIdentifyState: .idle,
             placement: .pending(folderCheck: nil, records: records),
             live: BridgeCandidateLiveState(
-                identification: nil,
                 identifying: nil,
+                readingPick: false,
                 import: nil,
                 actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
                     ? [] : [.import])

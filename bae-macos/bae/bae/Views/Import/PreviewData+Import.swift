@@ -361,8 +361,8 @@
                 actionable: true,
                 placement: .pending,
                 live: BridgeCandidateLiveState(
-                    identification: nil,
                     identifying: nil,
+                    readingPick: false,
                     import: nil,
                     actions: [
                         .import, .identify, .resetToFileMetadata,

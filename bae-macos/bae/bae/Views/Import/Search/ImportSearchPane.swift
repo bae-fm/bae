@@ -328,8 +328,8 @@ struct ImportSearchPane: View {
             .importPreviewEnvironment()
     }
 
-    #Preview("Find online — finalizing a sole match") {
-        ImportSearchPane.preview(state: PreviewData.searchStateFinalizing)
+    #Preview("Find online — reading a sole match it picked") {
+        ImportSearchPane.preview(state: PreviewData.searchStateReadingPick)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }

@@ -750,8 +750,9 @@
             )
         )
 
-        /// A sole match being picked automatically, its row spinning.
-        static let searchStateFinalizing = searchState(
+        /// A sole match picked automatically and being read, its row
+        /// spinning.
+        static let searchStateReadingPick = searchState(
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [
@@ -783,7 +784,7 @@
                 offersSharedAlbum: false
             ),
             signals: settledSignals,
-            isFinalizing: true
+            isReadingPick: true
         )
 
         /// A sole match whose release lists no tracks: offered, not picked,
@@ -819,8 +820,7 @@
                 picksUnattended: false,
                 offersSharedAlbum: false
             ),
-            signals: settledSignals,
-            isFinalizing: true
+            signals: settledSignals
         )
 
         /// A typed search still running over the Found verdict.
@@ -895,7 +895,7 @@
             libraryStatuses: [String: BridgeLibraryStatus] = [:],
             selectedReleaseId: String? = nil,
             loadingReleaseId: String? = nil,
-            isFinalizing: Bool = false,
+            isReadingPick: Bool = false,
             needsYou: BridgeNeedsYouReason? = nil,
         ) -> ImportSearchState {
             ImportSearchState(
@@ -905,7 +905,7 @@
                 selectedReleaseId: selectedReleaseId,
                 loadingReleaseId: loadingReleaseId,
                 isImporting: false,
-                isFinalizing: isFinalizing,
+                isReadingPick: isReadingPick,
                 libraryStatuses: libraryStatuses,
                 signals: signals,
                 needsYou: needsYou,

@@ -251,6 +251,16 @@ impl CandidateLiveState {
             },
         )
     }
+
+    /// Whether the release the run picked unattended is being read in full
+    /// before its answer is stored, which the pane shows on that release. An
+    /// answer that picks nothing reads no release.
+    pub fn reading_pick(&self) -> bool {
+        matches!(
+            self.facts.identification,
+            Some(IdentificationStatus::ReadingPick { .. })
+        )
+    }
 }
 
 /// How far the lookup of a row whose state is Identifying has got, which the

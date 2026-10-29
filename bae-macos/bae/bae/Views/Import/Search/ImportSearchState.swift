@@ -18,10 +18,9 @@ struct ImportSearchState {
     let loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let isImporting: Bool
-    /// Whether core is still committing the verdict the pane shows: fetching
-    /// the sole pressing's details, then storing the answer. The verdict is
-    /// final; what is pending is the pick and the row.
-    let isFinalizing: Bool
+    /// Whether core is reading in full the release the verdict the pane shows
+    /// picked unattended, before it stores the answer.
+    let isReadingPick: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     let signals: Signals?
     /// Why the folder waits on the person, while it does: the page opens with
@@ -86,11 +85,11 @@ struct ImportSearchState {
         return failureLines
     }
 
-    /// The pressing core is picking on its own, whose row holds the spinner
-    /// while its details fetch and the answer saves. `nil` when nothing is
-    /// finalizing, or when the verdict picks nothing — those wait on a person.
-    var finalizingPressing: Pressing? {
-        guard isFinalizing, identifyState.picksUnattended else { return nil }
+    /// The pressing core picked on its own, whose row holds the spinner while
+    /// it is read in full and the answer saves: the one pressing the verdict
+    /// offers. `nil` while no pick is being read.
+    var pickBeingRead: Pressing? {
+        guard isReadingPick else { return nil }
         return identifiedGroups.flatMap(\.pressings).first
     }
 }

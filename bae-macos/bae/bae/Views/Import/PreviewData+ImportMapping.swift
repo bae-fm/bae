@@ -406,8 +406,8 @@
                     resumedIdentifyState: .idle,
                     placement: .pending(folderCheck: nil, records: []),
                     live: BridgeCandidateLiveState(
-                        identification: nil,
                         identifying: nil,
+                        readingPick: false,
                         import: nil,
                         actions: (metadataProvenance == nil
                             && edit.albumTitle.isEmpty ? [] : [.import])

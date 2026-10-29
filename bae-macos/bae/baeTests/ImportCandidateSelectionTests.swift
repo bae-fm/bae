@@ -67,8 +67,8 @@ struct ImportCandidateSelectionTests {
         let idle = PreviewData.triageRowUnidentified
         var running = idle
         running.live = BridgeCandidateLiveState(
-            identification: .running,
             identifying: .running,
+            readingPick: false,
             import: nil,
             actions: [.cancelIdentification, .skip, .revealFolder],
             standing: .identifying,

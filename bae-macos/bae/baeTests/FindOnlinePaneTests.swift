@@ -683,24 +683,17 @@ struct FindOnlineResultAreaTests {
 }
 
 @MainActor
-@Suite("What the pane finalizes")
-struct FindOnlineFinalizingTests {
-    /// A sole match core is picking on its own is the row that holds the
-    /// spinner; several matches wait on a person and none does.
-    @Test("a sole match selects itself while core finalizes")
+@Suite("The pick the pane shows being read")
+struct FindOnlineReadingPickTests {
+    /// The sole match core picked on its own is the row that holds the
+    /// spinner while it is read; with no pick being read none does.
+    @Test("a sole match selects itself while core reads it")
     func aSoleMatchSelectsItself() {
         #expect(
-            PreviewData.searchStateFinalizing.finalizingPressing?.lead.releaseId
+            PreviewData.searchStateReadingPick.pickBeingRead?.lead.releaseId
                 == "rel-456"
         )
-        #expect(PreviewData.searchStateFoundExact.finalizingPressing == nil)
-    }
-
-    /// A sole match whose release lists no tracks is not picked, so no row
-    /// spins while the answer saves.
-    @Test("a sole match that lists no tracks does not select itself")
-    func aSoleMatchThatListsNoTracksStaysUnselected() {
-        #expect(PreviewData.searchStateSoleUnchecked.finalizingPressing == nil)
+        #expect(PreviewData.searchStateFoundExact.pickBeingRead == nil)
     }
 }
 

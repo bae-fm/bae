@@ -322,18 +322,21 @@ impl crate::types::BridgeCandidateLiveState {
         let identifying = live
             .identifying()
             .map(crate::types::BridgeIdentifyingStep::from_core);
+        let reading_pick = live.reading_pick();
         let bae_core::import::CandidateLiveState {
             facts,
             actions,
             standing,
         } = live;
+        // What identification is doing reaches the UI as what the row and
+        // the pane show of it, and as the actions the row offers.
         let bae_core::import::TriageRuntimeFacts {
-            identification,
+            identification: _,
             import,
         } = facts;
         Self {
-            identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),
             identifying,
+            reading_pick,
             import: import.map(crate::types::BridgeImportStanding::from_core),
             actions: actions
                 .into_iter()
@@ -384,25 +387,6 @@ mirror_enum! {
     crate::types::BridgeImportStanding = bae_core::import::ImportStanding,
     from_core: fn,
     variants: { Queued, Running, Writing },
-}
-
-impl crate::types::BridgeIdentificationStatus {
-    pub(crate) fn from_core(status: bae_core::import::IdentificationStatus) -> Self {
-        use bae_core::import::IdentificationStatus as S;
-        match status {
-            S::Queued => Self::Queued,
-            S::Running => Self::Running,
-            S::Finalizing => Self::Finalizing,
-            // Whether an Import was asked reaches the UI as the actions the
-            // row offers.
-            S::ReadingPick { import_asked: _ } => Self::ReadingPick,
-            S::FinalizationFailed { failure } => Self::FinalizationFailed {
-                error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(
-                    failure.error().to_string(),
-                )),
-            },
-        }
-    }
 }
 
 // Not a copy: audio no CD holds crosses with the rate its files state, which

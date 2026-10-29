@@ -481,9 +481,11 @@ impl BridgeSelectionOffer {
 /// offers and the state it is in with it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateLiveState {
-    pub identification: Option<BridgeIdentificationStatus>,
     /// The lookup at work the row shows: only a row Identifying shows one.
     pub identifying: Option<BridgeIdentifyingStep>,
+    /// Whether the release the run picked unattended is being read in full
+    /// before its answer is stored, which the pane shows on that release.
+    pub reading_pick: bool,
     /// Where the import that owns the candidate stands; `None` when none does.
     pub import: Option<BridgeImportStanding>,
     pub actions: Vec<BridgeCandidateAction>,
@@ -512,22 +514,6 @@ pub enum BridgeImportStanding {
     Running,
     /// Writing its release; it can no longer be cancelled.
     Writing,
-}
-
-/// What identification is doing for a candidate right now.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeIdentificationStatus {
-    /// Admitted to the queue but not started.
-    Queued,
-    /// Signals or provider lookups are in flight.
-    Running,
-    /// A terminal result that picks no release is being committed.
-    Finalizing,
-    /// The run picked its release unattended, which is being read in full
-    /// before the result is committed. The row reads as identified.
-    ReadingPick,
-    /// The terminal result could not be committed.
-    FinalizationFailed { error: BridgeError },
 }
 
 /// A check of the found release against the folder that did not pass, with raw

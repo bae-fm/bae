@@ -130,7 +130,8 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
 
 /// The row of a run reading its pick is Identified, counted under Identified
 /// and not In Progress, shows no lookup at work, and offers importing beside
-/// cancelling the run and skipping.
+/// cancelling the run and skipping; its pane shows the pick being read until
+/// it is stored.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_row_whose_pick_is_being_read_is_identified() {
     let fixture = Fixture::new("reading-the-pick-row").await;
@@ -174,8 +175,23 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     );
     assert_eq!(counted(&reading, crate::import::PendingFilter::Identified), 1);
     assert_eq!(counted(&reading, crate::import::PendingFilter::InProgress), 0);
+    let pane_reads_pick = || async {
+        fixture
+            .import
+            .candidate_pane(&key)
+            .await
+            .unwrap()
+            .expect("the pane reads the candidate")
+            .live
+            .reading_pick()
+    };
+    assert!(pane_reads_pick().await, "the pane shows the pick being read");
 
     fixture.finish_reading().await;
+    assert!(
+        !pane_reads_pick().await,
+        "once the pick is stored, the pane shows none being read"
+    );
 }
 
 /// Import from the pane while the pick is read does not cancel the read nor
