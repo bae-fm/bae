@@ -24,10 +24,12 @@ FFMPEG_DIR = { value = "bae-ffmpeg/dist", relative = true, force = false }
 # bae's otherwise independent connections through one mutex. Temporary tables
 # may spill to files on every platform: libsqlite3-sys builds Android's SQLite
 # with SQLITE_TEMP_STORE=3, keeping them in memory, which coven refuses to
-# open with. Its own flags come before these, so this undefines it and sets 2,
-# SQLite's default elsewhere; the Android app names the folder at launch
+# open with. Its own flags come before these, so this undefines it and sets 1,
+# SQLite's own default: temporary tables in files unless a connection asks for
+# memory. coven also refuses 2, which keeps them in memory unless a connection
+# asks for files. The Android app names the folder at launch
 # (`set_temporary_directory`).
-LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0 -USQLITE_TEMP_STORE -DSQLITE_TEMP_STORE=2", force = true }
+LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0 -USQLITE_TEMP_STORE -DSQLITE_TEMP_STORE=1", force = true }
 
 # A Windows build links the C runtime into each binary. The default links it
 # dynamically, making bae's DLL import vcruntime140.dll, which is the Visual
