@@ -32,6 +32,7 @@ use super::audio_output::{
     AudioDrain, AudioError, AudioEventSender, AudioLockMissLog, AudioOutput, AudioOutputControls,
     AudioStream,
 };
+use super::resampling_drain::ResamplingDrain;
 use crate::playback::source::PlaybackSource;
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{BufferSize, ErrorKind, StreamConfig};
@@ -85,6 +86,38 @@ fn stream_error_handler(
     }
 }
 
+/// The rate to build the stream at for a track at `track_rate`. On macOS cpal
+/// sets the output device to the stream's rate, so this is the track's own rate
+/// when the device runs at it — nothing converts — and otherwise the supported
+/// rate [`output_rate::output_rate`] picks, which bae converts the track to.
+#[cfg(target_os = "macos")]
+fn output_rate(device: &cpal::Device, track_rate: u32, channels: u32) -> Result<u32, AudioError> {
+    let device_rates: Vec<std::ops::RangeInclusive<u32>> = device
+        .supported_output_configs()
+        .map_err(|error| match error.kind() {
+            ErrorKind::DeviceNotAvailable | ErrorKind::DeviceBusy => AudioError::DeviceUnavailable,
+            _ => AudioError::Unexpected(format!("reading the device's sample rates: {error}")),
+        })?
+        .map(|range| range.min_sample_rate()..=range.max_sample_rate())
+        .collect();
+    crate::playback::output_rate::output_rate(track_rate, &device_rates).ok_or(
+        AudioError::UnsupportedFormat {
+            sample_rate: track_rate,
+            channels,
+        },
+    )
+}
+
+/// The rate to build the stream at for a track at `track_rate`: the track's
+/// own. Off macOS the system converts a stream to the rate its device runs at:
+/// WASAPI's shared mode on Windows (cpal opens it to convert any rate), the
+/// sound server or ALSA's `plug` layer behind `default` on Linux, and the audio
+/// session on iOS.
+#[cfg(not(target_os = "macos"))]
+fn output_rate(_device: &cpal::Device, track_rate: u32, _channels: u32) -> Result<u32, AudioError> {
+    Ok(track_rate)
+}
+
 /// Audio output using the system audio device via CPAL.
 pub struct CpalAudioOutput {
     controls: AudioOutputControls,
@@ -122,33 +155,52 @@ impl AudioOutput for CpalAudioOutput {
         let device = host
             .default_output_device()
             .ok_or(AudioError::DeviceUnavailable)?;
+        let output_rate = output_rate(&device, source_sample_rate, source_channels)?;
         let stream_config = StreamConfig {
             channels: source_channels as u16,
-            sample_rate: source_sample_rate,
+            sample_rate: output_rate,
             buffer_size: BufferSize::Default,
         };
 
         info!(
             device = ?device.description().map(|description| description.name().to_owned()),
             sample_rate = source_sample_rate,
+            output_rate,
             channels = source_channels,
             "Building audio output stream"
         );
 
-        let mut drain = AudioDrain::new(
+        let mut converter = ResamplingDrain::new(
+            AudioDrain::new(
+                self.controls.clone(),
+                source,
+                audio_events,
+                position_update_interval_ms,
+            ),
             self.controls.clone(),
-            source,
-            audio_events,
-            position_update_interval_ms,
-        );
-        let mut lock_miss = AudioLockMissLog::new();
+            (source_sample_rate, source_channels),
+            (output_rate, source_channels),
+            Some(AudioLockMissLog::new()),
+            "the output device",
+        )
+        .map_err(|error| {
+            warn!(
+                "no converter from {source_sample_rate} Hz to the output device's \
+                 {output_rate} Hz: {error}"
+            );
+            AudioError::UnsupportedFormat {
+                sample_rate: source_sample_rate,
+                channels: source_channels,
+            }
+        })?;
         let (invalidated, invalidations) = mpsc::channel();
 
         let stream = device
             .build_output_stream(
                 stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    let _ = drain.drain_iteration(data, true, true, Some(&mut lock_miss));
+                    let written = converter.read(data);
+                    data[written..].fill(0.0);
                 },
                 stream_error_handler(invalidated),
                 None,

@@ -1,10 +1,11 @@
 //! A standalone FFmpeg audio resampler for interleaved `f32`.
 //!
 //! The encoder resamples inside its own pipeline; this exposes the same
-//! `libswresample` conversion as a reusable unit for the playback side — the
-//! AirPlay output resamples decoded audio to the fixed 44.1 kHz stereo a receiver
-//! expects, since the decode pipeline fills the ring buffer at the track's native
-//! rate. Input and output are interleaved single-precision float; channel count
+//! `libswresample` conversion as a reusable unit for the playback side: the
+//! decode pipeline fills the ring buffer at the track's native rate, and an
+//! output converts from there to the rate its device takes — the fixed 44.1 kHz
+//! stereo an AirPlay receiver expects, or a rate a Mac's output device runs at
+//! when it can't run at the track's. Input and output are interleaved single-precision float; channel count
 //! and sample rate both convert.
 
 use std::os::raw::c_int;
@@ -21,7 +22,7 @@ pub struct Resampler {
 }
 
 // The `SwrContext` is exclusively owned and never shared, so moving a `Resampler`
-// to the AirPlay send thread is sound.
+// to the thread that plays its output is sound.
 unsafe impl Send for Resampler {}
 
 impl Resampler {
@@ -67,20 +68,22 @@ impl Resampler {
         }
     }
 
-    /// Convert one interleaved-`f32` input chunk, returning the interleaved output
-    /// available so far (may be empty while the converter fills).
-    pub fn convert(&mut self, input: &[f32]) -> Result<Vec<f32>, String> {
+    /// Convert one interleaved-`f32` input chunk, appending the interleaved
+    /// output available so far to `out` (possibly nothing while the converter
+    /// fills). Appending lets a caller on an audio thread keep one buffer whose
+    /// capacity settles, rather than allocating per chunk.
+    pub fn convert(&mut self, input: &[f32], out: &mut Vec<f32>) -> Result<(), String> {
         // SAFETY: `swr` was built by `new` and is valid for the lifetime of self.
-        unsafe { self.run(Some(input)) }
+        unsafe { self.run(Some(input), out) }
     }
 
-    /// Drain the converter's buffered tail (no new input).
-    pub fn flush(&mut self) -> Result<Vec<f32>, String> {
+    /// Drain the converter's buffered tail (no new input), appending it to `out`.
+    pub fn flush(&mut self, out: &mut Vec<f32>) -> Result<(), String> {
         // SAFETY: as `convert`.
-        unsafe { self.run(None) }
+        unsafe { self.run(None, out) }
     }
 
-    unsafe fn run(&mut self, input: Option<&[f32]>) -> Result<Vec<f32>, String> {
+    unsafe fn run(&mut self, input: Option<&[f32]>, out: &mut Vec<f32>) -> Result<(), String> {
         use ffmpeg_sys_next::*;
 
         let input_frames = input.map_or(0, |i| i.len() / self.src_channels) as c_int;
@@ -92,8 +95,9 @@ impl Resampler {
             ));
         }
 
-        let mut out = vec![0f32; capacity as usize * self.dst_channels];
-        let out_ptr = out.as_mut_ptr() as *mut u8;
+        let start = out.len();
+        out.resize(start + capacity as usize * self.dst_channels, 0.0);
+        let out_ptr = out[start..].as_mut_ptr() as *mut u8;
         let converted = match input {
             Some(samples) => {
                 let in_ptr = samples.as_ptr() as *const u8;
@@ -102,10 +106,11 @@ impl Resampler {
             None => swr_convert(self.swr, &out_ptr, capacity, ptr::null(), 0),
         };
         if converted < 0 {
+            out.truncate(start);
             return Err(format!("Failed to resample: {}", av_err_str(converted)));
         }
-        out.truncate(converted as usize * self.dst_channels);
-        Ok(out)
+        out.truncate(start + converted as usize * self.dst_channels);
+        Ok(())
     }
 }
 
@@ -127,8 +132,9 @@ mod tests {
         let mut r = Resampler::new(48_000, 2, 44_100, 2).unwrap();
         // One second of stereo silence: 48 000 frames = 96 000 interleaved samples.
         let input = vec![0.0f32; 48_000 * 2];
-        let mut out = r.convert(&input).unwrap();
-        out.extend(r.flush().unwrap());
+        let mut out = Vec::new();
+        r.convert(&input, &mut out).unwrap();
+        r.flush(&mut out).unwrap();
         let out_frames = out.len() / 2;
         // Allow a few frames of resampler latency either way.
         assert!(
@@ -143,8 +149,9 @@ mod tests {
     fn upmixes_mono_to_stereo() {
         let mut r = Resampler::new(44_100, 1, 44_100, 2).unwrap();
         let input = vec![0.5f32; 100];
-        let mut out = r.convert(&input).unwrap();
-        out.extend(r.flush().unwrap());
+        let mut out = Vec::new();
+        r.convert(&input, &mut out).unwrap();
+        r.flush(&mut out).unwrap();
         assert_eq!(out.len() / 2, 100, "frame count preserved at the same rate");
         // The upmix may apply a downmix gain, but the two channels are equal and
         // non-zero.

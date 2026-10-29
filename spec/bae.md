@@ -2504,11 +2504,18 @@ desktop, when the device goes away and there is none to move to, playback
 stops and says the audio device isn't available, and a preview ends. Volume
 and mute live in core, so unmuting restores the level last set.
 
-On macOS, a track or a preview that starts a stream sets the output device to
-the track's sample rate; a device playback moves to keeps its own rate. A
-track at a rate the device can't run at doesn't play, and says it can't play
-the track's sample rate. On Windows the system converts the track to the rate
-it mixes at.
+**Sample rates.** On macOS, a track or a preview that starts a stream sets the
+output device to the track's sample rate, so the track's samples reach the
+device unconverted; a device playback moves to keeps its own rate. On a device
+that can't run at the track's rate, bae sets it to one it can and converts the
+track to that rate: one of the track's family (whole multiples of 11.025 kHz,
+like 44.1 kHz, or of 8 kHz, like 48 kHz) when the device has one, the highest
+at or below the track's rate, else the lowest above it; only a device with no
+rate of that family gets the other family's, chosen the same way. On Windows
+the system converts every track to the rate it mixes at. On Linux the stream
+opens at the track's rate and the sound server, or ALSA's own conversion,
+converts it to the device's; on Android AAudio's mixer does; on iOS the audio
+session does.
 
 **When the output won't start.** Playback that can't start its output — on
 this device or a receiver — stops and says why: the audio device was

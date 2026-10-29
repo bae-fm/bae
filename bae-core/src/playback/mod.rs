@@ -13,10 +13,13 @@ pub mod data_source;
 mod device_writer;
 mod error;
 mod now_playing;
+#[cfg(any(target_os = "macos", test))]
+mod output_rate;
 mod preview_player;
 pub mod progress;
 mod queue;
 mod repeat_mode;
+mod resampling_drain;
 mod scrub_points;
 pub mod service;
 pub mod source;

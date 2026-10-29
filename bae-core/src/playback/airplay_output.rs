@@ -21,9 +21,9 @@ use std::time::Duration;
 use tracing::warn;
 
 use crate::playback::audio_output::{
-    AudioDrain, AudioError, AudioEventSender, AudioOutput, AudioOutputControls, AudioState,
-    AudioStream, DrainStatus,
+    AudioDrain, AudioError, AudioEventSender, AudioOutput, AudioOutputControls, AudioStream,
 };
+use crate::playback::resampling_drain::ResamplingDrain;
 use crate::playback::source::PlaybackSource;
 
 /// The sample rate of the PCM a [`PcmSource`] yields: 44.1 kHz, the rate an
@@ -191,34 +191,21 @@ impl AudioStream for AirPlayAudioStream {
     }
 }
 
-/// Source frames pulled from the ring per drain iteration while filling a packet.
-const PULL_FRAMES: usize = 512;
-
-/// Pulls f32 from the ring buffer through an [`AudioDrain`], resamples it to the
-/// 44.1 kHz stereo a receiver expects (the decode pipeline fills the ring at the
-/// track's native rate), and converts to the interleaved 16-bit PCM the send path
-/// packetizes. A paused or drained drain yields no frames — the stream stays up
-/// (the session's lifetime ends it), so pause and gapless track swaps don't tear
-/// it down; the resampler's tail is flushed when the source drains.
+/// Pulls f32 from the ring buffer through a [`ResamplingDrain`], which converts
+/// it to the 44.1 kHz stereo a receiver expects (the decode pipeline fills the
+/// ring at the track's native rate), and converts that to the interleaved
+/// 16-bit PCM the send path packetizes. A paused or drained drain yields no
+/// frames — the stream stays up (the session's lifetime ends it), so pause and
+/// gapless track swaps don't tear it down; the resampler's tail is flushed when
+/// the source drains.
 ///
 /// A conversion that fails partway stops sending: the failure goes to playback
 /// as an [`AudioEvent::OutputFailed`], which stops playback and reports it,
 /// and nothing more reaches the receiver — no audio skipped silently.
 struct DrainSource {
-    drain: AudioDrain,
-    /// A clone of the output's controls, to tell a paused drain from a drained one.
-    controls: AudioOutputControls,
-    source_channels: usize,
-    /// `None` when the source is already 44.1 kHz stereo (pass-through).
-    resampler: Option<bae_audio::Resampler>,
-    /// Resampled 44.1 kHz stereo interleaved samples awaiting emission.
-    out_buf: Vec<f32>,
-    /// Source samples pulled per drain iteration.
-    in_scratch: Vec<f32>,
-    /// Whether the resampler's tail has been flushed for the current drain.
-    flushed: bool,
-    /// Set once a conversion fails; from then on the source yields nothing.
-    failed: bool,
+    converter: ResamplingDrain,
+    /// One packet of 44.1 kHz stereo f32, before it becomes 16-bit.
+    packet: Vec<f32>,
 }
 
 impl DrainSource {
@@ -231,123 +218,39 @@ impl DrainSource {
         source_sample_rate: u32,
         source_channels: u32,
     ) -> Result<Self, AudioError> {
-        let source_channels = source_channels.max(1);
-        let resampler = if source_sample_rate == PCM_SAMPLE_RATE && source_channels == PCM_CHANNELS
-        {
-            None
-        } else {
-            let resampler = bae_audio::Resampler::new(
-                source_sample_rate,
-                source_channels,
-                PCM_SAMPLE_RATE,
-                PCM_CHANNELS,
-            )
-            .map_err(|error| {
-                warn!(
-                    "no converter from {source_sample_rate} Hz, {source_channels} channels \
-                     to the AirPlay speaker's 44.1 kHz stereo: {error}"
-                );
-                AudioError::UnsupportedFormat {
-                    sample_rate: source_sample_rate,
-                    channels: source_channels,
-                }
-            })?;
-            Some(resampler)
-        };
-        Ok(DrainSource {
+        let converter = ResamplingDrain::new(
             drain,
             controls,
-            source_channels: source_channels as usize,
-            resampler,
-            out_buf: Vec::new(),
-            in_scratch: Vec::new(),
-            flushed: false,
-            failed: false,
+            (source_sample_rate, source_channels),
+            (PCM_SAMPLE_RATE, PCM_CHANNELS),
+            None,
+            "the AirPlay speaker",
+        )
+        .map_err(|error| {
+            warn!(
+                "no converter from {source_sample_rate} Hz, {source_channels} channels \
+                 to the AirPlay speaker's 44.1 kHz stereo: {error}"
+            );
+            AudioError::UnsupportedFormat {
+                sample_rate: source_sample_rate,
+                channels: source_channels,
+            }
+        })?;
+        Ok(DrainSource {
+            converter,
+            packet: Vec::new(),
         })
     }
-
-    /// Stop sending after a conversion failed, and tell playback why.
-    fn conversion_failed(&mut self, what: &str, error: String) -> Pull {
-        self.failed = true;
-        self.out_buf.clear();
-        self.drain.report_output_failure(format!(
-            "converting {what} for the AirPlay speaker failed: {error}"
-        ));
-        Pull::Idle
-    }
-
-    /// Pull one drain iteration and append its (resampled) 44.1 kHz stereo output
-    /// to `out_buf`. Returns whether anything was produced or the source is idle.
-    fn fill(&mut self) -> Pull {
-        if self.failed {
-            return Pull::Idle;
-        }
-        self.in_scratch
-            .resize(PULL_FRAMES * self.source_channels, 0.0);
-        match self
-            .drain
-            .drain_iteration(&mut self.in_scratch, true, true, None)
-        {
-            DrainStatus::Samples { read } => {
-                self.flushed = false;
-                let input = &self.in_scratch[..read];
-                let converted = match &mut self.resampler {
-                    Some(r) => r.convert(input),
-                    None => Ok(input.to_vec()),
-                };
-                match converted {
-                    Ok(out) => self.out_buf.extend_from_slice(&out),
-                    Err(error) => return self.conversion_failed("a chunk", error),
-                }
-                Pull::Produced
-            }
-            // A drained source (completion latched → Stopped) flushes the
-            // resampler's tail once; a paused source just waits.
-            DrainStatus::Idle => {
-                if !self.flushed && self.controls.get_state() == AudioState::Stopped {
-                    self.flushed = true;
-                    if let Some(r) = &mut self.resampler {
-                        match r.flush() {
-                            Ok(tail) => {
-                                let produced = !tail.is_empty();
-                                self.out_buf.extend_from_slice(&tail);
-                                if produced {
-                                    return Pull::Produced;
-                                }
-                            }
-                            Err(error) => {
-                                return self.conversion_failed("the end of the track", error)
-                            }
-                        }
-                    }
-                }
-                Pull::Idle
-            }
-        }
-    }
-}
-
-/// The outcome of one [`DrainSource::fill`].
-enum Pull {
-    Produced,
-    Idle,
 }
 
 impl PcmSource for DrainSource {
     fn next_frames(&mut self, out: &mut [i16]) -> usize {
-        let want = out.len() / 2;
-        while self.out_buf.len() < want * 2 {
-            if matches!(self.fill(), Pull::Idle) {
-                break;
-            }
+        self.packet.resize(out.len(), 0.0);
+        let written = self.converter.read(&mut self.packet);
+        for (pcm, sample) in out.iter_mut().zip(&self.packet[..written]) {
+            *pcm = f32_to_i16(*sample);
         }
-        let take = want.min(self.out_buf.len() / 2);
-        for f in 0..take {
-            out[f * 2] = f32_to_i16(self.out_buf[f * 2]);
-            out[f * 2 + 1] = f32_to_i16(self.out_buf[f * 2 + 1]);
-        }
-        self.out_buf.drain(..take * 2);
-        take
+        written / PCM_CHANNELS as usize
     }
 }
 
@@ -359,7 +262,7 @@ fn f32_to_i16(sample: f32) -> i16 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::playback::audio_output::audio_event_channel;
+    use crate::playback::audio_output::{audio_event_channel, AudioState};
     use crate::playback::source::{PlaybackSource, TrackFmt};
     use bae_audio::track_stream::create_track_stream_pair;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
