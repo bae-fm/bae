@@ -15,6 +15,26 @@ fn signals_event(key: &str, text: &str) -> ImportEvent {
     }
 }
 
+/// Wait until the view shows each of `keys` claimed and running. A claim
+/// reaches the view queued, then running as a later read of the table says;
+/// a reader taking the view before that is told the move later, as if
+/// whatever it waits for had moved the key.
+async fn wait_until_running(runtime: &CandidateRuntime, keys: &[&str]) {
+    runtime
+        .watch_view()
+        .wait_for(|view| {
+            keys.iter().all(|key| {
+                view.snapshots
+                    .get(*key)
+                    .and_then(|snapshot| snapshot.import.as_ref())
+                    .map(|import| import.step)
+                    == Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles))
+            })
+        })
+        .await
+        .unwrap();
+}
+
 /// The live read of every key, kept current for as long as the test runs.
 fn keep_current(runtime: &CandidateRuntime) -> tokio::task::JoinHandle<()> {
     tokio::spawn(runtime.clone().keep_view_current())
@@ -190,11 +210,7 @@ async fn a_snapshots_reader_is_told_only_the_key_that_moved() {
     let live = keep_current(&runtime);
     claim(&runtime, "/watch/a/rel1").await;
     claim(&runtime, "/watch/a/rel2").await;
-    runtime
-        .watch_view()
-        .wait_for(|view| view.snapshots.len() == 2)
-        .await
-        .unwrap();
+    wait_until_running(&runtime, &["/watch/a/rel1", "/watch/a/rel2"]).await;
     let mut watch = RuntimeSnapshotsWatch::of(&runtime);
     watch.next().await.expect("the runtime is there");
 
@@ -223,19 +239,7 @@ async fn an_import_percent_moves_the_percents_not_the_snapshots() {
     claim(&runtime, "/watch/a/rel1").await;
     claim(&runtime, "/watch/a/rel2").await;
     let mut percents = runtime.watch_import_percents();
-    // Each claim reaches the view queued, then running as a later read of
-    // the table says; a key the reader is told of later would be read as
-    // the percent's doing.
-    let mut view = runtime.watch_view();
-    view.wait_for(|view| {
-        view.snapshots.len() == 2
-            && view.snapshots.values().all(|snapshot| {
-                snapshot.import.as_ref().map(|import| import.step)
-                    == Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles))
-            })
-    })
-    .await
-    .unwrap();
+    wait_until_running(&runtime, &["/watch/a/rel1", "/watch/a/rel2"]).await;
     runtime.record_event(&progress("/watch/a/rel1", 40));
     percents
         .wait_for(|percents| percents.get("/watch/a/rel1") == Some(&40))
