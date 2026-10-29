@@ -188,7 +188,7 @@ pub(crate) fn load_pane_rows_on(
             ))
         })?;
     Ok(DbCandidatePaneRows {
-        cover: load_covers_on(sql, CandidateRows::One(content_hash))?.remove(content_hash),
+        cover: load_cover_on(sql, content_hash)?,
         cover_options: load_cover_options_on(sql, content_hash)?,
         draft: metadata_draft,
         failure: load_failure_on(sql, content_hash)?,
@@ -196,62 +196,91 @@ pub(crate) fn load_pane_rows_on(
     })
 }
 
-/// The cover choice of every candidate `only` names, each with the copies
-/// the catalog serves of a remote one.
-pub(crate) fn load_covers_on(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    only: CandidateRows<'_>,
-) -> Result<HashMap<String, CoverSelection>, DbError> {
-    let only = only.filter("cover.content_hash");
+/// A candidate's cover choice as columns of a read that joins its row as
+/// `cover`, with the copies the catalog serves of a remote one as a JSON
+/// array. A candidate with no choice reads `cover_row` as NULL.
+pub(crate) fn cover_read_columns() -> String {
     // Only a remote choice has an address for copies to reference.
     let copies = copies_json_sql(
         "import_candidate_cover_copy",
         "copy.content_hash = cover.content_hash AND copy.image_url = cover.url",
     );
-    let rows = sql.query(
-        &format!(
-            "SELECT cover.content_hash, cover.kind, cover.file_id, cover.url, cover.source, \
-                    {copies} AS copies \
-             FROM import_candidate_cover AS cover {}",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, String>("kind")?,
-                row.get::<_, Option<String>>("file_id")?,
-                row.get::<_, Option<String>>("url")?,
-                row.get::<_, Option<String>>("source")?,
-                row.get::<_, String>("copies")?,
-            ))
-        },
-    )?;
-    let mut out = HashMap::with_capacity(rows.len());
-    for (content_hash, kind, file_id, url, source, copies) in rows {
-        let cover = match kind.as_str() {
-            "local" => CoverSelection::Local(
-                file_id.ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
-            ),
-            "embedded" => CoverSelection::Embedded(file_id.ok_or_else(|| {
-                DbError::Message("an embedded cover names no source file".into())
-            })?),
-            "remote" => CoverSelection::Remote(
-                RemoteImageSet::with_copies(
-                    url.ok_or_else(|| DbError::Message("a remote cover names no address".into()))?,
-                    copies_of(&copies)?,
-                ),
-                Catalog::from_str(
-                    &source
-                        .ok_or_else(|| DbError::Message("a remote cover names no source".into()))?,
-                )
-                .map_err(DbError::Message)?,
-            ),
-            other => return Err(unreadable("cover kind", other)),
-        };
-        out.insert(content_hash, cover);
+    format!(
+        "cover.content_hash AS cover_row, cover.kind AS cover_kind, \
+         cover.file_id AS cover_file_id, cover.url AS cover_url, \
+         cover.source AS cover_source, {copies} AS cover_copies"
+    )
+}
+
+/// One candidate's [`cover_read_columns`] as SQLite hands them over.
+pub(crate) struct StoredCover {
+    kind: String,
+    file_id: Option<String>,
+    url: Option<String>,
+    source: Option<String>,
+    copies: String,
+}
+
+/// The [`cover_read_columns`] of `row`; none for a candidate that chose no
+/// cover.
+pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>> {
+    if row.get::<_, Option<String>>("cover_row")?.is_none() {
+        return Ok(None);
     }
-    Ok(out)
+    Ok(Some(StoredCover {
+        kind: row.get("cover_kind")?,
+        file_id: row.get("cover_file_id")?,
+        url: row.get("cover_url")?,
+        source: row.get("cover_source")?,
+        copies: row.get("cover_copies")?,
+    }))
+}
+
+impl StoredCover {
+    pub(crate) fn selection(self) -> Result<CoverSelection, DbError> {
+        match self.kind.as_str() {
+            "local" => Ok(CoverSelection::Local(self.file_id.ok_or_else(|| {
+                DbError::Message("a local cover names no file".into())
+            })?)),
+            "embedded" => Ok(CoverSelection::Embedded(self.file_id.ok_or_else(|| {
+                DbError::Message("an embedded cover names no source file".into())
+            })?)),
+            "remote" => {
+                Ok(CoverSelection::Remote(
+                    RemoteImageSet::with_copies(
+                        self.url.ok_or_else(|| {
+                            DbError::Message("a remote cover names no address".into())
+                        })?,
+                        copies_of(&self.copies)?,
+                    ),
+                    Catalog::from_str(&self.source.ok_or_else(|| {
+                        DbError::Message("a remote cover names no source".into())
+                    })?)
+                    .map_err(DbError::Message)?,
+                ))
+            }
+            other => Err(unreadable("cover kind", other)),
+        }
+    }
+}
+
+/// The cover the candidate `content_hash` chose, if it chose one.
+fn load_cover_on(
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+    content_hash: &str,
+) -> Result<Option<CoverSelection>, DbError> {
+    sql.query_row(
+        &format!(
+            "SELECT {} FROM import_candidate_cover AS cover WHERE cover.content_hash = ?",
+            cover_read_columns()
+        ),
+        [content_hash],
+        read_cover,
+    )
+    .optional()?
+    .flatten()
+    .map(StoredCover::selection)
+    .transpose()
 }
 
 /// Every candidate's complete stored draft, or the one `only` names: one row

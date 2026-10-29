@@ -23,13 +23,14 @@ use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use import_commit::{
     end_import_attempt_of_commit, record_import_origin_on, require_import_commit_guard,
 };
-pub(super) use pane_rows::{insert_draft, load_covers_on, load_pane_rows_on};
+pub(super) use pane_rows::{cover_read_columns, insert_draft, load_pane_rows_on, read_cover};
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     RunVerdictSaved, ScannedCandidateKey,
 };
 pub(super) use rows::{
-    load_candidate_file_edits_on, load_provenance_on, load_release_links_on, load_states_on,
+    load_candidate_file_edits_on, load_states_on, read_provenance, read_release_link,
+    PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS,
 };
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, insert_signals};

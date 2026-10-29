@@ -13,9 +13,6 @@ use crate::import::{AlbumLink, MetadataProvenance, MetadataRef, PressingLink, Re
 use bae_catalogs::catalog::Catalog;
 use std::str::FromStr;
 
-type CandidateProvenances = HashMap<String, MetadataProvenance>;
-type CandidateLinks = HashMap<String, ReleaseLink>;
-
 /// The provenance as its columns. Only an external release names a source and
 /// a release.
 struct ProvenanceColumns<'a> {
@@ -65,12 +62,12 @@ pub(super) fn insert_provenance(
 
 /// A candidate's draft provenance as columns of a read that joins its row as
 /// `provenance`. A candidate with none reads `provenance_row` as NULL.
-pub(super) const PROVENANCE_COLUMNS: &str = "provenance.content_hash AS provenance_row, \
+pub(crate) const PROVENANCE_COLUMNS: &str = "provenance.content_hash AS provenance_row, \
      provenance.kind AS provenance_kind, provenance.source AS provenance_source, \
      provenance.release_id AS provenance_release_id";
 
 /// One candidate's [`PROVENANCE_COLUMNS`] as SQLite hands them over.
-pub(super) struct StoredProvenance {
+pub(crate) struct StoredProvenance {
     kind: String,
     source: Option<String>,
     release_id: Option<String>,
@@ -78,7 +75,7 @@ pub(super) struct StoredProvenance {
 
 /// The [`PROVENANCE_COLUMNS`] of `row`; none for a draft that records no
 /// provenance.
-pub(super) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredProvenance>> {
+pub(crate) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredProvenance>> {
     if row.get::<_, Option<String>>("provenance_row")?.is_none() {
         return Ok(None);
     }
@@ -90,7 +87,7 @@ pub(super) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredPr
 }
 
 impl StoredProvenance {
-    pub(super) fn provenance(self) -> Result<MetadataProvenance, DbError> {
+    pub(crate) fn provenance(self) -> Result<MetadataProvenance, DbError> {
         match self.kind.as_str() {
             "file_tags" => Ok(MetadataProvenance::FileMetadata),
             "external_release" => {
@@ -112,39 +109,24 @@ impl StoredProvenance {
     }
 }
 
-/// The draft provenance of every candidate `only` names.
-pub(crate) fn load_provenance_on(
-    sql: &impl super::super::query::QueryRows,
-    only: CandidateRows<'_>,
-) -> Result<CandidateProvenances, DbError> {
-    load_provenance_rows_on(sql, only)?()
-}
-
-pub(crate) fn load_provenance_rows_on(
-    sql: &impl super::super::query::QueryRows,
-    only: CandidateRows<'_>,
-) -> Result<Box<dyn FnOnce() -> Result<CandidateProvenances, DbError> + Send + 'static>, DbError> {
-    let only = only.filter("provenance.content_hash");
-    let rows = sql.query(
+/// The draft provenance of the candidate `content_hash`, if its draft
+/// records one; on whichever connection the caller holds.
+pub(super) fn load_provenance_on(
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+    content_hash: &str,
+) -> Result<Option<MetadataProvenance>, DbError> {
+    sql.query_row(
         &format!(
-            "SELECT {PROVENANCE_COLUMNS} \
-             FROM import_candidate_draft_provenance AS provenance {}",
-            only.clause
+            "SELECT {PROVENANCE_COLUMNS} FROM import_candidate_draft_provenance AS provenance \
+             WHERE provenance.content_hash = ?"
         ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>("provenance_row")?,
-                read_provenance(row)?,
-            ))
-        },
-    )?;
-    Ok(Box::new(move || {
-        rows.into_iter()
-            .filter_map(|(content_hash, stored)| Some((content_hash, stored?)))
-            .map(|(content_hash, stored)| Ok((content_hash, stored.provenance()?)))
-            .collect()
-    }))
+        [content_hash],
+        read_provenance,
+    )
+    .optional()?
+    .flatten()
+    .map(StoredProvenance::provenance)
+    .transpose()
 }
 
 /// Replace the candidate's release link with `link`, or remove it.
@@ -204,7 +186,7 @@ pub(super) fn replace_release_link(
 /// `link`: a pressing's partners in the other catalogs, by catalog, and an
 /// album's album in each catalog, in catalog order, riding on it as JSON
 /// arrays. A candidate with no link reads `link_row` as NULL.
-pub(super) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
+pub(crate) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
      link.kind AS link_kind, link.source AS link_source, link.release_id AS link_release_id, \
      (SELECT json_group_array(json_array(partner.source, partner.release_id) \
                               ORDER BY partner.source) \
@@ -217,7 +199,7 @@ pub(super) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
 
 /// One candidate's [`RELEASE_LINK_COLUMNS`] as SQLite hands them over, its
 /// lists still JSON.
-pub(super) struct StoredReleaseLink {
+pub(crate) struct StoredReleaseLink {
     content_hash: String,
     kind: String,
     source: Option<String>,
@@ -227,7 +209,7 @@ pub(super) struct StoredReleaseLink {
 }
 
 /// The [`RELEASE_LINK_COLUMNS`] of `row`; none for an unlinked candidate.
-pub(super) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<StoredReleaseLink>> {
+pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<StoredReleaseLink>> {
     let Some(content_hash) = row.get::<_, Option<String>>("link_row")? else {
         return Ok(None);
     };
@@ -242,7 +224,7 @@ pub(super) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<Stored
 }
 
 impl StoredReleaseLink {
-    pub(super) fn link(self) -> Result<ReleaseLink, DbError> {
+    pub(crate) fn link(self) -> Result<ReleaseLink, DbError> {
         let Self {
             content_hash,
             kind,
@@ -286,34 +268,24 @@ fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
     ))
 }
 
-/// The release link of every candidate `only` names, each with its partners
-/// or its albums.
-pub(crate) fn load_release_links_on(
-    sql: &impl super::super::query::QueryRows,
-    only: CandidateRows<'_>,
-) -> Result<CandidateLinks, DbError> {
-    load_release_link_rows_on(sql, only)?()
-}
-
-pub(crate) fn load_release_link_rows_on(
-    sql: &impl super::super::query::QueryRows,
-    only: CandidateRows<'_>,
-) -> Result<Box<dyn FnOnce() -> Result<CandidateLinks, DbError> + Send + 'static>, DbError> {
-    let only = only.filter("link.content_hash");
-    let rows = sql.query(
+/// The release link of the candidate `content_hash`, with its partners or
+/// its albums, if it is linked; on whichever connection the caller holds.
+pub(super) fn load_release_link_on(
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+    content_hash: &str,
+) -> Result<Option<ReleaseLink>, DbError> {
+    sql.query_row(
         &format!(
-            "SELECT {RELEASE_LINK_COLUMNS} FROM import_candidate_release_link AS link {}",
-            only.clause
+            "SELECT {RELEASE_LINK_COLUMNS} FROM import_candidate_release_link AS link \
+             WHERE link.content_hash = ?"
         ),
-        only.params().as_slice(),
+        [content_hash],
         read_release_link,
-    )?;
-    Ok(Box::new(move || {
-        rows.into_iter()
-            .flatten()
-            .map(|stored| Ok((stored.content_hash.clone(), stored.link()?)))
-            .collect()
-    }))
+    )
+    .optional()?
+    .flatten()
+    .map(StoredReleaseLink::link)
+    .transpose()
 }
 
 const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found.release_id, \

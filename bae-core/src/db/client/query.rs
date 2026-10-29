@@ -18,7 +18,7 @@ pub(super) fn in_clause_placeholders(count: usize) -> String {
 }
 
 /// Which candidates a loader reads the rows of, by content hash: every one's,
-/// one candidate's, or a window's, each by its own statement. The one
+/// or one candidate's, each by its own statement. The one
 /// candidate's statement names it by key, which its index reaches and which
 /// coven reruns a live query for only when that candidate's rows change.
 #[cfg(desktop)]
@@ -29,7 +29,6 @@ pub(crate) enum CandidateRows<'a> {
     #[cfg(test)]
     All,
     One(&'a str),
-    Of(&'a [&'a str]),
 }
 
 #[cfg(desktop)]
@@ -47,10 +46,6 @@ impl<'a> CandidateRows<'a> {
                 clause: format!("WHERE {column} = :candidate"),
                 binds: CandidateBinds::One(key.to_string()),
             },
-            Self::Of(keys) => CandidateFilter {
-                clause: format!("WHERE {column} IN (SELECT value FROM json_each(:candidates))"),
-                binds: CandidateBinds::Of(serde_json::Value::from(keys.to_vec()).to_string()),
-            },
         }
     }
 }
@@ -67,7 +62,6 @@ enum CandidateBinds {
     #[cfg(test)]
     None,
     One(String),
-    Of(String),
 }
 
 #[cfg(desktop)]
@@ -78,7 +72,6 @@ impl CandidateFilter {
             #[cfg(test)]
             CandidateBinds::None => Vec::new(),
             CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
-            CandidateBinds::Of(keys) => vec![(":candidates", keys as &dyn rusqlite::ToSql)],
         }
     }
 }
