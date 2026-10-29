@@ -4,7 +4,7 @@ use super::audio_output::{
 };
 use crate::playback::source::PlaybackSource;
 use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::{SampleRate, Stream, StreamConfig};
+use cpal::{BufferSize, Stream, StreamConfig};
 use std::sync::Arc;
 use std::sync::Mutex;
 use tracing::{error, info};
@@ -13,11 +13,11 @@ use tracing::{error, info};
 
 impl AudioStream for Stream {
     fn play(&self) -> Result<(), AudioError> {
-        cpal::traits::StreamTrait::play(self).map_err(|error| match error {
-            cpal::PlayStreamError::DeviceNotAvailable => AudioError::DeviceUnavailable,
-            cpal::PlayStreamError::BackendSpecific { err } => {
-                AudioError::Unexpected(format!("starting the stream: {err}"))
+        cpal::traits::StreamTrait::play(self).map_err(|error| match error.kind() {
+            cpal::ErrorKind::DeviceNotAvailable | cpal::ErrorKind::DeviceBusy => {
+                AudioError::DeviceUnavailable
             }
+            _ => AudioError::Unexpected(format!("starting the stream: {error}")),
         })
     }
 }
@@ -84,27 +84,22 @@ impl AudioOutput for CpalAudioOutput {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        // Resolve the current default output device at build time. Caching it at
-        // construction would pin to whatever was default at startup, and on macOS
-        // cpal sets the audio unit's `CurrentDevice` to that cached id on each
-        // build — so a rebuild would bind the stale device, not the current
-        // default.
+        // Resolve the default output device at each build. On macOS cpal sets
+        // the stream's sample rate on the device it resolved as the default, so
+        // a device kept from an earlier build would set the rate of whatever was
+        // default then, not of the device that plays.
         let host = cpal::default_host();
         let device = host
             .default_output_device()
             .ok_or(AudioError::DeviceUnavailable)?;
-        let default_config = device
-            .default_output_config()
-            .map_err(|error| match error {
-                cpal::DefaultStreamConfigError::DeviceNotAvailable => AudioError::DeviceUnavailable,
-                other => AudioError::Unexpected(format!("reading the device's format: {other}")),
-            })?;
-        let mut stream_config = StreamConfig::from(default_config);
-        stream_config.sample_rate = SampleRate(source_sample_rate);
-        stream_config.channels = source_channels as u16;
+        let stream_config = StreamConfig {
+            channels: source_channels as u16,
+            sample_rate: source_sample_rate,
+            buffer_size: BufferSize::Default,
+        };
 
         info!(
-            device = ?device.name(),
+            device = ?device.description().map(|description| description.name().to_owned()),
             sample_rate = source_sample_rate,
             channels = source_channels,
             "Building audio output stream"
@@ -120,7 +115,7 @@ impl AudioOutput for CpalAudioOutput {
 
         let stream = device
             .build_output_stream(
-                &stream_config,
+                stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     let _ = drain.drain_iteration(data, true, true, Some(&mut lock_miss));
                 },
@@ -129,13 +124,15 @@ impl AudioOutput for CpalAudioOutput {
                 },
                 None,
             )
-            .map_err(|error| match error {
-                cpal::BuildStreamError::DeviceNotAvailable => AudioError::DeviceUnavailable,
-                cpal::BuildStreamError::StreamConfigNotSupported => AudioError::UnsupportedFormat {
+            .map_err(|error| match error.kind() {
+                cpal::ErrorKind::DeviceNotAvailable | cpal::ErrorKind::DeviceBusy => {
+                    AudioError::DeviceUnavailable
+                }
+                cpal::ErrorKind::UnsupportedConfig => AudioError::UnsupportedFormat {
                     sample_rate: source_sample_rate,
                     channels: source_channels,
                 },
-                other => AudioError::Unexpected(format!("building the stream: {other}")),
+                _ => AudioError::Unexpected(format!("building the stream: {error}")),
             })?;
 
         Ok(Box::new(stream))

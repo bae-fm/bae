@@ -253,7 +253,7 @@ impl AudioDrain {
 #[derive(Debug, thiserror::Error)]
 pub enum AudioError {
     /// There is no output device, or the one there was went away: unplugged,
-    /// switched off, or taken by the system.
+    /// switched off, or taken by the system or another app.
     #[error("the audio device is unavailable")]
     DeviceUnavailable,
     /// The device doesn't take the track's sample rate and channel count.

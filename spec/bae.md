@@ -2496,8 +2496,11 @@ log names its address.
 default output device: it moves to the new one at the same position, and a
 change while paused takes effect on resume. On Linux the sound server,
 PipeWire or PulseAudio, moves it; with ALSA alone there is no default device
-to follow. Volume and mute live in core, so unmuting restores the level last
-set.
+to follow. On macOS, playing a track or a preview sets the output device to
+the track's sample rate; a track at a rate the device can't run at doesn't
+play, and says it can't play the track's sample rate. On Windows the system
+converts the track to the rate it mixes at. Volume and mute live in core, so
+unmuting restores the level last set.
 
 **When the output won't start.** Playback that can't start its output — on
 this device or a receiver — stops and says why: the audio device was

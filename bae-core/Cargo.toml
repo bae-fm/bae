@@ -54,8 +54,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 # CoreAudio bindings for the default-output-device change listener
 # (src/playback/cpal_output.rs, macOS only): re-resolves the default device and
-# rebuilds the persistent output stream when the user switches outputs. Pinned to
-# the version cpal already links (via coreaudio-rs) so there's no second copy.
+# rebuilds the persistent output stream when the user switches outputs.
 [target.'cfg(target_os = "macos")'.dependencies]
 coreaudio-sys = "0.2"
 
@@ -89,7 +88,7 @@ ebur128 = "0.1.10"
 # covers both). Android uses AAudio (the `ndk` dep above) instead, so cpal is off
 # there.
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "ios"))'.dependencies]
-cpal = "0.15"
+cpal = "0.18.2"
 
 # Whether a watched folder is on a network volume (src/import/volume.rs): a
 # drive letter mapped to a share looks local by spelling, and only
@@ -98,8 +97,7 @@ cpal = "0.15"
 windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
 # The default-output-device change listener (src/playback/cpal_output.rs): an
 # `IMMNotificationClient` that has playback rebuild its output stream on the new
-# default device. `implement` builds the COM object. Pinned to the version cpal
-# already links for WASAPI so there's no second copy.
+# default device. `implement` builds the COM object.
 windows = { version = "0.54", features = [
     "implement",
     "Win32_Foundation",
