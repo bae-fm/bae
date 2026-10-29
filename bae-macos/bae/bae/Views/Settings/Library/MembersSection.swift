@@ -60,28 +60,27 @@ struct MembersSection: View {
     var body: some View {
         Section("People") {
             if let members = store.members {
-                ForEach(members, id: \.id) { person in
-                    if let member = person.membership {
-                        MemberRow(
-                            name: person.profile?.name,
-                            member: member,
-                            canChangeRole: store.selfIsAdmin,
-                            busy: task != nil,
-                            onSetRole: { setRole(member, $0) },
-                            onRemove: {
-                                removal = .person(
-                                    member,
-                                    name: person.profile?.name
-                                        ?? String(localized: "This person")
-                                )
-                            },
-                            onRemoveDevice: { removal = .device($0) },
-                            onAddDevice: {
-                                addDeviceShare = nil
-                                showAddDevice = true
-                            }
-                        )
-                    }
+                ForEach(members, id: \.membership.id) { person in
+                    let member = person.membership
+                    MemberRow(
+                        name: person.profile?.name,
+                        member: member,
+                        canChangeRole: store.selfIsAdmin,
+                        busy: task != nil,
+                        onSetRole: { setRole(member, $0) },
+                        onRemove: {
+                            removal = .person(
+                                member,
+                                name: person.profile?.name
+                                    ?? String(localized: "This person")
+                            )
+                        },
+                        onRemoveDevice: { removal = .device($0) },
+                        onAddDevice: {
+                            addDeviceShare = nil
+                            showAddDevice = true
+                        }
+                    )
                 }
             }
             else if store.error == nil {

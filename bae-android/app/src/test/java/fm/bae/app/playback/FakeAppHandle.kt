@@ -589,6 +589,8 @@ internal open class FakeAppHandle(
 
     override suspend fun people(): List<BridgePerson> = unfaked("people")
 
+    override suspend fun ownPerson(): BridgePerson? = unfaked("ownPerson")
+
     override suspend fun removeDevice(device: ULong): BridgeProviderSignOut? = unfaked("removeDevice")
 
     override suspend fun removeMember(member: String) {

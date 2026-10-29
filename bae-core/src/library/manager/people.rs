@@ -44,6 +44,11 @@ impl LibraryManager {
         Ok(self.database.people().await?)
     }
 
+    /// The person using this device, once their registration has applied.
+    pub async fn own_person(&self) -> Result<Option<crate::people::Person>, LibraryError> {
+        Ok(self.database.own_person().await?)
+    }
+
     /// This person's restore code, and for the QR code the one that holds, on
     /// S3, the key this device holds, for their own new device.
     pub async fn generate_restore_code(

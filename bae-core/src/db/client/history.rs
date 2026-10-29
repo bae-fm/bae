@@ -12,12 +12,15 @@ impl Database {
         duration: Option<Duration>,
         started_at: DateTime<Utc>,
     ) -> Result<HistoryPlay, DbError> {
-        let audience = match self.own_member().await? {
-            Some((member, Some(profile))) => HistoryAudience::Person {
-                person: member,
+        let audience = match self.own_person().await? {
+            Some(crate::people::Person {
+                profile: Some(profile),
+                membership,
+            }) => HistoryAudience::Person {
+                person: membership.id,
                 audience: profile.history_sharing.audience(profile.private_circle),
             },
-            Some((_, None)) | None => HistoryAudience::DevicePrivate,
+            Some(_) | None => HistoryAudience::DevicePrivate,
         };
         Ok(HistoryPlay {
             entry: HistoryEntry {
@@ -39,13 +42,17 @@ impl Database {
         }
         let _registration = self.inner.history_registration.lock().await;
         let mut entry = play.entry.clone();
-        let own = self.own_member().await?;
-        let member = own.as_ref().map(|(member, _)| *member);
+        let own = self.own_person().await?;
+        let member = own.as_ref().map(|person| person.membership.id);
         match entry.audience {
             HistoryAudience::DevicePrivate => {
-                if let Some((member, Some(profile))) = own {
+                if let Some(crate::people::Person {
+                    profile: Some(profile),
+                    membership,
+                }) = own
+                {
                     entry.audience = HistoryAudience::Person {
-                        person: member,
+                        person: membership.id,
                         audience: coven::Audience::Circle(profile.private_circle),
                     };
                 }

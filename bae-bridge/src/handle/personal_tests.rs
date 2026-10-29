@@ -115,7 +115,10 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert!(device.is_self);
         assert!(!device.can_remove);
         assert!(members.members[0].former_devices.is_empty());
-        assert_eq!(app.clone().people().await.unwrap()[0].id, profile.id);
+        assert_eq!(
+            app.clone().people().await.unwrap()[0].membership.id,
+            profile.id
+        );
     });
     app.close_library().unwrap();
 }

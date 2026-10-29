@@ -326,18 +326,16 @@ private fun MembersList(
     callbacks: MemberCallbacks,
     inviteCallbacks: InviteCallbacks,
 ) {
-    // A removed person's profile stays, read-only, without a membership; only members are listed.
-    val members = people.mapNotNull { person -> person.membership?.let { person to it } }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        items(members, key = { (person, _) -> person.id }) { (person, member) ->
+        items(people, key = { person -> person.membership.id }) { person ->
             HorizontalDivider()
             MemberRow(
                 name = person.profile?.name,
-                member = member,
+                member = person.membership,
                 selfIsAdmin = selfIsAdmin,
                 callbacks = callbacks,
             )

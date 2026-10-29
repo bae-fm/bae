@@ -6,7 +6,8 @@ private let logger = Logger.bae("MembershipStore")
 
 /// The store's members joined with their profiles, and the invites this
 /// device has open. Membership, profiles and invites are subscribed; each
-/// change of membership or profiles rereads core's joined list of people.
+/// change of membership or profiles rereads core's joined list of people and
+/// this device's person.
 @MainActor
 @Observable
 public final class MembershipStore {
@@ -30,7 +31,7 @@ public final class MembershipStore {
     /// first value, returning what cancels it.
     private let subscribeAddedDevice:
         @MainActor (any AddedDeviceCallback) -> @Sendable () -> Void
-    private let readPeopleOperation: @Sendable () async throws -> [BridgePerson]
+    private let readPeopleOperation: @Sendable () async throws -> PeopleRead
     @ObservationIgnored
     private var subscriptions: [LiveSubscription] = []
     @ObservationIgnored
@@ -62,7 +63,11 @@ public final class MembershipStore {
                     ),
                 ]
             },
-            readPeople: { try await handle.people() },
+            readPeople: {
+                async let people = handle.people()
+                async let own = handle.ownPerson()
+                return PeopleRead(people: try await people, own: try await own)
+            },
             subscribeAddedDevice: { callback in
                 let subscription = handle.subscribeAddedDevice(
                     callback: callback
@@ -74,7 +79,7 @@ public final class MembershipStore {
 
     private init(
         subscribe: @escaping @MainActor (MembershipStore) -> [LiveSubscription],
-        readPeople: @escaping @Sendable () async throws -> [BridgePerson],
+        readPeople: @escaping @Sendable () async throws -> PeopleRead,
         subscribeAddedDevice:
             @escaping @MainActor (any AddedDeviceCallback) ->
             @Sendable () ->
@@ -96,7 +101,14 @@ public final class MembershipStore {
         ) -> MembershipStore {
             let store = MembershipStore(
                 subscribe: { _ in [] },
-                readPeople: { people },
+                readPeople: {
+                    // The fixture's own person is the one it marks as this
+                    // device's, as core would read it.
+                    PeopleRead(
+                        people: people,
+                        own: people.first { $0.membership.isSelf }
+                    )
+                },
                 subscribeAddedDevice: { callback in
                     callback.onValue(device: addedDevice)
                     return {}
@@ -138,11 +150,10 @@ public final class MembershipStore {
         let read = readPeopleOperation
         peopleRead.replace("people read") {
             try await read()
-        } onSuccess: { [weak self] people in
+        } onSuccess: { [weak self] read in
             guard let self else { return }
-            members = people.filter { $0.membership != nil }
-            selfProfile =
-                people.first { $0.membership?.isSelf == true }?.profile
+            members = read.people
+            selfProfile = read.own?.profile
             error = nil
         } onError: { [weak self] error in
             self?.fail(error)
@@ -153,6 +164,13 @@ public final class MembershipStore {
         logger.error("membership read failed: \(error.localizedDescription)")
         self.error = DisplayError(error)
     }
+}
+
+/// One read of the library's people: everyone in it, and this device's
+/// person among them once their registration has applied.
+private struct PeopleRead: Sendable {
+    let people: [BridgePerson]
+    let own: BridgePerson?
 }
 
 private final class MembershipSink: MembershipCallback, Sendable {

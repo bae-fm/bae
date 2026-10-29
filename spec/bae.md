@@ -1723,7 +1723,10 @@ history setting.
   change them.
 - **An avatar is a file on the `people` row**, bae's own (app-provided),
   downloaded when it is first shown.
-- **The app joins `members()`**, who is in, with `people`, how to show them.
+- **The people list joins coven's members with `people`** in one query:
+  everyone in the library, in member-id order, each with their profile once
+  they made one, and the person using this device read the same way. A
+  removed person's row stays, read-only, but they are no one in the list.
 
 ### 5.5 "Ana rated this"
 

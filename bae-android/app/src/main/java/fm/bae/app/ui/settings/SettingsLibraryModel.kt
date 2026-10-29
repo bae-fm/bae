@@ -88,7 +88,7 @@ internal class SettingsLibraryModel(
     suspend fun loadSelf() {
         self =
             try {
-                SelfRead.Loaded(appHandle.people().firstOrNull { it.membership?.isSelf == true })
+                SelfRead.Loaded(appHandle.ownPerson())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {

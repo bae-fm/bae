@@ -146,23 +146,22 @@ impl BridgeMembership {
         }
     }
 }
+/// Someone in the library: their membership, and their profile once they
+/// made one. Mirrors `Person`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePerson {
-    pub id: String,
     pub profile: Option<BridgePersonProfile>,
-    pub membership: Option<BridgeMember>,
+    pub membership: BridgeMember,
 }
 impl BridgePerson {
     pub(crate) fn from_core(value: bae_core::people::Person) -> Self {
         let bae_core::people::Person {
-            id,
             profile,
             membership,
         } = value;
         Self {
-            id: id.0.to_string(),
             profile: profile.map(BridgePersonProfile::from_core),
-            membership: membership.map(BridgeMember::from_core),
+            membership: BridgeMember::from_core(membership),
         }
     }
 }

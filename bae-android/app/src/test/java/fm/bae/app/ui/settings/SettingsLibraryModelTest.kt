@@ -48,14 +48,14 @@ class SettingsLibraryModelTest {
 
     @Test
     fun aFailedSelfReadIsAFailureAndRetryReadsAgain() {
-        val handle = SettingsHandle(people = listOf(Result.failure(offline()), Result.success(listOf(PreviewData.person()))))
+        val handle = SettingsHandle(ownPerson = listOf(Result.failure(offline()), Result.success(PreviewData.person())))
         val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
 
         runBlocking { model.loadSelf() }
         assertEquals(SelfRead.Failed(DisplayError("couldn't reach storage")), model.self)
 
         runBlocking { model.loadSelf() }
-        assertEquals(PreviewData.person().id, (model.self as SelfRead.Loaded).person?.id)
+        assertEquals(PreviewData.person().membership.id, (model.self as SelfRead.Loaded).person?.membership?.id)
     }
 
     @Test
@@ -100,12 +100,12 @@ class SettingsLibraryModelTest {
     }
 
     private class SettingsHandle(
-        private val people: List<Result<List<BridgePerson>>> = emptyList(),
+        private val ownPerson: List<Result<BridgePerson?>> = emptyList(),
     ) : FakeAppHandle() {
         private var reads = 0
         val nameCallbacks = mutableListOf<LibraryNameCallback>()
 
-        override suspend fun people(): List<BridgePerson> = people[reads++].getOrThrow()
+        override suspend fun ownPerson(): BridgePerson? = ownPerson[reads++].getOrThrow()
 
         override fun subscribeLibraryName(callback: LibraryNameCallback): LiveSubscription {
             nameCallbacks += callback

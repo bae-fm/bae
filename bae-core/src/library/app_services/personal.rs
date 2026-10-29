@@ -11,6 +11,7 @@ impl AppServices {
     delegate_async!(manager, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, crate::people::ProfileError>);
     delegate_sync!(manager, subscribe_profiles => subscribe_profiles() -> coven::LiveQuery<Vec<crate::people::PersonProfile>>);
     delegate_async!(manager, people => people() -> Result<Vec<crate::people::Person>, LibraryError>);
+    delegate_async!(manager, own_person => own_person() -> Result<Option<crate::people::Person>, LibraryError>);
     delegate_async!(manager, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
     delegate_async!(manager, ratings => ratings() -> Result<Vec<Rating>, crate::db::DbError>);
     delegate_sync!(manager, subscribe_ratings => subscribe_ratings() -> coven::LiveQuery<Vec<Rating>>);

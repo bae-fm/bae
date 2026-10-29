@@ -443,7 +443,6 @@ object PreviewData {
 
     fun person(member: BridgeMember = member()): BridgePerson =
         BridgePerson(
-            id = member.id,
             profile =
                 BridgePersonProfile(
                     id = member.id,

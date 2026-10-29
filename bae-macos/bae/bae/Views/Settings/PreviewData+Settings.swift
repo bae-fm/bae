@@ -55,7 +55,6 @@
         /// and two removed ones. Ids are arbitrary UUIDs.
         static let members: [BridgePerson] = [
             BridgePerson(
-                id: "4a1f2c3d-0000-4000-8000-000000000001",
                 profile: BridgePersonProfile(
                     id: "4a1f2c3d-0000-4000-8000-000000000001",
                     name: "Person A",
@@ -91,7 +90,6 @@
                 )
             ),
             BridgePerson(
-                id: "4a1f2c3d-0000-4000-8000-000000000002",
                 profile: BridgePersonProfile(
                     id: "4a1f2c3d-0000-4000-8000-000000000002",
                     name: "Person B",

@@ -24,7 +24,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let people = manager.people().await.unwrap();
     assert_eq!(people.len(), 1);
     assert_eq!(people[0].profile.as_ref(), Some(&profile));
-    assert!(people[0].membership.as_ref().unwrap().is_self);
+    assert!(people[0].membership.is_self);
     manager.rename_profile("New Name").await.unwrap();
     manager
         .set_history_sharing(Sharing::Household)
@@ -499,36 +499,28 @@ fn a_replacement_invite_writes_no_profile() {
             })
             .collect();
         assert_eq!(read, listed);
-        // Everyone with a profile or a membership, by member id, each with
-        // both where they have them.
+        // Everyone in the library, as the membership lists them, each with
+        // their profile; and the person using this device among them.
         let people = owner.people().await.unwrap();
-        let mut ids: Vec<_> = owner
-            .profiles()
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|profile| profile.id)
-            .chain(membership.members.iter().map(|member| member.id))
-            .collect();
-        ids.sort();
-        ids.dedup();
         assert_eq!(
-            people.iter().map(|person| person.id).collect::<Vec<_>>(),
-            ids
+            people
+                .iter()
+                .map(|person| person.membership.clone())
+                .collect::<Vec<_>>(),
+            membership.members
         );
         for person in &people {
-            assert_eq!(person.profile, owner.profile(person.id).await.unwrap());
             assert_eq!(
-                person.membership.as_ref(),
-                membership
-                    .members
-                    .iter()
-                    .find(|member| member.id == person.id)
+                person.profile,
+                owner.profile(person.membership.id).await.unwrap()
             );
         }
-        assert!(people.iter().any(|person| person.id == rowan.id
-            && person.profile.is_some()
-            && person.membership.is_some()));
+        assert!(people
+            .iter()
+            .any(|person| person.membership.id == rowan.id && person.profile.is_some()));
+        let own = owner.own_person().await.unwrap().expect("the owner is in");
+        assert!(own.membership.is_self);
+        assert_eq!(own.profile.as_ref(), Some(&household.robin));
         replacement.close().await.unwrap();
         household.owner.close().await.unwrap();
     });

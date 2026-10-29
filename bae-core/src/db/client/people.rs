@@ -17,45 +17,26 @@ const PROFILE_COLUMNS: &str = profile_columns!();
 impl Database {
     /// The member using this device, once its registration has applied.
     pub(crate) async fn current_member(&self) -> Result<Option<coven::MemberId>, DbError> {
-        Ok(self
-            .read(|sql| Ok(own_member_on(&sql)?))
-            .await?
-            .map(|(member, _)| member))
+        Ok(self.own_person().await?.map(|person| person.membership.id))
     }
 
-    /// The member using this device and their profile, read together: what
-    /// a play is recorded for.
-    pub(crate) async fn own_member(
-        &self,
-    ) -> Result<Option<(coven::MemberId, Option<PersonProfile>)>, DbError> {
-        self.read(|sql| Ok(own_member_on(&sql)?)).await
+    /// The person using this device, once their registration has applied:
+    /// their membership, and their profile once they made one.
+    pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
+        Ok(self
+            .read(|sql| Ok(people_on(&sql, OWN_PERSON_SQL)?))
+            .await?
+            .pop())
     }
 
     pub async fn profiles(&self) -> Result<Vec<PersonProfile>, DbError> {
         self.read(|sql| Ok(profile_rows(&sql)?)).await
     }
 
-    /// Everyone with a profile or a membership, by member id: a removed
-    /// person keeps their profile, and a new member may still be setting
-    /// theirs up.
+    /// Everyone in the library, in member-id order: each member, with
+    /// their profile once they made one.
     pub async fn people(&self) -> Result<Vec<Person>, DbError> {
-        self.read(|sql| {
-            let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
-            Ok(sql.query(PEOPLE_SQL, [], |row| {
-                Ok(Person {
-                    id: row.get(0)?,
-                    profile: match row.get::<_, Option<String>>(1)? {
-                        Some(_) => Some(profile_row_at(row, 1)?),
-                        None => None,
-                    },
-                    membership: match row.get::<_, Option<String>>(6)? {
-                        Some(_) => Some(member_row(row, 6, self_is_admin)?),
-                        None => None,
-                    },
-                })
-            })?)
-        })
-        .await
+        self.read(|sql| Ok(people_on(&sql, PEOPLE_SQL)?)).await
     }
 
     pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>> {
@@ -76,11 +57,11 @@ impl Database {
     }
 
     pub(crate) async fn own_profile(&self) -> Result<PersonProfile, ProfileError> {
-        let (_, profile) = self
-            .own_member()
+        self.own_person()
             .await?
-            .ok_or(ProfileError::NotRegistered)?;
-        profile.ok_or(ProfileError::Missing)
+            .ok_or(ProfileError::NotRegistered)?
+            .profile
+            .ok_or(ProfileError::Missing)
     }
 
     /// A failed profile write can retry using the same named, self-only circle.
@@ -254,17 +235,12 @@ fn profile_name(name: &str) -> Result<String, ProfileError> {
 }
 
 fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
-    profile_row_at(row, 0)
-}
-
-/// The profile whose [`profile_columns`] start at column `first`.
-fn profile_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<PersonProfile> {
     Ok(PersonProfile {
-        id: coven::MemberId(uuid_column(row, first)?),
-        name: row.get(first + 1)?,
-        private_circle: coven::CircleId(uuid_column(row, first + 2)?),
-        history_sharing: Sharing::from_sql(&row.get::<_, String>(first + 3)?)?,
-        avatar_id: row.get(first + 4)?,
+        id: coven::MemberId(uuid_column(row, 0)?),
+        name: row.get(1)?,
+        private_circle: coven::CircleId(uuid_column(row, 2)?),
+        history_sharing: Sharing::from_sql(&row.get::<_, String>(3)?)?,
+        avatar_id: row.get(4)?,
     })
 }
 
@@ -275,40 +251,41 @@ const PRIVATE_CIRCLE_SQL: &str = "SELECT c.circle, \
           WHERE m.circle = c.circle) \
      FROM coven_circles AS c WHERE c.name = ?1";
 
-/// Everyone with a profile or a current membership, by member id, with
-/// their profile's columns and then their member's.
-const PEOPLE_SQL: &str = concat!(
-    "WITH person (id) AS \
-         (SELECT id FROM people UNION SELECT member FROM coven_members WHERE NOT removed) \
-     SELECT person.id, ",
-    profile_columns!(p),
-    ", ",
-    member_columns!(),
-    " FROM person LEFT JOIN people AS p ON p.id = person.id \
-     LEFT JOIN coven_members AS m ON m.member = person.id AND NOT m.removed \
-     ORDER BY person.id"
-);
+/// The library's current members in member-id order, `$where` narrowing
+/// them, each with their profile's columns and then their member's.
+macro_rules! people_sql {
+    ($where:literal) => {
+        concat!(
+            "SELECT ",
+            profile_columns!(p),
+            ", ",
+            member_columns!(),
+            " FROM coven_members AS m LEFT JOIN people AS p ON p.id = m.member \
+             WHERE NOT m.removed",
+            $where,
+            " ORDER BY m.member"
+        )
+    };
+}
 
-/// The member using this device, with their profile when they made one. The
-/// view's columns and the profile's share no name.
-const OWN_MEMBER_SQL: &str = concat!(
-    "SELECT ",
-    profile_columns!(),
-    ", member FROM coven_members LEFT JOIN people ON people.id = coven_members.member \
-     WHERE is_self AND NOT removed"
-);
+/// Everyone in the library.
+const PEOPLE_SQL: &str = people_sql!("");
 
-fn own_member_on(
-    sql: &SqlReadContext<'_>,
-) -> rusqlite::Result<Option<(coven::MemberId, Option<PersonProfile>)>> {
-    sql.query_row(OWN_MEMBER_SQL, [], |row| {
-        let profile = match row.get::<_, Option<String>>(0)? {
-            Some(_) => Some(profile_row(row)?),
-            None => None,
-        };
-        Ok((row.get(5)?, profile))
+/// The person using this device.
+const OWN_PERSON_SQL: &str = people_sql!(" AND m.is_self");
+
+/// The people `statement` reads, from [`people_sql`].
+fn people_on(sql: &SqlReadContext<'_>, statement: &str) -> rusqlite::Result<Vec<Person>> {
+    let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
+    sql.query(statement, [], |row| {
+        Ok(Person {
+            profile: match row.get::<_, Option<String>>(0)? {
+                Some(_) => Some(profile_row(row)?),
+                None => None,
+            },
+            membership: member_row(row, 5, self_is_admin)?,
+        })
     })
-    .optional()
 }
 
 /// Every profile, by name; `people_name` serves the order.

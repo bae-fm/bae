@@ -37,7 +37,7 @@ class MembersModelTest {
         model.retry()
         shadowOf(Looper.getMainLooper()).idle()
         val loaded = model.people as PeopleRead.Loaded
-        assertEquals(listOf(PreviewData.person().id), loaded.people.map { it.id })
+        assertEquals(listOf(PreviewData.person().membership.id), loaded.people.map { it.membership.id })
         assertEquals(2, handle.reads)
     }
 

@@ -52,12 +52,13 @@ pub fn request_to_decide(invite: &coven::Invite) -> Option<&coven::JoinRequest> 
     }
 }
 
-/// Removed people retain their profiles; a new member may still be setting theirs up.
+/// Someone in the library: their membership, and their profile once they
+/// made one; a new member may still be setting theirs up. A removed
+/// person's profile stays, read-only, but they are no one in the library.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Person {
-    pub id: coven::MemberId,
     pub profile: Option<PersonProfile>,
-    pub membership: Option<crate::sync::membership::MembershipMember>,
+    pub membership: crate::sync::membership::MembershipMember,
 }
 
 #[derive(Debug, thiserror::Error)]
