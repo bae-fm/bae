@@ -112,7 +112,8 @@
                     ]
                 )
             ],
-            files: [carriedRow(infoLog, role: .document)]
+            files: [carriedRow(infoLog, role: .document)],
+            untitledTrackCount: 0
         )
 
         private static let moreTracksAudio = BridgeCandidateFile(
@@ -200,7 +201,8 @@
                     ]
                 )
             ],
-            files: []
+            files: [],
+            untitledTrackCount: 0
         )
 
         /// One entry the folder's sheet carves out of its single container.
@@ -269,7 +271,8 @@
             ],
             files: previewLogDocuments.map {
                 carriedRow($0, role: .document)
-            }
+            },
+            untitledTrackCount: 0
         )
 
         /// Every row kind the table draws, with the folder's gallery beside it:
@@ -303,7 +306,8 @@
                 + [
                     carriedRow(damagedFrontImage, role: .damagedImage),
                     carriedRow(supplementalVideo, role: .other),
-                ]
+                ],
+            untitledTrackCount: 0
         )
 
         /// What the folder's own tags say it is: nine tracks, and no release to
@@ -340,7 +344,8 @@
                     ]
                 )
             ],
-            files: []
+            files: [],
+            untitledTrackCount: 0
         )
 
         // MARK: - Mapping pane candidates
@@ -738,7 +743,8 @@
             ]
                 + previewLogDocuments.map {
                     carriedRow($0, role: .document)
-                }
+                },
+            untitledTrackCount: 9
         )
 
     }

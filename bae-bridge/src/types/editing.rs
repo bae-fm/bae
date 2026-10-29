@@ -543,6 +543,9 @@ pub struct BridgeMappingTable {
     /// The rows that can become release tracks, laid out by side.
     pub track_sides: Vec<BridgeMappingTrackSide>,
     pub files: Vec<BridgeMappingFileRow>,
+    /// How many track rows nobody has named yet. Committing anyway titles
+    /// each after its file.
+    pub untitled_track_count: u32,
 }
 
 /// One album-level text field of the import pane's metadata form.

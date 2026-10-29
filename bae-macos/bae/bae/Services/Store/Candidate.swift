@@ -422,7 +422,8 @@ struct Candidate: Equatable, Identifiable {
             ?? BridgeMappingTable(
                 images: [],
                 trackSides: [],
-                files: []
+                files: [],
+                untitledTrackCount: 0
             )
     }
 

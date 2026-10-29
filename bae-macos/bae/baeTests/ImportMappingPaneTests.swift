@@ -288,7 +288,7 @@ struct ImportMappingPaneTests {
             mapping: MappingFixtures.thirteenFileTable
         )
         #expect(MappingFixtures.mapping(of: store).trackMappings.count == 13)
-        #expect(MappingFixtures.mapping(of: store).unansweredCount == 1)
+        #expect(MappingFixtures.mapping(of: store).untitledTrackCount == 1)
 
         let unnamed = try #require(
             MappingFixtures.mapping(of: store).trackMappings.last?.track
@@ -317,7 +317,7 @@ struct ImportMappingPaneTests {
             )
         )
         #expect(MappingFixtures.mapping(of: store).trackMappings.count == 13)
-        #expect(MappingFixtures.mapping(of: store).unansweredCount == 0)
+        #expect(MappingFixtures.mapping(of: store).untitledTrackCount == 0)
     }
 }
 

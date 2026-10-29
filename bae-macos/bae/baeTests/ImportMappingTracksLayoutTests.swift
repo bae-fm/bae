@@ -310,7 +310,8 @@ extension ImportMappingTracksLayoutTests {
                     ]
                 )
             ],
-            files: []
+            files: [],
+            untitledTrackCount: 0
         )
 
         guard

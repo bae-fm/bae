@@ -181,6 +181,27 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     assert_eq!(file.role, MappingRole::Document);
 }
 
+/// The table counts the track rows nobody has named: a blank title, or one
+/// of only spaces, which committing replaces with the file's name.
+#[test]
+fn the_table_counts_the_rows_nobody_has_named() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    for name in ["01.flac", "02.flac", "03.flac"] {
+        write_flac(&tmp.path().join(name));
+    }
+    let files = scan(tmp.path());
+    assert_eq!(
+        blank_table(&files, &SourceDurations::default()).untitled_track_count,
+        3
+    );
+    let mut draft = blank_candidate_draft(&files);
+    draft.tracks[0].edit.title = "Intro".into();
+    draft.tracks[1].edit.title = "   ".into();
+    let table = mapping_table(&files, &SourceDurations::default(), &draft)
+        .expect("the draft is drawn over its own folder");
+    assert_eq!(table.untitled_track_count, 2);
+}
+
 /// With no release applied, a row shows its stored probe and nothing
 /// disagrees with it.
 #[test]

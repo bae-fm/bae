@@ -27,6 +27,9 @@ pub struct MappingTable {
     pub track_sides: Vec<MappingTrackSide>,
     /// Files carried with the release but not represented by track rows.
     pub files: Vec<MappingFileRow>,
+    /// How many track rows nobody has named yet. Committing anyway titles
+    /// each after its file.
+    pub untitled_track_count: u32,
 }
 
 /// One side of the track table — a disc of a multi-disc set, a side of a
@@ -350,10 +353,20 @@ pub(crate) fn mapping_table(
         });
     }
 
+    let untitled_track_count = track_sides
+        .iter()
+        .flat_map(MappingTrackSide::mappings)
+        .filter(|mapping| mapping.track.title.trim().is_empty())
+        .count();
     Ok(MappingTable {
         images,
         track_sides,
         files: file_rows,
+        untitled_track_count: u32::try_from(untitled_track_count).map_err(|error| {
+            ImportError::Internal {
+                detail: format!("{untitled_track_count} untitled tracks overflow a count: {error}"),
+            }
+        })?,
     })
 }
 

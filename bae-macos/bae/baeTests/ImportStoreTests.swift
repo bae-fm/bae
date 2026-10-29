@@ -211,7 +211,8 @@ private func detail(
         mapping: BridgeMappingTable(
             images: [],
             trackSides: [],
-            files: []
+            files: [],
+            untitledTrackCount: 0
         ),
         cover: cover,
         signals: nil,

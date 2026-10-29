@@ -1098,7 +1098,9 @@ record sides, each is headed once, however many runs of rows it holds: the
 loose files on it, and under its name each CUE sheet's entries on it (a sheet
 the release splits across sides names itself again on the next side). For a
 CUE sheet, the person can bind each `FILE` line to an audio file and say which
-disc each sheet is, or ignore a sheet.
+disc each sheet is, or ignore a sheet. The table also counts the tracks nobody
+has named yet, and the pane states that count beside Import without blocking
+it: importing titles each of them after its file.
 
 Before importing, the person can play a file through a second player, which
 pauses the library's playback and resumes it when it ends.

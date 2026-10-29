@@ -110,7 +110,7 @@ struct ImportMappingPane: View {
             return nil
         }
         return ImportCommitControls(
-            unansweredCount: mapping.unansweredCount,
+            untitledTrackCount: Int(mapping.untitledTrackCount),
             folderCheck: candidate.folderCheck,
             importStatus: candidate.importStatus,
             storageCloud: $storageCloud,

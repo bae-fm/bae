@@ -1,10 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// The card's commit controls: the folder check, the unanswered count,
-/// storage, and Import, which nothing here disables.
+/// The card's commit controls: the folder check, how many rows nobody has
+/// named, storage, and Import, which nothing here disables.
 struct ImportCommitControls {
-    let unansweredCount: Int
+    let untitledTrackCount: Int
     /// Why the folder keeps this candidate out of a bulk import, such as a
     /// release that lists no tracks; shown beside Import, which stays
     /// available.
@@ -226,11 +226,11 @@ struct ImportReleaseHeader: View {
                         .truncationMode(.tail)
                         .help(folderCheck)
                 }
-                if commit.unansweredCount > 0 {
+                if commit.untitledTrackCount > 0 {
                     Text(
                         coreString(
                             "ui.import.commit.unanswered",
-                            commit.unansweredCount
+                            commit.untitledTrackCount
                         )
                     )
                     .themeText(.detail)

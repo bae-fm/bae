@@ -1,16 +1,9 @@
 import BaeKit
 import Foundation
 
-/// Reading the mapping table. Every value here is either one core already
-/// decided — which track a row commits, what its source is, which catalog
-/// message names the tally — or a count over the table's own rows.
-
-extension BridgeTrackMapping {
-    /// A row whose track nobody has named.
-    var isUnanswered: Bool {
-        track.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-}
+/// Reading the mapping table. Every value here is one core already decided —
+/// which track a row commits, what its source is, which catalog message names
+/// the tally — or the table's own rows walked in order.
 
 extension BridgeMappingSource {
     /// The playing time the folder itself offers for this row: measured off
@@ -57,11 +50,6 @@ extension BridgeMappingTable {
     /// Every source-to-track mapping in table order.
     var trackMappings: [BridgeTrackMapping] {
         trackSides.flatMap(\.mappings)
-    }
-
-    /// Rows whose track's title is still blank.
-    var unansweredCount: Int {
-        trackMappings.count(where: \.isUnanswered)
     }
 }
 

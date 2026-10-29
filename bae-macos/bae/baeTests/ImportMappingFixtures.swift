@@ -120,7 +120,8 @@ extension MappingFixtures {
                         ]
                 )
             ],
-            files: []
+            files: [],
+            untitledTrackCount: lastTitle.isEmpty ? 1 : 0
         )
     }
 
@@ -212,7 +213,8 @@ extension MappingFixtures {
                     assignment: .ignored
                 )
             )
-        ]
+        ],
+        untitledTrackCount: 0
     )
 
     /// An ignored sheet speaks for nothing either, so its container is loose
@@ -224,7 +226,8 @@ extension MappingFixtures {
             .sheet(
                 sheet: sheetGroup(container: container, assignment: .ignored)
             )
-        ]
+        ],
+        untitledTrackCount: 0
     )
 
     /// One entry of the bound sheet, carved out of the container.
@@ -286,7 +289,8 @@ extension MappingFixtures {
                     ]
                 )
             ],
-            files: []
+            files: [],
+            untitledTrackCount: 0
         )
     }
 
@@ -313,7 +317,8 @@ extension MappingFixtures {
                     }
             )
         ],
-        files: []
+        files: [],
+        untitledTrackCount: 0
     )
 }
 
@@ -440,7 +445,8 @@ extension MappingFixtures {
                 ?? BridgeMappingTable(
                     images: [],
                     trackSides: [],
-                    files: []
+                    files: [],
+                    untitledTrackCount: 0
                 ),
             cover: nil,
             signals: nil,
@@ -522,7 +528,8 @@ extension MappingFixtures {
             ?? BridgeMappingTable(
                 images: [],
                 trackSides: [],
-                files: []
+                files: [],
+                untitledTrackCount: 0
             )
     }
 

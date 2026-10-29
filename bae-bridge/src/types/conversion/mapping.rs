@@ -329,6 +329,7 @@ mirror_struct! {
         images: (each BridgeMappingImage),
         track_sides: (each BridgeMappingTrackSide),
         files: (each BridgeMappingFileRow),
+        untitled_track_count,
     },
 }
 
