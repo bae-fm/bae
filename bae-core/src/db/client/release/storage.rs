@@ -53,17 +53,6 @@ impl Database {
         .await
     }
 
-    /// What the library holds now for each of `release_ids` it still has: the
-    /// title, file count, and size, as the names of the files it is uploading
-    /// read them.
-    pub async fn queued_releases(
-        &self,
-        release_ids: BTreeSet<String>,
-    ) -> Result<std::collections::BTreeMap<String, crate::library::QueuedRelease>, DbError> {
-        self.read(move |sql| queued_releases_on(&sql, &release_ids))
-            .await
-    }
-
     /// How many uploaded releases this device doesn't keep pinned: those with
     /// a file coven's `coven_pins` doesn't list as kept whole here, as the
     /// listing's pinned count keeps them. Each is reachable only through the
@@ -210,37 +199,4 @@ pub(super) fn storage_queues_on(
         pins: release_queue("download_queue", "download")?,
         outputs: release_queue("output_queue", "output")?,
     })
-}
-
-/// The title, file count, and size of each of `release_ids` the library
-/// holds; a release it no longer holds is absent.
-fn queued_releases_on(
-    sql: &SqlReadContext<'_>,
-    release_ids: &BTreeSet<String>,
-) -> Result<std::collections::BTreeMap<String, crate::library::QueuedRelease>, DbError> {
-    let release_ids: Vec<&String> = release_ids.iter().collect();
-    let mut releases = std::collections::BTreeMap::new();
-    for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
-        let query = format!(
-            "SELECT r.id, a.title, \
-                COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id), 0), \
-                COALESCE((SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id), 0) \
-            FROM releases r \
-            JOIN albums a ON a.id = r.album_id \
-            WHERE r.id IN ({})",
-            in_clause_placeholders(chunk.len())
-        );
-        let rows = sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                crate::library::QueuedRelease {
-                    title: row.get(1)?,
-                    file_count: row.get(2)?,
-                    total_size: row.get(3)?,
-                },
-            ))
-        })?;
-        releases.extend(rows);
-    }
-    Ok(releases)
 }
