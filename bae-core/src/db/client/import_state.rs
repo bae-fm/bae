@@ -2,6 +2,7 @@ use super::query::CandidateRows;
 use super::*;
 
 mod album_pick_rows;
+mod draft_store;
 mod edit_rows;
 pub(super) mod failure_rows;
 mod import_commit;
@@ -33,7 +34,7 @@ pub(super) use rows::{
     PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS,
 };
 use session_rows::load_session_on;
-use signal_rows::{delete_signals, insert_signals};
+use signal_rows::{delete_signals, store_signals};
 pub(super) use standing_rows::{
     change_identification_on, end_identification_unless_of_on, load_standing_on, move_import_on,
     RuntimeFactColumns, RUNTIME_FACT_COLUMNS,
@@ -46,7 +47,7 @@ use crate::import::folder_scanner::{
 };
 use rows::{insert_provenance, load_states_rows_on};
 use std::collections::HashSet;
-use verdict_rows::{delete_verdict, insert_verdict};
+use verdict_rows::{delete_verdict, store_verdict};
 
 /// Move the pane inside a candidate write, without splitting the transaction.
 pub(super) fn move_pane_on(

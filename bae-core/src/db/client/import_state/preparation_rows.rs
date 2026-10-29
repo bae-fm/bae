@@ -110,14 +110,13 @@ pub(crate) enum CandidateSaved {
 }
 
 pub(super) fn load_preparation_on(
-    sql: &SqlReadContext<'_>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
 ) -> Result<Option<CandidatePreparation>, DbError> {
     let Some(state) = load_states_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
     else {
         return Ok(None);
     };
-    let rows = load_pane_rows_on(sql, content_hash)?;
     let assets = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
     Ok(Some(CandidatePreparation {
         content_hash: state.content_hash,
@@ -126,10 +125,10 @@ pub(super) fn load_preparation_on(
         metadata_revision: state.metadata_revision,
         author: state.metadata_author,
         metadata: crate::import::CandidateMetadataDraft {
-            draft: rows.draft,
+            draft: pane_rows::load_draft_on(sql, content_hash)?,
             provenance: state.metadata_provenance,
-            cover: rows.cover,
-            cover_options: rows.cover_options,
+            cover: pane_rows::load_cover_on(sql, content_hash)?,
+            cover_options: pane_rows::load_cover_options_on(sql, content_hash)?,
             assets,
         },
         link: state.release_link,
@@ -138,7 +137,8 @@ pub(super) fn load_preparation_on(
     }))
 }
 
-/// Write `prep` whole, provided the stored revisions still match `expected`.
+/// Write `prep` over what is stored, provided the stored revisions still
+/// match `expected`: every row that differs, and no other.
 pub(super) fn save_preparation_on(
     sql: &SqlContext<'_, '_>,
     prep: &CandidatePreparation,
@@ -190,10 +190,18 @@ pub(super) fn save_preparation_on(
         .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
         .transpose()?;
 
-    let previous_link = super::rows::load_release_link_on(sql, content_hash)?;
-    let previous_provenance = super::rows::load_provenance_on(sql, content_hash)?;
-    if previous_link != prep.link
-        || previous_provenance != prep.metadata.provenance
+    // What is stored now, which each row group is written over: a group the
+    // save leaves as it is writes nothing, and the rows the import list's
+    // placement reads (the verdict and its matches, the link, the draft row,
+    // its album artists, its provenance) are changed in place, so no
+    // statement shows the list the candidate as something it is not.
+    let stored = load_preparation_on(sql, content_hash)?.ok_or_else(|| {
+        DbError::Message(format!(
+            "candidate {content_hash} has no state row to save into"
+        ))
+    })?;
+    if stored.link != prep.link
+        || stored.metadata.provenance != prep.metadata.provenance
         || prep.metadata.draft.release_edit().is_blank()
     {
         // An answer belongs to these source credits. Changing their source
@@ -205,30 +213,55 @@ pub(super) fn save_preparation_on(
         sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ? AND content_hash IN (SELECT content_hash FROM import_candidate_artist_identity_conflict)", [content_hash])?;
     }
 
-    // The matches hang off the verdict row, so this clears them too.
-    delete_verdict(sql, content_hash)?;
-    if let Some(identification) = &prep.identification {
-        insert_verdict(sql, content_hash, identification)?;
+    if stored.identification != prep.identification {
+        match &prep.identification {
+            Some(identification) => store_verdict(sql, content_hash, identification)?,
+            // The matches hang off the verdict row, so this clears them too.
+            None => delete_verdict(sql, content_hash)?,
+        }
     }
-    delete_signals(sql, content_hash)?;
-    if let Some(signals) = &prep.signals {
-        insert_signals(sql, content_hash, signals)?;
+    if stored.signals != prep.signals {
+        match &prep.signals {
+            Some(signals) => store_signals(sql, content_hash, signals)?,
+            // The values hang off the header, so this clears them too.
+            None => delete_signals(sql, content_hash)?,
+        }
     }
-    super::rows::replace_release_link(sql, content_hash, prep.link.as_ref())?;
-    // Replacing the draft row cascades the provenance away;
+    if stored.link != prep.link {
+        super::rows::store_release_link(sql, content_hash, prep.link.as_ref())?;
+    }
+    super::draft_store::store_draft(
+        sql,
+        content_hash,
+        (&stored.metadata.draft, stored.author),
+        (&prep.metadata.draft, prep.author),
+    )?;
     // `validate` has already refused an author the provenance cannot have.
-    pane_rows::replace_draft(sql, content_hash, &prep.metadata.draft, prep.author)?;
-    if let Some(provenance) = prep.metadata.provenance.as_ref() {
-        insert_provenance(sql, content_hash, provenance)?;
+    if stored.metadata.provenance != prep.metadata.provenance {
+        super::rows::store_provenance(sql, content_hash, prep.metadata.provenance.as_ref())?;
     }
-    pane_rows::delete_cover(sql, content_hash)?;
-    if let Some(cover) = &prep.metadata.cover {
-        super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
+    if stored.metadata.cover != prep.metadata.cover {
+        match &prep.metadata.cover {
+            Some(cover) => super::candidate_state_rows::save_cover(sql, content_hash, cover)?,
+            None => pane_rows::delete_cover(sql, content_hash)?,
+        }
     }
-    pane_rows::replace_cover_options(sql, content_hash, &prep.metadata.cover_options)?;
-    prepared_asset_rows::replace_asset_rows(sql, content_hash, &prep.metadata.assets)?;
-    delete_file_edits(sql, content_hash)?;
-    insert_file_edits(sql, content_hash, &prep.file_edits)?;
+    if stored.metadata.cover_options != prep.metadata.cover_options {
+        pane_rows::replace_cover_options(sql, content_hash, &prep.metadata.cover_options)?;
+    }
+    if stored.metadata.assets != prep.metadata.assets {
+        prepared_asset_rows::store_asset_rows(sql, content_hash, &prep.metadata.assets)?;
+    }
+    if (
+        &stored.file_edits.sheet_bindings,
+        &stored.file_edits.sheet_discs,
+    ) != (
+        &prep.file_edits.sheet_bindings,
+        &prep.file_edits.sheet_discs,
+    ) {
+        delete_file_edits(sql, content_hash)?;
+        insert_file_edits(sql, content_hash, &prep.file_edits)?;
+    }
     match extras.pane {
         CandidatePaneWrite::Keep => {}
         CandidatePaneWrite::OpenOnDraftUnlessCheckFailed => {

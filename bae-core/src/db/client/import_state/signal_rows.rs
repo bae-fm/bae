@@ -76,9 +76,9 @@ pub(super) fn delete_signals(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
     Ok(())
 }
 
-/// The settled signals as one header row and its list values. The caller has
-/// cleared what stood under this hash, so this writes into empty space.
-pub(super) fn insert_signals(
+/// The settled signals as one header row and its list values, over whatever
+/// signals stood under this hash: the header in place, its values anew.
+pub(super) fn store_signals(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     signals: &Signals,
@@ -129,7 +129,16 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+             ON CONFLICT (content_hash) DO UPDATE SET \
+                 audio_source = excluded.audio_source, cd_rip_proof = excluded.cd_rip_proof, \
+                 download_proof = excluded.download_proof, \
+                 audio_source_file = excluded.audio_source_file, \
+                 not_cd_rate = excluded.not_cd_rate, disc_id_state = excluded.disc_id_state, \
+                 disc_id_failure = excluded.disc_id_failure, \
+                 barcode_state = excluded.barcode_state, \
+                 barcode_failure = excluded.barcode_failure, text_state = excluded.text_state, \
+                 text_failure = excluded.text_failure"
         ),
         params![
             content_hash,
@@ -147,6 +156,15 @@ pub(super) fn insert_signals(
         ],
     )?;
 
+    for table in [
+        "import_candidate_signal_value",
+        "import_candidate_text_line",
+    ] {
+        sql.execute(
+            &format!("DELETE FROM {table} WHERE content_hash = ?"),
+            [content_hash],
+        )?;
+    }
     let unsourced = |values: &[String]| -> Vec<(String, Option<String>)> {
         values.iter().map(|value| (value.clone(), None)).collect()
     };

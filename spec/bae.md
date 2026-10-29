@@ -686,7 +686,11 @@ and it only ever holds rows the list shows: the write that stops showing a
 selected row — another tab, filter or search, a fold, or a change that moves
 the row out of the filter, such as one that starts importing under Identified
 — takes it out of the selection in that same write, and a row shown again
-comes back unselected. A release the scan reads again with changed files is
+comes back unselected. A write that stores a candidate's state, such as an
+edit in its pane or a pick, changes only the rows whose values change, each in
+place, so no step of it shows the row as something it isn't, such as unlinked
+on the way to linked again: typing into the selected row's pane keeps the row
+selected and the pane open, under any view that still shows it. A release the scan reads again with changed files is
 the same row: it stays selected, under a group as folded as it was. The pane a selection opens reads only that selection,
 so with nothing shown selected it shows nothing selected. A bulk action runs
 in core over the selected rows that offer it, in the order the list shows

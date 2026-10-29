@@ -3,9 +3,9 @@
 //! the pane's read draws them.
 //!
 //! Every row group hangs off the candidate by content hash, and the draft's
-//! own provenance and tracks hang off `import_candidate_edit`, so replacing
-//! the draft row takes them with it. The writers here replace a whole group;
-//! which groups a candidate save replaces, and under what checks, is
+//! own provenance and tracks hang off `import_candidate_edit`. A save writes
+//! the draft over the one stored (`draft_store`), changing only the rows that
+//! differ; which groups a candidate save writes, and under what checks, is
 //! `preparation_rows`'s to say.
 
 mod values;
@@ -57,54 +57,65 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
     }
 }
 
-/// Replace the draft row and everything hanging off it: its tracks and their
-/// artist assignments, and its provenance. The caller writes the new
-/// provenance after this returns.
-pub(super) fn replace_draft(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    draft: &CandidateDraft,
-    author: MetadataAuthor,
-) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_edit WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    insert_draft(sql, content_hash, draft, author)
-}
-
+/// The draft row of a candidate that has none yet, with everything hanging
+/// off it: its album artists, its mediums, its tracks and their values.
 pub(crate) fn insert_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     draft: &CandidateDraft,
     author: MetadataAuthor,
 ) -> Result<(), DbError> {
-    let release_edit = draft.release_edit();
-    let facts = super::super::pressing_columns::FactColumns::of(&draft.pressing.facts);
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author, draft_blank, draft_valid) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
-        params![
-            content_hash,
-            draft.album_title,
-            draft.album_year,
-            draft.pressing.year,
-            serde_json::to_string(&draft.pressing.labels).expect("label rows serialize"),
-            serde_json::to_string(&draft.pressing.barcodes).expect("barcode rows serialize"),
-            facts.country,
-            facts.region,
-            facts.media,
-            facts.status,
-            facts.packaging,
-            facts.discogs_details,
-            author_column(author),
-            release_edit.is_blank(),
-            release_edit.shape().is_ok(),
-        ],
+        rusqlite::params_from_iter(edit_row_values(content_hash, draft, author)),
     )?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
+    insert_draft_body(sql, content_hash, draft)
+}
+
+/// The draft row's columns, in [`EDIT_COLUMNS`] order and then its author
+/// and whether it is blank and would import.
+pub(super) fn edit_row_values(
+    content_hash: &str,
+    draft: &CandidateDraft,
+    author: MetadataAuthor,
+) -> Vec<rusqlite::types::Value> {
+    use rusqlite::types::Value;
+    let release_edit = draft.release_edit();
+    let facts = super::super::pressing_columns::FactColumns::of(&draft.pressing.facts);
+    let text = |value: &str| Value::Text(value.to_string());
+    let optional = |value: Option<&str>| value.map_or(Value::Null, text);
+    vec![
+        text(content_hash),
+        text(&draft.album_title),
+        text(&draft.album_year),
+        text(&draft.pressing.year),
+        Value::Text(serde_json::to_string(&draft.pressing.labels).expect("label rows serialize")),
+        Value::Text(
+            serde_json::to_string(&draft.pressing.barcodes).expect("barcode rows serialize"),
+        ),
+        optional(facts.country),
+        optional(facts.region),
+        Value::Text(facts.media),
+        optional(facts.status),
+        optional(facts.packaging),
+        Value::Text(facts.discogs_details),
+        text(author_column(author)),
+        Value::Integer(release_edit.is_blank().into()),
+        Value::Integer(release_edit.shape().is_ok().into()),
+    ]
+}
+
+/// The draft's mediums, tracks and the values hanging off them: the rows
+/// below the draft row besides its album artists.
+pub(super) fn insert_draft_body(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    draft: &CandidateDraft,
+) -> Result<(), DbError> {
     for (index, medium) in draft.mediums.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_medium (content_hash, position, medium, side_count) \
@@ -117,38 +128,80 @@ pub(crate) fn insert_draft(
             ],
         )?;
     }
+    // The works first: a track names the works it performs.
+    values::insert_draft_values(sql, content_hash, draft)?;
     for (position, track) in draft.tracks.iter().enumerate() {
-        let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(&track.edit.file);
-        let stated_length_ms = track
-            .stated_length_ms
-            .map(|length| to_i64(length, "a track's stated length"))
-            .transpose()?;
-        sql.execute(
-            &format!(
-                "INSERT INTO import_candidate_track ({TRACK_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            ),
-            params![
-                content_hash,
-                track.edit.id,
-                position as i64,
-                track.edit.title,
-                assignment_kind_column(&track.edit.artist_assignments),
-                track.place.medium,
-                track.place.side,
-                track.place.number,
-                stated_length_ms,
-                file_kind,
-                file_id,
-                sheet_id,
-                slice_index,
-            ],
-        )?;
-        if let TrackArtistAssignments::Explicit(assignments) = &track.edit.artist_assignments {
-            insert_track_artist_assignments(sql, content_hash, &track.edit.id, assignments)?;
-        }
+        insert_track(sql, content_hash, position, track)?;
     }
-    values::insert_draft_values(sql, content_hash, draft)
+    Ok(())
+}
+
+/// The track at `position` with the rows hanging off it, where none is
+/// stored.
+fn insert_track(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    position: usize,
+    track: &CandidateTrack,
+) -> Result<(), DbError> {
+    store_track_row(sql, content_hash, position, track)?;
+    insert_track_rows(sql, content_hash, track)
+}
+
+/// The track's own row at `position`, in place of the one stored with its id.
+pub(super) fn store_track_row(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    position: usize,
+    track: &CandidateTrack,
+) -> Result<(), DbError> {
+    let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(&track.edit.file);
+    let stated_length_ms = track
+        .stated_length_ms
+        .map(|length| to_i64(length, "a track's stated length"))
+        .transpose()?;
+    sql.execute(
+        &format!(
+            "INSERT INTO import_candidate_track ({TRACK_COLUMNS}) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+             ON CONFLICT (content_hash, track_id) DO UPDATE SET \
+                 position = excluded.position, title = excluded.title, \
+                 artist_assignment_kind = excluded.artist_assignment_kind, \
+                 medium = excluded.medium, side = excluded.side, \
+                 track_number = excluded.track_number, \
+                 stated_length_ms = excluded.stated_length_ms, file_kind = excluded.file_kind, \
+                 file_id = excluded.file_id, sheet_id = excluded.sheet_id, \
+                 slice_index = excluded.slice_index"
+        ),
+        params![
+            content_hash,
+            track.edit.id,
+            position as i64,
+            track.edit.title,
+            assignment_kind_column(&track.edit.artist_assignments),
+            track.place.medium,
+            track.place.side,
+            track.place.number,
+            stated_length_ms,
+            file_kind,
+            file_id,
+            sheet_id,
+            slice_index,
+        ],
+    )?;
+    Ok(())
+}
+
+/// The rows hanging off a track: its own artists, its roles and its works.
+pub(super) fn insert_track_rows(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    track: &CandidateTrack,
+) -> Result<(), DbError> {
+    if let TrackArtistAssignments::Explicit(assignments) = &track.edit.artist_assignments {
+        insert_track_artist_assignments(sql, content_hash, &track.edit.id, assignments)?;
+    }
+    values::insert_track_values(sql, content_hash, track)
 }
 
 fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str {
@@ -180,20 +233,28 @@ pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
 ) -> Result<DbCandidatePaneRows, DbError> {
-    let metadata_draft = load_drafts_on(sql, CandidateRows::One(content_hash))?
+    Ok(DbCandidatePaneRows {
+        cover: load_cover_on(sql, content_hash)?,
+        cover_options: load_cover_options_on(sql, content_hash)?,
+        draft: load_draft_on(sql, content_hash)?,
+        failure: load_failure_on(sql, content_hash)?,
+        session: load_session_on(sql, content_hash)?,
+    })
+}
+
+/// The candidate's draft. Every stored candidate has one: the write that
+/// stores the candidate writes its draft.
+pub(super) fn load_draft_on(
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
+    content_hash: &str,
+) -> Result<CandidateDraft, DbError> {
+    load_drafts_on(sql, CandidateRows::One(content_hash))?
         .remove(content_hash)
         .ok_or_else(|| {
             DbError::Message(format!(
                 "candidate {content_hash} has no editable metadata draft"
             ))
-        })?;
-    Ok(DbCandidatePaneRows {
-        cover: load_cover_on(sql, content_hash)?,
-        cover_options: load_cover_options_on(sql, content_hash)?,
-        draft: metadata_draft,
-        failure: load_failure_on(sql, content_hash)?,
-        session: load_session_on(sql, content_hash)?,
-    })
+        })
 }
 
 /// A candidate's cover choice as columns of a read that joins its row as
@@ -265,7 +326,7 @@ impl StoredCover {
 }
 
 /// The cover the candidate `content_hash` chose, if it chose one.
-fn load_cover_on(
+pub(super) fn load_cover_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
 ) -> Result<Option<CoverSelection>, DbError> {
@@ -286,7 +347,7 @@ fn load_cover_on(
 /// Every candidate's complete stored draft, or the one `only` names: one row
 /// per draft, its lists riding on it as JSON arrays in their stored order.
 pub(crate) fn load_drafts_on(
-    sql: &SqlReadContext<'_>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, CandidateDraft>, DbError> {
     let filter = only.filter("edit.content_hash");
@@ -660,27 +721,45 @@ fn insert_album_artist_assignments(
     assignments: &[Credited],
 ) -> Result<(), DbError> {
     for (position, assignment) in assignments.iter().enumerate() {
-        let columns = assignment_columns(assignment);
-        sql.execute(
-            "INSERT INTO import_candidate_album_artist_assignment \
-             (content_hash, position, assignment_kind, artist_id, name, sort_name, \
-              musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                position as i64,
-                columns.kind,
-                columns.artist_id,
-                columns.name,
-                columns.sort_name,
-                columns.musicbrainz_id,
-                columns.discogs_id,
-                columns.credit_key,
-                columns.credited_as,
-                columns.join_phrase
-            ],
-        )?;
+        store_album_artist_assignment(sql, content_hash, position, assignment)?;
     }
+    Ok(())
+}
+
+/// Make the album artist at `position` `assignment`, in place when one is
+/// there.
+pub(super) fn store_album_artist_assignment(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    position: usize,
+    assignment: &Credited,
+) -> Result<(), DbError> {
+    let columns = assignment_columns(assignment);
+    sql.execute(
+        "INSERT INTO import_candidate_album_artist_assignment \
+         (content_hash, position, assignment_kind, artist_id, name, sort_name, \
+          musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         ON CONFLICT (content_hash, position) DO UPDATE SET \
+             assignment_kind = excluded.assignment_kind, artist_id = excluded.artist_id, \
+             name = excluded.name, sort_name = excluded.sort_name, \
+             musicbrainz_artist_id = excluded.musicbrainz_artist_id, \
+             discogs_artist_id = excluded.discogs_artist_id, credit_key = excluded.credit_key, \
+             credited_as = excluded.credited_as, join_phrase = excluded.join_phrase",
+        params![
+            content_hash,
+            position as i64,
+            columns.kind,
+            columns.artist_id,
+            columns.name,
+            columns.sort_name,
+            columns.musicbrainz_id,
+            columns.discogs_id,
+            columns.credit_key,
+            columns.credited_as,
+            columns.join_phrase
+        ],
+    )?;
     Ok(())
 }
 
@@ -758,7 +837,7 @@ pub(super) fn replace_cover_options(
 
 /// The candidate's offered covers, in their order, each with its copies.
 pub(super) fn load_cover_options_on(
-    sql: &SqlReadContext<'_>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
 ) -> Result<Vec<RemoteCover>, DbError> {
     let copies = copies_json_sql(

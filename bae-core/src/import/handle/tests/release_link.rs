@@ -24,7 +24,7 @@ fn linked_to(release_id: &str) -> crate::import::ReleaseLink {
 }
 
 /// The fixture candidate, picked as `release_id`.
-async fn picked_fixture(
+pub(super) async fn picked_fixture(
     release_id: &str,
 ) -> (ImportServiceHandle, TempDir, String) {
     let (handle, tmp, key, _hash) = pane_fixture().await;

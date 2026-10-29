@@ -2,14 +2,13 @@
 //! credits on each track and on the release, and the works the tracks perform
 //! with the works they nest among.
 //!
-//! They hang off the draft row (and each track's off its track row), so
-//! replacing the draft takes them with it.
+//! They hang off the draft row, and each track's off its track row.
 
 use super::*;
 use crate::import::{CreditedRole, GraphWork, WorkGraph, WorkPart};
 
-/// Write the values `draft` holds beside its rows. The draft row and its
-/// track rows are already written.
+/// Write the values `draft` holds beside its rows besides its tracks': the
+/// works and the roles on the release. The draft row is already written.
 pub(super) fn insert_draft_values(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -70,32 +69,41 @@ pub(super) fn insert_draft_values(
             ],
         )?;
     }
-    for track in &draft.tracks {
-        for (position, role) in track.roles.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO import_candidate_track_role \
-                 (content_hash, track_id, position, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id, source, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    content_hash,
-                    track.edit.id,
-                    position as i64,
-                    role.artist.name,
-                    role.artist.sort_name,
-                    role.artist.musicbrainz_artist_id,
-                    role.artist.discogs_artist_id,
-                    role.source.as_str(),
-                    role.role,
-                ],
-            )?;
-        }
-        for (position, work) in track.works.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO import_candidate_track_work \
-                 (content_hash, track_id, position, musicbrainz_work_id) VALUES (?, ?, ?, ?)",
-                params![content_hash, track.edit.id, position as i64, work],
-            )?;
-        }
+    Ok(())
+}
+
+/// Write the values hanging off one draft track: the roles the source
+/// credits on it and the works it performs. The track row is already
+/// written, and the works are.
+pub(super) fn insert_track_values(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    track: &CandidateTrack,
+) -> Result<(), DbError> {
+    for (position, role) in track.roles.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_track_role \
+             (content_hash, track_id, position, name, sort_name, musicbrainz_artist_id, \
+              discogs_artist_id, source, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                track.edit.id,
+                position as i64,
+                role.artist.name,
+                role.artist.sort_name,
+                role.artist.musicbrainz_artist_id,
+                role.artist.discogs_artist_id,
+                role.source.as_str(),
+                role.role,
+            ],
+        )?;
+    }
+    for (position, work) in track.works.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_track_work \
+             (content_hash, track_id, position, musicbrainz_work_id) VALUES (?, ?, ?, ?)",
+            params![content_hash, track.edit.id, position as i64, work],
+        )?;
     }
     Ok(())
 }

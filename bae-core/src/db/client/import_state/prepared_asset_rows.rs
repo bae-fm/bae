@@ -2,23 +2,26 @@ use super::*;
 use crate::import::{CandidatePreparedAssets, CoverSelection};
 use bae_util::content_type::ContentType;
 
-/// Replace the remote cover bytes stored under the hash with the value's.
-pub(super) fn replace_asset_rows(
+/// Make the remote cover bytes stored under the hash the value's: in place
+/// when there are bytes, removed when there are none.
+pub(super) fn store_asset_rows(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     assets: &CandidatePreparedAssets,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    if let Some(image) = &assets.remote_cover {
-        sql.execute(
+    match &assets.remote_cover {
+        Some(image) => sql.execute(
             "INSERT INTO import_candidate_remote_cover_asset \
-                 (content_hash, content_type, bytes) VALUES (?, ?, ?)",
+                 (content_hash, content_type, bytes) VALUES (?, ?, ?) \
+             ON CONFLICT (content_hash) DO UPDATE SET \
+                 content_type = excluded.content_type, bytes = excluded.bytes",
             params![content_hash, image.content_type.as_str(), image.bytes],
-        )?;
-    }
+        )?,
+        None => sql.execute(
+            "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
+            [content_hash],
+        )?,
+    };
     Ok(())
 }
 
@@ -38,7 +41,7 @@ pub(super) fn load_prepared_assets_on(
 /// The rows under the hash as stored. No validation: the value they load
 /// into carries its own.
 pub(super) fn load_asset_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
 ) -> Result<CandidatePreparedAssets, DbError> {
     let remote_cover = sql

@@ -43,9 +43,11 @@ pub(super) fn delete_verdict(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
     Ok(())
 }
 
-/// Write one whole verdict and the matches it found. The caller has already
-/// cleared whatever stood under this hash.
-pub(super) fn insert_verdict(
+/// Write one whole verdict and the matches it found over whatever verdict
+/// stood under this hash: the verdict row and each match row in place, so the
+/// candidate never reads as holding no verdict or no matches on its way from
+/// one verdict to another, and the matches past the new last go.
+pub(super) fn store_verdict(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     identification: &DbCandidateIdentifyResult,
@@ -106,7 +108,13 @@ pub(super) fn insert_verdict(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, failures_json, error_detail, \
               ledger_json, identified_at, medium_conflict, kept_own_draft) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         ON CONFLICT (content_hash) DO UPDATE SET \
+             kind = excluded.kind, track_count = excluded.track_count, \
+             failures_json = excluded.failures_json, error_detail = excluded.error_detail, \
+             ledger_json = excluded.ledger_json, identified_at = excluded.identified_at, \
+             medium_conflict = excluded.medium_conflict, \
+             kept_own_draft = excluded.kept_own_draft",
         params![
             content_hash,
             kind,
@@ -119,18 +127,39 @@ pub(super) fn insert_verdict(
             identification.kept_own_draft,
         ],
     )?;
-    insert_matches(sql, content_hash, verdict)
+    // The rows under each match name what the match row below may change
+    // (its cover's address, its media's kind), so the previous verdict's go
+    // first. The import list reads none of them.
+    for table in [
+        "import_candidate_match_cover_copy",
+        "import_candidate_match_barcode",
+        "import_candidate_match_medium",
+        "import_candidate_match_link",
+        "import_candidate_match_album_link",
+    ] {
+        sql.execute(
+            &format!("DELETE FROM {table} WHERE content_hash = ?"),
+            [content_hash],
+        )?;
+    }
+    let count = store_matches(sql, content_hash, verdict)?;
+    sql.execute(
+        "DELETE FROM import_candidate_match WHERE content_hash = ? AND position >= ?",
+        params![content_hash, ordinal_column(count)?],
+    )?;
+    Ok(())
 }
 
 /// The releases of one verdict, written under the verdict row that found them:
 /// the matches first, then the ones agreement narrowed out, which continue the
 /// same position sequence and are marked as what they are. A found verdict and
-/// a failed one write theirs alike; the other two hold none.
-fn insert_matches(
+/// a failed one write theirs alike; the other two hold none. Answers how many
+/// positions it wrote.
+fn store_matches(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     verdict: &TerminalVerdict,
-) -> Result<(), DbError> {
+) -> Result<usize, DbError> {
     let Some(Findings {
         matches,
         provenance,
@@ -140,7 +169,7 @@ fn insert_matches(
         named_notes,
     }) = verdict.findings()
     else {
-        return Ok(());
+        return Ok(0);
     };
     let named_note = |result: &MetadataResult| {
         named_notes
@@ -208,8 +237,10 @@ fn insert_matches(
                 .zip(narrowed_out.pressings.iter())
                 .map(|pair| (pair, true)),
         );
+    let mut count = 0;
     for (position, (((result, provenance), pressing), narrowed_out)) in written.enumerate() {
-        insert_match(
+        count = position + 1;
+        store_match(
             sql,
             content_hash,
             position,
@@ -224,10 +255,12 @@ fn insert_matches(
             },
         )?;
     }
-    Ok(())
+    Ok(count)
 }
 
-fn insert_match(
+/// One match at `position`, in place of the one there, with the rows under
+/// it. The rows under the match that stood there are already gone.
+fn store_match(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     position: usize,
@@ -281,7 +314,28 @@ fn insert_match(
               by_pressing, narrowed_out, document_failure, \
               document_failure_status, album_first_year, track_titles, notes, named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         ON CONFLICT (content_hash, position) DO UPDATE SET \
+             pressing = excluded.pressing, source = excluded.source, \
+             release_id = excluded.release_id, title = excluded.title, \
+             artist = excluded.artist, year = excluded.year, labels = excluded.labels, \
+             country = excluded.country, region = excluded.region, status = excluded.status, \
+             packaging = excluded.packaging, discogs_details = excluded.discogs_details, \
+             media_kind = excluded.media_kind, cover_url = excluded.cover_url, \
+             cover_label = excluded.cover_label, cover_source = excluded.cover_source, \
+             cover_standing = excluded.cover_standing, \
+             source_group_id = excluded.source_group_id, album_links = excluded.album_links, \
+             source_tracks_kind = excluded.source_tracks_kind, \
+             source_tracks_count = excluded.source_tracks_count, \
+             by_disc_id = excluded.by_disc_id, by_barcode = excluded.by_barcode, \
+             by_catalog = excluded.by_catalog, by_isrc = excluded.by_isrc, \
+             by_search = excluded.by_search, by_pressing = excluded.by_pressing, \
+             narrowed_out = excluded.narrowed_out, \
+             document_failure = excluded.document_failure, \
+             document_failure_status = excluded.document_failure_status, \
+             album_first_year = excluded.album_first_year, \
+             track_titles = excluded.track_titles, notes = excluded.notes, \
+             named_note = excluded.named_note",
         params![
             content_hash,
             position,

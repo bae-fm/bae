@@ -36,10 +36,39 @@ fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> 
     }
 }
 
-/// Write the draft's provenance.
-///
-/// Called after the draft row is replaced, which cascades the previous
-/// provenance away, so this only ever inserts.
+/// Make the draft's provenance `provenance`, or remove it: in place when one
+/// stays, so the draft never reads as read from nowhere on its way from one
+/// source to another.
+pub(super) fn store_provenance(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    provenance: Option<&MetadataProvenance>,
+) -> Result<(), DbError> {
+    let Some(provenance) = provenance else {
+        sql.execute(
+            "DELETE FROM import_candidate_draft_provenance WHERE content_hash = ?",
+            [content_hash],
+        )?;
+        return Ok(());
+    };
+    let columns = provenance_columns(provenance);
+    sql.execute(
+        "INSERT INTO import_candidate_draft_provenance \
+             (content_hash, kind, source, release_id) \
+         VALUES (?, ?, ?, ?) \
+         ON CONFLICT (content_hash) DO UPDATE SET \
+             kind = excluded.kind, source = excluded.source, release_id = excluded.release_id",
+        params![
+            content_hash,
+            columns.kind,
+            columns.source,
+            columns.release_id
+        ],
+    )?;
+    Ok(())
+}
+
+/// Write the provenance of a draft just written, which has none yet.
 pub(super) fn insert_provenance(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -109,51 +138,50 @@ impl StoredProvenance {
     }
 }
 
-/// The draft provenance of the candidate `content_hash`, if its draft
-/// records one; on whichever connection the caller holds.
-pub(super) fn load_provenance_on(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    content_hash: &str,
-) -> Result<Option<MetadataProvenance>, DbError> {
-    sql.query_row(
-        &format!(
-            "SELECT {PROVENANCE_COLUMNS} FROM import_candidate_draft_provenance AS provenance \
-             WHERE provenance.content_hash = ?"
-        ),
-        [content_hash],
-        read_provenance,
-    )
-    .optional()?
-    .flatten()
-    .map(StoredProvenance::provenance)
-    .transpose()
-}
-
-/// Replace the candidate's release link with `link`, or remove it.
-pub(super) fn replace_release_link(
+/// Make the candidate's release link `link`, or remove it. A link that
+/// stays is written in place, so the candidate never reads as unlinked on
+/// its way from one link to another.
+pub(super) fn store_release_link(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     link: Option<&ReleaseLink>,
 ) -> Result<(), DbError> {
-    // The partner and album rows hang off the link row, so this clears them
-    // too.
+    let Some(link) = link else {
+        // The partner and album rows hang off the link row, so this clears
+        // them too.
+        sql.execute(
+            "DELETE FROM import_candidate_release_link WHERE content_hash = ?",
+            [content_hash],
+        )?;
+        return Ok(());
+    };
+    // The partner and album rows name the link's kind, which the row below
+    // may change, so the previous link's go first.
     sql.execute(
-        "DELETE FROM import_candidate_release_link WHERE content_hash = ?",
+        "DELETE FROM import_candidate_release_link_partner WHERE content_hash = ?",
         [content_hash],
     )?;
+    sql.execute(
+        "DELETE FROM import_candidate_release_link_album WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    let (kind, source, release_id) = match link {
+        ReleaseLink::Pressing(pressing) => (
+            "pressing",
+            Some(pressing.record.catalog.as_str()),
+            Some(pressing.record.key.as_str()),
+        ),
+        ReleaseLink::Album(_) => ("album", None, None),
+    };
+    sql.execute(
+        "INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id) \
+         VALUES (?, ?, ?, ?) \
+         ON CONFLICT (content_hash) DO UPDATE SET \
+             kind = excluded.kind, source = excluded.source, release_id = excluded.release_id",
+        params![content_hash, kind, source, release_id],
+    )?;
     match link {
-        None => {}
-        Some(ReleaseLink::Pressing(pressing)) => {
-            sql.execute(
-                "INSERT INTO import_candidate_release_link \
-                     (content_hash, kind, source, release_id) \
-                 VALUES (?, 'pressing', ?, ?)",
-                params![
-                    content_hash,
-                    pressing.record.catalog.as_str(),
-                    pressing.record.key
-                ],
-            )?;
+        ReleaseLink::Pressing(pressing) => {
             for partner in &pressing.partners {
                 sql.execute(
                     "INSERT INTO import_candidate_release_link_partner \
@@ -163,12 +191,7 @@ pub(super) fn replace_release_link(
                 )?;
             }
         }
-        Some(ReleaseLink::Album(album)) => {
-            sql.execute(
-                "INSERT INTO import_candidate_release_link (content_hash, kind) \
-                 VALUES (?, 'album')",
-                [content_hash],
-            )?;
+        ReleaseLink::Album(album) => {
             for album in album.albums() {
                 sql.execute(
                     "INSERT INTO import_candidate_release_link_album \
@@ -266,26 +289,6 @@ fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
         Catalog::from_str(&catalog).map_err(DbError::Message)?,
         key,
     ))
-}
-
-/// The release link of the candidate `content_hash`, with its partners or
-/// its albums, if it is linked; on whichever connection the caller holds.
-pub(super) fn load_release_link_on(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    content_hash: &str,
-) -> Result<Option<ReleaseLink>, DbError> {
-    sql.query_row(
-        &format!(
-            "SELECT {RELEASE_LINK_COLUMNS} FROM import_candidate_release_link AS link \
-             WHERE link.content_hash = ?"
-        ),
-        [content_hash],
-        read_release_link,
-    )
-    .optional()?
-    .flatten()
-    .map(StoredReleaseLink::link)
-    .transpose()
 }
 
 const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found.release_id, \
@@ -453,7 +456,7 @@ fn read_found(row: &Row<'_>) -> Result<Option<(MatchColumns, StoredMatchEntries)
 /// Every stored candidate row, or the one `only` names, assembled with the
 /// verdict, signals, provenance, and file-decision rows that hang off it.
 pub(crate) fn load_states_on(
-    sql: &SqlReadContext<'_>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
     load_states_rows_on(sql, only)?()
@@ -463,12 +466,9 @@ pub(crate) fn load_states_on(
 /// that hang off it one-to-one joined onto it once, then joined to its
 /// matches in position order, one row per match.
 pub(crate) fn load_states_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     only: CandidateRows<'_>,
-) -> Result<
-    impl FnOnce() -> Result<HashMap<String, DbImportCandidateState>, DbError> + Send + 'static,
-    DbError,
-> {
+) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let filter = only.filter("state.content_hash");
     let mut previous: Option<String> = None;
     let rows = sql.query(
@@ -516,7 +516,7 @@ pub(crate) fn load_states_rows_on(
             })
         },
     )?;
-    Ok(move || {
+    Ok(Box::new(move || {
         let mut candidates: Vec<StoredCandidate> = Vec::new();
         for row in rows {
             if let Some(candidate) = row.candidate {
@@ -541,7 +541,7 @@ pub(crate) fn load_states_rows_on(
             .into_iter()
             .map(|candidate| Ok((candidate.content_hash.clone(), candidate.state()?)))
             .collect()
-    })
+    }))
 }
 
 impl StoredCandidate {
@@ -603,9 +603,9 @@ impl StoredCandidate {
     }
 }
 
-/// The file decisions a read fetched, still to be assembled — boxed so a read
-/// on either connection hands back one type.
-type FinishEdits<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
+/// What a read fetched, still to be assembled — boxed so a read on either
+/// connection hands back one type.
+type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 
 /// The file decisions of every candidate a decision was made for, each at its
 /// revision: the candidates whose decisions stand, and those whose revision
@@ -613,7 +613,7 @@ type FinishEdits<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 /// revision zero, which is what a scan reads where nothing is stored.
 pub(crate) fn load_stored_candidate_edits_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-) -> Result<FinishEdits<crate::import::folder_scanner::StoredCandidateEdits>, DbError> {
+) -> Result<FinishRead<crate::import::folder_scanner::StoredCandidateEdits>, DbError> {
     let rows = sql.query(
         &format!(
             "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
@@ -645,7 +645,7 @@ pub(crate) fn load_stored_candidate_edits_on(
 pub(crate) fn load_candidate_file_edits_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
-) -> Result<FinishEdits<CandidateFileEdits>, DbError> {
+) -> Result<FinishRead<CandidateFileEdits>, DbError> {
     let stored = sql
         .query_row(
             &format!(
