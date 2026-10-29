@@ -21,16 +21,17 @@ public final class MembershipStore {
     public private(set) var invites: [BridgeInvite] = []
     /// The last failed read; cleared by the next successful one.
     public private(set) var error: DisplayError?
-    /// This person's device that joined while `watchForAddedDevice` ran, nil
-    /// until one does.
+    /// This person's device that `watchForAddedDevice` found, nil until one
+    /// joins.
     public private(set) var addedDevice: BridgeActiveDevice?
 
     /// Starts the membership, profile and invite subscriptions.
     private let subscribe: @MainActor (MembershipStore) -> [LiveSubscription]
-    /// Starts the subscription to this person's device that joins after its
-    /// first value, returning what cancels it.
+    /// Starts the subscription to this person's device that a watch finds,
+    /// returning what cancels it.
     private let subscribeAddedDevice:
-        @MainActor (any AddedDeviceCallback) -> @Sendable () -> Void
+        @MainActor (BridgeAddedDeviceWatch, any AddedDeviceCallback) ->
+            @Sendable () -> Void
     private let readPeopleOperation: @Sendable () async throws -> PeopleRead
     @ObservationIgnored
     private var subscriptions: [LiveSubscription] = []
@@ -68,8 +69,9 @@ public final class MembershipStore {
                 async let own = handle.ownPerson()
                 return PeopleRead(people: try await people, own: try await own)
             },
-            subscribeAddedDevice: { callback in
+            subscribeAddedDevice: { watch, callback in
                 let subscription = handle.subscribeAddedDevice(
+                    watch: watch,
                     callback: callback
                 )
                 return { subscription.cancel() }
@@ -81,9 +83,10 @@ public final class MembershipStore {
         subscribe: @escaping @MainActor (MembershipStore) -> [LiveSubscription],
         readPeople: @escaping @Sendable () async throws -> PeopleRead,
         subscribeAddedDevice:
-            @escaping @MainActor (any AddedDeviceCallback) ->
-            @Sendable () ->
-            Void
+            @escaping @MainActor (
+                BridgeAddedDeviceWatch, any AddedDeviceCallback
+            )
+            -> @Sendable () -> Void
     ) {
         self.subscribe = subscribe
         readPeopleOperation = readPeople
@@ -109,7 +112,7 @@ public final class MembershipStore {
                         own: people.first { $0.membership.isSelf }
                     )
                 },
-                subscribeAddedDevice: { callback in
+                subscribeAddedDevice: { _, callback in
                     callback.onValue(device: addedDevice)
                     return {}
                 }
@@ -126,15 +129,16 @@ public final class MembershipStore {
         subscriptions = subscribe(self)
     }
 
-    /// Watch for this person's device that joins from now on, until the
-    /// calling task is cancelled: Add Device's sheet runs it while it shows
-    /// the code.
-    public func watchForAddedDevice() async {
+    /// Watch for this person's device that `watch` finds, until the calling
+    /// task is cancelled: Add Device's sheet runs it while it shows the code
+    /// `watch` came with.
+    public func watchForAddedDevice(_ watch: BridgeAddedDeviceWatch) async {
         addedDevice = nil
         let (devices, deliver) = AsyncStream.makeStream(
             of: BridgeActiveDevice?.self
         )
         let cancel = subscribeAddedDevice(
+            watch,
             AddedDeviceSink(
                 apply: { deliver.yield($0) },
                 fail: { [weak self] error in self?.fail(error) }

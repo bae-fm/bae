@@ -36,13 +36,38 @@ impl BridgeJoinRequest {
         }
     }
 }
+/// The person's devices before Add Device made its code; a subscription
+/// reports the first of theirs that joins after.
+#[derive(uniffi::Object)]
+pub struct BridgeAddedDeviceWatch {
+    watch: bae_core::sync::membership::AddedDeviceWatch,
+}
+impl BridgeAddedDeviceWatch {
+    pub(crate) fn new(watch: bae_core::sync::membership::AddedDeviceWatch) -> Self {
+        Self { watch }
+    }
+}
+/// What Add Device's sheet shows, and the watch it runs while it does.
+#[derive(Clone, uniffi::Record)]
+pub struct BridgeAddDevice {
+    pub share: BridgeRestoreCodeShare,
+    pub watch: Arc<BridgeAddedDeviceWatch>,
+}
+impl BridgeAddDevice {
+    fn from_core(value: bae_core::sync::membership::AddingDevice) -> Self {
+        Self {
+            share: BridgeRestoreCodeShare::from_core(value.share),
+            watch: Arc::new(BridgeAddedDeviceWatch::new(value.watch)),
+        }
+    }
+}
 #[uniffi::export(callback_interface)]
 pub trait MembershipCallback: Send + Sync {
     fn on_value(&self, value: BridgeMembership);
     fn on_error(&self, error: BridgeError);
 }
-/// The person's device that joined after the subscription's first value, or
-/// none yet.
+/// The person's device that joined after Add Device made its code, or none
+/// yet.
 #[uniffi::export(callback_interface)]
 pub trait AddedDeviceCallback: Send + Sync {
     fn on_value(&self, device: Option<BridgeActiveDevice>);
@@ -66,14 +91,17 @@ impl AppHandle {
             },
         )
     }
-    /// This person's device that joins after the first value, which is
-    /// none: Add Device's sheet watches it while it shows the code.
+    /// This person's device that `watch` finds: none until one joins after
+    /// Add Device made its code. Add Device's sheet subscribes while it shows
+    /// the code.
     pub fn subscribe_added_device(
         &self,
+        watch: Arc<BridgeAddedDeviceWatch>,
         callback: Box<dyn AddedDeviceCallback>,
     ) -> Arc<crate::LiveSubscription> {
+        let watch = watch.watch.clone();
         self.subscribe_query(
-            |services| services.subscribe_added_device(),
+            move |services| services.subscribe_added_device(watch),
             move |result| match result {
                 Ok(device) => callback.on_value(device.map(BridgeActiveDevice::from_core)),
                 Err(error) => callback.on_error(BridgeError::database_query(error)),
@@ -101,6 +129,7 @@ impl AppHandle {
     }
 }
 forward! {async this => {
+    fn add_device()->BridgeAddDevice {Ok(BridgeAddDevice::from_core(this.services.add_device().await?))}
     fn get_members()->BridgeMembership {Ok(BridgeMembership::from_core(this.services.get_members().await?))}
     fn people()->Vec<BridgePerson> {Ok(this.services.people().await?.into_iter().map(BridgePerson::from_core).collect())}
     fn own_person()->Option<BridgePerson> {Ok(this.services.own_person().await?.map(BridgePerson::from_core))}

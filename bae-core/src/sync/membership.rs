@@ -49,28 +49,53 @@ pub struct Membership {
 }
 
 /// Watches the membership for a device of this device's person that wasn't
-/// there at the watch's first look. Add Device's sheet shows its code until
-/// one joins.
-#[derive(Default)]
+/// among their active devices when Add Device made its code. Add Device's
+/// sheet shows that code until one joins.
+///
+/// The devices the person had are read before the code is made: a
+/// subscription's first result can come after a device restored from the code
+/// and this device applied its registration.
+#[derive(Clone, Debug)]
 pub struct AddedDeviceWatch {
-    /// The person's active devices at the first look.
-    known: std::sync::OnceLock<std::collections::BTreeSet<coven::DeviceId>>,
+    /// The person's active devices before the code was made.
+    known: std::collections::BTreeSet<coven::DeviceId>,
 }
 
 impl AddedDeviceWatch {
-    /// The first of the person's active devices, in device-id order, that
-    /// wasn't there at the first look; none until one joins. The first call
-    /// is the first look.
+    /// Watch for a device of the person's that isn't among their active
+    /// devices in `membership`.
+    pub fn new(membership: &Membership) -> Self {
+        Self {
+            known: membership
+                .members
+                .iter()
+                .filter(|member| member.is_self)
+                .flat_map(|member| &member.active_devices)
+                .map(|device| device.id)
+                .collect(),
+        }
+    }
+
+    /// The first of the person's other active devices, in device-id order,
+    /// that wasn't known; none until one joins.
     pub fn added(&self, membership: &Membership) -> Option<ActiveDevice> {
-        let own = membership.members.iter().find(|member| member.is_self)?;
-        let known = self
-            .known
-            .get_or_init(|| own.active_devices.iter().map(|device| device.id).collect());
-        own.active_devices
+        membership
+            .members
             .iter()
-            .find(|device| !known.contains(&device.id))
+            .find(|member| member.is_self)?
+            .active_devices
+            .iter()
+            .find(|device| !device.is_self && !self.known.contains(&device.id))
             .cloned()
     }
+}
+
+/// What Add Device's sheet shows and watches: the person's restore code, and
+/// the watch for their device that joins from it.
+#[derive(Debug)]
+pub struct AddingDevice {
+    pub share: super::restore_code::RestoreCodeShare,
+    pub watch: AddedDeviceWatch,
 }
 
 impl MembershipMember {
@@ -140,16 +165,16 @@ mod tests {
         }
     }
 
-    /// Add Device's sheet watches for the person's device that joins while
-    /// it shows the code: what the person had at the first look is no news,
-    /// nor is another person's new device.
+    /// Add Device's sheet watches for the person's device that joins after
+    /// it made the code: what the person had then is no news, nor is another
+    /// person's new device.
     #[test]
-    fn a_watch_finds_the_persons_device_that_joins_after_its_first_look() {
+    fn a_watch_finds_the_persons_device_that_joins_after_the_code() {
         let membership = |own: &[u64], others: &[u64]| Membership {
             members: vec![member(1, true, own), member(2, false, others)],
             self_is_admin: false,
         };
-        let watch = AddedDeviceWatch::default();
+        let watch = AddedDeviceWatch::new(&membership(&[1, 2], &[3]));
 
         assert_eq!(watch.added(&membership(&[1, 2], &[3])), None);
         assert_eq!(watch.added(&membership(&[1, 2], &[3, 4])), None);

@@ -1,4 +1,5 @@
-//! Two isolated installations of one library, restored over shared memory storage.
+//! Isolated installations of one person's library over shared memory
+//! storage: the device that created it, and devices restored from its code.
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -30,22 +31,53 @@ impl TestDevice {
     }
 }
 
+/// A library on S3 memory storage, created and connected by its first device,
+/// which has synced. More of the person's devices restore from its code.
+pub(crate) struct Library {
+    first: TestDevice,
+    storage: Arc<coven::MemoryStorage>,
+}
+
 pub(crate) struct TwoDevices {
-    a: TestDevice,
+    library: Library,
     b: TestDevice,
 }
 
-/// Run `test` over two devices of one library on a runtime with a deep stack:
+/// Run `test` over a library's first device on a runtime with a deep stack:
 /// restoration and snapshot installation recurse further than a default test
-/// thread allows. Both devices are closed before the runtime ends, as closing a
-/// library in the bridge does: a device still syncing as its runtime shuts down
-/// has its next database call cancelled, which coven reports as a panic.
+/// thread allows. The first device is closed before the runtime ends, as
+/// closing a library in the bridge does: a device still syncing as its runtime
+/// shuts down has its next database call cancelled, which coven reports as a
+/// panic. The test closes each device it restores the same way.
+pub(crate) fn run_library_test<F>(test: F)
+where
+    F: AsyncFnOnce(&Library) + Send + 'static,
+{
+    on_device_runtime(async move || {
+        let library = Library::new().await;
+        test(&library).await;
+        library.first.close().await;
+    });
+}
+
+/// [`run_library_test`] over the library's first device and one device
+/// restored from it; both are closed before the runtime ends.
 pub(crate) fn run_two_device_test<F>(test: F)
 where
     F: AsyncFnOnce(&TwoDevices) + Send + 'static,
 {
+    on_device_runtime(async move || {
+        let devices = TwoDevices::new().await;
+        test(&devices).await;
+        devices.close().await;
+    });
+}
+
+/// Run `body` to its end on its own thread and multi-threaded runtime, both
+/// with deep stacks.
+fn on_device_runtime(body: impl AsyncFnOnce() + Send + 'static) {
     std::thread::Builder::new()
-        .name("two-device-test".to_string())
+        .name("device-test".to_string())
         .stack_size(64 * 1024 * 1024)
         .spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
@@ -53,21 +85,17 @@ where
                 .thread_stack_size(16 * 1024 * 1024)
                 .enable_all()
                 .build()
-                .expect("build the two-device runtime")
-                .block_on(async {
-                    let devices = TwoDevices::new().await;
-                    test(&devices).await;
-                    devices.close().await;
-                })
+                .expect("build the device test runtime")
+                .block_on(body())
         })
-        .expect("spawn the two-device test thread")
+        .expect("spawn the device test thread")
         .join()
         .unwrap_or_else(|panic| std::panic::resume_unwind(panic));
 }
 
 impl TwoDevices {
     pub(crate) fn a(&self) -> &TestDevice {
-        &self.a
+        &self.library.first
     }
 
     pub(crate) fn b(&self) -> &TestDevice {
@@ -75,7 +103,7 @@ impl TwoDevices {
     }
 }
 
-impl TwoDevices {
+impl Library {
     async fn new() -> Self {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(
@@ -84,16 +112,15 @@ impl TwoDevices {
                 .build()
                 .unwrap(),
         );
-        let dir_a = TempDir::new().unwrap();
-        let app_a = AppDir::at(dir_a.path()).unwrap();
-        let installation_a = coven::TestCoven::new();
-        let handle_a =
-            crate::library::configure_store(installation_a.builder(app_a.store_layout()))
-                .storage_connector(storage.clone())
-                .create_store("Two Devices")
-                .await
-                .unwrap();
-        handle_a
+        let dir = TempDir::new().unwrap();
+        let app = AppDir::at(dir.path()).unwrap();
+        let installation = coven::TestCoven::new();
+        let handle = crate::library::configure_store(installation.builder(app.store_layout()))
+            .storage_connector(storage.clone())
+            .create_store("Two Devices")
+            .await
+            .unwrap();
+        handle
             .setup_s3_storage(
                 storage.config(),
                 "Device A",
@@ -102,7 +129,7 @@ impl TwoDevices {
             )
             .await
             .unwrap();
-        let mut status = handle_a.subscribe_sync_status();
+        let mut status = handle.subscribe_sync_status();
         tokio::time::timeout(
             SETTLE,
             status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. })),
@@ -110,56 +137,76 @@ impl TwoDevices {
         .await
         .unwrap()
         .unwrap();
-        let code = handle_a.restore_code().await.unwrap();
-        let config_a = Config::with_defaults(
-            handle_a.store_id(),
-            app_a.registered_library(&handle_a.store_id().to_string()),
+        let config = Config::with_defaults(
+            handle.store_id(),
+            app.registered_library(&handle.store_id().to_string()),
         );
-        let a = device(dir_a, app_a, config_a, handle_a);
+        Self {
+            first: device(dir, app, config, handle),
+            storage,
+        }
+    }
 
-        let dir_b = TempDir::new().unwrap();
-        let app_b = AppDir::at(dir_b.path()).unwrap();
-        let installation_b = coven::TestCoven::new();
-        let builder = crate::library::configure_store(installation_b.builder(app_b.store_layout()))
-            .storage_connector(Arc::new(storage.for_device()));
+    /// The device that created the library.
+    pub(crate) fn first(&self) -> &TestDevice {
+        &self.first
+    }
+
+    /// Another of the person's devices, restored from `code`, a restore code
+    /// the first device showed, as the app restores one, and syncing.
+    pub(crate) async fn restore(&self, code: &str, name: &str) -> TestDevice {
+        let dir = TempDir::new().unwrap();
+        let app = AppDir::at(dir.path()).unwrap();
+        let installation = coven::TestCoven::new();
+        let builder = crate::library::configure_store(installation.builder(app.store_layout()))
+            .storage_connector(Arc::new(self.storage.for_device()));
         let (_sender, cancel) = tokio::sync::watch::channel(false);
-        let handle_b = coven::restore_from_code(
+        let handle = coven::restore_from_code(
             builder,
-            &code,
+            code,
             Some(coven::S3Credentials {
                 access_key_id: "owner-key".into(),
                 secret_access_key: coven::SecretText::new("owner-secret".into()),
             }),
-            "Device B",
+            name,
             |_| {},
             &cancel,
         )
         .await
         .unwrap();
-        let config_b = Config::with_defaults(
-            handle_b.store_id(),
-            app_b.registered_library(&handle_b.store_id().to_string()),
+        let config = Config::with_defaults(
+            handle.store_id(),
+            app.registered_library(&handle.store_id().to_string()),
         );
-        let b = device(dir_b, app_b, config_b, handle_b);
-        b.database.start_sync().await.unwrap();
-        Self { a, b }
+        let device = device(dir, app, config, handle);
+        device.database.start_sync().await.unwrap();
+        device
+    }
+}
+
+impl TwoDevices {
+    async fn new() -> Self {
+        let library = Library::new().await;
+        let code = library
+            .first
+            .database
+            .generate_restore_code()
+            .await
+            .unwrap();
+        let b = library.restore(&code, "Device B").await;
+        Self { library, b }
     }
 
-    /// Close both devices' libraries: stop each sync loop, end the manager's
-    /// tasks and close its store.
+    /// Close both devices' libraries.
     async fn close(&self) {
-        for device in [&self.a, &self.b] {
-            device
-                .manager
-                .close()
-                .await
-                .expect("close the device's library");
+        for device in [self.a(), &self.b] {
+            device.close().await;
         }
     }
 
     /// Wait until both loops have stopped before making concurrent offline edits.
     pub(crate) async fn pause(&self) {
-        for device in [&self.a, &self.b] {
+        for device in [self.a(), &self.b] {
             device.database.stop_sync();
             let mut status = device.database.subscribe_sync_status();
             tokio::time::timeout(
@@ -173,7 +220,7 @@ impl TwoDevices {
     }
 
     pub(crate) async fn resume(&self) {
-        for device in [&self.a, &self.b] {
+        for device in [self.a(), &self.b] {
             device.database.start_sync().await.unwrap();
         }
     }
@@ -187,7 +234,7 @@ impl TwoDevices {
         Fut: std::future::Future<Output = bool>,
     {
         self.settle_on(what, || async {
-            settled("A", self.a.database().clone()).await
+            settled("A", self.a().database().clone()).await
                 && settled("B", self.b.database().clone()).await
         })
         .await;
@@ -197,7 +244,7 @@ impl TwoDevices {
     /// neither holds anything back: each has pulled what the other wrote.
     pub(crate) async fn converge(&self, query: &str) {
         self.settle_on(&format!("the rows of {query:?}"), || async {
-            sorted_rows(self.a.database(), query).await
+            sorted_rows(self.a().database(), query).await
                 == sorted_rows(self.b.database(), query).await
         })
         .await;
@@ -218,12 +265,12 @@ impl TwoDevices {
         let deadline = tokio::time::Instant::now() + SETTLE;
         let mut settling: Option<(u64, u64)> = None;
         loop {
-            self.a.database().sync_now();
+            self.a().database().sync_now();
             self.b.database().sync_now();
-            let quiet = self.a.database.unsent_writes_for_test().await.unwrap() == 0
+            let quiet = self.a().database.unsent_writes_for_test().await.unwrap() == 0
                 && self.b.database.unsent_writes_for_test().await.unwrap() == 0
                 && condition().await;
-            let (completed_a, completed_b) = (self.a.completed(), self.b.completed());
+            let (completed_a, completed_b) = (self.a().completed(), self.b.completed());
             if !quiet {
                 settling = None;
             } else {
@@ -232,7 +279,7 @@ impl TwoDevices {
                     Some((from_a, from_b))
                         if completed_a >= from_a + 2 && completed_b >= from_b + 2 =>
                     {
-                        if self.a.database.pending().await.unwrap().is_empty()
+                        if self.a().database.pending().await.unwrap().is_empty()
                             && self.b.database.pending().await.unwrap().is_empty()
                         {
                             return;
@@ -245,9 +292,9 @@ impl TwoDevices {
                 panic!(
                     "{what} never settled.\nA held {:?} with {} unsent writes after {}\n\
                      B held {:?} with {} unsent writes after {}",
-                    self.a.database.pending().await.unwrap(),
-                    self.a.database.unsent_writes_for_test().await.unwrap(),
-                    self.a.last(),
+                    self.a().database.pending().await.unwrap(),
+                    self.a().database.unsent_writes_for_test().await.unwrap(),
+                    self.a().last(),
                     self.b.database.pending().await.unwrap(),
                     self.b.database.unsent_writes_for_test().await.unwrap(),
                     self.b.last(),
@@ -276,6 +323,15 @@ struct Cycles {
 }
 
 impl TestDevice {
+    /// Close the device's library: stop its sync loop, end the manager's
+    /// tasks and close its store.
+    pub(crate) async fn close(&self) {
+        self.manager
+            .close()
+            .await
+            .expect("close the device's library");
+    }
+
     fn completed(&self) -> u64 {
         self.cycles.lock().expect("cycle record").completed
     }

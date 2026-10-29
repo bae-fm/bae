@@ -37,10 +37,10 @@ struct MembersSection: View {
     private var closedRequests: Set<String> = []
     @State
     private var showAddDevice = false
-    /// The QR code and recovery code the Add Device sheet shows; nil while
-    /// they generate.
+    /// The QR code and recovery code the Add Device sheet shows, with the
+    /// watch for the device that joins from them; nil while they generate.
     @State
-    private var addDeviceShare: Result<BridgeRestoreCodeShare, Error>?
+    private var addDeviceShare: Result<BridgeAddDevice, Error>?
     @State
     private var removal: Removal?
     /// What the person still has to do in the provider after removing a
@@ -240,7 +240,7 @@ struct MembersSection: View {
     /// Closing the sheet cancels this task, and with it the Rust call.
     private func generateAddDeviceShare() async {
         do {
-            addDeviceShare = .success(try await sync.generateRestoreCode())
+            addDeviceShare = .success(try await sync.addDevice())
         }
         catch is CancellationError {
             logger.debug("add-device code generation cancelled")

@@ -68,13 +68,22 @@ impl LibraryManager {
         self.database.subscribe_membership()
     }
 
-    /// This person's device that joins after the subscription's first
-    /// result: none until one does. Add Device's sheet watches it while it
-    /// shows the code.
+    /// Add Device's sheet: this person's restore code to show, and the watch
+    /// for their device that joins from it. The person's devices are read
+    /// before the code is made, so a device restored from this code is never
+    /// among them.
+    pub async fn add_device(&self) -> Result<crate::sync::membership::AddingDevice, LibraryError> {
+        let watch = crate::sync::membership::AddedDeviceWatch::new(&self.get_members().await?);
+        let share = self.generate_restore_code().await?;
+        Ok(crate::sync::membership::AddingDevice { share, watch })
+    }
+
+    /// This person's device that `watch` finds: none until one joins. Add
+    /// Device's sheet subscribes while it shows the code.
     pub fn subscribe_added_device(
         &self,
+        watch: crate::sync::membership::AddedDeviceWatch,
     ) -> coven::LiveQuery<Option<crate::sync::membership::ActiveDevice>> {
-        let watch = crate::sync::membership::AddedDeviceWatch::default();
         self.subscribe_members()
             .process(move |membership| Ok(watch.added(&membership)))
     }

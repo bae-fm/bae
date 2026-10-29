@@ -147,6 +147,18 @@
                         qrCarriesS3Key: false
                     )
                 },
+                addDevice: {
+                    BridgeAddDevice(
+                        share: BridgeRestoreCodeShare(
+                            code: recoveryCode,
+                            qrText: recoveryCode,
+                            qrCarriesS3Key: false
+                        ),
+                        watch: BridgeAddedDeviceWatch(
+                            noHandle: BridgeAddedDeviceWatch.NoHandle()
+                        )
+                    )
+                },
                 cloudOnlyReleaseCount: { 0 }
             )
         }

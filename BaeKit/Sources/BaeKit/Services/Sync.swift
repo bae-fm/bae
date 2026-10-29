@@ -8,6 +8,9 @@ public final class Sync: Sendable, Observable {
         @Sendable (BridgeSaveSyncConfig) async throws -> BridgeStorageSetup
     public let generateRestoreCode:
         @Sendable () async throws -> BridgeRestoreCodeShare
+    /// Add Device's code, with the watch for the person's device that joins
+    /// from it.
+    public let addDevice: @Sendable () async throws -> BridgeAddDevice
     public let removeMember: @Sendable (String) async throws -> Void
     public let removeDevice:
         @Sendable (UInt64) async throws -> BridgeProviderSignOut?
@@ -54,6 +57,9 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable () async throws -> BridgeRestoreCodeShare = {
                 throw StubError.notImplemented
             },
+        addDevice: @escaping @Sendable () async throws -> BridgeAddDevice = {
+            throw StubError.notImplemented
+        },
         removeMember: @escaping @Sendable (String) async throws -> Void = { _ in
             throw StubError.notImplemented
         },
@@ -130,6 +136,7 @@ public final class Sync: Sendable, Observable {
         self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
         self.generateRestoreCode = generateRestoreCode
+        self.addDevice = addDevice
         self.removeMember = removeMember
         self.removeDevice = removeDevice
         self.setMemberRole = setMemberRole
@@ -167,6 +174,7 @@ public final class Sync: Sendable, Observable {
                 )
             },
             generateRestoreCode: { try await handle.generateRestoreCode() },
+            addDevice: { try await handle.addDevice() },
             removeMember: { try await handle.removeMember(member: $0) },
             removeDevice: { try await handle.removeDevice(device: $0) },
             setMemberRole: {

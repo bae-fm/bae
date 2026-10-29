@@ -3,13 +3,14 @@ import SwiftUI
 
 /// Adds another of this person's devices: the QR code the new device scans,
 /// and the person's recovery code to type there instead. `result` is nil while
-/// the presenter generates them. While it shows, it watches the person's
-/// devices, and once a new one joins it says so in place of the code.
+/// the presenter generates them. While it shows the code, it runs the watch
+/// that came with it, and once a new device joins it says so in place of the
+/// code.
 struct AddDeviceSheet: View {
     @Environment(MembershipStore.self)
     private var store
     @Binding
-    var result: Result<BridgeRestoreCodeShare, Error>?
+    var result: Result<BridgeAddDevice, Error>?
     let onDismiss: () -> Void
 
     var body: some View {
@@ -40,7 +41,16 @@ struct AddDeviceSheet: View {
             }
         }
         .frame(width: 400, height: 600)
-        .task { await store.watchForAddedDevice() }
+        .task(id: watch.map(ObjectIdentifier.init)) {
+            guard let watch else { return }
+            await store.watchForAddedDevice(watch)
+        }
+    }
+
+    /// The watch for the device that joins from the code shown.
+    private var watch: BridgeAddedDeviceWatch? {
+        guard case .success(let adding) = result else { return nil }
+        return adding.watch
     }
 
     @ViewBuilder
@@ -52,9 +62,9 @@ struct AddDeviceSheet: View {
                 ProgressView()
                 Spacer()
             }
-        case .success(let share):
+        case .success(let adding):
             ScrollView {
-                shareContent(share)
+                shareContent(adding.share)
                     .padding()
             }
         case .failure(let error):
@@ -110,10 +120,24 @@ struct AddDeviceSheet: View {
     /// Holds the result the presenter normally writes after the sheet is up.
     private struct AddDeviceSheetPreview: View {
         @State
-        var result: Result<BridgeRestoreCodeShare, Error>?
+        var result: Result<BridgeAddDevice, Error>?
 
         var body: some View {
             AddDeviceSheet(result: $result, onDismiss: {})
+        }
+
+        /// A code to show, with a watch for no device in particular.
+        static func adding(_ share: BridgeRestoreCodeShare) -> Result<
+            BridgeAddDevice, Error
+        > {
+            .success(
+                BridgeAddDevice(
+                    share: share,
+                    watch: BridgeAddedDeviceWatch(
+                        noHandle: BridgeAddedDeviceWatch.NoHandle()
+                    )
+                )
+            )
         }
 
         /// The person's devices, where `addedDevice` has joined.
@@ -137,7 +161,7 @@ struct AddDeviceSheet: View {
 
     #Preview("Code") {
         AddDeviceSheetPreview(
-            result: .success(
+            result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
                     code: PreviewData.recoveryCode,
                     qrText: PreviewData.recoveryCode,
@@ -150,7 +174,7 @@ struct AddDeviceSheet: View {
 
     #Preview("Code with S3 key") {
         AddDeviceSheetPreview(
-            result: .success(
+            result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
                     code: PreviewData.recoveryCode,
                     qrText: "\(PreviewData.recoveryCode).s3-key-preview",
@@ -163,7 +187,7 @@ struct AddDeviceSheet: View {
 
     #Preview("Device added") {
         AddDeviceSheetPreview(
-            result: .success(
+            result: AddDeviceSheetPreview.adding(
                 BridgeRestoreCodeShare(
                     code: PreviewData.recoveryCode,
                     qrText: PreviewData.recoveryCode,

@@ -10,6 +10,8 @@ import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.ArtistDetailSubscription
 import uniffi.bae_bridge.ArtistSearchSubscription
 import uniffi.bae_bridge.BridgeAbandonedRecord
+import uniffi.bae_bridge.BridgeAddDevice
+import uniffi.bae_bridge.BridgeAddedDeviceWatch
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -326,6 +328,8 @@ internal open class FakeAppHandle(
 
     override suspend fun generateRestoreCode(): BridgeRestoreCodeShare = unfaked("generateRestoreCode")
 
+    override suspend fun addDevice(): BridgeAddDevice = unfaked("addDevice")
+
     override suspend fun getAlbumIndex(
         sortCriteria: List<BridgeSortCriterion>,
         albumId: String,
@@ -616,7 +620,10 @@ internal open class FakeAppHandle(
 
     override fun subscribeMembers(callback: MembershipCallback): LiveSubscription = unfaked("subscribeMembers")
 
-    override fun subscribeAddedDevice(callback: AddedDeviceCallback): LiveSubscription = unfaked("subscribeAddedDevice")
+    override fun subscribeAddedDevice(
+        watch: BridgeAddedDeviceWatch,
+        callback: AddedDeviceCallback,
+    ): LiveSubscription = unfaked("subscribeAddedDevice")
 
     override suspend fun appendPlaylistEntry(
         playlist: String,

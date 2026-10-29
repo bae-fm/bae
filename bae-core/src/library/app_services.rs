@@ -449,7 +449,8 @@ impl AppServices {
     delegate_async!(manager, get_members => get_members() -> Result<crate::sync::membership::Membership, crate::library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, subscribe_members => subscribe_members() -> coven::LiveQuery<crate::sync::membership::Membership>);
-    delegate_sync!(manager, subscribe_added_device => subscribe_added_device() -> coven::LiveQuery<Option<crate::sync::membership::ActiveDevice>>);
+    delegate_async!(manager, add_device => add_device() -> Result<crate::sync::membership::AddingDevice, crate::library::LibraryError>);
+    delegate_sync!(manager, subscribe_added_device => subscribe_added_device(watch: crate::sync::membership::AddedDeviceWatch) -> coven::LiveQuery<Option<crate::sync::membership::ActiveDevice>>);
     delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, crate::library::LibraryError>);
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::Invite, crate::library::LibraryError>);

@@ -14,6 +14,7 @@ import fm.bae.app.LocalBugReports
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLiveSubscription
 import fm.bae.app.ui.BaeTheme
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -22,25 +23,37 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AddedDeviceCallback
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeAddDevice
+import uniffi.bae_bridge.BridgeAddedDeviceWatch
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.LiveSubscription
+import uniffi.bae_bridge.NoHandle
 
-/** While Add device shows the code it watches the person's devices, and says so once a new one joins. */
+/** While Add device shows the code it runs the watch that came with it, and says so once a new device joins. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class AddDeviceDialogTest {
     @get:Rule
     val compose = createComposeRule()
 
-    /** A handle that keeps the added-device watch's callback, so the test delivers what the live read would. */
+    /** A handle that keeps the added-device watch and its callback, so the test delivers what the live read would. */
     private class AddedDeviceHandle : FakeAppHandle() {
+        val adding =
+            BridgeAddDevice(
+                share = BridgeRestoreCodeShare(code = "CVR1-CODE", qrText = "CVR1-CODE", qrCarriesS3Key = false),
+                watch = BridgeAddedDeviceWatch(NoHandle),
+            )
+        var watch: BridgeAddedDeviceWatch? = null
         var callback: AddedDeviceCallback? = null
         val subscription = FakeLiveSubscription()
 
-        override suspend fun generateRestoreCode() =
-            BridgeRestoreCodeShare(code = "CVR1-CODE", qrText = "CVR1-CODE", qrCarriesS3Key = false)
+        override suspend fun addDevice() = adding
 
-        override fun subscribeAddedDevice(callback: AddedDeviceCallback): LiveSubscription {
+        override fun subscribeAddedDevice(
+            watch: BridgeAddedDeviceWatch,
+            callback: AddedDeviceCallback,
+        ): LiveSubscription {
+            this.watch = watch
             this.callback = callback
             return subscription
         }
@@ -59,6 +72,7 @@ class AddDeviceDialogTest {
         }
         compose.waitForIdle()
         val callback = checkNotNull(handle.callback) { "the dialog watches the person's devices" }
+        assertSame("the dialog runs the watch that came with its code", handle.adding.watch, handle.watch)
 
         // The live read's first value: no device has joined yet.
         callback.onValue(null)

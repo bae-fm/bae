@@ -17,7 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +43,7 @@ import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AddedDeviceCallback
 import uniffi.bae_bridge.AppHandleInterface
@@ -56,8 +56,8 @@ private val logger = BaeLogger("bae.AddDeviceDialog")
 /**
  * Adds another of this person's devices: their recovery code, generated on
  * demand, as a QR the new device scans and as text to type there instead.
- * While it shows, it watches the person's devices, and once a new one joins it
- * says so in place of the code.
+ * While it shows the code, it runs the watch that came with it, and once a new
+ * device joins it says so in place of the code.
  */
 @Composable
 internal fun AddDeviceDialog(
@@ -74,9 +74,22 @@ internal fun AddDeviceDialog(
         error = context.displayError(failure) ?: DisplayError(failure.toString())
     }
 
-    DisposableEffect(appHandle) {
+    LaunchedEffect(Unit) {
+        val adding =
+            try {
+                appHandle.addDevice()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                logger.error("Failed to generate the add-device code", e)
+                show(e)
+                return@LaunchedEffect
+            }
+        share = adding.share
+        // The watch came with the code: it finds the device that joins from it.
         val watch =
             appHandle.subscribeAddedDevice(
+                adding.watch,
                 object : AddedDeviceCallback {
                     override fun onValue(device: BridgeActiveDevice?) {
                         scope.launch(Dispatchers.Main.immediate) { added = device }
@@ -88,17 +101,10 @@ internal fun AddDeviceDialog(
                     }
                 },
             )
-        onDispose { watch.cancel() }
-    }
-
-    LaunchedEffect(Unit) {
         try {
-            share = appHandle.generateRestoreCode()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: BridgeException) {
-            logger.error("Failed to generate the add-device code", e)
-            show(e)
+            awaitCancellation()
+        } finally {
+            watch.cancel()
         }
     }
 

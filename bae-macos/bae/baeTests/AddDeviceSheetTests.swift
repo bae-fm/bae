@@ -8,15 +8,21 @@ import Testing
 /// `AddDeviceSheet` takes its `result` as a `@Binding` because the presenter
 /// generates the code off-main *after* the sheet is already up: the
 /// sheet must re-render when that write lands rather than show the loading
-/// snapshot it opened with. It also watches the person's devices while it
-/// shows, and says so in place of the code once a new one joins. These drive
-/// the real sheet and assert the rendered pixels change when either lands.
+/// snapshot it opened with. Once it shows the code it runs the watch that
+/// came with it, and says so in place of the code once a new device joins.
+/// These drive the real sheet and assert the rendered pixels change when
+/// either lands.
 @Suite("AddDeviceSheet binding")
 struct AddDeviceSheetTests {
-    private static let share = BridgeRestoreCodeShare(
-        code: "PAIR-1234-5678",
-        qrText: "PAIR-1234-5678",
-        qrCarriesS3Key: false
+    private static let adding = BridgeAddDevice(
+        share: BridgeRestoreCodeShare(
+            code: "PAIR-1234-5678",
+            qrText: "PAIR-1234-5678",
+            qrCarriesS3Key: false
+        ),
+        watch: BridgeAddedDeviceWatch(
+            noHandle: BridgeAddedDeviceWatch.NoHandle()
+        )
     )
 
     @MainActor
@@ -38,7 +44,7 @@ struct AddDeviceSheetTests {
 
             // The presenter's off-main write lands: the binding resolves to a
             // code, and the sheet draws something else.
-            holder.result = .success(Self.share)
+            holder.result = .success(Self.adding)
             try await Wait.until {
                 try await SnapshotTestSupport.capturePNG(host, size: size)
                     != loading
@@ -50,7 +56,7 @@ struct AddDeviceSheetTests {
     @Test("the sheet replaces the code once the person's new device joins")
     func sheetSaysWhenTheNewDeviceJoins() async throws {
         let holder = AddDeviceResultHolder()
-        holder.result = .success(Self.share)
+        holder.result = .success(Self.adding)
         let handle = AddedDeviceHandle()
         let store = MembershipStore(handle: handle)
         let size = NSSize(width: 400, height: 480)
@@ -59,6 +65,8 @@ struct AddDeviceSheetTests {
             size: size
         ) { _, host in
             try await Wait.until { handle.callback != nil }
+            // The sheet runs the watch that came with its code.
+            #expect(handle.watch === Self.adding.watch)
             let callback = try #require(handle.callback)
             // The live read's first value: no device has joined yet.
             callback.onValue(device: nil)
@@ -92,7 +100,7 @@ struct AddDeviceSheetTests {
 @Observable
 @MainActor
 private final class AddDeviceResultHolder {
-    var result: Result<BridgeRestoreCodeShare, Error>?
+    var result: Result<BridgeAddDevice, Error>?
 }
 
 private struct AddDeviceHarness: View {
@@ -104,9 +112,11 @@ private struct AddDeviceHarness: View {
     }
 }
 
-/// A handle-less `AppHandle` that keeps the added-device watch's callback, so
-/// a test delivers what the live read would, and says when the watch ends.
+/// A handle-less `AppHandle` that keeps the added-device watch and its
+/// callback, so a test delivers what the live read would, and says when the
+/// watch ends.
 private final class AddedDeviceHandle: AppHandle, @unchecked Sendable {
+    private(set) var watch: BridgeAddedDeviceWatch?
     private(set) var callback: (any AddedDeviceCallback)?
     private(set) var cancelled = false
 
@@ -119,8 +129,10 @@ private final class AddedDeviceHandle: AppHandle, @unchecked Sendable {
     }
 
     override func subscribeAddedDevice(
+        watch: BridgeAddedDeviceWatch,
         callback: any AddedDeviceCallback
     ) -> LiveSubscription {
+        self.watch = watch
         self.callback = callback
         return CancelRecordingSubscription { [weak self] in
             self?.cancelled = true
