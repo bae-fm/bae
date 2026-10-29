@@ -443,6 +443,36 @@ fn a_replacement_invite_writes_no_profile() {
             })
             .collect();
         assert_eq!(read, listed);
+        // Everyone with a profile or a membership, by member id, each with
+        // both where they have them.
+        let people = owner.people().await.unwrap();
+        let mut ids: Vec<_> = owner
+            .profiles()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|profile| profile.id)
+            .chain(membership.members.iter().map(|member| member.id))
+            .collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(
+            people.iter().map(|person| person.id).collect::<Vec<_>>(),
+            ids
+        );
+        for person in &people {
+            assert_eq!(person.profile, owner.profile(person.id).await.unwrap());
+            assert_eq!(
+                person.membership.as_ref(),
+                membership
+                    .members
+                    .iter()
+                    .find(|member| member.id == person.id)
+            );
+        }
+        assert!(people.iter().any(|person| person.id == rowan.id
+            && person.profile.is_some()
+            && person.membership.is_some()));
         replacement.close().await.unwrap();
         household.owner.close().await.unwrap();
     });

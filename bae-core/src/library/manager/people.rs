@@ -41,28 +41,7 @@ impl LibraryManager {
     }
 
     pub async fn people(&self) -> Result<Vec<crate::people::Person>, LibraryError> {
-        let mut people = std::collections::BTreeMap::new();
-        for profile in self.database.profiles().await? {
-            people.insert(
-                profile.id,
-                crate::people::Person {
-                    id: profile.id,
-                    profile: Some(profile),
-                    membership: None,
-                },
-            );
-        }
-        for membership in self.get_members().await?.members {
-            let person = people
-                .entry(membership.id)
-                .or_insert_with(|| crate::people::Person {
-                    id: membership.id,
-                    profile: None,
-                    membership: None,
-                });
-            person.membership = Some(membership);
-        }
-        Ok(people.into_values().collect())
+        Ok(self.database.people().await?)
     }
 
     /// This person's restore code, and for the QR code the one that holds, on

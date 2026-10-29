@@ -1,9 +1,14 @@
+use super::membership::{member_columns, member_row, SELF_IS_ADMIN};
 use super::*;
-use crate::people::{PersonProfile, ProfileError, Sharing};
+use crate::people::{Person, PersonProfile, ProfileError, Sharing};
 
+/// The columns [`profile_row`] reads, of `people` or of its row `p`.
 macro_rules! profile_columns {
     () => {
         "id, name, private_circle, history_sharing, avatar_id"
+    };
+    (p) => {
+        "p.id, p.name, p.private_circle, p.history_sharing, p.avatar_id"
     };
 }
 
@@ -28,6 +33,29 @@ impl Database {
 
     pub async fn profiles(&self) -> Result<Vec<PersonProfile>, DbError> {
         self.read(|sql| Ok(profile_rows(&sql)?)).await
+    }
+
+    /// Everyone with a profile or a membership, by member id: a removed
+    /// person keeps their profile, and a new member may still be setting
+    /// theirs up.
+    pub async fn people(&self) -> Result<Vec<Person>, DbError> {
+        self.read(|sql| {
+            let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
+            Ok(sql.query(PEOPLE_SQL, [], |row| {
+                Ok(Person {
+                    id: row.get(0)?,
+                    profile: match row.get::<_, Option<String>>(1)? {
+                        Some(_) => Some(profile_row_at(row, 1)?),
+                        None => None,
+                    },
+                    membership: match row.get::<_, Option<String>>(6)? {
+                        Some(_) => Some(member_row(row, 6, self_is_admin)?),
+                        None => None,
+                    },
+                })
+            })?)
+        })
+        .await
     }
 
     pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>> {
@@ -229,14 +257,33 @@ fn profile_name(name: &str) -> Result<String, ProfileError> {
 }
 
 fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
+    profile_row_at(row, 0)
+}
+
+/// The profile whose [`profile_columns`] start at column `first`.
+fn profile_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<PersonProfile> {
     Ok(PersonProfile {
-        id: coven::MemberId(uuid_column(row, 0)?),
-        name: row.get(1)?,
-        private_circle: coven::CircleId(uuid_column(row, 2)?),
-        history_sharing: Sharing::from_sql(&row.get::<_, String>(3)?)?,
-        avatar_id: row.get(4)?,
+        id: coven::MemberId(uuid_column(row, first)?),
+        name: row.get(first + 1)?,
+        private_circle: coven::CircleId(uuid_column(row, first + 2)?),
+        history_sharing: Sharing::from_sql(&row.get::<_, String>(first + 3)?)?,
+        avatar_id: row.get(first + 4)?,
     })
 }
+
+/// Everyone with a profile or a current membership, by member id, with
+/// their profile's columns and then their member's.
+const PEOPLE_SQL: &str = concat!(
+    "WITH person (id) AS \
+         (SELECT id FROM people UNION SELECT member FROM coven_members WHERE NOT removed) \
+     SELECT person.id, ",
+    profile_columns!(p),
+    ", ",
+    member_columns!(),
+    " FROM person LEFT JOIN people AS p ON p.id = person.id \
+     LEFT JOIN coven_members AS m ON m.member = person.id AND NOT m.removed \
+     ORDER BY person.id"
+);
 
 /// The member using this device, with their profile when they made one. The
 /// view's columns and the profile's share no name.
