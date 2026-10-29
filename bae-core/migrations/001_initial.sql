@@ -1079,10 +1079,8 @@ BEGIN
     INSERT INTO album_listing_refresh (album_id) VALUES (NEW.id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS album_release_added AFTER INSERT ON releases
-BEGIN
-    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
-END;
+-- A release arriving lists its album through `release_added`, below, which
+-- lists the release in the same step.
 
 CREATE TRIGGER IF NOT EXISTS album_release_moved AFTER UPDATE OF album_id ON releases
 BEGIN
@@ -1334,9 +1332,17 @@ BEGIN
         download_queued = excluded.download_queued;
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_release_added AFTER INSERT ON releases
+-- A release arriving lists its album first. An album listed just now lists
+-- every release it holds, this one with them (`release_listing_album_listed`);
+-- a release joining an album already listed is refreshed by itself. So its row
+-- is refreshed once either way. The two steps share one trigger because their
+-- order decides that, and SQLite names no order for several triggers on one
+-- event.
+CREATE TRIGGER IF NOT EXISTS release_added AFTER INSERT ON releases
 BEGIN
-    INSERT INTO release_listing_refresh (release_id) VALUES (NEW.id);
+    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
+    INSERT INTO release_listing_refresh (release_id)
+    SELECT NEW.id WHERE NOT EXISTS (SELECT 1 FROM release_listing WHERE release_id = NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_release_changed AFTER UPDATE OF album_id, media, created_at ON releases
