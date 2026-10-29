@@ -2,7 +2,7 @@
 //! off it, its draft's provenance, its release link, and its file decisions.
 
 use super::super::query::CandidateRows;
-use super::edit_rows::{apply_sheet_disc_row, read_sheet_disc_row};
+use super::edit_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::load_lookup_choices_on;
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{
@@ -353,7 +353,6 @@ pub(crate) fn load_verdicts_on(
 struct StateRow {
     content_hash: String,
     folder_path: String,
-    edit_revision: i64,
     metadata_revision: i64,
 }
 
@@ -361,12 +360,11 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
     Ok(StateRow {
         content_hash: row.get("content_hash")?,
         folder_path: row.get("folder_path")?,
-        edit_revision: row.get("edit_revision")?,
         metadata_revision: row.get("metadata_revision")?,
     })
 }
 
-const STATE_COLUMNS: &str = "content_hash, folder_path, edit_revision, metadata_revision";
+const STATE_COLUMNS: &str = "content_hash, folder_path, metadata_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
      year, labels, country, region, status, packaging, discogs_details, \
@@ -376,8 +374,6 @@ const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_i
      by_disc_id, by_barcode, by_catalog, by_isrc, by_search, by_pressing, narrowed_out, \
      document_failure, document_failure_status, album_first_year, \
      track_titles, notes, named_note";
-
-const SHEET_DISC_COLUMNS: &str = "content_hash, sheet_id, disc, disc_number";
 
 /// Every match a read fetched, still to be assembled.
 type FinishMatches =
@@ -606,10 +602,9 @@ pub(crate) fn load_states_rows_on(
         let mut out = HashMap::with_capacity(states.len());
         for state in states {
             let state = state?;
-            let mut file_edits = edits.remove(&state.content_hash).unwrap_or_default();
-            file_edits.revision = u64::try_from(state.edit_revision).map_err(|error| {
+            let file_edits = edits.remove(&state.content_hash).ok_or_else(|| {
                 DbError::Message(format!(
-                    "import candidate {} has a negative edit revision: {error}",
+                    "candidate {}'s file decisions vanished while it was read",
                     state.content_hash
                 ))
             })?;
@@ -653,53 +648,30 @@ pub(crate) fn load_states_rows_on(
     })
 }
 
-/// The sheet decisions of every candidate, or of the one `only` names.
-/// `CandidateFileEdits::revision` is left at zero — it lives on the state row,
-/// which is what fills it in.
 /// The file decisions a read fetched, still to be assembled — boxed so a read
 /// on either connection hands back one type.
 type FinishEdits<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 
+/// The file decisions of every candidate, or of the one `only` names, each
+/// at the revision its state row holds.
 fn load_edits_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<FinishEdits<HashMap<String, CandidateFileEdits>>, DbError> {
-    let filter = only.filter("content_hash");
-    let clause = &filter.clause;
+    let filter = only.filter("state.content_hash");
     let rows = sql.query(
         &format!(
-            "SELECT {SHEET_DISC_COLUMNS} FROM import_candidate_sheet_disc \
-             {clause} \
-             ORDER BY content_hash, sheet_id"
+            "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
+             FROM import_candidate_state AS state {}",
+            filter.clause
         ),
         filter.params().as_slice(),
-        |row| Ok(read_sheet_disc_row(row)),
-    )?;
-    let references = sql.query(
-        &format!("SELECT content_hash, sheet_id, file_reference, file_id FROM import_candidate_sheet_reference {clause} ORDER BY content_hash, sheet_id, file_reference"),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?, row.get::<_, Option<String>>(3)?)),
+        read_file_edits,
     )?;
     Ok(Box::new(move || {
-        let mut edits: HashMap<String, CandidateFileEdits> = HashMap::new();
-        for row in rows {
-            let row = row?;
-            let entry = edits.entry(row.content_hash.clone()).or_default();
-            apply_sheet_disc_row(entry, row)?;
-        }
-        for (hash, sheet, reference, file) in references {
-            use crate::import::folder_scanner::UserSheetBinding;
-            let decision = match file {
-                Some(file_id) => UserSheetBinding::Describes { file_id },
-                None => UserSheetBinding::Cleared,
-            };
-            edits
-                .entry(hash)
-                .or_default()
-                .sheet_bindings
-                .set_reference(sheet, reference, decision);
-        }
-        Ok(edits)
+        rows.into_iter()
+            .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
+            .collect()
     }))
 }
 
@@ -710,61 +682,52 @@ fn load_edits_on(
 pub(crate) fn load_stored_candidate_edits_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
 ) -> Result<FinishEdits<crate::import::folder_scanner::StoredCandidateEdits>, DbError> {
-    let revisions = sql.query(
-        "SELECT content_hash, edit_revision FROM import_candidate_state \
-         WHERE edit_revision > 0",
+    let rows = sql.query(
+        &format!(
+            "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
+             FROM import_candidate_state AS state \
+             WHERE state.edit_revision > 0 \
+                OR EXISTS (SELECT 1 FROM import_candidate_sheet_disc AS decided \
+                           WHERE decided.content_hash = state.content_hash) \
+                OR EXISTS (SELECT 1 FROM import_candidate_sheet_reference AS decided \
+                           WHERE decided.content_hash = state.content_hash)"
+        ),
         [],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+        read_file_edits,
     )?;
-    let edits = load_edits_on(sql, CandidateRows::All)?;
     Ok(Box::new(move || {
-        let mut edits = edits()?;
-        for (content_hash, revision) in revisions {
-            edits.entry(content_hash.clone()).or_default().revision = u64::try_from(revision)
-                .map_err(|error| {
-                    DbError::Message(format!(
-                        "import candidate {content_hash} has a negative edit revision: {error}"
-                    ))
-                })?;
-        }
+        let edits = rows
+            .into_iter()
+            .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
+            .collect::<Result<HashMap<_, _>, DbError>>()?;
         Ok(crate::import::folder_scanner::StoredCandidateEdits::new(
             edits,
         ))
     }))
 }
 
-/// One candidate's file decisions, revision included. Progressive scans call
-/// this after they compute a content hash, so each emitted row performs one
-/// indexed lookup instead of rereading the whole table.
+/// One candidate's file decisions, revision included; none at revision zero
+/// for a candidate with no state row. Progressive scans call this after they
+/// compute a content hash, so each emitted row performs one indexed lookup
+/// instead of rereading the whole table.
 pub(crate) fn load_candidate_file_edits_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     content_hash: &str,
 ) -> Result<FinishEdits<CandidateFileEdits>, DbError> {
-    let revision: Option<i64> = sql
+    let stored = sql
         .query_row(
-            "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
+            &format!(
+                "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
+                 FROM import_candidate_state AS state WHERE state.content_hash = ?"
+            ),
             [content_hash],
-            |row| row.get(0),
+            read_file_edits,
         )
         .optional()?;
-    let edits = if revision.is_some() {
-        Some(load_edits_on(sql, CandidateRows::One(content_hash))?)
-    } else {
-        None
-    };
-    let content_hash = content_hash.to_string();
     Ok(Box::new(move || {
-        let Some(revision) = revision else {
-            return Ok(CandidateFileEdits::default());
-        };
-        let mut edits = edits.expect("a stored revision has fetched file edits")()?
-            .remove(&content_hash)
-            .unwrap_or_default();
-        edits.revision = u64::try_from(revision).map_err(|error| {
-            DbError::Message(format!(
-                "import candidate {content_hash} has a negative edit revision: {error}"
-            ))
-        })?;
-        Ok(edits)
+        stored.map_or_else(
+            || Ok(CandidateFileEdits::default()),
+            |stored| stored.edits(),
+        )
     }))
 }

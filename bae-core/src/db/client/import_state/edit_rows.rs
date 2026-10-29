@@ -52,47 +52,111 @@ pub(super) fn insert_file_edits(
     Ok(())
 }
 
-pub(super) struct SheetDiscRow {
-    pub(super) content_hash: String,
+/// A candidate's file decisions as columns of a read that joins its state
+/// row as `state`: the revision they stand at, and the sheet discs and the
+/// `FILE` reference bindings riding on it as JSON arrays.
+pub(super) const FILE_EDITS_COLUMNS: &str = "state.edit_revision AS edits_revision, \
+     (SELECT json_group_array(json_object( \
+          'sheet_id', disc.sheet_id, 'disc', disc.disc, 'disc_number', disc.disc_number) \
+          ORDER BY disc.sheet_id) \
+      FROM import_candidate_sheet_disc AS disc \
+      WHERE disc.content_hash = state.content_hash) AS edits_sheet_discs, \
+     (SELECT json_group_array(json_object( \
+          'sheet_id', binding.sheet_id, 'file_reference', binding.file_reference, \
+          'file_id', binding.file_id) ORDER BY binding.sheet_id, binding.file_reference) \
+      FROM import_candidate_sheet_reference AS binding \
+      WHERE binding.content_hash = state.content_hash) AS edits_sheet_references";
+
+/// One candidate's [`FILE_EDITS_COLUMNS`] as SQLite hands them over, its
+/// decisions still JSON.
+pub(super) struct StoredFileEdits {
+    content_hash: String,
+    revision: i64,
+    sheet_discs: String,
+    sheet_references: String,
+}
+
+/// The [`FILE_EDITS_COLUMNS`] of `row`, whose state row is `content_hash`.
+pub(super) fn read_file_edits(row: &Row<'_>) -> rusqlite::Result<StoredFileEdits> {
+    Ok(StoredFileEdits {
+        content_hash: row.get("content_hash")?,
+        revision: row.get("edits_revision")?,
+        sheet_discs: row.get("edits_sheet_discs")?,
+        sheet_references: row.get("edits_sheet_references")?,
+    })
+}
+
+/// One sheet's disc as [`FILE_EDITS_COLUMNS`] holds it.
+#[derive(serde::Deserialize)]
+struct StoredSheetDisc {
     sheet_id: String,
     disc: String,
     disc_number: Option<i64>,
 }
 
-pub(super) fn read_sheet_disc_row(row: &Row<'_>) -> Result<SheetDiscRow, DbError> {
-    Ok(SheetDiscRow {
-        content_hash: row.get("content_hash")?,
-        sheet_id: row.get("sheet_id")?,
-        disc: row.get("disc")?,
-        disc_number: row.get("disc_number")?,
-    })
+/// One `FILE` reference binding as [`FILE_EDITS_COLUMNS`] holds it.
+#[derive(serde::Deserialize)]
+struct StoredSheetReference {
+    sheet_id: String,
+    file_reference: String,
+    file_id: Option<String>,
 }
 
-/// Fold one stored row into the decisions being assembled for its candidate.
-pub(super) fn apply_sheet_disc_row(
-    edits: &mut CandidateFileEdits,
-    row: SheetDiscRow,
-) -> Result<(), DbError> {
-    let disc = match row.disc.as_str() {
-        "ignored" => SheetDisc::Ignored,
-        "disc" => {
-            let number = row.disc_number.ok_or_else(|| {
+impl StoredFileEdits {
+    /// The candidate the decisions are of.
+    pub(super) fn content_hash(&self) -> &str {
+        &self.content_hash
+    }
+
+    pub(super) fn edits(self) -> Result<CandidateFileEdits, DbError> {
+        let content_hash = &self.content_hash;
+        let unreadable_json = |what: &str, json: &str, error: serde_json::Error| {
+            DbError::Message(format!("{content_hash}'s stored {what} {json:?}: {error}"))
+        };
+        let mut edits = CandidateFileEdits {
+            revision: u64::try_from(self.revision).map_err(|error| {
                 DbError::Message(format!(
-                    "the disc stored for {} states no number",
-                    row.sheet_id
+                    "import candidate {content_hash} has a negative edit revision: {error}"
                 ))
-            })?;
-            SheetDisc::Disc {
-                number: u32::try_from(number).map_err(|error| {
-                    DbError::Message(format!(
-                        "the disc stored for {} is numbered {number}: {error}",
-                        row.sheet_id
-                    ))
-                })?,
-            }
+            })?,
+            ..CandidateFileEdits::default()
+        };
+        let discs: Vec<StoredSheetDisc> = serde_json::from_str(&self.sheet_discs)
+            .map_err(|error| unreadable_json("sheet discs", &self.sheet_discs, error))?;
+        for stored in discs {
+            let disc = match stored.disc.as_str() {
+                "ignored" => SheetDisc::Ignored,
+                "disc" => {
+                    let number = stored.disc_number.ok_or_else(|| {
+                        DbError::Message(format!(
+                            "the disc stored for {} states no number",
+                            stored.sheet_id
+                        ))
+                    })?;
+                    SheetDisc::Disc {
+                        number: u32::try_from(number).map_err(|error| {
+                            DbError::Message(format!(
+                                "the disc stored for {} is numbered {number}: {error}",
+                                stored.sheet_id
+                            ))
+                        })?,
+                    }
+                }
+                other => return Err(unreadable("disc", other)),
+            };
+            edits.sheet_discs.set(stored.sheet_id, disc);
         }
-        other => return Err(unreadable("disc", other)),
-    };
-    edits.sheet_discs.set(row.sheet_id, disc);
-    Ok(())
+        let references: Vec<StoredSheetReference> = serde_json::from_str(&self.sheet_references)
+            .map_err(|error| unreadable_json("sheet references", &self.sheet_references, error))?;
+        for stored in references {
+            let decision = match stored.file_id {
+                Some(file_id) => UserSheetBinding::Describes { file_id },
+                None => UserSheetBinding::Cleared,
+            };
+            edits
+                .sheet_bindings
+                .set_reference(stored.sheet_id, stored.file_reference, decision);
+        }
+        Ok(edits)
+    }
 }

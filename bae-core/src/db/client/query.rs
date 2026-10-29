@@ -24,6 +24,9 @@ pub(super) fn in_clause_placeholders(count: usize) -> String {
 #[cfg(desktop)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum CandidateRows<'a> {
+    /// Every candidate, which only the tests that read back everything a
+    /// write stored ask for.
+    #[cfg(test)]
     All,
     One(&'a str),
     Of(&'a [&'a str]),
@@ -35,6 +38,7 @@ impl<'a> CandidateRows<'a> {
     /// binds; no clause for every candidate.
     pub(crate) fn filter(self, column: &str) -> CandidateFilter {
         match self {
+            #[cfg(test)]
             Self::All => CandidateFilter {
                 clause: String::new(),
                 binds: CandidateBinds::None,
@@ -60,6 +64,7 @@ pub(crate) struct CandidateFilter {
 
 #[cfg(desktop)]
 enum CandidateBinds {
+    #[cfg(test)]
     None,
     One(String),
     Of(String),
@@ -70,6 +75,7 @@ impl CandidateFilter {
     /// What the clause binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match &self.binds {
+            #[cfg(test)]
             CandidateBinds::None => Vec::new(),
             CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
             CandidateBinds::Of(keys) => vec![(":candidates", keys as &dyn rusqlite::ToSql)],
