@@ -100,6 +100,7 @@ pub(crate) use import_state::{
 mod album_link_rows;
 mod collections;
 mod history;
+mod membership;
 mod people;
 mod playback;
 mod playback_queue;

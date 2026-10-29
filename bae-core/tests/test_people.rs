@@ -380,7 +380,69 @@ fn a_replacement_invite_writes_no_profile() {
         assert!(profile.is_none());
         let database =
             bae_core::db::Database::from_handle(replacement.clone(), household.clock.clone());
-        assert_eq!(database.profile(rowan.id).await.unwrap(), Some(rowan));
+        assert_eq!(
+            database.profile(rowan.id).await.unwrap(),
+            Some(rowan.clone())
+        );
+        // The owner's membership lists each member's devices that can sync
+        // apart from those that lost access, as coven's own member list has
+        // them.
+        let owner =
+            bae_core::db::Database::from_handle(household.owner.clone(), household.clock.clone());
+        let membership = owner.membership().await.unwrap();
+        assert!(membership.self_is_admin);
+        let listed: Vec<_> = household
+            .owner
+            .members()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|member| {
+                let (active, former): (Vec<_>, Vec<_>) = member
+                    .devices
+                    .into_iter()
+                    .partition(|device| device.state == coven::DeviceState::Active);
+                (
+                    member.id,
+                    member.keys,
+                    member.role,
+                    member.access,
+                    member.is_self,
+                    active
+                        .into_iter()
+                        .map(|device| (device.id, device.name))
+                        .collect::<Vec<_>>(),
+                    former
+                        .into_iter()
+                        .map(|device| (device.id, device.name))
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect();
+        let read: Vec<_> = membership
+            .members
+            .iter()
+            .map(|member| {
+                (
+                    member.id,
+                    member.keys,
+                    member.role,
+                    member.access.clone(),
+                    member.is_self,
+                    member
+                        .active_devices
+                        .iter()
+                        .map(|device| (device.id, device.name.clone()))
+                        .collect::<Vec<_>>(),
+                    member
+                        .former_devices
+                        .iter()
+                        .map(|device| (device.id, device.name.clone()))
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect();
+        assert_eq!(read, listed);
         replacement.close().await.unwrap();
         household.owner.close().await.unwrap();
     });

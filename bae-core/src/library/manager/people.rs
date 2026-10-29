@@ -77,15 +77,11 @@ impl LibraryManager {
     }
 
     pub async fn get_members(&self) -> Result<crate::sync::membership::Membership, LibraryError> {
-        Ok(crate::sync::membership::Membership::from_members(
-            self.database.members().await?,
-        ))
+        Ok(self.database.membership().await?)
     }
 
     pub fn subscribe_members(&self) -> coven::LiveQuery<crate::sync::membership::Membership> {
-        self.database
-            .subscribe_members()
-            .process(|members| Ok(crate::sync::membership::Membership::from_members(members)))
+        self.database.subscribe_membership()
     }
 
     /// This person's device that joins after the subscription's first

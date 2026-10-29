@@ -353,19 +353,11 @@ impl Database {
         self.inner.handle.restore_code_for_transfer().await
     }
 
-    pub(crate) async fn members(&self) -> Result<Vec<coven::MemberInfo>, DbError> {
-        self.inner.handle.members().await.map_err(DbError::from)
-    }
-
     pub(crate) async fn remove_member(
         &self,
         member: &coven::MemberId,
     ) -> Result<(), coven::SyncError> {
         self.inner.handle.remove_member(member).await
-    }
-
-    pub(crate) fn subscribe_members(&self) -> coven::LiveQuery<Vec<coven::MemberInfo>> {
-        self.inner.handle.subscribe_members()
     }
 
     pub(crate) async fn remove_device(

@@ -48,21 +48,6 @@ pub struct Membership {
     pub self_is_admin: bool,
 }
 
-impl Membership {
-    pub fn from_members(members: Vec<coven::MemberInfo>) -> Self {
-        let self_is_admin = members
-            .iter()
-            .any(|member| member.is_self && member.role == coven::MemberRole::Admin);
-        Self {
-            members: members
-                .into_iter()
-                .map(|member| MembershipMember::new(member, self_is_admin))
-                .collect(),
-            self_is_admin,
-        }
-    }
-}
-
 /// Watches the membership for a device of this device's person that wasn't
 /// there at the watch's first look. Add Device's sheet shows its code until
 /// one joins.
@@ -89,50 +74,23 @@ impl AddedDeviceWatch {
 }
 
 impl MembershipMember {
-    fn new(member: coven::MemberInfo, self_is_admin: bool) -> Self {
-        let coven::MemberInfo {
-            id,
-            keys,
-            role,
-            access,
-            devices,
-            is_self,
-        } = member;
-        let can_remove_devices = self_is_admin || is_self;
-        let mut active_devices = Vec::new();
-        let mut former_devices = Vec::new();
-        for device in devices {
-            let state = match device.state {
-                coven::DeviceState::Active => {
-                    active_devices.push(ActiveDevice {
-                        id: device.id,
-                        name: device.name,
-                        is_self: device.is_self,
-                        can_remove: can_remove_devices && !device.is_self,
-                    });
-                    continue;
-                }
-                coven::DeviceState::Removed => FormerDeviceState::Removed,
-                coven::DeviceState::Replaced => FormerDeviceState::Replaced,
-            };
-            // A former device's `is_self` is dropped: this installation's
-            // own lost registration reads as removed or replaced like any other.
-            former_devices.push(FormerDevice {
-                id: device.id,
-                name: device.name,
-                state,
-            });
-        }
-        Self {
-            id,
-            keys,
-            role,
-            access,
-            is_self,
-            can_remove: self_is_admin && !is_self,
-            active_devices,
-            former_devices,
-        }
+    /// Whether this device's person may remove a member: an admin may remove
+    /// anyone but themself.
+    pub(crate) fn removable(self_is_admin: bool, is_self: bool) -> bool {
+        self_is_admin && !is_self
+    }
+}
+
+impl ActiveDevice {
+    /// Whether this device's person may remove a device: an admin any
+    /// member's, a member their own, and never this device, which leaves by
+    /// removing the library from it instead.
+    pub(crate) fn removable(
+        self_is_admin: bool,
+        member_is_self: bool,
+        device_is_self: bool,
+    ) -> bool {
+        (self_is_admin || member_is_self) && !device_is_self
     }
 }
 
@@ -140,148 +98,46 @@ impl MembershipMember {
 mod tests {
     use super::*;
 
-    fn device(id: u64, state: coven::DeviceState, is_self: bool) -> coven::DeviceInfo {
-        coven::DeviceInfo {
-            id: coven::DeviceId(id),
-            name: format!("Device {id}"),
-            state,
-            is_self,
-        }
-    }
-
-    fn member(
-        id: u128,
-        role: coven::MemberRole,
-        is_self: bool,
-        devices: Vec<coven::DeviceInfo>,
-    ) -> coven::MemberInfo {
-        coven::MemberInfo {
-            id: coven::MemberId(uuid::Uuid::from_u128(id)),
-            keys: coven::MemberKeys::generate().unwrap().public_keys(),
-            role,
-            access: coven::MemberAccess::S3AccessKey {
-                access_key_id: format!("key-{id}"),
-            },
-            devices,
-            is_self,
-        }
-    }
-
-    /// The app names a member's S3 key when the person removes them, so
-    /// each member carries the access coven records for them.
     #[test]
-    fn each_member_carries_their_access() {
-        let membership = Membership::from_members(vec![
-            member(1, coven::MemberRole::Admin, true, Vec::new()),
-            member(2, coven::MemberRole::Member, false, Vec::new()),
-        ]);
-        assert_eq!(
-            membership
-                .members
-                .iter()
-                .map(|member| member.access.clone())
-                .collect::<Vec<_>>(),
-            [1, 2].map(|id| coven::MemberAccess::S3AccessKey {
-                access_key_id: format!("key-{id}"),
-            })
-        );
-    }
-
-    #[test]
-    fn removed_and_replaced_devices_are_listed_apart_from_active_ones() {
-        use coven::DeviceState::{Active, Removed, Replaced};
-        let membership = Membership::from_members(vec![
-            member(
-                1,
-                coven::MemberRole::Admin,
-                true,
-                vec![device(1, Active, true), device(2, Replaced, false)],
-            ),
-            member(
-                2,
-                coven::MemberRole::Member,
-                false,
-                vec![
-                    device(3, Removed, false),
-                    device(4, Active, false),
-                    device(5, Replaced, false),
-                ],
-            ),
-        ]);
-
-        let me = &membership.members[0];
-        assert_eq!(
-            me.active_devices,
-            vec![ActiveDevice {
-                id: coven::DeviceId(1),
-                name: "Device 1".into(),
-                is_self: true,
-                can_remove: false,
-            }]
-        );
-        assert_eq!(
-            me.former_devices,
-            vec![FormerDevice {
-                id: coven::DeviceId(2),
-                name: "Device 2".into(),
-                state: FormerDeviceState::Replaced,
-            }]
-        );
-        let other = &membership.members[1];
-        assert_eq!(
-            other.active_devices,
-            vec![ActiveDevice {
-                id: coven::DeviceId(4),
-                name: "Device 4".into(),
-                is_self: false,
-                can_remove: true,
-            }]
-        );
-        assert_eq!(
-            other.former_devices,
-            vec![
-                FormerDevice {
-                    id: coven::DeviceId(3),
-                    name: "Device 3".into(),
-                    state: FormerDeviceState::Removed,
-                },
-                FormerDevice {
-                    id: coven::DeviceId(5),
-                    name: "Device 5".into(),
-                    state: FormerDeviceState::Replaced,
-                },
-            ]
-        );
+    fn an_admin_removes_any_member_but_themself() {
+        assert!(MembershipMember::removable(true, false));
+        assert!(!MembershipMember::removable(true, true));
+        assert!(!MembershipMember::removable(false, false));
     }
 
     #[test]
     fn a_member_removes_only_their_own_other_devices() {
-        use coven::DeviceState::Active;
-        let membership = Membership::from_members(vec![
-            member(
-                1,
-                coven::MemberRole::Member,
-                true,
-                vec![device(1, Active, true), device(2, Active, false)],
-            ),
-            member(
-                2,
-                coven::MemberRole::Admin,
-                false,
-                vec![device(3, Active, false)],
-            ),
-        ]);
+        // A member: their own other device, nobody else's, never this one.
+        assert!(ActiveDevice::removable(false, true, false));
+        assert!(!ActiveDevice::removable(false, false, false));
+        assert!(!ActiveDevice::removable(false, true, true));
+        // An admin: anyone's device, still never this one.
+        assert!(ActiveDevice::removable(true, false, false));
+        assert!(!ActiveDevice::removable(true, true, true));
+    }
 
-        let removable = |member: &MembershipMember| {
-            member
-                .active_devices
-                .iter()
-                .map(|device| device.can_remove)
-                .collect::<Vec<_>>()
-        };
-        assert!(!membership.self_is_admin);
-        assert_eq!(removable(&membership.members[0]), [false, true]);
-        assert_eq!(removable(&membership.members[1]), [false]);
+    fn device(id: u64) -> ActiveDevice {
+        ActiveDevice {
+            id: coven::DeviceId(id),
+            name: format!("Device {id}"),
+            is_self: id == 1,
+            can_remove: id != 1,
+        }
+    }
+
+    fn member(id: u128, is_self: bool, devices: &[u64]) -> MembershipMember {
+        MembershipMember {
+            id: coven::MemberId(uuid::Uuid::from_u128(id)),
+            keys: coven::MemberKeys::generate().unwrap().public_keys(),
+            role: coven::MemberRole::Member,
+            access: coven::MemberAccess::S3AccessKey {
+                access_key_id: format!("key-{id}"),
+            },
+            is_self,
+            can_remove: false,
+            active_devices: devices.iter().copied().map(device).collect(),
+            former_devices: Vec::new(),
+        }
     }
 
     /// Add Device's sheet watches for the person's device that joins while
@@ -289,44 +145,17 @@ mod tests {
     /// nor is another person's new device.
     #[test]
     fn a_watch_finds_the_persons_device_that_joins_after_its_first_look() {
-        use coven::DeviceState::Active;
-        let membership = |own: Vec<coven::DeviceInfo>, others: Vec<coven::DeviceInfo>| {
-            Membership::from_members(vec![
-                member(1, coven::MemberRole::Admin, true, own),
-                member(2, coven::MemberRole::Member, false, others),
-            ])
+        let membership = |own: &[u64], others: &[u64]| Membership {
+            members: vec![member(1, true, own), member(2, false, others)],
+            self_is_admin: false,
         };
         let watch = AddedDeviceWatch::default();
 
+        assert_eq!(watch.added(&membership(&[1, 2], &[3])), None);
+        assert_eq!(watch.added(&membership(&[1, 2], &[3, 4])), None);
         assert_eq!(
-            watch.added(&membership(
-                vec![device(1, Active, true), device(2, Active, false)],
-                vec![device(3, Active, false)],
-            )),
-            None
-        );
-        assert_eq!(
-            watch.added(&membership(
-                vec![device(1, Active, true), device(2, Active, false)],
-                vec![device(3, Active, false), device(4, Active, false)],
-            )),
-            None
-        );
-        assert_eq!(
-            watch.added(&membership(
-                vec![
-                    device(1, Active, true),
-                    device(2, Active, false),
-                    device(5, Active, false),
-                ],
-                vec![device(3, Active, false), device(4, Active, false)],
-            )),
-            Some(ActiveDevice {
-                id: coven::DeviceId(5),
-                name: "Device 5".into(),
-                is_self: false,
-                can_remove: true,
-            })
+            watch.added(&membership(&[1, 2, 5], &[3, 4])),
+            Some(device(5))
         );
     }
 }
