@@ -390,7 +390,7 @@ fn finalize_playback_track(
 }
 
 struct OutputStream {
-    _stream: Box<dyn AudioStream>,
+    stream: Box<dyn AudioStream>,
     source: Arc<Mutex<source::PlaybackSource>>,
     audio_events: AudioEventReceiver,
     sample_rate: u32,
@@ -416,8 +416,8 @@ pub struct PlaybackService {
     /// puts the local one back when it ends.
     audio_output: Box<dyn AudioOutput>,
     /// The output stream, kept across tracks of the same format. Rebuilt when
-    /// the format or the default device changes; dropped when local playback is
-    /// torn down.
+    /// the format changes or the device stops playing it; dropped when local
+    /// playback is torn down.
     output: Option<OutputStream>,
     /// The one authority for the current track and its phase, owning its
     /// decoder; `sync_audio_state` writes the `AudioState` atomic from it.
@@ -493,33 +493,11 @@ fn side_boundary_between(
     })
 }
 
-/// The system's audio output device: the platform sink (cpal on desktop,
-/// AAudio on Android), opened afresh for each output, plus on macOS and Windows
-/// the watch that sends `OutputDeviceChanged` when the default device changes.
-/// Built on the service thread, as is every output opened from it, so
-/// thread-bound device handles live there.
-pub(crate) struct SystemAudioOutputDevice {
-    /// Held for its `Drop`, which unregisters the system listener.
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    _default_device_watch: crate::playback::cpal_output::device_listener::DefaultDeviceListener,
-}
-
-impl SystemAudioOutputDevice {
-    /// Open the system device, registering the default-device watch (macOS and
-    /// Windows) that dispatches `OutputDeviceChanged` through `command_tx`.
-    pub(crate) fn open(
-        command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-    ) -> Result<Self, crate::playback::audio_output::AudioError> {
-        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-        let _ = command_tx;
-        Ok(Self {
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
-            _default_device_watch: crate::playback::cpal_output::watch_default_output_device(
-                move || dispatch_command(&command_tx, PlaybackCommand::OutputDeviceChanged),
-            )?,
-        })
-    }
-}
+/// The system's audio output device: the platform sink (cpal on desktop and
+/// iOS, AAudio on Android), opened afresh for each output. Every output is
+/// opened from it on the service thread, so thread-bound device handles live
+/// there.
+pub(crate) struct SystemAudioOutputDevice;
 
 impl AudioOutputDevice for SystemAudioOutputDevice {
     #[cfg(not(target_os = "android"))]
@@ -541,21 +519,14 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
     }
 }
 
-/// Open the caller's device, or the system's, and the main player's output from
-/// it. `None` means there is no output, so the service thread returns.
+/// Open the main player's output from the caller's device, or the system's.
+/// `None` means there is no output, so the service thread returns.
 fn open_audio_device_and_output(
     custom_device: Option<Box<dyn AudioOutputDevice>>,
-    command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
 ) -> Option<(Box<dyn AudioOutputDevice>, Box<dyn AudioOutput>)> {
     let audio_device: Box<dyn AudioOutputDevice> = match custom_device {
         Some(device) => device,
-        None => match SystemAudioOutputDevice::open(command_tx.clone()) {
-            Ok(device) => Box::new(device),
-            Err(e) => {
-                error!("Failed to open the system audio device: {:?}", e);
-                return None;
-            }
-        },
+        None => Box::new(SystemAudioOutputDevice),
     };
     match audio_device.open_output() {
         Ok(output) => Some((audio_device, output)),
@@ -617,8 +588,6 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::PlayOnAirPlay(_)
         | PlaybackCommand::StopRemote
         | PlaybackCommand::RemoteEvent(_) => None,
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
-        PlaybackCommand::OutputDeviceChanged => None,
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueue(_) => None,
     }
@@ -674,8 +643,6 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
         | PlaybackCommand::RemoteEvent(_) => false,
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
-        PlaybackCommand::OutputDeviceChanged => false,
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueue(_) => false,
     }

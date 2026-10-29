@@ -226,14 +226,16 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     );
 }
 
-/// A default-output-device change rebuilds the persistent stream over the SAME
-/// `PlaybackSource` (re-resolving the device), so playback follows the new
-/// default without losing position or state — the only path that rebuilds a
-/// live stream mid-playback. Builds go up by one, no source swap (the source is
-/// reused, not replaced), and the callback's play state is untouched.
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+/// A stream whose device reported it can't go on — the default device changed
+/// on Windows, or its device was unplugged — is rebuilt over the SAME
+/// `PlaybackSource` on the current default device, at the next drain of the
+/// output's events, so playback follows without losing position or state.
+/// Builds go up by one, no source swap (the source is reused, not replaced),
+/// and the callback's play state is untouched. Sabotage: stop asking the stream
+/// for its device's report in `drain_current_audio_events`, and no rebuild
+/// happens.
 #[tokio::test]
-async fn output_device_changed_rebuilds_over_the_same_source() {
+async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
     use std::sync::atomic::Ordering;
 
     let (_home, mut service, _rx) = test_playback_service().await;
@@ -260,18 +262,20 @@ async fn output_device_changed_rebuilds_over_the_same_source() {
     assert_eq!(builds.load(Ordering::Relaxed), 1, "one build so far");
     let source_before = service.output.as_ref().unwrap().source.clone();
 
-    // The default device changed: rebuild in place.
-    service.handle_output_device_changed().await;
+    // The device reports the stream can't go on.
+    service.output.as_mut().unwrap().stream =
+        Box::new(InvalidatedTestStream::new("the default device changed"));
+    service.drain_current_audio_events().await;
 
     assert_eq!(
         builds.load(Ordering::Relaxed),
         2,
-        "a device change rebuilds the device stream"
+        "an invalidated stream is rebuilt"
     );
     assert_eq!(
         replaces.load(Ordering::Relaxed),
         0,
-        "a device-change rebuild reuses the source, it is not a swap"
+        "the rebuild reuses the source, it is not a swap"
     );
     let source_after = service.output.as_ref().unwrap().source.clone();
     assert!(
@@ -283,31 +287,71 @@ async fn output_device_changed_rebuilds_over_the_same_source() {
         crate::playback::audio_output::AudioState::Playing,
         "playback keeps playing across the device switch"
     );
+
+    // The rebuilt stream reported nothing, so the next drain leaves it alone.
+    service.drain_current_audio_events().await;
+    assert_eq!(builds.load(Ordering::Relaxed), 2, "one report, one rebuild");
 }
 
-/// A device change with nothing playing has no stream to move, so it's a no-op:
-/// no build, no source, no error.
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+/// A stream invalidated with no default device to rebuild on stops playback
+/// and says the audio device isn't available, rather than leaving playback
+/// "playing" through a stream that plays nothing. Sabotage: ignore the build
+/// failure, and playback stays active with no output.
 #[tokio::test]
-async fn output_device_changed_is_a_noop_when_stopped() {
-    use std::sync::atomic::Ordering;
-
+async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    let output = TestAudioOutput::new();
-    let builds = output.build_count.clone();
-    service.audio_output = Box::new(output);
+    struct NoDeviceOutput(AudioOutputControls);
+    impl AudioOutput for NoDeviceOutput {
+        fn create_stream(
+            &mut self,
+            _source: Arc<Mutex<source::PlaybackSource>>,
+            _source_sample_rate: u32,
+            _source_channels: u32,
+            _audio_events: AudioEventSender,
+            _position_update_interval_ms: u32,
+        ) -> Result<Box<dyn AudioStream>, AudioError> {
+            Err(AudioError::DeviceUnavailable)
+        }
 
-    service.handle_output_device_changed().await;
+        fn controls(&self) -> &AudioOutputControls {
+            &self.0
+        }
+    }
+    service.audio_output = Box::new(NoDeviceOutput(AudioOutputControls::new(1.0)));
 
-    assert_eq!(
-        builds.load(Ordering::Relaxed),
-        0,
-        "no stream to rebuild when nothing is playing"
-    );
-    assert!(service.output.is_none(), "still no output");
+    let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
+        stream,
+        test_track_fmt("t"),
+    )));
+    let (_tx, rx) = audio_event_channel();
+    let mut out = test_output(source, rx);
+    out.stream = Box::new(InvalidatedTestStream::new("device disconnected"));
+    service.output = Some(out);
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+
+    service.drain_current_audio_events().await;
+
+    assert!(service.output.is_none(), "no stream is left behind");
     assert!(
-        progress_rx.try_recv().is_err(),
-        "a no-op device change emits nothing"
+        !matches!(service.slot, PlaybackSlot::Active(_)),
+        "playback stopped"
+    );
+    let mut reasons = Vec::new();
+    while let Ok(progress) = progress_rx.try_recv() {
+        if let PlaybackProgress::PlaybackError { reason } = progress {
+            reasons.push(reason);
+        }
+    }
+    assert!(
+        reasons.iter().any(|reason| matches!(
+            reason,
+            crate::ui::PlaybackErrorReason::AudioOutput {
+                problem: crate::ui::AudioOutputProblem::DeviceUnavailable
+            }
+        )),
+        "the person is told the audio device isn't available: {reasons:?}"
     );
 }
 
@@ -474,15 +518,14 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
     );
 }
 
-/// A default-device rebuild mints a fresh audio-events channel but reuses the
-/// SAME source. A `Completion` queued when the device changed must be carried
-/// onto the new channel — it can never re-fire (the source's completion latch is
-/// already set), so losing it wedges auto-advance at the end of that track.
-/// Sabotage — drop the old receiver without carrying its events — and no
-/// `TrackCompleted` survives the rebuild.
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+/// The rebuild of an invalidated stream mints a fresh audio-events channel but
+/// reuses the SAME source. A `Completion` the callback queued before the old
+/// stream was dropped must be carried onto the new channel — it can never
+/// re-fire (the source's completion latch is already set), so losing it wedges
+/// auto-advance at the end of that track. Sabotage — drop the old receiver
+/// without carrying its events — and no `TrackCompleted` survives the rebuild.
 #[tokio::test]
-async fn device_change_carries_a_queued_completion_forward() {
+async fn an_invalidated_stream_rebuild_carries_a_queued_completion_forward() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
@@ -492,11 +535,13 @@ async fn device_change_carries_a_queued_completion_forward() {
     )));
     let (mut tx, rx) = audio_event_channel();
     tx.push_required(queued_completion("t"));
-    service.output = Some(test_output(source, rx));
+    let out = test_output(source, rx);
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
-    service.handle_output_device_changed().await;
+    service
+        .follow_output_device(out, "the default device changed")
+        .await;
     service.drain_current_audio_events().await;
 
     assert_eq!(

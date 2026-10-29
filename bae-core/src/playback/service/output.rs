@@ -4,7 +4,8 @@
 //! continues in that format. Track transitions — a fresh play, a seek, a manual
 //! next, a preload promotion — swap what the audio callback reads via
 //! `PlaybackSource::replace`; they don't rebuild the device stream. The stream is
-//! torn down and rebuilt only on a format change, `stop()`, or a stream error.
+//! torn down and rebuilt only on a format change, `stop()`, a stream error, or
+//! the device's report that the stream can't go on (`follow_output_device`).
 //! The in-callback gapless crossing (`PlaybackSource::pull_samples`) swaps in
 //! place and never touches this.
 
@@ -115,12 +116,12 @@ impl PlaybackService {
 
     /// Drop the current output stream (if any) and build a fresh one over
     /// `source`, resolving the current default device. Both the format-change
-    /// branch of `attach_track` and the default-device-change handler go through
-    /// here — the difference is only whether `source` wraps a new track or the
-    /// live one. A fresh stream always needs a fresh audio-events channel (the old
-    /// sender dies with the old drain); `carry_events` are events already queued
-    /// for the SAME source that must survive the new channel — the device-change
-    /// rebuild passes the old receiver's pending events, since they can never
+    /// branch of `attach_track` and `follow_output_device` go through here — the
+    /// difference is only whether `source` wraps a new track or the live one. A
+    /// fresh stream always needs a fresh audio-events channel (the old sender
+    /// dies with the old drain); `carry_events` are events already queued for
+    /// the SAME source that must survive the new channel — the rebuild for an
+    /// invalidated stream passes the old receiver's pending events, since they can never
     /// re-fire (a `Completion` latched the source's completion flag). A format
     /// change wraps a new track, so it carries none. On a build failure the source
     /// is cancelled (so a decoder filling its ring exits) and the error returned.
@@ -136,7 +137,7 @@ impl PlaybackService {
         // it: a format-change rebuild discards the outgoing track's source, whose
         // decoder `teardown_local_playback` stopped only via its AVIO token — and a
         // decoder parked writing a full ring unparks only on the sink's cancel
-        // flag, so without this it would park forever. (The device-change handler
+        // flag, so without this it would park forever. (`follow_output_device`
         // took `self.output` out before calling here and passes that same source
         // back in, so there is nothing to cancel then.)
         if let Some(old) = self.output.take() {
@@ -170,7 +171,7 @@ impl PlaybackService {
         }
 
         self.output = Some(OutputStream {
-            _stream: stream,
+            stream,
             source,
             audio_events,
             sample_rate,
@@ -179,41 +180,38 @@ impl PlaybackService {
         Ok(())
     }
 
-    /// Rebuild the output stream over the SAME `PlaybackSource` after the system
-    /// default output device changed, re-resolving the now-current default device.
-    /// No-op when nothing is playing (no stream to move). Playback position and
-    /// state ride on the source and the shared atomic, so they survive the swap;
-    /// a brief glitch at the switch is acceptable. A rebuild that can't get a
-    /// device fails loud — emit a `PlaybackError` and stop — rather than leaving a
-    /// silently dead stream. Driven by the default-device watch, which exists on
-    /// macOS and Windows.
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    pub(super) async fn handle_output_device_changed(&mut self) {
-        let Some(out) = self.output.take() else {
-            debug!("output device changed with nothing playing; no stream to rebuild");
-            return;
-        };
+    /// Replace the output stream its device stopped playing — `detail` is the
+    /// device's report — with one over the SAME `PlaybackSource`, on the
+    /// now-current default device. Playback position and state ride on the
+    /// source and the shared atomic, so they survive the swap; a brief glitch at
+    /// the switch is acceptable. A rebuild that can't get a device fails loud —
+    /// emit a `PlaybackError` and stop — rather than leaving a silently dead
+    /// stream.
+    pub(super) async fn follow_output_device(&mut self, out: OutputStream, detail: &str) {
         let OutputStream {
-            _stream,
+            stream,
             source,
             mut audio_events,
             sample_rate,
             channels,
         } = out;
         // Release the old device before binding the new one.
-        drop(_stream);
+        drop(stream);
         // Carry events already queued for this (unchanged) source onto the new
         // channel — the callback pushed them under the source lock before the
-        // device changed, and a `Completion` among them can never re-fire.
+        // stream was dropped, and a `Completion` among them can never re-fire.
         let mut pending = Vec::new();
         while let Some(event) = audio_events.pop() {
             pending.push(event);
         }
-        info!("Default output device changed; rebuilding the output stream in place");
+        info!(
+            detail,
+            "The output stream can't go on on its device; rebuilding it on the current default"
+        );
         if let Err(error) = self.build_output_over(source, sample_rate, channels, pending) {
             self.telemetry_playback_failed(PlaybackOperation::DeviceRebuild);
             let reason = self.output_start_failed(
-                "rebuild the audio output after the default device changed",
+                "rebuild the audio output on the current default device",
                 &error,
             );
             emit_progress(

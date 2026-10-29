@@ -189,11 +189,6 @@ pub(crate) enum PlaybackCommand {
         buffer_id: u64,
         error: Arc<PlaybackError>,
     },
-    /// The system default output device changed: rebuild the output stream over
-    /// the same source so playback follows it. Sent by the default-device watch
-    /// on macOS and Windows, where a stream stays on the device it opened on.
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    OutputDeviceChanged,
     Previous,
     /// Seek to this time in the current track, as the player shows it.
     Seek(TrackTime),

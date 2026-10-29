@@ -270,6 +270,19 @@ pub enum AudioError {
 /// A running audio stream. Drop to stop.
 pub trait AudioStream: 'static {
     fn play(&self) -> Result<(), AudioError>;
+
+    /// The device's report, if it made one, that this stream can't go on as
+    /// built: the system routed audio somewhere the stream doesn't follow, or
+    /// the stream's device went away. The owner replaces the stream with a new
+    /// one, which plays on the current default device or fails to build when
+    /// there is none. Each report is taken once.
+    ///
+    /// Only a cpal stream makes such a report. The AAudio writer reopens its
+    /// device stream itself, and a receiver or a test capture has no device to
+    /// lose, so they report nothing.
+    fn take_invalidation(&self) -> Option<String> {
+        None
+    }
 }
 
 /// A position tick, tagged with the formatting context of the track the

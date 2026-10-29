@@ -565,6 +565,20 @@ impl PlaybackService {
             self.handle_audio_event(event).await;
         }
 
+        // Asked of whichever stream the events above left in place: one they
+        // replaced took its device's reports with it.
+        if let Some(detail) = self
+            .output
+            .as_ref()
+            .and_then(|out| out.stream.take_invalidation())
+        {
+            let out = self
+                .output
+                .take()
+                .expect("the output whose stream reported it can't go on");
+            self.follow_output_device(out, &detail).await;
+        }
+
         let dropped_required = self
             .output
             .as_ref()
@@ -686,7 +700,7 @@ impl PlaybackService {
                         .expect("Failed to create runtime");
                     rt.block_on(async move {
                         let Some((audio_device, audio_output)) =
-                            open_audio_device_and_output(custom_device, &command_tx)
+                            open_audio_device_and_output(custom_device)
                         else {
                             return;
                         };
@@ -887,10 +901,6 @@ impl PlaybackService {
                 }
                 PlaybackCommand::ReadFailed { buffer_id, error } => {
                     self.handle_read_failed(buffer_id, error).await;
-                }
-                #[cfg(any(target_os = "macos", target_os = "windows"))]
-                PlaybackCommand::OutputDeviceChanged => {
-                    self.handle_output_device_changed().await;
                 }
                 PlaybackCommand::Previous => {
                     self.handle_previous().await;

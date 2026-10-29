@@ -20,6 +20,27 @@ impl AudioStream for TestAudioStream {
     }
 }
 
+/// A stream whose device reported, once, that it can't go on — what a cpal
+/// stream reports when the default device changes on Windows or its device is
+/// unplugged.
+struct InvalidatedTestStream(std::sync::Mutex<Option<String>>);
+
+impl InvalidatedTestStream {
+    fn new(detail: &str) -> Self {
+        Self(std::sync::Mutex::new(Some(detail.to_string())))
+    }
+}
+
+impl AudioStream for InvalidatedTestStream {
+    fn play(&self) -> Result<(), AudioError> {
+        Ok(())
+    }
+
+    fn take_invalidation(&self) -> Option<String> {
+        self.0.lock().unwrap().take()
+    }
+}
+
 struct TestAudioOutput {
     controls: AudioOutputControls,
     /// Count of device streams built (`create_stream`) vs source swaps
@@ -310,7 +331,7 @@ fn test_output(
     audio_events: AudioEventReceiver,
 ) -> OutputStream {
     OutputStream {
-        _stream: Box::new(TestAudioStream),
+        stream: Box::new(TestAudioStream),
         source,
         audio_events,
         sample_rate: 44_100,

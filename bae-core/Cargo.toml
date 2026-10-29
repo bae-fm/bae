@@ -52,12 +52,6 @@ tempfile = "3.8"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
 
-# CoreAudio bindings for the default-output-device change listener
-# (src/playback/cpal_output.rs, macOS only): re-resolves the default device and
-# rebuilds the persistent output stream when the user switches outputs.
-[target.'cfg(target_os = "macos")'.dependencies]
-coreaudio-sys = "0.2"
-
 [target.'cfg(target_os = "android")'.dependencies]
 # AAudio output sink for the in-core decode path (src/playback/aaudio_output.rs).
 ndk = { version = "0.9", features = ["audio"] }
@@ -95,16 +89,6 @@ cpal = "0.18.2"
 # `GetDriveTypeW` tells it apart.
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
-# The default-output-device change listener (src/playback/cpal_output.rs): an
-# `IMMNotificationClient` that has playback rebuild its output stream on the new
-# default device. `implement` builds the COM object.
-windows = { version = "0.54", features = [
-    "implement",
-    "Win32_Foundation",
-    "Win32_Media_Audio",
-    "Win32_System_Com",
-    "Win32_UI_Shell_PropertiesSystem",
-] }
 
 [dev-dependencies]
 # The test codec helpers (WAV reader, whole-buffer encoder), and the
