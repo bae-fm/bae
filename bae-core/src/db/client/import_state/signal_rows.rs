@@ -403,26 +403,3 @@ impl StoredSignals {
         })
     }
 }
-
-/// Every candidate's settled signals, or the one `only` names.
-pub(super) fn load_signals_on(
-    sql: &SqlReadContext<'_>,
-    only: CandidateRows<'_>,
-) -> Result<impl FnOnce() -> Result<HashMap<String, Signals>, DbError> + Send + 'static, DbError> {
-    let filter = only.filter("signals.content_hash");
-    let rows = sql.query(
-        &format!(
-            "SELECT {} FROM import_candidate_signals AS signals {}",
-            signals_read_columns(),
-            filter.clause
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>("signals_row")?, read_signals(row)?)),
-    )?;
-    Ok(move || {
-        rows.into_iter()
-            .filter_map(|(content_hash, stored)| Some((content_hash, stored?)))
-            .map(|(content_hash, stored)| Ok((content_hash, stored.signals()?)))
-            .collect()
-    })
-}

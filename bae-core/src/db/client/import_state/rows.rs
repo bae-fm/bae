@@ -3,11 +3,10 @@
 
 use super::super::query::CandidateRows;
 use super::edit_rows::{read_file_edits, FILE_EDITS_COLUMNS};
-use super::lookup_choice_rows::load_lookup_choices_on;
-use super::signal_rows::load_signals_on;
+use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
 use super::verdict_rows::{
-    identification_of, match_of, read_match_row, read_verdict_row, unreadable, MatchEntries,
-    StoredMatches, StoredMedium, VERDICT_COLUMNS,
+    identification_of, match_of, read_match_row, read_verdict_row, unreadable, MatchColumns,
+    MatchEntries, StoredMatches, StoredMedium, VerdictRow, VERDICT_COLUMNS,
 };
 use super::*;
 use crate::import::{AlbumLink, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
@@ -317,244 +316,166 @@ pub(crate) fn load_release_link_rows_on(
     }))
 }
 
-/// Every candidate's verdict, or the one `only` names, each rebuilt with the
-/// matches that hang off it.
-pub(crate) fn load_verdicts_on(
-    sql: &SqlReadContext<'_>,
-    only: CandidateRows<'_>,
-) -> Result<
-    impl FnOnce() -> Result<HashMap<String, DbCandidateIdentifyResult>, DbError> + Send + 'static,
-    DbError,
-> {
-    let filter = only.filter("content_hash");
-    let clause = &filter.clause;
-    let matches = load_matches_rows_on(sql, only)?;
-    let rows = sql.query(
-        &format!(
-            "SELECT {VERDICT_COLUMNS} FROM import_candidate_verdict \
-             {clause}"
+const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found.release_id, \
+     found.title, found.artist, found.year, found.labels, found.country, found.region, \
+     found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
+     found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
+     found.album_links, found.source_tracks_kind, found.source_tracks_count, \
+     found.by_disc_id, found.by_barcode, found.by_catalog, found.by_isrc, found.by_search, \
+     found.by_pressing, found.narrowed_out, found.document_failure, \
+     found.document_failure_status, found.album_first_year, found.track_titles, found.notes, \
+     found.named_note";
+
+/// What hangs off a match joined as `found`, each list a JSON array in its
+/// stored order: its barcodes, its cover's copies, its media, its links and
+/// its album links.
+fn match_entries_columns() -> String {
+    let child = |table: &str, value: &str, order: &str| {
+        format!(
+            "(SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
+              WHERE entry.content_hash = found.content_hash AND entry.position = found.position)"
+        )
+    };
+    format!(
+        "{barcodes} AS match_barcodes, {copies} AS match_cover_copies, \
+         {media} AS match_media, {links} AS match_links, {album_links} AS match_album_links",
+        barcodes = child(
+            "import_candidate_match_barcode",
+            "entry.barcode",
+            "entry.ordinal"
         ),
-        filter.params().as_slice(),
-        |row| Ok(read_verdict_row(row)),
-    )?;
-    Ok(move || {
-        let mut matches = matches()?;
-        let mut out = HashMap::with_capacity(rows.len());
-        for row in rows {
-            let row = row?;
-            let content_hash = row.content_hash.clone();
-            let found = matches.remove(&content_hash).unwrap_or_default();
-            out.insert(content_hash, identification_of(row, found)?);
-        }
-        Ok(out)
+        copies = super::super::downscaled_copies::copies_json_sql(
+            "import_candidate_match_cover_copy",
+            "copy.content_hash = found.content_hash AND copy.position = found.position",
+        ),
+        media = child(
+            "import_candidate_match_medium",
+            "json_object('kind', entry.media_kind, 'medium', entry.medium, \
+                         'quantity', entry.quantity)",
+            "entry.ordinal",
+        ),
+        links = child(
+            "import_candidate_match_link",
+            "json_array(entry.catalog, entry.key)",
+            "entry.ordinal",
+        ),
+        album_links = child(
+            "import_candidate_match_album_link",
+            "json_object('catalog', entry.catalog, 'key', entry.key, 'stated', entry.stated, \
+                         'wikidata_item', entry.wikidata_item, \
+                         'musicbrainz_release', entry.musicbrainz_release, \
+                         'release_catalog', entry.release_catalog, \
+                         'release_key', entry.release_key)",
+            "entry.ordinal",
+        ),
+    )
+}
+
+/// One match's child lists as SQLite hands them over, still JSON.
+struct StoredMatchEntries {
+    barcodes: String,
+    cover_copies: String,
+    media: String,
+    links: String,
+    album_links: String,
+}
+
+fn read_match_entries(row: &Row<'_>) -> rusqlite::Result<StoredMatchEntries> {
+    Ok(StoredMatchEntries {
+        barcodes: row.get("match_barcodes")?,
+        cover_copies: row.get("match_cover_copies")?,
+        media: row.get("match_media")?,
+        links: row.get("match_links")?,
+        album_links: row.get("match_album_links")?,
     })
 }
 
-struct StateRow {
+/// One medium of a match as [`match_entries_columns`] holds it.
+#[derive(serde::Deserialize)]
+struct StoredMatchMedium {
+    kind: String,
+    medium: Option<String>,
+    quantity: u32,
+}
+
+impl StoredMatchEntries {
+    fn entries(self) -> Result<MatchEntries, DbError> {
+        fn list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
+            serde_json::from_str(json).map_err(|error| {
+                DbError::Message(format!("a match's stored {what} {json:?}: {error}"))
+            })
+        }
+        Ok(MatchEntries {
+            barcodes: list(&self.barcodes, "barcodes")?,
+            cover_copies: super::super::downscaled_copies::copies_of(&self.cover_copies)?,
+            media: list::<StoredMatchMedium>(&self.media, "media")?
+                .into_iter()
+                .map(|stored| {
+                    Ok(StoredMedium {
+                        kind: stored.kind,
+                        medium: stored
+                            .medium
+                            .map(|key| {
+                                bae_types::pressing::Medium::from_key(&key)
+                                    .ok_or_else(|| unreadable("medium", &key))
+                            })
+                            .transpose()?,
+                        quantity: stored.quantity,
+                    })
+                })
+                .collect::<Result<_, DbError>>()?,
+            links: list(&self.links, "links")?,
+            album_links: list(&self.album_links, "album links")?,
+        })
+    }
+}
+
+/// One candidate's own columns and the rows joined one-to-one onto it, as
+/// SQLite hands them over: everything of the candidate but its matches.
+struct StoredCandidate {
     content_hash: String,
     folder_path: String,
     metadata_revision: i64,
+    author: Option<String>,
+    file_edits: super::edit_rows::StoredFileEdits,
+    signals: Option<super::signal_rows::StoredSignals>,
+    provenance: Option<StoredProvenance>,
+    link: Option<StoredReleaseLink>,
+    lookup_choices: Option<super::lookup_choice_rows::StoredLookupChoices>,
+    verdict: Option<VerdictRow>,
+    matches: StoredMatches,
 }
 
-fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
-    Ok(StateRow {
-        content_hash: row.get("content_hash")?,
+/// One row of [`load_states_rows_on`]'s read: the candidate's columns on the
+/// first row of each candidate, and the match the row joins, if any.
+struct StateReadRow {
+    candidate: Option<Result<StoredCandidate, DbError>>,
+    found: Option<Result<(MatchColumns, StoredMatchEntries), DbError>>,
+}
+
+/// The candidate `content_hash` as the first of its rows reads it.
+fn read_candidate(row: &Row<'_>, content_hash: String) -> Result<StoredCandidate, DbError> {
+    Ok(StoredCandidate {
+        content_hash,
         folder_path: row.get("folder_path")?,
         metadata_revision: row.get("metadata_revision")?,
+        author: row.get("draft_author")?,
+        file_edits: read_file_edits(row)?,
+        signals: super::signal_rows::read_signals(row)?,
+        provenance: read_provenance(row)?,
+        link: read_release_link(row)?,
+        lookup_choices: super::lookup_choice_rows::read_lookup_choices(row)?,
+        verdict: read_verdict_row(row)?,
+        matches: StoredMatches::default(),
     })
 }
 
-const STATE_COLUMNS: &str = "content_hash, folder_path, metadata_revision";
-
-const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_id, title, artist, \
-     year, labels, country, region, status, packaging, discogs_details, \
-     media_kind, cover_url, \
-     cover_label, cover_source, cover_standing, source_group_id, album_links, source_tracks_kind, \
-     source_tracks_count, \
-     by_disc_id, by_barcode, by_catalog, by_isrc, by_search, by_pressing, narrowed_out, \
-     document_failure, document_failure_status, album_first_year, \
-     track_titles, notes, named_note";
-
-/// Every match a read fetched, still to be assembled.
-type FinishMatches =
-    Box<dyn FnOnce() -> Result<HashMap<String, StoredMatches>, DbError> + Send + 'static>;
-
-/// The stored matches of every candidate `only` names, keyed by content
-/// hash, read now and assembled by the closure it answers with.
-///
-/// The whole row per match rather than a count and a lead, and the barcode,
-/// medium and link rows that hang off it: how many *pressings* a verdict named
-/// is decided by grouping them, which needs everything each one states. The
-/// one reader of these columns, for the pane's whole verdict.
-pub(crate) fn load_matches_rows_on(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    only: CandidateRows<'_>,
-) -> Result<FinishMatches, DbError> {
-    let only = only.filter("content_hash");
-    let rows = sql.query(
-        &format!(
-            "SELECT {MATCH_COLUMNS} FROM import_candidate_match \
-             {} ORDER BY content_hash, position",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| Ok(read_match_row(row)),
-    )?;
-    let barcodes = sql.query(
-        &format!(
-            "SELECT content_hash, position, barcode FROM import_candidate_match_barcode \
-             {} \
-             ORDER BY content_hash, position, ordinal",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )?;
-    let cover_copies = sql.query(
-        &format!(
-            "SELECT content_hash, position, max_edge, url FROM import_candidate_match_cover_copy \
-             {}",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, u32>(2)?,
-                row.get::<_, String>(3)?,
-            ))
-        },
-    )?;
-    let media = sql.query(
-        &format!(
-            "SELECT content_hash, position, media_kind, medium, quantity \
-             FROM import_candidate_match_medium \
-             {} \
-             ORDER BY content_hash, position, ordinal",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                StoredMedium {
-                    kind: row.get(2)?,
-                    medium: super::super::pressing_columns::keyed(
-                        row,
-                        "medium",
-                        bae_types::pressing::Medium::from_key,
-                    )?,
-                    quantity: row.get(4)?,
-                },
-            ))
-        },
-    )?;
-    let links = sql.query(
-        &format!(
-            "SELECT content_hash, position, catalog, key FROM import_candidate_match_link \
-             {} \
-             ORDER BY content_hash, position, ordinal",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-            ))
-        },
-    )?;
-    let album_links = sql.query(
-        &format!(
-            "SELECT content_hash, position, catalog, key, stated, wikidata_item, \
-                musicbrainz_release, release_catalog, release_key \
-             FROM import_candidate_match_album_link \
-             {} \
-             ORDER BY content_hash, position, ordinal",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                super::super::album_link_rows::AlbumLinkRow {
-                    catalog: row.get(2)?,
-                    key: row.get(3)?,
-                    stated: row.get(4)?,
-                    wikidata_item: row.get(5)?,
-                    musicbrainz_release: row.get(6)?,
-                    release_catalog: row.get(7)?,
-                    release_key: row.get(8)?,
-                },
-            ))
-        },
-    )?;
-    Ok(Box::new(move || {
-        let mut entries: HashMap<(String, i64), MatchEntries> = HashMap::new();
-        for (content_hash, position, barcode) in barcodes {
-            entries
-                .entry((content_hash, position))
-                .or_default()
-                .barcodes
-                .push(barcode);
-        }
-        for (content_hash, position, max_edge, url) in cover_copies {
-            entries
-                .entry((content_hash, position))
-                .or_default()
-                .cover_copies
-                .push(bae_catalogs::remote_image::DownscaledCopy { url, max_edge });
-        }
-        for (content_hash, position, medium) in media {
-            entries
-                .entry((content_hash, position))
-                .or_default()
-                .media
-                .push(medium);
-        }
-        for (content_hash, position, catalog, key) in links {
-            entries
-                .entry((content_hash, position))
-                .or_default()
-                .links
-                .push((catalog, key));
-        }
-        for (content_hash, position, link) in album_links {
-            entries
-                .entry((content_hash, position))
-                .or_default()
-                .album_links
-                .push(link);
-        }
-        let mut matches: HashMap<String, StoredMatches> = HashMap::new();
-        for row in rows {
-            let columns = row?;
-            // A match with nothing in the child tables has no rows there.
-            let entries = entries
-                .remove(&(columns.content_hash.clone(), columns.position))
-                .unwrap_or_default();
-            let row = match_of(columns, entries)?;
-            let entry = matches.entry(row.content_hash).or_default();
-            let list = if row.narrowed_out {
-                &mut entry.narrowed_out
-            } else {
-                &mut entry.found
-            };
-            list.push(row.stored);
-        }
-        Ok(matches)
-    }))
+/// The match a row joins, if it joins one.
+fn read_found(row: &Row<'_>) -> Result<Option<(MatchColumns, StoredMatchEntries)>, DbError> {
+    if row.get::<_, Option<i64>>("position")?.is_none() {
+        return Ok(None);
+    }
+    Ok(Some((read_match_row(row)?, read_match_entries(row)?)))
 }
 
 /// Every stored candidate row, or the one `only` names, assembled with the
@@ -566,6 +487,9 @@ pub(crate) fn load_states_on(
     load_states_rows_on(sql, only)?()
 }
 
+/// The candidates `only` names in one read: each state row with the rows
+/// that hang off it one-to-one joined onto it once, then joined to its
+/// matches in position order, one row per match.
 pub(crate) fn load_states_rows_on(
     sql: &SqlReadContext<'_>,
     only: CandidateRows<'_>,
@@ -573,107 +497,143 @@ pub(crate) fn load_states_rows_on(
     impl FnOnce() -> Result<HashMap<String, DbImportCandidateState>, DbError> + Send + 'static,
     DbError,
 > {
-    let filter = only.filter("content_hash");
-    let clause = &filter.clause;
-    let states = sql.query(
+    let filter = only.filter("state.content_hash");
+    let mut previous: Option<String> = None;
+    let rows = sql.query(
         &format!(
-            "SELECT {STATE_COLUMNS} FROM import_candidate_state \
-             {clause}"
+            "WITH candidate AS MATERIALIZED ( \
+                 SELECT state.content_hash, state.folder_path, state.metadata_revision, \
+                        edit.author AS draft_author, {FILE_EDITS_COLUMNS}, {signals}, \
+                        {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {LOOKUP_CHOICES_COLUMNS}, \
+                        {VERDICT_COLUMNS} \
+                 FROM import_candidate_state AS state \
+                 LEFT JOIN import_candidate_edit AS edit \
+                     ON edit.content_hash = state.content_hash \
+                 LEFT JOIN import_candidate_signals AS signals \
+                     ON signals.content_hash = state.content_hash \
+                 LEFT JOIN import_candidate_draft_provenance AS provenance \
+                     ON provenance.content_hash = state.content_hash \
+                 LEFT JOIN import_candidate_release_link AS link \
+                     ON link.content_hash = state.content_hash \
+                 LEFT JOIN import_candidate_lookup_choices AS choices \
+                     ON choices.content_hash = state.content_hash \
+                 LEFT JOIN import_candidate_verdict AS verdict \
+                     ON verdict.content_hash = state.content_hash \
+                 {clause}) \
+             SELECT candidate.*, {MATCH_COLUMNS}, {entries} \
+             FROM candidate \
+             LEFT JOIN import_candidate_match AS found \
+                 ON found.content_hash = candidate.content_hash \
+             ORDER BY candidate.content_hash, found.position",
+            signals = super::signal_rows::signals_read_columns(),
+            entries = match_entries_columns(),
+            clause = filter.clause,
         ),
         filter.params().as_slice(),
-        |row| Ok(read_state_row(row)),
+        |row| {
+            let content_hash: String = row.get("content_hash")?;
+            let candidate = if previous.as_deref() == Some(content_hash.as_str()) {
+                None
+            } else {
+                previous = Some(content_hash.clone());
+                Some(read_candidate(row, content_hash))
+            };
+            Ok(StateReadRow {
+                candidate,
+                found: read_found(row).transpose(),
+            })
+        },
     )?;
-    let verdicts = load_verdicts_on(sql, only)?;
-    let edits = load_edits_on(sql, only)?;
-    let signals = load_signals_on(sql, only)?;
-    let provenances = load_provenance_rows_on(sql, only)?;
-    let links = load_release_link_rows_on(sql, only)?;
-    let authors = super::pane_rows::load_authors_on(sql, only)?;
-    let lookup_choices = load_lookup_choices_on(sql, only)?;
-
     Ok(move || {
-        let mut authors = authors;
-        let mut verdicts = verdicts()?;
-        let mut edits = edits()?;
-        let mut signals = signals()?;
-        let mut provenances = provenances()?;
-        let mut links = links()?;
-        let mut lookup_choices = lookup_choices()?;
-        let mut out = HashMap::with_capacity(states.len());
-        for state in states {
-            let state = state?;
-            let file_edits = edits.remove(&state.content_hash).ok_or_else(|| {
-                DbError::Message(format!(
-                    "candidate {}'s file decisions vanished while it was read",
-                    state.content_hash
-                ))
-            })?;
-            let metadata_revision = u64::try_from(state.metadata_revision).map_err(|error| {
-                DbError::Message(format!(
-                    "import candidate {} has a negative metadata revision: {error}",
-                    state.content_hash
-                ))
-            })?;
-            let provenance = provenances.remove(&state.content_hash);
-            let author = authors.remove(&state.content_hash).ok_or_else(|| {
-                DbError::Message(format!(
-                    "candidate {} has no editable metadata draft",
-                    state.content_hash
-                ))
-            })?;
-            author
-                .check_provenance(provenance.as_ref())
-                .map_err(|error| {
-                    DbError::Message(format!("candidate {}: {error}", state.content_hash))
-                })?;
-            out.insert(
-                state.content_hash.clone(),
-                DbImportCandidateState {
-                    signals: signals.remove(&state.content_hash),
-                    lookup_choices: lookup_choices
-                        .remove(&state.content_hash)
-                        .unwrap_or_default(),
-                    identify: verdicts.remove(&state.content_hash),
-                    metadata_author: author,
-                    metadata_provenance: provenance,
-                    release_link: links.remove(&state.content_hash),
-                    content_hash: state.content_hash,
-                    folder_path: state.folder_path,
-                    file_edits,
-                    metadata_revision,
-                },
-            );
+        let mut candidates: Vec<StoredCandidate> = Vec::new();
+        for row in rows {
+            if let Some(candidate) = row.candidate {
+                candidates.push(candidate?);
+            }
+            let Some(found) = row.found else {
+                continue;
+            };
+            let (columns, entries) = found?;
+            let candidate = candidates
+                .last_mut()
+                .expect("a match row follows its candidate's first row");
+            let found = match_of(columns, entries.entries()?)?;
+            let list = if found.narrowed_out {
+                &mut candidate.matches.narrowed_out
+            } else {
+                &mut candidate.matches.found
+            };
+            list.push(found.stored);
         }
-        Ok(out)
+        candidates
+            .into_iter()
+            .map(|candidate| Ok((candidate.content_hash.clone(), candidate.state()?)))
+            .collect()
     })
+}
+
+impl StoredCandidate {
+    fn state(self) -> Result<DbImportCandidateState, DbError> {
+        let Self {
+            content_hash,
+            folder_path,
+            metadata_revision,
+            author,
+            file_edits,
+            signals,
+            provenance,
+            link,
+            lookup_choices,
+            verdict,
+            matches,
+        } = self;
+        let metadata_revision = u64::try_from(metadata_revision).map_err(|error| {
+            DbError::Message(format!(
+                "import candidate {content_hash} has a negative metadata revision: {error}"
+            ))
+        })?;
+        let author = author.ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {content_hash} has no editable metadata draft"
+            ))
+        })?;
+        let author = super::pane_rows::author_of(&author)?;
+        let provenance = provenance.map(StoredProvenance::provenance).transpose()?;
+        author
+            .check_provenance(provenance.as_ref())
+            .map_err(|error| DbError::Message(format!("candidate {content_hash}: {error}")))?;
+        let identify = match verdict {
+            Some(verdict) => Some(identification_of(verdict, matches)?),
+            // The match rows hang off the verdict row, so a candidate
+            // without one has none.
+            None if matches.found.is_empty() && matches.narrowed_out.is_empty() => None,
+            None => {
+                return Err(DbError::Message(format!(
+                    "candidate {content_hash} holds matches but no verdict"
+                )))
+            }
+        };
+        Ok(DbImportCandidateState {
+            signals: signals.map(|stored| stored.signals()).transpose()?,
+            lookup_choices: lookup_choices
+                .map(|stored| stored.choices())
+                .transpose()?
+                .unwrap_or_default(),
+            identify,
+            metadata_author: author,
+            metadata_provenance: provenance,
+            release_link: link.map(StoredReleaseLink::link).transpose()?,
+            file_edits: file_edits.edits()?,
+            content_hash,
+            folder_path,
+            metadata_revision,
+        })
+    }
 }
 
 /// The file decisions a read fetched, still to be assembled — boxed so a read
 /// on either connection hands back one type.
 type FinishEdits<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
-
-/// The file decisions of every candidate, or of the one `only` names, each
-/// at the revision its state row holds.
-fn load_edits_on(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    only: CandidateRows<'_>,
-) -> Result<FinishEdits<HashMap<String, CandidateFileEdits>>, DbError> {
-    let filter = only.filter("state.content_hash");
-    let rows = sql.query(
-        &format!(
-            "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
-             FROM import_candidate_state AS state {}",
-            filter.clause
-        ),
-        filter.params().as_slice(),
-        read_file_edits,
-    )?;
-    Ok(Box::new(move || {
-        rows.into_iter()
-            .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
-            .collect()
-    }))
-}
 
 /// The file decisions of every candidate a decision was made for, each at its
 /// revision: the candidates whose decisions stand, and those whose revision

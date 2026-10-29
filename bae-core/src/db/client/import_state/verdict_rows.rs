@@ -427,9 +427,8 @@ pub(super) struct StoredMedium {
     pub(super) quantity: u32,
 }
 
-/// The ordinal-ordered rows the child tables hold for one match, read in the
-/// same pass as its row and handed to [`match_of`].
-#[derive(Default)]
+/// The ordinal-ordered rows the child tables hold for one match, read on its
+/// row and handed to [`match_of`].
 pub(super) struct MatchEntries {
     pub(super) barcodes: Vec<String>,
     /// The downscaled copies of the match's cover.
@@ -466,7 +465,6 @@ pub(crate) struct StoredMatches {
 }
 
 pub(super) struct MatchRow {
-    pub(super) content_hash: String,
     pub(super) stored: StoredMatch,
     /// Whether this release is one the agreement left out rather than one the
     /// verdict settled on.
@@ -583,7 +581,6 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         ))
     })?;
     Ok(MatchRow {
-        content_hash,
         stored: StoredMatch {
             result,
             provenance,
@@ -695,21 +692,33 @@ pub(super) struct VerdictRow {
     pub(super) kept_own_draft: bool,
 }
 
-pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
-     failures_json, error_detail, ledger_json, identified_at, medium_conflict, kept_own_draft";
+/// A candidate's verdict as columns of a read that joins its row as
+/// `verdict`. A candidate with none reads `verdict_row` as NULL.
+pub(super) const VERDICT_COLUMNS: &str = "verdict.content_hash AS verdict_row, \
+     verdict.kind AS verdict_kind, verdict.track_count AS verdict_track_count, \
+     verdict.failures_json AS verdict_failures_json, \
+     verdict.error_detail AS verdict_error_detail, verdict.ledger_json AS verdict_ledger_json, \
+     verdict.identified_at AS verdict_identified_at, \
+     verdict.medium_conflict AS verdict_medium_conflict, \
+     verdict.kept_own_draft AS verdict_kept_own_draft";
 
-pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
-    Ok(VerdictRow {
-        content_hash: row.get("content_hash")?,
-        kind: row.get("kind")?,
-        track_count: row.get("track_count")?,
-        failures_json: row.get("failures_json")?,
-        error_detail: row.get("error_detail")?,
-        ledger_json: row.get("ledger_json")?,
-        identified_at: super::rfc3339_column(row, "identified_at")?,
-        medium_conflict: super::medium_conflict_of(row.get("medium_conflict")?)?,
-        kept_own_draft: row.get("kept_own_draft")?,
-    })
+/// The [`VERDICT_COLUMNS`] of `row`; none for a candidate no verdict stands
+/// for.
+pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbError> {
+    let Some(content_hash) = row.get::<_, Option<String>>("verdict_row")? else {
+        return Ok(None);
+    };
+    Ok(Some(VerdictRow {
+        content_hash,
+        kind: row.get("verdict_kind")?,
+        track_count: row.get("verdict_track_count")?,
+        failures_json: row.get("verdict_failures_json")?,
+        error_detail: row.get("verdict_error_detail")?,
+        ledger_json: row.get("verdict_ledger_json")?,
+        identified_at: super::rfc3339_column(row, "verdict_identified_at")?,
+        medium_conflict: super::medium_conflict_of(row.get("verdict_medium_conflict")?)?,
+        kept_own_draft: row.get("verdict_kept_own_draft")?,
+    }))
 }
 
 /// Rebuild what identification concluded from its row and the matches it found.

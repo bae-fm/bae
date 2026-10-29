@@ -76,38 +76,6 @@ impl StoredLookupChoices {
     }
 }
 
-/// Every candidate's lookup choices, or the one `only` names, as a read
-/// snapshot's deferred assembly. A candidate with no row is absent from the
-/// map; the caller defaults it.
-pub(super) fn load_lookup_choices_on(
-    sql: &SqlReadContext<'_>,
-    only: CandidateRows<'_>,
-) -> Result<
-    impl FnOnce() -> Result<HashMap<String, LookupChoices>, DbError> + Send + 'static,
-    DbError,
-> {
-    let filter = only.filter("choices.content_hash");
-    let rows = sql.query(
-        &format!(
-            "SELECT {LOOKUP_CHOICES_COLUMNS} FROM import_candidate_lookup_choices AS choices {}",
-            filter.clause
-        ),
-        filter.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>("choices_row")?,
-                read_lookup_choices(row)?,
-            ))
-        },
-    )?;
-    Ok(move || {
-        rows.into_iter()
-            .filter_map(|(content_hash, stored)| Some((content_hash, stored?)))
-            .map(|(content_hash, stored)| Ok((content_hash, stored.choices()?)))
-            .collect()
-    })
-}
-
 /// The rows under `content_hash` become exactly `choices`, on the
 /// connection the caller holds — its own transaction, or a candidate save's.
 /// A hash no candidate row stands under has nothing to hold a decision, and

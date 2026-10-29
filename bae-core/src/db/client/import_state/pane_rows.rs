@@ -254,26 +254,6 @@ pub(crate) fn load_covers_on(
     Ok(out)
 }
 
-/// Who wrote every candidate's draft, or the one `only` names.
-pub(crate) fn load_authors_on(
-    sql: &SqlReadContext<'_>,
-    only: CandidateRows<'_>,
-) -> Result<HashMap<String, MetadataAuthor>, DbError> {
-    let filter = only.filter("content_hash");
-    let clause = &filter.clause;
-    sql.query(
-        &format!(
-            "SELECT content_hash, author FROM import_candidate_edit \
-             {clause}"
-        ),
-        filter.params().as_slice(),
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?
-    .into_iter()
-    .map(|(content_hash, author)| Ok((content_hash, author_of(&author)?)))
-    .collect()
-}
-
 /// Every candidate's complete stored draft, or the one `only` names: one row
 /// per draft, its lists riding on it as JSON arrays in their stored order.
 pub(crate) fn load_drafts_on(

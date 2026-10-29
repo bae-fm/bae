@@ -24,6 +24,7 @@ fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
 }
 
 /// One stored album link row's columns, as read.
+#[derive(serde::Deserialize)]
 pub(super) struct AlbumLinkRow {
     pub(super) catalog: String,
     pub(super) key: String,
