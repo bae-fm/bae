@@ -40,7 +40,7 @@ impl LibraryManager {
                     "Image file {file_id} is not part of release {release_id}"
                 ))
             })?;
-        crate::storage::transfer::read_release_file_bytes(&file, self).await
+        self.read_release_file(&file).await
     }
 
     pub async fn get_library_image(

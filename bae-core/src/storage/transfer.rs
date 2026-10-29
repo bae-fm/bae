@@ -12,7 +12,6 @@
 use std::future::Future;
 
 use crate::album_detail::ReleaseStorageAction;
-use crate::db::DbFile;
 use crate::diagnostics::{LocalId, TelemetryEvent};
 use crate::library::queued_releases::RunningOp;
 use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
@@ -21,24 +20,6 @@ use tracing::{debug, error, info};
 
 type TransferResult = Result<(), LibraryError>;
 type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
-
-/// Read a release file through its device-local source or coven attachment,
-/// and require the byte count its row declares before handing it to a decoder.
-pub async fn read_release_file_bytes(
-    file: &DbFile,
-    mgr: &LibraryManager,
-) -> Result<Vec<u8>, LibraryError> {
-    let bytes = mgr.read_release_file(file).await?;
-    if bytes.len() as i64 != file.file_size {
-        return Err(LibraryError::Storage(format!(
-            "File {} short read: got {} bytes, expected {}",
-            file.id,
-            bytes.len(),
-            file.file_size
-        )));
-    }
-    Ok(bytes)
-}
 
 /// Progress updates emitted during a pin, unpin, or audio detachment operation. A
 /// failure carries the typed error, so the caller reports why it failed —

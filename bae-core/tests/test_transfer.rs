@@ -6,6 +6,7 @@
 use bae_test_support as support;
 use support::tracing_init;
 
+use bae_core::album_detail::GallerySource;
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{
     DbAlbum, DbFile, DbRelease, SortDirection, StorageFilter, StorageSortCriterion,
@@ -14,7 +15,7 @@ use bae_core::db::{
 use bae_core::library::{
     AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
 };
-use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
+use bae_core::storage::transfer::{TransferProgress, TransferService};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use std::path::Path;
@@ -466,7 +467,7 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
 }
 
 // ---------------------------------------------------------------------------
-// read_release_file_bytes surfaces a missing original as an error
+// Reading a release file surfaces a missing original as an error
 // ---------------------------------------------------------------------------
 
 /// Reading a Local release whose original file vanished returns an error.
@@ -491,7 +492,12 @@ async fn test_missing_external_source_maps_to_error() {
         .await
         .unwrap();
 
-    let result = read_release_file_bytes(&file, &mgr).await;
+    let result = mgr
+        .read_gallery_bytes(
+            &release_id,
+            &GallerySource::ReleaseFile { file_id: file.id },
+        )
+        .await;
     assert!(
         result.is_err(),
         "a vanished external source must surface a read error"
