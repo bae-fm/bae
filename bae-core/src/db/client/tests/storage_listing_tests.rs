@@ -193,12 +193,10 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
     }
 }
 
-/// A release arriving writes its listing row with one refresh, in the write
-/// that adds it: as a snapshot installs it, after its album, which lists that
-/// album too, and as it joins an album already listed.
-#[test]
-fn a_release_arriving_refreshes_its_listing_once() {
-    let mut conn = crate::library::bare_library_connection();
+/// A bare library connection that records every release whose listing row
+/// a write asks to refresh, in `refreshed`.
+fn counting_refreshes() -> rusqlite::Connection {
+    let conn = crate::library::bare_library_connection();
     conn.execute_batch(
         "CREATE TEMP TABLE refreshed (release_id TEXT NOT NULL);
          CREATE TEMP TRIGGER count_refresh INSTEAD OF INSERT ON main.release_listing_refresh
@@ -207,45 +205,108 @@ fn a_release_arriving_refreshes_its_listing_once() {
          END;",
     )
     .unwrap();
-    let refreshes = |conn: &rusqlite::Connection, release: &str| -> i64 {
-        conn.query_row(
-            "SELECT count(*) FROM refreshed WHERE release_id = ?1",
-            [release],
-            |row| row.get(0),
-        )
-        .unwrap()
-    };
-    let listed = |conn: &rusqlite::Connection, release: &str| -> bool {
-        conn.query_row(
-            "SELECT EXISTS (SELECT 1 FROM release_listing WHERE release_id = ?1)",
-            [release],
-            |row| row.get(0),
-        )
-        .unwrap()
-    };
+    conn
+}
 
+/// How many refreshes of `release`'s listing row the writes since the count
+/// was last cleared asked for.
+fn refreshes(conn: &rusqlite::Connection, release: &str) -> i64 {
+    conn.query_row(
+        "SELECT count(*) FROM refreshed WHERE release_id = ?1",
+        [release],
+        |row| row.get(0),
+    )
+    .unwrap()
+}
+
+/// The album `release`'s listing row names, None while it has none.
+fn listed_album(conn: &rusqlite::Connection, release: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT (SELECT album_id FROM release_listing WHERE release_id = ?1)",
+        [release],
+        |row| row.get(0),
+    )
+    .unwrap()
+}
+
+/// Run `sql` as one write.
+fn write(conn: &mut rusqlite::Connection, sql: &str) {
     let write = conn.transaction().unwrap();
-    write
-        .execute_batch(
-            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-                 ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0);",
-        )
-        .unwrap();
+    write.execute_batch(sql).unwrap();
     write.commit().unwrap();
-    assert!(listed(&conn, RELEASE_EARLY));
+}
+
+const ALBUM_A: &str = "4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d";
+const ALBUM_B: &str = "dab6efe2-9b5c-4034-b95e-73cf49f54b9a";
+
+/// A release arriving writes its listing row with one refresh, in the write
+/// that adds it: as a snapshot installs it, after its album, which lists that
+/// album too, and as it joins an album already listed.
+#[test]
+fn a_release_arriving_refreshes_its_listing_once() {
+    let mut conn = counting_refreshes();
+
+    write(
+        &mut conn,
+        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+             ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+             ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0);",
+    );
+    assert_eq!(listed_album(&conn, RELEASE_EARLY).as_deref(), Some(ALBUM_A));
     assert_eq!(refreshes(&conn, RELEASE_EARLY), 1);
 
-    let write = conn.transaction().unwrap();
-    write
-        .execute_batch(
-            "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-                 ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);",
-        )
-        .unwrap();
-    write.commit().unwrap();
-    assert!(listed(&conn, RELEASE_LATE));
+    write(
+        &mut conn,
+        "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+             ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);",
+    );
+    assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A));
     assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
     assert_eq!(refreshes(&conn, RELEASE_EARLY), 1);
+}
+
+/// A release changing writes its listing row with one refresh: moving to an
+/// album the same write adds, which lists that album and its releases;
+/// moving to an album already listed; and changing what it states itself.
+#[test]
+fn a_release_changing_refreshes_its_listing_once() {
+    let mut conn = counting_refreshes();
+    write(
+        &mut conn,
+        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+             ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+             ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0),
+             ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);
+         DELETE FROM refreshed;",
+    );
+
+    write(
+        &mut conn,
+        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+             ('dab6efe2-9b5c-4034-b95e-73cf49f54b9a', 'Album Title B', 0, '2026-01-03T00:00:00Z');
+         UPDATE releases SET album_id = 'dab6efe2-9b5c-4034-b95e-73cf49f54b9a'
+         WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+    );
+    assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_B));
+    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
+
+    write(
+        &mut conn,
+        "DELETE FROM refreshed;
+         UPDATE releases SET album_id = '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d'
+         WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+    );
+    assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A));
+    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
+
+    write(
+        &mut conn,
+        "DELETE FROM refreshed;
+         UPDATE releases SET media = '[{\"medium\": \"vinyl\", \"count\": 1}]'
+         WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+    );
+    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
+    assert_eq!(refreshes(&conn, RELEASE_EARLY), 0);
 }

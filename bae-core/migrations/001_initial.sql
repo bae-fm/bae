@@ -1079,14 +1079,8 @@ BEGIN
     INSERT INTO album_listing_refresh (album_id) VALUES (NEW.id);
 END;
 
--- A release arriving lists its album through `release_added`, below, which
--- lists the release in the same step.
-
-CREATE TRIGGER IF NOT EXISTS album_release_moved AFTER UPDATE OF album_id ON releases
-BEGIN
-    INSERT INTO album_listing_refresh (album_id) VALUES (OLD.album_id);
-    INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
-END;
+-- A release arriving or moving lists its albums through `release_added` and
+-- `release_changed`, below, which list the release in the same step.
 
 CREATE TRIGGER IF NOT EXISTS album_release_removed AFTER DELETE ON releases
 BEGIN
@@ -1345,9 +1339,22 @@ BEGIN
     SELECT NEW.id WHERE NOT EXISTS (SELECT 1 FROM release_listing WHERE release_id = NEW.id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_release_changed AFTER UPDATE OF album_id, media, created_at ON releases
+-- A release moving to another album lists the album it left and the one it
+-- joined first. An album listed just now lists every release it holds, this
+-- one with them, so its row then names that album; otherwise, and for a change
+-- to what the release states itself, the release is refreshed by itself. Its
+-- row is refreshed once either way, in one trigger for the same reason as
+-- `release_added`.
+CREATE TRIGGER IF NOT EXISTS release_changed AFTER UPDATE OF album_id, media, created_at ON releases
 BEGIN
-    INSERT INTO release_listing_refresh (release_id) VALUES (NEW.id);
+    INSERT INTO album_listing_refresh (album_id)
+    SELECT OLD.album_id WHERE OLD.album_id IS NOT NEW.album_id
+    UNION ALL
+    SELECT NEW.album_id WHERE OLD.album_id IS NOT NEW.album_id;
+    INSERT INTO release_listing_refresh (release_id)
+    SELECT NEW.id WHERE OLD.album_id IS NEW.album_id
+        OR NOT EXISTS (SELECT 1 FROM release_listing
+                       WHERE release_id = NEW.id AND album_id = NEW.album_id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_file_added AFTER INSERT ON release_files
