@@ -52,6 +52,10 @@ capability_types=(
   AtomicU64
   AtomicUsize
   AudioDataReader
+  # An AudioOutputDevice opens a new output for each player that asks. The
+  # system device owns what its outputs share: on a Mac, the formats bae's
+  # streams set the output devices to, which only one owner of both players'
+  # outputs can put back.
   AudioOutput
   AudioStream
   CancellationToken
@@ -123,6 +127,10 @@ capability_types=(
 allowed_capability_outputs=(
   AirPlayStreamControl
   AudioDataReader
+  # An AudioOutputDevice opens a new output for each player that asks. The
+  # system device owns what its outputs share: on a Mac, the formats bae's
+  # streams set the output devices to, which only one owner of both players'
+  # outputs can put back.
   AudioOutput
   AudioStream
   FileStream
