@@ -2,16 +2,30 @@ import BaeKit
 import SwiftUI
 
 /// A release's Storage sheet: its storage status band over a sortable table of
-/// its files, which core reads in the order the table sorts by.
+/// its files, which core reads in the order the table sorts by. The release
+/// follows its own live read, so a storage action's result shows while the
+/// sheet is open.
 struct ReleaseStorageSheet: View {
     @Environment(Library.self)
     private var library
 
-    let release: ReleaseDetail
+    let releaseId: String
     let onAction: (BridgeReleaseStorageAction) -> Void
     let onExport: () -> Void
     let onSaveAs: () -> Void
     let onDone: () -> Void
+
+    /// The release as its read last gave it, starting from the one the sheet
+    /// opened on.
+    @State
+    private var release: ReleaseDetail
+    /// Why the release's read gives nothing to show: it failed, or the
+    /// release is no longer in the library.
+    @State
+    private var releaseError: DisplayError?
+    /// The sheet's one read of the release.
+    @State
+    private var releaseReader: DetailReader<BridgeRelease>?
 
     /// The file table's sort, which names the column and direction core
     /// reads the files in; the Audio column has none, as its value is
@@ -33,6 +47,22 @@ struct ReleaseStorageSheet: View {
     @State
     private var error: DisplayError?
 
+    /// The sheet for `release`, which its read then follows.
+    init(
+        release: ReleaseDetail,
+        onAction: @escaping (BridgeReleaseStorageAction) -> Void,
+        onExport: @escaping () -> Void,
+        onSaveAs: @escaping () -> Void,
+        onDone: @escaping () -> Void
+    ) {
+        releaseId = release.id
+        self.onAction = onAction
+        self.onExport = onExport
+        self.onSaveAs = onSaveAs
+        self.onDone = onDone
+        _release = State(initialValue: release)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -44,15 +74,47 @@ struct ReleaseStorageSheet: View {
             }
             .padding()
             Divider()
-            StorageStatusBand(
-                release: release,
-                onAction: onAction,
-                onExport: onExport,
-                onSaveAs: onSaveAs
-            )
+            if let releaseError {
+                ErrorDetailDisclosure(error: releaseError)
+                    .padding()
+            }
+            else {
+                StorageStatusBand(
+                    release: release,
+                    onAction: onAction,
+                    onExport: onExport,
+                    onSaveAs: onSaveAs
+                )
+            }
             Divider()
             filesSection
         }
+        .onAppear { showRelease() }
+        .onDisappear { releaseReader?.close() }
+    }
+
+    private func showRelease() {
+        let reader =
+            releaseReader
+            ?? DetailReader(
+                open: library.releaseDetail,
+                onValue: { _, read in
+                    guard let read else {
+                        releaseError = DisplayError(
+                            line: String(
+                                localized:
+                                    "This release is no longer in the library."
+                            )
+                        )
+                        return
+                    }
+                    release = ReleaseDetail(bridge: read)
+                    releaseError = nil
+                },
+                onError: { _, error in releaseError = DisplayError(error) }
+            )
+        releaseReader = reader
+        reader.show(releaseId)
     }
 
     private var filesSection: some View {
@@ -151,19 +213,20 @@ struct ReleaseStorageSheet: View {
             )
         self.reader = reader
         reader.show(
-            BridgeReleaseFilesRequest(releaseId: release.id, order: fileOrder)
+            BridgeReleaseFilesRequest(releaseId: releaseId, order: fileOrder)
         )
     }
 }
 
 #if DEBUG
     #Preview("Release Storage Sheet") {
+        let release = PreviewData.storageBridgeRelease(
+            storageState: .remote,
+            pinned: false,
+            storageActions: [.pin, .detachAudio]
+        )
         ReleaseStorageSheet(
-            release: PreviewData.storageRelease(
-                storageState: .remote,
-                pinned: false,
-                storageActions: [.pin, .detachAudio]
-            ),
+            release: ReleaseDetail(bridge: release),
             onAction: { _ in },
             onExport: {},
             onSaveAs: {},
@@ -171,7 +234,12 @@ struct ReleaseStorageSheet: View {
         )
         .frame(width: 640, height: 600)
         .background(Theme.background)
-        .environment(PreviewData.albumDetailLibrary())
+        .environment(
+            Library(
+                releaseDetail: { .fixed { _ in release } },
+                releaseFiles: { .fixed(PreviewData.previewReleaseFiles) }
+            )
+        )
         .environment(OutboxStore(uploadsPaused: false))
         .preferredColorScheme(.dark)
     }

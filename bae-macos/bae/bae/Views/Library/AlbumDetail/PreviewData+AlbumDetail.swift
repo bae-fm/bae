@@ -14,6 +14,12 @@
         static func albumDetailLibrary() -> Library {
             Library(
                 albumDetail: { .fixed { albumDetails[$0] } },
+                releaseDetail: {
+                    .fixed { id in
+                        albumDetails.values.lazy.flatMap(\.releases)
+                            .first { $0.id == id }
+                    }
+                },
                 releaseFiles: { .fixed(previewReleaseFiles) }
             )
         }
@@ -206,6 +212,21 @@
             pinned: Bool,
             storageActions: [BridgeReleaseStorageAction]
         ) -> ReleaseDetail {
+            ReleaseDetail(
+                bridge: storageBridgeRelease(
+                    storageState: storageState,
+                    pinned: pinned,
+                    storageActions: storageActions
+                )
+            )
+        }
+
+        /// The release `storageRelease` shows, as the release's read gives it.
+        static func storageBridgeRelease(
+            storageState: BridgeReleaseStorageState,
+            pinned: Bool,
+            storageActions: [BridgeReleaseStorageAction]
+        ) -> BridgeRelease {
             let files = previewReleaseFiles
             let facts = PreviewData.pressingFacts(
                 country: "US",
@@ -257,7 +278,7 @@
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },
                 cover: nil
             )
-            return ReleaseDetail(bridge: bridge)
+            return bridge
         }
     }
 
