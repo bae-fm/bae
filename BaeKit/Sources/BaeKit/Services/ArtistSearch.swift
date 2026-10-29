@@ -32,54 +32,6 @@ public struct ArtistSearchQuery: Sendable {
     }
 }
 
-extension ArtistSearchQuery {
-    /// A search over a fixed, already-ordered list, for previews and tests:
-    /// every view is answered with its windows' slices of `results`, whatever
-    /// the text.
-    public static func fixed(_ results: [BridgeArtistSearchResult])
-        -> ArtistSearchQuery
-    {
-        let requests = FixedRequests<(UInt64, [BridgeLibraryPageWindow])>()
-        let revisions = FixedRevisions()
-        return ArtistSearchQuery(
-            setView: { _, windows in
-                let revision = revisions.advance()
-                requests.request((revision, windows))
-                return revision
-            },
-            next: {
-                let (revision, windows) = try await requests.next()
-                return BridgeArtistSearchSnapshot(
-                    windows: windows.map { window in
-                        let start = min(Int(window.offset), results.count)
-                        let end = min(start + Int(window.limit), results.count)
-                        return BridgeArtistSearchWindow(
-                            window: window,
-                            rows: Array(results[start..<end])
-                        )
-                    },
-                    totalCount: UInt64(results.count),
-                    requestRevision: revision
-                )
-            },
-            cancel: { requests.close() }
-        )
-    }
-}
-
-/// The revisions a fixed search hands out, one per view.
-private final class FixedRevisions: @unchecked Sendable {
-    private let lock = NSLock()
-    private var revision: UInt64 = 0
-
-    func advance() -> UInt64 {
-        lock.withLock {
-            revision += 1
-            return revision
-        }
-    }
-}
-
 extension BridgeArtistSearchResult: Identifiable {
     public var id: String { artist.artistId }
 }

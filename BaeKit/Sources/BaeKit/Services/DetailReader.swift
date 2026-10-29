@@ -31,22 +31,6 @@ public struct DetailQuery<Value: Sendable>: Sendable {
         self.next = next
         self.cancel = cancel
     }
-
-    /// A read over fixed details, for previews and tests: every id is
-    /// answered with what `lookup` finds for it.
-    public static func fixed(
-        _ lookup: @escaping @Sendable (String) -> Value?
-    ) -> DetailQuery<Value> {
-        let requests = FixedRequests<String?>()
-        return DetailQuery(
-            setId: { requests.request($0) },
-            next: {
-                let id = try await requests.next()
-                return DetailDelivery(id: id, value: id.flatMap(lookup))
-            },
-            cancel: { requests.close() }
-        )
-    }
 }
 
 /// One detail view's read of the item it shows, kept for as long as the view

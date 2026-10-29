@@ -423,12 +423,14 @@ where Row.ID: Sendable {
 
     // MARK: - Test/Preview support
 
-    /// Seed segments synchronously for SwiftUI previews and tests.
-    public func preloadForPreview(rows: [Row]) {
-        segments = LoadedSegments(rows)
-        totalCount = rows.count
-        itemCount = pageSource.itemCount ?? rows.count
-    }
+    #if DEBUG
+        /// Seed segments synchronously for SwiftUI previews and tests.
+        public func preloadForPreview(rows: [Row]) {
+            segments = LoadedSegments(rows)
+            totalCount = rows.count
+            itemCount = pageSource.itemCount ?? rows.count
+        }
+    #endif
 }
 
 // MARK: - Queries

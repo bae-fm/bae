@@ -67,53 +67,6 @@ public struct StorageBrowseQuery: Sendable {
     }
 }
 
-extension StorageBrowseQuery {
-    /// A query over a fixed, already-sorted list, for previews and tests:
-    /// every view is answered with its windows' slices of `rows`, whatever
-    /// the sort and filter, beside `queues`.
-    public static func fixed(
-        _ rows: [BridgeStorageRow],
-        queues: BridgeStorageQueues
-    ) -> StorageBrowseQuery {
-        let requests = FixedRequests<StorageBrowseView>()
-        return StorageBrowseQuery(
-            setView: { requests.request($0) },
-            next: {
-                let view = try await requests.next()
-                let selected = rows.filter { view.selected.contains($0.id) }
-                return BridgeStorageBrowseSnapshot(
-                    sort: view.sort,
-                    filter: view.filter,
-                    windows: view.windows.map { window in
-                        let start = min(Int(window.offset), rows.count)
-                        let end = min(start + Int(window.limit), rows.count)
-                        return BridgeStorageBrowseWindow(
-                            window: window,
-                            rows: Array(rows[start..<end])
-                        )
-                    },
-                    totalCount: UInt64(rows.count),
-                    totalSize: UInt64(
-                        rows.reduce(Int64(0)) { $0 + $1.release.totalSize }
-                    ),
-                    selected: selected,
-                    // The fixture's stand-in for core's answer: the actions
-                    // every selected row lists.
-                    selectionActions: selected.first.map { first in
-                        first.release.storageActions.filter { action in
-                            selected.allSatisfy {
-                                $0.release.storageActions.contains(action)
-                            }
-                        }
-                    } ?? [],
-                    queues: queues
-                )
-            },
-            cancel: { requests.close() }
-        )
-    }
-}
-
 /// The Storage Manager's pages, all served by one query for as long as the
 /// manager is open.
 ///
