@@ -393,7 +393,7 @@ pub enum SyncIndicator {
     Syncing,
     Synced,
     Offline,
-    /// The failure is the snapshot's `failure()`.
+    /// The failure is the snapshot's `shown_failure()`.
     Failed,
     /// The pending list couldn't be read; its error is the list's.
     Unreadable,

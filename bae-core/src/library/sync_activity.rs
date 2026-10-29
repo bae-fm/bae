@@ -12,7 +12,8 @@ use crate::ui::UiError;
 /// queue's transfers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncActivity {
-    /// The sync failure the status line shows, such as being offline.
+    /// The sync failure the status line shows, such as being offline,
+    /// unless a pending record in `attention` shows it already.
     pub failure: Option<UiError>,
     /// The pending records that need the person; `None` until first read.
     pub attention: Option<Result<Vec<PendingItem>, UiError>>,
@@ -107,7 +108,7 @@ impl SyncActivity {
             },
         });
         Self {
-            failure: status.failure(),
+            failure: status.shown_failure(),
             attention: status.pending.clone(),
             abandoned: status.abandoned.clone(),
             syncing: status.syncing(),

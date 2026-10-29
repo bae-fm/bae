@@ -573,6 +573,38 @@ fn a_healthy_sync_status_crosses_without_an_error() {
     assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Synced);
 }
 
+/// The status line shows a failure the connection's pending record shows
+/// already only once, as that record.
+#[test]
+fn a_failure_its_record_shows_crosses_only_as_the_record() {
+    let failure = coven::StorageFailure::Protocol;
+    let snapshot = bae_core::library::SyncStatusSnapshot {
+        error: None,
+        status: coven::SyncStatus::Failed {
+            error: coven::SyncFailure::Storage(std::sync::Arc::new(failure.into())),
+        },
+        pending: Some(Ok(vec![bae_core::library::PendingItem::before_open(
+            coven::PendingRecord::new(
+                coven::PendingSubject::Connection,
+                coven::PendingReason::Storage {
+                    provider: coven::CloudProvider::S3,
+                    failure,
+                    answered: true,
+                },
+            ),
+        )])),
+        abandoned: Some(Ok(Vec::new())),
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
+
+    assert!(bridge.error.is_none());
+    assert_eq!(
+        bridge.indicator,
+        crate::types::BridgeSyncIndicator::Waiting { items: 1 }
+    );
+}
+
 /// The runtime stream end to end: a claim crosses as a key in flight, its
 /// import ending removes it, and a subscriber joining mid-import is told.
 #[cfg(feature = "desktop")]

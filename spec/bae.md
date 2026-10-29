@@ -2062,7 +2062,10 @@ Clicking it opens what sync is doing, a popover on macOS and a sheet on the
 phones, updating as it changes. What needs the person comes first, under *Needs
 Attention*: the failure's line and each pending record in plain words, then
 each abandoned upload, with *Open Sync Settings*, where each record offers its
-action. Then one row per
+action. A failure a pending record shows has no line of its own: a pass that
+storage refused or couldn't reach leaves the connection's record, a blocked
+slot and a failed operation of coven's own have theirs, and the failure again
+beside its record would read as a second problem. Then one row per
 thing moving: a pass syncing the library's changes, the uploads ("2
 uploading · 10 queued", with the bytes their providers confirmed), and the
 offline downloads, which on the phones open the downloads list. With nothing
@@ -2087,7 +2090,8 @@ lands, since the person asked for it.
 **The status line.** Settings shows one line for sync. With records pending it
 says "Waiting: 3 items". With none it names what sync is doing: Syncing,
 Synced, Offline, Sync failed, or Sync stopped when the library has a cloud home
-but isn't syncing. A failure's error sits under the line. "Checking sync…"
+but isn't syncing. A failure's error sits under the line, unless a pending
+record shows it. "Checking sync…"
 shows only until the pending list is first read, and if it can't be read the
 line says "Couldn't read sync status", opening onto the error. Opening it lists each thing coven is waiting on, one of its pending
 records

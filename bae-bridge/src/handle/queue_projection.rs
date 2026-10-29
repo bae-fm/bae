@@ -183,7 +183,7 @@ mirror_struct! {
 impl crate::types::BridgeSyncStatusSnapshot {
     pub(super) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
         let indicator = crate::types::BridgeSyncIndicator::from_core(snapshot.indicator());
-        let error = snapshot.failure();
+        let error = snapshot.shown_failure();
         let connected = snapshot.connected();
         let bae_core::library::SyncStatusSnapshot {
             status: _,

@@ -171,13 +171,10 @@ impl SyncStatusSnapshot {
     /// a restart has no cause, and names nothing the record doesn't.
     fn name_connection_cause(&mut self) {
         use std::error::Error as _;
-        let error = match &self.status {
-            coven::SyncStatus::Offline { error }
-            | coven::SyncStatus::Failed {
-                error: coven::SyncFailure::Storage(error),
-            } if error.source().is_some() => Some(error),
-            _ => None,
-        };
+        let error = self
+            .connection_error()
+            .filter(|error| error.source().is_some())
+            .cloned();
         let Some(Ok(items)) = &mut self.pending else {
             return;
         };
@@ -185,7 +182,7 @@ impl SyncStatusSnapshot {
             .iter_mut()
             .filter(|item| item.subject == super::PendingSubjectName::Connection);
         for item in connection {
-            item.wait.cause = match (&item.wait.reason, error) {
+            item.wait.cause = match (&item.wait.reason, &error) {
                 (coven::PendingReason::Storage { failure, .. }, Some(error))
                     if error.failure() == *failure =>
                 {
@@ -194,6 +191,68 @@ impl SyncStatusSnapshot {
                 _ => None,
             };
         }
+    }
+
+    /// The storage error a pass failed on when it failed on the connection:
+    /// storage refused it, or couldn't be reached.
+    fn connection_error(&self) -> Option<&Arc<coven::StorageError>> {
+        match &self.status {
+            coven::SyncStatus::Offline { error }
+            | coven::SyncStatus::Failed {
+                error: coven::SyncFailure::Storage(error),
+            } => Some(error),
+            _ => None,
+        }
+    }
+
+    /// Whether a pending record shows the status's failure. coven records
+    /// a failed pass's condition beside the status: the connection's when
+    /// storage refused the pass or couldn't be reached, a blocked slot's, and
+    /// that of its own operation whose last attempt failed.
+    fn failure_recorded(&self) -> bool {
+        use super::PendingSubjectName as N;
+        use coven::{PendingReason as R, SyncFailure as F, SyncStatus as S};
+        let Some(Ok(items)) = &self.pending else {
+            return false;
+        };
+        items.iter().any(
+            |item| match (&self.status, &item.subject, &item.wait.reason) {
+                (
+                    S::Offline { error }
+                    | S::Failed {
+                        error: F::Storage(error),
+                    },
+                    N::Connection,
+                    R::Storage { failure, .. },
+                ) => error.failure() == *failure,
+                (S::Blocked { reason, .. }, N::LibraryChanges, recorded) => recorded == reason,
+                (
+                    S::Failed {
+                        error: F::Operation(record),
+                    },
+                    N::Operation(kind),
+                    recorded,
+                ) => {
+                    let failed = match record.subject {
+                        coven::PendingSubject::Operation { kind, .. } => Some(kind),
+                        _ => None,
+                    };
+                    failed == Some(*kind) && *recorded == record.reason
+                }
+                _ => false,
+            },
+        )
+    }
+
+    /// The failure the status line and the activity list show beside the
+    /// pending records: the status's, unless one of them shows it already.
+    /// That record names what failed and what the person can do; the same
+    /// failure again on a line of its own reads as a second problem.
+    pub fn shown_failure(&self) -> Option<UiError> {
+        if self.error.is_none() && self.failure_recorded() {
+            return None;
+        }
+        self.failure()
     }
 
     pub fn failure(&self) -> Option<UiError> {
