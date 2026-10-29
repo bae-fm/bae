@@ -91,3 +91,28 @@ fn rows_that_show_different_details_are_both_listed() {
         vec!["20", "30"]
     );
 }
+
+/// Whether a row is already in the library is no part of how it looks: the
+/// rows a run stores are the same whatever the library held when it ran, and
+/// the kept row's status is read live when it shows.
+#[test]
+fn a_look_alike_in_the_library_is_listed_once_with_the_rest() {
+    let in_library = |(result, _): (MetadataResult, LibraryStatus)| {
+        let status = LibraryStatus {
+            release_id: result.release_id.clone(),
+            albums: vec![crate::db::LibraryAlbumMatch {
+                album_id: "album-in-library".to_string(),
+                album_title: "Album Title".to_string(),
+                holds_release: true,
+            }],
+        };
+        (result, status)
+    };
+    assert_eq!(
+        offered(vec![
+            in_library(pressing(Catalog::Discogs, "300")),
+            pressing(Catalog::Discogs, "20"),
+        ]),
+        vec!["20"]
+    );
+}

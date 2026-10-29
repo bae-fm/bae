@@ -938,7 +938,9 @@ Two kinds of pressing never stand:
   read, is not a match. Lengths only choose which mediums are read; they never
   rule a pressing out: catalogs round them and count pregaps differently.
 - **Look-alikes.** Pressings that would show exactly the same on screen are
-  kept once; nobody could choose between them in bae.
+  kept once; nobody could choose between them in bae. Whether one is already
+  in the library plays no part: that is read live when a row shows, and what a
+  run keeps must not depend on what the library held when it ran.
 
 The last point of the ranking reads the catalogs' free-text notes. A word that
 sets one pressing's notes apart, which the folder's text also states, ranks

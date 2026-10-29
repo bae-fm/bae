@@ -244,11 +244,6 @@ pub fn combine_results(
         .flat_map(ReleaseGroup::into_pressings)
         .filter(|row| !super::fit::rules_out(&row.releases, folder.track_count))
         .collect();
-    let in_library: HashSet<ReleaseKey> = all
-        .iter()
-        .filter(|(_, status)| status.release_in_library())
-        .map(|(result, _)| (result.source, result.release_id.clone()))
-        .collect();
     let (offered, set_aside, medium_conflict, notes) = split_rows(
         rows,
         &judgements,
@@ -260,8 +255,7 @@ pub fn combine_results(
         &facts,
     );
     // Offered rows that would look alike on screen are listed once.
-    let offered =
-        super::look_alike::keep_one_of_each_look(offered, &judgements, &notes, &in_library);
+    let offered = super::look_alike::keep_one_of_each_look(offered, &judgements, &notes);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()

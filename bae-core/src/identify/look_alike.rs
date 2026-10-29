@@ -7,10 +7,13 @@
 //! sharing an album a catalog files them under. What counts is what a row
 //! shows: its year, its labels and catalog numbers, where it was released and
 //! what it is made of, the details beside those (packaging, status, format
-//! descriptions), its badges and the note its Notes badge shows, whether it is
-//! already in the library, and whether its document could not be read. Catalog ids, notes no
-//! badge shows, entry dates and which catalog lists a row are not shown, so
-//! they do not count.
+//! descriptions), its badges and the note its Notes badge shows, and whether
+//! its document could not be read. Catalog ids, notes no badge shows, entry
+//! dates and which catalog lists a row are not shown, so they do not count.
+//! Whether a row is already in the library shows too, but it is read live
+//! when the row shows, never stored with the run's rows: rows that look alike
+//! otherwise are listed once whatever the library holds, so what a run
+//! stores does not depend on it.
 //!
 //! Rows that show the same thing state the same fields, so which one is kept
 //! is decided by what else stands behind it: a row both catalogs list before
@@ -34,11 +37,10 @@ pub(crate) fn keep_one_of_each_look(
     rows: Vec<Pressing>,
     judgements: &Judgements,
     notes: &HashMap<ReleaseKey, String>,
-    in_library: &HashSet<ReleaseKey>,
 ) -> Vec<Pressing> {
     let mut kept: Vec<(Shown, Pressing)> = Vec::new();
     for row in rows {
-        let shown = Shown::of(&row, judgements, notes, in_library);
+        let shown = Shown::of(&row, judgements, notes);
         match kept.iter_mut().find(|(seen, _)| seen.looks_like(&shown)) {
             Some((_, standing)) => {
                 if stands_before(&row, standing) {
@@ -62,17 +64,11 @@ struct Shown {
     /// The badges: the album's title and artist rank rows but are none.
     badges: Agreements,
     note: Option<String>,
-    in_library: bool,
     unread: bool,
 }
 
 impl Shown {
-    fn of(
-        row: &Pressing,
-        judgements: &Judgements,
-        notes: &HashMap<ReleaseKey, String>,
-        in_library: &HashSet<ReleaseKey>,
-    ) -> Self {
+    fn of(row: &Pressing, judgements: &Judgements, notes: &HashMap<ReleaseKey, String>) -> Self {
         let key = |release: &crate::import::search::MetadataResult| {
             (release.source, release.release_id.clone())
         };
@@ -99,7 +95,6 @@ impl Shown {
                 .releases
                 .iter()
                 .find_map(|release| notes.get(&key(release)).cloned()),
-            in_library: in_library.contains(&key(row.lead())),
             unread: row.document_failure().is_some(),
         }
     }
@@ -115,7 +110,6 @@ impl Shown {
             && self.facts == other.facts
             && self.badges == other.badges
             && self.note == other.note
-            && self.in_library == other.in_library
             && self.unread == other.unread
     }
 }
