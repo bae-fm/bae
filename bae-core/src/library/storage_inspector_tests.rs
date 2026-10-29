@@ -1,5 +1,5 @@
 use super::*;
-use crate::album_detail::{FileKind, FilePin, FilePlace};
+use crate::album_detail::FilePin;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
 use crate::library::release_queue::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};
 use crate::library::ReleaseQueueEntries;
@@ -38,20 +38,18 @@ fn waiting() -> ReleaseUpload {
     }
 }
 
-fn file(id: &str, pin: Option<FilePin>) -> FileDetail {
-    FileDetail {
-        id: id.to_string(),
-        original_filename: format!("{id}.flac"),
-        place: FilePlace::of(&format!("{id}.flac")),
-        kind: FileKind::Audio {
-            format: "FLAC".into(),
-        },
-        file_size: 10,
-        is_image: false,
-        content_type: "audio/flac".into(),
-        source_audio: None,
-        upload: None,
+fn file(id: &str, pin: Option<FilePin>) -> crate::db::DbStorageInspectorFile {
+    crate::db::DbStorageInspectorFile {
+        file: crate::db::DbFile::new(
+            "selected",
+            &format!("{id}.flac"),
+            10,
+            bae_util::content_type::ContentType::Flac,
+            id.to_string(),
+            chrono::DateTime::UNIX_EPOCH,
+        ),
         pin,
+        upload: None,
     }
 }
 
@@ -64,7 +62,7 @@ fn counts(summary: &[crate::library::TransferCount]) -> Vec<(&str, u32)> {
 }
 
 fn shown(
-    files: Vec<FileDetail>,
+    files: Vec<crate::db::DbStorageInspectorFile>,
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
 ) -> StorageInspector {

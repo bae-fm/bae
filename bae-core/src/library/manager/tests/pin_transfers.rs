@@ -56,23 +56,22 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     })
     .await
     .expect("the pin file watch names the file the pin downloads");
-    let pin_of = |detail: crate::album_detail::ReleaseDetail| {
-        detail
-            .files
+    let pin_of = |rows: crate::db::DbStorageInspector| {
+        rows.files
             .into_iter()
-            .find(|shown| shown.id == file.id)
+            .find(|row| row.file.id == file.id)
             .expect("the release's file")
             .pin
     };
     assert_eq!(
-        pin_of(manager.find_release_detail(&release_id).await.unwrap().unwrap()),
+        pin_of(inspector_rows_until(&manager, &release_id, |_| true).await),
         Some(crate::album_detail::FilePin::Downloading { file: fetched }),
         "the file reads as downloading by the file coven fetches"
     );
 
     pin.await.unwrap().unwrap();
     assert_eq!(
-        pin_of(manager.find_release_detail(&release_id).await.unwrap().unwrap()),
+        pin_of(inspector_rows_until(&manager, &release_id, |_| true).await),
         Some(crate::album_detail::FilePin::Kept),
         "a kept file downloads no more"
     );

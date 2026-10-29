@@ -25,8 +25,6 @@ impl BridgeFile {
             is_image,
             content_type,
             source_audio,
-            upload: _,
-            pin: _,
         } = f;
         BridgeFile {
             id,

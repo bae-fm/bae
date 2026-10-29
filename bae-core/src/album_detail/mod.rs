@@ -295,26 +295,17 @@ pub struct FileDetail {
     pub content_type: String,
     /// The scan's facts for this physical source file. `None` for non-audio.
     pub source_audio: Option<SourceAudioFile>,
-    /// The file's upload while it waits in this device's upload queue.
-    pub upload: Option<FileUpload>,
-    /// Where this device's pin of the file stands, as coven's `coven_pins`
-    /// says; `None` while it isn't pinned.
-    pub pin: Option<FilePin>,
 }
 
 impl FileDetail {
-    /// The release file `row` with its pin and its upload, as one read of
-    /// the release holds them.
-    pub(crate) fn from_raw(row: crate::db::DbReleaseDetailFile) -> Self {
-        let f = row.file;
+    /// The release file `f` as a list of the release's files shows it.
+    pub(crate) fn from_raw(f: crate::db::DbFile) -> Self {
         FileDetail {
-            pin: row.pin,
             place: FilePlace::of(&f.original_filename),
             kind: FileKind::of(&f.content_type, &f.original_filename),
             is_image: f.content_type.is_image(),
             content_type: f.content_type.to_string(),
             source_audio: f.source_audio,
-            upload: row.upload.map(FileUpload::from_raw),
             id: f.id,
             original_filename: f.original_filename,
             file_size: f.file_size,
@@ -334,33 +325,6 @@ pub enum FilePin {
         file: coven::FileId,
     },
     Waiting,
-}
-
-/// A release file's file waiting in this device's upload queue, read with the
-/// release: which file coven uploads, whether this process is sending it now,
-/// and the record of what it waits for. How far it has got is its file's
-/// transfer, keyed by `file`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct FileUpload {
-    pub file: coven::FileId,
-    pub phase: crate::library::UploadState,
-    /// What it waits for, without the error behind it, which only this
-    /// process holds.
-    pub pending: Option<coven::PendingRecord>,
-}
-
-impl FileUpload {
-    pub(crate) fn from_raw(raw: crate::db::DbFileUpload) -> Self {
-        Self {
-            file: raw.file,
-            phase: if raw.sending {
-                crate::library::UploadState::Uploading
-            } else {
-                crate::library::UploadState::Waiting
-            },
-            pending: raw.pending,
-        }
-    }
 }
 
 /// A library image's reference: kind, subject id, and content version. The id is a

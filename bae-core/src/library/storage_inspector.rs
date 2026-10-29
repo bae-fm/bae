@@ -76,7 +76,7 @@ impl StorageInspector {
     ) -> Self {
         Self::of(
             release_id,
-            rows.files.into_iter().map(FileDetail::from_raw).collect(),
+            rows.files,
             &rows.entries,
             rows.upload.map(ReleaseUpload::from_raw),
             causes,
@@ -91,7 +91,7 @@ impl StorageInspector {
     /// pinned file's pin and coven's fetch counting them.
     pub(crate) fn of(
         release_id: &str,
-        files: Vec<FileDetail>,
+        files: Vec<crate::db::DbStorageInspectorFile>,
         entries: &ReleaseQueueEntries,
         upload: Option<ReleaseUpload>,
         causes: &coven::PendingCauses,
@@ -113,9 +113,13 @@ impl StorageInspector {
         let files: Vec<StorageInspectorFile> = files
             .into_iter()
             .map(|file| StorageInspectorFile {
-                upload: file.upload.clone().map(|upload| StorageInspectorUpload {
+                upload: file.upload.map(|upload| StorageInspectorUpload {
                     file: upload.file,
-                    phase: upload.phase,
+                    phase: if upload.sending {
+                        UploadState::Uploading
+                    } else {
+                        UploadState::Waiting
+                    },
                     pending: upload.pending.map(|mut record| {
                         record.cause = causes.cause(&record);
                         PendingWait::of(&record)
@@ -126,7 +130,7 @@ impl StorageInspector {
                     Some(Pinning::Fetch) => file.pin,
                     None => None,
                 },
-                file,
+                file: FileDetail::from_raw(file.file),
             })
             .collect();
         let count = |stands: fn(&FilePin) -> bool| {

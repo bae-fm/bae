@@ -158,7 +158,7 @@ pub(super) fn build_release_detail_on(
     release: DbRelease,
 ) -> Result<ReleaseDetailRows, DbError> {
     let tracks = get_tracks_with_artists_for_release_on(sql, &release.id)?;
-    let files = release_detail_files_on(sql, &release.id)?;
+    let files = get_files_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
     let unstored_audio = unstored_audio_on(sql, &release.id)?;
     let mediums = release_mediums_on(sql, &release.id)?;
@@ -244,7 +244,7 @@ pub(super) struct ReleaseDetailRows {
     pub(super) release: DbRelease,
     mediums: DbReleaseMediums,
     tracks: Vec<(DbTrack, Option<LibraryCredit>)>,
-    files: Vec<DbReleaseDetailFile>,
+    files: Vec<DbFile>,
     records: Vec<crate::import::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
@@ -341,58 +341,6 @@ fn process_tracks(joined: Vec<(DbTrack, Option<LibraryCredit>)>) -> Vec<DbTrackW
 pub(super) const RELEASE_FILES_IN_ORDER: &str = "SELECT * FROM release_files \
      WHERE release_id = ?1 \
      ORDER BY original_filename COLLATE natural_order, id";
-
-/// A release's files as its detail shows them, in [`RELEASE_FILES_IN_ORDER`]'s
-/// order, each with where this device's pin of it stands and its upload
-/// while it waits in this device's queue, from coven's `coven_pins`,
-/// `coven_downloading` and `coven_uploads`, each joined by the file's coven
-/// key. A pin's download lists its file in `coven_downloading` before
-/// `coven_pins` holds a row for it.
-pub(super) const RELEASE_DETAIL_FILES: &str = "SELECT f.*, \
-        pin.key IS NOT NULL AS pin_held, pin.kept IS 1 AS pin_kept, \
-        downloading.file AS downloading_file, \
-        upload.file AS upload_file, upload.sending AS upload_sending, \
-        upload.pending AS upload_pending \
-     FROM release_files AS f \
-     LEFT JOIN coven_pins AS pin \
-         ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
-     LEFT JOIN coven_downloading AS downloading \
-         ON downloading.table_name = 'release_files' AND downloading.key = coven_key(f.id) \
-     LEFT JOIN coven_uploads AS upload \
-         ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
-     WHERE f.release_id = ?1 \
-     ORDER BY f.original_filename COLLATE natural_order, f.id";
-
-pub(super) fn release_detail_files_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<Vec<DbReleaseDetailFile>, DbError> {
-    Ok(sql.query(RELEASE_DETAIL_FILES, params![release_id], |row| {
-        let pin = match (
-            row.get::<_, bool>("pin_kept")?,
-            row.get::<_, Option<coven::FileId>>("downloading_file")?,
-            row.get::<_, bool>("pin_held")?,
-        ) {
-            (true, _, _) => Some(crate::album_detail::FilePin::Kept),
-            (false, Some(file), _) => Some(crate::album_detail::FilePin::Downloading { file }),
-            (false, None, true) => Some(crate::album_detail::FilePin::Waiting),
-            (false, None, false) => None,
-        };
-        let upload = match row.get::<_, Option<coven::FileId>>("upload_file")? {
-            Some(file) => Some(DbFileUpload {
-                file,
-                sending: row.get("upload_sending")?,
-                pending: row.get("upload_pending")?,
-            }),
-            None => None,
-        };
-        Ok(DbReleaseDetailFile {
-            file: row_to_file(row)?,
-            pin,
-            upload,
-        })
-    })?)
-}
 
 pub(super) fn get_files_for_release_on(
     sql: &SqlReadContext<'_>,

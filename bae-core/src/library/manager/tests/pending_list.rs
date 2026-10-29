@@ -188,6 +188,39 @@ async fn inspector_until(
     .expect("the inspector shows the expected value")
 }
 
+/// The first rows the inspector's read gives for the release `release_id`
+/// that `accept` takes: its files with each one's pin as coven's tables hold
+/// it, whether or not the inspector shows it.
+#[cfg(feature = "test-utils")]
+async fn inspector_rows_until(
+    manager: &LibraryManager,
+    release_id: &str,
+    accept: impl Fn(&crate::db::DbStorageInspector) -> bool,
+) -> crate::db::DbStorageInspector {
+    let mut rows = manager
+        .database
+        .subscribe_storage_inspector(Some(release_id.to_string()));
+    rows_until(&mut rows, accept).await
+}
+
+/// The first rows `rows` gives from now that `accept` takes.
+#[cfg(feature = "test-utils")]
+async fn rows_until(
+    rows: &mut coven::ReconfigurableLiveQuery<Option<String>, Option<crate::db::DbStorageInspector>>,
+    accept: impl Fn(&crate::db::DbStorageInspector) -> bool,
+) -> crate::db::DbStorageInspector {
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let event = rows.next().await.expect("the inspector's read runs");
+            if let Some(value) = event.result.unwrap().filter(|value| accept(value)) {
+                break value;
+            }
+        }
+    })
+    .await
+    .expect("the inspector's read gives the expected rows")
+}
+
 /// The Storage Manager inspector shows each of its release's files beside
 /// its upload while one waits, and the error a failed upload met while this
 /// process holds it.
@@ -239,8 +272,10 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    let detail = manager.find_release_detail(&cloud).await.unwrap().unwrap();
-    assert!(detail.files.iter().all(|file| file.pin.is_none()));
+    inspector_rows_until(&manager, &cloud, |rows| {
+        rows.files.iter().all(|file| file.pin.is_none())
+    })
+    .await;
 
     let services = crate::library::AppServices::for_test(manager.library.clone())
         .await
@@ -269,55 +304,58 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 
     manager.set_downloads_paused(false).await.unwrap();
     let pinned = inspector_until(&inspector, |value| value.transfers.is_empty()).await;
-    assert!(pinned
-        .files
-        .iter()
-        .all(|file| file.pin.is_none() && file.file.pin == Some(FilePin::Kept)));
+    assert!(pinned.files.iter().all(|file| file.pin.is_none()));
+    inspector_rows_until(&manager, &cloud, |rows| {
+        rows.files.iter().all(|file| file.pin == Some(FilePin::Kept))
+    })
+    .await;
 }
 
-/// Each value the inspector shows of a pinning release is one the library
+/// Each value the inspector reads of a pinning release is one the library
 /// held: the release still in the download queue, or out of it with every
 /// file kept, never out of it with a file not yet kept. The download worker
 /// keeps the files and then takes the release out of the queue, one write
 /// after the other, so each pin passes through both.
 #[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_inspector_never_shows_a_pin_out_of_the_queue_before_its_files_are_kept() {
+async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_kept() {
     use crate::album_detail::FilePin;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    let services = crate::library::AppServices::for_test(manager.library.clone())
-        .await
-        .unwrap();
-    let inspector = services.subscribe_storage_inspector();
-    inspector.set(Some(cloud.clone())).unwrap();
-    let kept = |value: &crate::library::storage_inspector::StorageInspector| {
+    let kept = |value: &crate::db::DbStorageInspector| {
         value
             .files
             .iter()
-            .all(|file| file.file.pin == Some(FilePin::Kept))
+            .all(|file| file.pin == Some(FilePin::Kept))
     };
+    let mut rows = manager
+        .database
+        .subscribe_storage_inspector(Some(cloud.clone()));
 
     // The release as it stands before any pin: unpinned, out of the queue.
-    inspector_until(&inspector, |value| {
-        value.files.iter().all(|file| file.file.pin.is_none())
+    rows_until(&mut rows, |value| {
+        value.files.iter().all(|file| file.pin.is_none())
     })
     .await;
     for round in 0..20 {
         manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
-        // The inspector sends only what changes, so every value after the
-        // pin is queued holds the rule; a download can finish before a value
-        // shows the release in the queue, so none has to.
+        // The read sends only what changes, so every value after the pin is
+        // queued holds the rule; a download can finish before a value shows
+        // the release in the queue, so none has to.
         tokio::time::timeout(std::time::Duration::from_secs(10), async {
             loop {
-                let snapshot = inspector.next().await.expect("the inspector reads");
-                let value = snapshot.value.expect("the library holds the release");
+                let event = rows.next().await.expect("the inspector's read runs");
+                let value = event
+                    .result
+                    .unwrap()
+                    .expect("the library holds the release");
+                let queued = value.entries.download.is_some();
                 assert!(
-                    !value.transfers.is_empty() || kept(&value),
+                    queued || kept(&value),
                     "round {round}: out of the download queue with a file not kept: {value:?}"
                 );
-                if value.transfers.is_empty() {
+                if !queued && kept(&value) {
                     break;
                 }
             }
@@ -326,8 +364,8 @@ async fn the_inspector_never_shows_a_pin_out_of_the_queue_before_its_files_are_k
         .expect("the pin finishes");
 
         manager.unpin_release(&cloud).await.unwrap();
-        inspector_until(&inspector, |value| {
-            value.files.iter().all(|file| file.file.pin.is_none())
+        rows_until(&mut rows, |value| {
+            value.files.iter().all(|file| file.pin.is_none())
         })
         .await;
     }

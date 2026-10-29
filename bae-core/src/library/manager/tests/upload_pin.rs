@@ -213,8 +213,9 @@ async fn a_release_waiting_for_its_carried_pins_is_pinning() {
         ]
     );
     let pinned = inspector_until(&inspector, |value| value.transfers.is_empty()).await;
-    assert!(pinned
-        .files
-        .iter()
-        .all(|file| file.pin.is_none() && file.file.pin == Some(FilePin::Kept)));
+    assert!(pinned.files.iter().all(|file| file.pin.is_none()));
+    inspector_rows_until(&manager, &waiting.id, |rows| {
+        rows.files.iter().all(|file| file.pin == Some(FilePin::Kept))
+    })
+    .await;
 }

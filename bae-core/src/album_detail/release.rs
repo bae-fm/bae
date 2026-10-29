@@ -417,7 +417,7 @@ impl ReleaseEditDisplayContext {
             source_audio: SourceAudioSummary::from_files(
                 raw.files
                     .iter()
-                    .filter_map(|row| row.file.source_audio.as_ref()?.summarized()),
+                    .filter_map(|file| file.source_audio.as_ref()?.summarized()),
             ),
             sides: ReleaseEditTrackSide::lay_out(contexts),
         })
@@ -480,7 +480,7 @@ impl ReleaseDetail {
             .files
             .into_iter()
             .map(|row| {
-                let supports_cover = row.file.content_type.is_supported_cover();
+                let supports_cover = row.content_type.is_supported_cover();
                 let file = FileDetail::from_raw(row);
                 if supports_cover {
                     cover_files.push(file.clone());

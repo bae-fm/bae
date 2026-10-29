@@ -244,7 +244,7 @@ pub struct ReleaseDetailContext {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageInspector {
     /// The release's files in their order, each with its pin and upload.
-    pub files: Vec<DbReleaseDetailFile>,
+    pub files: Vec<DbStorageInspectorFile>,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
     /// The release's entries in the download and export queues.
@@ -259,7 +259,7 @@ pub struct DbReleaseDetail {
     /// The release's mediums, which its tracks' places are read against.
     pub mediums: DbReleaseMediums,
     pub tracks: Vec<DbTrackWithArtists>,
-    pub files: Vec<DbReleaseDetailFile>,
+    pub files: Vec<DbFile>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -327,11 +327,13 @@ pub struct DbReleaseEditSourceFile {
     pub layout: Option<crate::album_detail::SourceAudioLayout>,
 }
 
-/// One file of a release as its detail reads it: the file, where this
-/// device's pin of it stands (`None` while it isn't pinned or being pinned),
-/// and its upload while it waits in this device's upload queue.
+/// One file of a release as the Storage Manager's inspector reads it: the
+/// file, where this device's pin of it stands (`None` while it isn't pinned
+/// or being pinned), and its upload while it waits in this device's upload
+/// queue.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
-pub struct DbReleaseDetailFile {
+pub struct DbStorageInspectorFile {
     pub file: DbFile,
     pub pin: Option<crate::album_detail::FilePin>,
     pub upload: Option<DbFileUpload>,

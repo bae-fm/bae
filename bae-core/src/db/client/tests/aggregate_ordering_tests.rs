@@ -303,8 +303,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         .await
         .unwrap()
         .expect("release detail");
-    let detail_files: Vec<DbFile> = detail.files.into_iter().map(|row| row.file).collect();
-    assert_eq!(names(&detail_files), expected, "the release's detail");
+    assert_eq!(names(&detail.files), expected, "the release's detail");
 
     let plan = db
         .read(|sql| {
@@ -330,7 +329,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
             sql.query(
                 &format!(
                     "EXPLAIN QUERY PLAN {}",
-                    super::super::read::RELEASE_DETAIL_FILES
+                    super::super::storage_inspector::INSPECTOR_FILES
                 ),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
