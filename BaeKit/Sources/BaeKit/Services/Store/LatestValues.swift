@@ -344,7 +344,7 @@ extension LatestStream where Value == UInt32 {
     extension LatestStream where Value == BridgeSelectionActionProgress {
         /// How far a bulk action over an import list's selection has got,
         /// while it runs; a preview's holds `value` and nothing feeds it.
-        public static func selectionActionProgress(holding value: Value? = nil)
+        public static func bulkActionProgress(holding value: Value? = nil)
             -> LatestStream
         {
             LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {

@@ -36,7 +36,7 @@ extension ImportSelectionOperations {
         progressStream:
             @escaping @Sendable () -> LatestStream<
                 BridgeSelectionActionProgress
-            > = { .selectionActionProgress() },
+            > = { .bulkActionProgress() },
         run:
             @escaping @Sendable (
                 BridgeCandidateAction,

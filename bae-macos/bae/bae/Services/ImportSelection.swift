@@ -46,7 +46,7 @@ struct ImportSelectionOperations: Sendable {
             },
             combine: { try await list.current().combineSelection() },
             separate: { try await list.current().separateSelection() },
-            progressStream: { .selectionActionProgress() },
+            progressStream: { .bulkActionProgress() },
             run: { action, progress in
                 let list = try list.current()
                 let feed = progress.feed(from: list)
@@ -64,7 +64,7 @@ struct ImportSelectionOperations: Sendable {
         sourceFolders: { [] },
         combine: { throw StubError.notImplemented },
         separate: { throw StubError.notImplemented },
-        progressStream: { .selectionActionProgress() },
+        progressStream: { .bulkActionProgress() },
         run: { _, _ in [] }
     )
 }
