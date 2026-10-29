@@ -57,7 +57,7 @@ impl PressingLookup {
         self.state = match outcome {
             Ok(mut results) => {
                 if let PressingKey::CatalogNumber { number, label, .. } = &self.key {
-                    results.retain(|(result, _)| prints_under(result, number, label));
+                    results.retain(|result| prints_under(result, number, label));
                 }
                 LookupState::Done { results }
             }

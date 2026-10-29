@@ -4,7 +4,7 @@
 use super::*;
 use crate::signals::{TextLine, TextOrigin};
 
-type Outcome = (Findings, LibraryStatuses);
+type Outcome = Findings;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
@@ -19,30 +19,27 @@ fn folder(line: &str) -> CandidateText {
 
 /// A pressing of Album One on Label One, L1-100, whose read document writes
 /// `notes`, each in its own packaging so no two look alike.
-fn pressing(release_id: &str, notes: &[&str]) -> (MetadataResult, LibraryStatus) {
-    (
-        MetadataResult {
-            title: "Album One".to_string(),
-            artist: Some("Artist One".to_string()),
-            year: Some(1987),
-            labels: vec![bae_types::pressing::ReleaseLabel::of(
-                Some("Label One"),
-                Some("L1-100"),
-            )],
-            notes: notes.iter().map(|note| note.to_string()).collect(),
-            packaging: Some(match release_id {
-                "rel-alpha" => bae_types::pressing::Packaging::JewelCase,
-                "rel-beta" => bae_types::pressing::Packaging::Digipak,
-                "rel-gamma" => bae_types::pressing::Packaging::GatefoldCover,
-                _ => bae_types::pressing::Packaging::CardboardSleeve,
-            }),
-            ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
-        },
-        LibraryStatus::absent(release_id),
-    )
+fn pressing(release_id: &str, notes: &[&str]) -> MetadataResult {
+    MetadataResult {
+        title: "Album One".to_string(),
+        artist: Some("Artist One".to_string()),
+        year: Some(1987),
+        labels: vec![bae_types::pressing::ReleaseLabel::of(
+            Some("Label One"),
+            Some("L1-100"),
+        )],
+        notes: notes.iter().map(|note| note.to_string()).collect(),
+        packaging: Some(match release_id {
+            "rel-alpha" => bae_types::pressing::Packaging::JewelCase,
+            "rel-beta" => bae_types::pressing::Packaging::Digipak,
+            "rel-gamma" => bae_types::pressing::Packaging::GatefoldCover,
+            _ => bae_types::pressing::Packaging::CardboardSleeve,
+        }),
+        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
+    }
 }
 
-fn by_catalog(results: Vec<(MetadataResult, LibraryStatus)>, text: &CandidateText) -> Outcome {
+fn by_catalog(results: Vec<MetadataResult>, text: &CandidateText) -> Outcome {
     combine_results(
         LookupAnswers {
             catalog: results,
@@ -55,7 +52,6 @@ fn by_catalog(results: Vec<(MetadataResult, LibraryStatus)>, text: &CandidateTex
 
 fn offered(outcome: &Outcome) -> Vec<&str> {
     outcome
-        .0
         .matches
         .iter()
         .map(|result| result.release_id.as_str())
@@ -126,19 +122,16 @@ fn numbers_in_the_notes_give_no_point() {
 /// offered over one whose notes the folder names.
 #[test]
 fn the_notes_never_outrank_an_earlier_field() {
-    let (numbered, status) = pressing("rel-alpha", &["Pressed By Plant Alpha"]);
+    let numbered = pressing("rel-alpha", &["Pressed By Plant Alpha"]);
     let unnumbered = MetadataResult {
         labels: vec![bae_types::pressing::ReleaseLabel::of(
             Some("Label One"),
             None,
         )],
-        ..pressing("rel-beta", &["Made In Nordland By Plant Beta"]).0
+        ..pressing("rel-beta", &["Made In Nordland By Plant Beta"])
     };
     let outcome = by_catalog(
-        vec![
-            (numbered, status),
-            (unnumbered, LibraryStatus::absent("rel-beta")),
-        ],
+        vec![numbered, unnumbered],
         &folder("1987 Nordland Label One L1-100"),
     );
     assert_eq!(offered(&outcome), vec!["rel-alpha"]);
@@ -148,22 +141,15 @@ fn the_notes_never_outrank_an_earlier_field() {
 /// offered and the undated one set aside.
 #[test]
 fn an_undated_look_alike_folds_below_a_dated_one() {
-    let (dated, dated_status) = pressing("rel-dated", &[]);
+    let dated = pressing("rel-dated", &[]);
     let undated = MetadataResult {
         year: None,
-        ..pressing("rel-undated", &[]).0
+        ..pressing("rel-undated", &[])
     };
-    let outcome = by_catalog(
-        vec![
-            (undated, LibraryStatus::absent("rel-undated")),
-            (dated, dated_status),
-        ],
-        &folder("Label One L1-100"),
-    );
+    let outcome = by_catalog(vec![undated, dated], &folder("Label One L1-100"));
     assert_eq!(offered(&outcome), vec!["rel-dated"]);
     assert_eq!(
         outcome
-            .0
             .narrowed_out
             .matches
             .iter()
@@ -179,22 +165,16 @@ fn an_undated_look_alike_folds_below_a_dated_one() {
 fn stating_a_year_never_outranks_an_earlier_field() {
     let undated = MetadataResult {
         year: None,
-        ..pressing("rel-undated", &[]).0
+        ..pressing("rel-undated", &[])
     };
     let dated = MetadataResult {
         labels: vec![bae_types::pressing::ReleaseLabel::of(
             Some("Label One"),
             None,
         )],
-        ..pressing("rel-dated", &[]).0
+        ..pressing("rel-dated", &[])
     };
-    let outcome = by_catalog(
-        vec![
-            (undated, LibraryStatus::absent("rel-undated")),
-            (dated, LibraryStatus::absent("rel-dated")),
-        ],
-        &folder("Label One L1-100"),
-    );
+    let outcome = by_catalog(vec![undated, dated], &folder("Label One L1-100"));
     assert_eq!(offered(&outcome), vec!["rel-undated"]);
 }
 
@@ -204,13 +184,10 @@ fn stating_a_year_never_outranks_an_earlier_field() {
 fn a_dated_row_outranks_an_undated_one_a_note_names() {
     let undated = MetadataResult {
         year: None,
-        ..pressing("rel-undated", &["Made In Nordland"]).0
+        ..pressing("rel-undated", &["Made In Nordland"])
     };
     let outcome = by_catalog(
-        vec![
-            (undated, LibraryStatus::absent("rel-undated")),
-            pressing("rel-dated", &[]),
-        ],
+        vec![undated, pressing("rel-dated", &[])],
         &folder("Label One L1-100 Nordland"),
     );
     assert_eq!(offered(&outcome), vec!["rel-dated"]);
@@ -223,13 +200,13 @@ fn a_dated_row_outranks_an_undated_one_a_note_names() {
 fn the_notes_are_weighed_after_the_year() {
     let undated = MetadataResult {
         year: None,
-        ..pressing("rel-undated", &["Plant Beta"]).0
+        ..pressing("rel-undated", &["Plant Beta"])
     };
     let outcome = by_catalog(
         vec![
             pressing("rel-alpha", &["Plant Alpha"]),
             pressing("rel-beta", &["Plant Beta"]),
-            (undated, LibraryStatus::absent("rel-undated")),
+            undated,
         ],
         &folder("Label One L1-100 Beta"),
     );

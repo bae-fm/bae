@@ -4,14 +4,13 @@
 //! and settles once all of them have.
 
 use super::{Effect, LookupOutcome, SignalState, SignalsContext};
-use crate::db::LibraryStatus;
 use crate::identify::NotAskedReason;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::signals::{DiscIdSignal, LookupFailure};
 use bae_catalogs::catalog::Catalog;
 
 /// What one lookup produced: each match paired with its library status.
-pub type LookupResults = Vec<(MetadataResult, LibraryStatus)>;
+pub type LookupResults = Vec<MetadataResult>;
 
 /// What MusicBrainz answered about one Disc ID: the releases holding the
 /// disc, and each one's document as the answer states it, which the run reads

@@ -16,7 +16,6 @@ struct NotSureOfferTests {
         identifyState: .found(
             run: PreviewData.identifyRunFound,
             groups: [PreviewData.searchGroupExact],
-            libraryStatuses: [:],
             trackCount: 11,
             agreements: PreviewData.searchAgreementsExact,
             narrowedOutCount: 0,

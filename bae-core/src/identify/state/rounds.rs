@@ -69,7 +69,7 @@ pub(super) fn next_round(
                 .chain(&pressings)
                 .any(|lookup| lookup.source == source && lookup.key == key);
             let answered = match &key {
-                PressingKey::Link { release } => pool.all().any(|(result, _)| {
+                PressingKey::Link { release } => pool.all().any(|result| {
                     result.source == release.catalog && result.release_id == release.key
                 }),
                 PressingKey::Barcode { barcode: code } => barcode.lookups().iter().any(|lookup| {
@@ -114,7 +114,7 @@ pub(super) fn next_round(
 /// The rows the run offers as its results stand, each as its records with
 /// their documents applied.
 pub(super) fn offered_rows(context: &SignalsContext) -> Vec<Vec<MetadataResult>> {
-    let findings = combined(context).0;
+    let findings = combined(context);
     let mut rows: Vec<(u32, Vec<MetadataResult>)> = Vec::new();
     for (result, row) in findings.matches.into_iter().zip(findings.pressings) {
         match rows.iter_mut().find(|(numbered, _)| *numbered == row) {
@@ -151,11 +151,11 @@ fn catalog_searches_due(
     rows: &[Vec<MetadataResult>],
 ) -> Vec<(String, Option<String>, Vec<Catalog>)> {
     let answers = context.lookup_results();
-    let facts = FolderFacts::of(&context.text, answers.all().map(|(result, _)| result));
+    let facts = FolderFacts::of(&context.text, answers.all());
     let mut numbers: Vec<String> = context.catalog.confirmed.clone();
     for number in answers
         .all()
-        .flat_map(|(result, _)| &result.labels)
+        .flat_map(|result| &result.labels)
         .filter_map(ReleaseLabel::catalog_number)
     {
         let key = super::number_key(number);

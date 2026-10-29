@@ -2,7 +2,6 @@
 //! per-candidate cancellation. One `IdentifyServiceHandle` per app; each
 //! candidate runs in its own spawned driver task.
 
-use super::annotate_with_library_status;
 use super::discid::lookup_and_resolve;
 use super::documents::ReleaseToRead;
 use super::state::{
@@ -38,28 +37,15 @@ fn run_providers(library_manager: &LibraryManager) -> Vec<Catalog> {
     crate::import::asked_sources(&library_manager.metadata_sources())
 }
 
-/// Pair one provider's results with live library status: the provider's
-/// answer, or how bae broke on its way there or back — a request it could not
-/// make, an answer it could not read, the library check, which is a read of
-/// bae's own store.
-async fn annotate_lookup(
-    lookup: SourceLookup,
-    library_manager: &LibraryManager,
-) -> Result<LookupOutcome, InternalFailure> {
-    let results = match lookup {
-        Ok(results) => results,
-        Err(Failure::Lookup(failure)) => return Ok(Err(failure)),
-        Err(Failure::Internal(failure)) => return Err(failure),
-    };
-    if results.is_empty() {
-        return Ok(Ok(Vec::new()));
+/// What one provider's lookup came to: the provider's answer, or how bae
+/// broke on its way there or back — a request it could not make, an answer it
+/// could not read.
+fn outcome_of(lookup: SourceLookup) -> Result<LookupOutcome, InternalFailure> {
+    match lookup {
+        Ok(results) => Ok(Ok(results)),
+        Err(Failure::Lookup(failure)) => Ok(Err(failure)),
+        Err(Failure::Internal(failure)) => Err(failure),
     }
-    annotate_with_library_status(results, library_manager)
-        .await
-        .map(Ok)
-        .map_err(|detail| {
-            InternalFailure::logged("checking the library for the releases found", detail)
-        })
 }
 
 /// Send what a lookup came to: `answered` with the provider's answer, or the
@@ -571,7 +557,7 @@ fn dispatch_effect(
                 let lookup = library_manager
                     .lookup_musicbrainz_isrcs(&isrcs, priority)
                     .await;
-                let answer = annotate_lookup(lookup, &library_manager).await;
+                let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::IsrcLookupAnswered { outcome }
                 });
@@ -587,7 +573,7 @@ fn dispatch_effect(
                     barcode: barcode.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
-                let answer = annotate_lookup(lookup, &library_manager).await;
+                let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::BarcodeLookupAnswered {
                         source,
@@ -609,7 +595,7 @@ fn dispatch_effect(
                     album: query.album.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &search, priority).await;
-                let answer = annotate_lookup(lookup, &library_manager).await;
+                let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| IdentifyEvent::SearchAnswered {
                     source,
                     outcome,
@@ -680,7 +666,7 @@ fn dispatch_effect(
                         search_source(&library_manager, source, &query, priority).await
                     }
                 };
-                let answer = annotate_lookup(lookup, &library_manager).await;
+                let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::PressingLookupAnswered {
                         source,
@@ -719,7 +705,7 @@ fn dispatch_effect(
                     label: None,
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
-                let answer = annotate_lookup(lookup, &library_manager).await;
+                let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::CatalogLookupAnswered {
                         source,

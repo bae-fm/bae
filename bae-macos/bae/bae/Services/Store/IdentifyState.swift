@@ -32,7 +32,6 @@ enum IdentifyState: Equatable {
     case triangulating(
         run: BridgeIdentifyRun,
         groups: [ReleaseGroup],
-        libraryStatuses: [String: BridgeLibraryStatus],
         agreements: [String: BridgeAgreements],
         narrowedOutCount: UInt32,
     )
@@ -43,7 +42,6 @@ enum IdentifyState: Equatable {
     case found(
         run: BridgeIdentifyRun?,
         groups: [ReleaseGroup],
-        libraryStatuses: [String: BridgeLibraryStatus],
         trackCount: UInt32,
         /// What the candidate's own text agrees with about each pressing,
         /// keyed by release id — the per-row badges, and what ordered the rows.
@@ -77,35 +75,30 @@ enum IdentifyState: Equatable {
         run: BridgeIdentifyRun?,
         failureLines: [BridgeIdentifyFailure],
         groups: [ReleaseGroup],
-        libraryStatuses: [String: BridgeLibraryStatus],
         agreements: [String: BridgeAgreements],
         narrowedOutCount: UInt32,
         offersSharedAlbum: Bool,
     )
 
     // One case per bridge variant, copied field for field.
-    // swiftlint:disable:next function_body_length
     init(bridge: BridgeIdentifyState) {
         switch bridge {
         case .idle: self = .idle
         case .triangulating(
             let run,
             let groups,
-            let libraryStatuses,
             let agreements,
             let narrowedOutCount
         ):
             self = .triangulating(
                 run: run,
                 groups: groups.map(ReleaseGroup.init(bridge:)),
-                libraryStatuses: libraryStatuses,
                 agreements: agreements,
                 narrowedOutCount: narrowedOutCount,
             )
         case .found(
             let run,
             let groups,
-            let libraryStatuses,
             let trackCount,
             let agreements,
             let narrowedOutCount,
@@ -116,7 +109,6 @@ enum IdentifyState: Equatable {
             self = .found(
                 run: run,
                 groups: groups.map(ReleaseGroup.init(bridge:)),
-                libraryStatuses: libraryStatuses,
                 trackCount: trackCount,
                 agreements: agreements,
                 narrowedOutCount: narrowedOutCount,
@@ -132,7 +124,6 @@ enum IdentifyState: Equatable {
             let run,
             let failureLines,
             let groups,
-            let libraryStatuses,
             let agreements,
             let narrowedOutCount,
             let offersSharedAlbum
@@ -141,7 +132,6 @@ enum IdentifyState: Equatable {
                 run: run,
                 failureLines: failureLines,
                 groups: groups.map(ReleaseGroup.init(bridge:)),
-                libraryStatuses: libraryStatuses,
                 agreements: agreements,
                 narrowedOutCount: narrowedOutCount,
                 offersSharedAlbum: offersSharedAlbum,
@@ -149,24 +139,13 @@ enum IdentifyState: Equatable {
         }
     }
 
-    /// What core knew about each matched release's library membership when the
-    /// verdict settled, keyed by release id. A live subscription outranks it.
-    var libraryStatuses: [String: BridgeLibraryStatus] {
-        switch self {
-        case .found(_, _, let statuses, _, _, _, _, _, _): statuses
-        case .failed(_, _, _, let statuses, _, _, _): statuses
-        case .triangulating(_, _, let statuses, _, _): statuses
-        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: [:]
-        }
-    }
-
     /// How many rows the signals' agreement left out of the matches — what
     /// the pane's disclosure counts.
     var narrowedOutCount: UInt32 {
         switch self {
-        case .found(_, _, _, _, _, let count, _, _, _): count
-        case .failed(_, _, _, _, _, let count, _): count
-        case .triangulating(_, _, _, _, let count): count
+        case .found(_, _, _, _, let count, _, _, _): count
+        case .failed(_, _, _, _, let count, _): count
+        case .triangulating(_, _, _, let count): count
         case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: 0
         }
     }
@@ -175,7 +154,7 @@ enum IdentifyState: Equatable {
     /// why nothing was picked.
     var folderCheck: BridgeFolderCheck? {
         switch self {
-        case .found(_, _, _, _, _, _, let folderCheck, _, _): folderCheck
+        case .found(_, _, _, _, _, let folderCheck, _, _): folderCheck
         case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
             .failed, .error:
             nil
@@ -186,8 +165,8 @@ enum IdentifyState: Equatable {
     /// the folder can be linked to with its pressing unknown.
     var offersSharedAlbum: Bool {
         switch self {
-        case .found(_, _, _, _, _, _, _, _, let offers): offers
-        case .failed(_, _, _, _, _, _, let offers): offers
+        case .found(_, _, _, _, _, _, _, let offers): offers
+        case .failed(_, _, _, _, _, let offers): offers
         case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
             .error:
             false
@@ -197,7 +176,7 @@ enum IdentifyState: Equatable {
     /// Whether core picks the found release for the folder on its own.
     var picksUnattended: Bool {
         switch self {
-        case .found(_, _, _, _, _, _, _, let picks, _): picks
+        case .found(_, _, _, _, _, _, let picks, _): picks
         case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
             .failed, .error:
             false
@@ -207,11 +186,11 @@ enum IdentifyState: Equatable {
     /// The run as its ledger, while there is one to lay out.
     var run: BridgeIdentifyRun? {
         switch self {
-        case .triangulating(let run, _, _, _, _): run
-        case .found(let run, _, _, _, _, _, _, _, _): run
+        case .triangulating(let run, _, _, _): run
+        case .found(let run, _, _, _, _, _, _, _): run
         case .notFoundAnywhere(let run): run
         case .manualOnly(_, let run): run
-        case .failed(let run, _, _, _, _, _, _): run
+        case .failed(let run, _, _, _, _, _): run
         case .idle, .queued, .error: nil
         }
     }

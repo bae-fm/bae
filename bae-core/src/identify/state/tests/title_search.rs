@@ -30,7 +30,7 @@ fn search_title(source: Catalog, album: &str, artist: &str) -> Effect {
 
 fn search_answered(
     source: Catalog,
-    results: Vec<(MetadataResult, LibraryStatus)>,
+    results: Vec<MetadataResult>,
 ) -> IdentifyEvent {
     IdentifyEvent::SearchAnswered {
         source,
@@ -217,9 +217,9 @@ fn a_failed_search_stores_what_the_other_provider_found() {
             vec![
                 discogs_pair("dg-1", Some("g-x")),
                 {
-                    let (mut result, status) = discogs_pair("dg-2", Some("g-x"));
+                    let mut result = discogs_pair("dg-2", Some("g-x"));
                     result.packaging = Some(bae_types::pressing::Packaging::Digipak);
-                    (result, status)
+                    result
                 },
                 discogs_pair("dg-3", Some("g-y")),
             ],
@@ -253,7 +253,6 @@ fn a_failed_search_stores_what_the_other_provider_found() {
         "the stored failure keeps what Discogs found"
     );
     let resumed = verdict.resume_state(
-        &|result: &MetadataResult| LibraryStatus::absent(&result.release_id),
         text,
         Default::default(),
     );

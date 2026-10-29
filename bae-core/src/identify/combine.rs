@@ -12,7 +12,6 @@
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use super::row_facts::{Fact, FolderFacts};
-use crate::db::LibraryStatus;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use bae_catalogs::catalog::Catalog;
@@ -112,36 +111,10 @@ impl NarrowedOut {
     }
 }
 
-/// Whether each release a [`Findings`] names is already in the library,
-/// index-aligned with its two lists. Checked live, never stored.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct LibraryStatuses {
-    /// Index-aligned with [`Findings::matches`].
-    pub matches: Vec<LibraryStatus>,
-    /// Index-aligned with [`NarrowedOut::matches`].
-    pub narrowed_out: Vec<LibraryStatus>,
-}
-
-impl LibraryStatuses {
-    /// Check every release `findings` names with `status_of`.
-    pub fn of(findings: &Findings, status_of: impl Fn(&MetadataResult) -> LibraryStatus) -> Self {
-        Self {
-            matches: findings.matches.iter().map(&status_of).collect(),
-            narrowed_out: findings
-                .narrowed_out
-                .matches
-                .iter()
-                .map(&status_of)
-                .collect(),
-        }
-    }
-}
-
-type Results = Vec<(MetadataResult, LibraryStatus)>;
+type Results = Vec<MetadataResult>;
 type ReleaseKey = (Catalog, String);
 
-/// What each kind of a run's keys returned, each release with its library
-/// status.
+/// What each kind of a run's keys returned.
 #[derive(Debug, Clone, Default)]
 pub struct LookupAnswers {
     /// One set per disc ID the folder's files hash to, in their order.
@@ -157,7 +130,7 @@ pub struct LookupAnswers {
 
 impl LookupAnswers {
     /// Every key's results, in the order above.
-    pub(crate) fn all(&self) -> impl Iterator<Item = &(MetadataResult, LibraryStatus)> {
+    pub(crate) fn all(&self) -> impl Iterator<Item = &MetadataResult> {
         self.disc_id
             .iter()
             .flatten()
@@ -175,7 +148,7 @@ pub fn combine_results(
     answers: LookupAnswers,
     text: &CandidateText,
     folder: FolderAudio<'_>,
-) -> (Findings, LibraryStatuses) {
+) -> Findings {
     let disc_id = union_all(&answers.disc_id);
     let ripped_from = RippedFrom::of(folder.origin, !disc_id.is_empty());
     // How many of the folder's discs each release holds: each disc ID's
@@ -203,7 +176,7 @@ pub fn combine_results(
         .filter(|set| !set.is_empty())
         .collect();
     if present.is_empty() {
-        return (Findings::default(), LibraryStatuses::default());
+        return Findings::default();
     }
 
     // Every release once, in key order.
@@ -220,10 +193,10 @@ pub fn combine_results(
             by_pressing: keys[5].contains(&key),
         }
     };
-    let facts = FolderFacts::of(text, all.iter().map(|(result, _)| result));
+    let facts = FolderFacts::of(text, all.iter());
     let judged: Vec<Judged> = all
         .iter()
-        .map(|(result, _)| {
+        .map(|result| {
             let agreements = agreements_of(result, text, &facts, &lookup_of(result));
             (result.clone(), agreements)
         })
@@ -231,7 +204,7 @@ pub fn combine_results(
     let judgements = Judgements::of(&judged, Some(folder.track_count));
     let returned_by: HashMap<ReleaseKey, LookupProvenance> = all
         .iter()
-        .map(|(result, _)| {
+        .map(|result| {
             (
                 (result.source, result.release_id.clone()),
                 lookup_of(result),
@@ -257,10 +230,6 @@ pub fn combine_results(
     // Offered rows that would look alike on screen are listed once.
     let offered = super::look_alike::keep_one_of_each_look(offered, &judgements, &notes);
 
-    let statuses: HashMap<ReleaseKey, LibraryStatus> = all
-        .into_iter()
-        .map(|(result, status)| ((result.source, result.release_id), status))
-        .collect();
     // Each list's records in row order, with the row each belongs to.
     let records = |rows: Vec<Pressing>| -> (Results, Vec<u32>) {
         let mut records = Results::new();
@@ -268,11 +237,7 @@ pub fn combine_results(
         for (row, pressing) in rows.into_iter().enumerate() {
             let row = u32::try_from(row).expect("a run answers fewer rows than u32 counts");
             for result in pressing.releases {
-                let status = statuses
-                    .get(&(result.source, result.release_id.clone()))
-                    .cloned()
-                    .expect("a pressing is built from the run's own records");
-                records.push((result, status));
+                records.push(result);
                 pressings.push(row);
             }
         }
@@ -282,7 +247,7 @@ pub fn combine_results(
     let (combined, pressings) = records(offered);
     let named_notes = combined
         .iter()
-        .filter_map(|(result, _)| {
+        .filter_map(|result| {
             notes
                 .get(&(result.source, result.release_id.clone()))
                 .map(|note| NamedNote {
@@ -292,28 +257,20 @@ pub fn combine_results(
         })
         .collect();
     let (left_out, narrowed_out_pressings) = records(set_aside);
-    let provenance = combined.iter().map(|(r, _)| lookup_of(r)).collect();
-    let narrowed_out_provenance = left_out.iter().map(|(r, _)| lookup_of(r)).collect();
-    let (matches, library_statuses) = combined.into_iter().unzip();
-    let (narrowed_matches, narrowed_statuses) = left_out.into_iter().unzip();
-    (
-        Findings {
-            matches,
-            provenance,
-            pressings,
-            narrowed_out: NarrowedOut {
-                matches: narrowed_matches,
-                provenance: narrowed_out_provenance,
-                pressings: narrowed_out_pressings,
-            },
-            medium_conflict,
-            named_notes,
+    let provenance = combined.iter().map(lookup_of).collect();
+    let narrowed_out_provenance = left_out.iter().map(lookup_of).collect();
+    Findings {
+        matches: combined,
+        provenance,
+        pressings,
+        narrowed_out: NarrowedOut {
+            matches: left_out,
+            provenance: narrowed_out_provenance,
+            pressings: narrowed_out_pressings,
         },
-        LibraryStatuses {
-            matches: library_statuses,
-            narrowed_out: narrowed_statuses,
-        },
-    )
+        medium_conflict,
+        named_notes,
+    }
 }
 
 /// What one row states against the folder, compared field by field in
@@ -610,7 +567,7 @@ fn weigh_notes(
 fn release_keys(results: &Results) -> HashSet<ReleaseKey> {
     results
         .iter()
-        .map(|(r, _)| (r.source, r.release_id.clone()))
+        .map(|r| (r.source, r.release_id.clone()))
         .collect()
 }
 
@@ -620,7 +577,7 @@ pub(crate) fn union_all<'a>(sets: impl IntoIterator<Item = &'a Results>) -> Resu
     let mut out = Results::new();
     for set in sets {
         for pair in set.iter() {
-            if seen.insert((pair.0.source, pair.0.release_id.clone())) {
+            if seen.insert((pair.source, pair.release_id.clone())) {
                 out.push(pair.clone());
             }
         }

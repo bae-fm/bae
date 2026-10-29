@@ -5,8 +5,8 @@
 
 use super::pressings::PressingLookup;
 use super::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LibraryStatus, MetadataResult,
-    SearchProgress, SourceFailure,
+    BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, MetadataResult, SearchProgress,
+    SourceFailure,
 };
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
@@ -29,7 +29,7 @@ pub struct DiscIdEvidence {
     /// Whether the person left the disc IDs out.
     pub excluded: bool,
     /// Each disc ID's lookup results, in the signal's order, once settled.
-    pub answers: Vec<Vec<(MetadataResult, LibraryStatus)>>,
+    pub answers: Vec<Vec<MetadataResult>>,
     /// Why disc IDs could not be looked up, each distinct failure once, which
     /// tells "nothing was learned" from empty `answers`.
     pub failures: Vec<LookupFailure>,
@@ -91,7 +91,7 @@ impl DiscIdEvidence {
     }
 
     /// Every release any disc ID's lookup returned, each once.
-    pub fn results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+    pub fn results(&self) -> Vec<MetadataResult> {
         crate::identify::combine::union_all(&self.answers)
     }
 
@@ -114,7 +114,7 @@ pub struct BarcodeEvidence {
     /// The codes the person left out of the run.
     pub excluded: Vec<String>,
     /// The lookup's results, once settled.
-    pub results: Vec<(MetadataResult, LibraryStatus)>,
+    pub results: Vec<MetadataResult>,
     /// The providers that failed; others may still have answered.
     pub failures: Vec<SourceFailure>,
     /// Which barcode produced `results`. `None` until matched.
@@ -172,7 +172,7 @@ pub struct IsrcEvidence {
     /// Each audio file's ISRC, in the files' order, as the signals carry them.
     pub tagged: Vec<String>,
     /// The lookup's results, once settled.
-    pub results: Vec<(MetadataResult, LibraryStatus)>,
+    pub results: Vec<MetadataResult>,
     /// Why the lookup failed, which tells "nothing was learned" from an empty
     /// `results`.
     pub failure: Option<LookupFailure>,
@@ -224,7 +224,7 @@ impl IsrcEvidence {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SearchedCatalog {
     pub value: String,
-    pub results: Vec<(MetadataResult, LibraryStatus)>,
+    pub results: Vec<MetadataResult>,
     pub failures: Vec<SourceFailure>,
 }
 
@@ -313,7 +313,7 @@ impl CatalogEvidence {
     }
 
     /// Every searched number's results, in the order asked.
-    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+    pub(super) fn active_results(&self) -> Vec<MetadataResult> {
         self.searched
             .iter()
             .flat_map(|searched| searched.results.iter().cloned())
@@ -375,7 +375,7 @@ impl TitleSearch {
 pub struct SearchEvidence {
     /// What the draft offered when the run started.
     pub query: Option<TitleSearch>,
-    pub results: Vec<(MetadataResult, LibraryStatus)>,
+    pub results: Vec<MetadataResult>,
     /// The providers that failed; others may still have answered.
     pub failures: Vec<SourceFailure>,
 }
@@ -543,12 +543,12 @@ impl SignalsContext {
     /// MusicBrainz album on the list was read to be, in the order combine
     /// takes them.
     pub(super) fn lookup_results(&self) -> LookupAnswers {
-        let read = |results: Vec<(MetadataResult, LibraryStatus)>| -> Vec<_> {
+        let read = |results: Vec<MetadataResult>| -> Vec<_> {
             results
                 .into_iter()
-                .map(|(mut result, status)| {
+                .map(|mut result| {
                     self.documents.apply(&mut result);
-                    (result, status)
+                    result
                 })
                 .collect()
         };
@@ -566,7 +566,7 @@ impl SignalsContext {
             ),
         };
         let groups = self.album_groups(&answers);
-        for (result, _) in answers
+        for result in answers
             .disc_id
             .iter_mut()
             .chain([
@@ -586,7 +586,7 @@ impl SignalsContext {
     /// What each MusicBrainz album on the list was read to be, from the
     /// documents read so far.
     fn album_groups(&self, answers: &LookupAnswers) -> Vec<GroupLinks> {
-        let list: Vec<&MetadataResult> = answers.all().map(|(result, _)| result).collect();
+        let list: Vec<&MetadataResult> = answers.all().collect();
         album_links::read_groups(&list, |release| {
             self.documents
                 .album_statements(&MetadataRef::new(Catalog::MusicBrainz, release))
@@ -597,7 +597,7 @@ impl SignalsContext {
     /// (see [`album_links::to_keep`]).
     pub(super) fn album_links_to_keep(&self) -> Vec<(String, Vec<AlbumLink>)> {
         let answers = self.lookup_results();
-        let list: Vec<&MetadataResult> = answers.all().map(|(result, _)| result).collect();
+        let list: Vec<&MetadataResult> = answers.all().collect();
         album_links::to_keep(&self.album_groups(&answers), &list)
     }
 

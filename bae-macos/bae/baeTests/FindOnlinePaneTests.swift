@@ -613,7 +613,6 @@ struct FindOnlineResultAreaTests {
                 identifyState: .triangulating(
                     run: PreviewData.identifyRunStarting,
                     groups: [],
-                    libraryStatuses: [:],
                     agreements: [:],
                     narrowedOutCount: 0
                 )

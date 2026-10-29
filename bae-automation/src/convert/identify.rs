@@ -226,18 +226,42 @@ fn automation_agreements(
         .collect()
 }
 
-/// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum.
+/// Every release `view` offers or sets aside, as the library check reads it.
+#[cfg(desktop)]
+pub(crate) fn library_checks(
+    view: &bae_core::identify::IdentifyStateView,
+) -> Vec<bae_core::db::LibraryCheck> {
+    use bae_core::identify::IdentifyStateView;
+    let groups = match view {
+        IdentifyStateView::Triangulating { groups, .. }
+        | IdentifyStateView::Found { groups, .. }
+        | IdentifyStateView::Failed { groups, .. } => groups.as_slice(),
+        IdentifyStateView::Idle
+        | IdentifyStateView::NotFoundAnywhere { .. }
+        | IdentifyStateView::ManualOnly { .. }
+        | IdentifyStateView::Error { .. } => &[],
+    };
+    groups
+        .iter()
+        .flat_map(|group| group.pressings().chain(group.narrowed_out()))
+        .flat_map(|pressing| &pressing.releases)
+        .map(bae_core::db::LibraryCheck::from)
+        .collect()
+}
+
+/// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum, with
+/// `library_statuses`, the live library check of every release it names.
 #[cfg(desktop)]
 pub(crate) fn automation_identify_state(
-    state: bae_core::identify::IdentifyState,
+    view: bae_core::identify::IdentifyStateView,
+    library_statuses: Vec<bae_core::db::LibraryStatus>,
 ) -> AutomationIdentifyState {
     use bae_core::identify::IdentifyStateView;
-    match IdentifyStateView::from(state) {
+    match view {
         IdentifyStateView::Idle => AutomationIdentifyState::Idle,
         IdentifyStateView::Triangulating {
             run,
             groups,
-            library_statuses,
             agreements,
             narrowed_out_count,
         } => AutomationIdentifyState::Triangulating {
@@ -256,7 +280,6 @@ pub(crate) fn automation_identify_state(
         IdentifyStateView::Found {
             run,
             groups,
-            library_statuses,
             track_count,
             agreements,
             narrowed_out_count,
@@ -294,7 +317,6 @@ pub(crate) fn automation_identify_state(
             run,
             failure_lines,
             groups,
-            library_statuses,
             agreements,
             narrowed_out_count,
             offers_shared_album,

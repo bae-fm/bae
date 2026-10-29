@@ -83,7 +83,7 @@ fn resumed(
         track_count: 9,
         ledger,
     };
-    IdentifyStateView::from(verdict.resume_state(&not_in_library, text, Default::default()))
+    IdentifyStateView::from(verdict.resume_state(text, Default::default()))
 }
 
 fn card_ids(view: &IdentifyStateView) -> Vec<&str> {

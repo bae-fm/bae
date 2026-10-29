@@ -364,7 +364,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
             discs: vec![crate::identify::DiscLookup {
                 disc_id: "d".to_string(),
                 state: crate::identify::LookupState::Done {
-                    results: vec![(found, crate::db::LibraryStatus::absent("mb-release"))],
+                    results: vec![found],
                 },
             }],
         },

@@ -13,19 +13,13 @@ fn mk_result_from(source: Catalog, release_id: &str, group_id: Option<&str>) -> 
     MetadataResult::for_test(source, release_id, group_id)
 }
 
-fn pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
-    (
-        mk_result(release_id, group_id),
-        LibraryStatus::absent(release_id),
-    )
+fn pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
+    mk_result(release_id, group_id)
 }
 
 /// A Discogs result, for runs where both providers answer.
-fn discogs_pair(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
-    (
-        mk_result_from(Catalog::Discogs, release_id, group_id),
-        LibraryStatus::absent(release_id),
-    )
+fn discogs_pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
+    mk_result_from(Catalog::Discogs, release_id, group_id)
 }
 
 const MB: Catalog = Catalog::MusicBrainz;
@@ -132,7 +126,7 @@ fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>
 fn barcode_matched(
     source: Catalog,
     barcode: &str,
-    results: Vec<(MetadataResult, LibraryStatus)>,
+    results: Vec<MetadataResult>,
 ) -> IdentifyEvent {
     IdentifyEvent::BarcodeLookupAnswered {
         source,
@@ -815,8 +809,8 @@ fn an_unchosen_catalog_number_narrows_nothing() {
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
             outcome: Ok(DiscIdAnswer::for_test(vec![
-                (r_a, LibraryStatus::absent("rel-a")),
-                (r_b, LibraryStatus::absent("rel-b")),
+                r_a,
+                r_b,
             ])),
             },
     );

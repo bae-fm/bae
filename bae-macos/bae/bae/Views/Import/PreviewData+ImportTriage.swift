@@ -65,7 +65,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 12,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -116,7 +115,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [noTracklistGroup],
-                libraryStatuses: [:],
                 trackCount: 10,
                 agreements: [:],
                 narrowedOutCount: 0,
@@ -140,25 +138,27 @@
                 ]
             )
 
-        static let importTabAlreadyInLibraryCandidate = importTabFolder(
-            path: "Album Title Eight - Reissue",
-            name: "Album Title Eight - Reissue",
-            trackCount: 14,
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                libraryStatuses: [
-                    releaseDetailBridge.releaseId:
-                        importTabAlreadyInLibraryStatus
-                ],
+        static let importTabAlreadyInLibraryCandidate: Candidate = {
+            var candidate = importTabFolder(
+                path: "Album Title Eight - Reissue",
+                name: "Album Title Eight - Reissue",
                 trackCount: 14,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                picksUnattended: false,
-                offersSharedAlbum: false
+                identifyState: .found(
+                    run: identifyRunFound,
+                    groups: [searchGroupExact],
+                    trackCount: 14,
+                    agreements: searchAgreementsExact,
+                    narrowedOutCount: 0,
+                    folderCheck: nil,
+                    picksUnattended: false,
+                    offersSharedAlbum: false
+                )
             )
-        )
+            candidate.libraryStatuses = [
+                releaseDetailBridge.releaseId: importTabAlreadyInLibraryStatus
+            ]
+            return candidate
+        }()
 
         static let importTabNoMatchCandidate = importTabFolder(
             path: "Unmatched Folder",
@@ -224,7 +224,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 9,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -241,7 +240,6 @@
                 identifyState: .found(
                     run: identifyRunFound,
                     groups: [searchGroupExact],
-                    libraryStatuses: [:],
                     trackCount: 9,
                     agreements: searchAgreementsExact,
                     narrowedOutCount: 0,

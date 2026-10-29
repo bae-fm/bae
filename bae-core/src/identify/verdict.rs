@@ -17,10 +17,11 @@
 //! during the run — nothing is rebuilt from the matches, which can only name
 //! providers that produced one.
 //!
-//! `LibraryStatus` is deliberately absent from every variant. It is mutable
-//! local state — another import landing can flip it — so storing it would
-//! freeze a snapshot nothing invalidates. A reader re-checks it live, against
-//! the release ids named here, rather than trusting a stored copy.
+//! `LibraryStatus` is deliberately absent from every variant, and from the
+//! run's own state too. It is mutable local state — another import landing can
+//! flip it — so carrying it would freeze a snapshot nothing invalidates. The
+//! pane reads it live, against the release ids named here, through one
+//! library-status read.
 //!
 //! What the lookups found is one shape, [`Findings`], on both variants that
 //! hold answers. A failed run keeps what the lookups that did answer returned,
@@ -33,10 +34,9 @@
 //! `Triangulating` have no terminal verdict.
 
 use super::agreements::CandidateText;
-use super::combine::{Findings, LibraryStatuses, LookupProvenance, NarrowedOut};
+use super::combine::{Findings, LookupProvenance, NarrowedOut};
 use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
-use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::signals::{AudioFacts, InternalFailure, LookupFailure};
 
@@ -190,9 +190,6 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 findings,
                 track_count,
                 ledger,
-                // A live per-release check at read time, not a stored copy —
-                // see the module doc.
-                library_statuses: _,
                 // The run's, and the candidate's text it judged against, which
                 // is stored on its own and read back beside these findings.
                 context: _,
@@ -220,7 +217,6 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 findings,
                 track_count,
                 ledger,
-                library_statuses: _,
                 context: _,
             } => Ok(Self::Failed {
                 failures,
@@ -280,19 +276,11 @@ impl TerminalVerdict {
     /// A failed run stands back up with what its answering lookups found,
     /// beside the lookups that failed — the pane it showed as it ended.
     ///
-    /// `status_of` is the live library check for a release id the verdict
-    /// names, never a stored copy (see the module doc).
-    ///
     /// `text` is the candidate's own stored lines, which is what the rows are
     /// judged and ordered against, and `audio` is its audio read off its
     /// files. Both belong to the candidate rather than to the run, so they
     /// stand back up beside the matches.
-    pub fn resume_state(
-        self,
-        status_of: &impl Fn(&MetadataResult) -> LibraryStatus,
-        text: CandidateText,
-        audio: AudioFacts,
-    ) -> IdentifyState {
+    pub fn resume_state(self, text: CandidateText, audio: AudioFacts) -> IdentifyState {
         let context = || SignalsContext {
             text: text.clone(),
             text_settled: true,
@@ -305,7 +293,6 @@ impl TerminalVerdict {
                 track_count,
                 ledger,
             } => IdentifyState::Found {
-                library_statuses: LibraryStatuses::of(&findings, status_of),
                 findings,
                 track_count,
                 ledger,
@@ -330,7 +317,6 @@ impl TerminalVerdict {
                 ledger,
             } => IdentifyState::Failed {
                 failures,
-                library_statuses: LibraryStatuses::of(&findings, status_of),
                 findings,
                 track_count,
                 ledger,

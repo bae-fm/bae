@@ -410,7 +410,6 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
         candidate,
         IdentifyRunId::for_test(1),
         TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
-            &|_| unreachable!("a no-match verdict names no release"),
             Default::default(),
             Default::default(),
         ),
@@ -449,8 +448,6 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     };
 
     // The run's terminal state is what puts the key on a pending save.
-    let not_in_library =
-        |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     fixture
         .import
         .hold_answer_for_test(
@@ -458,7 +455,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
             run,
             &row.verdict
                 .clone()
-                .resume_state(&not_in_library, Default::default(), Default::default()),
+                .resume_state(Default::default(), Default::default()),
         )
         .await;
     assert!(matches!(

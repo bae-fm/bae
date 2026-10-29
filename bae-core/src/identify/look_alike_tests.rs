@@ -1,6 +1,5 @@
 //! Which of the offered rows that would look alike on screen is listed.
 
-use crate::db::LibraryStatus;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::{combine_results, LookupAnswers};
 use crate::identify::medium::FolderAudio;
@@ -9,18 +8,15 @@ use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::{Packaging, ReleaseLabel};
 
 /// A 1959 pressing on Label One, LBL-100, as `catalog` lists it under `id`.
-fn pressing(catalog: Catalog, id: &str) -> (MetadataResult, LibraryStatus) {
-    (
-        MetadataResult {
-            year: Some(1959),
-            labels: vec![ReleaseLabel::of(Some("Label One"), Some("LBL-100"))],
-            ..MetadataResult::for_test(catalog, id, Some("group"))
-        },
-        LibraryStatus::absent(id),
-    )
+fn pressing(catalog: Catalog, id: &str) -> MetadataResult {
+    MetadataResult {
+        year: Some(1959),
+        labels: vec![ReleaseLabel::of(Some("Label One"), Some("LBL-100"))],
+        ..MetadataResult::for_test(catalog, id, Some("group"))
+    }
 }
 
-fn offered(results: Vec<(MetadataResult, LibraryStatus)>) -> Vec<String> {
+fn offered(results: Vec<MetadataResult>) -> Vec<String> {
     combine_results(
         LookupAnswers {
             catalog: results,
@@ -29,7 +25,6 @@ fn offered(results: Vec<(MetadataResult, LibraryStatus)>) -> Vec<String> {
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
     )
-    .0
     .matches
     .into_iter()
     .map(|result| result.release_id)
@@ -53,9 +48,9 @@ fn look_alike_rows_are_listed_once() {
 /// their ids.
 #[test]
 fn a_row_both_catalogs_list_is_kept_over_a_look_alike() {
-    let barcoded = |(mut result, status): (MetadataResult, LibraryStatus)| {
+    let barcoded = |mut result: MetadataResult| {
         result.barcodes = vec!["012345678905".to_string()];
-        (result, status)
+        result
     };
     let kept = offered(vec![
         pressing(Catalog::Discogs, "20"),
@@ -71,9 +66,9 @@ fn a_row_both_catalogs_list_is_kept_over_a_look_alike() {
 #[test]
 fn rows_differing_only_in_their_ids_and_notes_are_listed_once() {
     let noted = |id: &str, note: &str| {
-        let (mut result, status) = pressing(Catalog::Discogs, id);
+        let mut result = pressing(Catalog::Discogs, id);
         result.notes = vec![note.to_string()];
-        (result, status)
+        result
     };
     assert_eq!(
         offered(vec![noted("20", "Plant Alpha"), noted("30", "Plant Beta")]),
@@ -84,35 +79,10 @@ fn rows_differing_only_in_their_ids_and_notes_are_listed_once() {
 /// A row that shows something another does not is listed beside it.
 #[test]
 fn rows_that_show_different_details_are_both_listed() {
-    let (mut boxed, status) = pressing(Catalog::Discogs, "30");
+    let mut boxed = pressing(Catalog::Discogs, "30");
     boxed.packaging = Some(Packaging::Box);
     assert_eq!(
-        offered(vec![pressing(Catalog::Discogs, "20"), (boxed, status)]),
+        offered(vec![pressing(Catalog::Discogs, "20"), boxed]),
         vec!["20", "30"]
-    );
-}
-
-/// Whether a row is already in the library is no part of how it looks: the
-/// rows a run stores are the same whatever the library held when it ran, and
-/// the kept row's status is read live when it shows.
-#[test]
-fn a_look_alike_in_the_library_is_listed_once_with_the_rest() {
-    let in_library = |(result, _): (MetadataResult, LibraryStatus)| {
-        let status = LibraryStatus {
-            release_id: result.release_id.clone(),
-            albums: vec![crate::db::LibraryAlbumMatch {
-                album_id: "album-in-library".to_string(),
-                album_title: "Album Title".to_string(),
-                holds_release: true,
-            }],
-        };
-        (result, status)
-    };
-    assert_eq!(
-        offered(vec![
-            in_library(pressing(Catalog::Discogs, "300")),
-            pressing(Catalog::Discogs, "20"),
-        ]),
-        vec!["20"]
     );
 }

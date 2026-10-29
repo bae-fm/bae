@@ -308,7 +308,6 @@ pub enum BridgeIdentifyState {
     Triangulating {
         run: BridgeIdentifyRun,
         groups: Vec<BridgeReleaseGroup>,
-        library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out_count: u32,
     },
@@ -316,8 +315,6 @@ pub enum BridgeIdentifyState {
         run: Option<BridgeIdentifyRun>,
         /// The matches as album cards, already ranked.
         groups: Vec<BridgeReleaseGroup>,
-        /// Library status per release, offered or set aside, by release id.
-        library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         track_count: u32,
         /// Agreements per release, offered or set aside, by release id.
         agreements: std::collections::HashMap<String, BridgeAgreements>,
@@ -359,7 +356,6 @@ pub enum BridgeIdentifyState {
         /// own: a failure a cell shows is said there, beside its retry.
         failure_lines: Vec<BridgeIdentifyFailure>,
         groups: Vec<BridgeReleaseGroup>,
-        library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out_count: u32,
         /// Whether the offered rows are several pressings of one album, as

@@ -333,9 +333,7 @@ fn found_or_no_match(results: &LookupResults) -> LookupView {
         return LookupView::NoMatch;
     }
     let groups = group_results(
-        crate::import::release_group::unranked(
-            results.iter().map(|(result, _)| result.clone()).collect(),
-        ),
+        crate::import::release_group::unranked(results.clone()),
         None,
     );
     LookupView::Found {

@@ -258,14 +258,6 @@ extension ImportSearchFlow {
             resumed: candidate.resumedIdentifyState,
             runtime: input.runtime
         )
-        // Core's own statuses are what it checked when each verdict or
-        // provider landed; a live subscription's value is fresher, so it wins.
-        var libraryStatuses = identifyState.libraryStatuses
-        libraryStatuses.merge(input.runtime?.search?.libraryStatuses ?? [:]) {
-            _,
-            searched in searched
-        }
-        libraryStatuses.merge(candidate.libraryStatuses) { _, live in live }
         return ImportSearchState(
             identifyState: identifyState,
             error: candidate.error,
@@ -278,7 +270,9 @@ extension ImportSearchFlow {
             isImporting: isImporting(candidate),
             isFinalizing: candidate.live?.identification == .finalizing
                 || candidate.live?.identification == .readingPick,
-            libraryStatuses: libraryStatuses,
+            // Each offered release's library status, from the candidate's
+            // live read of them.
+            libraryStatuses: candidate.libraryStatuses,
             // The run in flight knows more than the last stored answer does,
             // and for a re-identify key — which has no row at all — it is the
             // only answer.

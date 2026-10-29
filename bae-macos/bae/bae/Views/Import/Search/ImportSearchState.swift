@@ -39,9 +39,9 @@ struct ImportSearchState {
     /// far; a failed run still carries whatever the surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
-        case .found(_, let groups, _, _, _, _, _, _, _): groups
-        case .failed(_, _, let groups, _, _, _, _): groups
-        case .triangulating(_, let groups, _, _, _): groups
+        case .found(_, let groups, _, _, _, _, _, _): groups
+        case .failed(_, _, let groups, _, _, _): groups
+        case .triangulating(_, let groups, _, _): groups
         case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: []
         }
     }
@@ -56,9 +56,9 @@ struct ImportSearchState {
     /// keyed by release id — the row badges, and what ordered the rows.
     var identifiedAgreements: [String: BridgeAgreements] {
         switch identifyState {
-        case .found(_, _, _, _, let agreements, _, _, _, _): agreements
-        case .failed(_, _, _, _, let agreements, _, _): agreements
-        case .triangulating(_, _, _, let agreements, _): agreements
+        case .found(_, _, _, let agreements, _, _, _, _): agreements
+        case .failed(_, _, _, let agreements, _, _): agreements
+        case .triangulating(_, _, let agreements, _): agreements
         case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: [:]
         }
     }
@@ -79,7 +79,7 @@ struct ImportSearchState {
     /// them, each said in a line of its own — which ones is core's answer.
     var failureLines: [BridgeIdentifyFailure] {
         guard
-            case .failed(_, let failureLines, _, _, _, _, _) = identifyState
+            case .failed(_, let failureLines, _, _, _, _) = identifyState
         else {
             return []
         }

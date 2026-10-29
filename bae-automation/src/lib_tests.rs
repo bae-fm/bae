@@ -330,6 +330,17 @@ mod identify_mirrors {
         bae_core::identify::CandidateText::of(&[], &[], &[SourcedValue::new(code.to_string())])
     }
 
+    /// `state` as the automation surface shows it, each release it names
+    /// read as not in the library.
+    fn shown(state: IdentifyState) -> AutomationIdentifyState {
+        let view = bae_core::identify::IdentifyStateView::from(state);
+        let statuses = library_checks(&view)
+            .iter()
+            .map(|check| LibraryStatus::absent(&check.release_id))
+            .collect();
+        automation_identify_state(view, statuses)
+    }
+
     /// `result`, printing the barcode `code`.
     fn printing(
         mut result: bae_core::import::search::MetadataResult,
@@ -346,13 +357,6 @@ mod identify_mirrors {
             printing(metadata_result("rel-2", "group-1"), "0123456789012"),
         ];
         let state = IdentifyState::Found {
-            library_statuses: bae_core::identify::LibraryStatuses {
-                matches: vec![
-                    LibraryStatus::absent("rel-1"),
-                    LibraryStatus::absent("rel-2"),
-                ],
-                narrowed_out: Vec::new(),
-            },
             track_count: 12,
             findings: bae_core::identify::Findings {
                 matches: matches.clone(),
@@ -387,7 +391,7 @@ mod identify_mirrors {
             },
         };
 
-        let json = serde_json::to_value(automation_identify_state(state)).unwrap();
+        let json = serde_json::to_value(shown(state)).unwrap();
         assert_eq!(json["kind"], "found");
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 1, "both matches share one release group");
@@ -420,13 +424,6 @@ mod identify_mirrors {
     #[test]
     fn disagreeing_signals_become_one_found_over_several_groups() {
         let state = IdentifyState::Found {
-            library_statuses: bae_core::identify::LibraryStatuses {
-                matches: vec![
-                    LibraryStatus::absent("rel-disc"),
-                    LibraryStatus::absent("rel-bar"),
-                ],
-                narrowed_out: Vec::new(),
-            },
             track_count: 9,
             findings: bae_core::identify::Findings {
                 matches: vec![
@@ -464,7 +461,7 @@ mod identify_mirrors {
             },
         };
 
-        let json = serde_json::to_value(automation_identify_state(state)).unwrap();
+        let json = serde_json::to_value(shown(state)).unwrap();
         assert_eq!(json["kind"], "found");
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 2, "the two releases are two release groups");
@@ -507,12 +504,9 @@ mod identify_mirrors {
                             ProviderLookup {
                                 source: Catalog::Discogs,
                                 state: LookupState::Done {
-                                    results: vec![(
-                                        printing(
-                                            metadata_result("rel-dg", "group-1"),
-                                            "0123456789012",
-                                        ),
-                                        LibraryStatus::absent("rel-dg"),
+                                    results: vec![printing(
+                                        metadata_result("rel-dg", "group-1"),
+                                        "0123456789012",
                                     )],
                                 },
                             },
@@ -562,7 +556,7 @@ mod identify_mirrors {
             },
         };
 
-        let json = serde_json::to_value(automation_identify_state(state)).unwrap();
+        let json = serde_json::to_value(shown(state)).unwrap();
         assert_eq!(json["kind"], "triangulating");
         let run = &json["run"];
         assert_eq!(

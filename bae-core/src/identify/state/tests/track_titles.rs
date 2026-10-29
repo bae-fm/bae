@@ -12,7 +12,7 @@ const FOLDER_TITLES: [&str; 5] = [
 /// A run like `reading_documents`, over a folder whose tracks carry
 /// `FOLDER_TITLES`.
 fn reading_titled_documents(
-    results: Vec<(MetadataResult, LibraryStatus)>,
+    results: Vec<MetadataResult>,
 ) -> (IdentifyState, Vec<crate::import::MetadataRef>) {
     let (state, _) = update(
         started_with(vec![DG]),

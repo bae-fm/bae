@@ -84,26 +84,7 @@ impl ImportServiceHandle {
         self.runtime_handle.spawn(async move {
             let found =
                 search_source(&library_manager, source, &query, CallPriority::Interactive).await;
-            // Superseded already: skip the library check nothing will read.
-            if !runtime.search_run_is_current(&candidate_key, run) {
-                return;
-            }
-            let outcome = match found {
-                Ok(results) => {
-                    crate::identify::annotate_with_library_status(results, &library_manager)
-                        .await
-                        .map_err(|detail| {
-                            crate::signals::InternalFailure::logged(
-                                "checking the library for the releases a search found",
-                                detail,
-                            )
-                            .into()
-                        })
-                }
-                Err(failure) => Err(failure),
-            };
-
-            if !runtime.land_search(&candidate_key, run, source, outcome) {
+            if !runtime.land_search(&candidate_key, run, source, found) {
                 debug!(
                     "{}'s {} search landed on no run; it was cleared or superseded",
                     candidate_key,

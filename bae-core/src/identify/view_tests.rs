@@ -1,5 +1,4 @@
 use super::*;
-use crate::db::LibraryStatus;
 use crate::identify::state::{
     step, BarcodeEvidence, CatalogSearch, DiscIdEvidence, IdentifyEvent, LookupState,
     ProviderLookup, SearchProgress, ValueLookup,
@@ -13,22 +12,17 @@ use bae_catalogs::catalog::Catalog;
 pub(super) const MB: Catalog = Catalog::MusicBrainz;
 const DG: Catalog = Catalog::Discogs;
 
-fn result(source: Catalog, release_id: &str) -> (MetadataResult, LibraryStatus) {
-    (
-        MetadataResult::for_test(source, release_id, Some("g")),
-        LibraryStatus::absent(release_id),
-    )
+fn result(source: Catalog, release_id: &str) -> MetadataResult {
+    MetadataResult::for_test(source, release_id, Some("g"))
 }
 
 /// The barcode the folder's files carry in [`context`].
 const FOLDER_BARCODE: &str = "012345678905";
 
 /// `result`, printing the folder's barcode.
-fn printing_the_folder_s_code(
-    (mut result, status): (MetadataResult, LibraryStatus),
-) -> (MetadataResult, LibraryStatus) {
+fn printing_the_folder_s_code(mut result: MetadataResult) -> MetadataResult {
     result.barcodes = vec![FOLDER_BARCODE.to_string()];
-    (result, status)
+    result
 }
 
 fn context() -> SignalsContext {
@@ -66,7 +60,7 @@ fn code(value: &str, providers: Vec<(Catalog, LookupState)>) -> ValueLookup {
     }
 }
 
-fn found(results: Vec<(MetadataResult, LibraryStatus)>) -> LookupState {
+fn found(results: Vec<MetadataResult>) -> LookupState {
     LookupState::Done { results }
 }
 
@@ -648,10 +642,6 @@ fn recorded_ledger() -> IdentifyRunView {
     }
 }
 
-pub(super) fn not_in_library(result: &MetadataResult) -> LibraryStatus {
-    LibraryStatus::absent(&result.release_id)
-}
-
 /// A resumed verdict shows its recorded ledger unchanged, including a provider
 /// whose answers were narrowed out.
 #[test]
@@ -686,7 +676,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
         track_count: 9,
         ledger: Some(recorded_ledger()),
     };
-    let run = run_of(verdict.resume_state(&not_in_library, Default::default(), Default::default()));
+    let run = run_of(verdict.resume_state(Default::default(), Default::default()));
     assert_eq!(run, recorded_ledger());
     assert_eq!(run.providers, vec![MB, DG]);
     assert!(matches!(
@@ -705,11 +695,7 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
         ledger: None,
     };
     assert!(matches!(
-        IdentifyStateView::from(verdict.resume_state(
-            &not_in_library,
-            Default::default(),
-            Default::default()
-        )),
+        IdentifyStateView::from(verdict.resume_state(Default::default(), Default::default())),
         IdentifyStateView::Failed { run: None, .. }
     ));
 }
@@ -728,10 +714,7 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
             source_file: None,
         }],
     };
-    let other_album = (
-        MetadataResult::for_test(MB, "mb-other", Some("g-other")),
-        LibraryStatus::absent("mb-other"),
-    );
+    let other_album = MetadataResult::for_test(MB, "mb-other", Some("g-other"));
     let shared = printing_the_folder_s_code(result(MB, "mb-shared"));
     context.disc.answers = vec![vec![
         shared.clone(),
@@ -743,7 +726,6 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
 
     let IdentifyStateView::Found {
         groups,
-        library_statuses,
         agreements,
         narrowed_out_count,
         ..
@@ -771,13 +753,6 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     assert_eq!(narrowed_out_count, 2);
     assert_eq!(groups[1].pressings().count(), 0);
     assert_eq!(rows(&groups[1].sections[0].narrowed_out), vec!["mb-other"]);
-    assert_eq!(
-        library_statuses
-            .iter()
-            .map(|status| status.release_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["mb-shared", "mb-only", "mb-other"]
-    );
     let only = agreements
         .iter()
         .find(|(release_id, _)| release_id == "mb-only")
@@ -848,11 +823,7 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
             folder_check,
             picks_unattended,
             ..
-        } = IdentifyStateView::from(verdict.resume_state(
-            &not_in_library,
-            Default::default(),
-            Default::default(),
-        ))
+        } = IdentifyStateView::from(verdict.resume_state(Default::default(), Default::default()))
         else {
             panic!("a found verdict resumes found");
         };
@@ -884,14 +855,9 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
             source_file: None,
         }],
     };
-    let noted = |release_id: &str, note: &str| {
-        (
-            MetadataResult {
-                notes: vec![note.to_string()],
-                ..MetadataResult::for_test(MB, release_id, Some("g"))
-            },
-            LibraryStatus::absent(release_id),
-        )
+    let noted = |release_id: &str, note: &str| MetadataResult {
+        notes: vec![note.to_string()],
+        ..MetadataResult::for_test(MB, release_id, Some("g"))
     };
     context.disc.answers = vec![vec![
         noted("mb-alpha", "Pressed By Plant Alpha"),
@@ -937,15 +903,10 @@ fn the_notes_badge_reads_the_ranking_s_answer() {
             source_file: None,
         }],
     };
-    let noted = |release_id: &str, note: &str| {
-        (
-            MetadataResult {
-                year: Some(1987),
-                notes: vec![note.to_string()],
-                ..MetadataResult::for_test(MB, release_id, Some("g"))
-            },
-            LibraryStatus::absent(release_id),
-        )
+    let noted = |release_id: &str, note: &str| MetadataResult {
+        year: Some(1987),
+        notes: vec![note.to_string()],
+        ..MetadataResult::for_test(MB, release_id, Some("g"))
     };
     context.disc.answers = vec![vec![
         noted("mb-alpha", "Plant Alpha"),

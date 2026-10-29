@@ -27,7 +27,6 @@ struct ShownIdentifyStateTests {
                     state: .triangulating(
                         run: PreviewData.identifyRunStarting,
                         groups: [],
-                        libraryStatuses: [:],
                         agreements: [:],
                         narrowedOutCount: 0
                     )
@@ -39,7 +38,6 @@ struct ShownIdentifyStateTests {
                 == .triangulating(
                     run: PreviewData.identifyRunStarting,
                     groups: [],
-                    libraryStatuses: [:],
                     agreements: [:],
                     narrowedOutCount: 0
                 )

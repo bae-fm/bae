@@ -1165,7 +1165,9 @@ Ana clicks Import. bae:
    The "already in your library" banner names every album holding the
    release, or another release of its album: those holding the release
    first, then oldest first. One read answers it for every release the
-   pane offers.
+   pane offers, and follows the library while the pane is open; an identify
+   verdict or search result, in flight or stored, holds no library status of
+   its own.
 7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id, and
    this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,

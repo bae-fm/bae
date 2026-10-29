@@ -16,11 +16,10 @@
 //! terminal state, keeps what it read each album to be, and records the
 //! ledger it showed.
 
-use super::combine::{combine_results, Findings, LibraryStatuses};
+use super::combine::{combine_results, Findings};
 use super::documents::{DocumentReading, ReleaseReading};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
-use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::LookupChoices;
 use crate::signals::{
@@ -47,8 +46,6 @@ pub enum IdentifyState {
     /// The run settled on its findings.
     Found {
         findings: Findings,
-        /// The live library check of every release `findings` names.
-        library_statuses: LibraryStatuses,
         track_count: u32,
         ledger: Option<IdentifyRunView>,
         context: SignalsContext,
@@ -71,7 +68,6 @@ pub enum IdentifyState {
     Failed {
         failures: Vec<super::IdentifyFailure>,
         findings: Findings,
-        library_statuses: LibraryStatuses,
         track_count: u32,
         ledger: Option<IdentifyRunView>,
         context: SignalsContext,
@@ -848,7 +844,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 }
 
 /// The recorded results, combined: what the run offers and sets aside.
-fn combined(context: &SignalsContext) -> (Findings, LibraryStatuses) {
+fn combined(context: &SignalsContext) -> Findings {
     combine_results(
         context.lookup_results(),
         &context.text,
@@ -859,14 +855,13 @@ fn combined(context: &SignalsContext) -> (Findings, LibraryStatuses) {
 /// Combine the recorded results into `Failed`, `NotFoundAnywhere` or `Found`.
 fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> IdentifyState {
     // Combine whatever failed: one provider failing leaves the others' matches.
-    let (findings, library_statuses) = combined(&context);
+    let findings = combined(&context);
     let track_count = context.audio.track_count;
     let failures = context.active_failures();
     if !failures.is_empty() {
         return IdentifyState::Failed {
             failures,
             findings,
-            library_statuses,
             track_count,
             ledger,
             context,
@@ -877,7 +872,6 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     }
     IdentifyState::Found {
         findings,
-        library_statuses,
         track_count,
         ledger,
         context,

@@ -129,7 +129,9 @@ impl Automation {
                     else {
                         continue;
                     };
-                    candidates.push(automation_candidate_from_folder(&detail, &runtime));
+                    candidates.push(
+                        automation_candidate_from_folder(&detail, &runtime, &self.services).await?,
+                    );
                 }
             }
         }
@@ -157,7 +159,7 @@ impl Automation {
                 .candidate_runtimes()
                 .await
                 .map_err(AutomationError::from)?;
-            return Ok(automation_candidate_from_folder(&detail, &runtime));
+            return automation_candidate_from_folder(&detail, &runtime, &self.services).await;
         }
         if let Some(bae_core::import::ImportCandidateSnapshot::Invalid(candidate)) = self
             .services

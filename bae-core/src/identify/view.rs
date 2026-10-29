@@ -8,14 +8,13 @@
 
 use super::agreements::{judged_results, Agreements, CandidateText};
 use super::combine::LookupAnswers;
-use super::combine::{combine_results, Findings, LibraryStatuses};
+use super::combine::{combine_results, Findings};
 use super::row_facts::FolderFacts;
 use super::state::{
     BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress, IdentifyState, IsrcProgress,
     LookupResults, LookupState, SearchProgress, SignalsContext, ValueLookup,
 };
 use super::NotAskedReason;
-use crate::db::LibraryStatus;
 use crate::import::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
@@ -238,7 +237,6 @@ pub enum IdentifyStateView {
     Triangulating {
         run: IdentifyRunView,
         groups: Vec<ReleaseGroup>,
-        library_statuses: Vec<LibraryStatus>,
         agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
     },
@@ -247,8 +245,6 @@ pub enum IdentifyStateView {
     Found {
         run: Option<IdentifyRunView>,
         groups: Vec<ReleaseGroup>,
-        /// One per release, offered or set aside.
-        library_statuses: Vec<LibraryStatus>,
         track_count: u32,
         /// Each row's badges, keyed by release id.
         agreements: Vec<(String, RowAgreements)>,
@@ -288,7 +284,6 @@ pub enum IdentifyStateView {
         /// said there, beside its retry — see `IdentifyRunView::shows`.
         failure_lines: Vec<super::IdentifyFailure>,
         groups: Vec<ReleaseGroup>,
-        library_statuses: Vec<LibraryStatus>,
         agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
         /// Whether the offered rows are several pressings of one album, as
@@ -310,18 +305,11 @@ impl From<IdentifyState> for IdentifyStateView {
                 search,
                 context,
             } => {
-                let (findings, library_statuses) =
-                    live_findings(&discid, &barcode, &catalog, &isrc, &search, &context);
-                let folded = fold(
-                    findings,
-                    library_statuses,
-                    &context.text,
-                    context.audio.track_count,
-                );
+                let findings = live_findings(&discid, &barcode, &catalog, &isrc, &search, &context);
+                let folded = fold(findings, &context.text, context.audio.track_count);
                 IdentifyStateView::Triangulating {
                     run: run_view(&discid, &barcode, &catalog, &isrc, &search, &context),
                     groups: folded.groups,
-                    library_statuses: folded.library_statuses,
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
                 }
@@ -329,17 +317,15 @@ impl From<IdentifyState> for IdentifyStateView {
 
             IdentifyState::Found {
                 findings,
-                library_statuses,
                 track_count,
                 ledger,
                 context,
             } => {
                 let summary = super::VerdictSummary::of_found(&findings, track_count);
-                let folded = fold(findings, library_statuses, &context.text, track_count);
+                let folded = fold(findings, &context.text, track_count);
                 IdentifyStateView::Found {
                     run: ledger,
                     groups: folded.groups,
-                    library_statuses: folded.library_statuses,
                     track_count,
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
@@ -370,12 +356,11 @@ impl From<IdentifyState> for IdentifyStateView {
             IdentifyState::Failed {
                 failures,
                 findings,
-                library_statuses,
                 track_count,
                 ledger,
                 context,
             } => {
-                let folded = fold(findings, library_statuses, &context.text, track_count);
+                let folded = fold(findings, &context.text, track_count);
                 let failure_lines = failures
                     .into_iter()
                     .filter(|failure| !ledger.as_ref().is_some_and(|run| run.shows(failure)))
@@ -384,7 +369,6 @@ impl From<IdentifyState> for IdentifyStateView {
                     run: ledger,
                     failure_lines,
                     groups: folded.groups,
-                    library_statuses: folded.library_statuses,
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
                     offers_shared_album: folded.offers_shared_album,
@@ -403,7 +387,7 @@ fn live_findings(
     isrc: &IsrcProgress,
     search: &SearchProgress,
     context: &SignalsContext,
-) -> (Findings, LibraryStatuses) {
+) -> Findings {
     combine_results(
         LookupAnswers {
             disc_id: discid.answers(),
@@ -432,10 +416,9 @@ pub struct RowAgreements {
     pub notes: Option<String>,
 }
 
-/// A state's answers as cards, with every row's library status and badges.
+/// A state's answers as cards, with every row's badges.
 struct Folded {
     groups: Vec<ReleaseGroup>,
-    library_statuses: Vec<LibraryStatus>,
     agreements: Vec<(String, RowAgreements)>,
     narrowed_out_count: u32,
     /// Whether the offered rows are several pressings of one album.
@@ -512,15 +495,9 @@ pub(crate) fn shared_album_of(
     }
 }
 
-/// A state's answers as cards, with every row's library status and badges.
-/// Badges belong to a row, so every release id in a row answers with the
+/// A state's answers as cards, with every row's badges. Badges belong to a row, so every release id in a row answers with the
 /// row's badges.
-fn fold(
-    findings: Findings,
-    library_statuses: LibraryStatuses,
-    text: &CandidateText,
-    track_count: u32,
-) -> Folded {
+fn fold(findings: Findings, text: &CandidateText, track_count: u32) -> Folded {
     let Cards {
         groups: cards,
         judgements,
@@ -558,11 +535,6 @@ fn fold(
     Folded {
         offers_shared_album: SharedAlbum::of(&cards).is_some(),
         groups: cards,
-        library_statuses: library_statuses
-            .matches
-            .into_iter()
-            .chain(library_statuses.narrowed_out)
-            .collect(),
         agreements,
         narrowed_out_count,
     }

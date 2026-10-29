@@ -472,10 +472,9 @@ async fn the_list_places_a_row_without_reading_its_files() {
     assert_eq!(before.summary, after.summary);
 }
 
-/// The detail resumes the stored verdict with live library statuses aligned
-/// to its matches.
+/// The detail resumes the stored verdict's matches.
 #[tokio::test]
-async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
+async fn the_detail_resumes_the_stored_verdict() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
@@ -487,7 +486,6 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
         .expect("the scanned candidate reads back");
 
     let crate::identify::IdentifyState::Found {
-        library_statuses,
         findings: crate::identify::Findings { matches, .. },
         ..
     } = &detail.resumed_identify_state
@@ -503,15 +501,6 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
             .map(|result| result.release_id.as_str())
             .collect::<Vec<_>>(),
         vec!["mb-verdict"]
-    );
-    assert_eq!(
-        library_statuses
-            .matches
-            .iter()
-            .map(|status| (status.release_id.as_str(), status.release_in_library()))
-            .collect::<Vec<_>>(),
-        vec![("mb-verdict", false)],
-        "statuses ride the resumed state, aligned with its matches"
     );
 }
 

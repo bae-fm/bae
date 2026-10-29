@@ -515,7 +515,6 @@
                 discogs: .done(count: 1)
             ),
             groups: searchGroupsManualBridge,
-            libraryStatuses: [:],
             status: .found
         )
 
@@ -528,7 +527,6 @@
                 discogs: .searching
             ),
             groups: searchGroupsManualBridge,
-            libraryStatuses: [:],
             status: .searching
         )
 
@@ -541,7 +539,6 @@
                 discogs: .failed(failure: .network)
             ),
             groups: [searchGroupsManualBridge[0]],
-            libraryStatuses: [:],
             status: .failed
         )
 
@@ -554,7 +551,6 @@
                 discogs: .done(count: 0)
             ),
             groups: [],
-            libraryStatuses: [:],
             status: .noMatches
         )
 
@@ -568,7 +564,6 @@
                 discogs: .done(count: 0)
             ),
             groups: [],
-            libraryStatuses: [:],
             status: .noMatches
         )
 
@@ -584,7 +579,6 @@
             identifyState: .triangulating(
                 run: identifyRunInFlight,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0
             ),
@@ -596,7 +590,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -642,7 +635,6 @@
                     + [discidOnlyGroup, barcodeOnlyGroup]
                     .map(setAside)
                     .map(ReleaseGroup.init(bridge:)),
-                libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact.merging(
                     disagreementAgreements
@@ -664,7 +656,6 @@
         static let bridgeDisagreementState = BridgeIdentifyState.found(
             run: identifyRunFound,
             groups: [discidOnlyGroup, barcodeOnlyGroup],
-            libraryStatuses: [:],
             trackCount: 11,
             agreements: disagreementAgreements,
             narrowedOutCount: 0,
@@ -701,7 +692,6 @@
                 // The band's cell shows the failure.
                 failureLines: [],
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 offersSharedAlbum: false
@@ -739,7 +729,6 @@
                 // The band's cells show both failures.
                 failureLines: [],
                 groups: [],
-                libraryStatuses: [:],
                 agreements: [:],
                 narrowedOutCount: 0,
                 offersSharedAlbum: false
@@ -755,7 +744,6 @@
                     .barcode(source: .discogs, failure: .provider(status: 503)),
                 ],
                 groups: [],
-                libraryStatuses: [:],
                 agreements: [:],
                 narrowedOutCount: 0,
                 offersSharedAlbum: false
@@ -787,7 +775,6 @@
                         )
                     )
                 ],
-                libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -825,7 +812,6 @@
                         )
                     )
                 ],
-                libraryStatuses: [:],
                 trackCount: 13,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -842,7 +828,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -859,7 +844,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -876,7 +860,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
@@ -893,7 +876,6 @@
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,

@@ -266,8 +266,6 @@ pub struct BridgeCandidateSearch {
     pub sources: Vec<BridgeSourceSearchEntry>,
     /// Every settled source's results, folded into album cards.
     pub groups: Vec<BridgeReleaseGroup>,
-    /// Library status per result, keyed by release id.
-    pub library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
     /// Where the search stands as a whole.
     pub status: BridgeSearchStatus,
 }
@@ -284,7 +282,6 @@ impl BridgeCandidateSearch {
             query,
             sources,
             groups,
-            library_statuses,
             // Which cards the picked results join is already in `groups`.
             picked: _,
         } = search;
@@ -302,15 +299,6 @@ impl BridgeCandidateSearch {
             groups: groups
                 .into_iter()
                 .map(BridgeReleaseGroup::from_core)
-                .collect(),
-            library_statuses: library_statuses
-                .into_iter()
-                .map(|status| {
-                    (
-                        status.release_id.clone(),
-                        BridgeLibraryStatus::from_core(status),
-                    )
-                })
                 .collect(),
         }
     }

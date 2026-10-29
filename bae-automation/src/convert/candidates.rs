@@ -14,10 +14,11 @@ use std::collections::HashMap;
 /// written where there is one, else — waiting on the queue included — the
 /// state its stored verdict stands back up as, and the import status
 /// is the detail's with the running attempt's progress filled in.
-pub(crate) fn automation_candidate_from_folder(
+pub(crate) async fn automation_candidate_from_folder(
     folder: &ImportCandidateDetail,
     runtime: &HashMap<String, CandidateRuntimeSnapshot>,
-) -> AutomationCandidate {
+    services: &bae_core::library::AppServices,
+) -> Result<AutomationCandidate, AutomationError> {
     let candidate = &folder.candidate;
     let live = runtime.get(&candidate.key());
     let identify = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
@@ -26,7 +27,19 @@ pub(crate) fn automation_candidate_from_folder(
             folder.resumed_identify_state.clone()
         }
     };
-    AutomationCandidate::Valid {
+    let toolbar = identify
+        .toolbar()
+        .into_iter()
+        .map(AutomationToolbarSignal::from_core)
+        .collect();
+    // Whether each release the state names is in the library is read now,
+    // live: the state itself carries no snapshot of it.
+    let view = bae_core::identify::IdentifyStateView::from(identify);
+    let library_statuses = services
+        .check_releases_in_library(&library_checks(&view))
+        .await
+        .map_err(AutomationError::from)?;
+    Ok(AutomationCandidate::Valid {
         common: automation_candidate_common(
             candidate.key(),
             candidate
@@ -46,12 +59,8 @@ pub(crate) fn automation_candidate_from_folder(
             .map(AutomationSourceAudioSummary::from_core),
         content_hash: candidate.files.content_hash(),
         runtime: AutomationCandidateRuntime {
-            toolbar: identify
-                .toolbar()
-                .into_iter()
-                .map(AutomationToolbarSignal::from_core)
-                .collect(),
-            identify_state: automation_identify_state(identify),
+            toolbar,
+            identify_state: automation_identify_state(view, library_statuses),
             signals: folder.signals.clone().map(AutomationSignals::from_core),
             import_status: automation_import_status(
                 folder.import_status.as_ref(),
@@ -81,7 +90,7 @@ pub(crate) fn automation_candidate_from_folder(
                 error: failure.reason.detail.clone(),
                 failed_at: failure.failed_at.to_rfc3339(),
             }),
-    }
+    })
 }
 
 mirror_struct! {

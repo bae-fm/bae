@@ -570,7 +570,6 @@
             candidate.resumedIdentifyState = .found(
                 run: identifyRunFound,
                 groups: [searchGroupExact],
-                libraryStatuses: [:],
                 trackCount: 12,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,

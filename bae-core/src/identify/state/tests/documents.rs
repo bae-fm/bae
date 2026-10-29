@@ -1,26 +1,26 @@
 /// A Discogs search result on the master `m-1` stating only its first label.
-fn first_label_only(release_id: &str) -> (MetadataResult, LibraryStatus) {
-    let (mut result, status) = discogs_pair(release_id, Some("m-1"));
+fn first_label_only(release_id: &str) -> MetadataResult {
+    let mut result = discogs_pair(release_id, Some("m-1"));
     result.labels = vec![bae_types::pressing::ReleaseLabel::of(
         Some("Label One"),
         Some("AB-100"),
     )];
-    (result, status)
+    result
 }
 
 /// `row` in `packaging`, so it shows other than a look-alike beside it.
 fn packed(
-    (mut result, status): (MetadataResult, LibraryStatus),
+    mut result: MetadataResult,
     packaging: bae_types::pressing::Packaging,
-) -> (MetadataResult, LibraryStatus) {
+) -> MetadataResult {
     result.packaging = Some(packaging);
-    (result, status)
+    result
 }
 
 /// A run whose barcode found `results` on Discogs, holding at the read of
 /// its offered records' documents, with the records it asks for.
 fn reading_documents(
-    results: Vec<(MetadataResult, LibraryStatus)>,
+    results: Vec<MetadataResult>,
 ) -> (IdentifyState, Vec<crate::import::MetadataRef>) {
     let (state, _) = update(
         started_with(vec![DG]),
@@ -174,7 +174,7 @@ fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
     assert_eq!(complete.labels, full.labels);
     assert_eq!(complete.document_failure, None);
     let unread = row("dg-unread");
-    assert_eq!(unread.labels, first_label_only("dg-unread").0.labels);
+    assert_eq!(unread.labels, first_label_only("dg-unread").labels);
     assert_eq!(unread.source_tracks, None);
     assert_eq!(unread.document_failure, Some(LookupFailure::Network));
     assert_eq!(
@@ -195,11 +195,11 @@ fn titled_folder() -> Signals {
 }
 
 /// A Discogs pressing of the master `m-1` titled `title`.
-fn titled(release_id: &str, title: &str) -> (MetadataResult, LibraryStatus) {
-    let (mut result, status) = discogs_pair(release_id, Some("m-1"));
+fn titled(release_id: &str, title: &str) -> MetadataResult {
+    let mut result = discogs_pair(release_id, Some("m-1"));
     result.title = title.to_string();
     result.artist = Some("Artist".to_string());
-    (result, status)
+    result
 }
 
 /// Answer a read of `releases` with a document listing `tracks(id)` tracks
@@ -285,9 +285,9 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
     folder.text_pool[0].text = "Artist - 1990-2000 Album (US)".to_string();
     let (state, _) = update(state, folder);
     let in_country = |release_id: &str| {
-        let (mut result, status) = titled(release_id, "1990-2000 Album");
+        let mut result = titled(release_id, "1990-2000 Album");
         result.area = Some(bae_types::pressing::area("US"));
-        (result, status)
+        result
     };
     let (state, effects) = super::step(
         state,
@@ -335,7 +335,7 @@ fn a_document_s_barcode_joins_its_result_s() {
         document.barcodes = vec![barcode.to_string()];
         document
     };
-    let (mut result, _) = first_label_only("dg-1");
+    let mut result = first_label_only("dg-1");
     result.barcodes = vec!["0 12345 67890 5".to_string()];
     let release = crate::import::MetadataRef::new(DG, "dg-1");
     for (barcode, expected) in [
@@ -359,7 +359,7 @@ fn a_document_s_barcode_joins_its_result_s() {
 #[test]
 fn tied_rows_rank_on_the_documents_this_run_reads() {
     let mut known = first_label_only("dg-known");
-    known.0.source_tracks = Some(crate::import::search::SourceTracks::Listed { count: 5 });
+    known.source_tracks = Some(crate::import::search::SourceTracks::Listed { count: 5 });
     let (state, releases) = reading_documents(vec![
         known,
         packed(first_label_only("dg-other-1"), bae_types::pressing::Packaging::Digipak),
@@ -382,11 +382,11 @@ fn tied_rows_rank_on_the_documents_this_run_reads() {
 /// offered, and those that fit stay tied for the person to pick.
 #[test]
 fn every_row_of_a_wide_tie_is_read_before_it_is_offered() {
-    let tied: Vec<(MetadataResult, LibraryStatus)> = (1..=8)
+    let tied: Vec<MetadataResult> = (1..=8)
         .map(|at| {
-            let (mut result, status) = first_label_only(&format!("dg-{at}"));
+            let mut result = first_label_only(&format!("dg-{at}"));
             result.year = Some(2000 + at);
-            (result, status)
+            result
         })
         .collect();
     let (state, releases) = reading_documents(tied);
@@ -405,7 +405,7 @@ fn every_row_of_a_wide_tie_is_read_before_it_is_offered() {
 /// read.
 #[test]
 fn look_alike_rows_listed_once_are_read() {
-    let tied: Vec<(MetadataResult, LibraryStatus)> =
+    let tied: Vec<MetadataResult> =
         (1..=6).map(|at| first_label_only(&format!("dg-{at}"))).collect();
     let (_, releases) = reading_documents(tied);
     assert_eq!(

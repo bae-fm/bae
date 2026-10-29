@@ -1,5 +1,4 @@
 use super::*;
-use crate::db::LibraryStatus;
 use crate::import::candidate_search::{CandidateSearch, SourceSearch};
 use crate::import::candidates::{
     Admission, CandidateFiles, IdentificationRuntime, SaveFailure, SavingAnswer,
@@ -714,19 +713,13 @@ fn search_query() -> crate::import::search::SearchQuery {
     }
 }
 
-fn search_result(
-    source: Catalog,
-    release_id: &str,
-) -> (crate::import::search::MetadataResult, LibraryStatus) {
-    (
-        crate::import::search::MetadataResult {
-            title: "Album Title".to_string(),
-            artist: Some("Artist Name".to_string()),
-            year: Some(1992),
-            ..crate::import::search::MetadataResult::for_test(source, release_id, None)
-        },
-        LibraryStatus::absent(release_id),
-    )
+fn search_result(source: Catalog, release_id: &str) -> crate::import::search::MetadataResult {
+    crate::import::search::MetadataResult {
+        title: "Album Title".to_string(),
+        artist: Some("Artist Name".to_string()),
+        year: Some(1992),
+        ..crate::import::search::MetadataResult::for_test(source, release_id, None)
+    }
 }
 
 /// The search `key` holds, as its snapshot draws it.
@@ -773,7 +766,6 @@ async fn two_landings_on_one_run_both_stand() {
         landed.source(Catalog::Discogs),
         Some(SourceSearch::Done { .. })
     ));
-    assert_eq!(landed.library_statuses.len(), 2);
 }
 
 /// A superseded run's landing goes nowhere and leaves the new run untouched.

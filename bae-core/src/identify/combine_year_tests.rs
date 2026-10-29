@@ -5,7 +5,7 @@ use super::*;
 use crate::import::search::SourceTracks;
 use crate::signals::{TextLine, TextOrigin};
 
-type Outcome = (Findings, LibraryStatuses);
+type Outcome = Findings;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
@@ -20,21 +20,18 @@ fn folder(line: &str) -> CandidateText {
 
 /// A pressing of Album One, first out in 1963, dated `year`, whose read
 /// document lists ten tracks.
-fn pressing(release_id: &str, year: Option<i32>) -> (MetadataResult, LibraryStatus) {
-    (
-        MetadataResult {
-            title: "Album One".to_string(),
-            artist: Some("Artist One".to_string()),
-            year,
-            album_first_year: Some(1963),
-            source_tracks: Some(SourceTracks::Listed { count: 10 }),
-            ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
-        },
-        LibraryStatus::absent(release_id),
-    )
+fn pressing(release_id: &str, year: Option<i32>) -> MetadataResult {
+    MetadataResult {
+        title: "Album One".to_string(),
+        artist: Some("Artist One".to_string()),
+        year,
+        album_first_year: Some(1963),
+        source_tracks: Some(SourceTracks::Listed { count: 10 }),
+        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
+    }
 }
 
-fn search(results: Vec<(MetadataResult, LibraryStatus)>, text: &CandidateText) -> Outcome {
+fn search(results: Vec<MetadataResult>, text: &CandidateText) -> Outcome {
     combine_results(
         LookupAnswers {
             search: results,
@@ -50,7 +47,6 @@ fn search(results: Vec<(MetadataResult, LibraryStatus)>, text: &CandidateText) -
 
 fn offered(outcome: &Outcome) -> Vec<&str> {
     outcome
-        .0
         .matches
         .iter()
         .map(|result| result.release_id.as_str())
@@ -70,7 +66,7 @@ fn the_album_s_first_year_offers_every_edition() {
     ];
     let outcome = search(results.clone(), &text);
     assert_eq!(offered(&outcome), vec!["rel-1963", "rel-2005"]);
-    for (result, _) in &results {
+    for result in &results {
         assert!(
             !year_badge(result, &results, &text),
             "{}",
@@ -87,9 +83,9 @@ fn the_album_s_first_year_offers_every_edition() {
 fn a_lone_year_with_no_first_year_names_no_pressing() {
     let text = folder("Artist One - Album One (2005)");
     let undated_album = |release_id: &str, year: i32| {
-        let (mut result, status) = pressing(release_id, Some(year));
+        let mut result = pressing(release_id, Some(year));
         result.album_first_year = None;
-        (result, status)
+        result
     };
     let results = vec![
         undated_album("rel-1963", 1963),
@@ -97,7 +93,7 @@ fn a_lone_year_with_no_first_year_names_no_pressing() {
     ];
     let outcome = search(results.clone(), &text);
     assert_eq!(offered(&outcome), vec!["rel-1963", "rel-2005"]);
-    for (result, _) in &results {
+    for result in &results {
         assert!(
             !year_badge(result, &results, &text),
             "{}",
@@ -131,12 +127,8 @@ fn a_later_year_picks_the_edition() {
 }
 
 /// Whether the Year badge shows on the row of `result` among `results`.
-fn year_badge(
-    result: &MetadataResult,
-    results: &[(MetadataResult, LibraryStatus)],
-    text: &CandidateText,
-) -> bool {
-    let facts = FolderFacts::of(text, results.iter().map(|(result, _)| result));
+fn year_badge(result: &MetadataResult, results: &[MetadataResult], text: &CandidateText) -> bool {
+    let facts = FolderFacts::of(text, results.iter());
     agreements_of(result, text, &facts, &LookupProvenance::CHOSEN).year
 }
 
@@ -148,15 +140,15 @@ fn the_later_of_two_folder_years_names_the_pressing() {
     let text = folder("Artist One - Album One 1963 (1987 Nordland Pressing)");
     for first in [Some(1963), None] {
         let dated = |release_id: &str, year: i32| {
-            let (mut result, status) = pressing(release_id, Some(year));
+            let mut result = pressing(release_id, Some(year));
             result.album_first_year = first;
-            (result, status)
+            result
         };
         let results = vec![dated("rel-1963", 1963), dated("rel-1987", 1987)];
         let outcome = search(results.clone(), &text);
         assert_eq!(offered(&outcome), vec!["rel-1987"], "first year {first:?}");
-        assert!(year_badge(&results[1].0, &results, &text));
-        assert!(!year_badge(&results[0].0, &results, &text));
+        assert!(year_badge(&results[1], &results, &text));
+        assert!(!year_badge(&results[0], &results, &text));
     }
 }
 
@@ -184,6 +176,6 @@ fn the_folder_s_name_outranks_a_year_the_artwork_prints() {
     ];
     let outcome = search(results.clone(), &text);
     assert_eq!(offered(&outcome), vec!["rel-1987"]);
-    assert!(year_badge(&results[0].0, &results, &text));
-    assert!(!year_badge(&results[1].0, &results, &text));
+    assert!(year_badge(&results[0], &results, &text));
+    assert!(!year_badge(&results[1], &results, &text));
 }

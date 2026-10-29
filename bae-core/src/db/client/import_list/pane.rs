@@ -12,10 +12,9 @@ use super::super::source_releases::load_source_release_on;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::window::stored_embedded_cover;
 use super::*;
-use crate::identify::{TerminalVerdict, VerdictSummary};
+use crate::identify::VerdictSummary;
 use crate::import::cover_art::CoverChoice;
 use crate::import::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
-use crate::import::search::MetadataResult;
 use crate::import::{CoverSelection, PressingLink, ReleaseLink};
 
 #[derive(Clone, PartialEq)]
@@ -29,7 +28,6 @@ pub(super) struct CandidateDetailRows {
     pane_rows: DbCandidatePaneRows,
     artist_resolutions: Vec<crate::import::ResolvedCredit>,
     metadata_revision: u64,
-    statuses: Option<Vec<LibraryStatus>>,
     records: Vec<crate::import::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::import::DraftAlbum,
@@ -86,7 +84,6 @@ pub(super) fn load_candidate_detail_on(
     let state = load_states_on(sql, super::super::query::CandidateRows::One(&content_hash))?
         .remove(&content_hash);
     let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
-    let identify = current.as_ref().and_then(|state| state.identify.as_ref());
     let release_link = current
         .as_ref()
         .and_then(|state| state.release_link.clone());
@@ -110,9 +107,6 @@ pub(super) fn load_candidate_detail_on(
         DbError::Message(format!("candidate metadata revision is negative: {error}"))
     })?;
 
-    let statuses = identify
-        .map(|identify| library_statuses(sql, &identify.verdict))
-        .transpose()?;
     // The linked pressing's stored releases: what names its records and
     // checks it against the library.
     let claimed = claimed_releases_on(
@@ -157,7 +151,6 @@ pub(super) fn load_candidate_detail_on(
         pane_rows,
         artist_resolutions,
         metadata_revision,
-        statuses,
         records,
         picked_library_status,
         album,
@@ -211,7 +204,6 @@ impl CandidateDetailRows {
             pane_rows,
             artist_resolutions,
             metadata_revision,
-            statuses,
             records,
             picked_library_status,
             album,
@@ -244,19 +236,6 @@ impl CandidateDetailRows {
         let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
         if let Some(identify) = identify {
-            let statuses = statuses
-                .as_ref()
-                .expect("identification has fetched library statuses");
-            // The check answers for every release the verdict names, so a lookup
-            // cannot miss: `check_releases_in_library_on` returns one status per
-            // check and the checks are exactly those releases.
-            let status_of = |result: &MetadataResult| {
-                statuses
-                    .iter()
-                    .find(|status| status.release_id == result.release_id)
-                    .expect("the library check covers every release the verdict names")
-                    .clone()
-            };
             verdict = Some(VerdictSummary::of(
                 &identify.verdict,
                 identify.kept_own_draft,
@@ -265,11 +244,7 @@ impl CandidateDetailRows {
             // against, live or resumed: striking a number out re-orders the
             // rows the next time they are read, with nothing asked again.
             let text = crate::identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
-            resumed_identify_state =
-                identify
-                    .verdict
-                    .clone()
-                    .resume_state(&status_of, text, audio.clone());
+            resumed_identify_state = identify.verdict.clone().resume_state(text, audio.clone());
         }
         let pane = crate::import::pane::draft_pane(&candidate.files, durations, &pane_rows.draft)
             .map_err(|error| {
@@ -368,21 +343,4 @@ fn chosen_cover(
             Some(CoverChoice::remote(image.clone(), *source))
         }
     }
-}
-
-/// The live library status of every release the verdict names. A release the
-/// check does not answer for is a read that must fail rather than a release
-/// silently resumed as "not in the library".
-fn library_statuses(
-    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
-    verdict: &TerminalVerdict,
-) -> Result<Vec<LibraryStatus>, DbError> {
-    let mut seen = HashSet::new();
-    let checks: Vec<LibraryCheck> = verdict
-        .named_releases()
-        .into_iter()
-        .filter(|result| seen.insert(result.release_id.clone()))
-        .map(LibraryCheck::from)
-        .collect();
-    check_releases_in_library_on(sql, &checks)
 }

@@ -93,13 +93,7 @@ fn answer_rounds(
             }
             Effect::LookupPressing { source, key } => {
                 asked.pressings.push((source, key.clone()));
-                let outcome = Ok(pressing(source, &key)
-                    .into_iter()
-                    .map(|result| {
-                        let status = LibraryStatus::absent(&result.release_id);
-                        (result, status)
-                    })
-                    .collect());
+                let outcome = Ok(pressing(source, &key));
                 IdentifyEvent::PressingLookupAnswered {
                     source,
                     key,
@@ -142,7 +136,7 @@ fn rows_of(state: &IdentifyState) -> Vec<(MetadataResult, LookupProvenance, u32)
 /// A disc ID run on both catalogs whose lookup named `results`, holding at
 /// the read of its offered records' documents.
 fn disc_run_reading(
-    results: Vec<(MetadataResult, LibraryStatus)>,
+    results: Vec<MetadataResult>,
     text_pool: Vec<crate::signals::TextLine>,
 ) -> (IdentifyState, Vec<Effect>) {
     let mut disc_signals = disc_only(&[]);
@@ -178,14 +172,8 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
     use bae_types::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
         vec![
-            (
-                packed_in(MB, "mb-1", "g-1", JewelCase),
-                LibraryStatus::absent("mb-1"),
-            ),
-            (
-                packed_in(MB, "mb-2", "g-1", Digipak),
-                LibraryStatus::absent("mb-2"),
-            ),
+            packed_in(MB, "mb-1", "g-1", JewelCase),
+            packed_in(MB, "mb-2", "g-1", Digipak),
         ],
         Vec::new(),
     );
@@ -272,14 +260,8 @@ fn a_linked_release_s_note_word_breaks_the_tie() {
     use bae_types::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
         vec![
-            (
-                packed_in(MB, "mb-1", "g-1", JewelCase),
-                LibraryStatus::absent("mb-1"),
-            ),
-            (
-                packed_in(MB, "mb-2", "g-1", Digipak),
-                LibraryStatus::absent("mb-2"),
-            ),
+            packed_in(MB, "mb-1", "g-1", JewelCase),
+            packed_in(MB, "mb-2", "g-1", Digipak),
         ],
         vec![crate::signals::TextLine {
             text: "Album Title (Pressed by Plantname)".to_string(),

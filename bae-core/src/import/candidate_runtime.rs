@@ -31,7 +31,7 @@ use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
 use super::types::{ImportProgress, ImportStep};
-use crate::db::{Database, LibraryStatus};
+use crate::db::Database;
 use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{Failure, Signals};
 use bae_catalogs::catalog::Catalog;
@@ -421,6 +421,7 @@ impl CandidateRuntime {
     }
 
     /// Whether `run` is still the run `key`'s search is on.
+    #[cfg(test)]
     pub(super) fn search_run_is_current(&self, key: &str, run: u64) -> bool {
         self.inner
             .lock()
@@ -439,7 +440,7 @@ impl CandidateRuntime {
         key: &str,
         run: u64,
         source: Catalog,
-        outcome: Result<Vec<(MetadataResult, LibraryStatus)>, Failure>,
+        outcome: Result<Vec<MetadataResult>, Failure>,
     ) -> bool {
         self.set(key, |_, runtime| {
             let Some(running) = runtime.search.as_mut() else {

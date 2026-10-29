@@ -28,9 +28,7 @@ pub mod verdict_summary;
 pub mod view;
 
 pub use agreements::{Agreements, CandidateText};
-pub use combine::{
-    Findings, LibraryStatuses, LookupAnswers, LookupProvenance, NamedNote, NarrowedOut,
-};
+pub use combine::{Findings, LookupAnswers, LookupProvenance, NamedNote, NarrowedOut};
 pub use fit::{unattended_pick, Declined, TracklistFit, UnattendedPick};
 pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;
@@ -48,21 +46,3 @@ pub use view::{
     IdentifyRunView, IdentifyStateView, IsrcStepView, LookupView, ProviderCell, RowAgreements,
     SearchStepView, SignalValueRow,
 };
-
-use crate::db::{LibraryCheck, LibraryStatus};
-use crate::import::search::MetadataResult;
-use crate::library::LibraryManager;
-
-/// Pair each result with whether it's already in the library — the payload the
-/// lookup-completion events carry.
-pub(crate) async fn annotate_with_library_status(
-    results: Vec<MetadataResult>,
-    library_manager: &LibraryManager,
-) -> Result<Vec<(MetadataResult, LibraryStatus)>, String> {
-    let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
-    let statuses = library_manager
-        .check_releases_in_library(&checks)
-        .await
-        .map_err(|e| format!("Failed to check library status: {e}"))?;
-    Ok(results.into_iter().zip(statuses).collect())
-}

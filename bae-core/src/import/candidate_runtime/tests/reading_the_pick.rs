@@ -19,7 +19,6 @@ fn found_over(pressings: Vec<u32>) -> crate::identify::IdentifyState {
             pressings,
             ..Default::default()
         },
-        library_statuses: Default::default(),
         track_count: 2,
         ledger: None,
         context: signals_context(2),

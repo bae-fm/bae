@@ -83,10 +83,7 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
             outcome: Ok(DiscIdAnswer::for_test(vec![
-                (
-                    labelled(MB, "mb-1", "Label", "AB 12345-2"),
-                    LibraryStatus::absent("mb-1"),
-                ),
+                labelled(MB, "mb-1", "Label", "AB 12345-2"),
                 pair("mb-2", Some("g")),
             ])),
             },
@@ -108,10 +105,7 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
             source: MB,
             for_catalog: "AB 12345-2".to_string(),
             artist: None,
-            outcome: Ok(vec![(
-                labelled(MB, "mb-1", "Label", "AB 12345-2"),
-                LibraryStatus::absent("mb-1"),
-            )]),
+            outcome: Ok(vec![labelled(MB, "mb-1", "Label", "AB 12345-2")]),
         },
     );
     let reading = super::step(
@@ -120,10 +114,7 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
             source: DG,
             for_catalog: "AB 12345-2".to_string(),
             artist: Some("Artist Name".to_string()),
-            outcome: Ok(vec![(
-                labelled(DG, "dg-1", "Label", "AB 12345-2"),
-                LibraryStatus::absent("dg-1"),
-            )]),
+            outcome: Ok(vec![labelled(DG, "dg-1", "Label", "AB 12345-2")]),
         },
     );
     let (state, _, _) = answer_rounds(
@@ -177,14 +168,8 @@ fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
             outcome: Ok(DiscIdAnswer::for_test(vec![
-                (
-                    labelled(MB, "mb-1", "Label", "AB-100"),
-                    LibraryStatus::absent("mb-1"),
-                ),
-                (
-                    labelled(MB, "mb-2", "Other", "XY-250"),
-                    LibraryStatus::absent("mb-2"),
-                ),
+                labelled(MB, "mb-1", "Label", "AB-100"),
+                labelled(MB, "mb-2", "Other", "XY-250"),
             ])),
             },
     );
@@ -242,7 +227,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![(record, LibraryStatus::absent("mb-1"))])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![record])),
         },
     );
     let (state, effects, asked) = answer_rounds(
@@ -298,7 +283,7 @@ fn a_failed_pressing_lookup_fails_the_run() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![(record, LibraryStatus::absent("mb-1"))])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![record])),
         },
     );
     while let Some(effect) = effects.pop() {
@@ -366,24 +351,15 @@ fn a_number_is_searched_on_discogs_under_each_offered_rows_artist() {
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
             outcome: Ok(DiscIdAnswer::for_test(vec![
-                (
-                    labelled(MB, "mb-1", "Label", "AB-100"),
-                    LibraryStatus::absent("mb-1"),
-                ),
-                (
-                    titled(
+                labelled(MB, "mb-1", "Label", "AB-100"),
+                titled(
                         credited(MB, "mb-2", "ARTIST NAME", "Label", "AB 100"),
                         "Album Two",
                     ),
-                    LibraryStatus::absent("mb-2"),
-                ),
-                (
-                    titled(
+                titled(
                         credited(MB, "mb-3", "Other Artist", "Label", "AB-100"),
                         "Album Three",
                     ),
-                    LibraryStatus::absent("mb-3"),
-                ),
             ])),
         },
     );
@@ -425,10 +401,7 @@ fn a_release_of_another_artist_carrying_the_number_adds_no_search() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![(
-                labelled(MB, "mb-1", "Label", "AB-100"),
-                LibraryStatus::absent("mb-1"),
-            )])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![labelled(MB, "mb-1", "Label", "AB-100")])),
         },
     );
     assert!(effects.contains(&catalog_lookup(DG, "AB-100")), "{effects:?}");
@@ -438,10 +411,7 @@ fn a_release_of_another_artist_carrying_the_number_adds_no_search() {
             source: MB,
             for_catalog: "AB-100".to_string(),
             artist: None,
-            outcome: Ok(vec![(
-                credited(MB, "mb-9", "Other Artist", "Other Label", "AB-100"),
-                LibraryStatus::absent("mb-9"),
-            )]),
+            outcome: Ok(vec![credited(MB, "mb-9", "Other Artist", "Other Label", "AB-100")]),
         },
     );
     let (state, effects) = step(
@@ -450,10 +420,7 @@ fn a_release_of_another_artist_carrying_the_number_adds_no_search() {
             source: DG,
             for_catalog: "AB-100".to_string(),
             artist: Some("Artist Name".to_string()),
-            outcome: Ok(vec![(
-                credited(DG, "dg-1", "Third Artist", "Label", "AB-100"),
-                LibraryStatus::absent("dg-1"),
-            )]),
+            outcome: Ok(vec![credited(DG, "dg-1", "Third Artist", "Label", "AB-100")]),
         },
     );
     assert!(
@@ -514,10 +481,7 @@ fn a_picked_number_is_searched_as_it_stands_and_not_again_under_an_artist() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![(
-                labelled(MB, "mb-1", "Label", "AB-100"),
-                LibraryStatus::absent("mb-1"),
-            )])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![labelled(MB, "mb-1", "Label", "AB-100")])),
         },
     );
     asked.extend(more);
@@ -558,10 +522,7 @@ fn a_rows_number_searched_under_its_artist_is_not_looked_up_again() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![(
-                labelled(MB, "mb-1", "Label", "AB-100"),
-                LibraryStatus::absent("mb-1"),
-            )])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![labelled(MB, "mb-1", "Label", "AB-100")])),
         },
     );
     let (mut state, effects, mut asked) = answer_rounds(
@@ -629,10 +590,7 @@ fn a_compilations_number_is_searched_alone_on_discogs_too() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![(
-                credited(MB, "mb-1", "Various Artists", "Label", "AB-100"),
-                LibraryStatus::absent("mb-1"),
-            )])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![credited(MB, "mb-1", "Various Artists", "Label", "AB-100")])),
         },
     );
     assert_eq!(
@@ -657,10 +615,7 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![(
-                labelled(MB, "mb-1", "Label", "AB-100"),
-                LibraryStatus::absent("mb-1"),
-            )])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![labelled(MB, "mb-1", "Label", "AB-100")])),
         },
     );
     let other_tracks = |_: &MetadataRef| ReleaseDocument {
@@ -737,9 +692,9 @@ fn a_release_the_disc_id_answered_is_read_from_its_answer() {
     );
     // Two pressings, told apart by where each was released.
     let released_in = |release_id: &str, country: &str| {
-        let (mut result, status) = pair(release_id, Some("g"));
+        let mut result = pair(release_id, Some("g"));
         result.area = Some(bae_types::pressing::area(country));
-        (result, status)
+        result
     };
     let (_, effects) = super::step(
         state,

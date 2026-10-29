@@ -431,7 +431,6 @@ impl BridgeIdentifyState {
             IdentifyStateView::Triangulating {
                 run,
                 groups,
-                library_statuses,
                 agreements,
                 narrowed_out_count,
             } => BridgeIdentifyState::Triangulating {
@@ -440,7 +439,6 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)
                     .collect(),
-                library_statuses: status_map(library_statuses),
                 agreements: agreements
                     .into_iter()
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
@@ -450,7 +448,6 @@ impl BridgeIdentifyState {
             IdentifyStateView::Found {
                 run,
                 groups,
-                library_statuses,
                 track_count,
                 agreements,
                 narrowed_out_count,
@@ -463,7 +460,6 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)
                     .collect(),
-                library_statuses: status_map(library_statuses),
                 track_count,
                 agreements: agreements
                     .into_iter()
@@ -486,7 +482,6 @@ impl BridgeIdentifyState {
                 run,
                 failure_lines,
                 groups,
-                library_statuses,
                 agreements,
                 narrowed_out_count,
                 offers_shared_album,
@@ -497,7 +492,6 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)
                     .collect(),
-                library_statuses: status_map(library_statuses),
                 agreements: agreements
                     .into_iter()
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
@@ -549,15 +543,6 @@ fn identify_failure(
 }
 
 /// Key library statuses by release id, which each status carries.
-fn status_map(
-    statuses: Vec<bae_core::db::LibraryStatus>,
-) -> std::collections::HashMap<String, BridgeLibraryStatus> {
-    statuses
-        .into_iter()
-        .map(|s| (s.release_id.clone(), BridgeLibraryStatus::from_core(s)))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -689,7 +689,6 @@ struct ImportSearchFlowLibraryStatusTests {
                         ]
                     )
                 ],
-                libraryStatuses: [:],
                 status: .found
             )
         )

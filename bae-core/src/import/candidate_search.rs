@@ -17,7 +17,6 @@
 //! Pure. The driver that runs the lookups and publishes each landing is
 //! [`crate::import::ImportServiceHandle::start_candidate_search`].
 
-use crate::db::LibraryStatus;
 use crate::import::album_links::{self, AlbumLink, AlbumLinks, GroupLinks};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
@@ -39,7 +38,7 @@ pub enum SourceSearch {
     NotConfigured,
     Searching,
     Done {
-        results: Vec<(MetadataResult, LibraryStatus)>,
+        results: Vec<MetadataResult>,
     },
     /// The source could not answer, or bae broke asking it.
     Failed(Failure),
@@ -65,7 +64,7 @@ impl SourceSearch {
         }
     }
 
-    fn results(&self) -> &[(MetadataResult, LibraryStatus)] {
+    fn results(&self) -> &[MetadataResult] {
         match self {
             SourceSearch::Done { results } => results,
             SourceSearch::Off
@@ -105,9 +104,6 @@ pub struct CandidateSearch {
     /// whenever a source lands, so a card gains a second source's rows the
     /// moment that source answers.
     pub groups: Vec<ReleaseGroup>,
-    /// One status per result across every settled source, each carrying its own
-    /// release id.
-    pub library_statuses: Vec<LibraryStatus>,
     /// The MusicBrainz results a pick read — the release picked, or a
     /// partner it claimed — in the order they were read. What their documents
     /// state is already folded into `groups`.
@@ -134,7 +130,6 @@ impl CandidateSearch {
                 .map(|entry| (entry.catalog, SourceSearch::starting(entry.state)))
                 .collect(),
             groups: Vec::new(),
-            library_statuses: Vec::new(),
             picked: Vec::new(),
         }
     }
@@ -156,11 +151,7 @@ impl CandidateSearch {
     /// out — switched off while it was in flight — both belong to a dispatch
     /// this value has moved past, so their answers are dropped rather than
     /// reopening a part that is settled.
-    pub fn record(
-        &mut self,
-        source: Catalog,
-        outcome: Result<Vec<(MetadataResult, LibraryStatus)>, Failure>,
-    ) {
+    pub fn record(&mut self, source: Catalog, outcome: Result<Vec<MetadataResult>, Failure>) {
         let settled = match outcome {
             Ok(results) => SourceSearch::Done { results },
             Err(failure) => SourceSearch::Failed(failure),
@@ -234,10 +225,8 @@ impl CandidateSearch {
         }
         let Some(group) = self
             .landed()
-            .find(|(result, _)| {
-                result.source == release.catalog && result.release_id == release.key
-            })
-            .map(|(result, _)| result.source_group_id.clone())
+            .find(|result| result.source == release.catalog && result.release_id == release.key)
+            .map(|result| result.source_group_id.clone())
         else {
             return Vec::new();
         };
@@ -254,7 +243,7 @@ impl CandidateSearch {
             None => self.picked.push(read),
         }
         self.regroup();
-        let landed: Vec<&MetadataResult> = self.landed().map(|(result, _)| result).collect();
+        let landed: Vec<&MetadataResult> = self.landed().collect();
         let groups: Vec<GroupLinks> = self
             .read_groups(&landed)
             .into_iter()
@@ -264,7 +253,7 @@ impl CandidateSearch {
     }
 
     /// Every settled source's results, in source order.
-    fn landed(&self) -> impl Iterator<Item = &(MetadataResult, LibraryStatus)> {
+    fn landed(&self) -> impl Iterator<Item = &MetadataResult> {
         self.sources.iter().flat_map(|(_, state)| state.results())
     }
 
@@ -335,8 +324,7 @@ impl CandidateSearch {
     /// merged in — each MusicBrainz record carrying what its album was read to
     /// be from the results picked so far.
     fn regroup(&mut self) {
-        let (mut results, statuses): (Vec<MetadataResult>, Vec<LibraryStatus>) =
-            self.landed().cloned().unzip();
+        let mut results: Vec<MetadataResult> = self.landed().cloned().collect();
         let groups = self.read_groups(&results.iter().collect::<Vec<_>>());
         for result in &mut results {
             album_links::apply(result, &groups);
@@ -344,7 +332,6 @@ impl CandidateSearch {
         // Typed search: nothing was judged against the candidate's own text,
         // so the rows keep the pressing-year order alone.
         self.groups = group_results(crate::import::release_group::unranked(results), None);
-        self.library_statuses = statuses;
     }
 }
 
@@ -412,11 +399,8 @@ mod tests {
         source: Catalog,
         release_id: &str,
         group_id: &str,
-    ) -> Result<Vec<(MetadataResult, LibraryStatus)>, Failure> {
-        Ok(vec![(
-            result(source, release_id, group_id),
-            LibraryStatus::absent(release_id),
-        )])
+    ) -> Result<Vec<MetadataResult>, Failure> {
+        Ok(vec![result(source, release_id, group_id)])
     }
 
     #[test]
@@ -473,7 +457,7 @@ mod tests {
         let unpaired = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
-            Ok(vec![(found, LibraryStatus::absent(release_id))])
+            Ok(vec![found])
         };
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
@@ -525,7 +509,7 @@ mod tests {
                 Some("Imprint"),
                 Some("LB 100"),
             )];
-            Ok(vec![(found, LibraryStatus::absent(release_id))])
+            Ok(vec![found])
         };
         let mut search = CandidateSearch::started(query(), &all_on());
         search.record(
@@ -665,7 +649,6 @@ mod tests {
         );
         assert_eq!(search.groups.len(), 1);
         assert_eq!(search.groups[0].pressings().count(), 1);
-        assert_eq!(search.library_statuses.len(), 1);
     }
 
     /// Discogs landing merges into the card MusicBrainz already drew: same
@@ -692,7 +675,6 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["mb-1", "dg-1"]
         );
-        assert_eq!(search.library_statuses.len(), 2);
     }
 
     #[test]
@@ -824,7 +806,6 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![Catalog::Discogs]
         );
-        assert_eq!(search.library_statuses.len(), 1);
 
         // The lookup that was in flight for it when the switch went off.
         search.record(
