@@ -107,6 +107,8 @@ mod playback_queue;
 pub use playback_queue::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
 };
+#[cfg(desktop)]
+mod downscaled_copies;
 mod playback_queue_reads;
 #[cfg(desktop)]
 mod source_releases;

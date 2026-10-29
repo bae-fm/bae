@@ -15,7 +15,7 @@ use crate::import::source_release::{
     TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
 use crate::import::{MetadataRef, ReleaseRecord};
-use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
 use bae_types::pressing::{Medium, Pressing, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
 
@@ -575,44 +575,35 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         release: Vec::new(),
         album: Vec::new(),
     };
-    for (scope, position, url, label, source, standing, copies_json) in sql.query(
-        "SELECT cover.scope, cover.position, cover.url, cover.label, cover.source, \
-                cover.standing, \
-                (SELECT json_group_array(json_object('url', copy.url, 'max_edge', copy.max_edge) \
-                                         ORDER BY copy.max_edge) \
-                 FROM source_release_cover_copy AS copy \
-                 WHERE copy.catalog = cover.catalog AND copy.release_id = cover.release_id \
-                   AND copy.scope = cover.scope AND copy.position = cover.position) \
-         FROM source_release_cover AS cover \
-         WHERE cover.catalog = ? AND cover.release_id = ? ORDER BY cover.scope, cover.position",
+    let copies = super::downscaled_copies::copies_json_sql(
+        "source_release_cover_copy",
+        "copy.catalog = cover.catalog AND copy.release_id = cover.release_id \
+         AND copy.scope = cover.scope AND copy.position = cover.position",
+    );
+    for (scope, url, label, source, standing, copies_json) in sql.query(
+        &format!(
+            "SELECT cover.scope, cover.url, cover.label, cover.source, cover.standing, {copies} \
+             FROM source_release_cover AS cover \
+             WHERE cover.catalog = ? AND cover.release_id = ? \
+             ORDER BY cover.scope, cover.position"
+        ),
         params![catalog, key],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
+                row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
                 row.get::<_, String>(5)?,
-                row.get::<_, String>(6)?,
             ))
         },
     )? {
-        #[derive(serde::Deserialize)]
-        struct StoredCopy {
-            url: String,
-            max_edge: u32,
-        }
-        let downscaled = serde_json::from_str::<Vec<StoredCopy>>(&copies_json)
-            .map_err(|error| unreadable("cover copies", format!("{position}: {error}")))?
-            .into_iter()
-            .map(|copy| DownscaledCopy {
-                url: copy.url,
-                max_edge: copy.max_edge,
-            })
-            .collect();
         let cover = RemoteCover {
-            image: RemoteImageSet::with_copies(url, downscaled),
+            image: RemoteImageSet::with_copies(
+                url,
+                super::downscaled_copies::copies_of(&copies_json)?,
+            ),
             label,
             source: catalog_column(&source)?,
             standing: CoverStanding::from_column(&standing)

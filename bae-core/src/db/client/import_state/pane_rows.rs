@@ -11,15 +11,15 @@
 mod values;
 mod writes;
 
+use super::super::downscaled_copies::{copies_json_sql, copies_of};
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::db::client::candidate_state_rows::COVER_COLUMNS;
 use crate::import::{
     ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection,
     Credited, ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
-use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
 use std::str::FromStr;
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
@@ -196,15 +196,23 @@ pub(crate) fn load_pane_rows_on(
     })
 }
 
-/// The cover choice of every candidate `only` names.
+/// The cover choice of every candidate `only` names, each with the copies
+/// the catalog serves of a remote one.
 pub(crate) fn load_covers_on(
     sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, CoverSelection>, DbError> {
-    let only = only.filter("content_hash");
+    let only = only.filter("cover.content_hash");
+    // Only a remote choice has an address for copies to reference.
+    let copies = copies_json_sql(
+        "import_candidate_cover_copy",
+        "copy.content_hash = cover.content_hash AND copy.image_url = cover.url",
+    );
     let rows = sql.query(
         &format!(
-            "SELECT {COVER_COLUMNS} FROM import_candidate_cover {}",
+            "SELECT cover.content_hash, cover.kind, cover.file_id, cover.url, cover.source, \
+                    {copies} AS copies \
+             FROM import_candidate_cover AS cover {}",
             only.clause
         ),
         only.params().as_slice(),
@@ -215,33 +223,12 @@ pub(crate) fn load_covers_on(
                 row.get::<_, Option<String>>("file_id")?,
                 row.get::<_, Option<String>>("url")?,
                 row.get::<_, Option<String>>("source")?,
+                row.get::<_, String>("copies")?,
             ))
         },
     )?;
-    let mut copies: HashMap<String, Vec<DownscaledCopy>> = HashMap::new();
-    for (content_hash, max_edge, url) in sql.query(
-        &format!(
-            "SELECT content_hash, max_edge, url FROM import_candidate_cover_copy {}",
-            only.clause
-        ),
-        only.params().as_slice(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, u32>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )? {
-        copies
-            .entry(content_hash)
-            .or_default()
-            .push(DownscaledCopy { url, max_edge });
-    }
     let mut out = HashMap::with_capacity(rows.len());
-    for (content_hash, kind, file_id, url, source) in rows {
-        // Only a remote choice has an address for copies to reference.
-        let copies = copies.remove(&content_hash).unwrap_or_default();
+    for (content_hash, kind, file_id, url, source, copies) in rows {
         let cover = match kind.as_str() {
             "local" => CoverSelection::Local(
                 file_id.ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
@@ -252,7 +239,7 @@ pub(crate) fn load_covers_on(
             "remote" => CoverSelection::Remote(
                 RemoteImageSet::with_copies(
                     url.ok_or_else(|| DbError::Message("a remote cover names no address".into()))?,
-                    copies,
+                    copies_of(&copies)?,
                 ),
                 Catalog::from_str(
                     &source
@@ -796,36 +783,25 @@ pub(super) fn replace_cover_options(
     Ok(())
 }
 
-/// The candidate's offered covers, in their order.
+/// The candidate's offered covers, in their order, each with its copies.
 pub(super) fn load_cover_options_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
 ) -> Result<Vec<RemoteCover>, DbError> {
-    let mut copies: HashMap<i64, Vec<DownscaledCopy>> = HashMap::new();
-    for (position, max_edge, url) in sql.query(
-        "SELECT position, max_edge, url FROM import_candidate_cover_option_copy \
-         WHERE content_hash = ? ORDER BY position, max_edge",
-        [content_hash],
-        |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, u32>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )? {
-        copies
-            .entry(position)
-            .or_default()
-            .push(DownscaledCopy { url, max_edge });
-    }
+    let copies = copies_json_sql(
+        "import_candidate_cover_option_copy",
+        "copy.content_hash = offered.content_hash AND copy.position = offered.position",
+    );
     sql.query(
-        "SELECT position, url, label, source, standing FROM import_candidate_cover_option \
-         WHERE content_hash = ? ORDER BY position",
+        &format!(
+            "SELECT offered.url, offered.label, offered.source, offered.standing, {copies} \
+             FROM import_candidate_cover_option AS offered \
+             WHERE offered.content_hash = ? ORDER BY offered.position"
+        ),
         [content_hash],
         |row| {
             Ok((
-                row.get::<_, i64>(0)?,
+                row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
@@ -834,10 +810,9 @@ pub(super) fn load_cover_options_on(
         },
     )?
     .into_iter()
-    .map(|(position, url, label, source, standing)| {
+    .map(|(url, label, source, standing, copies)| {
         Ok(RemoteCover {
-            // An option the catalog serves no copies of has none.
-            image: RemoteImageSet::with_copies(url, copies.remove(&position).unwrap_or_default()),
+            image: RemoteImageSet::with_copies(url, copies_of(&copies)?),
             label,
             source: bae_catalogs::catalog::Catalog::from_str(&source).map_err(|error| {
                 DbError::Message(format!(
