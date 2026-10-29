@@ -37,7 +37,7 @@ use super::audio_output::{
     AudioStream,
 };
 #[cfg(target_os = "macos")]
-use super::device_formats::{CoreAudioDeviceFormats, DeviceFormats, FormatLease};
+use super::device_formats::{CoreAudioDeviceFormats, DeviceFormats, PlayerFormat, StreamFormat};
 use super::resampling_drain::ResamplingDrain;
 use crate::playback::source::PlaybackSource;
 use cpal::traits::{DeviceTrait, HostTrait};
@@ -52,11 +52,11 @@ use tracing::{debug, error, info, warn};
 struct CpalStream {
     /// Declared first so it drops first: dropping it stops cpal's threads,
     /// which hold the sending side of `invalidations`, and stops playing on
-    /// the device before `_format` puts the device's format back.
+    /// the device before `_format` hands its lease back to the player.
     stream: cpal::Stream,
     invalidations: mpsc::Receiver<String>,
     #[cfg(target_os = "macos")]
-    _format: FormatLease<CoreAudioDeviceFormats>,
+    _format: StreamFormat<CoreAudioDeviceFormats>,
 }
 
 impl AudioStream for CpalStream {
@@ -137,6 +137,30 @@ fn output_rate(_device: &cpal::Device, track_rate: u32, _channels: u32) -> Resul
     Ok(track_rate)
 }
 
+/// The default output device as cpal resolves it, with its CoreAudio id — the
+/// device whose format cpal is about to change. The default is read before
+/// and after cpal resolves it: when the two reads differ the default changed
+/// under the build, and which device cpal resolved isn't known.
+#[cfg(target_os = "macos")]
+fn resolve_default_device(
+    resolve: impl FnOnce() -> Result<cpal::Device, AudioError>,
+) -> Result<(cpal::Device, objc2_core_audio::AudioDeviceID), AudioError> {
+    let before = CoreAudioDeviceFormats::default_output_device();
+    let device = resolve()?;
+    let after = CoreAudioDeviceFormats::default_output_device();
+    match (before, after) {
+        (Some(before), Some(after)) if before == after => Ok((device, before)),
+        (None, _) | (_, None) => Err(AudioError::DeviceUnavailable),
+        (Some(before), Some(after)) => {
+            warn!(
+                before,
+                after, "the default output device changed while a stream was being built"
+            );
+            Err(AudioError::DeviceUnavailable)
+        }
+    }
+}
+
 /// Audio output using the system audio device via CPAL.
 pub struct CpalAudioOutput {
     controls: AudioOutputControls,
@@ -144,6 +168,9 @@ pub struct CpalAudioOutput {
     /// same system device, set Mac output devices to.
     #[cfg(target_os = "macos")]
     device_formats: Arc<DeviceFormats<CoreAudioDeviceFormats>>,
+    /// The lease of this output's last stream, kept until its playback ends.
+    #[cfg(target_os = "macos")]
+    player_format: PlayerFormat<CoreAudioDeviceFormats>,
 }
 
 impl CpalAudioOutput {
@@ -161,37 +188,9 @@ impl CpalAudioOutput {
             controls: AudioOutputControls::new(1.0),
             #[cfg(target_os = "macos")]
             device_formats,
+            #[cfg(target_os = "macos")]
+            player_format: PlayerFormat::new(),
         })
-    }
-
-    /// A lease on the default output device cpal just resolved as `device`,
-    /// taken before cpal changes the device's format, so the stream's end puts
-    /// it back. The default is read before and after cpal resolves it: when the
-    /// two reads differ the default changed under the build, and which device
-    /// cpal resolved isn't known.
-    #[cfg(target_os = "macos")]
-    fn lease_default_device(
-        &self,
-        resolve: impl FnOnce() -> Result<cpal::Device, AudioError>,
-    ) -> Result<(cpal::Device, FormatLease<CoreAudioDeviceFormats>), AudioError> {
-        let before = CoreAudioDeviceFormats::default_output_device();
-        let device = resolve()?;
-        let after = CoreAudioDeviceFormats::default_output_device();
-        let device_id = match (before, after) {
-            (Some(before), Some(after)) if before == after => before,
-            (None, _) | (_, None) => return Err(AudioError::DeviceUnavailable),
-            (Some(before), Some(after)) => {
-                warn!(
-                    before,
-                    after, "the default output device changed while a stream was being built"
-                );
-                return Err(AudioError::DeviceUnavailable);
-            }
-        };
-        let lease = self.device_formats.lease(device_id).map_err(|error| {
-            AudioError::Unexpected(format!("reading the output device's format: {error}"))
-        })?;
-        Ok((device, lease))
     }
 }
 
@@ -214,7 +213,15 @@ impl AudioOutput for CpalAudioOutput {
                 .ok_or(AudioError::DeviceUnavailable)
         };
         #[cfg(target_os = "macos")]
-        let (device, format_lease) = self.lease_default_device(resolve)?;
+        let (device, format_lease) = {
+            let (device, device_id) = resolve_default_device(resolve)?;
+            // Taken before cpal changes the device's format, so the end of
+            // this playback puts it back.
+            let lease = self.device_formats.lease(device_id).map_err(|error| {
+                AudioError::Unexpected(format!("reading the output device's format: {error}"))
+            })?;
+            (device, lease)
+        };
         #[cfg(not(target_os = "macos"))]
         let device = resolve()?;
         let output_rate = output_rate(&device, source_sample_rate, source_channels)?;
@@ -287,12 +294,20 @@ impl AudioOutput for CpalAudioOutput {
             stream,
             invalidations,
             #[cfg(target_os = "macos")]
-            _format: format_lease,
+            _format: self.player_format.stream_started(format_lease),
         }))
     }
 
     fn controls(&self) -> &AudioOutputControls {
         &self.controls
+    }
+
+    /// Let the lease kept from the last stream go, putting the device back to
+    /// the format it had before bae, unless another player's stream plays on
+    /// it.
+    #[cfg(target_os = "macos")]
+    fn playback_ended(&mut self) {
+        self.player_format.playback_ended();
     }
 }
 

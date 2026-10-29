@@ -335,6 +335,7 @@ impl PreviewPlayer {
             if let Some(preview_output) = &self.audio_output {
                 preview_output.set_state(AudioState::Stopped);
             }
+            self.end_output_playback();
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PreviewStateChanged(PreviewState::Idle),
@@ -419,10 +420,20 @@ impl PreviewPlayer {
     /// whether this preview owes it a resume.
     pub(crate) fn stop(&mut self) -> AfterPreview {
         self.tear_down();
+        self.end_output_playback();
         if std::mem::take(&mut self.paused_main_player) {
             AfterPreview::ResumeMain
         } else {
             AfterPreview::LeaveMain
+        }
+    }
+
+    /// The output's playback ended with the preview's. Switching to another
+    /// preview doesn't end it, so the device switches straight from one
+    /// preview's rate to the next's.
+    fn end_output_playback(&mut self) {
+        if let Some(preview_output) = &mut self.audio_output {
+            preview_output.playback_ended();
         }
     }
 

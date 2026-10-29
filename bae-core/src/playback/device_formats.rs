@@ -5,12 +5,20 @@
 //! the stream (and, where the device has a 32-bit float format at that rate, to
 //! that format). bae shouldn't leave the person's Mac that way, so every cpal
 //! stream holds a [`FormatLease`] on the device it plays on, taken before cpal
-//! builds the stream. The device runs in the format of the newest stream bae
-//! has on it; when that stream ends the device goes back to the format of the
+//! builds the stream. The device runs in the format of the newest lease bae
+//! holds on it; when that lease ends the device goes back to the format of the
 //! newest one left, and when the last ends, to the format it had before bae
-//! changed it. A stream ends when playback stops, when the app quits (the
-//! playback service drops its streams before its thread exits), and when the
-//! default device changes, since the stream is then rebuilt on the new device.
+//! changed it.
+//!
+//! A lease outlives its stream: each player keeps the last one
+//! ([`PlayerFormat`]) until its playback ends. The next stream of the same
+//! playback — the next track at another rate, a rebuild on the same device —
+//! takes its own lease first, so the device switches straight from the last
+//! stream's format to the new one's instead of going back in between. The
+//! kept lease ends when playback stops (the player says so,
+//! [`PlayerFormat::playback_ended`]), when the app quits (the playback service
+//! drops its players before its thread exits), and when the next stream plays
+//! on another device because the default changed.
 //!
 //! cpal 0.18 reads and sets the device's format only inside its stream build,
 //! so the reading and setting here are CoreAudio's, through the crates cpal
@@ -149,6 +157,51 @@ impl<C: DeviceFormatControl> FormatLease<C> {
 impl<C: DeviceFormatControl> Drop for FormatLease<C> {
     fn drop(&mut self) {
         self.formats.release(self.device, self.id);
+    }
+}
+
+/// The lease of a player's last stream, kept after the stream ends until the
+/// player's playback does (see the module docs). One per player output.
+pub(crate) struct PlayerFormat<C: DeviceFormatControl> {
+    kept: Arc<Mutex<Option<FormatLease<C>>>>,
+}
+
+impl<C: DeviceFormatControl> PlayerFormat<C> {
+    pub(crate) fn new() -> Self {
+        Self {
+            kept: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    /// The lease of the stream just built, which comes back here when the
+    /// stream ends. The lease kept from the previous stream ends now: its
+    /// device already runs in the new stream's format when it is the same one,
+    /// and goes back to its own when it isn't.
+    pub(crate) fn stream_started(&self, lease: FormatLease<C>) -> StreamFormat<C> {
+        drop(self.kept.lock().unwrap().take());
+        StreamFormat {
+            lease: Some(lease),
+            kept: self.kept.clone(),
+        }
+    }
+
+    /// The player's playback ended: let the kept lease go, putting its device
+    /// back.
+    pub(crate) fn playback_ended(&self) {
+        drop(self.kept.lock().unwrap().take());
+    }
+}
+
+/// A stream's lease, handed back to its player when the stream ends.
+pub(crate) struct StreamFormat<C: DeviceFormatControl> {
+    lease: Option<FormatLease<C>>,
+    kept: Arc<Mutex<Option<FormatLease<C>>>>,
+}
+
+impl<C: DeviceFormatControl> Drop for StreamFormat<C> {
+    fn drop(&mut self) {
+        let lease = self.lease.take();
+        drop(std::mem::replace(&mut *self.kept.lock().unwrap(), lease));
     }
 }
 
@@ -369,5 +422,63 @@ mod tests {
         drop(lease);
 
         assert_eq!(rate(&fake, 1), 48_000);
+    }
+
+    /// One stream after another on a player — the next track at another
+    /// rate — switches the device straight from the first track's rate to the
+    /// second's; it goes back to its own only when playback ends. Sabotage:
+    /// release the lease when its stream ends, and the device goes back to
+    /// 48 kHz in between.
+    #[test]
+    fn consecutive_streams_of_a_playback_switch_the_device_directly() {
+        let fake = devices(&[(1, 48_000)]);
+        let formats = DeviceFormats::new(fake.clone());
+        let player = PlayerFormat::new();
+
+        let lease = formats.lease(1).unwrap();
+        build_stream(&fake, 1, 44_100);
+        lease.settle().unwrap();
+        let first = player.stream_started(lease);
+        drop(first);
+        assert_eq!(rate(&fake, 1), 44_100, "the ended stream's rate stays");
+
+        let lease = formats.lease(1).unwrap();
+        build_stream(&fake, 1, 96_000);
+        lease.settle().unwrap();
+        let second = player.stream_started(lease);
+        assert!(
+            fake.sets.lock().unwrap().is_empty(),
+            "nothing went back between the two tracks"
+        );
+        drop(second);
+        assert_eq!(rate(&fake, 1), 96_000);
+
+        player.playback_ended();
+        assert_eq!(rate(&fake, 1), 48_000);
+        assert_eq!(*fake.sets.lock().unwrap(), [(1, 48_000)]);
+    }
+
+    /// The next stream on another device — the default changed — puts the
+    /// kept device back.
+    #[test]
+    fn the_next_stream_on_another_device_puts_the_kept_one_back() {
+        let fake = devices(&[(1, 48_000), (2, 44_100)]);
+        let formats = DeviceFormats::new(fake.clone());
+        let player = PlayerFormat::new();
+
+        let lease = formats.lease(1).unwrap();
+        build_stream(&fake, 1, 96_000);
+        lease.settle().unwrap();
+        drop(player.stream_started(lease));
+
+        let lease = formats.lease(2).unwrap();
+        build_stream(&fake, 2, 96_000);
+        lease.settle().unwrap();
+        let on_new = player.stream_started(lease);
+
+        assert_eq!(rate(&fake, 1), 48_000);
+        drop(on_new);
+        drop(player);
+        assert_eq!(rate(&fake, 2), 44_100, "dropping the player ends its lease");
     }
 }

@@ -411,6 +411,13 @@ pub trait AudioOutput: Send + 'static {
     /// buffer so each non-gapless transition still yields one buffer.
     fn on_source_replaced(&mut self) {}
 
+    /// The playback through this output ended: it stopped, or moved to a
+    /// receiver. An output that keeps something of the device across its
+    /// streams lets it go here — the cpal output on a Mac keeps the device in
+    /// the last track's format, so the next track's stream switches it
+    /// directly. The others keep nothing.
+    fn playback_ended(&mut self) {}
+
     /// The state/volume cell this output's callback reads. Every control
     /// method below drives it, so an output that keeps one gets them all.
     fn controls(&self) -> &AudioOutputControls;

@@ -686,6 +686,7 @@ impl PlaybackService {
         if let Some(out) = self.output.take() {
             out.source.lock().unwrap().cancel();
         }
+        self.audio_output.playback_ended();
         self.file_buffers.cancel_all();
         self.reset_starvation_episode();
     }
