@@ -201,42 +201,112 @@ struct EntryRow {
     value: TracklistEntry,
 }
 
+/// A stored artist as a tracklist's JSON lists hold it.
+#[derive(serde::Deserialize)]
+struct StoredArtist {
+    name: String,
+    sort_name: Option<String>,
+    musicbrainz_artist_id: Option<String>,
+    discogs_artist_id: Option<String>,
+}
+
+impl StoredArtist {
+    fn artist(self) -> crate::import::ArtistCredit {
+        crate::import::ArtistCredit {
+            name: self.name,
+            sort_name: self.sort_name,
+            musicbrainz_artist_id: self.musicbrainz_artist_id,
+            discogs_artist_id: self.discogs_artist_id,
+            credited_as: None,
+        }
+    }
+}
+
+/// One entry credit as the entry's `credits` column holds it.
+#[derive(serde::Deserialize)]
+struct StoredCredit {
+    position: i32,
+    credited_name: String,
+    /// Absent where the catalog printed a name with no artist behind it.
+    artist: Option<StoredArtist>,
+    join_phrase: Option<String>,
+}
+
+/// One entry role as the entry's `roles` column holds it.
+#[derive(serde::Deserialize)]
+struct StoredRole {
+    position: i32,
+    artist: StoredArtist,
+    role: Option<String>,
+}
+
+/// A stored artist's columns under `alias`, as a JSON object.
+fn artist_json(alias: &str) -> String {
+    format!(
+        "json_object('name', {alias}.name, 'sort_name', {alias}.sort_name, \
+                     'musicbrainz_artist_id', {alias}.musicbrainz_artist_id, \
+                     'discogs_artist_id', {alias}.discogs_artist_id)"
+    )
+}
+
+fn stored_list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
+    serde_json::from_str(json).map_err(|error| unreadable(what, format!("{json:?}: {error}")))
+}
+
 pub(super) fn load_mediums<S: QueryOne + QueryRows>(
     sql: &S,
     catalog: &str,
     key: &str,
 ) -> Result<Vec<SourceMedium>, DbError> {
-    let mut mediums: Vec<SourceMedium> = sql.query(
-        "SELECT medium FROM source_release_medium \
-             WHERE catalog = ? AND release_id = ? ORDER BY position",
-        params![catalog, key],
-        |row| {
+    let mut mediums: Vec<SourceMedium> = sql
+        .query(
+            "SELECT medium.medium, \
+                    (SELECT json_group_array(disc.disc_id ORDER BY disc.disc) \
+                     FROM source_release_medium_disc AS disc \
+                     WHERE disc.catalog = medium.catalog AND disc.release_id = medium.release_id \
+                       AND disc.position = medium.position) AS disc_ids \
+             FROM source_release_medium AS medium \
+             WHERE medium.catalog = ? AND medium.release_id = ? ORDER BY medium.position",
+            params![catalog, key],
+            |row| {
+                Ok((
+                    super::pressing_columns::keyed(row, "medium", Medium::from_key)?,
+                    row.get::<_, String>("disc_ids")?,
+                ))
+            },
+        )?
+        .into_iter()
+        .map(|(medium, disc_ids)| {
             Ok(SourceMedium {
-                medium: super::pressing_columns::keyed(row, "medium", Medium::from_key)?,
-                disc_ids: Vec::new(),
+                medium,
+                disc_ids: stored_list(&disc_ids, "medium Disc IDs")?,
                 entries: Vec::new(),
             })
-        },
-    )?;
-    for (position, disc_id) in sql.query(
-        "SELECT position, disc_id FROM source_release_medium_disc \
-         WHERE catalog = ? AND release_id = ? ORDER BY position, disc",
-        params![catalog, key],
-        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
-    )? {
-        let medium = usize::try_from(position)
-            .ok()
-            .and_then(|position| mediums.get_mut(position))
-            .ok_or_else(|| {
-                DbError::Message(format!(
-                    "{catalog} release {key} holds a Disc ID for medium {position}, which it does not hold"
-                ))
-            })?;
-        medium.disc_ids.push(disc_id);
-    }
+        })
+        .collect::<Result<_, DbError>>()?;
     let rows = sql.query(
-        "SELECT entry, medium, parent, kind, position, number, title, duration_ms \
-         FROM source_release_entry WHERE catalog = ? AND release_id = ? ORDER BY entry",
+        &format!(
+            "SELECT entry.entry, entry.medium, entry.parent, entry.kind, entry.position, \
+                    entry.number, entry.title, entry.duration_ms, \
+                    (SELECT json_group_array(json_object( \
+                         'position', credit.position, 'credited_name', credit.credited_name, \
+                         'artist', CASE WHEN credit.name IS NOT NULL \
+                                       THEN json({credited}) END, \
+                         'join_phrase', credit.join_phrase) ORDER BY credit.position) \
+                     FROM source_release_entry_credit AS credit \
+                     WHERE credit.catalog = entry.catalog AND credit.release_id = entry.release_id \
+                       AND credit.entry = entry.entry) AS credits, \
+                    (SELECT json_group_array(json_object( \
+                         'position', role.position, 'artist', json({role_artist}), \
+                         'role', role.role) ORDER BY role.position) \
+                     FROM source_release_entry_role AS role \
+                     WHERE role.catalog = entry.catalog AND role.release_id = entry.release_id \
+                       AND role.entry = entry.entry) AS roles \
+             FROM source_release_entry AS entry \
+             WHERE entry.catalog = ? AND entry.release_id = ? ORDER BY entry.entry",
+            credited = artist_json("credit"),
+            role_artist = artist_json("role"),
+        ),
         params![catalog, key],
         |row| {
             Ok((
@@ -248,13 +318,43 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
                 row.get::<_, Option<i64>>(5)?,
                 row.get::<_, Option<String>>(6)?,
                 row.get::<_, Option<i64>>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, String>(9)?,
             ))
         },
     )?;
     let mut entries: Vec<EntryRow> = Vec::with_capacity(rows.len());
     let mut index_of: HashMap<i64, usize> = HashMap::with_capacity(rows.len());
-    for (entry, medium, parent, kind, position, number, title, duration_ms) in rows {
+    for (entry, medium, parent, kind, position, number, title, duration_ms, credits, roles) in rows
+    {
         index_of.insert(entry, entries.len());
+        let credits = stored_list::<StoredCredit>(&credits, "entry credits")?
+            .into_iter()
+            .map(|credit| DisplayCredit {
+                position: credit.position,
+                artist: credit.artist.map(|artist| {
+                    let artist = artist.artist();
+                    // The printed name is the credit's own where it is
+                    // another than the artist's.
+                    crate::import::ArtistCredit {
+                        credited_as: Some(credit.credited_name.trim())
+                            .filter(|printed| !printed.is_empty() && *printed != artist.name)
+                            .map(str::to_string),
+                        ..artist
+                    }
+                }),
+                credited_name: credit.credited_name,
+                join: credit.join_phrase,
+            })
+            .collect();
+        let roles = stored_list::<StoredRole>(&roles, "entry roles")?
+            .into_iter()
+            .map(|role| RoleCredit {
+                position: role.position,
+                artist: role.artist.artist(),
+                role: role.role,
+            })
+            .collect();
         entries.push(EntryRow {
             medium,
             parent,
@@ -266,8 +366,8 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
                 duration_ms: duration_ms
                     .map(|duration| to_u64(duration, "track duration"))
                     .transpose()?,
-                credits: Vec::new(),
-                roles: Vec::new(),
+                credits,
+                roles,
                 works: Vec::new(),
                 children: Vec::new(),
             },
@@ -279,61 +379,6 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
             .copied()
             .ok_or_else(|| unreadable("reference to a missing entry", entry))
     };
-    for (entry, credit) in sql.query(
-        "SELECT entry, position, credited_name, name, sort_name, musicbrainz_artist_id, \
-                discogs_artist_id, join_phrase \
-         FROM source_release_entry_credit WHERE catalog = ? AND release_id = ? \
-         ORDER BY entry, position",
-        params![catalog, key],
-        |row| {
-            let credited_name: String = row.get(2)?;
-            let name: Option<String> = row.get(3)?;
-            Ok((
-                row.get::<_, i64>(0)?,
-                DisplayCredit {
-                    position: row.get(1)?,
-                    artist: match name {
-                        // The printed name is the credit's own where it is
-                        // another than the artist's.
-                        Some(name) => Some(crate::import::ArtistCredit {
-                            credited_as: Some(credited_name.trim())
-                                .filter(|printed| !printed.is_empty() && *printed != name)
-                                .map(str::to_string),
-                            name,
-                            sort_name: row.get(4)?,
-                            musicbrainz_artist_id: row.get(5)?,
-                            discogs_artist_id: row.get(6)?,
-                        }),
-                        None => None,
-                    },
-                    credited_name,
-                    join: row.get(7)?,
-                },
-            ))
-        },
-    )? {
-        let index = entry_at(entry)?;
-        entries[index].value.credits.push(credit);
-    }
-    for (entry, role) in sql.query(
-        "SELECT entry, position, name, sort_name, musicbrainz_artist_id, discogs_artist_id, role \
-         FROM source_release_entry_role WHERE catalog = ? AND release_id = ? \
-         ORDER BY entry, position",
-        params![catalog, key],
-        |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                RoleCredit {
-                    position: row.get(1)?,
-                    artist: artist_at(row, 2)?,
-                    role: row.get(6)?,
-                },
-            ))
-        },
-    )? {
-        let index = entry_at(entry)?;
-        entries[index].value.roles.push(role);
-    }
     for (entry, performed) in load_works(sql, catalog, key)? {
         let index = entry_at(entry)?;
         entries[index].value.works.push(performed);
@@ -374,7 +419,7 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
     Ok(mediums)
 }
 
-/// One stored work node, before its events are attached.
+/// One stored work node, its events still the JSON its row holds.
 struct WorkRow {
     node: i64,
     entry: Option<i64>,
@@ -382,6 +427,16 @@ struct WorkRow {
     position: i32,
     direction: Option<PartDirection>,
     work: SourceWork,
+    events: Vec<StoredEvent>,
+}
+
+/// One relation of a work as its node's `events` column holds it, in the
+/// order of their positions: a composer, or the node of a part.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum StoredEvent {
+    Composer(StoredArtist),
+    Part(i64),
 }
 
 /// Every work the release's tracks perform, each with its sub-graph, paired
@@ -392,9 +447,26 @@ fn load_works<S: QueryOne + QueryRows>(
     key: &str,
 ) -> Result<Vec<(i64, PerformedWork)>, DbError> {
     let rows = sql.query(
-        "SELECT node, entry, parent, position, direction, musicbrainz_work_id, title, \
-                disambiguation, work_type \
-         FROM source_release_work WHERE catalog = ? AND release_id = ? ORDER BY node",
+        &format!(
+            "SELECT work.node, work.entry, work.parent, work.position, work.direction, \
+                    work.musicbrainz_work_id, work.title, work.disambiguation, work.work_type, \
+                    (SELECT json_group_array(json(event.value) ORDER BY event.position) \
+                     FROM (SELECT composer.position AS position, \
+                                  json_object('composer', json({composer})) AS value \
+                           FROM source_release_work_composer AS composer \
+                           WHERE composer.catalog = work.catalog \
+                             AND composer.release_id = work.release_id \
+                             AND composer.node = work.node \
+                           UNION ALL \
+                           SELECT part.position, json_object('part', part.node) \
+                           FROM source_release_work AS part \
+                           WHERE part.catalog = work.catalog \
+                             AND part.release_id = work.release_id \
+                             AND part.parent = work.node) AS event) AS events \
+             FROM source_release_work AS work \
+             WHERE work.catalog = ? AND work.release_id = ? ORDER BY work.node",
+            composer = artist_json("composer"),
+        ),
         params![catalog, key],
         |row| {
             Ok((
@@ -410,11 +482,12 @@ fn load_works<S: QueryOne + QueryRows>(
                     work_type: row.get(8)?,
                     events: Vec::new(),
                 },
+                row.get::<_, String>(9)?,
             ))
         },
     )?;
     let mut nodes: Vec<WorkRow> = Vec::with_capacity(rows.len());
-    for (node, entry, parent, position, direction, work) in rows {
+    for (node, entry, parent, position, direction, work, events) in rows {
         let direction = match direction.as_deref() {
             None => None,
             Some("forward") => Some(PartDirection::Forward),
@@ -428,6 +501,7 @@ fn load_works<S: QueryOne + QueryRows>(
             position,
             direction,
             work,
+            events: stored_list(&events, "work relations")?,
         });
     }
     let index_of: HashMap<i64, usize> = nodes
@@ -435,34 +509,31 @@ fn load_works<S: QueryOne + QueryRows>(
         .enumerate()
         .map(|(index, row)| (row.node, index))
         .collect();
-    // A node's events, by their position among its relations.
-    let mut events: Vec<Vec<(i32, SourceWorkEvent)>> = vec![Vec::new(); nodes.len()];
-    for (node, position, composer) in sql.query(
-        "SELECT node, position, name, sort_name, musicbrainz_artist_id, discogs_artist_id \
-         FROM source_release_work_composer WHERE catalog = ? AND release_id = ?",
-        params![catalog, key],
-        |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, i32>(1)?,
-                artist_at(row, 2)?,
-            ))
-        },
-    )? {
-        let index = *index_of
-            .get(&node)
-            .ok_or_else(|| unreadable("composer of a missing work", node))?;
-        events[index].push((position, SourceWorkEvent::Composer(composer)));
-    }
     // Parts are numbered after the work they belong to, so completing nodes
     // from the last back finishes every part before its parent takes it.
+    let mut parts: Vec<Option<(PartDirection, SourceWork)>> = vec![None; nodes.len()];
     let mut performed = Vec::new();
     for index in (0..nodes.len()).rev() {
-        let row = &nodes[index];
-        let mut node_events = std::mem::take(&mut events[index]);
-        node_events.sort_by_key(|(position, _)| *position);
+        let row = &mut nodes[index];
         let mut work = row.work.clone();
-        work.events = node_events.into_iter().map(|(_, event)| event).collect();
+        work.events = std::mem::take(&mut row.events)
+            .into_iter()
+            .map(|event| match event {
+                StoredEvent::Composer(artist) => Ok(SourceWorkEvent::Composer(artist.artist())),
+                StoredEvent::Part(node) => {
+                    let part_index = *index_of
+                        .get(&node)
+                        .ok_or_else(|| unreadable("part of a missing work", node))?;
+                    if part_index <= index {
+                        return Err(unreadable("work parented under a later work", row.node));
+                    }
+                    let (direction, work) = parts[part_index]
+                        .take()
+                        .ok_or_else(|| unreadable("work that is a part twice", node))?;
+                    Ok(SourceWorkEvent::Part { direction, work })
+                }
+            })
+            .collect::<Result<_, DbError>>()?;
         match (row.entry, row.parent, row.direction) {
             (Some(entry), None, None) => performed.push((
                 entry,
@@ -471,16 +542,7 @@ fn load_works<S: QueryOne + QueryRows>(
                     work,
                 },
             )),
-            (None, Some(parent), Some(direction)) => {
-                let parent_index = *index_of
-                    .get(&parent)
-                    .ok_or_else(|| unreadable("part of a missing work", parent))?;
-                if parent_index >= index {
-                    return Err(unreadable("work parented under a later work", parent));
-                }
-                events[parent_index]
-                    .push((row.position, SourceWorkEvent::Part { direction, work }));
-            }
+            (None, Some(_), Some(direction)) => parts[index] = Some((direction, work)),
             _ => {
                 return Err(unreadable(
                     "work placed on neither a track nor a work",
@@ -488,6 +550,10 @@ fn load_works<S: QueryOne + QueryRows>(
                 ))
             }
         }
+    }
+    // A part whose work no node holds was never taken.
+    if let Some(index) = parts.iter().position(Option::is_some) {
+        return Err(unreadable("part of a missing work", nodes[index].node));
     }
     performed.reverse();
     Ok(performed)
