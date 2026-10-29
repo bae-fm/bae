@@ -130,6 +130,30 @@ impl Household {
     }
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
+        let (dir, owner, storage, clock) = Self::owner(provider, sign_in).await;
+        let robin = bae_core::db::Database::from_handle(owner.clone(), clock.clone())
+            .create_profile("Robin")
+            .await
+            .unwrap();
+        Self {
+            _dir: dir,
+            owner,
+            storage,
+            clock,
+            robin,
+        }
+    }
+
+    /// The owner's library on its storage, with no profile yet.
+    async fn owner(
+        provider: coven::CloudProvider,
+        sign_in: Option<&DropboxSignIn>,
+    ) -> (
+        tempfile::TempDir,
+        coven::CovenHandle,
+        std::sync::Arc<coven::MemoryStorage>,
+        coven::ClockRef,
+    ) {
         use coven::Storage;
         let dir = tempfile::tempdir().unwrap();
         let installation = coven::TestCoven::new();
@@ -176,17 +200,7 @@ impl Household {
                 .unwrap();
             }
         }
-        let robin = bae_core::db::Database::from_handle(owner.clone(), clock.clone())
-            .create_profile("Robin")
-            .await
-            .unwrap();
-        Self {
-            _dir: dir,
-            owner,
-            storage,
-            clock,
-            robin,
-        }
+        (dir, owner, storage, clock)
     }
 
     /// An invite giving S3 storage's `key`, or the Dropbox guest's account.
@@ -252,6 +266,48 @@ fn new_member(name: &str) -> coven::InviteTarget {
         role: coven::MemberRole::Member,
         name: name.into(),
     }
+}
+
+/// A profile whose write failed after its private circle was made retries
+/// with that circle: the one circle of the person's name holding only them.
+/// Two circles of that name are no private circle to take.
+#[tokio::test]
+async fn a_profile_takes_the_private_circle_already_made_for_it() {
+    let (_dir, owner, _storage, clock) = Household::owner(coven::CloudProvider::S3, None).await;
+    let member = owner
+        .members()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|member| member.is_self)
+        .unwrap()
+        .id;
+    let name = format!("bae-person:{member}");
+    let made = Box::pin(owner.circles().create(&name)).await.unwrap();
+    let database = bae_core::db::Database::from_handle(owner.clone(), clock.clone());
+    let profile = database.create_profile("Robin").await.unwrap();
+    assert_eq!(profile.private_circle, made);
+    owner.close().await.unwrap();
+
+    let (_dir, owner, _storage, clock) = Household::owner(coven::CloudProvider::S3, None).await;
+    let member = owner
+        .members()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|member| member.is_self)
+        .unwrap()
+        .id;
+    let name = format!("bae-person:{member}");
+    for _ in 0..2 {
+        Box::pin(owner.circles().create(&name)).await.unwrap();
+    }
+    let database = bae_core::db::Database::from_handle(owner.clone(), clock);
+    assert!(matches!(
+        database.create_profile("Robin").await,
+        Err(ProfileError::InvalidPrivateCircle)
+    ));
+    owner.close().await.unwrap();
 }
 
 /// Rowan's profile takes the name Robin typed in the invite; it is Rowan's

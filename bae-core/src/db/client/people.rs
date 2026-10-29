@@ -106,13 +106,16 @@ impl Database {
             return Ok(profile);
         }
         let circle_name = format!("bae-person:{member}");
-        let circles = self.inner.handle.circles();
-        let matching: Vec<_> = circles
-            .list()
-            .await?
-            .into_iter()
-            .filter(|circle| circle.name == circle_name)
-            .collect();
+        let named = circle_name.clone();
+        let matching = self
+            .read(move |sql| {
+                Ok(
+                    sql.query(PRIVATE_CIRCLE_SQL, params![named, member], |row| {
+                        Ok((row.get::<_, coven::CircleId>(0)?, row.get::<_, bool>(1)?))
+                    })?,
+                )
+            })
+            .await?;
         let private_circle = match matching.as_slice() {
             [] => {
                 for record in self.inner.handle.pending().await? {
@@ -124,15 +127,9 @@ impl Database {
                         return Err(ProfileError::CirclePending(id));
                     }
                 }
-                Box::pin(circles.create(&circle_name)).await?
+                Box::pin(self.inner.handle.circles().create(&circle_name)).await?
             }
-            [circle] => {
-                let members = circles.members(circle.id).await?;
-                if members.len() != 1 || members[0].member != member {
-                    return Err(ProfileError::InvalidPrivateCircle);
-                }
-                circle.id
-            }
+            [(circle, true)] => *circle,
             _ => return Err(ProfileError::InvalidPrivateCircle),
         };
         let profile = PersonProfile {
@@ -270,6 +267,13 @@ fn profile_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<PersonProfile
         avatar_id: row.get(first + 4)?,
     })
 }
+
+/// The circles named `?1` this device's member is in, each with whether
+/// `?2` is its one member: what a person's private circle is.
+const PRIVATE_CIRCLE_SQL: &str = "SELECT c.circle, \
+         (SELECT count(*) = 1 AND max(m.member = ?2) FROM coven_circle_members AS m \
+          WHERE m.circle = c.circle) \
+     FROM coven_circles AS c WHERE c.name = ?1";
 
 /// Everyone with a profile or a current membership, by member id, with
 /// their profile's columns and then their member's.
