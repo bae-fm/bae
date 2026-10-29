@@ -79,11 +79,12 @@ fn release_group_url(release_group_id: &str) -> String {
 const RECORDING_SEARCH_PAGE: usize = 100;
 
 /// Where a Disc ID's releases are looked up. The endpoint takes these
-/// includes and refuses `annotation`, `discids`, `media` and the recording,
-/// work and artist relations; every release in its answer lists all its
+/// includes and refuses `annotation`, `discids`, `media` and the recording-
+/// and work-level relations; it would also take `artist-rels`, which bae
+/// leaves to the release lookup. Every release in its answer lists all its
 /// media, each with its tracks and the Disc IDs registered against it,
-/// whatever is asked. Its releases lack the annotation and the relations only
-/// the release lookup states. Neither endpoint states a release group's own
+/// whatever is asked. Its releases lack the annotation and the relations the
+/// release lookup states. Neither endpoint states a release group's own
 /// links, `release-group-rels` included: those are on the group's page.
 fn discid_url(discid: &str) -> String {
     ws2(&format!(
@@ -502,8 +503,9 @@ impl MusicBrainz {
 
     /// The releases MusicBrainz registers a Disc ID against, each parsed and
     /// as its own document in the answer: the release lookup's document less
-    /// what the Disc ID endpoint cannot include — the annotation, and the
-    /// recording, work and artist relations.
+    /// the annotation and the relations, which the release lookup adds. The
+    /// endpoint can't include the annotation or the recording- and work-level
+    /// relations; bae doesn't ask it for the artist relations it could give.
     pub async fn lookup_by_discid(
         &self,
         discid: &str,
