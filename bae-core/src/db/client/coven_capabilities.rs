@@ -115,6 +115,11 @@ impl Database {
         self.inner.handle.retry_now()
     }
 
+    /// Idle passes at most `interval` apart until the guard drops.
+    pub(crate) fn sync_often(&self, interval: std::time::Duration) -> coven::SyncOftenGuard {
+        self.inner.handle.sync_often(interval)
+    }
+
     pub(crate) async fn retry_pending_operation(
         &self,
         operation: coven::OperationId,

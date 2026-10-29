@@ -39,6 +39,36 @@ fn the_watch_reports_the_first_device_that_joins_while_it_is_open() {
     });
 }
 
+/// While the sheet watches, this device syncs every 5 seconds instead of
+/// every 30: with no other request for a pass, the watch reports the phone
+/// well before an idle pass 30 seconds after the library's last one would.
+#[test]
+fn the_watch_syncs_often_while_it_is_open() {
+    run_library_test(async |library| {
+        let first = library.first();
+        let adding = first.manager().add_device().await.unwrap();
+        let mut watch = first.manager().subscribe_added_device(adding.watch);
+        assert_eq!(
+            watch.next().await.expect("the watch stays open").unwrap(),
+            None
+        );
+        let phone = library.restore(&adding.share.code, "Phone").await;
+        let added = tokio::time::timeout(Duration::from_secs(15), async {
+            loop {
+                let value = watch.next().await.expect("the watch stays open");
+                if let Some(device) = value.unwrap() {
+                    break device;
+                }
+            }
+        })
+        .await
+        .expect("an idle pass within 15 s reports the phone");
+        let phone_device = this_device(&phone).await;
+        phone.close().await;
+        assert_eq!(added.id, phone_device.id);
+    });
+}
+
 /// This device's own registration, as its own membership lists it.
 async fn this_device(device: &TestDevice) -> ActiveDevice {
     device

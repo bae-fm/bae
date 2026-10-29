@@ -1906,7 +1906,12 @@ her devices, as People's list of them does: once a device of hers joins that
 wasn't among them when the sheet made the code, the sheet says that device's
 name was added in place of the code, and **Done** closes it. Her devices are
 read before the code is made, so a device that restores from it is never
-counted among them, whenever this device learns that it joined. Settings keeps
+counted among them, whenever this device learns that it joined. While the
+sheet watches, Carol's device syncs every 5 seconds instead of every 30, so it
+says the new device was added within seconds of it joining. A quiet sync is two
+requests to the cloud home, about 24 a minute, only while the sheet is open
+([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
+Settings keeps
 the code under **Your recovery code**, for the day she loses every device:
 hidden until she asks, then shown in place as coven formats it, to copy or
 hide, and hidden again when Settings closes. On S3 that section also says she will need her access

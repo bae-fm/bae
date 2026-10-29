@@ -2,6 +2,11 @@
 
 use super::*;
 
+/// How often this device syncs while Add Device's sheet watches for the new
+/// device. A quiet pass is two requests: about 24 a minute, only while the
+/// sheet is open.
+const ADD_DEVICE_SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
+
 impl LibraryManager {
     pub async fn create_profile(
         &self,
@@ -79,13 +84,19 @@ impl LibraryManager {
     }
 
     /// This person's device that `watch` finds: none until one joins. Add
-    /// Device's sheet subscribes while it shows the code.
+    /// Device's sheet subscribes while it shows the code. While the
+    /// subscription lives, this device syncs every 5 seconds instead of every
+    /// 30, so the sheet hears of the new device soon after it registers.
     pub fn subscribe_added_device(
         &self,
         watch: crate::sync::membership::AddedDeviceWatch,
     ) -> coven::LiveQuery<Option<crate::sync::membership::ActiveDevice>> {
-        self.subscribe_members()
-            .process(move |membership| Ok(watch.added(&membership)))
+        let sync_often = self.database.sync_often(ADD_DEVICE_SYNC_INTERVAL);
+        self.subscribe_members().process(move |membership| {
+            // The subscription owns the request; dropping it ends the request.
+            let _sync_often = &sync_often;
+            Ok(watch.added(&membership))
+        })
     }
 
     pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), LibraryError> {
