@@ -42,6 +42,7 @@ pub(super) const FOLDER_SCAN_PROGRESS: &str = "SELECT roots.watched_folder_path,
      ORDER BY watched.position";
 
 pub(super) use self::sidecar::load_sidecar;
+use self::sidecar::load_sidecars;
 pub(super) use self::write::{delete_entry, insert_candidate_files};
 
 /// What finishing a scan generation removed: the entries it did not see, and

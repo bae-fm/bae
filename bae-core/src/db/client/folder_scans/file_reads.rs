@@ -22,21 +22,7 @@ impl Database {
         let watched_folder_path = watched_folder_path.to_string();
         self.read(move |sql| {
             let items = load_items(&sql, &watched_folder_path, RowSources::Scanned)?;
-            let sidecars = sql
-                .query(
-                    "SELECT folder FROM scan_sidecar WHERE watched_folder_path = ? ORDER BY folder",
-                    [&watched_folder_path],
-                    |row| row.get::<_, String>(0),
-                )?
-                .into_iter()
-                .map(|folder| {
-                    load_sidecar(&sql, Path::new(&folder))?.ok_or_else(|| {
-                        DbError::Message(format!(
-                            "the sidecar of {folder} vanished between its two reads"
-                        ))
-                    })
-                })
-                .collect::<Result<Vec<_>, DbError>>()?;
+            let sidecars = load_sidecars(&sql, &watched_folder_path)?;
             let stored_tags = load_root_file_tags(&sql, &watched_folder_path)?;
             Ok((items, sidecars, stored_tags))
         })

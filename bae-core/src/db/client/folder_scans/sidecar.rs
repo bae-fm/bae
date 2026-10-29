@@ -15,58 +15,71 @@ use crate::import::folder_scanner::{
     SidecarFiles, SkippedFile,
 };
 
-/// The sidecar stored for `folder`.
-pub(crate) fn load_sidecar(
-    sql: &(impl QueryOne + QueryRows),
-    folder: &Path,
-) -> Result<Option<FolderSidecar>, DbError> {
-    let folder_text = folder.to_string_lossy();
-    let row: Option<(String, String)> = sql
-        .query_row(
-            "SELECT watched_folder_path, state FROM scan_sidecar WHERE folder = ?",
-            [&folder_text],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .optional()?;
-    let Some((watched_folder_path, state)) = row else {
-        return Ok(None);
-    };
-    let rows = sql.query(
-        "SELECT relative_path, absolute_path, size, modified_at_ns, role, audio_damage \
-         FROM scan_sidecar_file WHERE folder = ? ORDER BY position",
-        [&folder_text],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, i64>(3)?,
-                row.get::<_, String>(4)?,
-                row.get::<_, Option<String>>(5)?,
+/// A sidecar as columns of a read over `scan_sidecar` aliased `sidecar`, its
+/// files riding on it as a JSON array in their order.
+const SIDECAR_COLUMNS: &str = "sidecar.folder, sidecar.watched_folder_path, sidecar.state, \
+     (SELECT json_group_array(json_object( \
+          'relative_path', file.relative_path, 'absolute_path', file.absolute_path, \
+          'size', file.size, 'modified_at_ns', file.modified_at_ns, 'role', file.role, \
+          'audio_damage', file.audio_damage) ORDER BY file.position) \
+      FROM scan_sidecar_file AS file WHERE file.folder = sidecar.folder) AS files";
+
+/// One sidecar's [`SIDECAR_COLUMNS`] as SQLite hands them over.
+struct StoredSidecar {
+    folder: String,
+    watched_folder_path: String,
+    state: String,
+    files: String,
+}
+
+fn read_stored_sidecar(row: &Row<'_>) -> rusqlite::Result<StoredSidecar> {
+    Ok(StoredSidecar {
+        folder: row.get(0)?,
+        watched_folder_path: row.get(1)?,
+        state: row.get(2)?,
+        files: row.get(3)?,
+    })
+}
+
+/// One sidecar file as [`SIDECAR_COLUMNS`] holds it.
+#[derive(serde::Deserialize)]
+struct SidecarFileRow {
+    relative_path: String,
+    absolute_path: String,
+    size: i64,
+    modified_at_ns: i64,
+    role: String,
+    audio_damage: Option<String>,
+}
+
+impl StoredSidecar {
+    fn sidecar(self) -> Result<FolderSidecar, DbError> {
+        let folder = self.folder;
+        let rows: Vec<SidecarFileRow> = serde_json::from_str(&self.files).map_err(|error| {
+            DbError::Message(format!(
+                "the sidecar files stored for {folder} do not read: {error}"
             ))
-        },
-    )?;
-    let files = match state.as_str() {
-        "downloading" => {
-            if !rows.is_empty() {
-                return Err(DbError::Message(format!(
-                    "the sidecar of {folder_text} is downloading and stores files"
-                )));
+        })?;
+        let files = match self.state.as_str() {
+            "downloading" => {
+                if !rows.is_empty() {
+                    return Err(DbError::Message(format!(
+                        "the sidecar of {folder} is downloading and stores files"
+                    )));
+                }
+                SidecarFiles::Downloading
             }
-            SidecarFiles::Downloading
-        }
-        "valid" => SidecarFiles::Valid(
-            rows.into_iter()
-                .map(
-                    |(relative_path, absolute_path, size, modified_at_ns, role, damage)| {
+            "valid" => SidecarFiles::Valid(
+                rows.into_iter()
+                    .map(|row| {
                         Ok(CandidateFile {
                             file: ScannedFile::new(
-                                PathBuf::from(absolute_path),
-                                relative_path,
-                                to_u64(size, "a sidecar file's size")?,
-                                modified_at_ns,
+                                PathBuf::from(row.absolute_path),
+                                row.relative_path,
+                                to_u64(row.size, "a sidecar file's size")?,
+                                row.modified_at_ns,
                             ),
-                            role: match (role.as_str(), damage) {
+                            role: match (row.role.as_str(), row.audio_damage) {
                                 ("artwork", None) => FileRole::Artwork,
                                 ("damaged_image", None) => FileRole::DamagedImage,
                                 ("document", None) => FileRole::Document,
@@ -76,34 +89,65 @@ pub(crate) fn load_sidecar(
                                 }
                             },
                         })
-                    },
-                )
-                .collect::<Result<_, DbError>>()?,
-        ),
-        "invalid" => SidecarFiles::Invalid(
-            rows.into_iter()
-                .map(
-                    |(relative_path, absolute_path, size, modified_at_ns, role, damage)| {
+                    })
+                    .collect::<Result<_, DbError>>()?,
+            ),
+            "invalid" => SidecarFiles::Invalid(
+                rows.into_iter()
+                    .map(|row| {
                         Ok(SkippedFile {
-                            relative_path,
+                            relative_path: row.relative_path,
                             file: FileVersion {
-                                path: PathBuf::from(absolute_path),
-                                size: to_u64(size, "a sidecar file's size")?,
-                                modified_at_ns,
+                                path: PathBuf::from(row.absolute_path),
+                                size: to_u64(row.size, "a sidecar file's size")?,
+                                modified_at_ns: row.modified_at_ns,
                             },
-                            role: proposed_role_of(&role, damage.as_deref())?,
+                            role: proposed_role_of(&row.role, row.audio_damage.as_deref())?,
                         })
-                    },
-                )
-                .collect::<Result<_, DbError>>()?,
+                    })
+                    .collect::<Result<_, DbError>>()?,
+            ),
+            other => return Err(unreadable("scan_sidecar.state", other)),
+        };
+        Ok(FolderSidecar {
+            watched_folder_path: self.watched_folder_path,
+            folder: PathBuf::from(folder),
+            files,
+        })
+    }
+}
+
+/// The sidecar stored for `folder`.
+pub(crate) fn load_sidecar(
+    sql: &(impl QueryOne + QueryRows),
+    folder: &Path,
+) -> Result<Option<FolderSidecar>, DbError> {
+    sql.query_row(
+        &format!("SELECT {SIDECAR_COLUMNS} FROM scan_sidecar AS sidecar WHERE sidecar.folder = ?"),
+        [folder.to_string_lossy()],
+        read_stored_sidecar,
+    )
+    .optional()?
+    .map(StoredSidecar::sidecar)
+    .transpose()
+}
+
+/// Every sidecar stored under `watched_folder_path`, in folder order.
+pub(super) fn load_sidecars(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+) -> Result<Vec<FolderSidecar>, DbError> {
+    sql.query(
+        &format!(
+            "SELECT {SIDECAR_COLUMNS} FROM scan_sidecar AS sidecar \
+             WHERE sidecar.watched_folder_path = ? ORDER BY sidecar.folder"
         ),
-        other => return Err(unreadable("scan_sidecar.state", other)),
-    };
-    Ok(Some(FolderSidecar {
-        watched_folder_path,
-        folder: folder.to_path_buf(),
-        files,
-    }))
+        [watched_folder_path],
+        read_stored_sidecar,
+    )?
+    .into_iter()
+    .map(StoredSidecar::sidecar)
+    .collect()
 }
 
 /// Store `sidecar` under `generation`, replacing the scanned releases that
