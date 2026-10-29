@@ -1,126 +1,63 @@
-//! The track sheets a scan stored: each sheet's header, its tracks and their
-//! indexes, and the audio each bound sheet describes.
+//! The track sheets a scan stored, as a candidate file's row reads them: each
+//! sheet's header with its tracks and their indexes, and the audio each bound
+//! sheet describes.
 
 use super::*;
 
-type AudioFilesBySheet = HashMap<SheetKey, Vec<SheetAudioFile>>;
-type TracksBySheet = HashMap<SheetKey, Vec<CueTrack>>;
-type IndexesByTrack = HashMap<TrackKey, Vec<CueIndex>>;
+/// The parsed sheet of the candidate file joined as `file`, as a JSON object
+/// holding its tracks in order, each with its indexes in order; NULL for a
+/// file that is no track sheet.
+pub(super) const SHEET_JSON: &str = "(SELECT json_object( \
+         'title', sheet.title, 'performer', sheet.performer, 'catalog', sheet.catalog, \
+         'date', sheet.date, 'ripper', sheet.ripper, \
+         'tracks', json((SELECT json_group_array(json_object( \
+             'number', track.number, 'mode', track.mode, 'mode_other', track.mode_other, \
+             'title', track.title, 'performer', track.performer, \
+             'file_reference', track.file_reference, \
+             'start_cue_frames', track.start_cue_frames, \
+             'end_cue_frames', track.end_cue_frames, \
+             'generated_pregap_frames', track.generated_pregap_frames, \
+             'indexes', json((SELECT json_group_array(json_object( \
+                 'number', cue_index.number, 'frames', cue_index.frames, \
+                 'file_reference', cue_index.file_reference) ORDER BY cue_index.position) \
+                 FROM scan_cue_index AS cue_index \
+                 WHERE cue_index.watched_folder_path = track.watched_folder_path \
+                   AND cue_index.candidate_path = track.candidate_path \
+                   AND cue_index.sheet_relative_path = track.sheet_relative_path \
+                   AND cue_index.track_position = track.position))) \
+             ORDER BY track.position) \
+             FROM scan_cue_track AS track \
+             WHERE track.watched_folder_path = sheet.watched_folder_path \
+               AND track.candidate_path = sheet.candidate_path \
+               AND track.sheet_relative_path = sheet.sheet_relative_path))) \
+     FROM scan_cue_sheet AS sheet \
+     WHERE sheet.watched_folder_path = file.watched_folder_path \
+       AND sheet.candidate_path = file.candidate_path \
+       AND sheet.sheet_relative_path = file.relative_path)";
 
-/// One parsed sheet: the candidate it sits under, and its path within it.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(super) struct SheetKey {
-    pub(super) candidate_path: String,
-    pub(super) sheet_relative_path: String,
+/// The audio the sheet `file` describes, as a JSON array in the sheet's
+/// reference order.
+pub(super) const SHEET_AUDIO_JSON: &str = "(SELECT json_group_array(json_object( \
+         'file_reference', described.file_reference, \
+         'file_id', described.audio_relative_path) ORDER BY described.position) \
+     FROM scan_sheet_audio_file AS described \
+     WHERE described.watched_folder_path = file.watched_folder_path \
+       AND described.candidate_path = file.candidate_path \
+       AND described.sheet_relative_path = file.relative_path)";
+
+/// One parsed sheet as [`SHEET_JSON`] holds it.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredSheet {
+    title: Option<String>,
+    performer: Option<String>,
+    catalog: Option<String>,
+    date: Option<String>,
+    ripper: Option<String>,
+    tracks: Vec<StoredCueTrack>,
 }
 
-/// The audio each bound sheet describes, in the sheet's reference order.
-pub(super) fn load_sheet_audio_files(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<impl FnOnce() -> Result<AudioFilesBySheet, DbError> + Send + 'static, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate_path, sheet_relative_path, file_reference, audio_relative_path \
-             FROM scan_sheet_audio_file \
-             WHERE {} \
-             ORDER BY candidate_path, sheet_relative_path, position",
-            entries.condition("candidate_path")
-        ),
-        entries.params(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-            ))
-        },
-    )?;
-    Ok(move || {
-        let mut audio_files: AudioFilesBySheet = HashMap::new();
-        for (candidate_path, sheet_relative_path, file_reference, audio_relative_path) in rows {
-            audio_files
-                .entry(SheetKey {
-                    candidate_path,
-                    sheet_relative_path,
-                })
-                .or_default()
-                .push(SheetAudioFile {
-                    file_reference,
-                    file_id: audio_relative_path,
-                });
-        }
-        Ok(audio_files)
-    })
-}
-
-/// One track of one sheet, by its position in that sheet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct TrackKey {
-    sheet: SheetKey,
-    position: i64,
-}
-
-pub(super) fn load_cue_sheets(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<impl FnOnce() -> Result<HashMap<SheetKey, CueSheet>, DbError> + Send + 'static, DbError>
-{
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate_path, sheet_relative_path, title, performer, catalog, date, ripper \
-             FROM scan_cue_sheet \
-             WHERE {}",
-            entries.condition("candidate_path")
-        ),
-        entries.params(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                CueSheet {
-                    title: row.get(2)?,
-                    performer: row.get(3)?,
-                    catalog: row.get(4)?,
-                    date: row.get(5)?,
-                    ripper: row
-                        .get::<_, Option<String>>(6)?
-                        .map(|key| {
-                            crate::cue_flac::CdRipper::from_key(&key).ok_or_else(|| {
-                                super::super::super::read::column_conversion_error(
-                                    row,
-                                    "ripper",
-                                    format!("ripper {key:?}"),
-                                )
-                            })
-                        })
-                        .transpose()?,
-                    tracks: Vec::new(),
-                },
-            ))
-        },
-    )?;
-    let tracks = load_cue_tracks(sql, entries)?;
-    Ok(move || {
-        let mut tracks = tracks()?;
-        let mut sheets = HashMap::with_capacity(rows.len());
-        for (candidate_path, sheet_relative_path, mut sheet) in rows {
-            let key = SheetKey {
-                candidate_path,
-                sheet_relative_path,
-            };
-            sheet.tracks = tracks.remove(&key).unwrap_or_default();
-            sheets.insert(key, sheet);
-        }
-        Ok(sheets)
-    })
-}
-
-struct CueTrackRow {
-    candidate_path: String,
-    sheet_relative_path: String,
-    position: i64,
+#[derive(serde::Deserialize)]
+struct StoredCueTrack {
     number: i64,
     mode: String,
     mode_other: Option<String>,
@@ -130,130 +67,89 @@ struct CueTrackRow {
     start_cue_frames: i64,
     end_cue_frames: Option<i64>,
     generated_pregap_frames: Option<i64>,
+    indexes: Vec<StoredCueIndex>,
 }
 
-fn load_cue_tracks(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<impl FnOnce() -> Result<TracksBySheet, DbError> + Send + 'static, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate_path, sheet_relative_path, position, number, mode, mode_other, \
-                    title, performer, file_reference, start_cue_frames, end_cue_frames, \
-                    generated_pregap_frames \
-             FROM scan_cue_track \
-             WHERE {} \
-             ORDER BY candidate_path, sheet_relative_path, position",
-            entries.condition("candidate_path")
-        ),
-        entries.params(),
-        |row| {
-            Ok(CueTrackRow {
-                candidate_path: row.get(0)?,
-                sheet_relative_path: row.get(1)?,
-                position: row.get(2)?,
-                number: row.get(3)?,
-                mode: row.get(4)?,
-                mode_other: row.get(5)?,
-                title: row.get(6)?,
-                performer: row.get(7)?,
-                file_reference: row.get(8)?,
-                start_cue_frames: row.get(9)?,
-                end_cue_frames: row.get(10)?,
-                generated_pregap_frames: row.get(11)?,
-            })
-        },
-    )?;
-    let indexes = load_cue_indexes(sql, entries)?;
-    Ok(move || {
-        let mut indexes = indexes()?;
-        let mut tracks: TracksBySheet = HashMap::new();
-        for row in rows {
-            let sheet = SheetKey {
-                candidate_path: row.candidate_path,
-                sheet_relative_path: row.sheet_relative_path,
-            };
-            let indexes = indexes
-                .remove(&TrackKey {
-                    sheet: sheet.clone(),
-                    position: row.position,
-                })
-                .unwrap_or_default();
-            tracks.entry(sheet).or_default().push(CueTrack {
-                number: to_u32(row.number, "a cue track's number")?,
-                mode: match row.mode.as_str() {
-                    "audio" => CueTrackMode::Audio,
-                    "other" => CueTrackMode::Other(row.mode_other.ok_or_else(|| {
-                        DbError::Message("a non-audio cue track names no mode".to_string())
-                    })?),
-                    other => return Err(unreadable("mode", other)),
-                },
-                title: row.title,
-                performer: row.performer,
-                indexes,
-                file_reference: row.file_reference,
-                start_cue_frames: to_u64(row.start_cue_frames, "a cue track's start")?,
-                generated_pregap_frames: row
-                    .generated_pregap_frames
-                    .map(|frames| to_u64(frames, "a generated pregap's length"))
-                    .transpose()?,
-                end_cue_frames: row
-                    .end_cue_frames
-                    .map(|frames| to_u64(frames, "a cue track's end"))
-                    .transpose()?,
-            });
+#[derive(serde::Deserialize)]
+struct StoredCueIndex {
+    number: i64,
+    frames: i64,
+    file_reference: String,
+}
+
+/// One audio file a sheet describes as [`SHEET_AUDIO_JSON`] holds it.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredSheetAudio {
+    file_reference: String,
+    file_id: String,
+}
+
+impl StoredSheetAudio {
+    pub(super) fn audio_file(self) -> SheetAudioFile {
+        SheetAudioFile {
+            file_reference: self.file_reference,
+            file_id: self.file_id,
         }
-        Ok(tracks)
-    })
+    }
 }
 
-fn load_cue_indexes(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<impl FnOnce() -> Result<IndexesByTrack, DbError> + Send + 'static, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate_path, sheet_relative_path, track_position, number, frames, \
-                    file_reference \
-             FROM scan_cue_index \
-             WHERE {} \
-             ORDER BY candidate_path, sheet_relative_path, track_position, position",
-            entries.condition("candidate_path")
-        ),
-        entries.params(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, i64>(3)?,
-                row.get::<_, i64>(4)?,
-                row.get::<_, String>(5)?,
-            ))
-        },
-    )?;
-    Ok(move || {
-        let mut indexes: IndexesByTrack = HashMap::new();
-        for (candidate_path, sheet_relative_path, track_position, number, frames, file_reference) in
-            rows
-        {
-            indexes
-                .entry(TrackKey {
-                    sheet: SheetKey {
-                        candidate_path,
-                        sheet_relative_path,
-                    },
-                    position: track_position,
+impl StoredSheet {
+    pub(super) fn sheet(self) -> Result<CueSheet, DbError> {
+        Ok(CueSheet {
+            title: self.title,
+            performer: self.performer,
+            catalog: self.catalog,
+            date: self.date,
+            ripper: self
+                .ripper
+                .map(|key| {
+                    crate::cue_flac::CdRipper::from_key(&key)
+                        .ok_or_else(|| unreadable("ripper", &key))
                 })
-                .or_default()
-                .push(CueIndex {
-                    number: to_u32(number, "a cue index's number")?,
-                    frames: to_u64(frames, "a cue index's frame position")?,
-                    file_reference,
-                });
-        }
-        Ok(indexes)
-    })
+                .transpose()?,
+            tracks: self
+                .tracks
+                .into_iter()
+                .map(StoredCueTrack::track)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
-// ── Boundaries ──────────────────────────────────────────────────────────────
+impl StoredCueTrack {
+    fn track(self) -> Result<CueTrack, DbError> {
+        Ok(CueTrack {
+            number: to_u32(self.number, "a cue track's number")?,
+            mode: match self.mode.as_str() {
+                "audio" => CueTrackMode::Audio,
+                "other" => CueTrackMode::Other(self.mode_other.ok_or_else(|| {
+                    DbError::Message("a non-audio cue track names no mode".to_string())
+                })?),
+                other => return Err(unreadable("mode", other)),
+            },
+            title: self.title,
+            performer: self.performer,
+            indexes: self
+                .indexes
+                .into_iter()
+                .map(|index| {
+                    Ok(CueIndex {
+                        number: to_u32(index.number, "a cue index's number")?,
+                        frames: to_u64(index.frames, "a cue index's frame position")?,
+                        file_reference: index.file_reference,
+                    })
+                })
+                .collect::<Result<_, DbError>>()?,
+            file_reference: self.file_reference,
+            start_cue_frames: to_u64(self.start_cue_frames, "a cue track's start")?,
+            generated_pregap_frames: self
+                .generated_pregap_frames
+                .map(|frames| to_u64(frames, "a generated pregap's length"))
+                .transpose()?,
+            end_cue_frames: self
+                .end_cue_frames
+                .map(|frames| to_u64(frames, "a cue track's end"))
+                .transpose()?,
+        })
+    }
+}

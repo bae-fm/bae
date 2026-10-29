@@ -1,11 +1,12 @@
 //! Reading scan items back out of the rows [`super::write`] laid down.
 //!
-//! One query per table rather than one per candidate: a watched root holds a
-//! few thousand file rows and a handful of boundaries, and the assembly below
-//! groups them by the key they hang off. Owned finishing callbacks let reads
-//! defer that assembly until the connection is released, while write decisions
-//! finish it inside their transaction. The boxed callbacks erase the generic
-//! SQL implementation and its lifetime at the read boundary.
+//! One query for every entry a read takes in: each entry's row carries what
+//! hangs off it — its files with their sheets, its parts, and a failed
+//! release's skipped files and tags — as JSON beside its own columns. Owned
+//! finishing callbacks let reads defer decoding them until the connection is
+//! released, while write decisions finish it inside their transaction. The
+//! boxed callbacks erase the generic SQL implementation and its lifetime at
+//! the read boundary.
 
 use super::columns::*;
 use super::*;
@@ -20,15 +21,11 @@ use crate::import::folder_scanner::{
     SkippedFile, SkippedTags,
 };
 use bae_util::content_type::ContentType;
-use track_sheets::{load_cue_sheets, load_sheet_audio_files, SheetKey};
+use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
 
 mod track_sheets;
 
 type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
-type FilesByCandidate = HashMap<String, Vec<CandidateFile>>;
-type PartsByCandidate = HashMap<String, Vec<ReleasePart>>;
-type SkippedFilesByCandidate = HashMap<String, Vec<SkippedFile>>;
-type SkippedTagsByCandidate = HashMap<String, SkippedTags>;
 
 /// Which rows a read takes in: what the scans wrote, or those and the
 /// releases groupings built from them too.
@@ -39,9 +36,11 @@ pub(crate) enum RowSources {
 }
 
 impl RowSources {
+    /// The condition keeping these rows of `scan_candidate`, aliased
+    /// `candidate`.
     fn clause(self) -> &'static str {
         match self {
-            Self::Scanned => "source_kind = 'folder'",
+            Self::Scanned => "candidate.source_kind = 'folder'",
             Self::Any => "1",
         }
     }
@@ -62,12 +61,12 @@ impl<'a> EntryRows<'a> {
         }
     }
 
-    /// The condition keeping these rows in a table naming the entry in
-    /// `key_column`, binding the root as `?1` and the key as `?2`.
-    fn condition(self, key_column: &str) -> String {
+    /// The condition keeping these entries of `scan_candidate`, aliased
+    /// `candidate`, binding the root as `?1` and the key as `?2`.
+    fn condition(self) -> &'static str {
         match self {
-            Self::Root(_) => "watched_folder_path = ?1".to_string(),
-            Self::Entry { .. } => format!("watched_folder_path = ?1 AND {key_column} = ?2"),
+            Self::Root(_) => "candidate.watched_folder_path = ?1",
+            Self::Entry { .. } => "candidate.watched_folder_path = ?1 AND candidate.path = ?2",
         }
     }
 
@@ -155,7 +154,8 @@ pub(crate) fn load_item_by_key_rows(
 ) -> Result<Option<FinishRead<(String, StoredScanItem)>>, DbError> {
     let roots = sql.query(
         &format!(
-            "SELECT watched_folder_path FROM scan_candidate WHERE path = ? AND {}",
+            "SELECT candidate.watched_folder_path FROM scan_candidate AS candidate \
+             WHERE candidate.path = ? AND {}",
             sources.clause()
         ),
         [entry_key],
@@ -501,6 +501,49 @@ pub(crate) fn entries_reading(
 
 // ── Candidates ──────────────────────────────────────────────────────────────
 
+/// The files of the entry joined as `candidate`, as a JSON array in their
+/// order: each with its sheet and the audio that sheet describes.
+fn files_json_sql() -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+             'relative_path', file.relative_path, 'absolute_path', file.absolute_path, \
+             'size', file.size, 'modified_at_ns', file.modified_at_ns, \
+             'audio_content_type', file.audio_content_type, \
+             'audio_duration_ms', file.audio_duration_ms, \
+             'audio_sample_rate_hz', file.audio_sample_rate_hz, \
+             'audio_bits_per_sample', file.audio_bits_per_sample, \
+             'audio_bitrate_kbps', file.audio_bitrate_kbps, \
+             'audio_channels', file.audio_channels, 'file_name', file.file_name, \
+             'dir_prefix', file.dir_prefix, 'role', file.role, \
+             'sheet_binding', file.sheet_binding, \
+             'sheet_binding_codec', file.sheet_binding_codec, \
+             'sheet_disc', file.sheet_disc, 'sheet_disc_number', file.sheet_disc_number, \
+             'sheet', json({SHEET_JSON}), 'sheet_audio', json({SHEET_AUDIO_JSON})) \
+             ORDER BY file.position) \
+         FROM scan_candidate_file AS file \
+         WHERE file.watched_folder_path = candidate.watched_folder_path \
+           AND file.candidate_path = candidate.path)"
+    )
+}
+
+/// The parts the entry joined as `candidate` is read from, as a JSON array
+/// in play order.
+const PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
+         'folder', part.folder, 'prefix', part.prefix) ORDER BY part.position) \
+     FROM scan_candidate_part AS part \
+     WHERE part.watched_folder_path = candidate.watched_folder_path \
+       AND part.candidate_path = candidate.path)";
+
+/// The files of the release joined as `candidate` that failed validation, as
+/// a JSON array in name order.
+const SKIPPED_FILES_JSON: &str = "(SELECT json_group_array(json_object( \
+         'relative_path', skipped.relative_path, 'absolute_path', skipped.absolute_path, \
+         'size', skipped.size, 'modified_at_ns', skipped.modified_at_ns, \
+         'role', skipped.role, 'audio_damage', skipped.audio_damage) ORDER BY skipped.position) \
+     FROM scan_skipped_file AS skipped \
+     WHERE skipped.watched_folder_path = candidate.watched_folder_path \
+       AND skipped.candidate_path = candidate.path)";
+
 struct CandidateRow {
     path: String,
     generation: i64,
@@ -512,8 +555,15 @@ struct CandidateRow {
     scope: String,
     file_edit_revision: i64,
     grouping_key: Option<String>,
+    files: String,
+    parts: String,
+    skipped_files: String,
+    /// What the tags of a release that failed validation call it, when they
+    /// name an album.
+    skipped_tags: Option<SkippedTags>,
 }
 
+/// The entries `entries` names, each read with what hangs off it.
 pub(crate) fn load_candidate_items_rows(
     sql: &(impl QueryOne + QueryRows),
     entries: EntryRows<'_>,
@@ -521,39 +571,52 @@ pub(crate) fn load_candidate_items_rows(
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
     let rows = sql.query(
         &format!(
-            "SELECT path, generation, kind, name, display_path, folder, file_root, scope, \
-                    file_edit_revision, grouping_key \
-             FROM scan_candidate \
+            "SELECT candidate.path, candidate.generation, candidate.kind, candidate.name, \
+                    candidate.display_path, candidate.folder, candidate.file_root, \
+                    candidate.scope, candidate.file_edit_revision, candidate.grouping_key, \
+                    {files} AS files, {PARTS_JSON} AS parts, \
+                    {SKIPPED_FILES_JSON} AS skipped_files, \
+                    tags.album_title AS skipped_album_title, tags.artist AS skipped_artist \
+             FROM scan_candidate AS candidate \
+             LEFT JOIN scan_skipped_tags AS tags \
+                 ON tags.watched_folder_path = candidate.watched_folder_path \
+                AND tags.candidate_path = candidate.path \
              WHERE {} AND {} \
-             ORDER BY path",
-            entries.condition("path"),
-            sources.clause()
+             ORDER BY candidate.path",
+            entries.condition(),
+            sources.clause(),
+            files = files_json_sql(),
         ),
         entries.params(),
         |row| {
             Ok(CandidateRow {
-                path: row.get(0)?,
-                generation: row.get(1)?,
-                kind: row.get(2)?,
-                name: row.get(3)?,
-                display_path: row.get(4)?,
-                folder: row.get(5)?,
-                file_root: row.get(6)?,
-                scope: row.get(7)?,
-                file_edit_revision: row.get(8)?,
-                grouping_key: row.get(9)?,
+                path: row.get("path")?,
+                generation: row.get("generation")?,
+                kind: row.get("kind")?,
+                name: row.get("name")?,
+                display_path: row.get("display_path")?,
+                folder: row.get("folder")?,
+                file_root: row.get("file_root")?,
+                scope: row.get("scope")?,
+                file_edit_revision: row.get("file_edit_revision")?,
+                grouping_key: row.get("grouping_key")?,
+                files: row.get("files")?,
+                parts: row.get("parts")?,
+                skipped_files: row.get("skipped_files")?,
+                skipped_tags: row
+                    .get::<_, Option<String>>("skipped_album_title")?
+                    .map(|album_title| {
+                        Ok::<_, rusqlite::Error>(SkippedTags {
+                            album_title,
+                            artist: row.get("skipped_artist")?,
+                        })
+                    })
+                    .transpose()?,
             })
         },
     )?;
-    let files = load_files_rows(sql, entries)?;
-    let parts = load_parts_rows(sql, entries)?;
-    let mut skipped_files = load_skipped_files_rows(sql, entries)?;
-    let mut skipped_tags = load_skipped_tags_rows(sql, entries)?;
     let watched_folder_path = entries.root().to_string();
     Ok(Box::new(move || {
-        let mut files = files()?;
-        let mut parts = parts;
-
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
             let generation = to_u64(row.generation, "a scan candidate's generation")?;
@@ -564,8 +627,8 @@ pub(crate) fn load_candidate_items_rows(
                     watched_folder_path: watched_folder_path.to_string(),
                     display_path: row.display_path,
                     grouping: row.grouping_key,
-                    files: skipped_files.remove(&row.path).unwrap_or_default(),
-                    tags: skipped_tags.remove(&row.path),
+                    files: skipped_files_of(&row.path, &row.skipped_files)?,
+                    tags: row.skipped_tags,
                 }),
                 kind @ ("tentative" | "valid") => {
                     let candidate = FolderCandidate {
@@ -573,8 +636,8 @@ pub(crate) fn load_candidate_items_rows(
                         file_root: PathBuf::from(&row.file_root),
                         name: row.name,
                         files: CategorizedFiles {
-                            files: files.remove(&row.path).unwrap_or_default(),
-                            parts: parts.remove(&row.path).unwrap_or_default(),
+                            files: files_of(&row.path, &row.files)?,
+                            parts: parts_of(&row.path, &row.parts)?,
                         },
                         watched_folder_path: watched_folder_path.to_string(),
                         scope: scope_of(&row.scope)?,
@@ -602,8 +665,22 @@ pub(crate) fn load_candidate_items_rows(
     }))
 }
 
+/// A list an entry's row holds as JSON, decoded.
+fn listed<T: serde::de::DeserializeOwned>(
+    candidate_path: &str,
+    json: &str,
+    what: &str,
+) -> Result<Vec<T>, DbError> {
+    serde_json::from_str(json).map_err(|error| {
+        DbError::Message(format!(
+            "the {what} stored under {candidate_path} do not read: {error}"
+        ))
+    })
+}
+
+/// One `scan_candidate_file` row as [`files_json_sql`] holds it.
+#[derive(serde::Deserialize)]
 struct FileRow {
-    candidate_path: String,
     relative_path: String,
     absolute_path: String,
     size: i64,
@@ -621,55 +698,15 @@ struct FileRow {
     sheet_binding_codec: Option<String>,
     sheet_disc: Option<String>,
     sheet_disc_number: Option<i64>,
+    sheet: Option<StoredSheet>,
+    sheet_audio: Vec<StoredSheetAudio>,
 }
 
-pub(crate) fn load_files_rows(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<impl FnOnce() -> Result<FilesByCandidate, DbError> + Send + 'static, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, \
-                    audio_content_type, audio_duration_ms, audio_sample_rate_hz, \
-                    audio_bits_per_sample, audio_bitrate_kbps, audio_channels, file_name, \
-                    dir_prefix, role, sheet_binding, sheet_binding_codec, sheet_disc, \
-                    sheet_disc_number \
-             FROM scan_candidate_file \
-             WHERE {} \
-             ORDER BY candidate_path, position",
-            entries.condition("candidate_path")
-        ),
-        entries.params(),
-        |row| {
-            Ok(FileRow {
-                candidate_path: row.get(0)?,
-                relative_path: row.get(1)?,
-                absolute_path: row.get(2)?,
-                size: row.get(3)?,
-                modified_at_ns: row.get(4)?,
-                audio_content_type: row.get(5)?,
-                audio_duration_ms: row.get(6)?,
-                audio_sample_rate_hz: row.get(7)?,
-                audio_bits_per_sample: row.get(8)?,
-                audio_bitrate_kbps: row.get(9)?,
-                audio_channels: row.get(10)?,
-                file_name: row.get(11)?,
-                dir_prefix: row.get(12)?,
-                role: row.get(13)?,
-                sheet_binding: row.get(14)?,
-                sheet_binding_codec: row.get(15)?,
-                sheet_disc: row.get(16)?,
-                sheet_disc_number: row.get(17)?,
-            })
-        },
-    )?;
-    let sheets = load_cue_sheets(sql, entries)?;
-    let sheet_audio_files = load_sheet_audio_files(sql, entries)?;
-    Ok(move || {
-        let mut sheets = sheets()?;
-        let mut sheet_audio_files = sheet_audio_files()?;
-        let mut files: FilesByCandidate = HashMap::new();
-        for row in rows {
+/// The files of the entry at `candidate_path`, in their order.
+fn files_of(candidate_path: &str, json: &str) -> Result<Vec<CandidateFile>, DbError> {
+    let files = listed::<FileRow>(candidate_path, json, "files")?
+        .into_iter()
+        .map(|row| {
             let source_audio = source_audio_of(&row)?;
             let role = match row.role.as_str() {
                 "audio" => FileRole::Audio,
@@ -680,25 +717,18 @@ pub(crate) fn load_files_rows(
                 "track_sheet" => {
                     let missing = |what: &str| {
                         DbError::Message(format!(
-                            "track sheet {} under {} has no {what}",
-                            row.relative_path, row.candidate_path
+                            "track sheet {} under {candidate_path} has no {what}",
+                            row.relative_path
                         ))
                     };
                     FileRole::TrackSheet {
-                        sheet: sheets
-                            .remove(&SheetKey {
-                                candidate_path: row.candidate_path.clone(),
-                                sheet_relative_path: row.relative_path.clone(),
-                            })
-                            .ok_or_else(|| missing("parsed sheet"))?,
+                        sheet: row.sheet.ok_or_else(|| missing("parsed sheet"))?.sheet()?,
                         binding: sheet_binding_of(
                             &row.sheet_binding.ok_or_else(|| missing("binding"))?,
-                            sheet_audio_files
-                                .remove(&SheetKey {
-                                    candidate_path: row.candidate_path.clone(),
-                                    sheet_relative_path: row.relative_path.clone(),
-                                })
-                                .unwrap_or_default(),
+                            row.sheet_audio
+                                .into_iter()
+                                .map(StoredSheetAudio::audio_file)
+                                .collect(),
                             row.sheet_binding_codec,
                         )?,
                         disc: sheet_disc_of(
@@ -709,29 +739,23 @@ pub(crate) fn load_files_rows(
                 }
                 other => return Err(unreadable("role", other)),
             };
-            files
-                .entry(row.candidate_path)
-                .or_default()
-                .push(CandidateFile {
-                    file: ScannedFile {
-                        path: PathBuf::from(row.absolute_path),
-                        relative_path: row.relative_path,
-                        size: to_u64(row.size, "a file's size")?,
-                        modified_at_ns: row.modified_at_ns,
-                        dir_prefix: row.dir_prefix,
-                        file_name: row.file_name,
-                        source_audio,
-                    },
-                    role,
-                });
-        }
-        for (candidate_path, files) in &files {
-            check_sheet_bindings_name_audio(candidate_path, files)?;
-        }
-        Ok(files)
-    })
+            Ok(CandidateFile {
+                file: ScannedFile {
+                    path: PathBuf::from(row.absolute_path),
+                    relative_path: row.relative_path,
+                    size: to_u64(row.size, "a file's size")?,
+                    modified_at_ns: row.modified_at_ns,
+                    dir_prefix: row.dir_prefix,
+                    file_name: row.file_name,
+                    source_audio,
+                },
+                role,
+            })
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
+    check_sheet_bindings_name_audio(candidate_path, &files)?;
+    Ok(files)
 }
-
 /// A binding is settled against the folder's audio, so every file it names
 /// has the audio role. The table can only say the file exists; this says it
 /// is audio, so a candidate that violates it is refused here rather than
@@ -815,102 +839,49 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
     }
 }
 
-/// Every file of each release that failed validation, in name order.
-fn load_skipped_files_rows(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<SkippedFilesByCandidate, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, role, \
-                    audio_damage \
-             FROM scan_skipped_file \
-             WHERE {} \
-             ORDER BY candidate_path, position",
-            entries.condition("candidate_path")
-        ),
-        entries.params(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, i64>(3)?,
-                row.get::<_, i64>(4)?,
-                row.get::<_, String>(5)?,
-                row.get::<_, Option<String>>(6)?,
-            ))
-        },
-    )?;
-    let mut files: SkippedFilesByCandidate = HashMap::new();
-    for (candidate_path, relative_path, absolute_path, size, modified_at_ns, role, damage) in rows {
-        files.entry(candidate_path).or_default().push(SkippedFile {
-            relative_path,
-            file: FileVersion {
-                path: PathBuf::from(absolute_path),
-                size: to_u64(size, "a skipped file's size")?,
-                modified_at_ns,
-            },
-            role: proposed_role_of(&role, damage.as_deref())?,
-        });
-    }
-    Ok(files)
+/// One `scan_skipped_file` row as [`SKIPPED_FILES_JSON`] holds it.
+#[derive(serde::Deserialize)]
+struct SkippedFileRow {
+    relative_path: String,
+    absolute_path: String,
+    size: i64,
+    modified_at_ns: i64,
+    role: String,
+    audio_damage: Option<String>,
 }
 
-/// What the tags of each release that failed validation call it, for those
-/// whose tags name an album.
-fn load_skipped_tags_rows(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<SkippedTagsByCandidate, DbError> {
-    Ok(sql
-        .query(
-            &format!(
-                "SELECT candidate_path, album_title, artist FROM scan_skipped_tags WHERE {}",
-                entries.condition("candidate_path")
-            ),
-            entries.params(),
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    SkippedTags {
-                        album_title: row.get(1)?,
-                        artist: row.get(2)?,
-                    },
-                ))
-            },
-        )?
+/// The files of the release at `candidate_path` that failed validation.
+fn skipped_files_of(candidate_path: &str, json: &str) -> Result<Vec<SkippedFile>, DbError> {
+    listed::<SkippedFileRow>(candidate_path, json, "skipped files")?
         .into_iter()
-        .collect())
+        .map(|row| {
+            Ok(SkippedFile {
+                relative_path: row.relative_path,
+                file: FileVersion {
+                    path: PathBuf::from(row.absolute_path),
+                    size: to_u64(row.size, "a skipped file's size")?,
+                    modified_at_ns: row.modified_at_ns,
+                },
+                role: proposed_role_of(&row.role, row.audio_damage.as_deref())?,
+            })
+        })
+        .collect()
 }
 
-/// The parts each release read from several is made of, in play order.
-fn load_parts_rows(
-    sql: &(impl QueryOne + QueryRows),
-    entries: EntryRows<'_>,
-) -> Result<PartsByCandidate, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT candidate_path, folder, prefix FROM scan_candidate_part \
-             WHERE {} \
-             ORDER BY candidate_path, position",
-            entries.condition("candidate_path")
-        ),
-        entries.params(),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )?;
-    let mut parts: PartsByCandidate = HashMap::new();
-    for (candidate_path, folder, prefix) in rows {
-        parts.entry(candidate_path).or_default().push(ReleasePart {
-            folder: PathBuf::from(folder),
-            prefix,
-        });
-    }
-    Ok(parts)
+/// One `scan_candidate_part` row as [`PARTS_JSON`] holds it.
+#[derive(serde::Deserialize)]
+struct PartRow {
+    folder: String,
+    prefix: String,
+}
+
+/// The parts the release at `candidate_path` is read from, in play order.
+fn parts_of(candidate_path: &str, json: &str) -> Result<Vec<ReleasePart>, DbError> {
+    Ok(listed::<PartRow>(candidate_path, json, "parts")?
+        .into_iter()
+        .map(|part| ReleasePart {
+            folder: PathBuf::from(part.folder),
+            prefix: part.prefix,
+        })
+        .collect())
 }
