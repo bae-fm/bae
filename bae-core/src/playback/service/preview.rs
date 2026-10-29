@@ -91,4 +91,24 @@ impl PlaybackService {
     pub(super) fn preview_toggle_pause(&mut self) {
         self.preview.toggle_pause();
     }
+
+    /// Start the preview again on the current default device when its stream's
+    /// device reported that the stream can't go on, as the main player's stream
+    /// is rebuilt (`follow_output_device`). A preview that can't start again
+    /// ends, handing the main player back the resume it is owed.
+    pub(super) async fn follow_preview_output_device(&mut self) {
+        let Some(detail) = self.preview.take_output_invalidation() else {
+            return;
+        };
+        info!(
+            detail,
+            "The preview's output stream can't go on on its device; starting it again on the current default"
+        );
+        self.preview
+            .restart_on_current_device(self.audio_device.as_ref())
+            .await;
+        if !self.preview.is_active() {
+            self.preview_stop();
+        }
+    }
 }

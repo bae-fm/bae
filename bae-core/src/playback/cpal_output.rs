@@ -8,8 +8,8 @@
 //!   position; cpal reports the move as `DeviceChanged`.
 //! - **Windows.** cpal opens a stream on the default device through the
 //!   system's default render endpoint, and reports a change of the default as
-//!   `StreamInvalidated`. The stream's owner then builds a new one over the same
-//!   source, on the current default.
+//!   `StreamInvalidated`. The stream's owner then builds a new one on the
+//!   current default, playing on from the same position.
 //! - **iOS.** cpal's stream is a RemoteIO unit, which plays on the audio
 //!   session's current route; the system moves the route itself when
 //!   headphones, a Bluetooth device or AirPlay come or go. cpal reports the

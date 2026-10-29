@@ -356,6 +356,27 @@ impl PreviewPlayer {
         }
     }
 
+    /// The active preview's output stream's report, if its device made one,
+    /// that the stream can't go on as built: the system routed audio somewhere
+    /// it doesn't follow, or its device went away.
+    pub(crate) fn take_output_invalidation(&self) -> Option<String> {
+        self.active.as_ref()?.pipeline.take_invalidation()
+    }
+
+    /// Start the active preview again from where its stream got to, on the
+    /// current default device, after the device reported that the stream can't
+    /// go on. It restarts as a seek does, so a paused preview stays paused, and
+    /// a start that fails leaves no preview.
+    pub(crate) async fn restart_on_current_device(&mut self, audio_device: &dyn AudioOutputDevice) {
+        let position = self
+            .active
+            .as_ref()
+            .expect("the preview whose stream reported it can't go on")
+            .pipeline
+            .position();
+        self.seek(position, audio_device).await;
+    }
+
     /// Toggle pause/resume on the active preview.
     pub(crate) fn toggle_pause(&mut self) {
         let Some(active) = self.active.as_ref() else {

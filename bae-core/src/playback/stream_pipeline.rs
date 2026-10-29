@@ -572,13 +572,28 @@ impl StreamPipeline {
         cancel_and_join_decoder(&self.cancel_token, buffers, self.decoder_handle).await;
     }
 
-    /// Build a pipeline over a caller-supplied `source` with stub parts (a no-op
-    /// stream, an already-exited decoder, a fresh token) so slot-shaped tests only
-    /// specify the one value they vary.
+    /// The output stream's report, if its device made one, that the stream
+    /// can't go on as built ([`AudioStream::take_invalidation`]).
+    pub(crate) fn take_invalidation(&self) -> Option<String> {
+        self.stream.take_invalidation()
+    }
+
+    /// How far the output stream has played: the position of the last sample
+    /// it pulled from the source.
+    pub(crate) fn position(&self) -> crate::playback::StreamPosition {
+        self.source.lock().unwrap().position()
+    }
+
+    /// Build a pipeline over a caller-supplied `source` and `stream` with stub
+    /// parts (an already-exited decoder, a fresh token) so slot-shaped tests
+    /// only specify the values they vary.
     #[cfg(test)]
-    pub(crate) fn new_for_test(source: Arc<Mutex<PlaybackSource>>) -> Self {
+    pub(crate) fn new_for_test(
+        source: Arc<Mutex<PlaybackSource>>,
+        stream: Box<dyn AudioStream>,
+    ) -> Self {
         StreamPipeline {
-            stream: Box::new(StubStream),
+            stream,
             source,
             decoder_handle: std::thread::spawn(|| {}),
             cancel_token: Arc::new(AtomicBool::new(false)),
@@ -611,17 +626,6 @@ pub(crate) async fn cancel_and_join_decoder(
         Err(e) => {
             warn!("spawn_blocking failed while joining decoder thread: {e}");
         }
-    }
-}
-
-/// A no-op output stream for `StreamPipeline::new_for_test`.
-#[cfg(test)]
-struct StubStream;
-
-#[cfg(test)]
-impl AudioStream for StubStream {
-    fn play(&self) -> Result<(), crate::playback::audio_output::AudioError> {
-        Ok(())
     }
 }
 

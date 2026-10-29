@@ -2492,18 +2492,17 @@ A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
 log names its address.
 
-**This device.** On every platform, playback follows a change of the default
-output device: it moves to the new one at the same position. On macOS the
-system moves it, playing or paused. On Windows bae starts it again on the new
-device, and on iOS it does so when the system changes the route in a way the
-stream doesn't follow; paused playback stays paused. On Android bae reopens
-the output on the new device, and a change while paused takes effect on
-resume. On Linux the sound server, PipeWire or PulseAudio, moves it; with ALSA
-alone there is no default device to follow. A preview follows the same way,
-except that on Windows and iOS bae doesn't start it again. On the desktop,
-when the device goes away and there is none to move to, playback stops and
-says the audio device isn't available. Volume and mute live in core, so
-unmuting restores the level last set.
+**This device.** On every platform, playback and a preview follow a change of
+the default output device: they move to the new one at the same position. On
+macOS the system moves them, playing or paused. On Windows bae starts them
+again on the new device, and on iOS it does so when the system changes the
+route in a way the stream doesn't follow; a paused one stays paused. On
+Android bae reopens the output on the new device, and a change while paused
+takes effect on resume. On Linux the sound server, PipeWire or PulseAudio,
+moves them; with ALSA alone there is no default device to follow. On the
+desktop, when the device goes away and there is none to move to, playback
+stops and says the audio device isn't available, and a preview ends. Volume
+and mute live in core, so unmuting restores the level last set.
 
 On macOS, a track or a preview that starts a stream sets the output device to
 the track's sample rate; a device playback moves to keeps its own rate. A

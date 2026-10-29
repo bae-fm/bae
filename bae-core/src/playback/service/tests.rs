@@ -274,8 +274,8 @@ fn playback_service_over(
         playback_queue,
         // The desktop's: a test of the gate sets a system that answers.
         audio_focus: crate::playback::AudioFocus::Unshared,
-        // These tests drive the handlers directly and never start a preview, so
-        // no output is ever opened from this device.
+        // These tests drive the handlers directly; a preview that starts a
+        // stream gets an output from this device that can't build one.
         audio_device: Box::new(crate::playback::audio_output::FailingAudioDevice),
         audio_output: Box::new(TestAudioOutput::new()),
         output: None,
@@ -304,15 +304,16 @@ fn test_clock_start() -> chrono::DateTime<chrono::Utc> {
     "2026-01-01T00:00:00Z".parse().unwrap()
 }
 
-/// Build a `StreamPipeline` over a fresh source for the prepared track's fmt —
-/// the per-track unit the preview player still holds. The stub stream/decoder/
-/// token come from `new_for_test`.
-fn test_pipeline(prepared: &PlaybackPreparedTrack) -> StreamPipeline {
+/// Build a `StreamPipeline` over `stream` and a fresh source for the prepared
+/// track's fmt — the per-track unit the preview player still holds. The stub
+/// decoder/token come from `new_for_test`.
+fn test_pipeline(prepared: &PlaybackPreparedTrack, stream: Box<dyn AudioStream>) -> StreamPipeline {
     let (_sink, source, _ready) = create_track_stream_pair(prepared.sample_rate, prepared.channels);
     let track_fmt = prepared.track_fmt(StreamPosition::START);
-    StreamPipeline::new_for_test(Arc::new(Mutex::new(source::PlaybackSource::new(
-        source, track_fmt,
-    ))))
+    StreamPipeline::new_for_test(
+        Arc::new(Mutex::new(source::PlaybackSource::new(source, track_fmt))),
+        stream,
+    )
 }
 
 /// An already-exited decoder with a fresh token — the current track's decoder for

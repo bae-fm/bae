@@ -766,8 +766,9 @@ impl PlaybackService {
                 (_, sides) = self.staged_sides.next() => {
                     self.handle_staged_crossing_sides(sides).await;
                 }
-                _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() => {
+                _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() || self.preview.is_active() => {
                     self.drain_current_audio_events().await;
+                    self.follow_preview_output_device().await;
                     self.checkpoint_listening().await;
                     self.publish_audible_completion();
                 }

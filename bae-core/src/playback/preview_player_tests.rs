@@ -199,6 +199,152 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     assert_eq!(player.stop(), AfterPreview::LeaveMain);
 }
 
+/// A capture output whose streams report, once `report` is set, that their
+/// device stopped playing them — what a cpal stream reports when the default
+/// device changes on Windows or its device is unplugged.
+struct InvalidatingOutput {
+    capture: crate::playback::audio_output::RealtimeCaptureAudioOutput,
+    report: Arc<std::sync::Mutex<Option<String>>>,
+}
+
+struct InvalidatingStream {
+    capture: Box<dyn crate::playback::AudioStream>,
+    report: Arc<std::sync::Mutex<Option<String>>>,
+}
+
+impl crate::playback::AudioStream for InvalidatingStream {
+    fn play(&self) -> Result<(), crate::playback::AudioError> {
+        self.capture.play()
+    }
+
+    fn take_invalidation(&self) -> Option<String> {
+        self.report.lock().unwrap().take()
+    }
+}
+
+impl AudioOutput for InvalidatingOutput {
+    fn create_stream(
+        &mut self,
+        source: Arc<std::sync::Mutex<crate::playback::source::PlaybackSource>>,
+        source_sample_rate: u32,
+        source_channels: u32,
+        audio_events: crate::playback::audio_output::AudioEventSender,
+        position_update_interval_ms: u32,
+    ) -> Result<Box<dyn crate::playback::AudioStream>, crate::playback::AudioError> {
+        let capture = self.capture.create_stream(
+            source,
+            source_sample_rate,
+            source_channels,
+            audio_events,
+            position_update_interval_ms,
+        )?;
+        Ok(Box::new(InvalidatingStream {
+            capture,
+            report: self.report.clone(),
+        }))
+    }
+
+    fn controls(&self) -> &crate::playback::audio_output::AudioOutputControls {
+        self.capture.controls()
+    }
+}
+
+/// A preview whose stream's device reports it can't go on starts again on a
+/// new stream from where it got to — not from the window's start — and a
+/// paused preview stays paused. Sabotage: restart at `StreamPosition::START`,
+/// and the new stream plays the window's first samples again.
+#[tokio::test]
+async fn an_invalidated_preview_starts_again_where_it_got_to() {
+    let fixture_dir =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+    let path = fixture_dir.join("Test Album.flac");
+    let probe = bae_audio::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
+        .expect("probe fixture");
+    let sample_rate = u64::from(probe.sample_rate);
+    let target = PreviewTarget::sample_range(
+        path.display().to_string(),
+        10 * sample_rate,
+        Some(11 * sample_rate),
+    );
+    let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let (capture, mut capture_rx) =
+        crate::playback::audio_output::RealtimeCaptureAudioOutput::new();
+    let report = Arc::new(std::sync::Mutex::new(None));
+    player.audio_output = Some(Box::new(InvalidatingOutput {
+        capture,
+        report: report.clone(),
+    }));
+    // The preview reuses the output set above, so nothing is opened from this.
+    let device = FailingAudioDevice;
+
+    assert!(player.play(target, &device).await.started());
+    let first_capture = capture_rx.recv().await.expect("the first stream's capture");
+    crate::playback::audio_output::wait_for_samples(&first_capture, 4_000, Duration::from_secs(10))
+        .await;
+    player.toggle_pause();
+
+    *report.lock().unwrap() = Some("the default device changed".to_string());
+    let detail = player
+        .take_output_invalidation()
+        .expect("the stream's report reaches the player");
+    assert_eq!(detail, "the default device changed");
+    assert!(
+        player.take_output_invalidation().is_none(),
+        "a report is taken once"
+    );
+    player.restart_on_current_device(&device).await;
+
+    let second_capture = capture_rx.recv().await.expect("a new stream");
+    let restarted_at = player
+        .active
+        .as_ref()
+        .expect("the preview plays on")
+        .pipeline
+        .position();
+    assert!(
+        restarted_at > crate::playback::StreamPosition::START,
+        "the preview had played some of the window"
+    );
+    assert_eq!(
+        player.audio_output.as_ref().unwrap().get_state(),
+        AudioState::Paused,
+        "a paused preview stays paused"
+    );
+
+    player.toggle_pause();
+    let captured = crate::playback::audio_output::wait_for_samples(
+        &second_capture,
+        1_000,
+        Duration::from_secs(10),
+    )
+    .await;
+    let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
+    let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
+    let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
+    reference_buffer.append_at(0, &reference_bytes);
+    let reference =
+        bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
+    let played_samples = restarted_at.frames(probe.sample_rate) as usize * probe.channels as usize;
+    let expected: Vec<f32> = reference
+        .samples
+        .iter()
+        .skip(played_samples)
+        .take(1_000)
+        .map(|sample| *sample as f32 / i32::MAX as f32)
+        .collect();
+    assert!(captured.len() >= expected.len());
+    for (index, (actual, expected)) in captured.iter().zip(&expected).enumerate() {
+        assert!(
+            (actual - expected).abs() < 0.01,
+            "restarted preview sample {index} differs: {actual} vs {expected}"
+        );
+    }
+
+    assert_eq!(player.stop(), AfterPreview::LeaveMain);
+}
+
 /// A failed stream start leaves no active preview and cancels the buffer — the
 /// preview side of the shared unit's failure contract (the unit cancels the
 /// decoder; the owner cancels the buffer). The same start over a device whose
