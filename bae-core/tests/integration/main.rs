@@ -35,6 +35,7 @@ mod test_playback_behavior;
 mod test_release_edit_validation;
 mod test_restore_cost;
 mod test_save_s3_config;
+mod test_scan_cost;
 mod test_scrub_points;
 mod test_sql_read_tripwire;
 mod test_startup_sync;

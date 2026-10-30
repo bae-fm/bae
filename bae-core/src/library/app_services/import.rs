@@ -256,6 +256,14 @@ impl AppServices {
         self.inner.import.every_runtime_change_for_test()
     }
 
+    /// Every scan event from now on, none dropped, for a test.
+    #[cfg(feature = "test-utils")]
+    pub fn every_scan_event_for_test(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent> {
+        self.inner.import.every_scan_event_for_test()
+    }
+
     /// Open an import list showing `view`, reconfigurable by view and by
     /// window, with nothing folded and nothing selected.
     pub async fn subscribe_import_list(
