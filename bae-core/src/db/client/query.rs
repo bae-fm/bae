@@ -715,10 +715,10 @@ pub(super) fn album_order(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> L
 }
 
 /// The Storage Manager list's order over `release_listing listing`. Every
-/// order ends with the album title, then `created_at` and the release id,
-/// which tell apart two releases sharing a title and a timestamp (bulk
-/// imports, tests). An index of `release_listing` serves each, alone and
-/// after `stored`.
+/// order ends with the album title, then `created_at` unless it sorts by
+/// that, and the release id, which tell apart two releases sharing a title
+/// and a timestamp (bulk imports, tests). An index of `release_listing`
+/// serves each, alone and after `stored`.
 pub(super) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
     let dir = sort.direction;
     let mut terms = match sort.field {
@@ -748,8 +748,14 @@ pub(super) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
             SortTerm::running("listing.storage_order", dir),
             SortTerm::ascending("listing.album_title COLLATE NOCASE"),
         ],
+        StorageSortField::DateAdded => vec![
+            SortTerm::running("listing.created_at", dir),
+            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+        ],
     };
-    terms.push(SortTerm::ascending("listing.created_at"));
+    if sort.field != StorageSortField::DateAdded {
+        terms.push(SortTerm::ascending("listing.created_at"));
+    }
     terms.push(SortTerm::ascending("listing.release_id"));
     ListOrder::new(terms)
 }
@@ -787,7 +793,7 @@ fn storage_filter(filter: StorageFilter) -> &'static str {
 /// One Storage Manager row per release the filter keeps and `condition`
 /// passes: the release's half and its album's, the raw aggregates the
 /// resolver maps to `ReleaseSummary` / `AlbumSummary`, whether it is pinned,
-/// where it sorts by storage, and `extra` columns.
+/// where it sorts by storage, when it was added, and `extra` columns.
 fn storage_row_select(filter: StorageFilter, extra: &str, condition: &str) -> String {
     let album_columns = album_summary_columns();
     let filter = storage_filter(filter);
@@ -801,6 +807,7 @@ fn storage_row_select(filter: StorageFilter, extra: &str, condition: &str) -> St
             listing.total_size, \
             {RELEASE_LISTING_PINNED} AS pinned, \
             listing.storage_order, \
+            listing.created_at AS date_added, \
             {release_cover} AS release_cover_version, \
             {upload_columns}, \
             {album_columns}{extra} \

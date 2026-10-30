@@ -1,12 +1,13 @@
 use super::*;
 
-/// One Storage Manager row as read: the release's half, the album's half, and
-/// where the release's files are.
+/// One Storage Manager row as read: the release's half, the album's half,
+/// where the release's files are, and when the release was added.
 pub(super) type StorageRowParts = (
     DbReleaseSummary,
     Option<String>,
     AlbumSummaryRow,
     crate::album_detail::StoragePlace,
+    DateTime<Utc>,
 );
 
 fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
@@ -15,6 +16,7 @@ fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Resul
         row.get("release_cover_version")?,
         AlbumSummaryRow::read(row)?,
         storage_place(row)?,
+        rfc3339_column(row, "date_added")?,
     ))
 }
 
@@ -108,14 +110,17 @@ pub(super) fn process_storage_rows(
     rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter()
-        .map(|(release, release_cover_version, album, place)| {
-            Ok(DbStorageRow {
-                release,
-                release_cover_version,
-                album: album.process()?,
-                place,
-            })
-        })
+        .map(
+            |(release, release_cover_version, album, place, date_added)| {
+                Ok(DbStorageRow {
+                    release,
+                    date_added,
+                    release_cover_version,
+                    album: album.process()?,
+                    place,
+                })
+            },
+        )
         .collect()
 }
 

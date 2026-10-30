@@ -170,6 +170,64 @@ async fn storage_page_sort_by_total_size() {
     assert_eq!(titles, vec!["Small", "Medium", "Big"]);
 }
 
+/// Sorting by date added puts the releases in the order they were added,
+/// newest first descending; releases added at the same moment go by album
+/// title either way. Each row carries when its release was added.
+#[tokio::test]
+async fn storage_page_sort_by_date_added() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let at = |seconds: i64| chrono::DateTime::from_timestamp(1_700_000_000 + seconds, 0).unwrap();
+    for (title, added) in &[
+        ("Album First", at(0)),
+        ("Album Last", at(20)),
+        ("Album Tied B", at(10)),
+        ("Album Tied A", at(10)),
+    ] {
+        let mut album = create_test_album();
+        album.title = title.to_string();
+        let mut release = create_test_release(&album.id);
+        release.created_at = *added;
+        manager.database.insert_album(&album).await.unwrap();
+        insert_release(&manager, &release).await;
+    }
+
+    let page = |direction| {
+        let manager = &manager;
+        async move {
+            let sort = crate::db::StorageSortCriterion {
+                field: crate::db::StorageSortField::DateAdded,
+                direction,
+            };
+            manager
+                .get_storage_page(&sort, crate::db::StorageFilter::All, 0, 10)
+                .await
+                .unwrap()
+                .rows
+                .into_iter()
+                .map(|row| (row.album.title, row.date_added))
+                .collect::<Vec<_>>()
+        }
+    };
+    assert_eq!(
+        page(crate::db::SortDirection::Ascending).await,
+        vec![
+            ("Album First".to_string(), at(0)),
+            ("Album Tied A".to_string(), at(10)),
+            ("Album Tied B".to_string(), at(10)),
+            ("Album Last".to_string(), at(20)),
+        ]
+    );
+    assert_eq!(
+        page(crate::db::SortDirection::Descending).await,
+        vec![
+            ("Album Last".to_string(), at(20)),
+            ("Album Tied A".to_string(), at(10)),
+            ("Album Tied B".to_string(), at(10)),
+            ("Album First".to_string(), at(0)),
+        ]
+    );
+}
+
 /// The release ids of the Storage Manager list under `filter`, sorted by
 /// storage in `direction`.
 #[cfg(feature = "test-utils")]

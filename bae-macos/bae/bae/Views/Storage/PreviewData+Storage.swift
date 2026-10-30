@@ -455,7 +455,7 @@
         }()
 
         /// The storage row of release `rel-row-<index>`, on album
-        /// `album-row-<index>`.
+        /// `album-row-<index>`, added `index` days after a fixed day.
         private static func storageRow(
             index: Int,
             title: String,
@@ -498,7 +498,11 @@
                     primaryReleaseId: releaseId,
                     cover: nil
                 ),
-                status: status
+                status: status,
+                dateAdded: Date(
+                    timeIntervalSince1970: 1_700_000_000 + Double(index)
+                        * 86_400
+                )
             )
         }
 

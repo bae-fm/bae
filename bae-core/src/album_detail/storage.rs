@@ -111,13 +111,15 @@ impl StorageRowStatus {
     }
 }
 
-/// One row on the Storage Manager view: a release with its parent album, and
-/// what its storage state shows.
+/// One row on the Storage Manager view: a release with its parent album,
+/// what its storage state shows, and when it was added.
 #[derive(Debug, Clone)]
 pub struct StorageRow {
     pub release: ReleaseSummary,
     pub album: AlbumSummary,
     pub status: StorageRowStatus,
+    /// When the release was added to the library.
+    pub date_added: chrono::DateTime<chrono::Utc>,
 }
 
 /// The storage actions every one of `rows` allows, in the order
@@ -164,6 +166,7 @@ impl StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),
             album: AlbumSummary::from_raw(raw.album),
             status: StorageRowStatus::of(raw.place, transfer_action),
+            date_added: raw.date_added,
         }
     }
 }

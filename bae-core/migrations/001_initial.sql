@@ -1270,18 +1270,19 @@ END;
 
 -- The Storage Manager (§4.2) lists every release with its album's title and
 -- credits, its media, its files' count and size, whether they are stored and
--- whether this device keeps them all pinned, and how many of its files wait
--- in this device's upload queue, sorted by them and filtered by whether they
--- are stored. `release_listing` holds those values, kept by the triggers
+-- whether this device keeps them all pinned, how many of its files wait in
+-- this device's upload queue, and when it was added, sorted by them and
+-- filtered by whether they are stored. `release_listing` holds those values, kept by the triggers
 -- below, with an index for each sort, alone and after `stored` for the Remote
 -- and Local filters.
 
 -- Each release, with what the Storage Manager sorts and filters it by:
 -- `album_title` and the credit keys copied from its album's `album_listing`
 -- row; `media_empty` (1 for a release stating no medium) and `media_key`
--- (every stated medium with its count, in order); its files' count and total
--- size; `stored`, 1 when it has files and every one names a coven file
--- `coven_files` records as stored; `pinned_count`, how many of its files
+-- (every stated medium with its count, in order); `created_at`, when the
+-- release was added; its files' count and total size; `stored`, 1 when it
+-- has files and every one names a coven file `coven_files` records as
+-- stored; `pinned_count`, how many of its files
 -- coven's `coven_pins` lists as kept whole on this device; `queued_count` and
 -- `first_queued_position`, how many of its files coven's
 -- `coven_upload_queue` lists and the place of the first of them (NULL with
@@ -1329,6 +1330,8 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_size ON release_listing (total_si
 CREATE INDEX IF NOT EXISTS idx_release_listing_size_desc ON release_listing (total_size DESC, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_storage ON release_listing (storage_order, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_storage_desc ON release_listing (storage_order DESC, album_title COLLATE NOCASE, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_added ON release_listing (created_at, album_title COLLATE NOCASE, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_added_desc ON release_listing (created_at DESC, album_title COLLATE NOCASE, release_id);
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title ON release_listing (stored, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_title_desc ON release_listing (stored, album_title COLLATE NOCASE DESC, created_at, release_id);
@@ -1342,6 +1345,8 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size ON release_listing (s
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_size_desc ON release_listing (stored, total_size DESC, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage ON release_listing (stored, storage_order, album_title COLLATE NOCASE, created_at, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_desc ON release_listing (stored, storage_order DESC, album_title COLLATE NOCASE, created_at, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added ON release_listing (stored, created_at, album_title COLLATE NOCASE, release_id);
+CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added_desc ON release_listing (stored, created_at DESC, album_title COLLATE NOCASE, release_id);
 
 -- The uploaded releases this device doesn't keep wholly pinned (§4.3): those
 -- it could no longer play without the cloud. It holds the columns its WHERE

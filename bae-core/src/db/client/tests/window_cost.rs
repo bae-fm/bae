@@ -319,6 +319,7 @@ async fn measure_storage(db: &Database, n: u64) {
             StorageSortField::FileCount,
             StorageSortField::TotalSize,
             StorageSortField::Storage,
+            StorageSortField::DateAdded,
         ] {
             for (field, direction) in both_ways(field) {
                 let order = query::storage_order(&StorageSortCriterion { field, direction });

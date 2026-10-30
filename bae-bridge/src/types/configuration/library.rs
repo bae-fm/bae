@@ -203,14 +203,16 @@ pub struct BridgeArtistSortCriterion {
 }
 
 /// One row on the Storage Manager: a release paired with its parent
-/// album, and what its storage state shows. The UI splits these into
-/// separate slices (releases + summaries) so in-band metadata changes (album
-/// rename, pin toggle) re-render affected rows without list rebuilds.
+/// album, what its storage state shows, and when the release was added. The
+/// UI splits these into separate slices (releases + summaries) so in-band
+/// metadata changes (album rename, pin toggle) re-render affected rows
+/// without list rebuilds.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageRow {
     pub release: BridgeReleaseSummary,
     pub album: BridgeAlbum,
     pub status: BridgeStorageRowStatus,
+    pub date_added: std::time::SystemTime,
 }
 
 /// What a Storage Manager row's storage state shows: where its files are, in
@@ -238,6 +240,8 @@ pub enum BridgeStorageSortField {
     TotalSize,
     /// Uploading, pinning, local, pinned, then in the cloud only, ascending.
     Storage,
+    /// When the release was added, oldest first ascending.
+    DateAdded,
 }
 
 #[derive(Debug, Clone, Copy, uniffi::Enum)]

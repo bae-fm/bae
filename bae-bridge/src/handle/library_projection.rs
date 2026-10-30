@@ -236,6 +236,7 @@ mirror_struct! {
         release: (BridgeReleaseSummary),
         album: (BridgeAlbum),
         status: (BridgeStorageRowStatus),
+        date_added: (into),
     },
 }
 

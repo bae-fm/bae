@@ -1458,14 +1458,15 @@ storage stays until nothing refers to it; coven then deletes it
 
 **The Storage Manager** lists every release with its album's title and
 credits, its media, its files' count and total size, whether it is uploaded,
-and whether this device keeps all its files pinned (§4.3). It shows every
+whether this device keeps all its files pinned (§4.3), and when it was
+added. It shows every
 release, or only the local ones, or only the uploaded ones, and shows the
 shown list's count and total size. It sorts by album title (ignoring ASCII
 case), artist (§2.3), media (a release stating none last), file count, size,
-or storage — uploading, then pinning: files coming to this device, waiting
+storage — uploading, then pinning: files coming to this device, waiting
 or downloading in the download queue (§4.3), then local, pinned, and in the
-cloud only — either way, ties going by album title,
-then when the release was added, then id. The upload queue and the pins are
+cloud only — or when the release was added, either way, ties going by album
+title, then when the release was added, then id. The upload queue and the pins are
 coven's, which the list's query reads beside the library's rows. Whether a
 release is pinned, here and in the album and release details, is read from
 how many of its files coven's `coven_pins` lists, whole on this device, a
@@ -3154,7 +3155,7 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
+| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `release_listing`, `download_queue`, `output_queue`, and for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |

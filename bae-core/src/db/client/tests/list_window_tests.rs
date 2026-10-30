@@ -225,6 +225,7 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
             StorageSortField::FileCount,
             StorageSortField::TotalSize,
             StorageSortField::Storage,
+            StorageSortField::DateAdded,
         ] {
             for (field, direction) in both_ways(field) {
                 let order = storage_order(&StorageSortCriterion { field, direction });

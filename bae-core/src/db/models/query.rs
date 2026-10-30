@@ -437,6 +437,8 @@ pub struct DbReleaseUpload {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
+    /// When the release was added to the library.
+    pub date_added: DateTime<Utc>,
     /// The version of the release's own cover; `None` when it has none.
     pub release_cover_version: Option<String>,
     pub album: DbAlbumSummary,
@@ -454,6 +456,8 @@ pub enum StorageSortField {
     /// Where the release's files are, ascending: uploading, pinning, local,
     /// pinned, in the cloud only.
     Storage,
+    /// When the release was added, oldest first ascending.
+    DateAdded,
 }
 
 /// A single sort criterion for storage-page queries.
