@@ -3022,12 +3022,14 @@ migration 1. Every table is `STRICT`. "Syncs" means coven syncs its rows
 bae gives coven the collation `natural_order`, which coven registers on every
 connection to a library: it orders text the way a person reads folder names
 ("Disc 2" before "Disc 10", case aside, then by bytes, so two different
-strings never tie). It is part of the schema, so it gives the same answer on
-every device and in every version.
+strings never tie). It gives the same answer on every device, and it carries
+a version, 1: a change to what it compares bumps the version, and coven
+rebuilds the indexes that use it when the library next opens for writing.
 
 It also gives coven the function `bae_catalog_rank`, a catalog's place in the
 order surfaces list catalogs (MusicBrainz, Discogs, then the rest by name),
-which indexes order records by; it is part of the schema the same way.
+which indexes order records by, and bae's other SQL functions; each is
+deterministic, with a version that works the same way.
 
 ### A.1 The library
 

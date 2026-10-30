@@ -301,36 +301,37 @@ pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
         .migrations(crate::migrations::all())
         .collation(
             crate::migrations::NATURAL_ORDER,
+            crate::migrations::NATURAL_ORDER_VERSION,
             crate::migrations::natural_order,
         )
         .function(
             "bae_fold_case",
             1,
-            coven::Determinism::Deterministic,
+            coven::Determinism::Deterministic { version: 1 },
             |arguments| Ok(fold_case_value(arguments.get(0)?)),
         )
         .function(
             "bae_search_pattern",
             1,
-            coven::Determinism::Deterministic,
+            coven::Determinism::Deterministic { version: 1 },
             |arguments| Ok(search_pattern_value(arguments.get(0)?)),
         )
         .function(
             "bae_catalog_rank",
             1,
-            coven::Determinism::Deterministic,
+            coven::Determinism::Deterministic { version: 1 },
             |arguments| catalog_rank_value(arguments.get(0)?),
         )
         .function(
             "bae_folder_below",
             2,
-            coven::Determinism::Deterministic,
+            coven::Determinism::Deterministic { version: 1 },
             |arguments| folder_below_value(arguments.get(0)?, arguments.get(1)?),
         )
         .function(
             "bae_folder_relative",
             2,
-            coven::Determinism::Deterministic,
+            coven::Determinism::Deterministic { version: 1 },
             |arguments| folder_relative_value(arguments.get(0)?, arguments.get(1)?),
         )
 }
