@@ -1,6 +1,6 @@
-//! The image file bae stores for a cover or an artist picture: whatever
-//! format it arrived in, decoded and downscaled to a JPEG at most 600 pixels
-//! on its longer side.
+//! The image file bae stores for a cover, an artist picture or an avatar:
+//! whatever format it arrived in, decoded and downscaled to a JPEG at most 600
+//! pixels on its longer side.
 
 use std::io::Cursor;
 
@@ -10,7 +10,7 @@ use tracing::debug;
 use crate::content_type::ContentType;
 
 /// The longest side, in pixels, of an image bae stores.
-const STORED_MAX_EDGE: u32 = 600;
+pub const STORED_MAX_EDGE: u32 = 600;
 const MAX_DECODE_DIMENSION: u32 = 8_192;
 const MAX_DECODE_ALLOC_BYTES: u64 = 128 * 1024 * 1024;
 

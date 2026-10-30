@@ -26,11 +26,25 @@ impl LibraryManager {
         self.database.set_history_sharing(sharing).await
     }
 
+    /// Set this person's avatar to the image in `bytes`, downscaled to the
+    /// JPEG bae stores for covers and artist pictures, or clear it with `None`.
     pub async fn set_avatar(
         &self,
         bytes: Option<Vec<u8>>,
     ) -> Result<(), crate::people::ProfileError> {
-        let avatar = bytes.map(|bytes| (self.ids.new_id().to_string(), bytes));
+        let avatar = match bytes {
+            Some(bytes) => {
+                // Decoding and re-encoding the image is CPU work.
+                let jpeg = tokio::task::spawn_blocking(move || {
+                    bae_util::stored_image::stored_jpeg(&bytes)
+                })
+                .await
+                .map_err(crate::people::ProfileError::AvatarResizeTask)?
+                .map_err(|detail| crate::people::ProfileError::AvatarImage { detail })?;
+                Some((self.ids.new_id().to_string(), jpeg))
+            }
+            None => None,
+        };
         self.database.set_avatar(avatar).await
     }
 

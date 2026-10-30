@@ -1331,9 +1331,9 @@ Two kinds of file, matching coven's
 - **Audio: the household's own files.** Every file of a release's folder,
   audio or not, is the person's file at its path. bae and coven record its
   path, size and modification time and never change, move or delete it.
-- **Covers, artist images and avatars: bae's own.** bae makes them, covers and
-  artist images downscaled to at most 600 pixels as JPEG, and hands the bytes
-  to coven, which keeps them.
+- **Covers, artist images and avatars: bae's own.** bae makes them, each
+  downscaled to at most 600 pixels as JPEG, and hands the bytes to coven,
+  which keeps them.
 
 A cover belongs to one release, an artist image to one artist, an avatar to one
 person. Changing a cover attaches a new file to the release's cover row; coven
@@ -1736,8 +1736,10 @@ history setting.
   row, ratings and household playlists stay under the old identity, read-only:
   they are owner rows (§5.5), and the old identity has no device left to
   change them.
-- **An avatar is a file on the `people` row**, bae's own (app-provided),
-  downloaded when it is first shown.
+- **An avatar is a file on the `people` row**, bae's own (§4.1): the app
+  hands bae the image the person picked, and bae stores it downscaled to at
+  most 600 pixels as JPEG, as it does a cover, or refuses an image it can't
+  decode. Other devices download it when it is first shown.
 - **The people list joins coven's members with `people`** in one query:
   everyone in the library, in member-id order, each with their profile once
   they made one, and the person using this device read the same way. A

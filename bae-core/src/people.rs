@@ -75,6 +75,11 @@ pub enum ProfileError {
     InvalidPrivateCircle,
     #[error("private circle creation is waiting for operation {0:?}")]
     CirclePending(coven::OperationId),
+    /// The image picked for an avatar cannot be decoded or resized.
+    #[error("the avatar image failed: {detail}")]
+    AvatarImage { detail: String },
+    #[error("avatar resize task failed: {0}")]
+    AvatarResizeTask(tokio::task::JoinError),
     #[error(transparent)]
     Database(#[from] crate::db::DbError),
     #[error(transparent)]
@@ -91,11 +96,14 @@ impl ProfileError {
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         use crate::ui::UiErrorCategory as C;
         match self {
-            Self::NotRegistered | Self::Missing | Self::EmptyName | Self::AlreadyExists => {
-                C::Config
-            }
+            Self::NotRegistered
+            | Self::Missing
+            | Self::EmptyName
+            | Self::AlreadyExists
+            | Self::AvatarImage { .. } => C::Config,
             Self::InvalidPrivateCircle | Self::CirclePending(_) | Self::Sync(_) => C::Membership,
             Self::Database(_) => C::Database,
+            Self::AvatarResizeTask(_) => C::Internal,
         }
     }
 }

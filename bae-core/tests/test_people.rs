@@ -36,6 +36,23 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     manager.close().await.unwrap();
 }
 
+/// A PNG of `width` by `height` pixels in one color.
+fn solid_png(width: u32, height: u32, color: [u8; 3]) -> Vec<u8> {
+    png(image::RgbImage::from_pixel(
+        width,
+        height,
+        image::Rgb(color),
+    ))
+}
+
+fn png(image: image::RgbImage) -> Vec<u8> {
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(image)
+        .write_to(&mut bytes, image::ImageFormat::Png)
+        .unwrap();
+    bytes.into_inner()
+}
+
 #[tokio::test]
 async fn a_profile_names_its_avatar_once_the_upload_completes() {
     let directory = tempfile::tempdir().unwrap();
@@ -44,14 +61,15 @@ async fn a_profile_names_its_avatar_once_the_upload_completes() {
     connect_storage(&manager, &storage).await;
     let profile = manager.create_profile("Rowan").await.unwrap();
     assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
-    manager
-        .set_avatar(Some(b"first avatar".to_vec()))
-        .await
-        .unwrap();
+    let first_source = solid_png(16, 16, [120, 40, 200]);
+    let second_source = solid_png(16, 16, [20, 160, 90]);
+    let first_jpeg = bae_util::stored_image::stored_jpeg(&first_source).unwrap();
+    let second_jpeg = bae_util::stored_image::stored_jpeg(&second_source).unwrap();
+    manager.set_avatar(Some(first_source)).await.unwrap();
     let first = database.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(
         manager.avatar(profile.id).await.unwrap().unwrap(),
-        b"first avatar"
+        first_jpeg
     );
     assert_eq!(
         database
@@ -61,10 +79,7 @@ async fn a_profile_names_its_avatar_once_the_upload_completes() {
         1,
         "the avatar waits to upload"
     );
-    manager
-        .set_avatar(Some(b"second avatar".to_vec()))
-        .await
-        .unwrap();
+    manager.set_avatar(Some(second_source)).await.unwrap();
     let second = database.profile(profile.id).await.unwrap().unwrap();
     // The profile row names a new avatar only once its upload completes; this
     // device reads its own new avatar before then.
@@ -72,14 +87,14 @@ async fn a_profile_names_its_avatar_once_the_upload_completes() {
     assert_eq!(second.avatar_id, None);
     assert_eq!(
         manager.avatar(profile.id).await.unwrap().unwrap(),
-        b"second avatar"
+        second_jpeg
     );
     manager.drain_uploads_for_test().await.unwrap();
     let stored = database.profile(profile.id).await.unwrap().unwrap();
     assert!(stored.avatar_id.is_some(), "the uploaded avatar is named");
     assert_eq!(
         manager.avatar(profile.id).await.unwrap().unwrap(),
-        b"second avatar"
+        second_jpeg
     );
     manager.set_avatar(None).await.unwrap();
     assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
@@ -92,6 +107,59 @@ async fn a_profile_names_its_avatar_once_the_upload_completes() {
             .avatar_id,
         None
     );
+    manager.close().await.unwrap();
+}
+
+/// A camera-sized photo is stored as a cover is: a JPEG downscaled to fit the
+/// stored edge, its aspect kept. Its pixels vary everywhere, so neither the
+/// PNG source nor the JPEG compresses it away.
+#[tokio::test]
+async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
+    let directory = tempfile::tempdir().unwrap();
+    let (manager, _database, storage) =
+        storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
+    connect_storage(&manager, &storage).await;
+    let profile = manager.create_profile("Rowan").await.unwrap();
+    let edge = bae_util::stored_image::STORED_MAX_EDGE;
+    let photo = png(image::RgbImage::from_fn(edge * 5, edge * 10 / 3, |x, y| {
+        let mixed = x.wrapping_mul(2_654_435_761) ^ y.wrapping_mul(2_246_822_519);
+        let [r, g, b, _] = mixed.to_le_bytes();
+        image::Rgb([r, g, b])
+    }));
+
+    manager.set_avatar(Some(photo)).await.unwrap();
+
+    let stored = manager.avatar(profile.id).await.unwrap().unwrap();
+    assert_eq!(
+        image::guess_format(&stored).unwrap(),
+        image::ImageFormat::Jpeg
+    );
+    let decoded = image::load_from_memory(&stored).unwrap();
+    assert_eq!(
+        (decoded.width(), decoded.height()),
+        (edge, edge * 2 / 3),
+        "downscaled to fit the stored edge, aspect kept"
+    );
+    manager.close().await.unwrap();
+}
+
+/// Bytes that are no image make no avatar: the setting is refused and the
+/// profile keeps none.
+#[tokio::test]
+async fn an_undecodable_avatar_is_refused() {
+    let directory = tempfile::tempdir().unwrap();
+    let (manager, _database, storage) =
+        storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
+    connect_storage(&manager, &storage).await;
+    let profile = manager.create_profile("Rowan").await.unwrap();
+
+    let error = manager
+        .set_avatar(Some(b"not an image".to_vec()))
+        .await
+        .expect_err("bytes that are no image make no avatar");
+
+    assert!(matches!(error, ProfileError::AvatarImage { .. }), "{error}");
+    assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
     manager.close().await.unwrap();
 }
 
