@@ -142,6 +142,90 @@ async fn done_runs_the_releases_still_uploading_first() {
     );
 }
 
+/// Each Done row's name and how its release's upload stands, in order.
+fn done_uploads(
+    windows: &[crate::import::ImportListWindow],
+) -> Vec<(String, Option<crate::library::UploadProgress>)> {
+    windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            crate::import::ImportListItem::Candidate { row, .. } => {
+                Some((row.folder_name.clone(), row.upload.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// A Done row carries how its release's upload stands, as the Storage
+/// Manager counts it: its files waiting, then one being sent, and nothing
+/// once they are stored. The list's live read follows each step.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_done_row_carries_its_release_upload() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    done_with_two_uploading(&manager, temp_dir.path()).await;
+    let subscription = crate::import::ImportListSubscription::open(
+        manager.library.clone(),
+        crate::import::ImportListView {
+            tab: crate::import::TriageTab::Done,
+            order: crate::import::ImportListOrder::PathAscending,
+            ..crate::import::ImportListView::default()
+        },
+        std::iter::once(crate::library::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+    )
+    .await
+    .unwrap();
+    let waiting = Some(crate::library::UploadProgress {
+        queued: 1,
+        uploading: 0,
+    });
+    assert_eq!(
+        done_uploads(&subscription.next().await.unwrap().windows),
+        [
+            ("C".to_string(), waiting.clone()),
+            ("B".to_string(), waiting),
+            ("A".to_string(), None),
+            ("D".to_string(), None),
+        ]
+    );
+
+    // Held in flight long enough that its start is read while it runs.
+    manager
+        .storage
+        .set_faults(coven::Faults {
+            delay: std::time::Duration::from_secs(2),
+            ..coven::Faults::none()
+        })
+        .await;
+    let drain = tokio::spawn({
+        let manager = manager.library.clone();
+        async move { manager.drain_uploads_for_test().await }
+    });
+    let sending = Some(crate::library::UploadProgress {
+        queued: 0,
+        uploading: 1,
+    });
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        while !done_uploads(&subscription.next().await.unwrap().windows)
+            .iter()
+            .any(|(_, upload)| *upload == sending)
+        {}
+    })
+    .await
+    .expect("a row counts its file being sent");
+    drain.await.unwrap().unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        while done_uploads(&subscription.next().await.unwrap().windows)
+            .iter()
+            .any(|(_, upload)| upload.is_some())
+        {}
+    })
+    .await
+    .expect("every row's files are stored");
+}
+
 /// A run of rows selected on Done takes the rows between its ends across the
 /// part still uploading and the rest, both ends included.
 #[cfg(feature = "test-utils")]

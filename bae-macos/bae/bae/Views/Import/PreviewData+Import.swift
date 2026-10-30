@@ -375,6 +375,7 @@
                 metadataSummary: nil,
                 cover: nil,
                 importStatus: nil,
+                upload: nil,
                 metadataProvenance: nil,
                 reading: .unidentified,
                 selected: false

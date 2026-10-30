@@ -214,6 +214,7 @@ impl crate::types::BridgeTriageRow {
             metadata_summary,
             cover,
             import_status,
+            upload,
             metadata_provenance,
             // The row's reading names the linked release's records.
             release_link: _,
@@ -232,6 +233,7 @@ impl crate::types::BridgeTriageRow {
                 .map(crate::types::BridgeTriageMetadataSummary::from_core),
             cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
+            upload: upload.map(crate::types::BridgeUploadProgress::from_core),
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),

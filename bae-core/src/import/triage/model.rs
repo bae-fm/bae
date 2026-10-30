@@ -167,6 +167,12 @@ pub struct TriageRow {
     pub cover: Option<crate::import::CoverImageSource>,
     /// How the candidate's last import ended.
     pub import_status: Option<TriageImportStatus>,
+    /// How many files of the release this device imported from the
+    /// candidate's files wait in this device's upload queue and how many
+    /// are being sent, as the Storage Manager counts them: read only for a
+    /// row with an imported release, and `None` while none of its files
+    /// waits. How far the bytes have got is the release's upload transfer.
+    pub upload: Option<crate::library::UploadProgress>,
     /// Where the candidate's draft was read from, once a source was applied.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
     /// What the candidate is linked to in the catalogs.

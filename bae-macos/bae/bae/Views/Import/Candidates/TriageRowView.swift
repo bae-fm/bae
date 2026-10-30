@@ -4,8 +4,9 @@ import SwiftUI
 /// One triage row: cover, title, metadata, and status, with what is running
 /// for the candidate read from the row itself — the list delivers the row
 /// again when that changes. Every tab draws its rows with it: a Done row is
-/// the row it was in Found. Its height must not change on selection, which
-/// would shift every row below.
+/// the row it was in Found, with its release's upload while files of it wait
+/// to upload. Its height must not change on selection, which would shift
+/// every row below.
 struct TriageRowView: View {
     /// The cover's edge in points; the sidebar preloads Pending's covers at
     /// this size, so it must match for the cached image to be used.
@@ -114,7 +115,16 @@ struct TriageRowView: View {
         case .queued:
             EmptyView()
         case nil:
-            if let statusLine {
+            if let release = row.importedRelease, let upload = row.upload {
+                // The bar moves each display frame, so only this leaf reads
+                // the release's upload stream.
+                DoneRowUploadLine(
+                    releaseId: release.releaseId,
+                    progress: upload
+                )
+                .themeText(.detail)
+            }
+            else if let statusLine {
                 Text(statusLine)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
@@ -124,6 +134,38 @@ struct TriageRowView: View {
         }
     }
 
+}
+
+/// A Done row's line while files of its release wait to upload: the phase,
+/// as the Storage Manager names it, and while any file is being sent a bar
+/// of the bytes of the release's size stored or sent, which a native bar
+/// reads from the release's upload stream each display frame. Files only
+/// waiting draw no bar: nothing is moving them, and with no storage
+/// connected nothing will until one is.
+private struct DoneRowUploadLine: View {
+    let releaseId: String
+    let progress: BridgeUploadProgress
+    @Environment(OutboxStore.self)
+    private var outboxStore
+
+    var body: some View {
+        let phase = progress.heldActivity.phaseText
+        if progress.uploading > 0 {
+            ProgressLine(
+                phase,
+                bar: StreamBar(
+                    stream: .upload(
+                        outboxStore.uploadProgress(forRelease: releaseId)
+                    )
+                )
+            )
+        }
+        else {
+            Text(verbatim: phase)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
 }
 
 extension BridgeTriageRow {
@@ -335,6 +377,12 @@ extension TriageRowView {
         .environment(PreviewData.artImageStore())
         .candidateReaderPreviewEnvironment()
         .windowBackground()
+    }
+
+    // A Done row's line while its release uploads: the phase and a bar
+    // while a file is being sent, the phase alone while its files wait.
+    #Preview("Done rows uploading") {
+        PreviewScenes.importDoneRowsUploading()
     }
 
     #Preview("Where the draft was read from") {

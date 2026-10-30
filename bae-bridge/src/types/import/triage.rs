@@ -722,6 +722,12 @@ pub struct BridgeTriageRow {
     /// The cover the row draws, even when its draft is otherwise blank.
     pub cover: Option<BridgeCoverImageSource>,
     pub import_status: Option<BridgeTriageImportStatus>,
+    /// How many files of the release this device imported from the
+    /// candidate's files wait to upload and how many are being sent, and the
+    /// phase that makes; `None` while none waits, and on a row with no
+    /// imported release. How far the bytes have got is the release's value
+    /// in the release upload `KeyedValueStream`.
+    pub upload: Option<crate::types::BridgeUploadProgress>,
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
     pub reading: BridgeTriageReading,
     /// Whether the person has selected the row.

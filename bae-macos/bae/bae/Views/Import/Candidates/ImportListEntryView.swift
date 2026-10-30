@@ -30,6 +30,8 @@ struct ImportListRowEnvironment {
     let candidateRuntimes: CandidateRuntimes?
     /// `nil` in a preview or a test with no import list behind it.
     let importPercents: LatestStream<UInt32>?
+    /// The upload streams a Done row's line reads while its release uploads.
+    let outboxStore: OutboxStore
     /// The tone and accent the window draws in.
     let appearance: HostedAppearance
 }
@@ -68,6 +70,7 @@ struct ImportListEntryView: View {
                 entry.environment.candidateRuntimes
             )
             .environment(\.importPercents, entry.environment.importPercents)
+            .environment(entry.environment.outboxStore)
             .hostedAppearance(entry.environment.appearance)
     }
 

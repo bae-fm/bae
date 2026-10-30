@@ -87,6 +87,7 @@ for scene in \
     import-release-scanning-refresh \
     import-release-resolved-reversal \
     import-bulk-selection \
+    import-done-rows-uploading \
     import-mapping-cue-wide \
     import-mapping-cue-narrow \
     queue-pane-standard \

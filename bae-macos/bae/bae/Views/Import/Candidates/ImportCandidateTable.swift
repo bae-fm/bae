@@ -34,6 +34,8 @@ struct ImportCandidateTable: NSViewRepresentable {
     private var candidateRuntimes
     @Environment(\.importPercents)
     private var importPercents
+    @Environment(OutboxStore.self)
+    private var outboxStore
     @Environment(\.surfaceTone)
     private var tone
     @Environment(\.accentChoice)
@@ -45,6 +47,7 @@ struct ImportCandidateTable: NSViewRepresentable {
             importer: importer,
             candidateRuntimes: candidateRuntimes,
             importPercents: importPercents,
+            outboxStore: outboxStore,
             appearance: HostedAppearance(
                 tone: tone,
                 accent: accent

@@ -4,7 +4,8 @@
 //! A release's row comes from its placement — what it shows, its state and
 //! what its commands are decided from — and the keyed rows beside it: its
 //! scan, its link and the records of the stored releases the link names, its
-//! draft's source, its cover and what is running for it. None of it opens
+//! draft's source, its cover and what is running for it, and, for a row with
+//! an imported release, how that release's upload stands. None of it opens
 //! the folder's files. A group's header says how many of its releases the
 //! filters keep, whether the list folds it, and whether its folder is offered
 //! to be read as one release, as its placement holds it.
@@ -14,6 +15,7 @@ use super::super::import_state::{
     cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
     PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
 };
+use super::super::queued_uploads::release_upload_on;
 use super::super::release_groupings::block_of;
 use super::super::source_releases::load_release_records_on;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
@@ -25,6 +27,7 @@ use crate::import::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
 use crate::import::{CoverSelection, FolderReleaseDecisionKey, PressingLink, ReleaseLink};
+use crate::library::UploadProgress;
 use std::path::PathBuf;
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
@@ -328,6 +331,15 @@ fn candidate_item(
         block.as_ref(),
         release.failure.as_ref(),
     );
+    // Only a row with an imported release reads the upload queue, so a
+    // window of rows that have none reruns on none of its changes.
+    let upload = release
+        .imported
+        .as_ref()
+        .map(|imported| release_upload_on(sql, &imported.release_id))
+        .transpose()?
+        .flatten()
+        .map(|upload| UploadProgress::of_release(&upload));
     // A pressing's releases' records are read in this snapshot and put
     // together after it ends; an album names its records itself.
     let picked = match release_link.as_ref() {
@@ -353,6 +365,7 @@ fn candidate_item(
         metadata_summary: release.summary.clone(),
         cover: None,
         import_status,
+        upload,
         metadata_provenance,
         release_link,
         selected: release.selected,

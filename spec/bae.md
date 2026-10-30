@@ -659,9 +659,17 @@ says how many of the tab's rows it keeps of how many it has.
 This device's record of the import is keyed by the folder's hash (§2.7), not
 its path, so a folder moved or renamed after its import stays Done. A Done row
 looks exactly like the row the folder had in Found — the same cover, title and
-artists, drawn the same way — and says nothing more: the tab says it is done.
-It names the one release imported from those files, which Show in Library and
-a double-click on the row open.
+artists, drawn the same way — and says nothing more but its release's upload:
+the tab says it is done. While files of the release wait in this device's
+upload queue, the line under its title names the upload's phase, as the
+Storage Manager does (§4.2): Uploading while any file is being sent, beside a
+bar of the bytes of the release's whole size stored or sent, or Queued with no
+bar while its files only wait. The row reads how many of the release's files
+wait and how many are being sent in the list's own read, from the counts the
+Storage Manager reads, so the row changes as each file starts and lands; the
+bar's bytes arrive apart, in the release's value of the upload transfer stream
+the Storage Manager's chip reads. It names the one release imported from those
+files, which Show in Library and a double-click on the row open.
 
 A folder this device didn't import is in Found like any other, whatever another
 device imported and whichever library releases came from the same files. Ben
@@ -1471,14 +1479,16 @@ How many of a release's files
 wait in the upload queue, and the place of the first, are counts bae keeps
 the same way from
 coven's `coven_upload_queue`, in the transaction that queues or dequeues a
-file; the import list's Done tab reads them in queue order (§3.2). Whether
+file; the import list's Done tab reads them in queue order, and each Done row
+its own release's (§3.2). Whether
 the download queue holds a release waiting or downloading is a flag bae keeps
 the same way, in the transaction that changes the queue, and where the release
 sorts by storage is worked out from these in the same write, so the storage
 sort reads an index like every other.
 
 A release with files waiting to upload shows, in its row and in its album's
-storage band, how many wait and how many are being sent, and while any is
+storage band, how many wait and how many are being sent (its Done row in the
+import list shows the phase that makes, §3.2), and while any is
 being sent, how many bytes of its whole size are stored or sent. The counts
 are read in the same query as the row: which files are being sent comes
 from coven's `coven_sending`, a live view of the uploads in flight. How far

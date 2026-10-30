@@ -144,6 +144,12 @@ struct ShotScene {
                 AnyView(PreviewScenes.importBulkSelection())
             },
             ShotScene(
+                id: "import-done-rows-uploading",
+                size: CGSize(width: 360, height: 240)
+            ) {
+                AnyView(PreviewScenes.importDoneRowsUploading())
+            },
+            ShotScene(
                 id: "import-mapping-cue-wide",
                 size: CGSize(width: 1212, height: 900)
             ) {

@@ -20,6 +20,16 @@ pub struct UploadProgress {
     pub uploading: u32,
 }
 impl UploadProgress {
+    /// A release's files in this device's upload queue as one read found
+    /// them: those only waiting, and those this process is sending now.
+    pub(crate) fn of_release(raw: &crate::db::DbReleaseUpload) -> Self {
+        let count = |value: i64| u32::try_from(value).expect("a release's queued file count");
+        Self {
+            queued: count(raw.queued - raw.sending),
+            uploading: count(raw.sending),
+        }
+    }
+
     pub fn activity(&self) -> Option<UploadActivity> {
         if self.uploading > 0 {
             Some(UploadActivity::Uploading)

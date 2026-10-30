@@ -128,6 +128,7 @@ func identifiedRow(
         metadataSummary: metadataSummary,
         cover: cover,
         importStatus: nil,
+        upload: nil,
         metadataProvenance: .externalRelease(
             record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(key)")
         ),
@@ -162,6 +163,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         metadataSummary: nil,
         cover: nil,
         importStatus: nil,
+        upload: nil,
         metadataProvenance: nil,
         reading: .unidentified,
         selected: false

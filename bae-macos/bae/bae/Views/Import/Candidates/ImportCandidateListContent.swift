@@ -396,6 +396,7 @@ extension ImportCandidateListContent {
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )
+        .environment(OutboxStore(uploadsPaused: false))
         .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())
@@ -424,6 +425,7 @@ extension ImportCandidateListContent {
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )
+        .environment(OutboxStore(uploadsPaused: false))
         .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())

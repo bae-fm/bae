@@ -124,6 +124,35 @@
             .windowBackground()
         }
 
+        /// Done rows at the import list's row height: one at rest, one whose
+        /// release's files wait to upload, and one whose release has a file
+        /// being sent, its bar read from the release's upload stream.
+        static func importDoneRowsUploading() -> some View {
+            let importStore = ImportStore()
+            let rows = [
+                PreviewData.triageRowDoneFromTags,
+                PreviewData.triageRowDoneUploadQueued,
+                PreviewData.triageRowDoneUploading,
+            ]
+            return VStack(alignment: .leading, spacing: 0) {
+                ForEach(rows, id: \.candidateKey) { row in
+                    TriageRowView(
+                        row: row,
+                        coverContent: importStore.sidebarCover(for: row),
+                        isGroupMember: false,
+                        onShowInLibrary: {}
+                    )
+                    .frame(height: ImportCandidateTableLayout.rowHeight)
+                }
+            }
+            .padding()
+            .frame(width: 360)
+            .environment(PreviewData.doneRowOutboxStore())
+            .environment(PreviewData.artImageStore())
+            .candidateReaderPreviewEnvironment()
+            .windowBackground()
+        }
+
         /// The bulk-selection pane over two selected folders, one of them ready
         /// to import: every action the two offer, with how many folders each
         /// applies to.

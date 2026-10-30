@@ -14,6 +14,7 @@
             metadataSummary: BridgeTriageMetadataSummary? = nil,
             cover: BridgeCoverImageSource? = nil,
             importStatus: BridgeTriageImportStatus? = nil,
+            upload: BridgeUploadProgress? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil,
             reading: BridgeTriageReading = .unidentified,
             live: BridgeCandidateLiveState = triageLive([])
@@ -29,6 +30,7 @@
                 metadataSummary: metadataSummary,
                 cover: cover,
                 importStatus: importStatus,
+                upload: upload,
                 metadataProvenance: metadataProvenance,
                 reading: reading,
                 selected: false
@@ -462,6 +464,48 @@
             reading: .prefilled,
             live: triageLive([.revealFolder])
         )
+
+        /// The catalog-read Done row while one of its release's three files
+        /// is being sent.
+        static let triageRowDoneUploading = {
+            var row = triageRowDoneImported
+            row.upload = BridgeUploadProgress(
+                queued: 2,
+                uploading: 1,
+                activity: .uploading
+            )
+            return row
+        }()
+
+        /// The tag-read Done row while its release's files only wait to
+        /// upload.
+        static let triageRowDoneUploadQueued = {
+            var row = triageRowDoneFromTags
+            row.upload = BridgeUploadProgress(
+                queued: 3,
+                uploading: 0,
+                activity: .queued
+            )
+            return row
+        }()
+
+        /// The upload stream the uploading Done row reads: of its release's
+        /// 36.4 MB, 12.4 MB stored or sent.
+        @MainActor
+        static func doneRowOutboxStore() -> OutboxStore {
+            OutboxStore(
+                uploadsPaused: false,
+                releaseProgress: .releaseUploads(holding: [
+                    "preview-release": BridgeReleaseUploadTransfer(
+                        bar: BridgeUploadBar(
+                            bytesDone: 12_400_000,
+                            bytesTotal: 36_400_000
+                        ),
+                        throughputBps: 3_200_000
+                    )
+                ])
+            )
+        }
 
         static let triageRowFailed = triageRow(
             for: importTabFailedCandidate,

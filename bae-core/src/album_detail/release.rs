@@ -111,11 +111,7 @@ pub struct ReleaseUpload {
 
 impl ReleaseUpload {
     pub(crate) fn from_raw(raw: crate::db::DbReleaseUpload) -> Self {
-        let count = |value: i64| u32::try_from(value).expect("a release's queued file count");
-        let progress = crate::library::UploadProgress {
-            queued: count(raw.queued - raw.sending),
-            uploading: count(raw.sending),
-        };
+        let progress = crate::library::UploadProgress::of_release(&raw);
         use crate::library::TransferStage;
         Self {
             summary: crate::library::release_queue::transfer_summary([
@@ -125,7 +121,11 @@ impl ReleaseUpload {
                     TransferStage::Moving,
                 ),
                 ("core.queue.queued", progress.queued, TransferStage::Waiting),
-                ("core.queue.stored", count(raw.stored), TransferStage::Done),
+                (
+                    "core.queue.stored",
+                    u32::try_from(raw.stored).expect("a release's stored file count"),
+                    TransferStage::Done,
+                ),
             ]),
             progress,
         }
