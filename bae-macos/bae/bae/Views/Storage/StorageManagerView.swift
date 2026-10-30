@@ -29,6 +29,9 @@ struct StorageManagerView: View {
     private var selection: Set<String> = []
     @State
     private var inspectorPresented: Bool
+    /// The table's columns as the person last arranged them.
+    @AppStorage("storageManager.columnLayout")
+    private var columnLayout = StorageTableLayout.standard
     /// Runs row context-menu transitions, built once the environment is up.
     @State
     private var runner: StorageActionRunner?
@@ -150,6 +153,7 @@ struct StorageManagerView: View {
                         selection: $selection,
                         sort: $sort,
                         inspectorPresented: $inspectorPresented,
+                        layout: $columnLayout,
                         runner: runner,
                     )
                     Divider()

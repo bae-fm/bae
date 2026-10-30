@@ -7,6 +7,7 @@ struct StorageReleaseCell: View {
     let release: ReleaseSummary
     let album: BridgeAlbum
     let status: BridgeStorageRowStatus
+    let dateAdded: Date
     let column: StorageTableColumn
 
     /// The release column's cover side.
@@ -41,6 +42,10 @@ struct StorageReleaseCell: View {
                 Text(release.totalSizeText)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .trailing)
+            case .dateAdded:
+                Text(dateAdded, format: .dateTime.year().month().day())
+                    .monospacedDigit()
+                    .lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: cellAlignment(column))
@@ -60,12 +65,13 @@ struct StorageReleaseCell: View {
                     ),
                     album: PreviewData.storageAlbum,
                     status: .pinned,
+                    dateAdded: Date(timeIntervalSince1970: 1_700_000_000),
                     column: column
                 )
                 .frame(width: 110)
             }
         }
-        .frame(width: 700)
+        .frame(width: 810)
         .padding(.vertical)
         .environment(PreviewData.downloadStore())
         .environment(PreviewData.outboxStore())

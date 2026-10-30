@@ -30,7 +30,7 @@ struct StorageRowPlaceholderCell: View {
                     .frame(width: 110)
             }
         }
-        .frame(width: 700)
+        .frame(width: 810)
         .padding(.vertical)
     }
 #endif

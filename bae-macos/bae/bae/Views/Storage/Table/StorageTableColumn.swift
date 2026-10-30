@@ -4,16 +4,17 @@ import SwiftUI
 
 // MARK: - Columns
 
-/// Identifiers and seed metadata for the six storage columns, each with the
-/// field core sorts it by. The widths are the initial layout only; the table
-/// view owns resize/reorder at runtime.
-enum StorageTableColumn: String, CaseIterable {
+/// Identifiers and seed metadata for the storage columns, each with the
+/// field core sorts it by. The widths are the standard layout's; the person
+/// resizes, reorders and hides columns, which `StorageTableLayout` keeps.
+enum StorageTableColumn: String, CaseIterable, Codable {
     case release
     case artist
     case media
     case storage
     case files
     case size
+    case dateAdded
 
     /// One column's metadata, kept in a single spec so the per-property
     /// accessors don't fan out into four parallel switches over the same cases.
@@ -68,6 +69,13 @@ enum StorageTableColumn: String, CaseIterable {
                 minWidth: 70,
                 sortField: .totalSize
             )
+        case .dateAdded:
+            Spec(
+                title: String(localized: "Date Added"),
+                width: 120,
+                minWidth: 80,
+                sortField: .dateAdded
+            )
         }
     }
 
@@ -75,6 +83,10 @@ enum StorageTableColumn: String, CaseIterable {
     var width: CGFloat { spec.width }
     var minWidth: CGFloat { spec.minWidth }
     var sortField: BridgeStorageSortField { spec.sortField }
+
+    /// Whether the person can hide the column. The release column names each
+    /// row, so it always shows: the table never runs out of columns.
+    var hideable: Bool { self != .release }
 }
 
 /// `NSSortDescriptor.key` values for the columns: the column raw value,

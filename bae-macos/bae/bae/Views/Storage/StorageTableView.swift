@@ -10,7 +10,8 @@ private let logger = Logger.bae("StorageTable")
 /// An `NSTableView`-backed storage table: AppKit handles the table
 /// mechanics (resizable / reorderable columns, header sort indicators,
 /// shift/cmd selection) with SwiftUI-hosted cell content so covers and the
-/// storage badge reuse `ImageView` / `Theme`.
+/// storage badge reuse `ImageView` / `Theme`. The columns' order, widths and
+/// which are hidden are `layout`, which the table applies and writes back.
 ///
 /// Releases load a page at a time, each page held while a row of it is in
 /// view. Their files belong to the selected-release inspector, not to child
@@ -24,6 +25,8 @@ struct StorageTableView: NSViewRepresentable {
     var sort: BridgeStorageSort
     @Binding
     var inspectorPresented: Bool
+    @Binding
+    var layout: StorageTableLayout
     let runner: StorageActionRunner
 
     @Environment(ImageStore.self)
@@ -45,6 +48,7 @@ struct StorageTableView: NSViewRepresentable {
             selection: $selection,
             sort: $sort,
             inspectorPresented: $inspectorPresented,
+            layout: $layout,
             storageManagerStore: storageManagerStore,
             runner: runner,
             imageStore: imageStore,
@@ -91,6 +95,9 @@ struct StorageTableView: NSViewRepresentable {
             )
             tableView.addTableColumn(tableColumn)
         }
+        tableView.headerView?.menu = coordinator.makeColumnsMenu()
+        coordinator.tableView = tableView
+        coordinator.applyLayout(layout)
         coordinator.applySortIndicator(to: tableView, sort: sort)
 
         let scrollView = NSScrollView()
@@ -99,7 +106,6 @@ struct StorageTableView: NSViewRepresentable {
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
-        coordinator.tableView = tableView
         coordinator.observeScrolling(of: scrollView)
         return scrollView
     }
@@ -144,6 +150,7 @@ struct StorageTableView: NSViewRepresentable {
         }
         coordinator.holdRowsInView()
 
+        coordinator.applyLayout(layout)
         coordinator.applySortIndicator(to: tableView, sort: sort)
         coordinator.applySelection(selection, to: tableView)
     }
@@ -167,6 +174,15 @@ extension StorageTableView {
         private let selection: Binding<Set<String>>
         private let sort: Binding<BridgeStorageSort>
         private let inspectorPresented: Binding<Bool>
+        /// The column layout the table shows, which column changes write.
+        let layout: Binding<StorageTableLayout>
+        /// The layout the table last took from `layout` or wrote to it,
+        /// which its columns hold but for the first column's width: that
+        /// follows the window.
+        var appliedLayout: StorageTableLayout?
+        /// True while `applyLayout` moves and resizes the table's columns,
+        /// whose notifications then carry no change of the person's.
+        var applyingLayout = false
         /// Narrows the selection to the releases the list holds, and answers
         /// with each one's row: nothing here acts on or counts a selected
         /// release the list no longer shows.
@@ -195,6 +211,7 @@ extension StorageTableView {
             selection: Binding<Set<String>>,
             sort: Binding<BridgeStorageSort>,
             inspectorPresented: Binding<Bool>,
+            layout: Binding<StorageTableLayout>,
             storageManagerStore: StorageManagerStore,
             runner: StorageActionRunner,
             imageStore: ImageStore,
@@ -206,6 +223,7 @@ extension StorageTableView {
             self.selection = selection
             self.sort = sort
             self.inspectorPresented = inspectorPresented
+            self.layout = layout
             self.storageManagerStore = storageManagerStore
             self.runner = runner
             self.imageStore = imageStore
@@ -480,7 +498,7 @@ extension StorageTableView.Coordinator {
     /// the storage chip reads `DownloadStore` and `OutboxStore`), and the
     /// window's tone and accent, which a hosted cell doesn't inherit.
     @ViewBuilder
-    private func content(
+    func content(
         forRow row: Int,
         column: StorageTableColumn
     ) -> some View {
@@ -506,6 +524,10 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         guard let tableView else { return }
+        if menu === tableView.headerView?.menu {
+            addColumnItems(to: menu)
+            return
+        }
         let clickedRow = tableView.clickedRow
         guard clickedRow >= 0, let clickedId = list.idAt(clickedRow) else {
             return
@@ -709,6 +731,7 @@ private struct StorageListCell: View {
                 release: ReleaseSummary(from: row.release),
                 album: row.album,
                 status: row.status,
+                dateAdded: row.dateAdded,
                 column: column
             )
         }

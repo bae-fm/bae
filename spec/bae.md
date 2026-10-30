@@ -1466,7 +1466,12 @@ case), artist (§2.3), media (a release stating none last), file count, size,
 storage — uploading, then pinning: files coming to this device, waiting
 or downloading in the download queue (§4.3), then local, pinned, and in the
 cloud only — or when the release was added, either way, ties going by album
-title, then when the release was added, then id. The upload queue and the pins are
+title, then when the release was added, then id. On macOS the list is a table
+with a column for each of these; a column can be dragged wider or narrower or
+to another place, sized to its header and the rows in view by double-clicking
+the divider after its header, and hidden or shown again from the menu the
+header row opens, except the release column, which always shows. Which
+columns show, their order and their widths are kept across launches. The upload queue and the pins are
 coven's, which the list's query reads beside the library's rows. Whether a
 release is pinned, here and in the album and release details, is read from
 how many of its files coven's `coven_pins` lists, whole on this device, a
