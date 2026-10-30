@@ -9,8 +9,8 @@
 #
 # Caps are about twice a fresh build of each: host 9.8G, macOS bridge 7.4G,
 # Android 6.4G, iOS 12G; the macOS app's .build holds two DerivedData trees
-# (check.sh's and run.sh's) of 5.2G each fresh; BaeKit's `swift build` 4.4G;
-# the others are under 1G. target is about three times its fresh build: main's
+# (check.sh's and run.sh's) of 2.2G each fresh and the Swift packages both
+# resolve into, 3.0G; BaeKit's `swift build` 4.4G; the others are under 1G. target is about three times its fresh build: main's
 # reached 26G across a day of clippy, tests and coven bumps, and a delete there
 # loses the person's warm host build.
 #

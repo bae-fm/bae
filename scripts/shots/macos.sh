@@ -67,6 +67,7 @@ export TEST_RUNNER_BAE_SHOTS_SCENES TEST_RUNNER_BAE_SHOTS_TONES
 xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath .build/derivedData \
+    -clonedSourcePackagesDirPath .build/SourcePackages \
     test
 
 # The test writing a PNG is not proof it landed — verify every expected scene

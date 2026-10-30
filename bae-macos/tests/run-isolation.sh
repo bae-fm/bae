@@ -63,6 +63,8 @@ require_argument "-configuration"
 require_argument "Debug"
 require_argument "-derivedDataPath"
 require_argument "$run_derived_data"
+require_argument "-clonedSourcePackagesDirPath"
+require_argument "$repo_root/bae-macos/bae/.build/SourcePackages"
 require_argument "BAE_APP_BUNDLE_IDENTIFIER=fm.bae.desktop"
 require_argument "BAE_APP_PRODUCT_NAME=bae"
 require_argument "BAE_APP_GENERATE_INFOPLIST_FILE=NO"
@@ -185,6 +187,7 @@ show_build_settings() {
     xcodebuild -project bae.xcodeproj -scheme bae \
         -configuration "$configuration" \
         -derivedDataPath .build/derivedData \
+        -clonedSourcePackagesDirPath .build/SourcePackages \
         -skipPackageUpdates -disableAutomaticPackageResolution \
         "$@" \
         -showBuildSettings 2>&1

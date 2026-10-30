@@ -195,6 +195,7 @@ check "xcodebuild (macOS baeium)" \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
+    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build
 
@@ -207,6 +208,7 @@ check "xcodebuild" \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
+    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build
 
@@ -215,6 +217,7 @@ check "xcodebuild test (baeTests)" \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
+    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution test
 
@@ -225,6 +228,7 @@ check "xcodebuild build-for-testing (baeShots)" \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme baeShots -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
+    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build-for-testing
 

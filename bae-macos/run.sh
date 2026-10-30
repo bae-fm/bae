@@ -83,6 +83,11 @@ cd bae-macos/bae && xcodegen && cd ../..
 # from replacing the other's app bundle or build records.
 DERIVED_DATA="${BAE_MACOS_RUN_DERIVED_DATA_PATH:-.build/runDerivedData}"
 DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DATA" && pwd)"
+# The Swift packages are resolved once per checkout, into one folder every
+# xcodebuild of the app shares (scripts/check.sh's tree, the screenshot
+# scenes): each DerivedData tree otherwise unpacks its own copy of Sentry's
+# binary frameworks, 2.8 GB.
+SOURCE_PACKAGES="$(cd bae-macos/bae && mkdir -p .build/SourcePackages && cd .build/SourcePackages && pwd)"
 
 # Pass app inputs under private names. The app target maps these to Xcode build
 # settings; package targets do not, so their resource bundles keep their own
@@ -92,6 +97,7 @@ XCODEBUILD_ARGUMENTS=(
     -scheme bae
     -configuration "$CONFIG"
     -derivedDataPath "$DERIVED_DATA"
+    -clonedSourcePackagesDirPath "$SOURCE_PACKAGES"
     BAE_APP_GENERATE_INFOPLIST_FILE=NO
     BAE_APP_INFOPLIST_FILE=bae/Info.plist
     BAE_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID"
