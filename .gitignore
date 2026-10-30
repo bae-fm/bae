@@ -48,7 +48,7 @@ plants/
 # BaeKit: the installed bridge bindings, the xcframeworks, and SwiftPM's
 # scratch.
 BaeKit/Sources/BaeBridge/bae_bridge_*.swift
-BaeKit/Frameworks/
+BaeKit/Frameworks
 BaeKit/.build
 BaeKit/.swiftpm/
 BaeKit/Package.resolved
@@ -88,7 +88,7 @@ bae-ios/bae/Features.xcconfig
 bae-bridge/kotlin-bindings-full/
 bae-bridge/kotlin-bindings-baeium/
 bae-android/app/src/main/jniLibs/
-bae-android/debug-symbols/
+bae-android/debug-symbols
 bae-android/local.properties
 
 # C# bindings for the Avalonia skeleton, one dir per edition

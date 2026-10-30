@@ -10,9 +10,12 @@
 # Caps are about twice a fresh build of each: host 9.8G, macOS bridge 7.4G,
 # Android 6.4G, iOS 12G; the macOS app's .build holds two DerivedData trees
 # (check.sh's and run.sh's) of 2.2G each fresh and the Swift packages both
-# resolve into, 3.0G; BaeKit's `swift build` 4.4G; the others are under 1G. target is about three times its fresh build: main's
-# reached 26G across a day of clippy, tests and coven bumps, and a delete there
-# loses the person's warm host build.
+# resolve into, 3.0G; BaeKit's `swift build` 4.4G; BaeKit/Frameworks, the
+# xcframeworks build-macos.sh and build-ios.sh make, 1.4G and 1.9G; the others,
+# the Android bridge's debug info among them (0.4G per ABI), are under 1G.
+# target is about three times its fresh build: main's reached 26G across a day
+# of clippy, tests and coven bumps, and a delete there loses the person's warm
+# host build.
 #
 # path                                cap
 target                                30G
@@ -22,7 +25,9 @@ target-android                        13G
 bae-macos/bae/.build                  20G
 bae-ios/bae/.build                    10G
 BaeKit/.build                         9G
+BaeKit/Frameworks                     7G
 bae-android/.gradle                   1G
+bae-android/debug-symbols             2G
 bae-android/app/build                 2G
 bae-android/bridge/build              1G
 bae-android/fastvalues/build          1G
