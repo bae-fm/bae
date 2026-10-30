@@ -127,6 +127,9 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 dirs = "5.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
 coven = { workspace = true, features = ["test-utils"] }
+# The playback queue bench's no-op pre-update hook, which makes plain SQLite
+# delete row by row as coven's hook does.
+rusqlite = { workspace = true, features = ["preupdate_hook"] }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = "1.0.1"
