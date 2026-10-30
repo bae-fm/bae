@@ -318,9 +318,10 @@ impl Database {
 
     /// Queue to pin, in the order given, each of `release_ids` that is
     /// uploaded and not wholly pinned on this device, as its listing says,
-    /// passing over one already in the queue in any phase, one the library no
-    /// longer holds, and one local: decided in the write that queues them.
-    /// `true` when any went in.
+    /// passing over one waiting or downloading, one the library no longer
+    /// holds, and one local: decided in the write that queues them. One whose
+    /// download failed is queued again in its place, as a retry queues it.
+    /// `true` when any went in or was queued again.
     pub(crate) async fn enqueue_pinnable_releases(
         &self,
         release_ids: Vec<String>,
@@ -336,7 +337,8 @@ impl Database {
                      JOIN release_listing AS listing ON listing.release_id = requested.value \
                      WHERE listing.stored = 1 AND NOT {pinned} \
                      ORDER BY requested.key \
-                     ON CONFLICT (release_id) DO NOTHING",
+                     ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL \
+                     WHERE download_queue.state = 'failed'",
                     pinned = super::query::RELEASE_LISTING_PINNED,
                 ),
                 rusqlite::named_params! {

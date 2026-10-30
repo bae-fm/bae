@@ -110,8 +110,9 @@ impl LibraryManager {
     }
 
     /// Enqueue releases to pin for offline, in one write that passes over ids
-    /// already in the queue (in any state), missing from the library (deleted
-    /// meanwhile), local, or already pinned. A write that fails queues nothing
+    /// already waiting or downloading, missing from the library (deleted
+    /// meanwhile), local, or already pinned, and queues one whose download
+    /// failed again in its place. A write that fails queues nothing
     /// and is reported as a bug: the library's own rows failed to read. The
     /// entry names the release by id only; the Downloads pane reads its title,
     /// file count, and size from the library as it shows the row. Wakes the

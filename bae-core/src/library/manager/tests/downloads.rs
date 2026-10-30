@@ -186,6 +186,45 @@ async fn download_queue_failed_pin_retries() {
     );
 }
 
+/// Pinning a release whose download failed queues that entry again, in its
+/// place ahead of one queued after it, with its error gone.
+#[tokio::test]
+async fn pinning_a_failed_download_queues_it_again_in_its_place() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let failed = insert_pinnable_release(&manager).await;
+    let source = manager.get_config().library_path().join("second-source");
+    let later = uploaded_release(&manager, &source, "Album Title", false).await;
+
+    manager.storage.set_online(false);
+    manager.enqueue_pins(vec![failed.clone()]).await.unwrap();
+    download_queue_until(&manager, |queue| {
+        matches!(
+            queue.rows.first().map(|row| &row.op.state),
+            Some(crate::library::DownloadPhase::Failed { .. })
+        )
+    })
+    .await;
+    // The worker leaves both entries waiting from here.
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![later.clone()]).await.unwrap();
+
+    manager.enqueue_pins(vec![failed.clone()]).await.unwrap();
+
+    let queue = download_queue_now(&manager).await;
+    assert_eq!(
+        queue
+            .rows
+            .iter()
+            .map(|row| (row.op.release_id.clone(), row.op.state.clone()))
+            .collect::<Vec<_>>(),
+        [
+            (failed, crate::library::DownloadPhase::Queued),
+            (later, crate::library::DownloadPhase::Queued),
+        ]
+    );
+    assert_eq!(queue.total.failed, 0);
+}
+
 /// Each step of bytes a pin drives reaches the active download's progress,
 /// read apart from the queue's table.
 #[cfg(feature = "test-utils")]

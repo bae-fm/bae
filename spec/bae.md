@@ -1529,8 +1529,9 @@ since it began over the time since. Unpinning moves the files into the
 cache, still readable, now evictable.
 
 Asking to pin several releases queues, in the order asked and in one write,
-each that can be: one already queued, pinned, local, or deleted meanwhile is
-passed over, as the releases' listing says. If the write fails, nothing is
+each that can be: one already waiting or downloading, pinned, local, or
+deleted meanwhile is passed over, as the releases' listing says, and one whose
+pin failed is queued again in its place, as retrying queues it. If the write fails, nothing is
 queued; the person sees the error and the failure is reported as a bug.
 
 ### 4.4 Making a release local again
