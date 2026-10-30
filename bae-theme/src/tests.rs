@@ -232,9 +232,9 @@ fn both_platforms_carry_every_space_icon_and_size() {
 fn the_launch_background_is_the_standard_tones() {
     let theme = Theme::from_toml(THEME).unwrap();
     let resources = android::launch_resources(&theme).unwrap();
-    // Midnight's backgrounds.
+    // Plum's backgrounds.
     assert_eq!(resources[0].0, "res/values/theme_colors.xml");
-    assert!(resources[0].1.contains(">#FFE5E5F1<"));
+    assert!(resources[0].1.contains(">#FFEFE4F1<"));
     assert_eq!(resources[1].0, "res/values-night/theme_colors.xml");
-    assert!(resources[1].1.contains(">#FF11111B<"));
+    assert!(resources[1].1.contains(">#FF201B25<"));
 }

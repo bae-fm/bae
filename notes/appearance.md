@@ -9,7 +9,7 @@ values there rather than adding a platform palette.
 Appearance settings have three independent choices: System/Light/Dark mode,
 Blue/Indigo/Purple/Pink/Red/Amber/Green/Teal accent, and
 Neutral/Slate/Plum/Midnight/Forest/Sand background tone. A new installation
-shows System mode, the Pink accent and the Midnight tone. The mode default is
+shows System mode, the Pink accent and the Plum tone. The mode default is
 each app's own. The accent and tone are the ones `[standard]` in
 `design/theme.toml` names, which theme-gen emits as `standard` on the Swift
 enums and `STANDARD` on the Kotlin ones; the standard tone also colours
