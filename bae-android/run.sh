@@ -28,7 +28,9 @@ fi
 if [[ -z "$ANDROID_SERIAL" ]]; then
     AVD=$(emulator -list-avds | head -1)
     echo "No device connected; booting emulator: $AVD"
-    emulator -avd "$AVD" -no-snapshot-load &
+    # -no-snapshot: boot cold and save no quick-boot snapshot on exit (about
+    # 4 GB on the disk the builds share).
+    emulator -avd "$AVD" -no-snapshot &
     adb wait-for-device
     # Wait for boot to complete
     while [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do sleep 1; done
