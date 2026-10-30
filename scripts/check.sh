@@ -14,12 +14,6 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 ./scripts/build-layout.sh
 
-# The tests load FFmpeg's dylibs from bae-ffmpeg/dist; SIP strips an inherited
-# DYLD_* variable, so it is set here.
-if [[ -d "$ROOT/bae-ffmpeg/dist/lib" ]]; then
-  export DYLD_LIBRARY_PATH="$ROOT/bae-ffmpeg/dist/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-fi
-
 # The Android SDK, JDK and NDK the Gradle and cargo steps use; a missing SDK
 # or NDK fails here, before any check runs.
 source bae-android/toolchain.sh

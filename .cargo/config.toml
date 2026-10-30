@@ -18,6 +18,12 @@ PKG_CONFIG_PATH = { value = "bae-ffmpeg/dist/lib/pkgconfig", relative = true, fo
 # (its per-ABI cross-builds override this inline with the android prefix, which
 # wins as a real env var over this force=false value).
 FFMPEG_DIR = { value = "bae-ffmpeg/dist", relative = true, force = false }
+# Where test and tool binaries find FFmpeg's libraries at run time on macOS.
+# Set here, not by each caller, because macOS drops DYLD_* variables whenever a
+# shell script starts (scripts/cargo.sh, the hooks), while cargo passes this to
+# every process it runs: tests, `cargo run`, build scripts. A real env var
+# still wins.
+DYLD_LIBRARY_PATH = { value = "bae-ffmpeg/dist/lib", relative = true, force = false }
 # SQLite as coven builds it, set here because the workspace that builds
 # libsqlite3-sys decides. bae reads none of SQLite's process-wide allocation
 # counters or heap limits; left on, they serialize every allocation across
