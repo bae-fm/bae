@@ -128,9 +128,13 @@ pub(super) fn key_category(error: &coven::KeyError) -> C {
         // The build lacks its keychain entitlement: no keyring the person
         // could fix, and no retry that helps.
         E::MissingKeychainEntitlement(_) => C::KeychainEntitlementMissing,
-        // The person left the store, so coven refuses to write their synced
+        // The person left the store, so coven refuses to write their saved
         // restore code or S3 key again: the removal, not the keychain, failed it.
         E::Left => C::DeviceRemoved,
+        // Android's Block Store limits: the phone keeps no more saved codes,
+        // or this one is too large to keep. Neither is a broken keyring.
+        E::SavedEntriesFull => C::SavedRestoreCodesFull,
+        E::SavedEntryTooLarge => C::SavedRestoreCodeTooLarge,
         E::DeviceIdEncoding
         | E::File(_)
         | E::Crypto(_)

@@ -37,7 +37,7 @@ public final class LibraryBootstrap {
         credentials: BridgeS3Credentials?
     ) async throws -> BridgeBootstrapResult {
         try await runRestore { callback, cancellation in
-            try await self.host.restoreFromKeychain(
+            try await self.host.restoreFromSavedCode(
                 saved: saved,
                 credentials: credentials,
                 deviceName: self.deviceName,

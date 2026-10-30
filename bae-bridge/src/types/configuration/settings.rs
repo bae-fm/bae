@@ -182,6 +182,11 @@ pub enum BridgeErrorCategory {
     /// This build was signed without its keychain entitlement, so no keychain
     /// call succeeds; neither retrying nor unlocking fixes it.
     KeychainEntitlementMissing,
+    /// Android's Block Store already holds as many saved restore codes as it
+    /// keeps for an app.
+    SavedRestoreCodesFull,
+    /// The restore code is too large for a Block Store entry.
+    SavedRestoreCodeTooLarge,
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
@@ -368,6 +373,8 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
         BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
         BridgeErrorCategory::KeychainEntitlementMissing => "core.error.keyring.entitlement_missing",
+        BridgeErrorCategory::SavedRestoreCodesFull => "core.error.keyring.saved_codes_full",
+        BridgeErrorCategory::SavedRestoreCodeTooLarge => "core.error.keyring.saved_code_too_large",
         BridgeErrorCategory::Membership => "core.error.category.membership",
         BridgeErrorCategory::InviteJoining => "core.error.category.invite_joining",
         BridgeErrorCategory::Renderer => "core.error.category.renderer",
@@ -561,6 +568,8 @@ mirror_enum! {
         Keyring,
         KeyringLocked,
         KeychainEntitlementMissing,
+        SavedRestoreCodesFull,
+        SavedRestoreCodeTooLarge,
         Membership,
         InviteJoining,
         Renderer,

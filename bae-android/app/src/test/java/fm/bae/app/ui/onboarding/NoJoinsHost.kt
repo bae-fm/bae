@@ -62,13 +62,13 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         cancellation: BootstrapCancellation,
     ): BridgeBootstrapResult = unfaked("restoreFromCode")
 
-    override suspend fun restoreFromKeychain(
+    override suspend fun restoreFromSavedCode(
         saved: BridgeSavedRestoreCode,
         credentials: BridgeS3Credentials?,
         deviceName: String,
         callback: BootstrapCallback,
         cancellation: BootstrapCancellation,
-    ): BridgeBootstrapResult = unfaked("restoreFromKeychain")
+    ): BridgeBootstrapResult = unfaked("restoreFromSavedCode")
 
     override suspend fun restoreReplacingDevice(
         libraryId: String,

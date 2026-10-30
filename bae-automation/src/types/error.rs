@@ -136,6 +136,8 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::Keyring
             | UiErrorCategory::KeyringLocked
             | UiErrorCategory::KeychainEntitlementMissing
+            | UiErrorCategory::SavedRestoreCodesFull
+            | UiErrorCategory::SavedRestoreCodeTooLarge
             | UiErrorCategory::Membership
             | UiErrorCategory::InviteJoining
             | UiErrorCategory::Renderer => Self::Unavailable(detail),

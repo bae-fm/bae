@@ -160,7 +160,8 @@ impl BridgeBootstrapResult {
     }
 }
 
-/// One library's entry in iCloud Keychain, as listing found it. Only a
+/// One library's saved entry, in iCloud Keychain on Apple or Block Store on
+/// Android, as listing found it. Only a
 /// readable entry carries a code to restore from; either can be deleted by
 /// its library id.
 #[derive(Clone, uniffi::Enum)]
@@ -209,7 +210,7 @@ impl BridgeUnreadableSavedCode {
     }
 }
 
-/// A restore code saved in iCloud Keychain that bae can restore from.
+/// A saved restore code bae can restore from.
 #[derive(uniffi::Object)]
 pub struct BridgeSavedRestoreCode {
     pub(crate) saved: coven::SavedRestoreCode,

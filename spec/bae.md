@@ -2727,7 +2727,7 @@ library is registered there by id.
 | Call | What it does |
 |---|---|
 | `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
-| `restore_from_code`, `restore_from_keychain` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
+| `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device, each with its library's saved name; an entry coven can't restore from is listed with its library id and why, for deleting only |
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
@@ -3503,6 +3503,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Network` | retries |
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
 | `KeychainEntitlementMissing` | installs a build of bae signed with its keychain entitlement; retrying or unlocking doesn't help |
+| `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge` | on Android, learns the library's recovery code couldn't be saved on the phone: Block Store already keeps as many entries as Android gives an app, or the code doesn't fit in one ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) |
 | `Membership` | retries the membership step, with the advice it carries |
 | `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in (§5.6) |
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |

@@ -34,8 +34,14 @@ DYLD_LIBRARY_PATH = { value = "bae-ffmpeg/dist/lib", relative = true, force = fa
 # SQLite's own default: temporary tables in files unless a connection asks for
 # memory. coven also refuses 2, which keeps them in memory unless a connection
 # asks for files. The Android app names the folder at launch
-# (`set_temporary_directory`).
-LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0 -USQLITE_TEMP_STORE -DSQLITE_TEMP_STORE=1", force = true }
+# (`set_temporary_directory`). A statement's journal, the pages it changed
+# kept to undo it alone, spills to a file past 124 KiB rather than SQLite's
+# 64 KiB: the FTS5 indexes bae keeps by trigger merge segments inside the
+# writing statement, past 64 KiB within a few hundred rows, and once a journal
+# spills every later statement of the transaction writes its journal to that
+# file. SQLite's unix file layer writes less than 128 KiB a call, and a spill
+# writes all the journal holds at once, so a larger limit fails the statement.
+LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0 -USQLITE_TEMP_STORE -DSQLITE_TEMP_STORE=1 -DSQLITE_STMTJRNL_SPILL=126976", force = true }
 
 # A Windows build links the C runtime into each binary. The default links it
 # dynamically, making bae's DLL import vcruntime140.dll, which is the Visual

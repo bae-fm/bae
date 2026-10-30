@@ -83,8 +83,9 @@ impl BridgeHost {
         .await
     }
     /// Delete the library's saved restore code, readable or not, and the S3
-    /// key saved beside it, from iCloud Keychain on all the person's Apple
-    /// devices. The library, its storage and every device's copy stay.
+    /// key saved beside it: from iCloud Keychain on all the person's Apple
+    /// devices, or from this phone's Block Store on Android. The library, its
+    /// storage and every device's copy stay.
     pub async fn forget_saved_restore_code(
         self: Arc<Self>,
         library_id: String,
@@ -194,7 +195,7 @@ impl BridgeHost {
         )
         .await
     }
-    pub async fn restore_from_keychain(
+    pub async fn restore_from_saved_code(
         self: Arc<Self>,
         saved: Arc<BridgeSavedRestoreCode>,
         credentials: Option<BridgeS3Credentials>,
@@ -213,7 +214,7 @@ impl BridgeHost {
             self.clone(),
             "restore saved library",
             move || async move {
-                match bae_core::library::restore_from_keychain(
+                match bae_core::library::restore_from_saved_code(
                     self.builder(),
                     &self.app_dir,
                     &saved.saved,

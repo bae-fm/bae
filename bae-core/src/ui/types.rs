@@ -80,6 +80,12 @@ pub enum UiErrorCategory {
     /// same way. A packaging fault, not the person's keyring or storage:
     /// retrying or unlocking changes nothing until the app is signed with it.
     KeychainEntitlementMissing,
+    /// The phone's Block Store already holds the 16 entries Android gives an
+    /// app, so the restore code coven saves for the person can't be saved.
+    SavedRestoreCodesFull,
+    /// The restore code doesn't fit in one Block Store entry, even with the
+    /// library's name shortened.
+    SavedRestoreCodeTooLarge,
     /// A library-sharing membership operation failed: the membership chain, an
     /// invite, or key rotation across devices.
     Membership,

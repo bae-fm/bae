@@ -221,8 +221,8 @@ impl Keychain {
         }
     }
 
-    /// The restore codes saved in this keychain (iCloud Keychain on Apple)
-    /// for libraries not already on this device: a library this device has
+    /// The restore codes saved for the person (iCloud Keychain on Apple,
+    /// this phone's Block Store on Android) for libraries not already on this device: a library this device has
     /// is opened, not restored. An entry coven can't restore from is listed
     /// as unreadable, with its library's id and why, so the person can
     /// delete it.
@@ -239,11 +239,12 @@ impl Keychain {
     }
 
     /// Delete a library's saved restore code, and the S3 key saved beside it,
-    /// from this keychain: on Apple, from iCloud Keychain, and so from every
-    /// one of the person's Apple devices. It changes no library, storage or
-    /// device's copy, and needs no open library. An unreadable entry is
-    /// deleted the same way. An entry already gone succeeds, and calling
-    /// again finishes one that failed partway.
+    /// from where it is saved: on Apple, from iCloud Keychain, and so from
+    /// every one of the person's Apple devices; on Android, from this phone's
+    /// Block Store. It changes no library, storage or device's copy, and
+    /// needs no open library. An unreadable entry is deleted the same way. An
+    /// entry already gone succeeds, and calling again finishes one that
+    /// failed partway.
     pub async fn forget_saved_restore_code(
         &self,
         store: coven::StoreId,
@@ -480,7 +481,7 @@ pub async fn restore_from_code(
     .map_err(restore_error)
 }
 
-pub async fn restore_from_keychain(
+pub async fn restore_from_saved_code(
     mut builder: coven::CovenBuilder,
     app_dir: &AppDir,
     saved: &coven::SavedRestoreCode,
@@ -490,7 +491,7 @@ pub async fn restore_from_keychain(
     cancel: &watch::Receiver<bool>,
 ) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
     bootstrap_auth::authenticate(&mut builder, saved.location.oauth_access(), cancel).await?;
-    coven::restore_from_keychain(
+    coven::restore_from_saved_code(
         loading_builder(builder, app_dir, saved.store_id)?,
         saved,
         s3_credentials,

@@ -292,6 +292,8 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::Keyring,
         BridgeErrorCategory::KeyringLocked,
         BridgeErrorCategory::KeychainEntitlementMissing,
+        BridgeErrorCategory::SavedRestoreCodesFull,
+        BridgeErrorCategory::SavedRestoreCodeTooLarge,
         BridgeErrorCategory::Membership,
         BridgeErrorCategory::InviteJoining,
         BridgeErrorCategory::Renderer,

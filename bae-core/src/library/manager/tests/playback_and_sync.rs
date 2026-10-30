@@ -337,6 +337,13 @@ fn setup_failure_classes_retain_the_actionable_category() {
         (coven::SyncError::SecureStorage(coven::KeyError::Left).into(), C::DeviceRemoved),
         (missing_entitlement().into(), C::KeychainEntitlementMissing),
         (coven::SyncError::SecureStorage(missing_entitlement()).into(), C::KeychainEntitlementMissing),
+        // Block Store's limits on Android say which one was met, not that the
+        // keyring broke.
+        (coven::KeyError::SavedEntriesFull.into(), C::SavedRestoreCodesFull),
+        (
+            coven::SyncError::SecureStorage(coven::KeyError::SavedEntryTooLarge).into(),
+            C::SavedRestoreCodeTooLarge,
+        ),
         (LibraryError::CloudSetup(coven::StorageSetupError::Removed), C::DeviceRemoved),
         (LibraryError::CloudUnlock(coven::StoreKeyUnlockError::Removed), C::DeviceRemoved),
         (

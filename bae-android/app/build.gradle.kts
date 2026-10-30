@@ -179,6 +179,10 @@ dependencies {
     // The JVM half of the Rust TLS verifier, located through Cargo metadata by
     // settings.gradle.
     implementation(nativeDeps.rustls.platform.verifier)
+    // Google's Block Store, where coven keeps the person's saved restore codes
+    // on Android. coven loads its classes whenever it builds the keychain, so
+    // opening, creating or restoring a library fails without them.
+    implementation("com.google.android.gms:play-services-auth-blockstore:16.4.0")
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
