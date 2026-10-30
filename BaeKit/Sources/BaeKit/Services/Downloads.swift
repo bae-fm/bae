@@ -1,7 +1,7 @@
 import Foundation
 
 /// Controls for the download (pin) queue: enqueue releases to pin,
-/// pause/resume the queue, and cancel downloads.
+/// pause/resume the queue, retry failed downloads, and cancel downloads.
 /// Mirrors the outbox controls on `Sync`, wrapping the corresponding
 /// `handle.*` methods. The queue itself lives in bae-core; the Storage
 /// Manager's inspector reads a release's entry in it, and `DownloadStore`
@@ -24,6 +24,8 @@ public final class Downloads: Sendable, Observable {
     /// in-flight one (the release stays cloud-only).
     public let cancelDownload:
         @Sendable (_ releaseId: String) async throws -> Void
+    /// Queue every failed download again, each in its place.
+    public let retryDownloads: @Sendable () async throws -> Void
     /// How many downloads a pin fetches at once (1...8). A persisted device-local
     /// config write, unlike the runtime pause/cancel controls: it throws on an
     /// out-of-range value or a failed write, so the picker can snap back. Takes
@@ -43,6 +45,7 @@ public final class Downloads: Sendable, Observable {
         cancelDownload: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
+        retryDownloads: @escaping @Sendable () async throws -> Void = {},
         setMaxConcurrentDownloads:
             @escaping @Sendable (UInt32) async throws -> Void =
             {
@@ -53,6 +56,7 @@ public final class Downloads: Sendable, Observable {
         self.unpinRelease = unpinRelease
         self.setDownloadsPaused = setDownloadsPaused
         self.cancelDownload = cancelDownload
+        self.retryDownloads = retryDownloads
         self.setMaxConcurrentDownloads = setMaxConcurrentDownloads
     }
 
@@ -64,6 +68,7 @@ public final class Downloads: Sendable, Observable {
                 try await handle.setDownloadsPaused(paused: $0)
             },
             cancelDownload: { try await handle.cancelDownload(releaseId: $0) },
+            retryDownloads: { try await handle.retryDownloads() },
             setMaxConcurrentDownloads: {
                 try await handle.setMaxConcurrentDownloads(n: $0)
             }

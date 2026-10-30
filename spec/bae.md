@@ -1513,7 +1513,10 @@ track as it plays. Over budget, the least recently used go first. Covers are
 never pinned; an evicted one is fetched again the next time it is shown.
 
 Pins download one release at a time from a queue that can be paused,
-cancelled and retried. A release becomes pinned only once every file lands. The
+cancelled and retried. A pin that fails stays in the queue with its error;
+retrying queues every failed pin again, each in its place, so a release's own
+control retries them all, as the queue's does. A release becomes pinned only
+once every file lands. The
 queue is kept on the device and emptied as the library opens: after a restart
 it is empty and running, and a release that wasn't fully pinned stays as it
 was. How far the release downloading has got is not kept, nor how fast it
@@ -2744,7 +2747,8 @@ Reads come two ways:
   how fast it goes; a file downloading shows a ring filling as it comes, and
   one waiting its turn a dashed circle. Coven's fetch
   shows the same counts and marks, with no control and no bytes: no queue
-  entry of bae's holds it. A failed pin shows its error instead. Selecting a file shows its details under the list,
+  entry of bae's holds it. A failed pin shows its error instead, with a
+  control that retries it (§4.3) and one that cancels it. Selecting a file shows its details under the list,
   closed by a button or by selecting nothing: its name and the folder it
   sits in within the release's folder, what kind of file it is, its audio
   format, and its size. Core reads a file's kind from its content type, and

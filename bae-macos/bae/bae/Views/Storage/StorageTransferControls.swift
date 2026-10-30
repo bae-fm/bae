@@ -48,17 +48,22 @@ struct StorageTransferControls: View {
         case .pinFetch(let summary):
             StoragePinSummary(summary: summary, download: nil)
         case .download(let operation, nil):
-            // A failed download: the row says why and offers its cancel.
+            // A failed download: the row says why and offers its retry and
+            // its cancel.
             DownloadRow(
                 op: operation,
                 transfer: downloadStore.downloadProgress(
                     forRelease: operation.releaseId
-                )
-            ) {
-                run {
-                    try await downloads.cancelDownload(operation.releaseId)
+                ),
+                onRetry: {
+                    run { try await downloads.retryDownloads() }
+                },
+                onCancel: {
+                    run {
+                        try await downloads.cancelDownload(operation.releaseId)
+                    }
                 }
-            }
+            )
         case .output(let operation):
             // The row's native label alone follows the percent the export
             // reaches.

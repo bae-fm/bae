@@ -2,12 +2,15 @@ import BaeKit
 import SwiftUI
 
 /// One download-queue row: album title, file count, size, a state badge, and a
-/// cancel button.
+/// cancel button; once the download failed, a button that queues every failed
+/// download again.
 struct DownloadRow: View {
     let op: BridgeDownloadOp
     /// The latest progress of the download, which the row's native readout
     /// reads each display frame while the download runs.
     let transfer: LatestSource<BridgeDownloadTransferProgress>
+    /// Core retries the queue's failures together, not this entry alone.
+    let onRetry: () -> Void
     let onCancel: () -> Void
 
     var body: some View {
@@ -47,12 +50,16 @@ struct DownloadRow: View {
                 symbol: "arrow.down.circle.fill"
             )
         case .failed(let error):
-            StatusChip(
-                "Failed",
-                tone: .danger,
-                symbol: StatusTone.danger.symbol
-            )
-            .help(error)
+            HStack(spacing: ThemeSpace.related) {
+                StatusChip(
+                    "Failed",
+                    tone: .danger,
+                    symbol: StatusTone.danger.symbol
+                )
+                .help(error)
+                Button("Retry", action: onRetry)
+                    .controlSize(.small)
+            }
         }
     }
 
@@ -72,6 +79,7 @@ struct DownloadRow: View {
                     op: op,
                     transfer: PreviewData.downloadStore()
                         .downloadProgress(forRelease: op.releaseId),
+                    onRetry: {},
                     onCancel: {}
                 )
                 Divider()
