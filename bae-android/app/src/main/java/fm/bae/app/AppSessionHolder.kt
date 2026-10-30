@@ -108,11 +108,12 @@ sealed interface AppScreen {
     /**
      * Opening failed because this device's copy can't be used as it stands —
      * a damaged database, or another copy of this device. Resetting loads the
-     * library from storage again under a new device id.
+     * library from storage again under a new device id. [error] is why the
+     * open or the last reset failed; none after a reset was cancelled.
      */
     data class ResetOffered(
         override val libraryId: String,
-        val error: ScreenFailure,
+        val error: ScreenFailure?,
     ) : Recovery
 
     /**
@@ -146,19 +147,21 @@ sealed interface AppScreen {
     /**
      * Joining made this device a member, but writing the person's profile
      * failed. The library stays open on this device's membership; the person
-     * gives their name again.
+     * gives their name again. [error] is why, none when core says the failure
+     * has nothing to show.
      */
     data class ProfileRequired(
         val session: OpenLibrary,
-        val error: DisplayError,
+        val error: DisplayError?,
     ) : AppScreen
 
     /**
      * A library left its store, but this device's files for it remain, from
-     * this run or an earlier one; finishing deletes them.
+     * this run or an earlier one; finishing deletes them. [error] is why the
+     * last attempt stopped, none when core says it has nothing to show.
      */
     data class RemovalIncomplete(
-        val error: DisplayError,
+        val error: DisplayError?,
     ) : AppScreen
 
     data class Failed(
@@ -246,7 +249,13 @@ object AppSessionHolder {
             try {
                 host.listLibraries()
             } catch (e: BridgeException) {
-                discovered.fail(errorMessage(context, e))
+                // A cancelled listing found nothing out, so the last one stands.
+                val shown = context.displayError(e)
+                if (shown == null) {
+                    logger.debug("listing libraries was cancelled; the last listing stands")
+                } else {
+                    discovered.fail(shown)
+                }
                 throw e
             }
         discovered.replaceAll(result)
@@ -266,7 +275,8 @@ object AppSessionHolder {
      * surfaces as
      * [AppScreen.Failed] rather than an empty device, so the person isn't
      * invited to restore a duplicate library on top of one that already
-     * exists.
+     * exists. A cancelled listing shows nothing and lands on onboarding, as
+     * macOS lands on its welcome.
      */
     suspend fun openDiscoveredOrOnboard(
         context: Context,
@@ -281,17 +291,24 @@ object AppSessionHolder {
                 if (unfinished != null) {
                     logger.error("a library removal didn't finish", unfinished.error)
                     if (unfinished.filesRemain) {
-                        onScreen(AppScreen.RemovalIncomplete(errorMessage(context, unfinished.error)))
+                        onScreen(AppScreen.RemovalIncomplete(context.displayError(unfinished.error)))
                         return
                     }
-                    notice = errorMessage(context, unfinished.error)
+                    notice = context.displayError(unfinished.error)
                 }
                 listLibraries(host, context)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("listing libraries failed", e)
-                onScreen(AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_LIST, errorMessage(context, e))))
+                val shown = context.displayError(e)
+                onScreen(
+                    if (shown == null) {
+                        AppScreen.Onboarding
+                    } else {
+                        AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_LIST, shown))
+                    },
+                )
                 return
             }
         val next = remaining.firstOrNull()
@@ -309,7 +326,9 @@ object AppSessionHolder {
     /**
      * Open [libraryId]: reuse the open session if it's already this library,
      * else open it off-main and install it in place of any other open session.
-     * Emits the resulting screen through [onScreen] on the main thread.
+     * Emits the resulting screen through [onScreen] on the main thread. A
+     * cancelled open shows nothing and stays on the library already open, or
+     * onboarding when none is.
      *
      * The session's coroutines run in the holder-owned [appScope], not a caller
      * scope, so a config change can't cancel them and re-opening can't leak the
@@ -344,7 +363,8 @@ object AppSessionHolder {
             throw e
         } catch (e: BridgeException) {
             logger.error("opening library $libraryId failed", e)
-            onScreen(AppScreen.openFailed(libraryId, e, errorMessage(context, e)))
+            val shown = context.displayError(e)
+            onScreen(if (shown == null) openOrOnboarding() else AppScreen.openFailed(libraryId, e, shown))
         }
     }
 
@@ -353,7 +373,8 @@ object AppSessionHolder {
      * carries: the store is already open, so it is never reopened by id. A
      * failure after the store was published opens it all the same and shows
      * the failure; a join whose profile couldn't be written opens it and asks
-     * for the person's name again.
+     * for the person's name again. An open that was cancelled shows nothing
+     * and stays on the library already open, or onboarding when none is.
      */
     suspend fun openBootstrapped(
         context: Context,
@@ -382,15 +403,22 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("opening the restored library failed", e)
-                onScreen(AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, errorMessage(context, e))))
+                val shown = context.displayError(e)
+                onScreen(
+                    if (shown == null) {
+                        openOrOnboarding()
+                    } else {
+                        AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+                    },
+                )
                 return
             }
         refreshLibraries(app.host, context)
-        val shown = failure?.let { errorMessage(context, it) }
+        val shown = failure?.let(context::displayError)
         onScreen(
             when {
                 result is BridgeBootstrapResult.ProfileRequired -> {
-                    AppScreen.ProfileRequired(session, checkNotNull(shown) { "a profile failure has a line" })
+                    AppScreen.ProfileRequired(session, shown)
                 }
 
                 else -> {
@@ -427,14 +455,14 @@ object AppSessionHolder {
      * finish a reset that stopped partway: the open session of that library
      * closes first, then coven loads the library from storage again under a
      * new device id. A failed reset shows [failed] with why, the screen it
-     * was started from.
+     * was started from; a cancelled one shows that screen with nothing.
      */
     suspend fun resetDevice(
         context: Context,
         libraryId: String,
         reset: BridgeDeviceReset,
         onScreen: (AppScreen) -> Unit,
-        failed: (ScreenFailure) -> AppScreen,
+        failed: (ScreenFailure?) -> AppScreen,
     ) {
         onScreen(AppScreen.Loading)
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
@@ -448,7 +476,7 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("resetting the device for $libraryId failed", e)
-                onScreen(failed(ScreenFailure(FailedStep.DEVICE_RESET, errorMessage(context, e))))
+                onScreen(failed(context.displayError(e)?.let { ScreenFailure(FailedStep.DEVICE_RESET, it) }))
                 return
             }
         openBootstrapped(context, result, onScreen)
@@ -460,8 +488,11 @@ object AppSessionHolder {
      * since that library opens only once its call finishes.
      */
     fun leaveFinishing(onScreen: (AppScreen) -> Unit) {
-        onScreen(current?.let { AppScreen.LibraryOpen(it) } ?: AppScreen.Onboarding)
+        onScreen(openOrOnboarding())
     }
+
+    /** The open library, or onboarding when none is open. */
+    private fun openOrOnboarding(): AppScreen = current?.let { AppScreen.LibraryOpen(it) } ?: AppScreen.Onboarding
 
     /**
      * Close the open library and offer restoring it with the person's current
@@ -478,8 +509,9 @@ object AppSessionHolder {
     /**
      * Remove the open library from this device, once the person confirmed
      * what it loses. Core leaves the store first; offline, that fails and the
-     * library stays, reopened with the failure shown. Then the next library
-     * opens, or onboarding when none remain.
+     * library stays, reopened with the failure shown, or with nothing when
+     * the removal was cancelled. Then the next library opens, or onboarding
+     * when none remain.
      */
     suspend fun removeActiveLibrary(
         context: Context,
@@ -495,9 +527,10 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("removing library ${session.libraryId} failed", e)
-                val failure = errorMessage(context, e)
                 val message =
-                    failure.copy(line = "${context.coreString("ui.load_error.removal.title")}: ${failure.line}")
+                    context.displayError(e)?.let { failure ->
+                        failure.copy(line = "${context.coreString("ui.load_error.removal.title")}: ${failure.line}")
+                    }
                 openLibrary(context, session.libraryId) { screen ->
                     if (screen is AppScreen.LibraryOpen) screen.session.messages.show(message)
                     onScreen(screen)
@@ -511,7 +544,7 @@ object AppSessionHolder {
 
             is BridgeLibraryRemoval.Unfinished -> {
                 logger.error("library ${session.libraryId} left its store but its files remain", removal.removal.error)
-                onScreen(AppScreen.RemovalIncomplete(errorMessage(context, removal.removal.error)))
+                onScreen(AppScreen.RemovalIncomplete(context.displayError(removal.removal.error)))
             }
         }
     }
@@ -528,7 +561,7 @@ object AppSessionHolder {
             throw e
         } catch (e: BridgeException) {
             logger.error("finishing the library removal failed", e)
-            onScreen(AppScreen.RemovalIncomplete(errorMessage(context, e)))
+            onScreen(AppScreen.RemovalIncomplete(context.displayError(e)))
             return
         }
         openDiscoveredOrOnboard(context, onScreen)
@@ -636,9 +669,3 @@ object AppSessionHolder {
             cast = CastStore(),
         )
 }
-
-/** What a failed library operation shows: core's localized line and diagnostic, or the error itself. */
-private fun errorMessage(
-    context: Context,
-    error: BridgeException,
-): DisplayError = context.displayError(error) ?: DisplayError(error.toString())

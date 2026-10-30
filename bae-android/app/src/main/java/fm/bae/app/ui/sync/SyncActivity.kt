@@ -306,16 +306,14 @@ internal class TransferBytesView(
     }
 }
 
-/** A failure sync reported, in the warning tone, with its diagnostic behind it. */
+/** A failure sync reported, in the warning tone, with its diagnostic behind it; nothing for a cancellation. */
 @Composable
 internal fun FailureDisclosure(
     context: Context,
     failure: BridgeException,
 ) {
-    ErrorDetailDisclosure(
-        error = context.displayError(failure) ?: DisplayError(failure.toString()),
-        lineColor = StatusTone.WARNING.color,
-    )
+    val shown = context.displayError(failure) ?: return
+    ErrorDetailDisclosure(error = shown, lineColor = StatusTone.WARNING.color)
 }
 
 @Composable

@@ -31,7 +31,7 @@ fun ScreenFailureNotice(
             style = ThemeText.heading.style,
             textAlign = TextAlign.Center,
         )
-        ErrorDetailDisclosure(error = failure.error)
+        failure.error?.let { ErrorDetailDisclosure(error = it) }
         failure.step.adviceKey?.let { key ->
             Text(
                 text = context.coreString(key),

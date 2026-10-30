@@ -118,15 +118,15 @@ internal class MembersModel(
         reloading?.cancel()
         reloading =
             scope.launch {
-                people =
-                    try {
-                        PeopleRead.Loaded(appHandle.people())
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: BridgeException) {
-                        logger.error("reading the library's people failed", e)
-                        PeopleRead.Failed(errors.display(e) ?: DisplayError(e.toString()))
-                    }
+                try {
+                    people = PeopleRead.Loaded(appHandle.people())
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: BridgeException) {
+                    logger.error("reading the library's people failed", e)
+                    // A cancelled read shows nothing: the list stays as it was.
+                    errors.display(e)?.let { people = PeopleRead.Failed(it) }
+                }
             }
     }
 

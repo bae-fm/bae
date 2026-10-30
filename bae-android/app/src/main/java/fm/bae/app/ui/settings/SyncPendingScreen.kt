@@ -184,10 +184,9 @@ internal fun SyncPendingScreen(
             }
 
             is BridgePendingRecords.Failed -> {
-                ErrorDetailDisclosure(
-                    error = context.displayError(current.error) ?: DisplayError(current.error.toString()),
-                    modifier = Modifier.padding(ThemeSpace.edge),
-                )
+                context.displayError(current.error)?.let { shown ->
+                    ErrorDetailDisclosure(error = shown, modifier = Modifier.padding(ThemeSpace.edge))
+                }
             }
 
             is BridgePendingRecords.Ready -> {

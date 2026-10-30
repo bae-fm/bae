@@ -53,9 +53,7 @@ class MainActivity : ComponentActivity() {
                 oauthProvidersError = app.oauthProvidersError,
                 startupFailure =
                     app.platformStartupError?.let { ScreenFailure(FailedStep.STARTUP, DisplayError(it)) }
-                        ?: app.startupError?.let { (step, error) ->
-                            ScreenFailure(step, displayError(error) ?: DisplayError(error.toString()))
-                        },
+                        ?: app.startupError?.let { (step, error) -> ScreenFailure(step, displayError(error)) },
                 bugs = app.bugs,
                 shortcutAction = pendingShortcut,
                 onShortcutHandled = { pendingShortcut = null },

@@ -213,9 +213,7 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.syncActivity.fail(
-                                LocaleErrorDisplays(appContext).display(error) ?: DisplayError(error.toString()),
-                            )
+                            subscriptionFailed("sync activity", error)?.let(stores.syncActivity::fail)
                         }
                     }
                 },

@@ -31,10 +31,14 @@ enum class FailedStep(
     DEVICE_RESET("ui.load_error.device_reset.title", "ui.load_error.device_reset.advice"),
 }
 
-/** A failure a screen shows: the step that failed and its error. */
+/**
+ * A failure a screen shows: the step that failed and its error, none when
+ * core says the failure has nothing to show — a launch step that was
+ * cancelled still stopped the launch.
+ */
 data class ScreenFailure(
     val step: FailedStep,
-    val error: DisplayError,
+    val error: DisplayError?,
 )
 
 /** A bridge launch step that stopped the app, and its error. */

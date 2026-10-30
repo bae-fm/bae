@@ -66,19 +66,28 @@ internal fun DeviceResetDialog(
     )
 }
 
-/** Opening failed in a way only a device reset fixes; the reset is offered after its warning. */
+/**
+ * Opening failed in a way only a device reset fixes; the reset is offered
+ * after its warning. With no [error] to show, after a reset was cancelled, the
+ * screen says why a reset is offered.
+ */
 @Composable
 internal fun ResetOfferedScreen(
     libraryId: String,
-    error: ScreenFailure,
+    error: ScreenFailure?,
     onReset: (BridgeDeviceReset) -> Unit,
 ) {
     val context = LocalContext.current
     var reset by remember(libraryId) { mutableStateOf<BridgeDeviceReset?>(null) }
-    LifecycleFailure(error) {
+    val offer: @Composable () -> Unit = {
         PrimaryButton(onClick = { reset = AppSessionHolder.prepareDeviceReset(context, libraryId) }) {
             Text(stringResource(R.string.reset_device))
         }
+    }
+    if (error == null) {
+        LifecycleMessage(context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeviceResetRequired)), offer)
+    } else {
+        LifecycleFailure(error, offer)
     }
     reset?.let { prepared ->
         DeviceResetDialog(
@@ -118,7 +127,7 @@ internal fun ResetUnfinishedScreen(
 @Composable
 internal fun ProfileRequiredScreen(
     session: OpenLibrary,
-    failure: DisplayError,
+    failure: DisplayError?,
     onCreated: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -157,7 +166,7 @@ internal fun ProfileRequiredScreen(
 /** A library left its store, but deleting this device's files for it failed; finishing is retried here. */
 @Composable
 internal fun RemovalIncompleteScreen(
-    error: DisplayError,
+    error: DisplayError?,
     onRetry: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -171,7 +180,7 @@ internal fun RemovalIncompleteScreen(
             style = ThemeText.heading.style,
             textAlign = TextAlign.Center,
         )
-        ErrorDetailDisclosure(error = error, lineColor = MaterialTheme.colorScheme.onSurfaceVariant)
+        error?.let { ErrorDetailDisclosure(error = it, lineColor = MaterialTheme.colorScheme.onSurfaceVariant) }
         PrimaryButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }

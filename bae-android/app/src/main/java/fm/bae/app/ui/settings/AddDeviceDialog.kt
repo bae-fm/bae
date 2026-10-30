@@ -70,8 +70,14 @@ internal fun AddDeviceDialog(
     var added by remember { mutableStateOf<BridgeActiveDevice?>(null) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
 
+    // A cancellation shows nothing: the dialog stays on its spinner or code.
     fun show(failure: BridgeException) {
-        error = context.displayError(failure) ?: DisplayError(failure.toString())
+        val shown = context.displayError(failure)
+        if (shown == null) {
+            logger.debug("adding a device was cancelled; nothing shows")
+        } else {
+            error = shown
+        }
     }
 
     LaunchedEffect(Unit) {

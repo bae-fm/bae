@@ -128,7 +128,7 @@ fun AlbumDetailScreen(
         }
     }
 
-    val loadError = query.error?.let { error -> appContext.displayError(error) ?: DisplayError(error.toString()) }
+    val loadError = query.error?.let(appContext::displayError)
 
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryDetailTopBar(onBack = onBack)

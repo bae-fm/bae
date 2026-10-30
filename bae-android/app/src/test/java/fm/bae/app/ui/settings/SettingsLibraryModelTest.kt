@@ -28,7 +28,8 @@ import uniffi.bae_bridge.LiveSubscription
 /**
  * A failed read of this device's person or of the library's name stays a
  * failure Settings shows with Retry, rather than an absent person or name that
- * silently hides Rename, History sharing and the name row.
+ * silently hides Rename, History sharing and the name row. A cancelled read
+ * shows nothing and leaves the read as it was.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -89,12 +90,41 @@ class SettingsLibraryModelTest {
         assertEquals(LibraryNameRead.Loading, model.name)
     }
 
+    @Test
+    fun aCancelledSelfReadLeavesTheReadAsItWas() {
+        val handle =
+            SettingsHandle(ownPerson = listOf(Result.failure(BridgeException.Cancelled()), Result.failure(offline())))
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+
+        runBlocking { model.loadSelf() }
+        assertEquals(SelfRead.Loading, model.self)
+
+        runBlocking { model.loadSelf() }
+        assertEquals(SelfRead.Failed(DisplayError("couldn't reach storage")), model.self)
+    }
+
+    @Test
+    fun aCancelledNameSubscriptionLeavesTheNameAsItWas() {
+        val handle = SettingsHandle()
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
+        model.watchName()
+        handle.nameCallbacks.last().onValue("Household")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        handle.nameCallbacks.last().onError(BridgeException.Cancelled())
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(LibraryNameRead.Named("Household"), model.name)
+    }
+
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
+    /** Core's answer for what each failure shows: a cancellation shows nothing. */
     private data object TestErrorDisplays : ErrorDisplays {
         override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
-        override fun display(error: BridgeException) = DisplayError("couldn't reach storage")
+        override fun display(error: BridgeException) =
+            if (error is BridgeException.Cancelled) null else DisplayError("couldn't reach storage")
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
     }

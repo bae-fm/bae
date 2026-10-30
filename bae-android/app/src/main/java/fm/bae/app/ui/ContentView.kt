@@ -216,10 +216,11 @@ private fun RecoveryScreen(
     val scope = rememberScreenScope()
     val libraryId = screen.libraryId
 
-    // A failed reset shows [failed], the screen it started from, with why.
+    // A failed reset shows [failed], the screen it started from, with why;
+    // a cancelled one shows it with nothing.
     fun reset(
         prepared: BridgeDeviceReset,
-        failed: (ScreenFailure) -> AppScreen,
+        failed: (ScreenFailure?) -> AppScreen,
     ) {
         scope.launch { AppSessionHolder.resetDevice(context, libraryId, prepared, onScreen, failed) }
     }

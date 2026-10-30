@@ -51,7 +51,8 @@ internal sealed interface LibraryNameRead {
  * What Settings reads from the open library beyond its config: its cloud home,
  * its name, and this device's person — their profile and whether they are an
  * admin. A failed read is kept as such, so Settings shows it where the rows it
- * decides would be.
+ * decides would be; a cancelled one shows nothing and leaves the read as it
+ * was.
  */
 internal class SettingsLibraryModel(
     private val appHandle: AppHandleInterface,
@@ -73,28 +74,26 @@ internal class SettingsLibraryModel(
     private var nameGeneration = 0
 
     suspend fun load() {
-        cloudHome =
-            try {
-                appHandle.storageLocation()?.let(CloudHome::At) ?: CloudHome.None
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: BridgeException) {
-                logger.error("reading the library's cloud home failed", e)
-                CloudHome.Failed(shown(e))
-            }
+        try {
+            cloudHome = appHandle.storageLocation()?.let(CloudHome::At) ?: CloudHome.None
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: BridgeException) {
+            logger.error("reading the library's cloud home failed", e)
+            errors.display(e)?.let { cloudHome = CloudHome.Failed(it) }
+        }
         loadSelf()
     }
 
     suspend fun loadSelf() {
-        self =
-            try {
-                SelfRead.Loaded(appHandle.ownPerson())
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: BridgeException) {
-                logger.error("reading the library's people failed", e)
-                SelfRead.Failed(shown(e))
-            }
+        try {
+            self = SelfRead.Loaded(appHandle.ownPerson())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: BridgeException) {
+            logger.error("reading the library's people failed", e)
+            errors.display(e)?.let { self = SelfRead.Failed(it) }
+        }
     }
 
     /** Follow the library's name, replacing any subscription already running. */
@@ -114,7 +113,8 @@ internal class SettingsLibraryModel(
                     override fun onError(error: BridgeException) {
                         logger.error("reading the library's name failed", error)
                         scope.launch(Dispatchers.Main.immediate) {
-                            if (generation == nameGeneration) name = LibraryNameRead.Failed(shown(error))
+                            val shown = errors.display(error)
+                            if (generation == nameGeneration && shown != null) name = LibraryNameRead.Failed(shown)
                         }
                     }
                 },
@@ -126,6 +126,4 @@ internal class SettingsLibraryModel(
         nameSubscription?.cancel()
         nameSubscription = null
     }
-
-    private fun shown(error: BridgeException): DisplayError = errors.display(error) ?: DisplayError(error.toString())
 }

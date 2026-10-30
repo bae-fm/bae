@@ -193,7 +193,7 @@ internal class OnboardingFlow(
                     throw e
                 } catch (e: BridgeException) {
                     logger.error("listing the joins under way failed", e)
-                    error = context.displayError(e) ?: DisplayError(e.toString())
+                    error = context.displayError(e)
                     return@launch
                 }
             val join = joins.firstOrNull() ?: return@launch
@@ -364,7 +364,7 @@ internal class OnboardingFlow(
                 logger.error("restoring or joining failed", e)
                 statuses.closeAndJoin()
                 step = from.formStep()
-                error = context.displayError(e) ?: DisplayError(e.toString())
+                error = context.displayError(e)
             } finally {
                 if (cancellation === cancel) {
                     cancellation = null
