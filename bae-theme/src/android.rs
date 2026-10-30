@@ -8,9 +8,10 @@ use crate::{Argb, Roles, Theme};
 pub const KOTLIN_FILE: &str = "kotlin/fm/bae/app/ui/appearance/ThemePalette.kt";
 
 /// The launch window's background before Compose draws, as resource files
-/// named relative to the output directory: the first tone in each appearance.
+/// named relative to the output directory: the standard tone in each
+/// appearance.
 pub fn launch_resources(theme: &Theme) -> Result<Vec<(String, String)>, String> {
-    let tone = &theme.tones[0];
+    let tone = &theme.tones[theme.standard.tone];
     [("values", &tone.surfaces.light), ("values-night", &tone.surfaces.dark)]
         .into_iter()
         .map(|(qualifier, surfaces)| {
@@ -52,11 +53,13 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
         out,
         "SurfaceTone",
         theme.tones.iter().map(|tone| tone.name.as_str()),
+        &theme.tones[theme.standard.tone].name,
     )?;
     choice_enum(
         out,
         "AccentChoice",
         theme.accents.iter().map(|accent| accent.name.as_str()),
+        &theme.accents[theme.standard.accent].name,
     )?;
 
     roles_class(
@@ -166,17 +169,24 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
     Ok(())
 }
 
+/// The choices in the order the settings offer them, and the standard one.
 fn choice_enum<'a>(
     out: &mut String,
     name: &str,
     entries: impl Iterator<Item = &'a str>,
+    standard: &str,
 ) -> std::fmt::Result {
     writeln!(out, "\nenum class {name} {{")?;
     for entry in entries {
         writeln!(out, "    {},", entry.to_uppercase())?;
     }
-    out.push_str("}\n");
-    Ok(())
+    writeln!(
+        out,
+        "    ;\n\n    companion object {{\n        \
+         /** What a new installation shows until the person chooses. */\n        \
+         val STANDARD = {}\n    }}\n}}",
+        standard.to_uppercase()
+    )
 }
 
 fn roles_class(out: &mut String, doc: &str, name: &str, roles: &Roles) -> std::fmt::Result {

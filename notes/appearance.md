@@ -8,10 +8,15 @@ values there rather than adding a platform palette.
 
 Appearance settings have three independent choices: System/Light/Dark mode,
 Blue/Indigo/Purple/Pink/Red/Amber/Green/Teal accent, and
-Neutral/Slate/Plum/Midnight/Forest/Sand background tone. Defaults are System,
-Blue, and Neutral. Each tone defines both light and dark surfaces. Preferences
-belong to the app installation rather than a library, so switching libraries
-preserves the selection.
+Neutral/Slate/Plum/Midnight/Forest/Sand background tone. A new installation
+shows System mode, the Pink accent and the Midnight tone. The mode default is
+each app's own. The accent and tone are the ones `[standard]` in
+`design/theme.toml` names, which theme-gen emits as `standard` on the Swift
+enums and `STANDARD` on the Kotlin ones; the standard tone also colours
+Android's launch window before the app has read the chosen one. Each tone
+defines both light and dark surfaces. Preferences belong to the app
+installation rather than a library, so switching libraries preserves the
+selection.
 
 Surface roles describe their use: background is the window or screen; surface
 and elevated hold content; field and fieldHover hold inputs; placeholder holds
@@ -62,5 +67,7 @@ and transport controls use neutral surfaces; selection and progress use the
 accent. Action buttons do not add accent shadows or decorative gradients.
 
 The screenshot suites render production views in light and dark modes and all
-six tones. Preference tests exercise persistence and refused writes; Android
+six tones. The macOS capture of the stock look, dark in the standard tone and
+accent, carries no suffix; `theme-gen standard-tone` names that tone for
+`scripts/shots/macos.sh`. Preference tests exercise persistence and refused writes; Android
 also tests concurrent choices and cancellation during an accepted write.

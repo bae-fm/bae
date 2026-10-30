@@ -2,7 +2,7 @@ import SwiftUI
 
 extension EnvironmentValues {
     @Entry
-    public var accentChoice: AccentChoice = .blue
+    public var accentChoice: AccentChoice = .standard
 }
 
 private struct AppAppearance: ViewModifier {

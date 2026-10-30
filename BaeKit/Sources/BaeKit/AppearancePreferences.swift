@@ -18,9 +18,9 @@ public struct AppearancePreferences: DynamicProperty {
     @AppStorage("appearance.mode")
     public var mode: AppearanceMode = .system
     @AppStorage("appearance.accent")
-    public var accent: AccentChoice = .blue
+    public var accent: AccentChoice = .standard
     @AppStorage("appearance.tone")
-    public var tone: SurfaceTone = .neutral
+    public var tone: SurfaceTone = .standard
 
     public init() {}
 }

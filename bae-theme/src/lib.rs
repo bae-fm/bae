@@ -62,6 +62,7 @@ pub struct Accent {
 pub struct Theme {
     pub tones: Vec<Tone>,
     pub accents: Vec<Accent>,
+    pub standard: Standard,
     pub semantics: Modes,
     /// How opaque a colour is laid over what is behind it, by role.
     pub opacity: BTreeMap<String, f64>,
@@ -75,6 +76,14 @@ pub struct Theme {
     pub icon: BTreeMap<String, IconRole>,
     /// Recurring element sizes, by role.
     pub size: BTreeMap<String, PlatformLengths>,
+}
+
+/// The tone and accent a new installation shows until the person chooses
+/// one, as positions in `Theme::tones` and `Theme::accents`.
+#[derive(Debug)]
+pub struct Standard {
+    pub tone: usize,
+    pub accent: usize,
 }
 
 /// A length each platform sets by its own convention: points on macOS and
@@ -163,6 +172,7 @@ const IOS_TEXT_STYLES: &[&str] = &[
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawTheme {
+    standard: RawStandard,
     tones: Vec<RawTone>,
     accents: Vec<RawAccent>,
     semantics: RawModes,
@@ -172,6 +182,14 @@ struct RawTheme {
     space: BTreeMap<String, f64>,
     icon: BTreeMap<String, RawIconRole>,
     size: BTreeMap<String, RawPlatformLengths>,
+}
+
+/// The standard tone and accent by name.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawStandard {
+    tone: String,
+    accent: String,
 }
 
 /// Lengths as written; a platform left out is reported rather than defaulted.
@@ -309,6 +327,18 @@ impl Theme {
             accents.iter().map(|accent| accent.name.as_str()),
             &mut problems,
         );
+        let standard_tone = standard_choice(
+            "tone",
+            &raw.standard.tone,
+            tones.iter().map(|tone| tone.name.as_str()),
+            &mut problems,
+        );
+        let standard_accent = standard_choice(
+            "accent",
+            &raw.standard.accent,
+            accents.iter().map(|accent| accent.name.as_str()),
+            &mut problems,
+        );
         if let Some(first) = tones.first() {
             for tone in &tones {
                 for (mode, surfaces) in [
@@ -420,10 +450,13 @@ impl Theme {
             })
             .collect();
 
-        if problems.is_empty() {
+        if let (true, Some(tone), Some(accent)) =
+            (problems.is_empty(), standard_tone, standard_accent)
+        {
             Ok(Self {
                 tones,
                 accents,
+                standard: Standard { tone, accent },
                 semantics,
                 opacity: raw.opacity,
                 radius: raw.radius,
@@ -454,6 +487,23 @@ fn check_choices<'a>(kind: &str, names: impl Iterator<Item = &'a str>, problems:
     if !any {
         problems.push(format!("there is no {kind}"));
     }
+}
+
+/// The position of the standard `kind` among those listed, or a problem when
+/// it names none of them.
+fn standard_choice<'a>(
+    kind: &str,
+    name: &str,
+    mut names: impl Iterator<Item = &'a str>,
+    problems: &mut Vec<String>,
+) -> Option<usize> {
+    let position = names.position(|listed| listed == name);
+    if position.is_none() {
+        problems.push(format!(
+            "the standard {kind} `{name}` is not a listed {kind}"
+        ));
+    }
+    position
 }
 
 /// A role name becomes a property on both platforms.

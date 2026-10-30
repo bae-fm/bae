@@ -1,7 +1,13 @@
 # The apps' colours, read by every platform through code theme-gen generates
 # from this file (see notes/appearance.md). Tones and accents are listed in the
-# order the appearance settings offer them. The first tone also colours
-# Android's launch window before the app has read the chosen one.
+# order the appearance settings offer them.
+
+# The tone and accent a new installation shows until the person chooses, each
+# one listed below. The standard tone also colours Android's launch window
+# before the app has read the chosen one.
+[standard]
+tone = "midnight"
+accent = "pink"
 
 [[tones]]
 name = "neutral"

@@ -23,11 +23,13 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
         out,
         "SurfaceTone",
         theme.tones.iter().map(|tone| tone.name.as_str()),
+        &theme.tones[theme.standard.tone].name,
     )?;
     choice_enum(
         out,
         "AccentChoice",
         theme.accents.iter().map(|accent| accent.name.as_str()),
+        &theme.accents[theme.standard.accent].name,
     )?;
 
     out.push_str("\n/// One tone's surfaces in one appearance.\nstruct ToneSurfaces: Sendable {\n");
@@ -237,10 +239,12 @@ extension Color {
 }
 ";
 
+/// The choices in the order the settings offer them, and the standard one.
 fn choice_enum<'a>(
     out: &mut String,
     name: &str,
     cases: impl Iterator<Item = &'a str>,
+    standard: &str,
 ) -> std::fmt::Result {
     writeln!(
         out,
@@ -249,8 +253,11 @@ fn choice_enum<'a>(
     for case in cases {
         writeln!(out, "    case {case}")?;
     }
-    out.push_str("}\n");
-    Ok(())
+    writeln!(
+        out,
+        "\n    /// What a new installation shows until the person chooses.\n    \
+         public static let standard = {name}.{standard}\n}}"
+    )
 }
 
 /// An initializer call with one colour argument per role, one per line.

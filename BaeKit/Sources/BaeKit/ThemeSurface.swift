@@ -2,7 +2,7 @@ import SwiftUI
 
 extension EnvironmentValues {
     @Entry
-    public var surfaceTone: SurfaceTone = .neutral
+    public var surfaceTone: SurfaceTone = .standard
 }
 
 /// A surface of the chosen tone, resolved where it is drawn so a tone or

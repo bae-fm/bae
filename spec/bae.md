@@ -3308,7 +3308,8 @@ track before, with or without the hidden first-track audio; left out; or one
 file with a CUE sheet), and whether it embeds the cover.
 
 Platform settings, such as the appearance and restoring playback on launch,
-live in each app.
+live in each app. The apps start in the system's light or dark mode with the
+Pink accent and the Midnight background tone.
 
 ---
 

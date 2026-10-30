@@ -19,8 +19,8 @@ enum class AppearanceMode { SYSTEM, LIGHT, DARK }
 
 data class AppearancePreferences(
     val mode: AppearanceMode = AppearanceMode.SYSTEM,
-    val accent: AccentChoice = AccentChoice.BLUE,
-    val tone: SurfaceTone = SurfaceTone.NEUTRAL,
+    val accent: AccentChoice = AccentChoice.STANDARD,
+    val tone: SurfaceTone = SurfaceTone.STANDARD,
 )
 
 val LocalAppearanceStore = staticCompositionLocalOf<AppearanceStore> { error("BaeTheme provides appearance") }

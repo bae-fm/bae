@@ -27,8 +27,10 @@ struct CaptureSceneTests {
                 for scene in scenes {
                     do {
                         let accent: AccentChoice =
-                            tone == .plum
-                            ? .purple : tone == .slate ? .teal : .blue
+                            tone == .standard
+                            ? .standard
+                            : tone == .plum
+                                ? .purple : tone == .slate ? .teal : .blue
                         let data = try await ShotRenderer.renderPNG(
                             scene,
                             mode: mode,
@@ -39,8 +41,9 @@ struct CaptureSceneTests {
                             failures.append("\(scene.id): rendered no bytes")
                             continue
                         }
+                        // The stock look carries no suffix.
                         let suffix =
-                            mode == .dark && tone == .neutral
+                            mode == .dark && tone == .standard
                             ? "" : "-\(mode.rawValue)-\(tone.rawValue)"
                         let url = out.appendingPathComponent(
                             "\(scene.id)\(suffix)@macos.png"

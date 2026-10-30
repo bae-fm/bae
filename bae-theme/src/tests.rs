@@ -18,12 +18,14 @@ fn colours_read_with_and_without_alpha() {
     assert!(Argb::parse("#+5F5F5F").is_err());
 }
 
-fn theme_with(tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
+fn theme_with(standard: &str, tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
     Theme::from_toml(&format!(
-        "[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n\n\
+        "{standard}\n[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n\n\
          [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{TEXT}\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
     ))
 }
+
+const STANDARD: &str = "[standard]\ntone = \"neutral\"\naccent = \"blue\"\n";
 
 const TEXT: &str = "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n";
 
@@ -36,7 +38,7 @@ fn a_tone_missing_a_surface_is_refused() {
                  [tones.dark]\nbackground = \"#000000\"\nwell = \"#000000\"\n\
                  [[tones]]\nname = \"slate\"\n[tones.light]\nbackground = \"#000000\"\nwell = \"#000000\"\n\
                  [tones.dark]\nbackground = \"#000000\"\n";
-    let problems = theme_with(tones, SEMANTICS).unwrap_err();
+    let problems = theme_with(STANDARD, tones, SEMANTICS).unwrap_err();
     assert_eq!(
         problems,
         ["tone slate.dark lacks `well`, which tone neutral.light has"]
@@ -49,7 +51,7 @@ fn semantics_must_match_across_appearances() {
                  [tones.dark]\nbackground = \"#000000\"\n";
     let semantics =
         "[semantics.light]\ndanger = \"#000000\"\n[semantics.dark]\nwarning = \"#000000\"\n";
-    let problems = theme_with(tones, semantics).unwrap_err();
+    let problems = theme_with(STANDARD, tones, semantics).unwrap_err();
     assert_eq!(
         problems,
         [
@@ -60,10 +62,46 @@ fn semantics_must_match_across_appearances() {
 }
 
 #[test]
+fn the_standard_choices_must_be_listed() {
+    let tones = "[[tones]]\nname = \"neutral\"\n[tones.light]\nbackground = \"#000000\"\n\
+                 [tones.dark]\nbackground = \"#000000\"\n";
+    let standard = "[standard]\ntone = \"dusk\"\naccent = \"mauve\"\n";
+    let problems = theme_with(standard, tones, SEMANTICS).unwrap_err();
+    assert_eq!(
+        problems,
+        [
+            "the standard tone `dusk` is not a listed tone",
+            "the standard accent `mauve` is not a listed accent",
+        ]
+    );
+}
+
+#[test]
+fn both_platforms_carry_the_standard_choices() {
+    let theme = Theme::from_toml(THEME).unwrap();
+    let tone = &theme.tones[theme.standard.tone].name;
+    let accent = &theme.accents[theme.standard.accent].name;
+    let swift = apple::swift(&theme);
+    let kotlin = android::kotlin(&theme);
+    assert!(swift.contains(&format!(
+        "    public static let standard = SurfaceTone.{tone}\n"
+    )));
+    assert!(swift.contains(&format!(
+        "    public static let standard = AccentChoice.{accent}\n"
+    )));
+    assert!(kotlin.contains(&format!("        val STANDARD = {}\n", tone.to_uppercase())));
+    assert!(kotlin.contains(&format!(
+        "        val STANDARD = {}\n",
+        accent.to_uppercase()
+    )));
+}
+
+#[test]
 fn names_must_become_identifiers() {
     let tones = "[[tones]]\nname = \"Neutral\"\n[tones.light]\nBack-ground = \"#000000\"\n\
                  [tones.dark]\nBack-ground = \"#000000\"\n";
-    let problems = theme_with(tones, SEMANTICS).unwrap_err();
+    let standard = "[standard]\ntone = \"Neutral\"\naccent = \"blue\"\n";
+    let problems = theme_with(standard, tones, SEMANTICS).unwrap_err();
     assert_eq!(
         problems,
         [
@@ -191,11 +229,12 @@ fn both_platforms_carry_every_space_icon_and_size() {
 }
 
 #[test]
-fn the_launch_background_is_the_first_tones() {
+fn the_launch_background_is_the_standard_tones() {
     let theme = Theme::from_toml(THEME).unwrap();
     let resources = android::launch_resources(&theme).unwrap();
+    // Midnight's backgrounds.
     assert_eq!(resources[0].0, "res/values/theme_colors.xml");
-    assert!(resources[0].1.contains(">#FFF5F5F5<"));
+    assert!(resources[0].1.contains(">#FFE5E5F1<"));
     assert_eq!(resources[1].0, "res/values-night/theme_colors.xml");
-    assert!(resources[1].1.contains(">#FF1B1B1D<"));
+    assert!(resources[1].1.contains(">#FF11111B<"));
 }

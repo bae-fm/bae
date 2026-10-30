@@ -72,6 +72,7 @@ xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
 # The test writing a PNG is not proof it landed — verify every expected scene
 # produced a non-trivial file so a silently empty capture fails the script.
 cd "$ROOT"
+standard_tone="$(./scripts/cargo.sh run -q -p bae-theme --bin theme-gen -- standard-tone)"
 missing=0
 for scene in \
     artwork-lightbox \
@@ -108,14 +109,14 @@ do
         [[ "$scene" == "$prefix"* ]] && selected=1
     done
     [[ "$selected" -eq 1 ]] || continue
-    # Every scene renders in dark mode in each tone asked for; dark neutral
-    # carries no suffix.
+    # Every scene renders in dark mode in each tone asked for; dark in the
+    # standard tone, the stock look, carries no suffix.
     if [[ ${#TONES[@]} -eq 0 ]]; then
         pngs=("$OUT_DIR/${scene}@macos.png")
     else
         pngs=()
         for tone in "${TONES[@]}"; do
-            if [[ "$tone" == neutral ]]; then
+            if [[ "$tone" == "$standard_tone" ]]; then
                 pngs+=("$OUT_DIR/${scene}@macos.png")
             else
                 pngs+=("$OUT_DIR/${scene}-dark-${tone}@macos.png")
