@@ -314,3 +314,6 @@ mod release_medium_tests;
 
 #[cfg(test)]
 mod candidate_standing_tests;
+
+#[cfg(test)]
+mod window_cost;
