@@ -143,82 +143,113 @@ fn phase_from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<ReleaseQueueStat
 }
 
 /// A queue's entries beside their releases as the library holds them, the
-/// ones `tail` picks: a `WHERE`, `ORDER BY` or `LIMIT` over the queue `q`.
-pub(super) fn queue_rows_sql<P: QueuedPayload>(tail: &str) -> String {
+/// ones `tail` picks: a `WHERE`, `ORDER BY` or `LIMIT` over the queue `q`;
+/// and each entry's key in `keyed`'s order when one is given.
+pub(super) fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: &str) -> String {
     format!(
         "SELECT {columns}, q.state, q.error, r.id IS NOT NULL, a.title, \
             COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0), \
-            COALESCE((SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = q.release_id), 0) \
+            COALESCE((SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = q.release_id), 0){keys} \
          FROM {table} q \
          LEFT JOIN releases r ON r.id = q.release_id \
          LEFT JOIN albums a ON a.id = r.album_id \
          {tail}",
         columns = entry_columns::<P>("q."),
+        keys = keyed.map_or_else(String::new, |order| format!(", {}", order.key_columns())),
         table = P::TABLE,
     )
 }
 
 /// The rows [`queue_rows_sql`] reads for `tail`, bound to `params`.
+#[cfg(any(desktop, test, feature = "test-utils"))]
 fn queue_rows_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
     tail: &str,
     params: impl rusqlite::Params,
 ) -> Result<Vec<ReleaseQueueRow<P, ()>>, DbError> {
+    Ok(sql.query(&queue_rows_sql::<P>(None, tail), params, queue_row::<P>)?)
+}
+
+/// One entry as [`queue_rows_sql`] reads it.
+fn queue_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQueueRow<P, ()>> {
     let at = 2 + P::COLUMNS.len();
-    Ok(sql.query(&queue_rows_sql::<P>(tail), params, |row| {
-        let entry = entry_from_row::<P>(row)?;
-        let held: bool = row.get(at + 2)?;
-        let release = if held {
-            Some(QueuedRelease {
-                title: row.get(at + 3)?,
-                file_count: row.get(at + 4)?,
-                total_size: row.get(at + 5)?,
-            })
-        } else {
-            None
-        };
-        Ok(ReleaseQueueRow {
-            op: ReleaseQueueOp {
-                release_id: entry.release_id,
-                created_at: entry.created_at,
-                payload: entry.payload,
-                state: phase_from_row(row, at)?,
-            },
-            release,
+    let entry = entry_from_row::<P>(row)?;
+    let held: bool = row.get(at + 2)?;
+    let release = if held {
+        Some(QueuedRelease {
+            title: row.get(at + 3)?,
+            file_count: row.get(at + 4)?,
+            total_size: row.get(at + 5)?,
+        })
+    } else {
+        None
+    };
+    Ok(ReleaseQueueRow {
+        op: ReleaseQueueOp {
+            release_id: entry.release_id,
+            created_at: entry.created_at,
+            payload: entry.payload,
+            state: phase_from_row(row, at)?,
+        },
+        release,
+    })
+}
+
+/// A queue's order: the order queued.
+pub(super) fn queue_order() -> ListOrder {
+    ListOrder::new(vec![SortTerm::ascending("q.position")])
+}
+
+/// The queue's entries `seek` reads in `order`, at most `limit` from
+/// `offset`, each with its key.
+pub(super) fn queue_window_rows_on<P: QueuedPayload>(
+    sql: &SqlReadContext<'_>,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+    offset: u64,
+) -> Result<Vec<Keyed<ReleaseQueueRow<P, ()>>>, DbError> {
+    let statement = queue_rows_sql::<P>(
+        Some(order),
+        &format!(
+            "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",
+            order.condition(seek),
+            order.ordering(seek)
+        ),
+    );
+    Ok(seek.bound(limit, offset, |params| {
+        sql.query(&statement, params, |row| {
+            Ok((queue_row::<P>(row)?, order.key_of(row)?))
         })
     })?)
 }
 
-/// A window's offset or length as SQLite takes it.
-fn sql_bound(value: u64) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
-}
-
 /// How many entries the queue holds, and the windows `windows` names of
-/// them in the order queued, each beside its release.
+/// them in the order queued, each beside its release, each read from the
+/// entry beside it when `places` knows one (`list_windows`).
 fn release_queue_windows_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
     windows: &LibraryPageWindows,
+    places: &KnownPlaces<Vec<i64>>,
 ) -> Result<ReleaseQueueWindows<P>, DbError> {
+    let versions = list_order_versions_on(sql, &[P::TABLE])?;
     let total_count: u64 =
         sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| {
             row.get(0)
         })?;
-    let windows = windows
-        .iter()
-        .map(|window| {
-            Ok(LibraryBrowseWindow {
-                window: window.clone(),
-                rows: queue_rows_on::<P>(
-                    sql,
-                    "ORDER BY q.position LIMIT ?1 OFFSET ?2",
-                    params![sql_bound(window.limit), sql_bound(window.offset)],
-                )?,
-            })
-        })
-        .collect::<Result<_, DbError>>()?;
-    Ok(ReleaseQueueWindows {
+    let order = queue_order();
+    let WindowsRead { windows, found } = read_windows(
+        &order,
         windows,
+        places.under(&versions),
+        |seek, limit, offset| queue_window_rows_on::<P>(sql, &order, seek, limit, offset),
+    )?;
+    places.keep(versions, found);
+    Ok(ReleaseQueueWindows {
+        windows: windows
+            .into_iter()
+            .map(|(window, rows)| LibraryBrowseWindow { window, rows })
+            .collect(),
         total_count,
     })
 }
@@ -537,10 +568,11 @@ impl Database {
         &self,
         initial: LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<LibraryPageWindows, ReleaseQueueWindows<P>> {
+        let places = KnownPlaces::new();
         self.inner
             .handle
-            .subscribe_reconfigurable(initial, |windows, sql| {
-                release_queue_windows_on::<P>(&sql, windows).map_err(CovenError::from)
+            .subscribe_reconfigurable(initial, move |windows, sql| {
+                release_queue_windows_on::<P>(&sql, windows, &places).map_err(CovenError::from)
             })
             .process(Ok)
     }

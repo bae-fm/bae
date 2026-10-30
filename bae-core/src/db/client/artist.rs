@@ -79,49 +79,46 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbComposerSummary>, DbError> {
-        let order_by = composer_order_by(sort);
-        let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let query = composer_listing_query(None, Some(&tail));
+        let order = composer_order(sort);
         self.read(move |sql| {
-            sql.query(
-                &query,
-                params![limit as i64, offset as i64],
-                row_to_composer_summary,
+            Ok(
+                composer_rows_on(&sql, &order, &order.everything(), limit, offset)?
+                    .into_iter()
+                    .map(|(row, _)| row)
+                    .collect(),
             )
-            .map_err(DbError::from)
         })
         .await
     }
 
+    /// Follow the composer list under `sort` in the windows its request
+    /// names, each read from the row beside it when one is known
+    /// (`list_windows`).
     pub(crate) fn subscribe_composer_browse(
         &self,
         sort: &[ComposerSortCriterion],
         initial_windows: crate::library::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, ComposerBrowseProjection>
     {
-        let order_by = composer_order_by(sort);
-        let page_tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let page_query = composer_listing_query(None, Some(&page_tail));
+        let order = composer_order(sort);
+        let places = KnownPlaces::new();
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
+                let versions = list_order_versions_on(&sql, &["composer_listing"])?;
                 let total_count = composer_count_on(&sql).map_err(CovenError::from)?;
-                let windows = requested
-                    .iter()
-                    .map(|window| {
-                        let rows = composer_rows_on(
-                            &sql,
-                            &page_query,
-                            params![window.limit as i64, window.offset as i64],
-                        )?;
-                        Ok(crate::library::LibraryBrowseWindow {
-                            window: window.clone(),
-                            rows,
-                        })
-                    })
-                    .collect::<Result<Vec<_>, CovenError>>()?;
+                let WindowsRead { windows, found } = read_windows(
+                    &order,
+                    requested,
+                    places.under(&versions),
+                    |seek, limit, offset| composer_rows_on(&sql, &order, seek, limit, offset),
+                )?;
+                places.keep(versions, found);
                 Ok(ComposerBrowseProjection {
-                    windows,
+                    windows: windows
+                        .into_iter()
+                        .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                        .collect(),
                     total_count,
                 })
             })
@@ -137,51 +134,46 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbArtistSummary>, DbError> {
-        let order_by = artist_order_by(sort);
-        let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let query = artist_listing_query(None, Some(&tail));
+        let order = artist_order(sort);
         self.read(move |sql| {
-            sql.query(
-                &query,
-                params![limit as i64, offset as i64],
-                row_to_artist_summary,
+            Ok(
+                artist_rows_on(&sql, &order, &order.everything(), limit, offset)?
+                    .into_iter()
+                    .map(|(row, _)| row)
+                    .collect(),
             )
-            .map_err(DbError::from)
         })
         .await
     }
 
+    /// Follow the artist list under `sort` in the windows its request
+    /// names, each read from the row beside it when one is known
+    /// (`list_windows`).
     pub(crate) fn subscribe_artist_browse(
         &self,
         sort: &[ArtistSortCriterion],
         initial_windows: crate::library::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, ArtistBrowseProjection>
     {
-        let order_by = artist_order_by(sort);
-        let page_tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let page_query = artist_listing_query(None, Some(&page_tail));
+        let order = artist_order(sort);
+        let places = KnownPlaces::new();
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
+                let versions = list_order_versions_on(&sql, &["artist_listing"])?;
                 let total_count = artist_count_on(&sql).map_err(CovenError::from)?;
-                let windows = requested
-                    .iter()
-                    .map(|window| {
-                        let rows = sql
-                            .query(
-                                &page_query,
-                                params![window.limit as i64, window.offset as i64],
-                                row_to_artist_summary,
-                            )
-                            .map_err(CovenError::from)?;
-                        Ok(crate::library::LibraryBrowseWindow {
-                            window: window.clone(),
-                            rows,
-                        })
-                    })
-                    .collect::<Result<Vec<_>, CovenError>>()?;
+                let WindowsRead { windows, found } = read_windows(
+                    &order,
+                    requested,
+                    places.under(&versions),
+                    |seek, limit, offset| artist_rows_on(&sql, &order, seek, limit, offset),
+                )?;
+                places.keep(versions, found);
                 Ok(ArtistBrowseProjection {
-                    windows,
+                    windows: windows
+                        .into_iter()
+                        .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                        .collect(),
                     total_count,
                 })
             })
@@ -375,7 +367,7 @@ fn find_artist_detail_on(
 ) -> Result<Option<ArtistDetailRows>, DbError> {
     let artist = sql
         .query_row(
-            &artist_listing_query(Some("WHERE listing.artist_id = ?"), None),
+            &artist_listing_query(None, Some("WHERE listing.artist_id = ?"), None),
             params![artist_id],
             row_to_artist_summary,
         )
@@ -433,7 +425,7 @@ fn find_composer_detail_on(
 ) -> Result<Option<ComposerDetailRows>, DbError> {
     let composer = sql
         .query_row(
-            &composer_listing_query(Some("WHERE listing.artist_id = ?"), None),
+            &composer_listing_query(None, Some("WHERE listing.artist_id = ?"), None),
             params![artist_id],
             row_to_composer_summary,
         )
@@ -615,13 +607,38 @@ fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
     .map_err(DbError::from)
 }
 
-fn composer_rows_on<P: Params>(
+/// The composer list's rows `seek` reads in `order`, at most `limit` from
+/// `offset`, each with its key.
+pub(super) fn composer_rows_on(
     sql: &SqlReadContext<'_>,
-    query: &str,
-    params: P,
-) -> Result<Vec<DbComposerSummary>, CovenError> {
-    sql.query(query, params, row_to_composer_summary)
-        .map_err(CovenError::from)
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+    offset: u64,
+) -> Result<Vec<Keyed<DbComposerSummary>>, DbError> {
+    let statement = listing_window_query(composer_listing_query, order, seek);
+    Ok(seek.bound(limit, offset, |params| {
+        sql.query(&statement, params, |row| {
+            Ok((row_to_composer_summary(row)?, order.key_of(row)?))
+        })
+    })?)
+}
+
+/// The artist list's rows `seek` reads in `order`, at most `limit` from
+/// `offset`, each with its key.
+pub(super) fn artist_rows_on(
+    sql: &SqlReadContext<'_>,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+    offset: u64,
+) -> Result<Vec<Keyed<DbArtistSummary>>, DbError> {
+    let statement = listing_window_query(artist_listing_query, order, seek);
+    Ok(seek.bound(limit, offset, |params| {
+        sql.query(&statement, params, |row| {
+            Ok((row_to_artist_summary(row)?, order.key_of(row)?))
+        })
+    })?)
 }
 
 fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {

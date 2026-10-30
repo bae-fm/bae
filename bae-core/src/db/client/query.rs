@@ -223,8 +223,13 @@ pub(super) const ALBUM_A_IS_SHOWN: &str =
     "EXISTS (SELECT 1 FROM releases shown_release WHERE shown_release.album_id = a.id)";
 
 /// The composer list's rows (`composer_listing`), each with its artist, as
-/// [`row_to_composer_summary`] reads them; `filter` and `tail` follow the join.
-pub(super) fn composer_listing_query(filter: Option<&str>, tail: Option<&str>) -> String {
+/// [`row_to_composer_summary`] reads them, and each row's key in `keyed`'s
+/// order when one is given; `filter` and `tail` follow the join.
+pub(super) fn composer_listing_query(
+    keyed: Option<&ListOrder>,
+    filter: Option<&str>,
+    tail: Option<&str>,
+) -> String {
     let mut query = format!(
         "SELECT composer.id AS artist_id,
                 composer.name AS artist_name,
@@ -235,11 +240,12 @@ pub(super) fn composer_listing_query(filter: Option<&str>, tail: Option<&str>) -
                 {image} AS artist_image_version,
                 listing.work_count,
                 listing.linked_release_count,
-                listing.unlinked_credit_count
+                listing.unlinked_credit_count{keys}
          FROM composer_listing listing
          JOIN artists composer ON composer.id = listing.artist_id
          ",
         image = super::files::artist_image_version_sql("composer.id"),
+        keys = key_columns(keyed),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -252,12 +258,17 @@ pub(super) fn composer_listing_query(filter: Option<&str>, tail: Option<&str>) -
 }
 
 /// The artist list's rows (`artist_listing`), each with its artist as
-/// `ar`, as [`row_to_artist_summary`] reads them; `filter` and `tail` follow
-/// the join. An artist is listed for the albums whose credit lists
-/// (`album_artists`) show it; track credits (`track_artists`) don't list it.
-/// Various Artists gets no special case: it is a real `artists` row and lists
-/// like any other artist.
-pub(super) fn artist_listing_query(filter: Option<&str>, tail: Option<&str>) -> String {
+/// `ar`, as [`row_to_artist_summary`] reads them, and each row's key in
+/// `keyed`'s order when one is given; `filter` and `tail` follow the join.
+/// An artist is listed for the albums whose credit lists (`album_artists`)
+/// show it; track credits (`track_artists`) don't list it. Various Artists
+/// gets no special case: it is a real `artists` row and lists like any
+/// other artist.
+pub(super) fn artist_listing_query(
+    keyed: Option<&ListOrder>,
+    filter: Option<&str>,
+    tail: Option<&str>,
+) -> String {
     let mut query = format!(
         "SELECT ar.id AS artist_id,
                 ar.name AS artist_name,
@@ -266,11 +277,12 @@ pub(super) fn artist_listing_query(filter: Option<&str>, tail: Option<&str>) -> 
                 ar.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
                 ar.created_at AS artist_created_at,
                 {image} AS artist_image_version,
-                listing.album_count
+                listing.album_count{keys}
          FROM artist_listing listing
          JOIN artists ar ON ar.id = listing.artist_id
          ",
         image = super::files::artist_image_version_sql("ar.id"),
+        keys = key_columns(keyed),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -280,6 +292,28 @@ pub(super) fn artist_listing_query(filter: Option<&str>, tail: Option<&str>) -> 
         query.push_str(tail);
     }
     query
+}
+
+/// `keyed`'s key columns after a select list's last column, or nothing.
+fn key_columns(keyed: Option<&ListOrder>) -> String {
+    keyed.map_or_else(String::new, |order| format!(", {}", order.key_columns()))
+}
+
+/// The statement reading the rows `seek` reads of a listing query built by
+/// `listing` in `order`, at most `:limit` from `:offset`, each with its key.
+pub(super) fn listing_window_query(
+    listing: fn(Option<&ListOrder>, Option<&str>, Option<&str>) -> String,
+    order: &ListOrder,
+    seek: &Seek,
+) -> String {
+    listing(
+        Some(order),
+        Some(&format!("WHERE {}", order.condition(seek))),
+        Some(&format!(
+            "ORDER BY {} LIMIT :limit OFFSET :offset",
+            order.ordering(seek)
+        )),
+    )
 }
 
 /// What an album listing's Artist sort compares.
@@ -298,11 +332,11 @@ pub(super) enum ArtistOrder {
 pub(super) fn album_browse_order(
     sort: &[AlbumSortCriterion],
     group_by_artist: bool,
-) -> (String, String) {
+) -> (String, ListOrder) {
     if !group_by_artist {
         return (
             "FROM album_listing listing JOIN albums a ON a.id = listing.album_id".to_string(),
-            build_order_by(sort, ArtistOrder::CreditList),
+            album_order(sort, ArtistOrder::CreditList),
         );
     }
     let direction = sort
@@ -324,7 +358,7 @@ pub(super) fn album_browse_order(
             direction: SortDirection::Descending,
         });
     }
-    let order = build_order_by(&grouped_sort, ArtistOrder::GroupArtist);
+    let order = album_order(&grouped_sort, ArtistOrder::GroupArtist);
     // CROSS JOIN keeps this join order: the artists in their index's order,
     // each artist's albums after it, so a window reads about its own rows.
     (
@@ -335,6 +369,16 @@ pub(super) fn album_browse_order(
             .to_string(),
         order,
     )
+}
+
+/// The tables whose rows the album list's order reads, flat or grouped by
+/// artist, as `list_order_versions` names them.
+pub(super) fn album_browse_sources(group_by_artist: bool) -> &'static [&'static str] {
+    if group_by_artist {
+        &["album_listing", "album_artist_link", "artist_listing"]
+    } else {
+        &["album_listing"]
+    }
 }
 
 /// The grid's sections when grouped by artist: each artist in the grouped
@@ -556,13 +600,13 @@ pub(super) fn row_to_release_summary(
     })
 }
 
-/// ORDER BY for composer-page sorts, over `composer_listing listing`. Ties
-/// break by name ascending, then id — pagination needs a total order and a
-/// name is not unique — and that tie-break is the whole clause when `sort` is
-/// empty. A name the sort already orders by is not repeated, so an index of
-/// `composer_listing` serves each one-field sort. Mirrors `build_order_by`'s
-/// `a.id` album tie-break.
-pub(super) fn composer_order_by(sort: &[ComposerSortCriterion]) -> String {
+/// The composer list's order, over `composer_listing listing`. Ties break by
+/// name ascending, then id — a window needs a total order and a name is not
+/// unique — and that tie-break is the whole order when `sort` is empty. A
+/// name the sort already orders by is not repeated, so an index of
+/// `composer_listing` serves each one-field sort. Mirrors `album_order`'s
+/// `album_id` tie-break.
+pub(super) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
     let mut terms = sort
         .iter()
         .map(|c| {
@@ -571,25 +615,21 @@ pub(super) fn composer_order_by(sort: &[ComposerSortCriterion]) -> String {
                 ComposerSortField::WorkCount => "listing.work_count",
                 ComposerSortField::LinkedReleaseCount => "listing.linked_release_count",
             };
-            let direction = match c.direction {
-                SortDirection::Ascending => "ASC",
-                SortDirection::Descending => "DESC",
-            };
-            format!("{field} {direction}")
+            SortTerm::running(field, c.direction)
         })
         .collect::<Vec<_>>();
     if !sort.iter().any(|c| c.field == ComposerSortField::Name) {
-        terms.push("listing.name ASC".to_string());
+        terms.push(SortTerm::ascending("listing.name"));
     }
-    terms.push("listing.artist_id ASC".to_string());
-    terms.join(", ")
+    terms.push(SortTerm::ascending("listing.artist_id"));
+    ListOrder::new(terms)
 }
 
-/// ORDER BY for artist-page sorts, over `artist_listing listing`: each
-/// criterion, then name ascending unless the sort already orders by name,
-/// then id, the pagination tie-break. An index of `artist_listing` serves
-/// each one-field sort.
-pub(super) fn artist_order_by(sort: &[ArtistSortCriterion]) -> String {
+/// The artist list's order, over `artist_listing listing`: each criterion,
+/// then name ascending unless the sort already orders by name, then id, the
+/// tie-break a window needs. An index of `artist_listing` serves each
+/// one-field sort.
+pub(super) fn artist_order(sort: &[ArtistSortCriterion]) -> ListOrder {
     let mut terms = sort
         .iter()
         .map(|c| {
@@ -597,14 +637,14 @@ pub(super) fn artist_order_by(sort: &[ArtistSortCriterion]) -> String {
                 ArtistSortField::Name => "listing.name",
                 ArtistSortField::AlbumCount => "listing.album_count",
             };
-            format!("{field} {}", sort_direction_sql(c.direction))
+            SortTerm::running(field, c.direction)
         })
         .collect::<Vec<_>>();
     if !sort.iter().any(|c| c.field == ArtistSortField::Name) {
-        terms.push("listing.name ASC".to_string());
+        terms.push(SortTerm::ascending("listing.name"));
     }
-    terms.push("listing.artist_id ASC".to_string());
-    terms.join(", ")
+    terms.push(SortTerm::ascending("listing.artist_id"));
+    ListOrder::new(terms)
 }
 
 /// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
@@ -625,71 +665,93 @@ pub(super) fn row_to_library_image(
     })
 }
 
-/// The ORDER BY clause for an album listing over `album_listing listing`;
-/// `artist` says what its Artist sort compares. With no criteria the newest
-/// albums come first. An index of `album_listing` serves each one-field sort.
-pub(super) fn build_order_by(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> String {
-    // Every clause ends with the album id, a total order over albums. Without
-    // it rows sharing a sort value order arbitrarily — and `get_album_page`
-    // (LIMIT/OFFSET) and `get_album_index` (a ROW_NUMBER window) are different
-    // query shapes, so SQLite could tie-break them differently and a reveal would
-    // scroll to the wrong album.
+/// The order of an album listing over `album_listing listing`; `artist`
+/// says what its Artist sort compares. With no criteria the newest albums
+/// come first. An index of `album_listing` serves each one-field sort.
+pub(super) fn album_order(sort: &[AlbumSortCriterion], artist: ArtistOrder) -> ListOrder {
+    // Every order ends with the album id, a total order over albums. Without
+    // it rows sharing a sort value order arbitrarily — and a window read by
+    // its offset, one read from a row beside it and `get_album_index` (a
+    // ROW_NUMBER window) are different query shapes, so SQLite could
+    // tie-break them differently and a reveal would scroll to the wrong
+    // album.
     if sort.is_empty() {
-        return "listing.created_at DESC, listing.album_id".to_string();
+        return ListOrder::new(vec![
+            SortTerm::descending("listing.created_at"),
+            SortTerm::ascending("listing.album_id"),
+        ]);
     }
-    let clause = sort
+    let mut terms = sort
         .iter()
         .flat_map(|c| {
-            let dir = sort_direction_sql(c.direction);
+            let dir = c.direction;
             match c.field {
-                AlbumSortField::Title => vec![format!("listing.title COLLATE NOCASE {dir}")],
+                AlbumSortField::Title => {
+                    vec![SortTerm::running("listing.title COLLATE NOCASE", dir)]
+                }
                 AlbumSortField::Artist => match artist {
                     ArtistOrder::CreditList => vec![
-                        format!("listing.credit_sort_names COLLATE NOCASE {dir}"),
-                        format!("listing.credit_artist_ids {dir}"),
+                        SortTerm::running("listing.credit_sort_names COLLATE NOCASE", dir)
+                            .nullable(),
+                        SortTerm::running("listing.credit_artist_ids", dir).nullable(),
                     ],
                     ArtistOrder::GroupArtist => vec![
-                        format!("artist.sort_key COLLATE NOCASE {dir}"),
-                        format!("artist.artist_id {dir}"),
+                        SortTerm::running("artist.sort_key COLLATE NOCASE", dir),
+                        SortTerm::running("artist.artist_id", dir),
                     ],
                 },
                 // An unknown year sorts as above every year: last ascending,
                 // first descending.
                 AlbumSortField::Year => vec![
-                    format!("listing.year IS NULL {dir}"),
-                    format!("listing.year {dir}"),
+                    SortTerm::running("listing.year IS NULL", dir),
+                    SortTerm::running("listing.year", dir).nullable(),
                 ],
-                AlbumSortField::DateAdded => vec![format!("listing.created_at {dir}")],
+                AlbumSortField::DateAdded => vec![SortTerm::running("listing.created_at", dir)],
             }
         })
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("{clause}, listing.album_id")
+        .collect::<Vec<_>>();
+    terms.push(SortTerm::ascending("listing.album_id"));
+    ListOrder::new(terms)
 }
 
-/// ORDER BY for the Storage Manager list over `release_listing listing`.
-/// Every clause ends with the album title,
-/// then `created_at` and the release id, which keep pagination deterministic
-/// when two releases share a title and a timestamp (bulk imports, tests). An
-/// index of `release_listing` serves each, alone and after `stored`.
-pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> String {
-    let dir = sort_direction_sql(sort.direction);
-    let tie = "listing.album_title COLLATE NOCASE, listing.created_at, listing.release_id";
-    match sort.field {
-        StorageSortField::AlbumTitle => format!(
-            "listing.album_title COLLATE NOCASE {dir}, listing.created_at, listing.release_id"
-        ),
-        StorageSortField::ArtistNames => format!(
-            "listing.credit_sort_names COLLATE NOCASE {dir}, listing.credit_artist_ids {dir}, {tie}"
-        ),
-        // A release stating no medium goes last either way.
-        StorageSortField::Media => {
-            format!("listing.media_empty, listing.media_key {dir}, {tie}")
+/// The Storage Manager list's order over `release_listing listing`. Every
+/// order ends with the album title, then `created_at` and the release id,
+/// which tell apart two releases sharing a title and a timestamp (bulk
+/// imports, tests). An index of `release_listing` serves each, alone and
+/// after `stored`.
+pub(super) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
+    let dir = sort.direction;
+    let mut terms = match sort.field {
+        StorageSortField::AlbumTitle => {
+            vec![SortTerm::running("listing.album_title COLLATE NOCASE", dir)]
         }
-        StorageSortField::FileCount => format!("listing.file_count {dir}, {tie}"),
-        StorageSortField::TotalSize => format!("listing.total_size {dir}, {tie}"),
-        StorageSortField::Storage => format!("listing.storage_order {dir}, {tie}"),
-    }
+        StorageSortField::ArtistNames => vec![
+            SortTerm::running("listing.credit_sort_names COLLATE NOCASE", dir).nullable(),
+            SortTerm::running("listing.credit_artist_ids", dir).nullable(),
+            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+        ],
+        // A release stating no medium goes last either way.
+        StorageSortField::Media => vec![
+            SortTerm::ascending("listing.media_empty"),
+            SortTerm::running("listing.media_key", dir).nullable(),
+            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+        ],
+        StorageSortField::FileCount => vec![
+            SortTerm::running("listing.file_count", dir),
+            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+        ],
+        StorageSortField::TotalSize => vec![
+            SortTerm::running("listing.total_size", dir),
+            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+        ],
+        StorageSortField::Storage => vec![
+            SortTerm::running("listing.storage_order", dir),
+            SortTerm::ascending("listing.album_title COLLATE NOCASE"),
+        ],
+    };
+    terms.push(SortTerm::ascending("listing.created_at"));
+    terms.push(SortTerm::ascending("listing.release_id"));
+    ListOrder::new(terms)
 }
 
 /// Each release with files in coven's upload queue, and where its first
@@ -712,22 +774,23 @@ pub(super) const CLOUD_ONLY_RELEASE_COUNT: &str =
 pub(super) const RELEASE_LISTING_PINNED: &str =
     "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
 
-/// What a Storage Manager filter keeps of `release_listing listing`: the
-/// WHERE clause that follows its FROM.
+/// What a Storage Manager filter keeps of `release_listing listing`, as a
+/// condition.
 fn storage_filter(filter: StorageFilter) -> &'static str {
     match filter {
-        StorageFilter::All => "",
-        StorageFilter::Remote => "WHERE listing.stored = 1",
-        StorageFilter::Local => "WHERE listing.stored = 0",
+        StorageFilter::All => "1",
+        StorageFilter::Remote => "listing.stored = 1",
+        StorageFilter::Local => "listing.stored = 0",
     }
 }
 
-/// One Storage Manager row per release the filter keeps: the release's half
-/// and its album's, the raw aggregates the resolver maps to `ReleaseSummary` /
-/// `AlbumSummary`, whether it is pinned, and where it sorts by storage.
-fn storage_row_select(filter: StorageFilter) -> String {
+/// One Storage Manager row per release the filter keeps and `condition`
+/// passes: the release's half and its album's, the raw aggregates the
+/// resolver maps to `ReleaseSummary` / `AlbumSummary`, whether it is pinned,
+/// where it sorts by storage, and `extra` columns.
+fn storage_row_select(filter: StorageFilter, extra: &str, condition: &str) -> String {
     let album_columns = album_summary_columns();
-    let where_clause = storage_filter(filter);
+    let filter = storage_filter(filter);
     format!(
         "SELECT \
             r.id AS release_id, \
@@ -740,24 +803,34 @@ fn storage_row_select(filter: StorageFilter) -> String {
             listing.storage_order, \
             {release_cover} AS release_cover_version, \
             {upload_columns}, \
-            {album_columns} \
+            {album_columns}{extra} \
         FROM release_listing listing \
         JOIN releases r ON r.id = listing.release_id \
         JOIN albums a ON a.id = listing.album_id \
         LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
-        {where_clause}",
+        WHERE {filter} AND ({condition})",
         release_cover = super::files::cover_version_sql("r.id"),
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
         releases_sending = super::queued_uploads::RELEASES_SENDING,
     )
 }
 
-/// One window of the Storage Manager list under `filter`, in `sort`'s order.
-pub(super) fn storage_page_query(sort: &StorageSortCriterion, filter: StorageFilter) -> String {
+/// The rows of the Storage Manager list under `filter` that `seek` reads,
+/// in its order, each with its key in `order`, from `:offset` for at most
+/// `:limit` rows.
+pub(super) fn storage_window_query(
+    order: &ListOrder,
+    filter: StorageFilter,
+    seek: &Seek,
+) -> String {
     format!(
-        "{} ORDER BY {} LIMIT ? OFFSET ?",
-        storage_row_select(filter),
-        storage_order_by(sort)
+        "{} ORDER BY {} LIMIT :limit OFFSET :offset",
+        storage_row_select(
+            filter,
+            &format!(", {}", order.key_columns()),
+            &order.condition(seek)
+        ),
+        order.ordering(seek)
     )
 }
 
@@ -768,7 +841,7 @@ pub(super) fn storage_page_query(sort: &StorageSortCriterion, filter: StorageFil
 pub(super) fn storage_selected_query(filter: StorageFilter, selected_count: usize) -> String {
     format!(
         "SELECT * FROM ({}) WHERE release_id IN ({}) ORDER BY release_id",
-        storage_row_select(filter),
+        storage_row_select(filter, "", "1"),
         in_clause_placeholders(selected_count)
     )
 }

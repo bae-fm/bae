@@ -85,36 +85,51 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbStorageRow>, DbError> {
-        let query = storage_page_query(sort, filter);
-        self.read(move |sql| storage_page_on(&sql, &query, offset, limit))
-            .process(super::release_projection::process_storage_rows)
-            .await
+        let order = storage_order(sort);
+        self.read(move |sql| {
+            Ok(
+                storage_rows_on(&sql, &order, filter, &order.everything(), limit, offset)?
+                    .into_iter()
+                    .map(|(row, _)| row)
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .process(super::release_projection::process_storage_rows)
+        .await
     }
 
     /// Follow the Storage Manager list: every window the request names under
-    /// its sort and filter, with the filtered set's count and total size and
-    /// the rows of the selected releases it holds read once per run. A new sort,
-    /// filter, window set, selection, or upload queue points the same query at
-    /// it through its request handle.
+    /// its sort and filter, each read from the row beside it when one is
+    /// known (`list_windows`), with the filtered set's count and total size
+    /// and the rows of the selected releases it holds read once per run. A
+    /// new sort, filter, window set, selection, or upload queue points the
+    /// same query at it through its request handle.
     pub(crate) fn subscribe_storage_browse(
         &self,
         initial: StorageBrowseRequest,
     ) -> coven::ReconfigurableLiveQuery<StorageBrowseRequest, StorageBrowseProjection> {
+        let places = KnownPlaces::new();
         self.inner
             .handle
             .subscribe_reconfigurable(initial, move |request, sql| {
-                let query = storage_page_query(&request.sort, request.filter);
-                let windows = request
-                    .windows
-                    .iter()
-                    .map(|window| {
-                        Ok((
-                            window.clone(),
-                            storage_page_on(&sql, &query, window.offset, window.limit)
-                                .map_err(CovenError::from)?,
-                        ))
-                    })
-                    .collect::<Result<Vec<_>, CovenError>>()?;
+                let order = storage_order(&request.sort);
+                // The places a read found hold for the next only under the
+                // same sort and filter.
+                let standing = (
+                    request.sort,
+                    request.filter,
+                    list_order_versions_on(&sql, &["release_listing"])?,
+                );
+                let WindowsRead { windows, found } = read_windows(
+                    &order,
+                    &request.windows,
+                    places.under(&standing),
+                    |seek, limit, offset| {
+                        storage_rows_on(&sql, &order, request.filter, seek, limit, offset)
+                    },
+                )
+                .map_err(CovenError::from)?;
+                places.keep(standing, found);
                 let total_count =
                     storage_count_on(&sql, request.filter).map_err(CovenError::from)?;
                 let total_size =

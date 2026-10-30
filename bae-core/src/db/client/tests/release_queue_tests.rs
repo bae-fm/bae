@@ -288,6 +288,7 @@ async fn the_queue_reads_are_planned_on_their_keys() {
         "{by_release}"
     );
     let pane = plan(super::super::release_queues::queue_rows_sql::<()>(
+        None,
         "ORDER BY q.position LIMIT 100 OFFSET 0",
     ))
     .await;

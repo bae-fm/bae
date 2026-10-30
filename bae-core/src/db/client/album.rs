@@ -88,7 +88,7 @@ impl Database {
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
     /// `sort` is empty.
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {
-        let (relation, order_by) = album_browse_order(sort, false);
+        let (relation, order) = album_browse_order(sort, false);
 
         let query = format!(
             "SELECT \
@@ -96,41 +96,37 @@ impl Database {
                 a.is_compilation, \
                 a.created_at \
             {relation} \
-            ORDER BY {order_by}"
+            ORDER BY {}",
+            order.clause()
         );
 
         self.read(move |sql| sql.query(&query, [], row_to_album).map_err(DbError::from))
             .await
     }
 
-    /// Get a page of albums with LIMIT/OFFSET for lazy loading.
+    /// One window of the album list under `sort`, read by its offset.
     pub async fn get_album_page(
         &self,
         sort: &[AlbumSortCriterion],
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbAlbumSummary>, DbError> {
-        let (relation, order_by) = album_browse_order(sort, false);
-        let select = album_summary_select();
-
-        let query = format!(
-            "{select} \
-            {relation} \
-            ORDER BY {order_by} \
-            LIMIT ? OFFSET ?",
-        );
-
+        let (relation, order) = album_browse_order(sort, false);
         self.read(move |sql| {
-            Ok(sql.query(
-                &query,
-                params![limit as i64, offset as i64],
-                AlbumSummaryRow::read,
-            )?)
+            Ok(
+                album_rows_on(&sql, &relation, &order, &order.everything(), limit, offset)?
+                    .into_iter()
+                    .map(|(row, _)| row)
+                    .collect::<Vec<_>>(),
+            )
         })
         .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
         .await
     }
 
+    /// Follow the album list under `sort`, flat or grouped by artist, in the
+    /// windows its request names. A window next to one this read or the
+    /// last read held is read from the row beside it (`list_windows`).
     pub(crate) fn subscribe_album_browse(
         &self,
         sort: &[AlbumSortCriterion],
@@ -138,12 +134,9 @@ impl Database {
         initial_windows: crate::library::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, AlbumBrowseProjection>
     {
-        let (relation, order_by) = album_browse_order(sort, group_by_artist);
-        let page_query = format!(
-            "{} {relation} \
-             ORDER BY {order_by} LIMIT ? OFFSET ?",
-            album_summary_select(),
-        );
+        let (relation, order) = album_browse_order(sort, group_by_artist);
+        let sources = album_browse_sources(group_by_artist);
+        let places = KnownPlaces::new();
         let section_query = group_by_artist.then(|| {
             album_browse_sections_query(
                 sort.iter()
@@ -154,6 +147,7 @@ impl Database {
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
+                let versions = list_order_versions_on(&sql, sources)?;
                 let total_count = album_count_on(&sql).map_err(CovenError::from)?;
                 let sections = match &section_query {
                     Some(query) => sql.query(query, [], |row| {
@@ -173,35 +167,36 @@ impl Database {
                 } else {
                     total_count
                 };
-                let windows = requested
-                    .iter()
-                    .map(|window| {
-                        let rows = album_rows_on(
-                            &sql,
-                            &page_query,
-                            params![window.limit as i64, window.offset as i64],
-                        )?;
-                        Ok(crate::library::LibraryBrowseWindow {
-                            window: window.clone(),
-                            rows,
-                        })
-                    })
-                    .collect::<Result<Vec<_>, CovenError>>()?;
+                let WindowsRead { windows, found } = read_windows(
+                    &order,
+                    requested,
+                    places.under(&versions),
+                    |seek, limit, offset| {
+                        album_rows_on(&sql, &relation, &order, seek, limit, offset)
+                    },
+                )?;
+                places.keep(versions, found);
+                let windows = windows
+                    .into_iter()
+                    .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                    .collect::<Vec<_>>();
                 Ok((windows, total_count, row_count, sections))
             })
             .process(|(windows, total_count, row_count, sections)| {
                 let windows = windows
                     .into_iter()
-                    .map(|window| {
-                        Ok(crate::library::LibraryBrowseWindow {
-                            window: window.window,
-                            rows: window
-                                .rows
-                                .into_iter()
-                                .map(AlbumSummaryRow::process)
-                                .collect::<Result<_, _>>()?,
-                        })
-                    })
+                    .map(
+                        |window: crate::library::LibraryBrowseWindow<AlbumSummaryRow>| {
+                            Ok(crate::library::LibraryBrowseWindow {
+                                window: window.window,
+                                rows: window
+                                    .rows
+                                    .into_iter()
+                                    .map(AlbumSummaryRow::process)
+                                    .collect::<Result<_, _>>()?,
+                            })
+                        },
+                    )
                     .collect::<Result<_, CovenError>>()?;
                 Ok(AlbumBrowseProjection {
                     windows,
@@ -247,7 +242,8 @@ impl Database {
         album_ids: Vec<String>,
         group_by_artist: bool,
     ) -> Result<Vec<DbAlbumSummary>, DbError> {
-        let (relation, order_by) = album_browse_order(sort, group_by_artist);
+        let (relation, order) = album_browse_order(sort, group_by_artist);
+        let order_by = order.clause();
         let query = format!(
             "WITH appearance (album_id, idx) AS ( \
                  SELECT a.id, ROW_NUMBER() OVER (ORDER BY {order_by}) \
@@ -274,7 +270,8 @@ impl Database {
         album_id: &str,
         group_by_artist: bool,
     ) -> Result<Option<u64>, DbError> {
-        let (relation, order_by) = album_browse_order(sort, group_by_artist);
+        let (relation, order) = album_browse_order(sort, group_by_artist);
+        let order_by = order.clause();
         let album_id = album_id.to_string();
 
         let query = format!(
@@ -551,6 +548,7 @@ fn search_library_on(
     )?;
     let artists = sql.query(
         &artist_listing_query(
+            None,
             Some(&format!("WHERE ar.id IN ({SEARCH_MATCHED_ARTISTS})")),
             Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
         ),
@@ -559,6 +557,7 @@ fn search_library_on(
     )?;
     let composers = sql.query(
         &composer_listing_query(
+            None,
             Some(&format!("WHERE composer.id IN ({SEARCH_MATCHED_ARTISTS})")),
             Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
         ),
@@ -700,12 +699,35 @@ fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
     .map_err(DbError::from)
 }
 
-fn album_rows_on<P: Params>(
+/// The statement reading the album list's rows `seek` reads over
+/// `relation` in `order`, at most `:limit` from `:offset`, each with its key.
+pub(super) fn album_window_statement(relation: &str, order: &ListOrder, seek: &Seek) -> String {
+    format!(
+        "{select}, {keys} {relation} WHERE {condition} ORDER BY {ordering} \
+         LIMIT :limit OFFSET :offset",
+        select = album_summary_select(),
+        keys = order.key_columns(),
+        condition = order.condition(seek),
+        ordering = order.ordering(seek),
+    )
+}
+
+/// The album list's rows `seek` reads over `relation` in `order`, at most
+/// `limit` from `offset`, each with its key.
+pub(super) fn album_rows_on(
     sql: &SqlReadContext<'_>,
-    query: &str,
-    params: P,
-) -> Result<Vec<AlbumSummaryRow>, CovenError> {
-    Ok(sql.query(query, params, AlbumSummaryRow::read)?)
+    relation: &str,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+    offset: u64,
+) -> Result<Vec<Keyed<AlbumSummaryRow>>, DbError> {
+    let statement = album_window_statement(relation, order, seek);
+    Ok(seek.bound(limit, offset, |params| {
+        sql.query(&statement, params, |row| {
+            Ok((AlbumSummaryRow::read(row)?, order.key_of(row)?))
+        })
+    })?)
 }
 
 #[derive(Debug, Clone, PartialEq)]

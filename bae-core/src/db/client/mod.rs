@@ -162,16 +162,21 @@ mod track;
 #[cfg(test)]
 mod tests;
 
+mod list_windows;
 mod pressing_columns;
 mod query;
 mod read;
 mod scrub_points_column;
 mod write;
 
+use list_windows::{
+    list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
+    WindowsRead,
+};
 use query::*;
 use read::*;
 use release_projection::{
-    find_release_detail_context_on, storage_count_on, storage_page_on, storage_selected_on,
+    find_release_detail_context_on, storage_count_on, storage_rows_on, storage_selected_on,
     storage_total_size_on,
 };
 pub use release_projection::{

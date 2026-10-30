@@ -170,10 +170,11 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
                 field: StorageSortField::Storage,
                 direction,
             };
+            let order = super::super::query::storage_order(&sort);
             let steps = plan(
                 &db,
-                super::super::query::storage_page_query(&sort, filter)
-                    .replace("LIMIT ? OFFSET ?", "LIMIT 50 OFFSET 0"),
+                super::super::query::storage_window_query(&order, filter, &order.everything())
+                    .replace("LIMIT :limit OFFSET :offset", "LIMIT 50 OFFSET 0"),
             )
             .await;
             assert!(

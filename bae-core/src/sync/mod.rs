@@ -317,6 +317,9 @@ mod tests {
         "artist_listing",
         "release_listing",
         "release_listing_totals",
+        // How often each of those lists' rows have moved, which says whether
+        // a list's read may start from where its last read found rows.
+        "list_order_versions",
         // Library search's folded titles and names.
         "album_search",
         "track_search",

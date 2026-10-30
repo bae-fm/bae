@@ -1,7 +1,10 @@
 //! What one window of each paged list costs to read, at the top, the middle
-//! and the end of the list, at 20,000, 50,000 and 100,000 rows. Each window is
-//! read with the statement its live query runs, its rows decoded as that query
-//! decodes them. A measurement, not a check: run it in release with
+//! and the end of the list, at 20,000, 50,000 and 100,000 rows: reached by a
+//! jump, which reads it by its offset, and by scrolling, which reads it from
+//! the row beside it (`list_windows`): the row after the window at the top,
+//! and the row before it lower down. Each window is read by the reads its live
+//! query runs, its rows decoded as that query decodes them. A measurement, not
+//! a check: run it in release with
 //!
 //! ```sh
 //! scripts/cargo.sh test --release -p bae-core --features test-utils --lib -- \
@@ -32,7 +35,7 @@ fn id(kind: u32) -> String {
 /// files, a work the artist composed, a download queued for the release and
 /// the track in the context lane. Titles and names run in an order of their
 /// own, unrelated to the ids', and every sort has ties the ids break.
-fn seed_sql(start: u64, end: u64) -> String {
+pub(super) fn seed_sql(start: u64, end: u64) -> String {
     let rows = format!(
         "WITH RECURSIVE k(i) AS (SELECT {start} UNION ALL SELECT i + 1 FROM k WHERE i + 1 < {end})"
     );
@@ -119,58 +122,79 @@ fn offsets(total: u64) -> [(&'static str, u64); 3] {
     ]
 }
 
-fn report(list: &str, order: &str, at: &str, offset: u64, n: u64, (time, rows): (Duration, usize)) {
+fn report(
+    list: &str,
+    order: &str,
+    reach: &str,
+    at: &str,
+    offset: u64,
+    n: u64,
+    (time, rows): (Duration, usize),
+) {
     eprintln!(
-        "WINDOW_COST list={list} order={order} n={n} at={at} offset={offset} rows={rows} \
-         median_ms={:.3}",
+        "WINDOW_COST list={list} order={order} reach={reach} n={n} at={at} offset={offset} \
+         rows={rows} median_ms={:.3}",
         time.as_secs_f64() * 1000.0
     );
 }
 
-/// Read one window with `read`, given its offset, at each measured offset.
-async fn measure<F>(db: &Database, list: &str, order: &str, n: u64, read: F)
-where
-    F: Fn(&SqlReadContext<'_>, u64) -> Result<usize, DbError> + Send + Sync + Clone + 'static,
-{
-    for (at, offset) in offsets(n) {
-        let read = read.clone();
-        let timing = median(db, move |sql| read(sql, offset)).await;
-        report(list, order, at, offset, n, timing);
-    }
-}
+/// Reads a list's rows under a seek, at most a limit from an offset, each
+/// with its key: what a list's live query reads its windows with.
+type Rows<R> =
+    fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>;
 
-/// [`measure`] for a statement ending `LIMIT ? OFFSET ?`, each row decoded
-/// with `decode`.
-async fn measure_statement(
+/// Read one window at each measured offset of a list in `order`, once by a
+/// jump and once from the row beside it.
+async fn measure<R: Send + 'static>(
     db: &Database,
     list: &str,
-    order: &str,
+    name: &str,
     n: u64,
-    statement: String,
-    decode: fn(&Row<'_>) -> rusqlite::Result<()>,
+    order: ListOrder,
+    rows: Rows<R>,
 ) {
-    measure(db, list, order, n, move |sql, offset| {
-        Ok(sql
-            .query(&statement, params![LIMIT as i64, offset as i64], decode)?
-            .len())
-    })
-    .await;
-}
-
-fn album_row(row: &Row<'_>) -> rusqlite::Result<()> {
-    query::AlbumSummaryRow::read(row).map(|_| ())
-}
-
-fn artist_row(row: &Row<'_>) -> rusqlite::Result<()> {
-    row_to_artist_summary(row).map(|_| ())
-}
-
-fn composer_row(row: &Row<'_>) -> rusqlite::Result<()> {
-    row_to_composer_summary(row).map(|_| ())
-}
-
-fn ignore_row(_: &Row<'_>) -> rusqlite::Result<()> {
-    Ok(())
+    let order = std::sync::Arc::new(order);
+    for (at, offset) in offsets(n) {
+        let window =
+            crate::library::LibraryPageWindows::from([crate::library::LibraryPageWindow {
+                offset,
+                limit: LIMIT,
+            }]);
+        // The row beside the window: after it at the top, before it below.
+        let beside = if offset == 0 {
+            offset + LIMIT
+        } else {
+            offset - 1
+        };
+        let key = {
+            let order = order.clone();
+            db.read(move |sql| {
+                Ok(rows(&sql, &order, &order.everything(), 1, beside)?
+                    .pop()
+                    .expect("the row beside a window is in the list")
+                    .1)
+            })
+            .await
+            .unwrap()
+        };
+        for (reach, known) in [
+            ("jump", super::super::list_windows::Places::new()),
+            (
+                "scroll",
+                super::super::list_windows::Places::from([(beside, key.clone())]),
+            ),
+        ] {
+            let (order, window) = (order.clone(), window.clone());
+            let timing = median(db, move |sql| {
+                let read = read_windows(&order, &window, known.clone(), |seek, limit, at| {
+                    rows(sql, &order, seek, limit, at)
+                })?;
+                Ok(read.windows[0].1.len())
+            })
+            .await;
+            report(list, name, reach, at, offset, n, timing);
+        }
+    }
 }
 
 fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
@@ -196,18 +220,32 @@ async fn measure_albums(db: &Database, n: u64) {
         }
     }
     for group_by_artist in [false, true] {
-        let list = if group_by_artist {
-            "albums_by_artist"
+        let (list, rows): (&str, Rows<_>) = if group_by_artist {
+            ("albums_by_artist", |sql, order, seek, limit, offset| {
+                super::super::album::album_rows_on(
+                    sql,
+                    &query::album_browse_order(&[], true).0,
+                    order,
+                    seek,
+                    limit,
+                    offset,
+                )
+            })
         } else {
-            "albums"
+            ("albums", |sql, order, seek, limit, offset| {
+                super::super::album::album_rows_on(
+                    sql,
+                    &query::album_browse_order(&[], false).0,
+                    order,
+                    seek,
+                    limit,
+                    offset,
+                )
+            })
         };
         for (name, sort) in &sorts {
-            let (relation, order_by) = query::album_browse_order(sort, group_by_artist);
-            let statement = format!(
-                "{} {relation} ORDER BY {order_by} LIMIT ? OFFSET ?",
-                query::album_summary_select()
-            );
-            measure_statement(db, list, name, n, statement, album_row).await;
+            let (_, order) = query::album_browse_order(sort, group_by_artist);
+            measure(db, list, name, n, order, rows).await;
         }
     }
 }
@@ -223,9 +261,15 @@ async fn measure_artists(db: &Database, n: u64) {
         }
     }
     for (name, sort) in sorts {
-        let tail = format!("ORDER BY {} LIMIT ? OFFSET ?", artist_order_by(&sort));
-        let statement = artist_listing_query(None, Some(&tail));
-        measure_statement(db, "artists", &name, n, statement, artist_row).await;
+        measure(
+            db,
+            "artists",
+            &name,
+            n,
+            artist_order(&sort),
+            super::super::artist::artist_rows_on,
+        )
+        .await;
     }
 }
 
@@ -244,14 +288,30 @@ async fn measure_composers(db: &Database, n: u64) {
         }
     }
     for (name, sort) in sorts {
-        let tail = format!("ORDER BY {} LIMIT ? OFFSET ?", composer_order_by(&sort));
-        let statement = composer_listing_query(None, Some(&tail));
-        measure_statement(db, "composers", &name, n, statement, composer_row).await;
+        measure(
+            db,
+            "composers",
+            &name,
+            n,
+            composer_order(&sort),
+            super::super::artist::composer_rows_on,
+        )
+        .await;
     }
 }
 
 async fn measure_storage(db: &Database, n: u64) {
-    for filter in [StorageFilter::All, StorageFilter::Local] {
+    for (filter, rows) in [
+        (
+            StorageFilter::All,
+            (|sql, order, seek, limit, offset| {
+                storage_rows_on(sql, order, StorageFilter::All, seek, limit, offset)
+            }) as Rows<_>,
+        ),
+        (StorageFilter::Local, |sql, order, seek, limit, offset| {
+            storage_rows_on(sql, order, StorageFilter::Local, seek, limit, offset)
+        }),
+    ] {
         for field in [
             StorageSortField::AlbumTitle,
             StorageSortField::ArtistNames,
@@ -261,51 +321,46 @@ async fn measure_storage(db: &Database, n: u64) {
             StorageSortField::Storage,
         ] {
             for (field, direction) in both_ways(field) {
-                let query =
-                    query::storage_page_query(&StorageSortCriterion { field, direction }, filter);
-                let order = format!("{filter:?}_{field:?}_{direction:?}");
-                measure(db, "storage", &order, n, move |sql, offset| {
-                    Ok(super::super::release_projection::storage_page_on(
-                        sql, &query, offset, LIMIT,
-                    )?
-                    .len())
-                })
-                .await;
+                let order = query::storage_order(&StorageSortCriterion { field, direction });
+                let name = format!("{filter:?}_{field:?}_{direction:?}");
+                measure(db, "storage", &name, n, order, rows).await;
             }
         }
     }
 }
 
 async fn measure_queues(db: &Database, n: u64) {
-    measure_statement(
+    measure(
         db,
         "downloads",
         "queued",
         n,
-        super::super::release_queues::queue_rows_sql::<()>(
-            "ORDER BY q.position LIMIT ?1 OFFSET ?2",
-        ),
-        ignore_row,
+        super::super::release_queues::queue_order(),
+        super::super::release_queues::queue_window_rows_on::<()>,
     )
     .await;
-    measure_statement(
-        db,
-        "queue_upcoming",
-        "lane",
-        n,
-        format!(
-            "SELECT e.entry, {columns} \
-             FROM (SELECT 'c' || track_id AS entry, track_id, position FROM playback_context \
-                   WHERE position > -1 ORDER BY position LIMIT ?1 OFFSET ?2) e \
-             JOIN tracks t ON t.id = e.track_id \
-             {joins} \
-             ORDER BY e.position",
-            columns = super::super::playback::track_display_columns(),
-            joins = super::super::playback::TRACK_DISPLAY_JOINS,
-        ),
-        ignore_row,
-    )
-    .await;
+    // The context lane's upcoming windows are read by offset alone: the
+    // offset steps over the lane's positions before any track is read.
+    let lane = format!(
+        "SELECT e.entry, {columns} \
+         FROM (SELECT 'c' || track_id AS entry, track_id, position FROM playback_context \
+               WHERE position > -1 ORDER BY position LIMIT ?1 OFFSET ?2) e \
+         JOIN tracks t ON t.id = e.track_id \
+         {joins} \
+         ORDER BY e.position",
+        columns = super::super::playback::track_display_columns(),
+        joins = super::super::playback::TRACK_DISPLAY_JOINS,
+    );
+    for (at, offset) in offsets(n) {
+        let lane = lane.clone();
+        let timing = median(db, move |sql| {
+            Ok(sql
+                .query(&lane, params![LIMIT as i64, offset as i64], |_| Ok(()))?
+                .len())
+        })
+        .await;
+        report("queue_upcoming", "lane", "jump", at, offset, n, timing);
+    }
 }
 
 /// Scan `start..end` more folders into the import list, each its own album
@@ -348,7 +403,10 @@ async fn grow_import_list(db: &Database, tmp: &std::path::Path, start: u64, end:
 }
 
 /// One read of the import list's Found tab with one window, at each measured
-/// offset, in each order: the counts, the window's items and their rows.
+/// offset, in each order, through the list's live query: the counts, the
+/// window's items and their rows. A jump moves the window between the offset
+/// and one far from it, so no read knows a row beside its window; a scroll
+/// moves it between the offset and the window after it.
 async fn measure_import_list(db: &Database, n: u64) {
     use crate::import::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
     for order in [ImportListOrder::PathAscending, ImportListOrder::NewestFirst] {
@@ -361,33 +419,53 @@ async fn measure_import_list(db: &Database, n: u64) {
             })
             .await
             .unwrap();
+        let request = |offset| ImportListRequest {
+            list,
+            windows: crate::library::LibraryPageWindows::from([
+                crate::library::LibraryPageWindow {
+                    offset,
+                    limit: LIMIT,
+                },
+            ]),
+        };
         for (at, offset) in offsets(n) {
-            let mut runs = Vec::with_capacity(RUNS);
-            let mut rows = 0;
-            for _ in 0..RUNS {
-                let request = ImportListRequest {
-                    list,
-                    windows: crate::library::LibraryPageWindows::from([
-                        crate::library::LibraryPageWindow {
-                            offset,
-                            limit: LIMIT,
-                        },
-                    ]),
-                };
-                let started = Instant::now();
-                let read = db.load_import_list(request).await.unwrap();
-                runs.push(started.elapsed());
-                rows = read.windows[0].items.len();
+            let away = if offset >= n / 2 {
+                offset - n / 4
+            } else {
+                offset + n / 4
+            };
+            let next = if offset + 2 * LIMIT <= n {
+                offset + LIMIT
+            } else {
+                offset - LIMIT
+            };
+            for (reach, other) in [("jump", away), ("scroll", next)] {
+                let mut query = db.subscribe_import_list(request(other));
+                query.next().await.unwrap().result.unwrap();
+                let requests = query.requests();
+                let mut runs = Vec::with_capacity(RUNS);
+                let mut rows = 0;
+                for run in 0..2 * RUNS {
+                    let target = if run % 2 == 0 { offset } else { other };
+                    let started = Instant::now();
+                    requests.set(request(target)).unwrap();
+                    let read = query.next().await.unwrap().result.unwrap();
+                    if target == offset {
+                        runs.push(started.elapsed());
+                        rows = read.windows[0].items.len();
+                    }
+                }
+                runs.sort();
+                report(
+                    "import_list",
+                    &format!("{order:?}"),
+                    reach,
+                    at,
+                    offset,
+                    n,
+                    (runs[RUNS / 2], rows),
+                );
             }
-            runs.sort();
-            report(
-                "import_list",
-                &format!("{order:?}"),
-                at,
-                offset,
-                n,
-                (runs[RUNS / 2], rows),
-            );
         }
         db.close_import_list(list).await.unwrap();
     }

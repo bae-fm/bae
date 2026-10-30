@@ -35,16 +35,22 @@ fn storage_place(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storage
     }
 }
 
-pub(super) fn storage_page_on(
+/// The Storage Manager list's rows under `filter` that `seek` reads in
+/// `order`, at most `limit` from `offset`, each with its key.
+pub(super) fn storage_rows_on(
     sql: &SqlReadContext<'_>,
-    query: &str,
-    offset: u64,
+    order: &ListOrder,
+    filter: StorageFilter,
+    seek: &Seek,
     limit: u64,
-) -> Result<Vec<StorageRowParts>, DbError> {
-    sql.query(query, params![limit as i64, offset as i64], |row| {
-        storage_row_parts(sql, row)
-    })
-    .map_err(DbError::from)
+    offset: u64,
+) -> Result<Vec<Keyed<StorageRowParts>>, DbError> {
+    let statement = storage_window_query(order, filter, seek);
+    Ok(seek.bound(limit, offset, |params| {
+        sql.query(&statement, params, |row| {
+            Ok((storage_row_parts(sql, row)?, order.key_of(row)?))
+        })
+    })?)
 }
 
 /// How many releases of its album come before the release `?1` in the

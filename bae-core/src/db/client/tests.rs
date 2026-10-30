@@ -317,3 +317,6 @@ mod candidate_standing_tests;
 
 #[cfg(test)]
 mod window_cost;
+
+#[cfg(test)]
+mod list_window_tests;

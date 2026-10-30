@@ -2752,6 +2752,22 @@ Reads come two ways:
   one that has ended takes the new window and reads nothing more. The downloads list on the phones is such a list: it
   reads how many releases the queue holds and the windows on screen, and its
   pause and retry controls and summary line read how many are in each phase.
+  Each list sorts by terms that end with a unique one, so every row has one
+  place, and an index serves each of its sorts. A window next to a row whose
+  place the read knows is read from that row's sort values through the index,
+  starting just past it or ending just short of it, so its cost does not grow
+  with how deep in the list it is. The read knows the places of the first and
+  last rows of each window it read before, and of each window its last read
+  held while no row of the list has moved since: the tables a list sorts keep
+  a count of the writes that inserted, deleted or reordered their rows
+  (`list_order_versions`, Appendix A), and a read starts from its last read's
+  rows only while those counts stand. Any other window, such as one a jump to
+  the middle of the list reaches, is read by its offset, past every row before
+  it. The playback queue's upcoming tracks are read by offset alone: the
+  offset passes over the context lane's positions before any track is read,
+  so a deep window costs little. The artist picker's search reads every
+  artist its text finds and sorts them, so each window of it is read by its
+  offset.
   The Storage Manager's list is also told
   which releases are selected in it, and each of its values carries the row
   of each one the list holds, on screen or not, and the storage actions every
@@ -3140,6 +3156,7 @@ Beside them, device-local tables:
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
+| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `release_listing`, `download_queue`, `output_queue`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 

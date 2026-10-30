@@ -573,6 +573,24 @@ CREATE TABLE IF NOT EXISTS audio_segment_scrub_points (
 -- references are there, and the referenced row's own trigger, when it arrives,
 -- counts the rows that were waiting for it.
 
+-- How many times the rows of each table a paged list sorts have moved: a row
+-- inserted or deleted, or one of the values its list sorts or filters it by
+-- changed. Triggers on each table advance its version in the write that
+-- moves its rows. A list's read starts a window from a row an earlier read
+-- found only while the versions of the tables its order reads stand where
+-- they stood for that read (§9.2).
+CREATE TABLE IF NOT EXISTS list_order_versions (
+    source  TEXT PRIMARY KEY CHECK (source IN (
+        'album_listing', 'album_artist_link', 'artist_listing', 'composer_listing',
+        'release_listing', 'download_queue', 'output_queue')),
+    version INTEGER NOT NULL
+) STRICT;
+
+INSERT OR IGNORE INTO list_order_versions (source, version) VALUES
+    ('album_listing', 0), ('album_artist_link', 0), ('artist_listing', 0),
+    ('composer_listing', 0), ('release_listing', 0), ('download_queue', 0),
+    ('output_queue', 0);
+
 -- Each artist and the artist it shows as (§2.3): the survivor of its merges
 -- (`merged_artist_survivors`), else itself. Every read of a credit goes
 -- through it.
@@ -698,6 +716,24 @@ CREATE INDEX IF NOT EXISTS idx_composer_listing_work_count_desc ON composer_list
 CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count ON composer_listing (linked_release_count, name, artist_id);
 
 CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count_desc ON composer_listing (linked_release_count DESC, name, artist_id);
+
+CREATE TRIGGER IF NOT EXISTS composer_listing_order_added AFTER INSERT ON composer_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'composer_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS composer_listing_order_removed AFTER DELETE ON composer_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'composer_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS composer_listing_order_moved AFTER UPDATE OF name, work_count, linked_release_count ON composer_listing
+WHEN OLD.name IS NOT NEW.name
+  OR OLD.work_count IS NOT NEW.work_count
+  OR OLD.linked_release_count IS NOT NEW.linked_release_count
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'composer_listing';
+END;
 
 -- Each row added to or removed from the three tables counts in or out of its
 -- artist's listing row. An artist whose own row has not arrived yet gets its
@@ -987,6 +1023,26 @@ CREATE INDEX IF NOT EXISTS idx_album_listing_credits ON album_listing (credit_so
 
 CREATE INDEX IF NOT EXISTS idx_album_listing_credits_desc ON album_listing (credit_sort_names COLLATE NOCASE DESC, credit_artist_ids DESC, album_id);
 
+CREATE TRIGGER IF NOT EXISTS album_listing_order_added AFTER INSERT ON album_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'album_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_listing_order_removed AFTER DELETE ON album_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'album_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_listing_order_moved AFTER UPDATE OF title, year, created_at, credit_sort_names, credit_artist_ids ON album_listing
+WHEN OLD.title IS NOT NEW.title
+  OR OLD.year IS NOT NEW.year
+  OR OLD.created_at IS NOT NEW.created_at
+  OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
+  OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'album_listing';
+END;
+
 -- Each album the library shows and each artist one of its credits shows,
 -- once however many credits name that artist.
 CREATE TABLE IF NOT EXISTS album_artist_link (
@@ -996,6 +1052,23 @@ CREATE TABLE IF NOT EXISTS album_artist_link (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_album_artist_link_album ON album_artist_link (album_id);
+
+CREATE TRIGGER IF NOT EXISTS album_artist_link_order_added AFTER INSERT ON album_artist_link
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'album_artist_link';
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_artist_link_order_removed AFTER DELETE ON album_artist_link
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'album_artist_link';
+END;
+
+CREATE TRIGGER IF NOT EXISTS album_artist_link_order_moved AFTER UPDATE OF artist_id, album_id ON album_artist_link
+WHEN OLD.artist_id IS NOT NEW.artist_id
+  OR OLD.album_id IS NOT NEW.album_id
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'album_artist_link';
+END;
 
 -- Each artist the artist list shows: one an album the library shows credits,
 -- with its name for the list's order, its sort name (else name) for the grid
@@ -1018,6 +1091,24 @@ CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count_desc ON artist_listing
 -- Both columns run one way, so the index serves the grid grouped by artist in
 -- either direction.
 CREATE INDEX IF NOT EXISTS idx_artist_listing_sort_key ON artist_listing (sort_key COLLATE NOCASE DESC, artist_id DESC);
+
+CREATE TRIGGER IF NOT EXISTS artist_listing_order_added AFTER INSERT ON artist_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'artist_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_listing_order_removed AFTER DELETE ON artist_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'artist_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_listing_order_moved AFTER UPDATE OF name, sort_key, album_count ON artist_listing
+WHEN OLD.name IS NOT NEW.name
+  OR OLD.sort_key IS NOT NEW.sort_key
+  OR OLD.album_count IS NOT NEW.album_count
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'artist_listing';
+END;
 
 -- Each link added to or removed from `album_artist_link` counts in or out of
 -- its artist's listing row. An artist whose own row has not arrived yet gets
@@ -1243,6 +1334,31 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_cloud_only ON release_listing (st
 -- their first files wait: what the import list's Done tab runs first (§3.2).
 CREATE INDEX IF NOT EXISTS idx_release_listing_uploading ON release_listing (first_queued_position, release_id)
     WHERE first_queued_position IS NOT NULL;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_order_added AFTER INSERT ON release_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'release_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_order_removed AFTER DELETE ON release_listing
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'release_listing';
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, waiting_pin_count, pinned_count ON release_listing
+WHEN OLD.album_title IS NOT NEW.album_title
+  OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
+  OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
+  OR OLD.media_empty IS NOT NEW.media_empty
+  OR OLD.media_key IS NOT NEW.media_key
+  OR OLD.created_at IS NOT NEW.created_at
+  OR OLD.file_count IS NOT NEW.file_count
+  OR OLD.total_size IS NOT NEW.total_size
+  OR OLD.stored IS NOT NEW.stored
+  OR OLD.storage_order IS NOT NEW.storage_order
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'release_listing';
+END;
 
 -- How many releases are stored and how many aren't, and their files' total
 -- size, for the Storage Manager's count and total: a row for each of `stored`
@@ -1736,6 +1852,22 @@ CREATE TABLE IF NOT EXISTS download_queue (
 CREATE UNIQUE INDEX IF NOT EXISTS download_queue_active
     ON download_queue (state) WHERE state = 'active';
 
+CREATE TRIGGER IF NOT EXISTS download_queue_order_added AFTER INSERT ON download_queue
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'download_queue';
+END;
+
+CREATE TRIGGER IF NOT EXISTS download_queue_order_removed AFTER DELETE ON download_queue
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'download_queue';
+END;
+
+CREATE TRIGGER IF NOT EXISTS download_queue_order_moved AFTER UPDATE OF position ON download_queue
+WHEN OLD.position IS NOT NEW.position
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'download_queue';
+END;
+
 -- A release joining, moving through or leaving this device's download queue
 -- moves its listing's `download_queued` flag, in the transaction that
 -- changes the queue: waiting or downloading sets it, a failed download or
@@ -1778,6 +1910,22 @@ CREATE TABLE IF NOT EXISTS output_queue (
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS output_queue_active
     ON output_queue (state) WHERE state = 'active';
+
+CREATE TRIGGER IF NOT EXISTS output_queue_order_added AFTER INSERT ON output_queue
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'output_queue';
+END;
+
+CREATE TRIGGER IF NOT EXISTS output_queue_order_removed AFTER DELETE ON output_queue
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'output_queue';
+END;
+
+CREATE TRIGGER IF NOT EXISTS output_queue_order_moved AFTER UPDATE OF position ON output_queue
+WHEN OLD.position IS NOT NEW.position
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'output_queue';
+END;
 
 -- ── Watched folders and their scans ───────────────────────────────────────────
 
