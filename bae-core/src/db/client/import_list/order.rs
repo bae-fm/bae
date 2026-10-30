@@ -2,14 +2,15 @@
 //! sorts runs them in, and the reads that take a window of them or find where
 //! one sits.
 //!
-//! Every order is one of the placement's order indexes, so a window reads
-//! about as many index entries as its offset and limit, and a position is the
-//! count of the items before it in the same scan. A search that finds few
-//! rows has its windows read from those rows instead, sorted. Done runs in
-//! two parts: the releases coven still has uploads queued for
-//! (`coven_uploads`), first to go first, and then the rest in the index's
-//! order. The first part is the outbox's handful; the second is read by its
-//! index like any other tab.
+//! Every order is one of the placement's order indexes, so a window read by
+//! its offset reads about as many index entries as its offset and limit, one
+//! read from an item beside it about as many as its limit (`list_windows`),
+//! and a position is the count of the items before it in the same scan. A
+//! search that finds few rows has its windows read from those rows instead,
+//! sorted. Done runs in two parts: the releases coven still has uploads
+//! queued for (`coven_uploads`), first to go first, and then the rest in the
+//! index's order. The first part is the outbox's handful; the second is read
+//! by its index like any other tab.
 
 use super::super::query::{QueryOne, QueryRows};
 use super::*;
@@ -102,16 +103,18 @@ pub(super) fn order_of(column: &str) -> Result<ImportListOrder, DbError> {
 }
 
 /// One term an order sorts placement rows by: a column or an expression over
-/// the row, and whether it runs in reverse.
+/// the row, whether it runs in reverse, and whether it can be NULL.
 struct Term {
     expression: &'static str,
     descending: bool,
+    nullable: bool,
 }
 
 const fn up(expression: &'static str) -> Term {
     Term {
         expression,
         descending: false,
+        nullable: false,
     }
 }
 
@@ -119,13 +122,25 @@ const fn down(expression: &'static str) -> Term {
     Term {
         expression,
         descending: true,
+        nullable: false,
+    }
+}
+
+impl Term {
+    /// The same term over a column a row can hold NULL in: an undated row's
+    /// date, a header's display path.
+    const fn nullable(self) -> Self {
+        Term {
+            nullable: true,
+            ..self
+        }
     }
 }
 
 const NEWEST_FIRST: (&[Term], &[Term]) = (
     &[
         up("{t}.unit_date IS NULL"),
-        down("{t}.unit_date"),
+        down("{t}.unit_date").nullable(),
         up("{t}.root_position"),
         up("{t}.watched_folder_path"),
         up("{t}.unit_path"),
@@ -133,8 +148,8 @@ const NEWEST_FIRST: (&[Term], &[Term]) = (
     &[
         down("{t}.item = 'group'"),
         up("{t}.own_date IS NULL"),
-        down("{t}.own_date"),
-        up("{t}.display_path COLLATE natural_order"),
+        down("{t}.own_date").nullable(),
+        up("{t}.display_path COLLATE natural_order").nullable(),
         up("{t}.key"),
     ],
 );
@@ -142,7 +157,7 @@ const NEWEST_FIRST: (&[Term], &[Term]) = (
 const OLDEST_FIRST: (&[Term], &[Term]) = (
     &[
         up("{t}.unit_date IS NULL"),
-        up("{t}.unit_date"),
+        up("{t}.unit_date").nullable(),
         up("{t}.root_position"),
         up("{t}.watched_folder_path"),
         up("{t}.unit_path"),
@@ -150,8 +165,8 @@ const OLDEST_FIRST: (&[Term], &[Term]) = (
     &[
         down("{t}.item = 'group'"),
         up("{t}.own_date IS NULL"),
-        up("{t}.own_date"),
-        up("{t}.display_path COLLATE natural_order"),
+        up("{t}.own_date").nullable(),
+        up("{t}.display_path COLLATE natural_order").nullable(),
         up("{t}.key"),
     ],
 );
@@ -164,7 +179,7 @@ const PATH_ASCENDING: (&[Term], &[Term]) = (
     ],
     &[
         down("{t}.item = 'group'"),
-        up("{t}.display_path COLLATE natural_order"),
+        up("{t}.display_path COLLATE natural_order").nullable(),
         up("{t}.key"),
     ],
 );
@@ -177,7 +192,7 @@ const PATH_DESCENDING: (&[Term], &[Term]) = (
     ],
     &[
         down("{t}.item = 'group'"),
-        down("{t}.display_path COLLATE natural_order"),
+        down("{t}.display_path COLLATE natural_order").nullable(),
         down("{t}.key"),
     ],
 );
@@ -208,6 +223,30 @@ impl Term {
             false => self.over(t),
         }
     }
+
+    /// The term over the alias `t`, as a list order's term.
+    fn sort_term(&self, t: &str) -> SortTerm {
+        let term = match self.descending {
+            true => SortTerm::descending(self.over(t)),
+            false => SortTerm::ascending(self.over(t)),
+        };
+        match self.nullable {
+            true => term.nullable(),
+            false => term,
+        }
+    }
+}
+
+/// `order`'s terms over the alias `t`, as a list order: what a window of a
+/// stream's rows is read from a row beside it by.
+fn list_order(order: ImportListOrder, lead: Option<&str>, t: &str) -> ListOrder {
+    let (prefix, suffix) = terms(order);
+    ListOrder::new(
+        lead.map(SortTerm::ascending)
+            .into_iter()
+            .chain(prefix.iter().chain(suffix).map(|term| term.sort_term(t)))
+            .collect(),
+    )
 }
 
 /// The terms `order` sorts placement rows by, over the alias `t`: exactly the
@@ -227,50 +266,56 @@ pub(super) fn order_terms(order: ImportListOrder, t: &str) -> String {
 /// index (`import_list_newest_first_unfolded`, `_headers` and `_members`,
 /// and their siblings): the headers and the rows outside every group, and
 /// each open group's members under its header. Each part selects the row's
-/// key and the group it is listed under, and then the order's terms, the row's number breaking the tie after
-/// its folder, which a group's members take from their header; SQLite merges
-/// the two parts in that sequence. Every row is one of the list's items
-/// (`import_list_item`), and only open groups' members are read.
-fn folded_run(order: ImportListOrder) -> String {
-    let (prefix, suffix) = terms(order);
-    let columns = |head: &str, row: &str| {
-        prefix
-            .iter()
-            .map(|term| term.over(head))
-            .chain(std::iter::once(format!("{head}.entry")))
-            .chain(suffix.iter().map(|term| term.over(row)))
-            .collect::<Vec<_>>()
-            .join(", ")
-    };
-    // Each term sorts its result column, the first four being the key and
-    // its group; a column keeps its expression's collation.
-    let ordering = prefix
-        .iter()
-        .chain(std::iter::once(&up("{t}.entry")))
-        .chain(suffix)
-        .enumerate()
-        .map(|(at, term)| match term.descending {
-            true => format!("{} DESC", at + 5),
-            false => (at + 5).to_string(),
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
+/// key and the group it is listed under, and then the order's terms, the
+/// row's number breaking the tie after its folder, which a group's members
+/// take from their header; SQLite merges the two parts in that sequence.
+/// Every row is one of the list's items (`import_list_item`), and only open
+/// groups' members are read. The run is read under `seek`, which both parts
+/// hold their rows to, in the order the seek reads.
+fn folded_run(order: ImportListOrder, seek: &Seek) -> String {
+    let (unfolded, members) = folded_orders(order);
     format!(
-        "SELECT p.watched_folder_path, p.item, p.key, p.group_name, {unfolded} \
+        "SELECT p.watched_folder_path, p.item, p.key, p.group_name, {unfolded_keys} \
          FROM import_list_item AS p \
          WHERE p.list_id = :list AND p.tab = :tab \
-           AND (p.item = 'group' OR p.group_name IS NULL) \
+           AND (p.item = 'group' OR p.group_name IS NULL) AND {unfolded_condition} \
          UNION ALL \
-         SELECT m.watched_folder_path, m.item, m.key, m.group_name, {members} \
+         SELECT m.watched_folder_path, m.item, m.key, m.group_name, {member_keys} \
          FROM import_list_judged AS h \
          CROSS JOIN import_list_item AS m \
              ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
             AND m.group_name = h.key AND m.item <> 'group' \
          WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded \
-         ORDER BY {ordering}",
-        unfolded = columns("p", "p"),
-        members = columns("h", "m"),
+           AND {member_condition} \
+         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+        unfolded_keys = unfolded.key_columns(),
+        unfolded_condition = unfolded.condition(seek),
+        member_keys = members.key_columns(),
+        member_condition = members.condition(seek),
+        // Each term sorts its result column, the first four being the key
+        // and its group; a column keeps its expression's collation.
+        ordering = unfolded.column_ordering(seek, 5),
     )
+}
+
+/// A folded list's order in each of its two runs: over the headers and the
+/// rows outside every group as `p`, and over each open group's members as
+/// `m` under their header `h`, the row's number after the folder's terms.
+fn folded_orders(order: ImportListOrder) -> (ListOrder, ListOrder) {
+    let (prefix, suffix) = terms(order);
+    let over = |head: &str, row: &str| {
+        ListOrder::new(
+            prefix
+                .iter()
+                .map(|term| term.sort_term(head))
+                .chain(std::iter::once(SortTerm::ascending(format!(
+                    "{head}.entry"
+                ))))
+                .chain(suffix.iter().map(|term| term.sort_term(row)))
+                .collect(),
+        )
+    };
+    (over("p", "p"), over("h", "m"))
 }
 
 /// The releases with uploads coven still has queued, by key, and where the
@@ -288,6 +333,9 @@ pub(super) fn uploading_cte() -> String {
         releases = super::super::query::UPLOADING_RELEASES,
     )
 }
+
+/// Where the headers of a list's groups sit, by watched folder and group.
+pub(super) type HeaderPlaces = std::collections::BTreeMap<(String, String), u64>;
 
 /// Which rows a stream of a list's items runs over.
 #[derive(Debug, Clone, Copy)]
@@ -324,6 +372,17 @@ pub(super) struct Items<'a> {
     tab: TriageTab,
     order: ImportListOrder,
     shown: Shown<'a>,
+}
+
+/// The stretch of one part a window reaches: the part, the places in the
+/// list it runs over (to the list's end for the last part), and the offset
+/// and limit the window reads it at.
+struct PartWindow {
+    part: Part,
+    start: u64,
+    end: Option<u64>,
+    offset: u64,
+    limit: u64,
 }
 
 /// A statement over one part of a stream: what it starts with, its rows, and
@@ -390,33 +449,43 @@ impl<'a> Items<'a> {
 
     fn part(&self, part: Part) -> PartSql {
         let (source, condition) = self.source();
-        let terms = order_terms(self.order, "i");
+        let order = self.part_order(part).clause();
         match part {
             Part::Whole => PartSql {
                 with: String::new(),
                 from: format!("{source} WHERE {condition}"),
-                order: terms,
+                order,
             },
             Part::Uploading => PartSql {
                 with: format!("WITH {}", uploading_cte()),
                 from: format!("uploading AS u JOIN {source} ON i.key = u.key WHERE {condition}"),
-                order: format!("u.position, {terms}"),
+                order,
             },
             Part::Settled => PartSql {
                 with: format!("WITH {}", uploading_cte()),
                 from: format!(
                     "{source} WHERE {condition} AND i.key NOT IN (SELECT key FROM uploading)"
                 ),
-                order: terms,
+                order,
             },
         }
+    }
+
+    /// The order `part`'s rows run in, over the alias `i`: Done's uploads
+    /// first to go first, and every part then in the list's order.
+    fn part_order(&self, part: Part) -> ListOrder {
+        let lead = match part {
+            Part::Uploading => Some("u.position"),
+            Part::Whole | Part::Settled => None,
+        };
+        list_order(self.order, lead, "i")
     }
 
     /// Run `run` with each parameter `statement` names, bound.
     fn bound<T>(
         &self,
         statement: &str,
-        extra: &[(&'static str, &dyn ToSql)],
+        extra: &[(&str, &dyn ToSql)],
         run: impl FnOnce(&[(&str, &dyn ToSql)]) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
         let (opened_root, opened_group) = match self.shown {
@@ -450,7 +519,7 @@ impl<'a> Items<'a> {
         &self,
         sql: &(impl QueryOne + QueryRows),
         statement: &str,
-        extra: &[(&'static str, &dyn ToSql)],
+        extra: &[(&str, &dyn ToSql)],
         read: impl FnMut(&Row<'_>) -> rusqlite::Result<T>,
     ) -> Result<Vec<T>, DbError> {
         self.bound(statement, extra, |bound| {
@@ -473,55 +542,78 @@ impl<'a> Items<'a> {
         to_u64(count, "an import list part's count")
     }
 
-    /// The statement reading a window of `part`.
-    fn window_statement(&self, part: Part) -> String {
+    /// The statement reading the rows of `part` that `seek` reads, each
+    /// item's key and group then its key in the part's order, at most
+    /// `:limit` from `:offset`.
+    fn window_statement(&self, part: Part, seek: &Seek) -> String {
         if let (Shown::Folded, Part::Whole) = (self.shown, part) {
-            return format!("{} LIMIT :limit OFFSET :offset", folded_run(self.order));
+            return folded_run(self.order, seek);
         }
-        let PartSql { with, from, order } = self.part(part);
+        let PartSql { with, from, .. } = self.part(part);
+        let order = self.part_order(part);
         format!(
-            "{with} SELECT i.watched_folder_path, i.item, i.key, i.group_name FROM {from} \
-             ORDER BY {order} LIMIT :limit OFFSET :offset"
+            "{with} SELECT i.watched_folder_path, i.item, i.key, i.group_name, {keys} \
+             FROM {from} AND {condition} \
+             ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+            keys = order.key_columns(),
+            condition = order.condition(seek),
+            ordering = order.ordering(seek),
         )
+    }
+
+    /// The order the rows of `part` are read by a seek in: a folded list's
+    /// runs merged, or the part's own.
+    fn seek_order(&self, part: Part) -> ListOrder {
+        match (self.shown, part) {
+            (Shown::Folded, Part::Whole) => folded_orders(self.order).0,
+            _ => self.part_order(part),
+        }
     }
 
     fn window_of(
         &self,
         sql: &(impl QueryOne + QueryRows),
         part: Part,
-        offset: u64,
+        order: &ListOrder,
+        seek: &Seek,
         limit: u64,
-    ) -> Result<Vec<ItemKey>, DbError> {
-        let (offset, limit) = (sql_bound(offset), sql_bound(limit));
-        self.query(
-            sql,
-            &self.window_statement(part),
-            &[(":limit", &limit), (":offset", &offset)],
-            ItemKey::read,
-        )?
-        .into_iter()
-        .map(ItemKey::of)
-        .collect()
+        offset: u64,
+    ) -> Result<Vec<Keyed<ItemKeyColumns>>, DbError> {
+        let statement = self.window_statement(part, seek);
+        seek.bound(limit, offset, |window| {
+            self.query(sql, &statement, window, |row| {
+                Ok((ItemKey::read(row)?, order.key_of(row)?))
+            })
+        })
     }
 
-    /// The plan SQLite reads each part's window by, one line per step: what a
-    /// test holds each order to its index with.
+    /// The plans SQLite reads each part's windows by, one line per step: by
+    /// its offset, then by each seek from the part's first item. What a test
+    /// holds each order to its index with.
     #[cfg(test)]
     pub(super) fn window_plans(
         &self,
         sql: &(impl QueryOne + QueryRows),
-    ) -> Result<Vec<Vec<String>>, DbError> {
-        self.parts()
-            .iter()
-            .map(|&part| {
-                self.query(
-                    sql,
-                    &format!("EXPLAIN QUERY PLAN {}", self.window_statement(part)),
-                    &[(":limit", &50_i64), (":offset", &0_i64)],
-                    |row| row.get::<_, String>(3),
-                )
-            })
-            .collect()
+    ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
+        let mut parts = Vec::new();
+        for &part in self.parts() {
+            let order = self.seek_order(part);
+            let mut seeks = vec![order.everything()];
+            let first = self.window_of(sql, part, &order, &order.everything(), 1, 0)?;
+            if let Some((_, key)) = first.first() {
+                seeks.extend(order.seeks_beside(key));
+            }
+            let mut plans = Vec::new();
+            for seek in seeks {
+                let statement =
+                    format!("EXPLAIN QUERY PLAN {}", self.window_statement(part, &seek));
+                plans.push(seek.bound(50, 0, |window| {
+                    self.query(sql, &statement, window, |row| row.get::<_, String>(3))
+                })?);
+            }
+            parts.push(plans);
+        }
+        Ok(parts)
     }
 
     /// Each part `window` reaches into, with the offset and limit it reads
@@ -530,8 +622,9 @@ impl<'a> Items<'a> {
         &self,
         sql: &(impl QueryOne + QueryRows),
         window: &LibraryPageWindow,
-    ) -> Result<Vec<(Part, u64, u64)>, DbError> {
+    ) -> Result<Vec<PartWindow>, DbError> {
         let mut reached = Vec::new();
+        let mut start = 0;
         let mut offset = window.offset;
         let mut limit = window.limit;
         let parts = self.parts();
@@ -540,33 +633,80 @@ impl<'a> Items<'a> {
                 break;
             }
             if at + 1 == parts.len() {
-                reached.push((part, offset, limit));
+                reached.push(PartWindow {
+                    part,
+                    start,
+                    end: None,
+                    offset,
+                    limit,
+                });
                 break;
             }
             let held = self.count(sql, part)?;
             if offset >= held {
                 offset -= held;
+                start += held;
                 continue;
             }
             let read = limit.min(held - offset);
-            reached.push((part, offset, read));
+            reached.push(PartWindow {
+                part,
+                start,
+                end: Some(start + held),
+                offset,
+                limit: read,
+            });
             limit -= read;
             offset = 0;
+            start += held;
         }
         Ok(reached)
     }
 
-    /// The items `window` covers, in order, clamped to what the list holds.
+    /// The items `window` covers, in order, clamped to what the list holds,
+    /// each part read from a row beside the window whose place `known`
+    /// holds when there is one (`list_windows`), and the places of the
+    /// window's first and last items in each part it reaches.
     pub(super) fn window(
         &self,
         sql: &(impl QueryOne + QueryRows),
         window: &LibraryPageWindow,
-    ) -> Result<Vec<ItemKey>, DbError> {
+        known: &Places,
+    ) -> Result<(Vec<ItemKey>, Places), DbError> {
         let mut items = Vec::new();
-        for (part, offset, limit) in self.window_parts(sql, window)? {
-            items.extend(self.window_of(sql, part, offset, limit)?);
+        let mut found = Places::new();
+        for PartWindow {
+            part,
+            start,
+            end,
+            offset,
+            limit,
+        } in self.window_parts(sql, window)?
+        {
+            let order = self.seek_order(part);
+            // The part's places, in its own count from its first row.
+            let in_part = known
+                .range(start..)
+                .take_while(|(place, _)| end.is_none_or(|end| **place < end))
+                .map(|(place, key)| (place - start, key.clone()))
+                .collect();
+            let WindowsRead {
+                windows: read,
+                found: places,
+            } = read_windows(
+                &order,
+                &crate::library::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
+                in_part,
+                |seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset),
+            )?;
+            found.extend(places.into_iter().map(|(place, key)| (place + start, key)));
+            for (_, keys) in read {
+                for columns in keys {
+                    items.push(ItemKey::of(columns)?);
+                }
+            }
         }
-        Ok(items)
+        Ok((items, found))
     }
 
     /// Add to the list's selection every release `window` covers, its
@@ -576,22 +716,27 @@ impl<'a> Items<'a> {
         sql: &SqlContext<'_, '_>,
         window: &LibraryPageWindow,
     ) -> Result<(), DbError> {
-        for (part, offset, limit) in self.window_parts(sql, window)? {
-            let (offset, limit) = (sql_bound(offset), sql_bound(limit));
+        for PartWindow {
+            part,
+            offset,
+            limit,
+            ..
+        } in self.window_parts(sql, window)?
+        {
+            let order = self.seek_order(part);
+            let everything = order.everything();
             let statement = format!(
                 "INSERT INTO import_list_selection (list_id, key) \
                  SELECT :list, w.key FROM ({}) AS w WHERE w.item <> 'group' \
                  ON CONFLICT (list_id, key) DO NOTHING",
-                self.window_statement(part)
+                self.window_statement(part, &everything)
             );
-            self.bound(
-                &statement,
-                &[(":limit", &limit), (":offset", &offset)],
-                |bound| {
+            everything.bound(limit, offset, |window| {
+                self.bound(&statement, window, |bound| {
                     sql.execute(&statement, bound)?;
                     Ok(())
-                },
-            )?;
+                })
+            })?;
         }
         Ok(())
     }
@@ -601,12 +746,14 @@ impl<'a> Items<'a> {
     /// and for an item in no group. A group's header leads its members, so a
     /// member's header is the last header of its group in the window before
     /// it, or, for the members a window starts with, the one before the
-    /// window, found by reading the items up to it.
+    /// window: where `headers` says it sits, else found by reading the items
+    /// up to it. Every header the window holds or finds goes into `headers`.
     pub(super) fn header_positions(
         &self,
         sql: &(impl QueryOne + QueryRows),
         offset: u64,
         keys: &[ItemKey],
+        headers: &mut HeaderPlaces,
     ) -> Result<Vec<Option<u64>>, DbError> {
         let mut leading: Option<(&str, &str, u64)> = None;
         let mut positions = Vec::with_capacity(keys.len());
@@ -616,13 +763,18 @@ impl<'a> Items<'a> {
                 continue;
             };
             let root = key.watched_folder_path.as_str();
+            let group_key = (root.to_string(), group.to_string());
             if key.item == Item::Group {
                 leading = Some((root, group, offset + index));
+                headers.insert(group_key, offset + index);
                 positions.push(None);
                 continue;
             }
-            let header = match leading {
-                Some((at_root, name, position)) if at_root == root && name == group => position,
+            let header = match (leading, headers.get(&group_key)) {
+                (Some((at_root, name, position)), _) if at_root == root && name == group => {
+                    position
+                }
+                (_, Some(&position)) => position,
                 _ => self
                     .position_where(
                         sql,
@@ -636,6 +788,7 @@ impl<'a> Items<'a> {
                         ))
                     })?,
             };
+            headers.insert(group_key, header);
             leading = Some((root, group, header));
             positions.push(Some(header));
         }
@@ -699,10 +852,4 @@ fn names(statement: &str, name: &str) -> bool {
             .next()
             .is_none_or(|next| !(next.is_alphanumeric() || next == '_'))
     })
-}
-
-/// A window's bound as SQLite's LIMIT and OFFSET take it: a bound past the
-/// largest is no bound at all, since no list holds that many rows.
-fn sql_bound(value: u64) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
 }

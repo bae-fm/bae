@@ -582,14 +582,33 @@ CREATE TABLE IF NOT EXISTS audio_segment_scrub_points (
 CREATE TABLE IF NOT EXISTS list_order_versions (
     source  TEXT PRIMARY KEY CHECK (source IN (
         'album_listing', 'album_artist_link', 'artist_listing', 'composer_listing',
-        'release_listing', 'download_queue', 'output_queue')),
+        'release_listing', 'download_queue', 'output_queue', 'import_list_placement',
+        'local_release_origin', 'scan_candidate')),
     version INTEGER NOT NULL
 ) STRICT;
 
 INSERT OR IGNORE INTO list_order_versions (source, version) VALUES
     ('album_listing', 0), ('album_artist_link', 0), ('artist_listing', 0),
     ('composer_listing', 0), ('release_listing', 0), ('download_queue', 0),
-    ('output_queue', 0);
+    ('output_queue', 0), ('import_list_placement', 0), ('local_release_origin', 0),
+    ('scan_candidate', 0);
+
+CREATE TRIGGER IF NOT EXISTS local_release_origin_order_added AFTER INSERT ON local_release_origin
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'local_release_origin';
+END;
+
+CREATE TRIGGER IF NOT EXISTS local_release_origin_order_removed AFTER DELETE ON local_release_origin
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'local_release_origin';
+END;
+
+CREATE TRIGGER IF NOT EXISTS local_release_origin_order_moved AFTER UPDATE OF release_id, content_hash ON local_release_origin
+WHEN OLD.release_id IS NOT NEW.release_id
+  OR OLD.content_hash IS NOT NEW.content_hash
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'local_release_origin';
+END;
 
 -- Each artist and the artist it shows as (§2.3): the survivor of its merges
 -- (`merged_artist_survivors`), else itself. Every read of a credit goes
@@ -1345,7 +1364,7 @@ BEGIN
     UPDATE list_order_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, waiting_pin_count, pinned_count ON release_listing
+CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, waiting_pin_count, pinned_count, first_queued_position ON release_listing
 WHEN OLD.album_title IS NOT NEW.album_title
   OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
   OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
@@ -1356,6 +1375,7 @@ WHEN OLD.album_title IS NOT NEW.album_title
   OR OLD.total_size IS NOT NEW.total_size
   OR OLD.stored IS NOT NEW.stored
   OR OLD.storage_order IS NOT NEW.storage_order
+  OR OLD.first_queued_position IS NOT NEW.first_queued_position
 BEGIN
     UPDATE list_order_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
@@ -2103,6 +2123,23 @@ CREATE INDEX IF NOT EXISTS idx_scan_candidate_grouping ON scan_candidate (groupi
 
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_content_hash
     ON scan_candidate (content_hash) WHERE content_hash IS NOT NULL;
+
+CREATE TRIGGER IF NOT EXISTS scan_candidate_order_added AFTER INSERT ON scan_candidate
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'scan_candidate';
+END;
+
+CREATE TRIGGER IF NOT EXISTS scan_candidate_order_removed AFTER DELETE ON scan_candidate
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'scan_candidate';
+END;
+
+CREATE TRIGGER IF NOT EXISTS scan_candidate_order_moved AFTER UPDATE OF path, content_hash ON scan_candidate
+WHEN OLD.path IS NOT NEW.path
+  OR OLD.content_hash IS NOT NEW.content_hash
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'scan_candidate';
+END;
 
 -- The entries reading a folder's files, which a scan write looks up by the
 -- folder, the folders above it and the range below it.
@@ -3453,6 +3490,34 @@ CREATE INDEX IF NOT EXISTS import_list_path_descending_members ON import_list_pl
     watched_folder_path, group_name, item = 'group' DESC,
     display_path COLLATE natural_order DESC, key DESC)
     WHERE item <> 'group' AND group_name IS NOT NULL;
+
+CREATE TRIGGER IF NOT EXISTS import_list_placement_order_added AFTER INSERT ON import_list_placement
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'import_list_placement';
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_placement_order_removed AFTER DELETE ON import_list_placement
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'import_list_placement';
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_list_placement_order_moved AFTER UPDATE OF watched_folder_path, item, key, root_position, tab, pending_state, holds_nested, own_date, group_date, display_path, shown_title, shown_artists ON import_list_placement
+WHEN OLD.watched_folder_path IS NOT NEW.watched_folder_path
+  OR OLD.item IS NOT NEW.item
+  OR OLD.key IS NOT NEW.key
+  OR OLD.root_position IS NOT NEW.root_position
+  OR OLD.tab IS NOT NEW.tab
+  OR OLD.pending_entry IS NOT NEW.pending_entry
+  OR OLD.group_name IS NOT NEW.group_name
+  OR OLD.own_date IS NOT NEW.own_date
+  OR OLD.unit_date IS NOT NEW.unit_date
+  OR OLD.unit_path IS NOT NEW.unit_path
+  OR OLD.display_path IS NOT NEW.display_path
+  OR OLD.filter_title IS NOT NEW.filter_title
+  OR OLD.filter_artists IS NOT NEW.filter_artists
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'import_list_placement';
+END;
 
 -- What the triggers look a changed row's releases up by.
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_folder ON scan_candidate (folder);

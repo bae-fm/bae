@@ -365,7 +365,12 @@ async fn measure_queues(db: &Database, n: u64) {
 
 /// Scan `start..end` more folders into the import list, each its own album
 /// folder under one of 100 artist folders, in a watched folder of their own.
-async fn grow_import_list(db: &Database, tmp: &std::path::Path, start: u64, end: u64) -> Duration {
+pub(super) async fn grow_import_list(
+    db: &Database,
+    tmp: &std::path::Path,
+    start: u64,
+    end: u64,
+) -> Duration {
     let root = tmp.join(format!("watched-{start}"));
     std::fs::create_dir_all(&root).unwrap();
     let root = std::fs::canonicalize(&root)

@@ -249,6 +249,23 @@ impl ListOrder {
         Self::ordered(&self.terms[seek.from..], seek.reversed)
     }
 
+    /// The ORDER BY clause `seek` reads a compound statement in whose result
+    /// columns hold this order's terms from column `first`, counted from one.
+    #[cfg(desktop)]
+    pub(super) fn column_ordering(&self, seek: &Seek, first: usize) -> String {
+        (seek.from..self.terms.len())
+            .map(|at| {
+                let column = first + at;
+                if self.terms[at].descending != seek.reversed {
+                    format!("{column} DESC")
+                } else {
+                    column.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
     /// The seeks reading the rows after the row at `key`, then those reading
     /// the rows before it: what a test holds to the order's index.
     #[cfg(test)]
@@ -311,29 +328,31 @@ pub(super) type Places = BTreeMap<u64, OrderKey>;
 /// Where some of a list's rows sat when one live query last read it, and what
 /// placed them then: the versions of the tables the list's order reads, and
 /// anything else that orders or narrows the list, such as a sort or a filter.
-pub(super) struct KnownPlaces<Standing> {
-    last: Mutex<Option<(Standing, Places)>>,
+/// `Kept` is what a read keeps of where its rows sat: their places, and
+/// whatever else a list keeps of them.
+pub(super) struct KnownPlaces<Standing, Kept = Places> {
+    last: Mutex<Option<(Standing, Kept)>>,
 }
 
-impl<Standing: PartialEq> KnownPlaces<Standing> {
+impl<Standing: PartialEq, Kept: Clone + Default> KnownPlaces<Standing, Kept> {
     pub(super) fn new() -> Self {
         Self {
             last: Mutex::new(None),
         }
     }
 
-    /// The places the last read kept, if the list stands where it stood for
-    /// that read; none otherwise.
-    pub(super) fn under(&self, standing: &Standing) -> Places {
+    /// What the last read kept, if the list stands where it stood for that
+    /// read; nothing otherwise.
+    pub(super) fn under(&self, standing: &Standing) -> Kept {
         match &*self.last.lock().expect("known places lock poisoned") {
-            Some((kept, places)) if kept == standing => places.clone(),
-            _ => Places::new(),
+            Some((kept_under, kept)) if kept_under == standing => kept.clone(),
+            _ => Kept::default(),
         }
     }
 
-    /// Keep the places a read found, under what placed them.
-    pub(super) fn keep(&self, standing: Standing, places: Places) {
-        *self.last.lock().expect("known places lock poisoned") = Some((standing, places));
+    /// Keep what a read found, under what placed its rows.
+    pub(super) fn keep(&self, standing: Standing, kept: Kept) {
+        *self.last.lock().expect("known places lock poisoned") = Some((standing, kept));
     }
 }
 

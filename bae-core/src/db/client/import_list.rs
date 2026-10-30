@@ -26,7 +26,7 @@ use crate::import::list::{
 use crate::import::watched_folder::WatchedFolder;
 use crate::import::{ImportedRelease, PendingFilter};
 use folder_scans::columns::{to_u32, to_u64, unreadable};
-use order::{Items, Shown};
+use order::{HeaderPlaces, Items, Shown};
 
 pub(crate) use writes::SelectionWrite;
 
@@ -149,12 +149,44 @@ struct ImportListRows {
     selection_revision: u64,
 }
 
-/// One read of the list for `request`.
+/// What places a list's rows: its view, and the tables its order and its
+/// Done tab's uploads read, by their versions.
+type Standing = (ImportListId, u64, Vec<i64>);
+
+/// The tables whose rows place a list's items, as `list_order_versions`
+/// names them: the placement, and for Done the releases still uploading,
+/// found by the hash of the folder each came from.
+const LIST_SOURCES: &[&str] = &[
+    "import_list_placement",
+    "release_listing",
+    "local_release_origin",
+    "scan_candidate",
+];
+
+/// Where a read found a list's rows: each window's first and last items in
+/// each part, and the headers of the groups its windows list.
+#[derive(Debug, Clone, Default)]
+struct ListPlaces {
+    items: Places,
+    headers: HeaderPlaces,
+}
+
+/// One read of the list for `request`, each window read from an item beside
+/// it when this read or, while the list stands as it stood then, the last
+/// read through `places` found one (`list_windows`).
 fn load_import_list_on(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
+    places: &KnownPlaces<Standing, ListPlaces>,
 ) -> Result<ImportListRows, DbError> {
     let list = list_row(sql, request.list)?;
+    let standing = (
+        list.id,
+        list.view_revision,
+        list_order_versions_on(sql, LIST_SOURCES)?,
+    );
+    let mut known = places.under(&standing);
+    let mut found = ListPlaces::default();
     let counts = summary::counts(sql)?;
     let listed = summary::listed(sql, &list, &counts)?;
     let windows = request
@@ -162,14 +194,18 @@ fn load_import_list_on(
         .iter()
         .map(|window| {
             let items = list.items(listed.shown(window));
-            let keys = items.window(sql, window)?;
-            let headers = items.header_positions(sql, window.offset, &keys)?;
+            let (keys, read) = items.window(sql, window, &known.items)?;
+            known.items.extend(read.clone());
+            found.items.extend(read);
+            let headers = items.header_positions(sql, window.offset, &keys, &mut known.headers)?;
             Ok((
                 window.clone(),
                 window::materialise(sql, &list, &keys, &headers)?,
             ))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
+    found.headers = known.headers;
+    places.keep(standing, found);
     let watched_folders = sql
         .query(
             "SELECT path FROM watched_import_folders ORDER BY position",
@@ -238,21 +274,22 @@ impl Database {
         &self,
         initial: ImportListRequest,
     ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection> {
+        let places = KnownPlaces::new();
         self.inner
             .handle
             .subscribe_reconfigurable(initial, move |request, sql| {
-                load_import_list_on(&sql, request).map_err(CovenError::from)
+                load_import_list_on(&sql, request, &places).map_err(CovenError::from)
             })
             .process(|rows| rows.process().map_err(CovenError::from))
     }
 
-    /// The plan each part of `list`'s windows is read by, for a test that
-    /// holds every order to its index.
+    /// The plans each part of `list`'s windows is read by, by offset and by
+    /// each seek from a row, for a test that holds every order to its index.
     #[cfg(test)]
     pub(crate) async fn import_list_window_plans(
         &self,
         list: ImportListId,
-    ) -> Result<Vec<Vec<String>>, DbError> {
+    ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
         self.read(move |sql| {
             let row = list_row(&sql, list)?;
             row.items(Shown::View).window_plans(&sql)
@@ -276,7 +313,7 @@ impl Database {
                 |row| row.get::<_, String>(3),
             )?;
             let mut plans = vec![counts];
-            plans.extend(row.items(Shown::Found).window_plans(&sql)?);
+            plans.extend(row.items(Shown::Found).window_plans(&sql)?.concat());
             Ok(plans)
         })
         .await
@@ -291,7 +328,7 @@ impl Database {
     ) -> Result<Vec<Vec<String>>, DbError> {
         self.read(move |sql| {
             let row = list_row(&sql, list)?;
-            row.items(Shown::Folded).window_plans(&sql)
+            Ok(row.items(Shown::Folded).window_plans(&sql)?.concat())
         })
         .await
     }
@@ -315,7 +352,8 @@ impl Database {
             let keys = |shown| -> Result<Vec<String>, DbError> {
                 Ok(row
                     .items(shown)
-                    .window(&sql, &everything)?
+                    .window(&sql, &everything, &Places::new())?
+                    .0
                     .into_iter()
                     .map(|item| format!("{:?} {}", item.item, item.key))
                     .collect())
@@ -340,7 +378,7 @@ impl Database {
         &self,
         request: ImportListRequest,
     ) -> Result<ImportListProjection, DbError> {
-        self.read(move |sql| load_import_list_on(&sql, &request))
+        self.read(move |sql| load_import_list_on(&sql, &request, &KnownPlaces::new()))
             .process(ImportListRows::process)
             .await
     }

@@ -169,6 +169,8 @@ mod read;
 mod scrub_points_column;
 mod write;
 
+#[cfg(desktop)]
+use list_windows::Places;
 use list_windows::{
     list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
     WindowsRead,

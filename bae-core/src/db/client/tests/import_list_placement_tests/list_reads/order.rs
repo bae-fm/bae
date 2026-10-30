@@ -710,8 +710,9 @@ impl Library {
 }
 
 /// Every tab's window in every order is read off that order's index, in its
-/// order: no sort of the tab's rows, so a window costs about its offset and
-/// limit whatever the tab holds.
+/// order, by its offset and from an item beside it: no sort of the tab's
+/// rows, so a window costs about its offset and limit whatever the tab holds,
+/// and one read from an item beside it about its limit.
 #[tokio::test]
 async fn every_order_reads_its_windows_off_its_index() {
     let lib = Library::new().await;
@@ -731,17 +732,32 @@ async fn every_order_reads_its_windows_off_its_index() {
             let plans = lib.db.import_list_window_plans(list).await.unwrap();
             // Done's last part is its settled releases, read off the index;
             // its first, the handful still uploading, is sorted by queue.
-            let indexed = plans.last().expect("a tab reads in at least one part");
+            // Each part is read by its offset, off its order's index, and
+            // from an item beside a window by each seek, which searches an
+            // order index; one holding every term but the key equal may take
+            // any of them, since each holds those terms.
+            let (by_offset, seeks) = plans
+                .last()
+                .expect("a tab reads in at least one part")
+                .split_first()
+                .expect("a part is read by its offset");
             assert!(
-                indexed.iter().any(|step| step.contains(index)),
-                "{order:?} {tab:?}: {indexed:?}"
+                by_offset.iter().any(|step| step.contains(index)),
+                "{order:?} {tab:?}: {by_offset:?}"
             );
-            assert!(
-                !indexed
-                    .iter()
-                    .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
-                "{order:?} {tab:?} sorts: {indexed:?}"
-            );
+            for plan in std::iter::once(by_offset).chain(seeks) {
+                assert!(
+                    plan.iter().any(|step| step.starts_with("SEARCH")
+                        && step.contains("USING INDEX import_list_")),
+                    "{order:?} {tab:?}: {plan:?}"
+                );
+                assert!(
+                    !plan
+                        .iter()
+                        .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                    "{order:?} {tab:?} sorts: {plan:?}"
+                );
+            }
         }
     }
 }
