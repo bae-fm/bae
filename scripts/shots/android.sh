@@ -34,7 +34,7 @@ BINDINGS="$REPO_ROOT/bae-bridge/kotlin-bindings-full/uniffi"
 CORE_STRINGS="$REPO_ROOT/bae-android/app/src/main/res/values/core_strings.xml"
 if [ ! -d "$BINDINGS" ] || [ ! -f "$CORE_STRINGS" ]; then
     echo "android shots: generating uniffi bindings + loc resources (bae-bridge/build-android.sh)..."
-    "$REPO_ROOT/bae-bridge/build-android.sh"
+    "$REPO_ROOT/bae-bridge/build-android.sh" --abi "$(android_host_abi)"
 fi
 
 cd "$REPO_ROOT/bae-android"

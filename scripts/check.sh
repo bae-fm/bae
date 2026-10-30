@@ -281,7 +281,10 @@ section "Android"
 
 check "clippy (Android aarch64)" ./bae-bridge/clippy-android.sh
 
-check "bridge build (Android full)" env BAE_BRIDGE_FEATURES=oauth-providers,cast ./bae-bridge/build-android.sh
+# This machine's ABI only: CI builds and packages every ABI in bae.abis.
+ANDROID_LOCAL_ABI=$(android_host_abi) || exit 1
+check "bridge build (Android full)" env BAE_BRIDGE_FEATURES=oauth-providers,cast \
+  ./bae-bridge/build-android.sh --abi "$ANDROID_LOCAL_ABI"
 check "Gradle unit tests (Android full)" bash -c \
   'cd bae-android && ./gradlew testFullDebugUnitTest --no-daemon'
 check "ktlint" ktlint "bae-android/app/src/**/*.kt" "bae-android/fastvalues/src/**/*.kt"
@@ -293,15 +296,16 @@ check "detekt (type-resolved rules)" detekt --input bae-android/app/src/main/jav
 check "Android lint (full)" bash -c \
   'cd bae-android && ./gradlew lintFullDebug --no-daemon'
 check "assemble debug APK (full)" bash -c \
-  'cd bae-android && ./gradlew assembleFullDebug --no-daemon'
+  "cd bae-android && ./gradlew assembleFullDebug --no-daemon -Pbae.abi=$ANDROID_LOCAL_ABI"
 
-check "bridge build (Android baeium)" env BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-android.sh
+check "bridge build (Android baeium)" env BAE_BRIDGE_FEATURES=cast \
+  ./bae-bridge/build-android.sh --abi "$ANDROID_LOCAL_ABI"
 check "Gradle unit tests (Android baeium)" bash -c \
   'cd bae-android && ./gradlew testBaeiumDebugUnitTest --no-daemon'
 check "Android lint (baeium)" bash -c \
   'cd bae-android && ./gradlew lintBaeiumDebug --no-daemon'
 check "assemble debug APK (baeium)" bash -c \
-  'cd bae-android && ./gradlew assembleBaeiumDebug --no-daemon'
+  "cd bae-android && ./gradlew assembleBaeiumDebug --no-daemon -Pbae.abi=$ANDROID_LOCAL_ABI"
 
 # ── GitHub Actions workflows ───────────────────────────────────────────────────
 section "Workflows"
