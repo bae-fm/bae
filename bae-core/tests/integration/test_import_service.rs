@@ -1,0 +1,297 @@
+//! Integration tests for the import service.
+//!
+//! Tests the real ImportService through its public handle API:
+//! scan → import. All through real infrastructure.
+
+use bae_test_support as support;
+
+use bae_catalogs::catalog::Catalog;
+use bae_catalogs::discogs::models::DiscogsRelease;
+use bae_catalogs::musicbrainz::{
+    MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
+    MbUrlResource, MbWork,
+};
+use bae_core::db::{Database, LibraryImageType};
+use bae_core::import::{
+    ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit, ScanEvent,
+    TrackArtistAssignments, TrackUserEdit,
+};
+use bae_core::library::LibraryManager;
+use bae_types::pressing::ReleaseLabel;
+use std::fs;
+use std::path::Path;
+use std::sync::Arc;
+use support::{seed_discogs_test_release, HANG_GUARD};
+use tempfile::TempDir;
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+struct ImportFixture {
+    db: Database,
+    storage: Arc<coven::MemoryStorage>,
+    handle: bae_core::import::ImportServiceHandle,
+    library_manager: LibraryManager,
+    ids: Arc<dyn coven::IdSource>,
+    /// The Cover Art Archive and image host this library's requests reach.
+    /// Every MusicBrainz release group offers a derived cover address, and an
+    /// address no test registered answers 404.
+    images: support::RemoteImageHost,
+    _temp: TempDir,
+}
+
+impl ImportFixture {
+    async fn new() -> Self {
+        let images = support::RemoteImageHost::start().await;
+        let temp = TempDir::new().unwrap();
+        let db_dir = temp.path().join("db");
+        fs::create_dir_all(&db_dir).unwrap();
+
+        let (library_manager, db, storage) = support::storage_library(
+            &db_dir,
+            bae_core::providers::Providers::for_test(
+                images.route(bae_util::http::Http::for_test()),
+            ),
+        )
+        .await;
+        let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
+        support::configure_test_discogs(&library_manager).await;
+
+        let handle = library_manager
+            .start_import_service(tokio::runtime::Handle::current())
+            .await
+            .expect("import service starts");
+
+        Self {
+            db,
+            storage,
+            handle,
+            library_manager,
+            ids,
+            images,
+            _temp: temp,
+        }
+    }
+
+    fn temp_path(&self) -> &Path {
+        self._temp.path()
+    }
+
+    /// No sync loop behind the connection: the remote-import tests drain the
+    /// upload queue themselves and assert what that pass moved.
+    async fn connect_cloud(&self) {
+        support::connect_storage(&self.library_manager, &self.storage).await;
+    }
+}
+
+async fn import_folder(
+    f: &ImportFixture,
+    album_dir: &Path,
+    selected_cover: Option<CoverSelection>,
+    destination: ImportDestination,
+    draft_source: support::DraftSource,
+) -> Result<(String, String), String> {
+    let import_id = f.ids.new_id().to_string();
+    f.handle
+        .send_command(ImportCommand {
+            selected_cover,
+            destination,
+            ..support::folder_import(&import_id, album_dir.to_path_buf(), draft_source)
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    support::try_wait_for_import_complete(&mut progress_rx).await
+}
+
+async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
+    assert!(
+        f.db.find_release_by_id(release_id).await.unwrap().is_some(),
+        "prior release row should remain"
+    );
+    let files = f.db.get_files_for_release(release_id).await.unwrap();
+    assert!(!files.is_empty(), "prior release files should remain");
+    assert!(
+        f.db.external_file(&files[0].id).await.unwrap().is_some(),
+        "prior local file reference should remain"
+    );
+}
+
+fn generate_album_files(dir: &Path, filenames: &[&str]) {
+    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
+    let flac = fs::read(&fixture).expect("FLAC fixture missing");
+    for name in filenames {
+        fs::write(dir.join(name), &flac).unwrap();
+    }
+}
+
+fn copy_cue_flac_fixture(dir: &Path) {
+    let fixture = bae_test_support::fixture_dir!("cue_flac");
+    for name in ["Test Album.cue", "Test Album.flac"] {
+        fs::copy(fixture.join(name), dir.join(name)).expect("copy CUE fixture");
+    }
+}
+
+/// Per-track tag values for `generate_tagged_album_files` — covers the
+/// fields the file-tag projection reads at import time. `track_artist`
+/// empty rolls up to the album artist in the editor's convention.
+struct TaggedTrack<'a> {
+    filename: &'a str,
+    title: &'a str,
+    track_number: u32,
+}
+
+/// Drop tagged FLAC files into `dir`, sharing the same album-level
+/// metadata across every file. The FLAC fixture itself carries no
+/// tags; lofty rewrites a Vorbis-comment block on top.
+fn generate_tagged_album_files(
+    dir: &Path,
+    album_title: &str,
+    album_artist: &str,
+    year: Option<u16>,
+    tracks: &[TaggedTrack<'_>],
+) {
+    use lofty::config::WriteOptions;
+    use lofty::prelude::*;
+    use lofty::tag::items::Timestamp;
+    use lofty::tag::{Tag, TagType};
+
+    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
+    let flac = fs::read(&fixture).expect("FLAC fixture missing");
+
+    for t in tracks {
+        let dest = dir.join(t.filename);
+        fs::write(&dest, &flac).unwrap();
+        let mut tagged = lofty::read_from_path(&dest).expect("read for tagging");
+        let mut tag = Tag::new(TagType::VorbisComments);
+        tag.set_title(t.title.to_string());
+        tag.set_artist(album_artist.to_string());
+        tag.set_album(album_title.to_string());
+        tag.insert_text(ItemKey::AlbumArtist, album_artist.to_string());
+        if let Some(y) = year {
+            tag.set_date(Timestamp {
+                year: y,
+                month: None,
+                day: None,
+                hour: None,
+                minute: None,
+                second: None,
+            });
+        }
+        tag.set_track(t.track_number);
+        tagged.insert_tag(tag);
+        tagged
+            .save_to_path(&dest, WriteOptions::default())
+            .expect("save tags");
+    }
+}
+
+/// Embedded cover width/height for the fixture below.
+const EMBEDDED_COVER_DIMS: (u32, u32) = (64, 48);
+
+/// A real, decodable JPEG cover (solid color, [`EMBEDDED_COVER_DIMS`]) embedded
+/// in test audio. The store path decodes every cover and re-encodes it to a
+/// ≤600 JPEG, so fixtures must be genuine images, not hand-written JPEG headers.
+fn embedded_cover_jpeg() -> Vec<u8> {
+    let (w, h) = EMBEDDED_COVER_DIMS;
+    let img = image::RgbImage::from_pixel(w, h, image::Rgb([200, 60, 40]));
+    let mut buf = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(&mut buf, image::ImageFormat::Jpeg)
+        .unwrap();
+    buf.into_inner()
+}
+
+/// Like `generate_tagged_album_files`, but also embeds a real JPEG cover
+/// (`embedded_cover_jpeg`) as the front cover in every file — a tagged rip
+/// whose only artwork is embedded in the audio.
+fn generate_tagged_album_files_with_embedded_cover(
+    dir: &Path,
+    album_title: &str,
+    album_artist: &str,
+    tracks: &[TaggedTrack<'_>],
+) {
+    use lofty::config::WriteOptions;
+    use lofty::picture::{MimeType, Picture, PictureType};
+    use lofty::prelude::*;
+    use lofty::tag::{Tag, TagType};
+
+    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
+    let flac = fs::read(&fixture).expect("FLAC fixture missing");
+
+    for t in tracks {
+        let dest = dir.join(t.filename);
+        fs::write(&dest, &flac).unwrap();
+        let mut tagged = lofty::read_from_path(&dest).expect("read for tagging");
+        let mut tag = Tag::new(TagType::VorbisComments);
+        tag.set_title(t.title.to_string());
+        tag.set_artist(album_artist.to_string());
+        tag.set_album(album_title.to_string());
+        tag.insert_text(ItemKey::AlbumArtist, album_artist.to_string());
+        tag.set_track(t.track_number);
+        tag.push_picture(
+            Picture::unchecked(embedded_cover_jpeg())
+                .pic_type(PictureType::CoverFront)
+                .mime_type(MimeType::Jpeg)
+                .build(),
+        );
+        tagged.insert_tag(tag);
+        tagged
+            .save_to_path(&dest, WriteOptions::default())
+            .expect("save tags");
+    }
+}
+
+fn generate_album_with_cover(dir: &Path, filenames: &[&str]) {
+    generate_album_files(dir, filenames);
+    let scans = dir.join("scans");
+    fs::create_dir_all(&scans).unwrap();
+    fs::write(scans.join("back.jpg"), embedded_cover_jpeg()).unwrap();
+}
+
+/// Like `generate_album_with_cover`, but the folder image is an oversized
+/// (1000×1000) PNG — a source that must be downscaled and re-encoded to JPEG at
+/// store time. Returns the selection path for the cover.
+fn generate_album_with_oversized_cover(dir: &Path, filenames: &[&str]) -> String {
+    generate_album_files(dir, filenames);
+    let scans = dir.join("scans");
+    fs::create_dir_all(&scans).unwrap();
+    let img = image::RgbImage::from_pixel(1000, 1000, image::Rgb([20, 160, 90]));
+    let mut buf = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(&mut buf, image::ImageFormat::Png)
+        .unwrap();
+    fs::write(scans.join("cover.png"), buf.into_inner()).unwrap();
+    "scans/cover.png".to_string()
+}
+
+/// A unique id for a synthetic discogs release. The discogs release cache is
+/// process-global and keyed by id; deriving the id from the title alone made
+/// two tests that pick the same title collide on one cache entry, so a
+/// concurrent run served whichever seed landed last. Each built release is a
+/// distinct release and gets a distinct id.
+fn synthetic_release_id(title: &str) -> String {
+    format!(
+        "test-{}-{}",
+        title.to_lowercase().replace(' ', "-"),
+        uuid::Uuid::new_v4()
+    )
+}
+
+fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
+    let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "3:00")).collect();
+    DiscogsRelease {
+        country: None,
+        labels: vec![],
+        ..support::discogs_test_release(&synthetic_release_id(title), title, &tracks)
+    }
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────────
+
+include!("test_import_service/scan_and_watch.rs");
+include!("test_import_service/audio_and_loudness.rs");
+include!("test_import_service/reimports.rs");
+include!("test_import_service/storage_choice.rs");
+include!("test_import_service/works_and_covers.rs");
+include!("test_import_service/identity.rs");
+include!("test_import_service/validation_and_mapping.rs");

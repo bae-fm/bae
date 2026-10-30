@@ -150,64 +150,17 @@ encoding_rs = "0.8"
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dev-dependencies]
 ffmpeg-next = { version = "8.1", default-features = false, features = ["codec", "format", "software-resampling"] }
 
+# bae-core's integration tests, one binary of modules (tests/integration/).
 [[test]]
-name = "test_close_open_files"
-path = "tests/test_close_open_files.rs"
+name = "integration"
+path = "tests/integration/main.rs"
 required-features = ["test-utils"]
 
-[[test]]
-name = "test_playback_behavior"
-path = "tests/test_playback_behavior.rs"
-required-features = ["test-utils"]
-
+# Its own binary: it reads the process's CPU time, and runs in the release
+# profile.
 [[test]]
 name = "test_playback_cpu"
 path = "tests/test_playback_cpu.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_transfer"
-path = "tests/test_transfer.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_album_sort"
-path = "tests/test_album_sort.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_save_s3_config"
-path = "tests/test_save_s3_config.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_bootstrap_pointer"
-path = "tests/test_bootstrap_pointer.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_bootstrap_fixture"
-path = "tests/test_bootstrap_fixture.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_cue_ape"
-path = "tests/test_cue_ape.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "alac_fixtures"
-path = "tests/alac_fixtures.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_candidate_text_fixtures"
-path = "tests/test_candidate_text_fixtures.rs"
-required-features = ["test-utils"]
-
-[[test]]
-name = "test_import_open_files"
-path = "tests/test_import_open_files.rs"
 required-features = ["test-utils"]
 
 [features]

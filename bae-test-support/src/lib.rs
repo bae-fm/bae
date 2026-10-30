@@ -1,11 +1,9 @@
 //! Helpers shared by bae-core's integration tests.
 //!
-//! Every `bae-core/tests/*.rs` binary is its own crate and reaches these through
-//! `use bae_test_support as support;`. Keeping them in a library — rather than a
-//! `mod support;` file textually recompiled into each binary — is what lets
-//! `dead_code` and `unreachable_pub` stay armed here: the helpers are this
-//! crate's public API, so neither lint has to be silenced for the binaries that
-//! happen not to call a given one.
+//! bae-core's two integration test binaries (`tests/integration/` and
+//! `tests/test_playback_cpu.rs`) reach these through
+//! `use bae_test_support as support;`, and the unit tests of the crates above
+//! bae-core use them too, so they are a library of their own.
 //!
 //! The helpers are grouped by what they set up — a Discogs or MusicBrainz
 //! fixture, files on disk, a library, an import, playback — and re-exported
@@ -16,8 +14,8 @@
 /// `<manifest>/tests/fixtures/cue_flac`.
 ///
 /// A macro rather than a function because `CARGO_MANIFEST_DIR` has to expand at
-/// the call site — every `bae-core/tests/*.rs` binary is its own crate, and a
-/// function here would resolve the variable to bae-test-support's manifest.
+/// the call site: a function here would resolve the variable to
+/// bae-test-support's manifest.
 #[macro_export]
 macro_rules! fixture_dir {
     ($($segment:expr),* $(,)?) => {
@@ -42,9 +40,9 @@ mod library;
 mod musicbrainz;
 mod playback;
 mod storage;
-pub use storage::{connect_storage, remove_uploaded_file, storage_library};
+pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
-pub use audio::{assert_captured_matches_reference, samples_as_f32};
+pub use audio::{assert_captured_matches_reference, filled_sparse_buffer, samples_as_f32};
 pub use discogs::{
     discogs_artist, discogs_fixture_id, discogs_test_release, discogs_track,
     seed_discogs_test_release,

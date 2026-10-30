@@ -1,0 +1,366 @@
+/// An MbWork with a composer relation and, optionally, one child part.
+fn work_with_composer(id: &str, title: &str, composer_mb: &str, part: Option<MbWork>) -> MbWork {
+    let mut relations = vec![MbRelation {
+        target_type: Some("artist".to_string()),
+        relation_type: Some("composer".to_string()),
+        artist: Some(MbArtistRef {
+            id: Some(composer_mb.to_string()),
+            name: Some(format!("Composer {composer_mb}")),
+            sort_name: Some(format!("Composer {composer_mb}")),
+        }),
+        target_credit: Some(format!("Composer {composer_mb}")),
+        ..MbRelation::default()
+    }];
+    if let Some(part) = part {
+        relations.push(MbRelation {
+            target_type: Some("work".to_string()),
+            relation_type: Some("parts".to_string()),
+            direction: Some("forward".to_string()),
+            work: Some(part),
+            ..MbRelation::default()
+        });
+    }
+    MbWork {
+        id: id.to_string(),
+        title: title.to_string(),
+        disambiguation: None,
+        work_type: Some("work".to_string()),
+        relations,
+    }
+}
+
+/// An MbTrack whose recording performs `work`.
+fn mb_track_performing(position: i64, title: &str, work: MbWork) -> MbTrack {
+    MbTrack {
+        position: Some(position),
+        number: Some(position.to_string()),
+        title: Some(title.to_string()),
+        length: None,
+        recording: Some(MbRecording {
+            id: Some(format!("rec-{position}-{}", work.id)),
+            title: Some(title.to_string()),
+            artist_credit: vec![],
+            relations: vec![MbRelation {
+                target_type: Some("work".to_string()),
+                relation_type: Some("performance".to_string()),
+                work: Some(work),
+                ..MbRelation::default()
+            }],
+        }),
+        artist_credit: vec![],
+    }
+}
+
+/// Seed a MusicBrainz release (no Discogs cross-link) whose recordings perform
+/// the given work graph. Returns the MB release id.
+fn seed_mb_release_with_works(
+    f: &ImportFixture,
+    mb_release_id: &str,
+    mb_group_id: &str,
+    title: &str,
+    tracks: Vec<MbTrack>,
+) -> String {
+    let mut response = support::mb_release(mb_release_id, mb_group_id, title);
+    response.media[0].tracks = tracks;
+    support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id)
+}
+
+/// A MusicBrainz work MBID is frequently a name-based (version 3) UUID, which
+/// coven's synced-row id policy refuses. A `works` row therefore carries a
+/// minted id and keeps the MBID in `musicbrainz_work_id`.
+const V3_WORK: &str = "e0dc7948-f188-3346-adee-db5cfb6361a9";
+
+/// Two releases performing the same work land one `works` row, keyed on the
+/// MBID, with an id the sync layer accepts.
+#[tokio::test]
+async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let first_mb = seed_mb_release_with_works(&f,
+        "mb-rel-first",
+        "mb-group-first",
+        "First Release",
+        vec![mb_track_performing(
+            1,
+            "First Movement",
+            work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
+        )],
+    );
+    let first_dir = f.temp_path().join("first");
+    fs::create_dir_all(&first_dir).unwrap();
+    generate_album_files(&first_dir, &["01 First Movement.flac"]);
+    let (first_release_id, _) = import_folder(
+        &f,
+        &first_dir,
+        None,
+        ImportDestination::Local,
+        support::DraftSource::Pick(bae_core::import::PressingLink {
+            record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, first_mb),
+            partners: vec![],
+        }),
+    )
+    .await
+    .expect("first local MB import succeeds");
+
+    let second_mb = seed_mb_release_with_works(&f,
+        "mb-rel-second",
+        "mb-group-second",
+        "Second Release",
+        vec![mb_track_performing(
+            1,
+            "Second Movement",
+            work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
+        )],
+    );
+    let second_dir = f.temp_path().join("second");
+    fs::create_dir_all(&second_dir).unwrap();
+    generate_album_files(&second_dir, &["01 Second Movement.flac"]);
+    let (second_release_id, _) = import_folder(
+        &f,
+        &second_dir,
+        None,
+        ImportDestination::Local,
+        support::DraftSource::Pick(bae_core::import::PressingLink {
+            record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, second_mb),
+            partners: vec![],
+        }),
+    )
+    .await
+    .expect("second local MB import succeeds");
+
+    let (work_ids, linked_release_ids) = f.db.work_links_for_test(V3_WORK).await.unwrap();
+
+    assert_eq!(
+        work_ids.len(),
+        1,
+        "the work the two releases share is one row",
+    );
+    assert_ne!(
+        work_ids[0], V3_WORK,
+        "the row id is minted, not the MusicBrainz MBID",
+    );
+    let mut expected = vec![first_release_id, second_release_id];
+    expected.sort();
+    assert_eq!(
+        linked_release_ids, expected,
+        "both releases' track_works point at the one work row",
+    );
+}
+
+/// coven verifies a file's plaintext against its record's content hash on
+/// every cloud fetch, so the coven file a `covers` row references must hold
+/// the bytes actually stored — the resized thumbnail the import writes, never
+/// the image it was made from — and their size. The record carries the
+/// file's hash once it is stored.
+async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
+    f.db.find_library_image(release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("cover row");
+    let bytes = support::read_cover_image_bytes(&f.library_manager, release_id)
+        .await
+        .expect("cover file readable");
+    let file = f
+        .library_manager
+        .library_image_file_for_test(release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("the cover's file");
+    if let coven::FilePlace::Cloud { content_hash, .. } = file.place() {
+        let stored_hash: String =
+            content_hash.as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+        assert_eq!(stored_hash, bae_util::fs::hash_bytes(&bytes));
+    }
+    assert_eq!(
+        file.size(),
+        bytes.len() as u64,
+        "the cover's coven file must be the size of the stored bytes",
+    );
+}
+
+/// 6. Import with local cover art: covers row + the cover file in coven's local store.
+#[tokio::test]
+async fn import_with_cover_art() {
+    support::tracing_init();
+
+    let f = ImportFixture::new().await;
+
+    let release = discogs_release("Cover Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_with_cover(&album_dir, &["01 Track.flac"]);
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand {
+            selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            )
+        })
+        .await
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    // Cover image row in DB
+    let cover =
+        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+            .await
+            .unwrap();
+    assert!(cover.is_some(), "should have cover image in DB");
+    let cover = cover.unwrap();
+    assert_eq!(cover.source, "local");
+
+    // Cover bytes readable through the image ref path (coven's local store while Local).
+    let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
+        .await
+        .expect("cover file should be readable");
+    assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
+
+    assert_cover_row_describes_stored_bytes(&f, &release_id).await;
+}
+
+/// An oversized folder cover is resized to a ≤600 JPEG thumbnail at import: the
+/// stored file decodes to 600×600 JPEG (from a 1000×1000 PNG source) and the
+/// `covers` row records JPEG, not the source PNG.
+#[tokio::test]
+async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
+    support::tracing_init();
+
+    let f = ImportFixture::new().await;
+
+    let release = discogs_release("Oversized Cover Album", &["Track"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let cover_path = generate_album_with_oversized_cover(&album_dir, &["01 Track.flac"]);
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand {
+            selected_cover: Some(CoverSelection::Local(cover_path)),
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            )
+        })
+        .await
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    // The row records the stored format (JPEG), not the source PNG.
+    let cover =
+        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+            .await
+            .unwrap()
+            .expect("cover image in DB");
+    assert_eq!(
+        cover.content_type,
+        bae_util::content_type::ContentType::Jpeg
+    );
+
+    // The stored file is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
+    let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
+        .await
+        .expect("cover file should be readable");
+    assert_eq!(
+        image::guess_format(&cover_bytes).unwrap(),
+        image::ImageFormat::Jpeg
+    );
+    let decoded = image::load_from_memory(&cover_bytes).unwrap();
+    assert_eq!((decoded.width(), decoded.height()), (600, 600));
+
+    assert_cover_row_describes_stored_bytes(&f, &release_id).await;
+}
+
+// ── metadata draft + user edit at commit ───────────────────────────────────
+
+#[tokio::test]
+async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
+    for (name, bytes, dimensions) in [
+        (
+            "solid.gif",
+            include_bytes!("../../../test-fixtures/cover-art/solid.gif").as_slice(),
+            (16, 8),
+        ),
+        (
+            "solid.webp",
+            include_bytes!("../../../test-fixtures/cover-art/solid.webp").as_slice(),
+            (16, 8),
+        ),
+        (
+            "animated.gif",
+            include_bytes!("../../../test-fixtures/cover-art/animated.gif").as_slice(),
+            (600, 300),
+        ),
+        (
+            "animated.webp",
+            include_bytes!("../../../test-fixtures/cover-art/animated.webp").as_slice(),
+            (600, 300),
+        ),
+    ] {
+        let release = discogs_release("Cover Format Album", &["Track"]);
+        let f = ImportFixture::new().await;
+        let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
+
+        let album_dir = f.temp_path().join("album");
+        fs::create_dir_all(&album_dir).unwrap();
+        generate_album_files(&album_dir, &["01 Track.flac"]);
+        fs::write(album_dir.join(name), bytes).unwrap();
+        let import_id = f.ids.new_id().to_string();
+        f.handle
+            .send_command(ImportCommand {
+                selected_cover: Some(CoverSelection::Local(name.to_string())),
+                ..support::folder_import(
+                    &import_id,
+                    album_dir.clone(),
+                    support::discogs_release(release_id_key),
+                )
+            })
+            .await
+            .unwrap();
+        let mut progress_rx = f.handle.subscribe_import(import_id);
+        let (release_id, _) = support::try_wait_for_import_complete(&mut progress_rx)
+            .await
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        let cover =
+            f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+                .await
+                .unwrap()
+                .unwrap();
+        assert_eq!(
+            cover.content_type,
+            bae_util::content_type::ContentType::Jpeg
+        );
+        let stored = support::read_cover_image_bytes(&f.library_manager, &release_id)
+            .await
+            .unwrap();
+        assert_eq!(
+            image::guess_format(&stored).unwrap(),
+            image::ImageFormat::Jpeg
+        );
+        let decoded = image::load_from_memory(&stored).unwrap();
+        assert_eq!((decoded.width(), decoded.height()), dimensions);
+        let pixel = decoded.to_rgb8().get_pixel(0, 0).0;
+        for (actual, expected) in pixel.into_iter().zip([120u8, 40, 200]) {
+            assert!(actual.abs_diff(expected) <= 3, "{name}: {pixel:?}");
+        }
+        assert_eq!(
+            fs::read(album_dir.join(name)).unwrap(),
+            bytes,
+            "source artwork stays unchanged"
+        );
+        assert_cover_row_describes_stored_bytes(&f, &release_id).await;
+    }
+}

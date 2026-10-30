@@ -10,12 +10,8 @@ publish = false
 name = "bae_test_support"
 path = "src/lib.rs"
 
-# Helpers shared by bae-core's integration tests. This is a library rather than
-# a `tests/support/mod.rs` include on purpose: that file was textually compiled
-# into each of the 16 `tests/*.rs` binaries, so every helper a given binary
-# didn't call read as dead and the module needed a blanket `#![allow(dead_code)]`
-# to stay quiet. As a real crate it compiles once and its helpers are a genuine
-# public API, so `dead_code` and `unreachable_pub` both hold without an allow.
+# Helpers shared by bae-core's two integration test binaries and by the unit
+# tests of the crates above bae-core, so a library of their own.
 [dependencies]
 # test-utils gives `Database::new_test` and the in-memory keyring the helpers
 # below build on. bae-core dev-depends back on this crate; Cargo permits that

@@ -1,0 +1,295 @@
+/// Next button must advance to track 2 and produce audio matching the XLD reference.
+///
+/// Tests the manual Next path (not auto-advance). After pressing Next, the captured
+/// audio from track 2 must match the XLD-split reference.
+#[tokio::test]
+async fn test_cue_ape_next_track() {
+    use bae_audio::decode_audio;
+
+    let mut fixture = CueApeTestFixture::with_capture()
+        .await
+        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+
+    let track1_id = fixture.track_ids[0].clone();
+    let track2_id = fixture.track_ids[1].clone();
+
+    fixture.playback_handle.play(track1_id.clone());
+    // Drain track 1's play stream; the Next below mints a fresh one for track 2.
+    let _track1_play = fixture.next_capture_stream().await;
+
+    // Wait for track 1 to start
+    let started =
+        support::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
+            .await;
+    assert!(started, "Track 1 should start playing");
+
+    // Press Next — track 2's stream replaces track 1's.
+    fixture.playback_handle.next();
+    let captured = fixture.next_capture_stream().await;
+
+    // Wait for track 2 to start
+    let track2_started = support::wait_until_playing(
+        &mut fixture.progress_rx,
+        &track2_id,
+        Duration::from_secs(10),
+    )
+    .await;
+    assert!(track2_started, "Track 2 should start after Next");
+
+    // Decode XLD reference
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
+    let reference_data =
+        std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
+    let reference =
+        decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+    let channels = reference.channels as usize;
+    let sample_rate = reference.sample_rate;
+    let reference_f32 = samples_as_f32(&reference);
+
+    // Align and compare
+    let snippet_len = 500 * channels;
+    // APE frames are ~73728 samples (~1.7s). FFmpeg's seek lands at a frame
+    // boundary, so the captured audio may start up to one frame before the
+    // track's CUE start time. Search within 2s for alignment.
+    let max_alignment = sample_rate as usize * channels * 2;
+
+    let track2_sample_count =
+        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
+            match event {
+                PlaybackProgress::DecodeStats {
+                    track_id,
+                    samples_decoded,
+                    ..
+                } if track_id == track2_id => Some(samples_decoded as usize),
+                _ => None,
+            }
+        })
+        .await
+        .expect("Track 2 should emit decode stats within 10s");
+    assert!(
+        track2_sample_count > snippet_len,
+        "Track 2 should produce enough samples to compare: {} (needed more than {})",
+        track2_sample_count,
+        snippet_len,
+    );
+    assert!(
+        reference_f32.len() >= track2_sample_count,
+        "Track 2 XLD reference should cover decoded track: {} (needed {})",
+        reference_f32.len(),
+        track2_sample_count,
+    );
+
+    let captured_snapshot = bae_core::playback::wait_for_samples(
+        &captured,
+        track2_sample_count,
+        Duration::from_secs(60),
+    )
+    .await;
+    assert!(
+        captured_snapshot.len() >= track2_sample_count,
+        "Not enough captured samples after Next (60s): {} (needed {})",
+        captured_snapshot.len(),
+        track2_sample_count,
+    );
+
+    assert_captured_matches_reference(
+        &captured_snapshot,
+        &reference_f32,
+        channels,
+        sample_rate,
+        max_alignment,
+        track2_sample_count,
+        0.01,
+        "track 2 after Next",
+    );
+}
+
+/// Import a two-disc CUE/APE release to the given destination and assert
+/// each track's main audio segment resolves to its own disc's APE file
+/// (identified by the relative path `CD{N}/CDImage.ape`).
+///
+/// This exercises the bare-filename collision regression in every code path:
+/// bytes-never-copied (Local), bytes-uploaded-and-pinned (Remote + pin),
+/// and bytes-uploaded-cloud-only (Remote, no pin).
+async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestination) {
+    tracing_init();
+    let temp_root = TempDir::new().expect("temp root");
+    let album_dir = temp_root.path().join("album");
+    let cd1_dir = album_dir.join("CD1");
+    let cd2_dir = album_dir.join("CD2");
+    let db_dir = temp_root.path().join("db");
+    std::fs::create_dir_all(&cd1_dir).expect("cd1 dir");
+    std::fs::create_dir_all(&cd2_dir).expect("cd2 dir");
+    std::fs::create_dir_all(&db_dir).expect("db dir");
+
+    // Reuse the 90s / 3-track CUE+APE fixture, once per disc, renamed to
+    // `CDImage.*` so both discs share the same bare filename (a common
+    // multi-disc rip layout).
+    let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
+    let ape_bytes = std::fs::read(fixture_dir.join("Test Album.ape")).expect("read ape fixture");
+    let cue_body = "PERFORMER \"Test Artist\"\n\
+                    TITLE \"Disc Title\"\n\
+                    FILE \"CDImage.ape\" WAVE\n  \
+                    TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n  \
+                    TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 01 00:30:00\n  \
+                    TRACK 03 AUDIO\n    TITLE \"Track Three\"\n    INDEX 01 01:00:00\n";
+    for dir in [&cd1_dir, &cd2_dir] {
+        std::fs::write(dir.join("CDImage.ape"), &ape_bytes).expect("write ape");
+        std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
+    }
+
+    let (library_manager, _, storage) = support::storage_library(&db_dir, bae_core::providers::Providers::offline()).await;
+    if let ImportDestination::Remote { .. } = destination {
+        support::connect_storage(&library_manager, &storage).await;
+    }
+
+    // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3",
+    // read as the release's two discs.
+    let discogs_release = DiscogsRelease {
+        country: None,
+        labels: vec![],
+        // Each position carries its disc, which the shared builder's flat 1..n
+        // numbering cannot express, so this tracklist is built here.
+        tracklist: (1..=2)
+            .flat_map(|disc| {
+                (1..=3).map(move |n| {
+                    support::discogs_track(
+                        &format!("{disc}-{n}"),
+                        &format!("Disc {disc} Track {n}"),
+                        "0:30",
+                    )
+                })
+            })
+            .collect(),
+        ..support::discogs_test_release("test-multi-disc-cue-ape", "Multi-Disc Album", &[])
+    };
+    let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+    let import_handle =
+        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    import_handle
+        .send_command(ImportCommand {
+            destination,
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key),
+            )
+        })
+        .await
+        .expect("send command");
+
+    let mut progress_rx = import_handle.subscribe_import(import_id);
+    let (release_id, _) =
+        wait_for_multi_disc_cue_ape_import_ready(&library_manager, destination, &mut progress_rx)
+            .await;
+
+    let tracks = library_manager
+        .get_tracks_for_release(&release_id)
+        .await
+        .expect("get tracks");
+    assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");
+
+    // `original_filename` in release_files must be the full relative path
+    // (`CD1/CDImage.ape`), not the bare filename — otherwise the two discs'
+    // APE rows would collide on the same `"CDImage.ape"` string.
+    let files = library_manager
+        .get_files_for_release(&release_id)
+        .await
+        .expect("get files");
+    let mut ape_filenames: Vec<String> = files
+        .iter()
+        .filter(|f| f.original_filename.ends_with(".ape"))
+        .map(|f| f.original_filename.clone())
+        .collect();
+    ape_filenames.sort();
+    assert_eq!(
+        ape_filenames,
+        vec!["CD1/CDImage.ape".to_string(), "CD2/CDImage.ape".to_string()],
+        "release_files must store relative paths for both discs, not bare filenames"
+    );
+
+    // Each track's main audio segment must point to its own disc's APE.
+    let filename_by_id: std::collections::HashMap<String, String> = files
+        .iter()
+        .map(|f| (f.id.clone(), f.original_filename.clone()))
+        .collect();
+
+    for track in &tracks {
+        let resolved = library_manager
+            .resolve_track_audio(&track.id)
+            .await
+            .expect("resolve track audio");
+        let segment = resolved
+            .segments
+            .iter()
+            .find(|segment| segment.role == bae_core::db::DbAudioSegmentRole::Main)
+            .unwrap_or_else(|| panic!("track {} has no main audio segment", track.title));
+        let filename = filename_by_id
+            .get(&segment.file_id)
+            .unwrap_or_else(|| panic!("file_id {} not in release_files", segment.file_id));
+
+        let disc_one = bae_core::db::identity::release_medium_id(&release_id, 1);
+        let disc_two = bae_core::db::identity::release_medium_id(&release_id, 2);
+        let expected = match track.medium_id.as_str() {
+            medium if medium == disc_one => "CD1/CDImage.ape",
+            medium if medium == disc_two => "CD2/CDImage.ape",
+            other => panic!("unexpected medium {other:?} for track {}", track.title),
+        };
+        assert_eq!(
+            filename, expected,
+            "track '{}' (medium {:?}) should point at {expected}, got {filename}",
+            track.title, track.medium_id,
+        );
+    }
+}
+
+async fn wait_for_multi_disc_cue_ape_import_ready(
+    library_manager: &LibraryManager,
+    destination: ImportDestination,
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
+) -> (String, String) {
+    match destination {
+        ImportDestination::Local => wait_for_import_complete(progress_rx).await,
+        ImportDestination::Remote { .. } => {
+            let (release_id, album_id) = wait_for_import_complete(progress_rx).await;
+            library_manager.drain_uploads_expecting_work().await.expect("upload every imported file");
+            let files = library_manager
+                .get_files_for_release(&release_id)
+                .await
+                .expect("get release files");
+            assert_eq!(
+                files.len(),
+                4,
+                "remote multi-disc CUE/APE import keeps both audio files and both CUE sheets"
+            );
+            (release_id, album_id)
+        }
+    }
+}
+
+/// Regression: multi-disc CUE/APE imports must link each track to its OWN disc's
+/// audio file, not collapse every track onto the last disc's file.
+///
+/// Bug: `file_ids` was keyed by bare filename (`CDImage.ape`), so CD1's entry
+/// was overwritten by CD2's. Every `audio_formats.file_id` ended up pointing at
+/// CD2's APE, so playing any disc 1 track decoded disc 2's audio.
+///
+/// The same structural bug lived in all three byte-placement strategies, so we
+/// cover each explicitly to prevent a regression on any one path.
+#[tokio::test]
+async fn test_multi_disc_cue_ape_local() {
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Local).await;
+}
+
+#[tokio::test]
+async fn test_multi_disc_cue_ape_remote_pin() {
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Remote { pin: true }).await;
+}
+
+#[tokio::test]
+async fn test_multi_disc_cue_ape_remote_unpin() {
+    assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Remote { pin: false }).await;
+}
+

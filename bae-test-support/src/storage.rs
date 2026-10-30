@@ -109,3 +109,16 @@ pub async fn remove_uploaded_file(
     }
     manager.evict_file_for_test(&reference).await.unwrap();
 }
+
+/// This release's storage state and whether it is pinned on this device.
+pub async fn release_storage(
+    manager: &LibraryManager,
+    release_id: &str,
+) -> (bae_core::album_detail::ReleaseStorageState, bool) {
+    let summary = manager
+        .find_release_storage_summary(release_id)
+        .await
+        .unwrap()
+        .unwrap();
+    (summary.storage_state, summary.pinned)
+}

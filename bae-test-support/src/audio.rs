@@ -1,4 +1,13 @@
-//! Comparing captured playback samples against a decoded reference.
+//! Audio bytes to decode, and comparing captured playback samples against a
+//! decoded reference.
+
+/// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
+/// the window logic without waiting on a fill.
+pub fn filled_sparse_buffer(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
+}
 
 /// Convert a decode's full-range i32 PCM samples to the f32 shape emitted by
 /// streaming playback, for comparing a ground-truth decode against captured

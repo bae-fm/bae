@@ -318,8 +318,9 @@ check "actionlint" env SHELLCHECK_OPTS="--severity=error" actionlint
 
 # ── bae-core tests ────────────────────────────────────────────────────────────
 section "bae-core tests"
-# Suites sharing process state serialize themselves; the CPU test runs alone
-# below because it reads process-wide getrusage.
+# A test that changes process-wide state runs in a process of its own; the CPU
+# test, a binary of its own, runs alone below because it reads process-wide
+# getrusage.
 check "cargo test (bae-core)" \
   scripts/cargo.sh test -p bae-core --features bae-core/test-utils \
     -- --skip test_playback_cpu
