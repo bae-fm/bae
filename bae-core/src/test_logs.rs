@@ -17,8 +17,8 @@ use std::io::{self, Write};
 use std::sync::Once;
 use tracing::subscriber::Interest;
 use tracing::Metadata;
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::{Context, Filter, SubscriberExt};
-use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer};
 
 thread_local! {
@@ -34,11 +34,14 @@ struct Capture {
 
 /// Install the process's subscriber, once: warnings and bae-core's debug
 /// lines go to the running test's output, and each line a capturing thread
-/// logs at its capture's level or above goes into that capture.
+/// logs at its capture's level or above goes into that capture. Only
+/// dependencies log through the `log` crate, and the test output keeps their
+/// warnings, so their `log` records reach the subscriber at warn and above;
+/// a capture is for bae's own lines.
 pub(crate) fn install() {
     static INSTALL: Once = Once::new();
     INSTALL.call_once(|| {
-        tracing_subscriber::registry()
+        let subscriber = tracing_subscriber::registry()
             .with(
                 tracing_subscriber::fmt::layer()
                     .with_test_writer()
@@ -50,8 +53,9 @@ pub(crate) fn install() {
                     .with_ansi(false)
                     .with_writer(|| CaptureWriter)
                     .with_filter(Capturing),
-            )
-            .init();
+            );
+        crate::logging::install_global(subscriber, LevelFilter::WARN)
+            .expect("install the test log subscriber");
     });
 }
 
