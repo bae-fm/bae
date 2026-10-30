@@ -1,6 +1,9 @@
 import BaeKit
 import Foundation
+import OSLog
 import Observation
+
+private let logger = Logger.bae("BrowseListSlot")
 
 /// One library-browse mode's list machinery: the warm `PaginatedList`, its
 /// live subscription, the persisted sort criteria, and the
@@ -13,13 +16,14 @@ import Observation
 @Observable
 final class BrowseListSlot<
     Row: Identifiable & Sendable & Equatable,
-    Criterion: SortCriterionRepresentable
-> where Row.ID: Sendable, Criterion.Field: SortCriterionFieldCodable {
+    Criterion: SortCriterionRepresentable & Codable
+> where Row.ID: Sendable {
     private(set) var list: PaginatedList<Row>?
     private(set) var sortCriteria: [Criterion]
 
     private var reloadTask: Task<Void, Never>?
 
+    private let defaults: UserDefaults
     private let defaultsKey: String
     private let makePageSource: ([Criterion]) -> any PageSource<Row>
     /// Takes the error, not a rendered line: whether a failure is worth showing
@@ -27,15 +31,18 @@ final class BrowseListSlot<
     private let onError: (any Error) -> Void
 
     init(
+        defaults: UserDefaults = .standard,
         defaultsKey: String,
         defaultCriteria: [Criterion],
         makePageSource: @escaping ([Criterion]) -> any PageSource<Row>,
         onError: @escaping (any Error) -> Void
     ) {
+        self.defaults = defaults
         self.defaultsKey = defaultsKey
         self.makePageSource = makePageSource
         self.onError = onError
         sortCriteria = Self.loadCriteria(
+            defaults: defaults,
             key: defaultsKey,
             defaultCriteria: defaultCriteria
         )
@@ -44,9 +51,7 @@ final class BrowseListSlot<
     /// Replace the sort criteria, persist them, and rebuild the list.
     func setSortCriteria(_ criteria: [Criterion]) {
         sortCriteria = criteria
-        if let data = criteria.toJSON() {
-            UserDefaults.standard.set(data, forKey: defaultsKey)
-        }
+        defaults.setEncoded(criteria, forKey: defaultsKey)
         startLoad()
     }
 
@@ -82,16 +87,25 @@ final class BrowseListSlot<
         list = newList
     }
 
+    /// The saved criteria, or `defaultCriteria` when none are saved. A saved
+    /// value that doesn't decode whole is logged by `decoded`, and one that
+    /// holds no criterion here; either sorts by the default.
     private static func loadCriteria(
+        defaults: UserDefaults,
         key: String,
         defaultCriteria: [Criterion]
     ) -> [Criterion] {
-        guard let data = UserDefaults.standard.data(forKey: key),
-            let criteria = [Criterion].fromJSON(data),
-            !criteria.isEmpty
+        guard let saved = defaults.decoded([Criterion].self, forKey: key)
         else {
             return defaultCriteria
         }
-        return criteria
+        guard !saved.isEmpty else {
+            logger.error(
+                "Saved sort criteria for \(key) are empty, sorting by the "
+                    + "default"
+            )
+            return defaultCriteria
+        }
+        return saved
     }
 }

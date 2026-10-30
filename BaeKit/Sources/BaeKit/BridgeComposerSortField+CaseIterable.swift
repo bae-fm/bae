@@ -12,17 +12,4 @@ extension BridgeComposerSortField: CaseIterable {
         case .linkedReleaseCount: String(localized: "Releases")
         }
     }
-
-    public var codableKey: String {
-        switch self {
-        case .name: "name"
-        case .workCount: "workCount"
-        case .linkedReleaseCount: "linkedReleaseCount"
-        }
-    }
-
-    public static func fromCodableKey(_ key: String) -> BridgeComposerSortField?
-    {
-        allCases.first { $0.codableKey == key }
-    }
 }

@@ -11,15 +11,4 @@ extension BridgeArtistSortField: CaseIterable {
         case .albumCount: String(localized: "Albums")
         }
     }
-
-    public var codableKey: String {
-        switch self {
-        case .name: "name"
-        case .albumCount: "albumCount"
-        }
-    }
-
-    public static func fromCodableKey(_ key: String) -> BridgeArtistSortField? {
-        allCases.first { $0.codableKey == key }
-    }
 }

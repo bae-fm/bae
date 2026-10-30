@@ -94,21 +94,12 @@ final class ImportListSlot {
         self.selection = selection
         self.makeSource = makeSource
         self.defaults = defaults
-        let initialOrder: BridgeImportListOrder
-        if let saved = defaults.string(forKey: Self.sortPreferenceKey) {
-            if let order = BridgeImportListOrder(preferenceValue: saved) {
-                initialOrder = order
-            }
-            else {
-                importListLogger.warning(
-                    "Unknown import sort preference: \(saved)"
-                )
-                initialOrder = .newestFirst
-            }
-        }
-        else {
-            initialOrder = .newestFirst
-        }
+        // A saved order that doesn't decode is logged and sorts newest first.
+        let initialOrder =
+            defaults.decoded(
+                BridgeImportListOrder.self,
+                forKey: Self.sortPreferenceKey
+            ) ?? .newestFirst
         sortOrder = initialOrder
         view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
@@ -146,7 +137,7 @@ final class ImportListSlot {
 
     func setSortOrder(_ order: BridgeImportListOrder) {
         sortOrder = order
-        defaults.set(order.preferenceValue, forKey: Self.sortPreferenceKey)
+        defaults.setEncoded(order, forKey: Self.sortPreferenceKey)
         updateView { $0.order = order }
     }
 

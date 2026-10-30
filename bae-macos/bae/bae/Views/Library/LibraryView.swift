@@ -174,11 +174,11 @@ extension LibraryView {
 
     private func sortControls<
         Row: Identifiable & Sendable & Equatable,
-        Criterion: SortCriterionRepresentable
+        Criterion: SortCriterionRepresentable & Codable
     >(
         _ slot: BrowseListSlot<Row, Criterion>
     ) -> some View
-    where Row.ID: Sendable, Criterion.Field: SortCriterionFieldCodable {
+    where Row.ID: Sendable {
         SortCriteriaRow(
             criteria: Binding(
                 get: { slot.sortCriteria },

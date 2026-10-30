@@ -488,3 +488,26 @@ final class CandidatePlacementNavigationTests: XCTestCase {
 private final class CandidateRevealOutcome {
     var position: Int?
 }
+
+/// The order the import list was last sorted by, as the slot reads it back.
+@MainActor
+@Suite("Import list slot saved order")
+struct ImportListSlotSavedOrderTests {
+    @Test("a saved order that doesn't decode sorts newest first")
+    func unreadableSortPreference() throws {
+        let suite = "ImportListSlotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("oldestFirst", forKey: "importCandidateSortOrder")
+
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: ImportSelection(),
+            defaults: defaults,
+            makeSource: { _ in FailingPageSource().pages }
+        )
+
+        #expect(slot.sortOrder == .newestFirst)
+    }
+}

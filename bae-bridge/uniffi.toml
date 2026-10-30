@@ -7,3 +7,9 @@
 # Leaving it out lets BaeKit declare the conformance itself, with core's keyed
 # line in the current locale (`BaeKit/Sources/BaeKit/BridgeError+Localized.swift`).
 omit_localized_error_conformance = true
+
+# Every generated record, enum and error without an object inside conforms to
+# `Codable`, synthesized beside its declaration: the macOS app saves its sort
+# choices in UserDefaults by encoding the bridge's own sort types. Swift can't
+# synthesize the conformance from an extension in another file.
+generate_codable_conformance = true
