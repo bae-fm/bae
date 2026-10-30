@@ -81,7 +81,7 @@ echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BA
 # — but the C# apps only load the cdylib, and a debug archive carries the whole
 # dependency graph's debug info, so the .a is pure build-time waste here.
 # Bindgen reads the same uniffi metadata from the cdylib.
-cargo rustc $CARGO_FLAGS \
+./scripts/cargo.sh rustc $CARGO_FLAGS \
     --target "$BAE_BRIDGE_TARGET" \
     -p bae-bridge \
     --lib \

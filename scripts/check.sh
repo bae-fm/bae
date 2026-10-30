@@ -85,7 +85,7 @@ _ios_clippy() {
   FFMPEG_DIR="$ffmpeg_prefix" \
   BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $device_sdk -I$ffmpeg_prefix/include" \
   CARGO_TARGET_DIR=target-ios \
-  cargo clippy --target aarch64-apple-ios -p bae-bridge -- -D warnings
+  scripts/cargo.sh clippy --target aarch64-apple-ios -p bae-bridge -- -D warnings
 }
 
 # ── Rust ──────────────────────────────────────────────────────────────────────
@@ -100,42 +100,42 @@ check "owner dependency boundary"   scripts/owner-dependency-boundary.sh
 check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
 check "macOS native Cargo cache"     scripts/check-macos-build-cache.sh
 check "mobile host Cargo cache"      scripts/check-mobile-build-cache.sh
-check "clippy (workspace)"          cargo clippy --workspace -- -D warnings
+check "clippy (workspace)"          scripts/cargo.sh clippy --workspace -- -D warnings
 check "clippy (bae-core + test-utils)" \
-  cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
+  scripts/cargo.sh clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
 check "clippy (bae-util + test-utils)" \
-  cargo clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
+  scripts/cargo.sh clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
 check "clippy (bae-audio + test features)" \
-  cargo clippy -p bae-audio --tests --features test-utils,test-instrumentation -- -D warnings
+  scripts/cargo.sh clippy -p bae-audio --tests --features test-utils,test-instrumentation -- -D warnings
 check "clippy (bae-types + test-utils)" \
-  cargo clippy -p bae-types --tests --features bae-types/test-utils -- -D warnings
+  scripts/cargo.sh clippy -p bae-types --tests --features bae-types/test-utils -- -D warnings
 check "clippy (bae-catalogs + test features)" \
-  cargo clippy -p bae-catalogs --tests --features test-utils,test-instrumentation -- -D warnings
-check "clippy (bae-bridge)"         cargo clippy -p bae-bridge -- -D warnings
+  scripts/cargo.sh clippy -p bae-catalogs --tests --features test-utils,test-instrumentation -- -D warnings
+check "clippy (bae-bridge)"         scripts/cargo.sh clippy -p bae-bridge -- -D warnings
 check "clippy (bae-core --features oauth-providers)" \
-  cargo clippy -p bae-core --features oauth-providers -- -D warnings
+  scripts/cargo.sh clippy -p bae-core --features oauth-providers -- -D warnings
 check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
-  cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
+  scripts/cargo.sh clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
 # The feature set build-macos.sh ships, which lints the desktop half of the
 # bridge.
 check "clippy (bae-bridge --features oauth-providers,cloudkit,desktop)" \
-  cargo clippy -p bae-bridge --features oauth-providers,cloudkit,desktop -- -D warnings
+  scripts/cargo.sh clippy -p bae-bridge --features oauth-providers,cloudkit,desktop -- -D warnings
 
 # Each crate's production code alone, so an item only its tests use fails as
 # dead code. The flag goes to the one crate: RUSTFLAGS would recompile every
 # dependency for this one check.
 check "dead_code (bae-core lib only)" \
-  cargo rustc -p bae-core --lib --profile check -- -D warnings
+  scripts/cargo.sh rustc -p bae-core --lib --profile check -- -D warnings
 check "dead_code (bae-util lib only)" \
-  cargo rustc -p bae-util --lib --profile check -- -D warnings
+  scripts/cargo.sh rustc -p bae-util --lib --profile check -- -D warnings
 check "dead_code (bae-audio lib only)" \
-  cargo rustc -p bae-audio --lib --profile check -- -D warnings
+  scripts/cargo.sh rustc -p bae-audio --lib --profile check -- -D warnings
 check "dead_code (bae-types lib only)" \
-  cargo rustc -p bae-types --lib --profile check -- -D warnings
+  scripts/cargo.sh rustc -p bae-types --lib --profile check -- -D warnings
 check "dead_code (bae-catalogs lib only)" \
-  cargo rustc -p bae-catalogs --lib --profile check -- -D warnings
+  scripts/cargo.sh rustc -p bae-catalogs --lib --profile check -- -D warnings
 check "dead_code (bae-cast lib only)" \
-  cargo rustc -p bae-cast --lib --profile check -- -D warnings
+  scripts/cargo.sh rustc -p bae-cast --lib --profile check -- -D warnings
 
 # New #[allow(dead_code)] is banned everywhere.
 check "no new #[allow(dead_code)]" bash -c '
@@ -152,26 +152,26 @@ check "no new #[allow(dead_code)]" bash -c '
 check "cargo machete" cargo machete
 check "cargo deny" cargo deny check
 
-check "cargo doc" env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+check "cargo doc" env RUSTDOCFLAGS="-D warnings" scripts/cargo.sh doc --workspace --no-deps
 
 # ── Rust tests (util + audio + types + catalogs + loc + theme + bridge + automation) ──────────
 section "Rust tests"
 
-check "cargo test (bae-util)"          cargo test -p bae-util
-check "cargo test (bae-audio)"         cargo test -p bae-audio
-check "cargo test (bae-types)"         cargo test -p bae-types
-check "cargo test (bae-catalogs)"      cargo test -p bae-catalogs
-check "cargo test (bae-loc)"           cargo test -p bae-loc
-check "cargo test (bae-theme)"         cargo test -p bae-theme
+check "cargo test (bae-util)"          scripts/cargo.sh test -p bae-util
+check "cargo test (bae-audio)"         scripts/cargo.sh test -p bae-audio
+check "cargo test (bae-types)"         scripts/cargo.sh test -p bae-types
+check "cargo test (bae-catalogs)"      scripts/cargo.sh test -p bae-catalogs
+check "cargo test (bae-loc)"           scripts/cargo.sh test -p bae-loc
+check "cargo test (bae-theme)"         scripts/cargo.sh test -p bae-theme
 # Both editions: default features are baeium's, `desktop` the full build's.
-check "cargo test (bae-bridge --lib)"  cargo test -p bae-bridge --lib
+check "cargo test (bae-bridge --lib)"  scripts/cargo.sh test -p bae-bridge --lib
 check "cargo test (bae-bridge --lib, desktop)" \
-  cargo test -p bae-bridge --lib --features desktop
-check "cargo test (bae-automation)"    cargo test -p bae-automation
-check "cargo test (bae-mcp)"           cargo test -p bae-mcp
-check "cargo test (bae-subsonic)"      cargo test -p bae-subsonic
-check "cargo test (bae-cast)"          cargo test -p bae-cast
-check "cargo test (bae-desktop)"       cargo test -p bae-desktop
+  scripts/cargo.sh test -p bae-bridge --lib --features desktop
+check "cargo test (bae-automation)"    scripts/cargo.sh test -p bae-automation
+check "cargo test (bae-mcp)"           scripts/cargo.sh test -p bae-mcp
+check "cargo test (bae-subsonic)"      scripts/cargo.sh test -p bae-subsonic
+check "cargo test (bae-cast)"          scripts/cargo.sh test -p bae-cast
+check "cargo test (bae-desktop)"       scripts/cargo.sh test -p bae-desktop
 # Chrome strings no code references; `core.*` keys are covered by the
 # bae-bridge test above.
 check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
@@ -319,10 +319,10 @@ section "bae-core tests"
 # Suites sharing process state serialize themselves; the CPU test runs alone
 # below because it reads process-wide getrusage.
 check "cargo test (bae-core)" \
-  cargo test -p bae-core --features bae-core/test-utils \
+  scripts/cargo.sh test -p bae-core --features bae-core/test-utils \
     -- --skip test_playback_cpu
 check "cargo test (bae-core playback CPU, release)" \
-  cargo test -p bae-core --release --features bae-core/test-utils \
+  scripts/cargo.sh test -p bae-core --release --features bae-core/test-utils \
     --test test_playback_cpu
 
 # ── Summary ────────────────────────────────────────────────────────────────────

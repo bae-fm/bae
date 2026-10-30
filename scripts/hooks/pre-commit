@@ -223,7 +223,7 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         CLIPPY_ARGS+=(--features bae-catalogs/test-utils,bae-catalogs/test-instrumentation)
     fi
     CLIPPY_ARGS+=(-- -D warnings)
-    run_check "clippy (directly changed crates)" cargo "${CLIPPY_ARGS[@]}" || {
+    run_check "clippy (directly changed crates)" scripts/cargo.sh "${CLIPPY_ARGS[@]}" || {
         echo "Fix the warnings above and try again"
         exit 1
     }
@@ -234,7 +234,7 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
         DOC_ARGS+=(-p "$crate")
     done
-    run_check "rustdoc (directly changed crates)" env RUSTDOCFLAGS="-D warnings" cargo "${DOC_ARGS[@]}" || {
+    run_check "rustdoc (directly changed crates)" env RUSTDOCFLAGS="-D warnings" scripts/cargo.sh "${DOC_ARGS[@]}" || {
         echo "Fix the documentation errors above and try again"
         exit 1
     }
@@ -245,7 +245,7 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     if [ "$core_changed" -eq 1 ] || [ "$util_changed" -eq 1 ] || [ "$audio_changed" -eq 1 ] \
         || [ "$types_changed" -eq 1 ] || [ "$catalogs_changed" -eq 1 ]; then
         run_check "bae-core and the crates below it for iOS (desktop-only code)" \
-            cargo "${MOBILE_CHECK_ARGS[@]}" || {
+            scripts/cargo.sh "${MOBILE_CHECK_ARGS[@]}" || {
             echo "Gate code only desktop modules use with the same cfg and try again"
             exit 1
         }

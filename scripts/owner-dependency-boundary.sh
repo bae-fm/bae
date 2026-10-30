@@ -32,7 +32,7 @@ for package_id in metadata["workspace_members"]:
 checker_target="$target_directory/owner-construction-check/$checker_revision"
 checker_install="$checker_target/install"
 if [ ! -x "$checker_install/bin/owner-construction-check" ]; then
-    cargo install --locked --git https://github.com/bae-fm/coven \
+    scripts/cargo.sh install --locked --git https://github.com/bae-fm/coven \
         --rev "$checker_revision" --root "$checker_install" \
         --target-dir "$checker_target" owner-construction-check
 fi

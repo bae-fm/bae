@@ -14,4 +14,4 @@ android_rust_env
 TARGET=$(android_rust_target "${ANDROID_ABIS%%,*}")
 rustup target add "$TARGET"
 FFMPEG_DIR="$ANDROID_FFMPEG_DIR/${TARGET%%-*}" \
-    cargo clippy --target "$TARGET" -p bae-bridge -- -D warnings
+    ./scripts/cargo.sh clippy --target "$TARGET" -p bae-bridge -- -D warnings

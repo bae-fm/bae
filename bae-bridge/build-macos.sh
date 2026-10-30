@@ -100,12 +100,12 @@ fi
 
 echo "Building for macOS (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
 if [[ "$RUST_HOST" == "$MACOS_TARGET" ]]; then
-    cargo build $CARGO_FLAGS -p bae-bridge --lib --features "$BAE_BRIDGE_FEATURES"
+    ./scripts/cargo.sh build $CARGO_FLAGS -p bae-bridge --lib --features "$BAE_BRIDGE_FEATURES"
 else
-    cargo build $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-bridge \
+    ./scripts/cargo.sh build $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-bridge \
         --lib --features "$BAE_BRIDGE_FEATURES"
 fi
-cargo build $CARGO_FLAGS -p bae-uniffi-bindgen
+./scripts/cargo.sh build $CARGO_FLAGS -p bae-uniffi-bindgen
 
 # The Swift compilation conditions for the feature set, which Signing.xcconfig
 # includes.
@@ -192,13 +192,13 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
 fi
 
 echo "Generating localization String Catalog (Apple)..."
-cargo run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
+./scripts/cargo.sh run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
     emit --target apple --out-dir bae-macos/bae/bae
-cargo run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
+./scripts/cargo.sh run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
     emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
 
 echo "Generating the theme (Apple)..."
-cargo run -q $CARGO_FLAGS -p bae-theme --bin theme-gen -- \
+./scripts/cargo.sh run -q $CARGO_FLAGS -p bae-theme --bin theme-gen -- \
     emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
 
 echo ""

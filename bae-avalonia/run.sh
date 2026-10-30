@@ -97,6 +97,7 @@ if [[ "$SKIP_RUST" == false ]]; then
     cargo rustc ${CARGO_FLAGS[@]+"${CARGO_FLAGS[@]}"} -p bae-bridge --lib \
         --features "$FEATURES" --crate-type cdylib --message-format=json-render-diagnostics \
         > "$RUN_DIR/cargo-artifacts.jsonl"
+    ./scripts/record-build-use.sh < "$RUN_DIR/cargo-artifacts.jsonl"
     python3 - "$RUN_DIR/cargo-artifacts.jsonl" "$BRIDGE" <<'PY'
 import json
 from pathlib import Path

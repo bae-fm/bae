@@ -50,6 +50,7 @@ mkdir -p "$LIB_DIR"
 cargo rustc -p bae-bridge --lib --features oauth-providers,desktop \
     --crate-type cdylib --message-format=json-render-diagnostics \
     > "$LIB_DIR/cargo-artifacts.jsonl"
+./scripts/record-build-use.sh < "$LIB_DIR/cargo-artifacts.jsonl"
 # The bindings import uniffi_bae_bridge, which .NET resolves to
 # libuniffi_bae_bridge.dylib on macOS.
 BRIDGE="$LIB_DIR/libuniffi_bae_bridge.dylib"

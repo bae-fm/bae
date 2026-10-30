@@ -66,7 +66,7 @@ for ABI in "${ABIS[@]}"; do
     FA="${TARGET%%-*}"
     ./scripts/check-ffmpeg-dist.sh scripts/build-ffmpeg-android.sh "$ANDROID_FFMPEG_DIR/$FA"
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" ./scripts/cargo.sh build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
 # Bindings come from the built .a: the release .so is stripped of the uniffi
@@ -78,7 +78,7 @@ rm -rf "$BINDINGS_DIR"
 mkdir -p "$BINDINGS_DIR"
 # The generator is its own host-only package so this build doesn't compile
 # bae-core again.
-cargo build -p bae-uniffi-bindgen
+./scripts/cargo.sh build -p bae-uniffi-bindgen
 BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
 "$BINDGEN" generate \
     --library "$CARGO_TARGET_DIR/$FIRST_TARGET/$CARGO_PROFILE/libbae_bridge.a" \
@@ -92,7 +92,7 @@ echo "Generating localization string resources (Android)..."
 RES_DIR=bae-android/app/src/main/res
 LOC_STAGING="$(mktemp -d)"
 trap 'rm -rf "$LOC_STAGING"' EXIT
-cargo run -q -p bae-loc --bin loc-gen -- emit --target android --out-dir "$LOC_STAGING"
+./scripts/cargo.sh run -q -p bae-loc --bin loc-gen -- emit --target android --out-dir "$LOC_STAGING"
 find "$RES_DIR" -name core_strings.xml -delete
 ( cd "$LOC_STAGING" && find . -name core_strings.xml -print0 ) | while IFS= read -r -d '' rel; do
     dest="$RES_DIR/${rel#./}"
@@ -101,7 +101,7 @@ find "$RES_DIR" -name core_strings.xml -delete
 done
 
 echo "Generating the theme (Android)..."
-cargo run -q -p bae-theme --bin theme-gen -- emit --target android --out-dir bae-android/app/generated/theme
+./scripts/cargo.sh run -q -p bae-theme --bin theme-gen -- emit --target android --out-dir bae-android/app/generated/theme
 
 # Every shipped ABI's dir is wiped so only the selected ABIs ship.
 echo "Installing .so files (stripped; debug symbols split out)..."

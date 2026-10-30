@@ -83,7 +83,7 @@ export CARGO_PROFILE_RELEASE_LTO=thin
 # command line only fits Windows' 32K limit in an argfile, which sccache expands
 # again (os error 206). A caller's own wrapper is kept (CI passes one that
 # leaves argfile compiles to rustc); with none, the build is uncached.
-RUSTC_WRAPPER="${RUSTC_WRAPPER-}" cargo rustc $CARGO_FLAGS \
+RUSTC_WRAPPER="${RUSTC_WRAPPER-}" ./scripts/cargo.sh rustc $CARGO_FLAGS \
     --target "$BAE_BRIDGE_TARGET" \
     -p bae-bridge \
     --lib \
