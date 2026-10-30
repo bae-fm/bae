@@ -1671,7 +1671,11 @@ CREATE INDEX IF NOT EXISTS playback_manual_track ON playback_manual(track_id);
 -- The context lane a play fills, keyed by position in play order, so the lane
 -- is stored the way it plays and grows at its end as a play fills it. A lane
 -- never holds a track twice, so a row is named by its track. Positions are
--- only an order, with gaps where rows left. Never synced.
+-- only an order, with gaps where rows left. No trigger runs on its rows: a
+-- play takes out and puts in up to the whole library's, so a trigger would
+-- run once for each, and SQLite empties a table with a trigger row by row.
+-- Each write that leaves the lane empty clears what it played from itself.
+-- Never synced.
 CREATE TABLE IF NOT EXISTS playback_context (
     position   INTEGER PRIMARY KEY,
     track_id   TEXT NOT NULL UNIQUE,
@@ -1681,13 +1685,6 @@ CREATE TABLE IF NOT EXISTS playback_context (
     unshuffled INTEGER NOT NULL
 ) STRICT;
 
--- The context lane's last row leaving takes what it played from with it.
-CREATE TRIGGER IF NOT EXISTS playback_context_emptied AFTER DELETE ON playback_context
-WHEN NOT EXISTS (SELECT 1 FROM playback_context)
-BEGIN
-    UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL;
-END;
-
 -- A deleted track leaves the queue in the same transaction. A trigger rather
 -- than a foreign key: the queue's rows are only ever made from tracks the
 -- library holds, so a key would only look each one up again as a play fills
@@ -1696,6 +1693,9 @@ CREATE TRIGGER IF NOT EXISTS tracks_leave_playback_queue AFTER DELETE ON tracks
 BEGIN
     DELETE FROM playback_manual WHERE track_id = OLD.id;
     DELETE FROM playback_context WHERE track_id = OLD.id;
+    -- The lane's last track deleted takes what it played from with it.
+    UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL
+    WHERE source IS NOT NULL AND NOT EXISTS (SELECT 1 FROM playback_context);
 END;
 
 -- Where this device's playback stood, so a restart resumes it: the queue

@@ -137,6 +137,20 @@ async fn deleting_the_playing_track_keeps_the_lane_s_place() {
     assert_eq!(back.map(|entry| entry.track_id), Some(tracks[0].clone()));
 }
 
+/// What the `playback_queue` row says the context lane plays from: its
+/// source, whether it is shuffled, and its cursor.
+async fn context_head(db: &Database) -> (Option<String>, Option<bool>, Option<i64>) {
+    db.read(|sql| {
+        Ok(sql.query_row(
+            "SELECT source, shuffled, cursor FROM playback_queue",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )?)
+    })
+    .await
+    .unwrap()
+}
+
 /// The context lane's last row leaving takes what it played from with it.
 #[tokio::test]
 async fn the_lane_s_last_track_deleted_clears_the_context() {
@@ -147,17 +161,66 @@ async fn the_lane_s_last_track_deleted_clears_the_context() {
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
 
     assert!(db.queue_value().await.unwrap().context.is_none());
-    let cleared: (Option<String>, Option<i64>) = db
+    assert_eq!(context_head(&db).await, (None, None, None));
+}
+
+/// Deleting every track of the lane in one write takes what it played from
+/// with the last of them.
+#[tokio::test]
+async fn the_lane_s_tracks_deleted_together_clear_the_context() {
+    let (db, _tmp, _tracks) = release_db(3).await;
+    play(&db, ReleaseStart::First).await;
+
+    exec(&db, "DELETE FROM tracks WHERE release_id = ?", &[RELEASE_A]).await;
+
+    assert_eq!(context_head(&db).await, (None, None, None));
+}
+
+/// Removing the lane's last row takes what it played from with it; removing
+/// any other row leaves it.
+#[tokio::test]
+async fn removing_the_lane_s_last_row_clears_the_context() {
+    let (db, _tmp, tracks) = release_db(2).await;
+    play(&db, ReleaseStart::First).await;
+    let tables = db.playback_queue_tables();
+
+    tables
+        .remove(crate::playback::QueueEntryId::Context(tracks[1].clone()))
+        .await
+        .unwrap()
+        .expect("the lane holds it");
+    assert_eq!(
+        context_head(&db).await,
+        (Some(RELEASE_A.to_string()), Some(false), Some(1))
+    );
+
+    tables
+        .remove(crate::playback::QueueEntryId::Context(tracks[0].clone()))
+        .await
+        .unwrap()
+        .expect("the lane holds it");
+    assert_eq!(context_head(&db).await, (None, None, None));
+}
+
+/// No trigger runs on the context lane's rows: a play takes out and puts in
+/// up to a library's worth of them, and a trigger would run once for each
+/// row taken out and keep SQLite from emptying the table without visiting
+/// its rows.
+#[tokio::test]
+async fn the_context_lane_has_no_trigger() {
+    let (db, _tmp, _tracks) = release_db(0).await;
+    let triggers: Vec<String> = db
         .read(|sql| {
-            Ok(
-                sql.query_row("SELECT source, cursor FROM playback_queue", [], |row| {
-                    Ok((row.get(0)?, row.get(1)?))
-                })?,
-            )
+            Ok(sql.query(
+                "SELECT name FROM sqlite_master \
+                 WHERE type = 'trigger' AND tbl_name = 'playback_context'",
+                [],
+                |row| row.get(0),
+            )?)
         })
         .await
         .unwrap();
-    assert_eq!(cleared, (None, None));
+    assert!(triggers.is_empty(), "{triggers:?}");
 }
 
 /// The resume row names the entry playing; deleting its track leaves the row

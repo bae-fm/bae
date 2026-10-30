@@ -2355,9 +2355,10 @@ which core reads for the ids it is handed, whatever order they were picked
 in. Its rows are filled once, when playing starts; after that they
 can be removed and reordered but never grow. It holds each track once: a
 release named twice among several plays once, where it is first named.
-Removing the playing row leaves the track after it next. Up Next entries are
-each their own, so the same track queued twice there is two entries, each
-removable on its own.
+Removing the playing row leaves the track after it next. Once its last row
+leaves, removed or its track deleted from the library, nothing is playing
+from. Up Next entries are each their own, so the same track queued twice
+there is two entries, each removable on its own.
 
 | Command | Effect |
 |---|---|

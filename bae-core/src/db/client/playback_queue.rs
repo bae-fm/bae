@@ -123,7 +123,7 @@ impl Database {
             }
             sql.execute("DELETE FROM playback_state", [])?;
             sql.execute("DELETE FROM playback_manual", [])?;
-            sql.execute("DELETE FROM playback_context", [])?;
+            clear_context_on(sql)?;
             sql.execute("UPDATE playback_queue SET repeat = 'off'", [])?;
             Ok(())
         })
@@ -191,9 +191,7 @@ impl PlaybackQueueTables {
                 if queue_row_on(sql)?.cursor.is_none() {
                     return Ok(false);
                 }
-                // Emptying the lane clears what it played from
-                // (`playback_context_emptied`).
-                sql.execute("DELETE FROM playback_context", [])?;
+                clear_context_on(sql)?;
                 Ok(true)
             })
             .await
@@ -236,6 +234,15 @@ impl PlaybackQueueTables {
                 let Some(track_id) = removed else {
                     return Ok(None);
                 };
+                if lane == Lane::Context {
+                    // The lane's last row takes what it played from with it,
+                    // as a deleted track does (`tracks_leave_playback_queue`).
+                    sql.execute(
+                        "UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL \
+                         WHERE NOT EXISTS (SELECT 1 FROM playback_context)",
+                        [],
+                    )?;
+                }
                 Ok(Some(QueueEntry { id, track_id }))
             })
             .await
@@ -387,6 +394,16 @@ fn queue_row_on(sql: &SqlContext<'_, '_>) -> rusqlite::Result<QueueRow> {
 
 fn set_cursor_on(sql: &SqlContext<'_, '_>, position: i64) -> rusqlite::Result<()> {
     sql.execute("UPDATE playback_queue SET cursor = ?", [position])?;
+    Ok(())
+}
+
+/// Empty the context lane and clear what it played from, in the same write.
+fn clear_context_on(sql: &SqlContext<'_, '_>) -> rusqlite::Result<()> {
+    sql.execute("DELETE FROM playback_context", [])?;
+    sql.execute(
+        "UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL",
+        [],
+    )?;
     Ok(())
 }
 
@@ -618,8 +635,8 @@ fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled,
         }
     };
 
-    // Up Next empties and the context lane is replaced; emptying it clears
-    // what it played from (`playback_context_emptied`).
+    // Up Next empties and the context lane is replaced, with what it plays
+    // from written below.
     sql.execute("DELETE FROM playback_manual", [])?;
     sql.execute("DELETE FROM playback_context", [])?;
     let play_order = if shuffled { "random()" } else { "unshuffled" };
