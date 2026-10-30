@@ -80,32 +80,26 @@ async fn the_cloud_only_count_is_the_uploaded_releases_not_pinned() {
     assert_eq!(manager.cloud_only_release_count().await.unwrap(), 1);
 }
 
-/// A release pinned as it uploads is pinned only once its files are whole on
-/// this device. Completing the upload carries each file's pin to the stored
-/// file, where it waits for a copy from storage; until that copy lands, the
-/// Storage Manager's list, the release's own summary and what disconnecting
-/// would cost all read the release as not pinned, and the copy landing pins
-/// it.
+/// A release kept here as it moves to the cloud is pinned only once its
+/// files are whole on this device. The write switching its files to the cloud
+/// asks coven to keep each, and coven downloads its copy from storage; until
+/// that copy lands, the Storage Manager's list, the release's own summary and
+/// what disconnecting would cost all read the release as not pinned, and the
+/// copy landing pins it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn a_carried_pin_pins_its_release_once_the_copy_lands() {
+async fn a_kept_release_is_pinned_once_its_copy_lands() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
     let release =
-        release_waiting_for_its_carried_pin(&manager, &temp_dir.path().join("carried"), "Album Title")
+        release_kept_here_waiting_for_its_copy(&manager, &temp_dir.path().join("kept"), "Album Title")
             .await;
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
+    let file = manager.release_file_ref(&file_id).await.unwrap();
     assert_eq!(
-        manager
-            .database
-            .query_texts_for_test(&format!(
-                "SELECT CAST(pin.kept AS TEXT) FROM coven_pins pin \
-                 WHERE pin.table_name = 'release_files' AND pin.key = coven_key('{file_id}')"
-            ))
-            .await
-            .unwrap(),
-        ["0"],
-        "the file's pin waits for its copy"
+        manager.database.files_pinned(&[file.id()]).await.unwrap(),
+        [Some(false)],
+        "the file's copy hasn't landed"
     );
     let summary_pinned = || async {
         manager
@@ -127,7 +121,6 @@ async fn a_carried_pin_pins_its_release_once_the_copy_lands() {
     );
 
     home.set_faults(coven::Faults::none()).await;
-    let file = manager.release_file_ref(&file_id).await.unwrap();
     manager.database.pin(std::slice::from_ref(&file)).await.unwrap();
     assert!(summary_pinned().await, "the release's summary");
     assert!(
@@ -137,19 +130,16 @@ async fn a_carried_pin_pins_its_release_once_the_copy_lands() {
     assert_eq!(manager.cloud_only_release_count().await.unwrap(), 0);
 }
 
-/// A release whose files' pins wait for coven to fetch their copies is
-/// being pinned: the Storage Manager shows it pinning and sorts it with the
-/// releases pinning, ahead of those only in the cloud, and its inspector
-/// shows each file waiting and coven's fetch counting them, until its copies
-/// land and it is pinned.
+/// A release whose kept copies haven't landed sorts with the releases in the
+/// cloud only, and as pinned once they land.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn a_release_waiting_for_its_carried_pins_is_pinning() {
+async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
     let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title A", false).await;
     let waiting =
-        release_waiting_for_its_carried_pin(&manager, &temp_dir.path().join("waiting"), "Album Title B")
+        release_kept_here_waiting_for_its_copy(&manager, &temp_dir.path().join("waiting"), "Album Title B")
             .await;
     let by_storage = || async {
         manager
@@ -173,34 +163,10 @@ async fn a_release_waiting_for_its_carried_pins_is_pinning() {
     assert_eq!(
         by_storage().await,
         [
-            (waiting.id.clone(), StoragePlace::Pinning),
             (cloud.clone(), StoragePlace::Cloud),
+            (waiting.id.clone(), StoragePlace::Cloud),
         ]
     );
-    use crate::album_detail::FilePin;
-    use crate::library::storage_inspector::StorageInspectorTransfer;
-    let services = crate::library::AppServices::for_test(manager.library.clone())
-        .await
-        .unwrap();
-    let inspector = services.subscribe_storage_inspector();
-    inspector.set(Some(waiting.id.clone())).unwrap();
-    // Coven tries to fetch the copy and fails while the stored file can't be
-    // read; between its tries the file's pin waits.
-    let fetching = inspector_until(&inspector, |value| {
-        value.files.iter().all(|file| file.pin == Some(FilePin::Waiting))
-    })
-    .await;
-    let [StorageInspectorTransfer::PinFetch { summary }] = fetching.transfers.as_slice() else {
-        panic!("coven's fetch counts the pinned files: {:?}", fetching.transfers);
-    };
-    assert_eq!(
-        summary
-            .iter()
-            .map(|count| (count.label.key.as_str(), count.label.count))
-            .collect::<Vec<_>>(),
-        vec![("core.queue.waiting", 1)]
-    );
-    assert!(fetching.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
 
     home.set_faults(coven::Faults::none()).await;
     let refs = release_file_refs(&manager, &waiting.id).await;
@@ -212,10 +178,10 @@ async fn a_release_waiting_for_its_carried_pins_is_pinning() {
             (cloud.clone(), StoragePlace::Cloud),
         ]
     );
-    let pinned = inspector_until(&inspector, |value| value.transfers.is_empty()).await;
-    assert!(pinned.files.iter().all(|file| file.pin.is_none()));
     inspector_rows_until(&manager, &waiting.id, |rows| {
-        rows.files.iter().all(|file| file.pin == Some(FilePin::Kept))
+        rows.files
+            .iter()
+            .all(|file| file.pin == Some(crate::album_detail::FilePin::Kept))
     })
     .await;
 }

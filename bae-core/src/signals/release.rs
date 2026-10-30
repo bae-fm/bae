@@ -294,6 +294,7 @@ mod tests {
             file_size: 5,
             content_type: ContentType::Jpeg,
             source_audio: None,
+            file: None,
             stored: false,
             created_at: Utc::now(),
         };
@@ -434,6 +435,7 @@ mod tests {
                 file_size: size,
                 content_type,
                 source_audio: None,
+                file: None,
                 stored: false,
                 created_at: Utc::now(),
             };

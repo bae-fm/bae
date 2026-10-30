@@ -28,7 +28,7 @@ CloudKit heeft helemaal geen flow nodig: coven stuurt het op Apple-platforms aan
 
 Binnen de home begint elk objectpad met de store-id van de bibliotheek: de genummerde reeks wijzigingen van coven, zijn snapshots, toetredingsverzoeken en opgeslagen bestanden. Meerdere bibliotheken kunnen één Dropbox- of OneDrive-map delen zonder elkaars objecten aan te raken.
 
-Elk object wordt versleuteld en onder een willekeurige naam opgeslagen; er is geen plaintext-modus. De bestanden van bae horen bij rijen van drie gesynchroniseerde tabellen, `release_files`, `covers` en `artist_images`, plus de avatar op elke `people`-rij. Het pad van een bestand wordt vastgelegd wanneer het aan zijn rij wordt gekoppeld, zodat het hernoemen van een album het nooit verplaatst. Zie [Encryptie](/nl/reference/encryption).
+Elk object wordt versleuteld en onder een willekeurige naam opgeslagen; er is geen plaintext-modus. De bestanden van bae zijn coven-bestanden waarnaar rijen van vier gesynchroniseerde tabellen verwijzen: `release_files`, `covers`, `artist_images` en de avatar op elke `people`-rij. Het pad van een bestand wordt vastgelegd wanneer het wordt klaargezet, zodat het hernoemen van een album het nooit verplaatst. Zie [Encryptie](/nl/reference/encryption).
 
 ## Gedrag op echte netwerken
 

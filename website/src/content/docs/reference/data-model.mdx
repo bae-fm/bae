@@ -34,11 +34,11 @@ Two devices' edits merge cell by cell, the later edit winning a cell both change
 
 ## Blobs
 
-Audio and images go through coven's file layer, each kind with its own device cache budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), and the avatars on `people` (64 MiB).
+Audio and images are coven files, each kind a namespace with its own device cache budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), and `avatars` (64 MiB). A row references its file by the coven file's id: `file` on `release_files`, `covers` and `artist_images`, and `avatar_id` on `people`. The file's size, content hash and location are coven's, read by joining `coven_files`.
 
-Release files are the user's own and lazily cached: a local release's files are the user's files at their original paths, recorded in `local_release_files`; moving the release to the cloud attaches every file to its `release_files` row in one write, and other devices fetch it into cache on first read. Covers, artist images, and avatars are bae's own and eagerly cached: bae produces the bytes (covers are re-rendered as JPEG thumbnails at most 600px wide), and every device fetches them as soon as their rows arrive so grids render locally.
+Release files are the user's own: a local release's files are the user's files at their original paths, recorded in `local_release_files`, and its rows reference no coven file. Moving the release to the cloud stages every file with coven in one write and points each row at its file; once the last is stored, coven switches them all to the cloud together, and other devices fetch each into cache on first read. Covers, artist images, and avatars are bae's own: bae produces the bytes (covers are re-rendered as JPEG thumbnails at most 600px wide), and a device fetches one when it is first shown and keeps it until its namespace's budget evicts it.
 
-Every file uploads encrypted under a random name, at a path fixed when it is attached to its row, so a later rename never moves the object.
+Every file uploads encrypted under a random name, at a path fixed when it is staged, so a later rename never moves the object. A file never changes its bytes: a new image is a new file.
 
 ## Identity of a rip
 

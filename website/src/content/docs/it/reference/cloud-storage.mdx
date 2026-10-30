@@ -28,7 +28,7 @@ CloudKit non richiede alcun flusso: coven lo guida sulle piattaforme Apple come 
 
 Dentro la home, ogni percorso di oggetto inizia con l'id dello store della libreria: la sequenza numerata di modifiche di coven, i suoi snapshot, le richieste di unione e i file conservati. Più librerie possono condividere una cartella Dropbox o OneDrive senza toccare gli oggetti delle altre.
 
-Ogni oggetto è cifrato e conservato sotto un nome casuale; non esiste una modalità in chiaro. I file di bae appartengono a righe di tre tabelle sincronizzate, `release_files`, `covers` e `artist_images`, più l'avatar di ogni riga `people`. Il percorso di un file viene fissato quando viene allegato alla sua riga, così rinominare un album non lo sposta mai. Vedi [Cifratura](/it/reference/encryption).
+Ogni oggetto è cifrato e conservato sotto un nome casuale; non esiste una modalità in chiaro. I file di bae sono file di coven a cui fanno riferimento righe di quattro tabelle sincronizzate: `release_files`, `covers`, `artist_images` e l'avatar di ogni riga `people`. Il percorso di un file viene fissato quando viene preparato, così rinominare un album non lo sposta mai. Vedi [Cifratura](/it/reference/encryption).
 
 ## Comportamento su reti reali
 

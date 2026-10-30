@@ -405,15 +405,7 @@ where
             });
         }
 
-        // Configure coven's per-namespace cache budgets (device-local, idempotent):
-        // the bulk for audio, a small reserved slice each for covers / artist images.
-        timing
-            .stage(&library_id, "configure cache budgets", || {
-                runtime.block_on(library_manager.configure_cache_budgets())
-            })
-            .map_err(|e| BootstrapError::Database(e.to_string()))?;
-
-        // Install the sync-status, pending and abandoned subscriptions before connection starts.
+        // Install the sync-status and pending subscriptions before connection starts.
         // coven's status receiver may be subscribed before a provider connects, so the
         // attachment's first events cannot race the library/UI observers.
         timing

@@ -3,7 +3,8 @@
 use super::*;
 
 impl LibraryManager {
-    /// Attach every local file in one write, then keep the requested offline copies.
+    /// Move every local file to the cloud in one write; `pin` keeps each file
+    /// whole on this device too once stored.
     pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
         let manager = self.clone();
         let release_id = release_id.to_string();
@@ -11,14 +12,14 @@ impl LibraryManager {
             std::slice::from_ref(&release_id),
             ReleaseStorageAction::Upload,
         )?;
-        // A committed attachment survives a dismissed view. Its optional offline
-        // copy has its own Downloads outcome and retry, never a second attachment.
+        // A committed move survives a dismissed view; coven keeps the files
+        // here once stored when `pin` asks it to.
         self.run_file_operation("attach release", move |_closing| async move {
-            manager.database.attach_release_files(&release_id).await?;
+            manager
+                .database
+                .attach_release_files(&release_id, pin)
+                .await?;
             drop(guard);
-            if pin {
-                manager.enqueue_attached_release_pin(release_id).await?;
-            }
             Ok(())
         })
         .await
@@ -93,22 +94,6 @@ impl LibraryManager {
     // release that wasn't fully pinned stays cloud-only, since a pin flips a
     // release to pinned only once every file lands.
 
-    /// Attachment has committed; retrying this queue item only keeps its bytes offline.
-    pub(super) async fn enqueue_attached_release_pin(
-        &self,
-        release_id: String,
-    ) -> Result<(), LibraryError> {
-        self.downloads
-            .enqueue_all(vec![crate::library::DownloadEntry {
-                release_id,
-                created_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now())
-                    .timestamp_millis(),
-                payload: (),
-            }])
-            .await?;
-        Ok(())
-    }
-
     /// Enqueue releases to pin for offline, in one write that passes over ids
     /// already waiting or downloading, missing from the library (deleted
     /// meanwhile), local, or already pinned, and queues one whose download
@@ -137,6 +122,20 @@ impl LibraryManager {
             }
         }
         Ok(())
+    }
+
+    /// End the release's failed move to the cloud, `id`, as its pending
+    /// record offers: the move is cancelled with coven, and the release is
+    /// local here again, playing from its originals.
+    pub async fn cancel_failed_release_move(
+        &self,
+        release_id: &str,
+        id: coven::MoveId,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .cancel_failed_release_move(release_id, id)
+            .await?)
     }
 
     /// Pause or resume the download queue. While paused the worker parks instead
@@ -224,10 +223,9 @@ impl LibraryManager {
     /// checked and admitted. Empty and duplicate selections are invalid commands;
     /// release-specific refusals are returned beside the durable receipt for the
     /// releases that were admitted. The stored import storage choice says
-    /// whether coven keeps the files in the pinned cache (offline) or the
-    /// evictable cache. Once the upload lands, a remote release no longer
-    /// refers to the user's source path; the source file itself remains
-    /// untouched.
+    /// whether coven keeps the files whole here once stored (offline) or only
+    /// in the evictable cache. Once the move finishes, coven no longer reads
+    /// the user's original; the source file itself remains untouched.
     pub async fn upload_releases(
         &self,
         release_ids: &[String],

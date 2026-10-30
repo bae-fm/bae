@@ -5,9 +5,9 @@ import SwiftUI
 /// of its files are downloading, waiting and kept, as core counts them. While its
 /// download waits or runs, the button that cancels the pin, and while it
 /// downloads, the bytes it holds of its size and how fast it goes, over a bar
-/// of the same bytes. While coven fetches the copies its pins wait for,
-/// outside the download queue, the counts alone: no queue entry holds that
-/// fetch to cancel or measure.
+/// of the same bytes. While coven downloads the files it keeps here after a
+/// move to the cloud, outside the download queue, the counts alone: no queue
+/// entry holds that fetch to cancel or measure.
 struct StoragePinSummary: View {
     let summary: [BridgeTransferCount]
     let download: Download?

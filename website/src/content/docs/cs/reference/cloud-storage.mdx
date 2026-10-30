@@ -28,7 +28,7 @@ CloudKit nepotřebuje žádný tok: coven ho na platformách Apple ovládá jako
 
 Uvnitř domova začíná každá cesta objektu ID úložiště knihovny: číslovaná posloupnost změn coven, jeho snapshoty, žádosti o připojení a uložené soubory. Několik knihoven může sdílet jednu složku Dropboxu nebo OneDrivu, aniž by se dotýkaly objektů ostatních.
 
-Každý objekt je zašifrovaný a uložený pod náhodným názvem; režim prostého textu neexistuje. Soubory bae patří k řádkům tří synchronizovaných tabulek, `release_files`, `covers` a `artist_images`, plus avatar v každém řádku `people`. Cesta souboru se pevně určí, když se soubor připojí ke svému řádku, takže přejmenování alba ho nikdy nepřesune. Viz [Šifrování](/cs/reference/encryption).
+Každý objekt je zašifrovaný a uložený pod náhodným názvem; režim prostého textu neexistuje. Soubory bae jsou soubory coven, na které odkazují řádky čtyř synchronizovaných tabulek: `release_files`, `covers`, `artist_images` a avatar v každém řádku `people`. Cesta souboru se pevně určí, když se soubor připraví, takže přejmenování alba ho nikdy nepřesune. Viz [Šifrování](/cs/reference/encryption).
 
 ## Chování ve skutečných sítích
 

@@ -104,57 +104,70 @@ async fn a_retry_that_fails_again_shows_its_own_error() {
 }
 
 /// The pending list keeps the order its records arose in, whatever coven's
-/// ids for them: an upload that failed first stays first after a later one
-/// fails, and after it fails again.
+/// ids for them: a move whose original went missing first stays first after
+/// a later one's does, though the later record sorts first.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_pending_list_keeps_the_order_its_records_arose_in() {
     let (manager, temp, first, _file_id) = queued_upload_fixture("first").await;
     let mut values = manager.subscribe_sync_status_values();
     manager.start().unwrap();
-    // A file's record as coven stores it begins with its subject, so two
-    // records of one reason sort as their subjects' stored text does.
-    let stored_subject = |release: String| {
+    // The move whose original at `path` is missing, from its record.
+    let missing_move = |path: std::path::PathBuf| {
         let manager = manager.library.clone();
         async move {
-            let file = release_files(&manager, &release).await.remove(0);
-            let file = manager.release_file_ref(&file.id).await.unwrap();
-            serde_json::to_vec(&coven::PendingSubject::File {
-                device: file.uploader(),
-                file: file.id(),
-            })
-            .unwrap()
+            manager
+                .database
+                .pending()
+                .await
+                .unwrap()
+                .into_iter()
+                .find_map(|record| match (record.subject, record.reason) {
+                    (
+                        coven::PendingSubject::Move { id },
+                        coven::PendingReason::Original { path: missing, .. },
+                    ) if missing == path => Some(id),
+                    _ => None,
+                })
+                .expect("the move's record names its missing original")
         }
     };
-    std::fs::remove_file(temp.path().join("first/a.flac")).unwrap();
+    // A move's record as coven stores it begins with its subject, so two
+    // records of one reason sort as their subjects' stored text does.
+    let stored = |id: coven::MoveId| serde_json::to_vec(&coven::PendingSubject::Move { id }).unwrap();
+    let first_path = temp.path().join("first/a.flac");
+    std::fs::remove_file(&first_path).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-    let first_subject = stored_subject(first.id.clone()).await;
+    let first_move = missing_move(first_path).await;
 
-    // A second failure whose stored record sorts before the first's, so an
-    // order by record would put it first. Releases that sort after upload.
-    let mut attempt = 0;
-    let second = loop {
-        attempt += 1;
-        let folder = format!("second-{attempt}");
-        let release = insert_release_with_queued_uploads(
-            &manager,
-            &temp.path().join(&folder),
-            &format!("Album Title {attempt}"),
-            &[("b.flac", b"second-bytes")],
-        )
-        .await;
-        if stored_subject(release.id.clone()).await < first_subject {
-            std::fs::remove_file(temp.path().join(folder).join("b.flac")).unwrap();
-            break release;
-        }
-    };
+    // This device numbers its moves in the order it makes them, each write
+    // staging files for the cloud one. Covers staged now are moves of their
+    // own, until the next move's stored subject sorts before the first's, so
+    // an order by record would put the second failure first.
+    let mut next = first_move.0 + 1;
+    while stored(coven::MoveId(next)) >= stored(first_move) {
+        store_test_cover(&manager, &first.id, format!("cover {next}").as_bytes()).await;
+        next += 1;
+    }
+    let second = insert_release_with_queued_uploads(
+        &manager,
+        &temp.path().join("second"),
+        "Album Title Second",
+        &[("b.flac", b"second-bytes")],
+    )
+    .await;
+    let second_path = temp.path().join("second/b.flac");
+    std::fs::remove_file(&second_path).unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
+    assert!(
+        stored(missing_move(second_path).await) < stored(first_move),
+        "the second failure's record sorts first"
+    );
 
     let album = |title: &str| PendingSubjectName::ReleaseFile {
         file_name: if title == "Test Album" { "a.flac" } else { "b.flac" }.into(),
         album_title: title.into(),
     };
-    let second_album = format!("Album Title {attempt}");
     let listed = pending_list_until(&mut values, |items| {
         items.iter().filter(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. })).count() == 2
     })
@@ -165,8 +178,72 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
             .map(|item| item.subject.clone())
             .filter(|subject| matches!(subject, PendingSubjectName::ReleaseFile { .. }))
             .collect::<Vec<_>>(),
-        vec![album("Test Album"), album(&second_album)],
+        vec![album("Test Album"), album("Album Title Second")],
         "{second:?} failed after the first"
+    );
+}
+
+/// A pin the download queue couldn't finish waits on the pending list,
+/// offering Retry, which pins the release again: the pin lands and the
+/// record goes.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_failed_pins_retry_pins_the_release_again() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let home = connect_test_cloud(&manager).await;
+    let release_id = uploaded_release(
+        &manager,
+        &temp_dir.path().join("retry-pin"),
+        "Retry Pin",
+        false,
+    )
+    .await;
+    for file in release_files(&manager, &release_id).await {
+        manager
+            .evict_file_for_test(&manager.release_file_ref(&file.id).await.unwrap())
+            .await
+            .unwrap();
+    }
+    let mut values = manager.subscribe_sync_status_values();
+    manager.start().unwrap();
+    home.set_faults(coven::Faults {
+        fail_next: 1_000,
+        failure: coven::StorageFailure::Network,
+        response: Some(500),
+        ..coven::Faults::none()
+    })
+    .await;
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    let retry = crate::library::PendingAction::RetryDownload {
+        release_id: release_id.clone(),
+    };
+    pending_list_until(&mut values, |items| {
+        items.iter().any(|item| item.wait.action == retry)
+    })
+    .await;
+
+    download_queue_until(&manager, |queue| {
+        queue.rows.iter().any(|row| {
+            row.op.release_id == release_id
+                && matches!(row.op.state, crate::library::DownloadPhase::Failed { .. })
+        })
+    })
+    .await;
+    home.set_faults(coven::Faults::none()).await;
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    wait_for_kept_release(&manager, &release_id).await;
+    pending_list_until(&mut values, |items| {
+        !items.iter().any(|item| item.wait.action == retry)
+    })
+    .await;
+    assert!(
+        manager
+            .library
+            .find_release_storage_summary(&release_id)
+            .await
+            .unwrap()
+            .expect("the library holds the release")
+            .pinned
     );
 }
 

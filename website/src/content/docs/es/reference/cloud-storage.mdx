@@ -28,7 +28,7 @@ CloudKit no necesita ningún flujo: coven lo maneja en plataformas Apple como la
 
 Dentro del hogar, cada ruta de objeto empieza con el id de almacén de la biblioteca: la secuencia numerada de cambios de coven, sus snapshots, las solicitudes de unión y los archivos guardados. Varias bibliotecas pueden compartir una carpeta de Dropbox u OneDrive sin tocar los objetos de las demás.
 
-Cada objeto se cifra y se guarda bajo un nombre aleatorio; no hay modo en texto plano. Los archivos de bae pertenecen a filas de tres tablas sincronizadas, `release_files`, `covers` y `artist_images`, más el avatar de cada fila de `people`. La ruta de un archivo se fija cuando se adjunta a su fila, así que renombrar un álbum nunca lo mueve. Consulta [Cifrado](/es/reference/encryption).
+Cada objeto se cifra y se guarda bajo un nombre aleatorio; no hay modo en texto plano. Los archivos de bae son archivos de coven a los que hacen referencia filas de cuatro tablas sincronizadas: `release_files`, `covers`, `artist_images` y el avatar de cada fila de `people`. La ruta de un archivo se fija cuando se prepara, así que renombrar un álbum nunca lo mueve. Consulta [Cifrado](/es/reference/encryption).
 
 ## Comportamiento en redes reales
 

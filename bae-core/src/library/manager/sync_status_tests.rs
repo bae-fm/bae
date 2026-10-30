@@ -5,7 +5,6 @@ fn reading_pending_items_does_not_clear_a_connection_failure() {
     let snapshot = SyncStatusSnapshot {
         status: coven::SyncStatus::Disconnected,
         pending: None,
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     };
@@ -31,7 +30,6 @@ fn pending_files_remain_waiting_after_the_sequence_is_synced() {
                 coven::PendingReason::NoStorage,
             ),
         )])),
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     };
@@ -49,8 +47,66 @@ fn pending_authentication_offers_the_provider_sign_in() {
         },
     );
     assert_eq!(
-        pending_action(&record),
+        pending_action(&record, None),
         PendingAction::SignIn(coven::CloudProvider::Dropbox)
+    );
+}
+
+/// A pin's failed download offers pinning the release again; with no release
+/// file naming it, only its details.
+#[test]
+fn a_failed_pins_download_offers_pinning_its_release_again() {
+    let record = coven::PendingRecord::new(
+        coven::PendingSubject::Download {
+            device: coven::DeviceId(2),
+            file: coven::FileId(uuid::Uuid::from_u128(9)),
+        },
+        coven::PendingReason::Storage {
+            provider: coven::CloudProvider::S3,
+            failure: coven::StorageFailure::Network,
+            answered: true,
+        },
+    );
+    assert_eq!(
+        pending_action(&record, Some("release")),
+        PendingAction::RetryDownload {
+            release_id: "release".into()
+        }
+    );
+    assert_eq!(pending_action(&record, None), PendingAction::Review);
+}
+
+/// A move whose original went missing waits for it to be put back; one whose
+/// original changed failed, and offers cancelling the release's upload.
+#[test]
+fn a_moves_original_offers_restoring_it_or_cancelling_the_upload() {
+    let original = |failure| {
+        coven::PendingRecord::new(
+            coven::PendingSubject::Move {
+                id: coven::MoveId(4),
+            },
+            coven::PendingReason::Original {
+                path: "/music/a.flac".into(),
+                failure,
+            },
+        )
+    };
+    assert_eq!(
+        pending_action(
+            &original(coven::FileSourceFailure::Missing),
+            Some("release")
+        ),
+        PendingAction::RestoreFile
+    );
+    assert_eq!(
+        pending_action(
+            &original(coven::FileSourceFailure::Changed),
+            Some("release")
+        ),
+        PendingAction::CancelUpload {
+            release_id: "release".into(),
+            id: coven::MoveId(4),
+        }
     );
 }
 
@@ -67,7 +123,7 @@ fn missing_provider_permission_offers_sign_in() {
         },
     );
     assert_eq!(
-        pending_action(&record),
+        pending_action(&record, None),
         PendingAction::SignIn(coven::CloudProvider::Dropbox)
     );
 }
@@ -81,7 +137,6 @@ fn a_failed_pass_with_no_pending_records_does_not_claim_synced() {
             )),
         },
         pending: Some(Ok(Vec::new())),
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     };
@@ -103,7 +158,6 @@ fn only_a_pass_in_progress_is_syncing() {
         SyncStatusSnapshot {
             status,
             pending: Some(Ok(Vec::new())),
-            abandoned: None,
             retry_effect: coven::RetryEffect::Pass,
             error: None,
         }
@@ -133,7 +187,6 @@ fn an_unread_pending_list_does_not_claim_synced() {
     let snapshot = SyncStatusSnapshot {
         status: coven::SyncStatus::Syncing,
         pending: None,
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     };
@@ -148,7 +201,6 @@ fn with_nothing_pending_the_line_names_the_status() {
         SyncStatusSnapshot {
             status,
             pending: Some(Ok(Vec::new())),
-            abandoned: None,
             retry_effect: coven::RetryEffect::Pass,
             error,
         }
@@ -201,7 +253,6 @@ fn a_pending_list_that_cannot_be_read_says_so() {
             crate::ui::UiErrorCategory::Internal,
             "database locked",
         ))),
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     };
@@ -216,7 +267,6 @@ fn failed(error: coven::SyncFailure) -> SyncStatusSnapshot {
     SyncStatusSnapshot {
         status: coven::SyncStatus::Failed { error },
         pending: Some(Ok(Vec::new())),
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     }
@@ -234,7 +284,7 @@ fn category(snapshot: &SyncStatusSnapshot) -> crate::ui::UiErrorCategory {
 #[test]
 fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
     assert_eq!(
-        pending_action(&record(coven::PendingReason::Removed)),
+        pending_action(&record(coven::PendingReason::Removed), None),
         PendingAction::Review
     );
     assert_eq!(
@@ -249,7 +299,10 @@ fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
 fn replaced_member_keys_offer_restoring_from_the_code() {
     let member = coven::MemberId(uuid::Uuid::from_u128(7));
     assert_eq!(
-        pending_action(&record(coven::PendingReason::MemberKeysReplaced { member })),
+        pending_action(
+            &record(coven::PendingReason::MemberKeysReplaced { member }),
+            None
+        ),
         PendingAction::RestoreFromCode
     );
 }
@@ -269,7 +322,6 @@ fn state(status: coven::SyncStatus) -> SyncStatusState {
     let snapshot = SyncStatusSnapshot {
         status,
         pending: None,
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     };
@@ -475,7 +527,6 @@ fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
             error,
         },
         pending: Some(Ok(Vec::new())),
-        abandoned: None,
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     };
@@ -557,7 +608,6 @@ fn snapshot(
             .into_iter()
             .map(super::super::PendingItem::before_open)
             .collect())),
-        abandoned: None,
         error: None,
         retry_effect,
     }
@@ -570,7 +620,7 @@ fn retried(status: coven::SyncStatus, records: Vec<coven::PendingRecord>) -> boo
 
 fn file(reason: coven::PendingReason) -> coven::PendingRecord {
     coven::PendingRecord::new(
-        coven::PendingSubject::File {
+        coven::PendingSubject::Upload {
             device: coven::DeviceId(2),
             file: coven::FileId(uuid::Uuid::from_u128(9)),
         },

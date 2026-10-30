@@ -99,9 +99,7 @@ impl LibraryManager {
             release_id,
             &source,
             source_url,
-            &bytes,
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
-            self.new_id(),
         );
 
         self.store_library_image(&library_image, &bytes).await?;

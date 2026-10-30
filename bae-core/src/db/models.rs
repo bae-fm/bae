@@ -402,8 +402,9 @@ impl DbReleaseMediums {
 /// Holds enough of the original file's information to reconstruct the folder
 /// structure on export.
 ///
-/// A file storage holds is read through coven, from its cache or storage. Any
-/// other file is read from this device's original, when it holds one.
+/// A file whose row references a coven file is read through coven, from
+/// wherever coven has it. Any other file is read from this device's
+/// original, when it holds one.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbFile {
     pub id: String,
@@ -414,7 +415,12 @@ pub struct DbFile {
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
     pub source_audio: Option<crate::album_detail::SourceAudioFile>,
-    /// Whether the row names a file storage holds: its upload completed.
+    /// The coven file the row references. Sentinel: `None` for a file of a
+    /// release kept local on the device that imported it, until bae commit 3
+    /// stages those with coven too.
+    pub file: Option<coven::FileId>,
+    /// Whether coven records the file as stored: its move to the cloud
+    /// finished.
     pub stored: bool,
     pub created_at: DateTime<Utc>,
 }
@@ -781,8 +787,8 @@ impl DbFile {
     /// Create a file record
     ///
     /// Files are linked to releases. Used for reconstructing original file structure
-    /// during export. Coven owns the file content hash and fills its private
-    /// declaration while registering the prepared external file.
+    /// during export. The coven file its row references comes from the write
+    /// that stages it.
     pub fn new(
         release_id: &str,
         original_filename: &str,
@@ -798,6 +804,7 @@ impl DbFile {
             file_size,
             content_type,
             source_audio: None,
+            file: None,
             stored: false,
             created_at: now,
         }

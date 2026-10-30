@@ -34,11 +34,11 @@ Schema નું synced heart:
 
 ## Blobs
 
-Audio અને images coven ના file layer મારફતે જાય છે, દરેક પ્રકાર પોતાની ઉપકરણ cache મર્યાદા સાથે: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), અને `people` પરના avatars (64 MiB).
+Audio અને images coven files છે, દરેક પ્રકાર એક namespace છે જેની પોતાની ઉપકરણ cache મર્યાદા છે: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), અને `avatars` (64 MiB). હરોળ પોતાની file ને coven file ના id થી દર્શાવે છે: `release_files`, `covers` અને `artist_images` પર `file`, અને `people` પર `avatar_id`. File નું કદ, content hash અને સ્થાન coven નાં છે, જે `coven_files` સાથે join કરીને વંચાય છે.
 
-Release files વપરાશકર્તાની હોય છે અને જરૂર પડે ત્યારે cache થાય છે: સ્થાનિક release ની files એ વપરાશકર્તાની પોતાની files છે તેમના મૂળ paths પર, `local_release_files` માં નોંધાયેલી; release ને cloud માં ખસેડવાથી એક જ write માં દરેક file તેની `release_files` હરોળ સાથે જોડાય છે, અને બીજાં ઉપકરણો પહેલા વાંચન વખતે તેને cache માં લાવે છે. Covers, કલાકારની છબીઓ અને avatars bae નાં છે અને અગાઉથી cache થાય છે: bae bytes બનાવે છે (covers વધુમાં વધુ 600px પહોળા JPEG thumbnails તરીકે ફરી બને છે), અને દરેક ઉપકરણ તેમની હરોળો પહોંચે કે તરત તેમને લાવે છે જેથી grids સ્થાનિક રીતે દેખાય.
+Release files વપરાશકર્તાની હોય છે: સ્થાનિક release ની files એ વપરાશકર્તાની પોતાની files છે તેમના મૂળ paths પર, `local_release_files` માં નોંધાયેલી, અને તેની હરોળો કોઈ coven file ને દર્શાવતી નથી. Release ને cloud માં ખસેડવાથી એક જ write માં દરેક file coven માં તૈયાર થાય છે અને દરેક હરોળ તેની file તરફ નિર્દેશ કરે છે; છેલ્લી file સંગ્રહાય એટલે coven તે બધીને એકસાથે cloud પર ફેરવે છે, અને બીજાં ઉપકરણો પહેલા વાંચન વખતે દરેકને cache માં લાવે છે. Covers, કલાકારની છબીઓ અને avatars bae નાં છે: bae bytes બનાવે છે (covers વધુમાં વધુ 600px પહોળા JPEG thumbnails તરીકે ફરી બને છે), અને ઉપકરણ દરેકને પહેલી વાર બતાવાય ત્યારે લાવે છે અને તેના namespace ની મર્યાદા તેને કાઢી ન નાખે ત્યાં સુધી રાખે છે.
 
-દરેક file રેન્ડમ નામ હેઠળ encrypt થઈને upload થાય છે, એવા path પર જે તે પોતાની હરોળ સાથે જોડાય ત્યારે નક્કી થાય છે, તેથી પછીનું rename object ખસેડતું નથી.
+દરેક file રેન્ડમ નામ હેઠળ encrypt થઈને upload થાય છે, એવા path પર જે તે તૈયાર થાય ત્યારે નક્કી થાય છે, તેથી પછીનું rename object ખસેડતું નથી. File ના bytes ક્યારેય બદલાતા નથી: નવી image એટલે નવી file.
 
 ## Rip ની identity
 

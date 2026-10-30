@@ -120,13 +120,19 @@ async fn release_files(manager: &LibraryManager, release_id: &str) -> Vec<DbFile
         .unwrap()
 }
 
-/// How many of a release's files this device has attached in coven: still
-/// uploading from here, or stored.
-async fn attached_file_count(manager: &LibraryManager, release_id: &str) -> usize {
+/// The coven file the release's cover row references.
+async fn cover_file(manager: &LibraryManager, release_id: &str) -> coven::FileRef {
     manager
-        .attached_release_file_count(&release_files(manager, release_id).await)
+        .library_image_file_for_test(release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
+        .expect("the release has a cover")
+}
+
+/// How many of a release's files reference a coven file: still moving from
+/// here, or stored.
+async fn attached_file_count(manager: &LibraryManager, release_id: &str) -> usize {
+    manager.attached_release_file_count(&release_files(manager, release_id).await)
 }
 
 async fn album_releases(manager: &LibraryManager, album_id: &str) -> Vec<DbRelease> {

@@ -71,7 +71,7 @@ impl BridgePersonProfile {
             name,
             private_circle: private_circle.0.to_string(),
             history_sharing: BridgeSharing::from_core(history_sharing),
-            avatar_id,
+            avatar_id: avatar_id.map(|file| file.0.to_string()),
         }
     }
 }

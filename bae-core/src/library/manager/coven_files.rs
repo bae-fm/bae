@@ -46,6 +46,25 @@ impl LibraryManager {
         self.library_image_file(id, image_type).await
     }
 
+    /// Wait for every file of a release kept here as it moved to the cloud
+    /// to be kept whole on this device. The write switching its files to
+    /// the cloud asks coven to keep each, and coven fetches its copy from
+    /// storage after that.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn wait_for_kept_release_for_test(&self, release_id: &str) {
+        let mut pins = self.database.subscribe_release_file_pins(release_id);
+        tokio::time::timeout(std::time::Duration::from_secs(20), async {
+            loop {
+                let pins = pins.next().await.expect("the query stays open").unwrap();
+                if pins.values().all(|pin| pin.kept) {
+                    break;
+                }
+            }
+        })
+        .await
+        .expect("every kept file is whole here");
+    }
+
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn evict_file_for_test(&self, file: &coven::FileRef) -> Result<(), LibraryError> {
         self.database
@@ -54,49 +73,29 @@ impl LibraryManager {
             .map_err(|error| LibraryError::file_read("evict", error))
     }
 
-    /// Apply [`crate::sync::CACHE_BUDGETS`] to coven for this device.
-    /// Device-local; set once at startup.
-    pub(crate) async fn configure_cache_budgets(&self) -> Result<(), LibraryError> {
-        for (namespace, budget) in crate::sync::CACHE_BUDGETS {
-            self.database.set_cache_budget(namespace, budget).await?;
-        }
-        Ok(())
-    }
-
-    /// The exact-row file reference coven binds for a release file's audio file,
-    /// captured from the live `release_files` row. coven's cache ops (read, pin,
-    /// stream) key on this so a later row replacement cannot redirect a read; a
-    /// missing row surfaces as an error.
+    /// coven's record of the file a release file's row references, as this
+    /// device reads it now: what coven's reads, pins and streams take. A
+    /// row that references no coven file, or is gone, is an error.
     pub(crate) async fn release_file_ref(
         &self,
         file_id: &str,
     ) -> Result<coven::FileRef, LibraryError> {
-        self.database
-            .file_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
-            .await
-            .map_err(|e| {
-                LibraryError::Storage(format!("file reference for release file {file_id}: {e}"))
-            })
+        let file = self
+            .database
+            .find_file_by_id(file_id)
+            .await?
+            .and_then(|row| row.file)
+            .ok_or_else(|| {
+                LibraryError::Storage(format!("release file {file_id} has no coven file"))
+            })?;
+        self.database.coven_file(file).await.map_err(|e| {
+            LibraryError::Storage(format!("file reference for release file {file_id}: {e}"))
+        })
     }
 
-    /// How many of these release files carry a file on this device in coven:
-    /// this device's pending attachment, or the stored file the row names.
-    pub(crate) async fn attached_release_file_count(
-        &self,
-        files: &[DbFile],
-    ) -> Result<usize, LibraryError> {
-        let mut attached = 0;
-        for file in files {
-            if self
-                .database
-                .current_file(crate::sync::RELEASE_FILES_NAMESPACE, &file.id)
-                .await?
-                .is_some()
-            {
-                attached += 1;
-            }
-        }
-        Ok(attached)
+    /// How many of these release files reference a coven file.
+    pub(crate) fn attached_release_file_count(&self, files: &[DbFile]) -> usize {
+        files.iter().filter(|file| file.file.is_some()).count()
     }
 
     /// Read through the same local-or-attached source used for playback.
@@ -147,18 +146,14 @@ impl LibraryManager {
         Ok(Some(bytes))
     }
 
-    /// A library image's file as this device sees it: its own pending
-    /// attachment, or the stored file the row names. `None` when there is no
-    /// such row, or another device hasn't finished uploading its file.
+    /// The coven file a library image's row references, as this device
+    /// reads it now. `None` when there is no such row.
     async fn library_image_file(
         &self,
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<coven::FileRef>, LibraryError> {
-        Ok(self
-            .database
-            .current_file(image_type.namespace(), id)
-            .await?)
+        Ok(self.database.library_image_file(id, image_type).await?)
     }
 
     /// Audio and companion files stay pinned together. Covers use their own
@@ -171,6 +166,7 @@ impl LibraryManager {
         let mut pinnable = Vec::with_capacity(files.len());
         for file in &files {
             pinnable.push(PinnableFile {
+                row_id: file.id.clone(),
                 file: self.release_file_ref(&file.id).await?,
                 bytes: pinnable_bytes(release_id, &file.id, file.file_size)?,
             });
@@ -224,6 +220,8 @@ impl LibraryManager {
 /// One file of a release's pinned set, with the plaintext byte size its row
 /// records — what a pin fetches, and what the Downloads pane counts.
 pub(super) struct PinnableFile {
+    /// The release file's row id.
+    pub(super) row_id: String,
     pub(super) file: coven::FileRef,
     pub(super) bytes: u64,
 }

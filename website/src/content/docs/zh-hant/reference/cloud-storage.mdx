@@ -28,7 +28,7 @@ CloudKit 完全不需要 flow：coven 在 Apple 平台上以已登入的 Apple A
 
 在主目錄內，每個物件路徑都以資料庫的 store id 開頭：coven 的編號變更序列、它的 snapshot、加入請求與已儲存的檔案。多個資料庫可以共用同一個 Dropbox 或 OneDrive 資料夾，而不會碰到彼此的物件。
 
-每個物件都會加密並以隨機名稱儲存；沒有明文模式。bae 的檔案屬於三個同步表 `release_files`、`covers` 與 `artist_images` 的列，以及每個 `people` 列上的頭像。檔案路徑在附加到所屬列時就已固定，因此重新命名專輯永遠不會移動它。請見[加密](/zh-hant/reference/encryption)。
+每個物件都會加密並以隨機名稱儲存；沒有明文模式。bae 的檔案是 coven 檔案，由四個同步表的列引用：`release_files`、`covers`、`artist_images`，以及每個 `people` 列上的頭像。檔案路徑在暫存時就已固定，因此重新命名專輯永遠不會移動它。請見[加密](/zh-hant/reference/encryption)。
 
 ## 實際網路下的行為
 

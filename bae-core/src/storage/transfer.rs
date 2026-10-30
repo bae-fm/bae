@@ -198,12 +198,10 @@ impl ReleaseTransfer {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
 
-        // Pin, unpin and detach act on files attached in coven, whether still
-        // uploading from here or stored; an upload needs every file unattached.
-        let attached = self
-            .library_manager
-            .attached_release_file_count(&files)
-            .await?;
+        // Pin, unpin and detach act on files whose rows reference coven
+        // files, whether still moving from here or stored; an upload needs
+        // every file to reference none.
+        let attached = self.library_manager.attached_release_file_count(&files);
         let expected = if action_expects_attached(self.action) {
             files.len()
         } else {

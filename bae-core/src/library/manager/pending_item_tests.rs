@@ -25,13 +25,24 @@ fn subjects_name_what_they_are_before_a_library_opens() {
         }),
         PendingSubjectName::Operation(coven::OperationKind::Invite)
     );
-    assert_eq!(
-        named(S::File {
+    for file in [
+        S::Upload {
             device: coven::DeviceId(2),
             file: coven::FileId(uuid::Uuid::from_u128(9)),
-        }),
-        PendingSubjectName::File
-    );
+        },
+        S::Download {
+            device: coven::DeviceId(2),
+            file: coven::FileId(uuid::Uuid::from_u128(9)),
+        },
+        S::Keep {
+            file: coven::FileId(uuid::Uuid::from_u128(9)),
+        },
+        S::Move {
+            id: coven::MoveId(3),
+        },
+    ] {
+        assert_eq!(named(file), PendingSubjectName::File);
+    }
 }
 
 /// A file's record is named by the row it is the file of, as the library
@@ -41,7 +52,7 @@ fn a_files_record_is_named_by_its_row() {
     let named = |row| {
         PendingItem::named(
             coven::PendingRecord::new(
-                coven::PendingSubject::File {
+                coven::PendingSubject::Upload {
                     device: coven::DeviceId(2),
                     file: coven::FileId(uuid::Uuid::from_u128(9)),
                 },
@@ -53,6 +64,7 @@ fn a_files_record_is_named_by_its_row() {
     };
     assert_eq!(
         named(Some(FileRow::ReleaseFile {
+            release_id: "release".into(),
             file_name: "01 Track.flac".into(),
             album_title: "Album Title".into(),
         })),

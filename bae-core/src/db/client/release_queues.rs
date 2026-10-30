@@ -14,7 +14,9 @@ use crate::library::release_queue::{
     ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
 use crate::library::{LibraryBrowseWindow, LibraryPageWindows};
-use rusqlite::types::{Type, Value};
+use rusqlite::types::Type;
+#[cfg(desktop)]
+use rusqlite::types::Value;
 
 /// What a queue's entries carry beyond their release, and the table that
 /// holds them.
@@ -24,6 +26,8 @@ pub(crate) trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     const TABLE: &'static str;
     /// The payload's columns, in the order [`Self::values`] gives them.
     const COLUMNS: &'static [&'static str];
+    /// Only the queues desktop fills by entry read it.
+    #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError>;
     /// The payload from a row read with [`Self::COLUMNS`] from column `at`.
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self>;
@@ -35,6 +39,7 @@ impl QueuedPayload for () {
     const TABLE: &'static str = "download_queue";
     const COLUMNS: &'static [&'static str] = &[];
 
+    #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
         Ok(Vec::new())
     }
@@ -51,6 +56,7 @@ impl QueuedPayload for OutputRequest {
     const TABLE: &'static str = "output_queue";
     const COLUMNS: &'static [&'static str] = &["target_dir", "kind", "preset"];
 
+    #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
         let target_dir = self.target_dir.to_str().ok_or_else(|| {
             DbError::Message(format!(
@@ -290,6 +296,7 @@ pub(super) fn download_phase_on(
 impl Database {
     /// Queue `entries` in order, passing over a release already in the queue;
     /// `true` when any went in.
+    #[cfg(desktop)]
     pub(crate) async fn enqueue_releases<P: QueuedPayload>(
         &self,
         entries: Vec<ReleaseQueueEntry<P>>,

@@ -36,9 +36,8 @@ pub struct PersonProfile {
     pub name: String,
     pub private_circle: coven::CircleId,
     pub history_sharing: Sharing,
-    /// The id of the avatar the row names, as every device sees it: a new
-    /// avatar's id shows here only once its upload completes.
-    pub avatar_id: Option<String>,
+    /// The coven file of the avatar the row references.
+    pub avatar_id: Option<coven::FileId>,
 }
 
 /// The request of one of this device's open invites that waits for the

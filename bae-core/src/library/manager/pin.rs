@@ -35,15 +35,7 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let pinnable = self.release_pinnable_files(release).await?;
         let total = super::coven_files::total_bytes(release, &pinnable)?;
-        let ids = pinnable
-            .iter()
-            .map(|entry| match entry.file.key().values() {
-                [rusqlite::types::Value::Text(id)] => Ok(id.clone()),
-                _ => Err(LibraryError::Storage(
-                    "release file has a non-text key".into(),
-                )),
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let ids: Vec<String> = pinnable.iter().map(|entry| entry.row_id.clone()).collect();
         // Each file's plaintext size, by release file id, which its share of
         // the download counts against.
         let sizes: std::collections::BTreeMap<String, u64> = ids
@@ -57,7 +49,7 @@ impl LibraryManager {
             .collect::<Vec<_>>();
         let previous = self
             .database
-            .rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, ids)
+            .files_pinned(&files.iter().map(coven::FileRef::id).collect::<Vec<_>>())
             .await?;
         let changed = files
             .iter()

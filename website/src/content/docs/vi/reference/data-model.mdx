@@ -34,11 +34,11 @@ Chỉnh sửa của hai thiết bị được gộp theo từng ô, chỉnh sử
 
 ## Blob
 
-Âm thanh và ảnh đi qua lớp tệp của coven, mỗi loại có hạn mức bộ nhớ đệm thiết bị riêng: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), và ảnh đại diện trên `people` (64 MiB).
+Âm thanh và ảnh là tệp coven, mỗi loại là một không gian tên có hạn mức bộ nhớ đệm thiết bị riêng: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), và `avatars` (64 MiB). Một hàng tham chiếu tệp của nó bằng id của tệp coven: `file` trên `release_files`, `covers` và `artist_images`, và `avatar_id` trên `people`. Kích thước, hash nội dung và vị trí của tệp thuộc về coven, được đọc bằng cách join với `coven_files`.
 
-Tệp bản phát hành thuộc về người dùng và được lưu đệm lười: tệp của một bản phát hành cục bộ là tệp của người dùng tại đường dẫn gốc, được ghi trong `local_release_files`; chuyển bản phát hành lên đám mây sẽ gắn mọi tệp vào hàng `release_files` của nó trong một lần ghi, và thiết bị khác lấy nó vào bộ nhớ đệm ở lần đọc đầu. Bìa, ảnh nghệ sĩ và ảnh đại diện thuộc về bae và được lưu đệm sớm: bae tạo byte (bìa được render lại thành thumbnail JPEG rộng tối đa 600px), và mọi thiết bị lấy chúng ngay khi các hàng của chúng tới để lưới hiển thị cục bộ.
+Tệp bản phát hành thuộc về người dùng: tệp của một bản phát hành cục bộ là tệp của người dùng tại đường dẫn gốc, được ghi trong `local_release_files`, và các hàng của nó không tham chiếu tệp coven nào. Chuyển bản phát hành lên đám mây sẽ chuẩn bị mọi tệp với coven trong một lần ghi và trỏ từng hàng tới tệp của nó; khi tệp cuối cùng được lưu, coven chuyển tất cả lên đám mây cùng lúc, và thiết bị khác lấy từng tệp vào bộ nhớ đệm ở lần đọc đầu. Bìa, ảnh nghệ sĩ và ảnh đại diện thuộc về bae: bae tạo byte (bìa được render lại thành thumbnail JPEG rộng tối đa 600px), và một thiết bị lấy từng ảnh khi nó được hiển thị lần đầu và giữ nó cho tới khi hạn mức của không gian tên chứa nó loại bỏ nó.
 
-Mỗi tệp được tải lên đã mã hóa dưới tên ngẫu nhiên, tại một đường dẫn cố định khi nó được gắn vào hàng của mình, nên lần đổi tên sau này không di chuyển đối tượng.
+Mỗi tệp được tải lên đã mã hóa dưới tên ngẫu nhiên, tại một đường dẫn cố định khi nó được chuẩn bị, nên lần đổi tên sau này không di chuyển đối tượng. Một tệp không bao giờ đổi byte: ảnh mới là tệp mới.
 
 ## Danh tính của một bản rip
 

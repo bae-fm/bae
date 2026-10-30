@@ -14,8 +14,6 @@ pub struct BridgeSyncActivity {
     pub failure: Option<super::BridgeError>,
     /// The pending records that need the person.
     pub attention: super::BridgePendingRecords,
-    /// The uploads this device abandoned, until the person dismisses each.
-    pub abandoned: super::BridgeAbandonedAttachments,
     /// A sync pass is running.
     pub syncing: bool,
     pub uploads: Option<BridgeUploadsInFlight>,
@@ -32,7 +30,6 @@ impl BridgeSyncActivity {
         let bae_core::library::SyncActivity {
             failure,
             attention,
-            abandoned,
             syncing,
             uploads,
             downloads,
@@ -43,7 +40,6 @@ impl BridgeSyncActivity {
             needs_attention,
             failure: failure.map(super::BridgeError::from_core),
             attention: super::BridgePendingRecords::from_core(attention),
-            abandoned: super::BridgeAbandonedAttachments::from_core(abandoned),
             syncing,
             uploads: uploads.map(BridgeUploadsInFlight::from_core),
             downloads: downloads.map(BridgeDownloadsInFlight::from_core),

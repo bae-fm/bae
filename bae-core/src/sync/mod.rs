@@ -1,7 +1,8 @@
 //! bae's sync boundary around coven.
 //!
 //! coven owns sync, keys, storage and database connections. bae declares its
-//! shared rows, their files and cache budgets here.
+//! shared rows, the columns that reference coven's files, and its kinds of
+//! file with their cache budgets here.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<item>`
 // unchanged. Cloud file operations use the exact stored file reference.
@@ -15,7 +16,7 @@ mod identity_tests;
 #[cfg(test)]
 pub(crate) mod test_devices;
 
-use coven::{FileDecl, Provenance, RowIdentity, SyncedTable};
+use coven::{FileColumn, Namespace, Provenance, RowIdentity, SyncedTable};
 
 /// S3 configuration data for save_s3_config.
 pub struct S3ConfigData {
@@ -53,32 +54,49 @@ impl S3ConfigData {
     }
 }
 
-/// Cloud namespace for release-file (audio/image/text/…) files — the user's own
-/// imported files. coven keys them under `release_files/…` and segments their
-/// cache + budget by this name.
+/// The person's own files of a release: audio, cue sheets, scans, logs.
 pub const RELEASE_FILES_NAMESPACE: &str = "release_files";
-/// Cloud namespace for the bae-produced album cover file (1:1 with a release).
+/// The album cover bae makes for a release.
 pub const COVERS_NAMESPACE: &str = "covers";
-/// Cloud namespace for the bae-produced artist image file (1:1 with an artist).
+/// The picture bae keeps for an artist.
 pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
-/// Profile avatars, fetched with their people rows.
-pub const PEOPLE_NAMESPACE: &str = "people";
+/// Profile pictures.
+pub const AVATARS_NAMESPACE: &str = "avatars";
 
-/// This device's cache budget (bytes) per namespace. Each namespace evicts
-/// against its own budget, so audio pressure never wipes the cover cache:
-/// `release_files` takes the bulk since audio dominates, and `covers` (grid art)
-/// and `artist_images` each keep a reserved slice. A cover downloads when it is
-/// first read and stays cached until its namespace's budget evicts it; covers
-/// are not pinned.
-pub const CACHE_BUDGETS: [(&str, u64); 4] = [
-    (RELEASE_FILES_NAMESPACE, 20 * 1024 * 1024 * 1024), // 20 GiB
-    (COVERS_NAMESPACE, 512 * 1024 * 1024),              // 512 MiB
-    (ARTIST_IMAGES_NAMESPACE, 256 * 1024 * 1024),
-    (PEOPLE_NAMESPACE, 64 * 1024 * 1024), // 64 MiB
-];
+/// bae's kinds of file, each with this device's cache budget in bytes. Each
+/// namespace evicts against its own budget, so audio pressure never wipes the
+/// cover cache: `release_files` takes the bulk since audio dominates, and
+/// `covers` (grid art), `artist_images` and `avatars` each keep a reserved
+/// slice. A cover downloads when it is first read and stays cached until its
+/// namespace's budget evicts it; covers are not pinned.
+pub fn namespaces() -> Vec<Namespace> {
+    vec![
+        Namespace::new(
+            RELEASE_FILES_NAMESPACE,
+            Provenance::UserProvided,
+            20 * 1024 * 1024 * 1024, // 20 GiB
+        ),
+        Namespace::new(
+            COVERS_NAMESPACE,
+            Provenance::AppProvided,
+            512 * 1024 * 1024, // 512 MiB
+        ),
+        Namespace::new(
+            ARTIST_IMAGES_NAMESPACE,
+            Provenance::AppProvided,
+            256 * 1024 * 1024,
+        ),
+        Namespace::new(
+            AVATARS_NAMESPACE,
+            Provenance::AppProvided,
+            64 * 1024 * 1024, // 64 MiB
+        ),
+    ]
+}
 
 /// The library rows shared with the store. Local audio paths are deliberately
-/// absent: only attaching a file makes its bytes available to other devices.
+/// absent: a row references a file by its coven file id, and coven alone
+/// knows where its bytes are.
 pub fn synced_tables() -> Vec<SyncedTable> {
     vec![
         SyncedTable::new("artists", RowIdentity::SharedKey),
@@ -98,35 +116,16 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("track_works", RowIdentity::IndependentUuid),
         SyncedTable::new("release_artist_roles", RowIdentity::IndependentUuid),
         SyncedTable::new("track_artist_roles", RowIdentity::IndependentUuid),
-        SyncedTable::new("release_files", RowIdentity::IndependentUuid).carries_files(
-            FileDecl::new(
-                RELEASE_FILES_NAMESPACE,
-                CACHE_BUDGETS[0].1,
-                Provenance::UserProvided,
-            )
-            .with_size_column("file_size"),
-        ),
+        SyncedTable::new("release_files", RowIdentity::IndependentUuid)
+            .file_column(FileColumn::new("file")),
         SyncedTable::new("audio_formats", RowIdentity::IndependentUuid),
         SyncedTable::new("audio_format_segments", RowIdentity::IndependentUuid),
         // A segment's points are one row, keyed by the segment's id.
         SyncedTable::new("audio_segment_scrub_points", RowIdentity::IndependentUuid)
             .key_columns(["audio_format_segment_id"]),
-        SyncedTable::new("covers", RowIdentity::SharedKey).carries_files(
-            FileDecl::new(
-                COVERS_NAMESPACE,
-                CACHE_BUDGETS[1].1,
-                Provenance::AppProvided,
-            )
-            .with_size_column("file_size"),
-        ),
-        SyncedTable::new("artist_images", RowIdentity::SharedKey).carries_files(
-            FileDecl::new(
-                ARTIST_IMAGES_NAMESPACE,
-                CACHE_BUDGETS[2].1,
-                Provenance::AppProvided,
-            )
-            .with_size_column("file_size"),
-        ),
+        SyncedTable::new("covers", RowIdentity::SharedKey).file_column(FileColumn::new("file")),
+        SyncedTable::new("artist_images", RowIdentity::SharedKey)
+            .file_column(FileColumn::new("file")),
         SyncedTable::new("history", RowIdentity::IndependentUuid)
             .owner_only()
             .audience_column("audience"),
@@ -140,15 +139,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .audience_from("playlist_id"),
         SyncedTable::new("people", RowIdentity::SharedKey)
             .owner_only()
-            .carries_files(
-                FileDecl::new(
-                    PEOPLE_NAMESPACE,
-                    CACHE_BUDGETS[3].1,
-                    Provenance::AppProvided,
-                )
-                .with_id_column("avatar_id")
-                .with_size_column("file_size"),
-            ),
+            .file_column(FileColumn::new("avatar_id")),
     ]
 }
 
@@ -243,55 +234,48 @@ mod tests {
                     "people" | "ratings" | "history" | "playlists" | "playlist_entries"
                 )
             );
-            let expected = match table.name() {
-                "release_files" => Some((
-                    RELEASE_FILES_NAMESPACE,
-                    20 * 1024 * 1024 * 1024,
-                    Provenance::UserProvided,
-                    "id",
-                    false,
-                )),
-                "covers" => Some((
-                    COVERS_NAMESPACE,
-                    512 * 1024 * 1024,
-                    Provenance::AppProvided,
-                    "id",
-                    false,
-                )),
-                "artist_images" => Some((
-                    ARTIST_IMAGES_NAMESPACE,
-                    256 * 1024 * 1024,
-                    Provenance::AppProvided,
-                    "id",
-                    false,
-                )),
-                "people" => Some((
-                    PEOPLE_NAMESPACE,
-                    64 * 1024 * 1024,
-                    Provenance::AppProvided,
-                    "avatar_id",
-                    false,
-                )),
-                _ => None,
+            let columns: Vec<(&str, bool)> = table
+                .file_columns()
+                .iter()
+                .map(|column| (column.column(), column.is_write_once()))
+                .collect();
+            let expected: &[(&str, bool)] = match table.name() {
+                "release_files" | "covers" | "artist_images" => &[("file", false)],
+                "people" => &[("avatar_id", false)],
+                _ => &[],
             };
-            assert_eq!(
-                table.files().is_some(),
-                expected.is_some(),
-                "{}",
-                table.name()
-            );
-            if let Some((namespace, budget, provenance, id, once)) = expected {
-                let file = table.files().unwrap();
-                assert_eq!(file.namespace(), namespace);
-                assert_eq!(file.cache_budget(), budget);
-                assert_eq!(file.provenance(), &provenance);
-                assert_eq!(file.id_column(), id);
-                assert_eq!(file.size_column(), "file_size");
-                assert_eq!(file.hash_column(), "hash");
-                assert_eq!(file.location_column(), "location");
-                assert_eq!(file.is_write_once(), once);
-            }
+            assert_eq!(columns, expected, "{}", table.name());
         }
+        let declared = namespaces();
+        let namespaces: Vec<(&str, &Provenance, u64)> = declared
+            .iter()
+            .map(|namespace| (namespace.name(), namespace.kind(), namespace.cache_budget()))
+            .collect();
+        assert_eq!(
+            namespaces,
+            [
+                (
+                    RELEASE_FILES_NAMESPACE,
+                    &Provenance::UserProvided,
+                    20 * 1024 * 1024 * 1024
+                ),
+                (
+                    COVERS_NAMESPACE,
+                    &Provenance::AppProvided,
+                    512 * 1024 * 1024
+                ),
+                (
+                    ARTIST_IMAGES_NAMESPACE,
+                    &Provenance::AppProvided,
+                    256 * 1024 * 1024
+                ),
+                (
+                    AVATARS_NAMESPACE,
+                    &Provenance::AppProvided,
+                    64 * 1024 * 1024
+                ),
+            ]
+        );
         assert_eq!(
             tables
                 .iter()

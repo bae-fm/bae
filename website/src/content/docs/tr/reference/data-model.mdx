@@ -34,11 +34,11 @@ Tamamen yerel tablolar, coven'e asla bildirilmez:
 
 ## Blob'lar
 
-Ses ve görseller coven'in dosya katmanından geçer; her türün kendi aygıt önbellek sınırı vardır: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) ve `people` üzerindeki avatarlar (64 MiB).
+Ses ve görseller coven dosyalarıdır; her tür, kendi aygıt önbellek sınırı olan bir ad alanıdır: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) ve `avatars` (64 MiB). Bir satır, dosyasına coven dosyasının kimliğiyle başvurur: `release_files`, `covers` ve `artist_images` üzerinde `file`, `people` üzerinde `avatar_id`. Dosyanın boyutu, içerik karması ve konumu coven'indir ve `coven_files` ile birleştirilerek okunur.
 
-Sürüm dosyaları kullanıcıya aittir ve tembel önbelleğe alınır: yerel bir sürümün dosyaları, kullanıcının özgün yollarındaki dosyalarıdır ve `local_release_files` içinde kaydedilir; sürümü buluta taşımak her dosyayı tek bir yazmada `release_files` satırına ekler ve diğer aygıtlar onu ilk okumada önbelleğe alır. Kapaklar, sanatçı görselleri ve avatarlar bae'e aittir ve istekle önbelleğe alınır: bae baytları üretir (kapaklar en fazla 600px geniş JPEG küçük resimler olarak yeniden çizilir) ve her aygıt satırları ulaşır ulaşmaz onları alır, böylece ızgaralar yerel çizilir.
+Sürüm dosyaları kullanıcıya aittir: yerel bir sürümün dosyaları, kullanıcının özgün yollarındaki dosyalarıdır, `local_release_files` içinde kaydedilir ve satırları hiçbir coven dosyasına başvurmaz. Sürümü buluta taşımak, tek bir yazmada her dosyayı coven'de hazırlar ve her satırı kendi dosyasına yönlendirir; sonuncusu saklandığında coven hepsini birlikte buluta geçirir ve diğer aygıtlar her birini ilk okumada önbelleğe alır. Kapaklar, sanatçı görselleri ve avatarlar bae'e aittir: bae baytları üretir (kapaklar en fazla 600px geniş JPEG küçük resimler olarak yeniden çizilir) ve bir aygıt her birini ilk gösterildiğinde alır ve ad alanının sınırı onu çıkarana kadar tutar.
 
-Her dosya rastgele bir ad altında şifreli yüklenir; yolu satırına eklendiğinde sabitlenir, böylece sonraki yeniden adlandırma nesneyi taşımaz.
+Her dosya rastgele bir ad altında şifreli yüklenir; yolu hazırlandığında sabitlenir, böylece sonraki yeniden adlandırma nesneyi taşımaz. Bir dosyanın baytları asla değişmez: yeni bir görsel yeni bir dosyadır.
 
 ## Bir rip'in kimliği
 

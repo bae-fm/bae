@@ -242,9 +242,13 @@ impl Database {
         let audio_format_id = audio_format_id.to_string();
         self.read(move |sql| {
             Ok(sql.query(
-                "SELECT * FROM release_files WHERE id IN \
-                 (SELECT file_id FROM audio_format_segments WHERE audio_format_id = ?1) \
-                 ORDER BY id",
+                concat!(
+                    "SELECT ",
+                    release_file_columns!(),
+                    " FROM release_files AS f WHERE f.id IN \
+                     (SELECT file_id FROM audio_format_segments WHERE audio_format_id = ?1) \
+                     ORDER BY f.id"
+                ),
                 params![audio_format_id],
                 row_to_file,
             )?)

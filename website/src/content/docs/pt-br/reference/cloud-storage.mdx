@@ -28,7 +28,7 @@ CloudKit não precisa de fluxo: coven o controla nas plataformas Apple como a Ap
 
 Dentro do local, todo caminho de objeto começa com o id do store da biblioteca: a sequência numerada de mudanças de coven, seus snapshots, pedidos de entrada e arquivos armazenados. Várias bibliotecas podem compartilhar uma pasta do Dropbox ou do OneDrive sem tocar nos objetos umas das outras.
 
-Todo objeto é criptografado e armazenado com um nome aleatório; não existe modo em texto claro. Os arquivos de bae pertencem a linhas de três tabelas sincronizadas, `release_files`, `covers` e `artist_images`, mais o avatar de cada linha de `people`. O caminho de um arquivo é fixado quando ele é anexado à sua linha, então renomear um álbum nunca o move. Veja [Criptografia](/pt-br/reference/encryption).
+Todo objeto é criptografado e armazenado com um nome aleatório; não existe modo em texto claro. Os arquivos de bae são arquivos de coven referenciados por linhas de quatro tabelas sincronizadas: `release_files`, `covers`, `artist_images` e o avatar de cada linha de `people`. O caminho de um arquivo é fixado quando ele é preparado, então renomear um álbum nunca o move. Veja [Criptografia](/pt-br/reference/encryption).
 
 ## Comportamento em redes reais
 

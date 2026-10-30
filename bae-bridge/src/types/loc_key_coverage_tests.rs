@@ -43,7 +43,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.activity.syncing",
     "core.activity.idle",
     "core.activity.retry_now",
-    "core.abandoned.action.dismiss",
     // The cast picker words a lost device's end with its name.
     "core.cast.ended",
     // Returned by the device-reset confirmation object.
@@ -99,15 +98,6 @@ fn produced_keys() -> Vec<String> {
         BridgeReleaseStorageAction::DetachAudio,
     ] {
         keys.push(bridge_transfer_action_key(a));
-    }
-
-    // bridge_abandon_reason_key — every reason carries a key.
-    for reason in [
-        coven::AbandonReason::Replaced,
-        coven::AbandonReason::Cleared,
-        coven::AbandonReason::RowGone,
-    ] {
-        keys.push(bridge_abandon_reason_key(reason).to_string());
     }
 
     // bridge_sheet_refused_codec_key — one key, no variants to walk.
@@ -405,6 +395,7 @@ fn produced_keys() -> Vec<String> {
         PendingReasonKind::AccountInUse,
         PendingReasonKind::AccessRemains,
         PendingReasonKind::FileUnavailable,
+        PendingReasonKind::FileChanged,
         PendingReasonKind::FileLost,
         PendingReasonKind::Failed,
         PendingReasonKind::Rejected,
@@ -425,6 +416,13 @@ fn produced_keys() -> Vec<String> {
         BridgePendingAction::RestoreFile,
         BridgePendingAction::ResumeUploads,
         BridgePendingAction::RetryOperation { id: 1 },
+        BridgePendingAction::RetryDownload {
+            release_id: "release".to_string(),
+        },
+        BridgePendingAction::CancelUpload {
+            release_id: "release".to_string(),
+            id: 1,
+        },
         BridgePendingAction::RestoreFromCode,
         BridgePendingAction::Review,
     ] {

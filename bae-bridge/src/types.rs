@@ -1,4 +1,3 @@
-mod abandoned;
 mod configuration;
 #[cfg(feature = "desktop")]
 mod conversion;
@@ -20,7 +19,6 @@ mod storage_failure;
 mod storage_inspector;
 mod sync_activity;
 
-pub use abandoned::*;
 pub use configuration::*;
 #[cfg(feature = "desktop")]
 pub use cover::*;

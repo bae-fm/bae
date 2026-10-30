@@ -114,6 +114,7 @@ async fn storage_page_sort_by_file_count() {
                 file_size: 1000,
                 content_type: bae_util::content_type::ContentType::Flac,
                 source_audio: None,
+                file: None,
                 stored: false,
                 created_at: Utc::now(),
             };
@@ -150,6 +151,7 @@ async fn storage_page_sort_by_total_size() {
             file_size: *file_size,
             content_type: bae_util::content_type::ContentType::Flac,
             source_audio: None,
+            file: None,
             stored: false,
             created_at: Utc::now(),
         };

@@ -19,7 +19,6 @@ impl SyncStatusState {
         let state = SyncStatusSnapshot {
             status,
             pending: None,
-            abandoned: None,
             error: None,
             retry_effect,
         };
@@ -68,11 +67,6 @@ impl SyncStatusState {
     /// The pending work that needs attention.
     pub(super) fn set_pending(&self, pending: Result<Vec<super::PendingItem>, UiError>) {
         self.apply(|state| state.pending = Some(pending));
-    }
-
-    /// This device's abandoned attachments, named.
-    pub(super) fn set_abandoned(&self, abandoned: Result<Vec<super::AbandonedItem>, UiError>) {
-        self.apply(|state| state.abandoned = Some(abandoned));
     }
 
     pub(super) fn set_error(&self, error: Option<UiError>) {
@@ -317,8 +311,9 @@ impl SyncStatusSnapshot {
     /// work, such as another device's upload.
     fn failure_a_retry_clears(&self) -> bool {
         use coven::{SyncFailure as F, SyncStatus as S};
-        let retries =
-            |record: &coven::PendingRecord| super::PendingWait::of(record).retries_by_itself();
+        let retries = |record: &coven::PendingRecord| {
+            super::PendingWait::of(record, None).retries_by_itself()
+        };
         match &self.status {
             S::Offline { .. }
             | S::Failed {
@@ -402,6 +397,17 @@ pub enum PendingAction {
     RestoreFile,
     ResumeUploads,
     RetryOperation(coven::OperationId),
+    /// Pin the release again through the download queue: what a failed
+    /// pin's download waits for.
+    RetryDownload {
+        release_id: String,
+    },
+    /// End the release's failed move to the cloud, so it is local here
+    /// again: what a move whose original changed waits for.
+    CancelUpload {
+        release_id: String,
+        id: coven::MoveId,
+    },
     /// Another of the person's devices replaced their keys: this copy can't
     /// send, and restoring it with the person's current restore code
     /// registers this device again under those keys.
@@ -409,7 +415,11 @@ pub enum PendingAction {
     Review,
 }
 
-pub fn pending_action(record: &coven::PendingRecord) -> PendingAction {
+/// What the person can do about `record`. `release_id` is the release whose
+/// file the record is about, when it is about one: a failed pin's download
+/// retries by pinning the release again, and a failed move ends by
+/// cancelling the release's upload.
+pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -> PendingAction {
     use coven::{PendingReason as R, PendingSubject as S};
     let mut reason = &record.reason;
     while let R::Cleanup { cleanup, .. } = reason {
@@ -423,16 +433,28 @@ pub fn pending_action(record: &coven::PendingRecord) -> PendingAction {
                 coven::StorageFailure::Authentication | coven::StorageFailure::AccessNotGranted { .. },
             ..
         } => PendingAction::SignIn(*provider),
-        R::FileUnavailable(coven::FileMissingReason::Source(_)) => PendingAction::RestoreFile,
+        R::FileUnavailable(coven::FileMissingReason::Source(_))
+        | R::Original {
+            failure: coven::FileSourceFailure::Missing,
+            ..
+        } => PendingAction::RestoreFile,
+        R::FileUnavailable(coven::FileMissingReason::Lost) => PendingAction::Review,
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
         R::MemberKeysReplaced { .. } => PendingAction::RestoreFromCode,
         R::Removed => PendingAction::Review,
-        R::Paused if matches!(record.subject, S::File { .. }) => PendingAction::ResumeUploads,
+        R::Paused if matches!(record.subject, S::Upload { .. }) => PendingAction::ResumeUploads,
         _ => match record.retry() {
             coven::Retry::Automatic => PendingAction::Wait,
             coven::Retry::AfterUpdate => PendingAction::UpdateApp,
-            coven::Retry::AppAction => match record.subject {
-                S::Operation { id, .. } => PendingAction::RetryOperation(id),
+            coven::Retry::AppAction => match (&record.subject, release_id) {
+                (S::Operation { id, .. }, _) => PendingAction::RetryOperation(*id),
+                (S::Download { .. }, Some(release_id)) => PendingAction::RetryDownload {
+                    release_id: release_id.to_string(),
+                },
+                (S::Move { id }, Some(release_id)) => PendingAction::CancelUpload {
+                    release_id: release_id.to_string(),
+                    id: *id,
+                },
                 _ => PendingAction::Review,
             },
             coven::Retry::Never => PendingAction::Review,

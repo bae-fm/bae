@@ -298,13 +298,11 @@ async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes:
             id: artist_id.to_string(),
             image_type: LibraryImageType::Artist,
             content_type: bae_util::content_type::ContentType::Jpeg,
-            file_size: bytes.len() as i64,
             width: None,
             height: None,
             source: source.into(),
             source_url: None,
             created_at: fixed_now(),
-            revision: uuid::Uuid::new_v4().to_string(),
         },
         bytes,
     )
@@ -313,12 +311,20 @@ async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes:
 }
 
 async fn artist_image_bytes(db: &Database, artist_id: &str) -> Vec<u8> {
-    let file = db.file_ref("artist_images", artist_id).await.unwrap();
+    let file = artist_image_file(db, artist_id).await;
     db.read_file(&file).await.unwrap()
 }
 
-/// When only the absorbed artist has an image, the survivor takes it: the
-/// merge attaches the absorbed image's bytes to the survivor's new row.
+async fn artist_image_file(db: &Database, artist_id: &str) -> coven::FileRef {
+    db.library_image_file(artist_id, &LibraryImageType::Artist)
+        .await
+        .unwrap()
+        .expect("the artist has an image")
+}
+
+/// When only the absorbed artist has an image, the survivor takes it: its
+/// row references the absorbed artist's coven file, which nothing stages or
+/// uploads again.
 #[tokio::test]
 async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor() {
     let (db, _tmp) = empty_db().await;
@@ -342,6 +348,7 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
     store_artist_image(&db, &musicbrainz.id, "musicbrainz", b"absorbed").await;
+    let absorbed = artist_image_file(&db, &musicbrainz.id).await.id();
     db.save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
         .await
         .unwrap();
@@ -350,6 +357,14 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
         .await
         .unwrap();
 
+    assert_eq!(artist_image_file(&db, &discogs.id).await.id(), absorbed);
+    assert_eq!(
+        db.queued_upload_count_in_namespace_for_test(crate::sync::ARTIST_IMAGES_NAMESPACE)
+            .await
+            .unwrap(),
+        1,
+        "the merge stages no second copy"
+    );
     assert_eq!(artist_image_bytes(&db, &discogs.id).await, b"absorbed");
     assert!(db
         .find_library_image(&musicbrainz.id, &LibraryImageType::Artist)

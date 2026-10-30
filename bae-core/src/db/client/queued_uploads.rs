@@ -5,29 +5,25 @@ use super::*;
 
 /// How many of the release `?1`'s files wait in this device's upload queue.
 pub(super) const RELEASE_QUEUED_FILE_COUNT: &str = "SELECT COUNT(*) FROM release_files AS f \
-     JOIN coven_uploads AS upload \
-         ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
+     JOIN coven_uploads AS upload ON upload.file = f.file \
      WHERE f.release_id = ?1";
 
 /// Whether any of the release `?1`'s files waits in this device's upload
 /// queue.
 pub(super) const RELEASE_HAS_QUEUED_FILE: &str = "SELECT EXISTS (SELECT 1 FROM release_files AS f \
-     JOIN coven_uploads AS upload \
-         ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
+     JOIN coven_uploads AS upload ON upload.file = f.file \
      WHERE f.release_id = ?1)";
 
 /// Whether the release file `?1` waits in this device's upload queue.
 #[cfg(any(test, feature = "test-utils"))]
-pub(super) const RELEASE_FILE_QUEUED: &str =
-    "SELECT EXISTS (SELECT 1 FROM coven_uploads AS upload \
-     WHERE upload.table_name = 'release_files' AND upload.key = coven_key(?1))";
+pub(super) const RELEASE_FILE_QUEUED: &str = "SELECT EXISTS (SELECT 1 FROM release_files AS f \
+     JOIN coven_uploads AS upload ON upload.file = f.file WHERE f.id = ?1)";
 
 /// Each release with files this process is sending now, and how many. One
-/// row per upload in flight is read, each file found by its key.
+/// row per upload in flight is read, each release file found by its file.
 pub(super) const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
      FROM coven_sending AS sending \
-     JOIN release_files AS f \
-         ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key \
+     JOIN release_files AS f ON f.file = sending.file \
      GROUP BY f.release_id";
 
 /// The columns a release's upload reads beside `release_listing listing`
@@ -86,22 +82,19 @@ const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 /// files, its release and size. One row per upload in flight is read.
 const FILES_SENDING: &str = "SELECT sending.file, f.release_id, f.file_size \
      FROM coven_sending AS sending \
-     LEFT JOIN release_files AS f \
-         ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key";
+     LEFT JOIN release_files AS f ON f.file = sending.file";
 
 /// Each release with files this process is sending now: of its whole size,
 /// the bytes of its files stored, those not queued. Each release is found by
-/// its key from the files in flight.
+/// its files from the files in flight.
 const RELEASES_SENDING_BYTES: &str = "SELECT listing.release_id, \
          listing.total_size - (SELECT SUM(f.file_size) FROM release_files AS f \
-             JOIN coven_upload_queue AS queued \
-                 ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id) \
+             JOIN coven_upload_queue AS queued ON queued.file = f.file \
              WHERE f.release_id = listing.release_id), \
          listing.total_size \
      FROM release_listing AS listing \
      WHERE listing.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
-         JOIN release_files AS f \
-             ON sending.table_name = 'release_files' AND coven_key(f.id) = sending.key)";
+         JOIN release_files AS f ON f.file = sending.file)";
 
 impl Database {
     /// How many of the release's files still wait to upload from this device.
@@ -196,7 +189,7 @@ impl Database {
         .await
     }
 
-    /// Whether an attached release file still waits to upload from this
+    /// Whether a release file's coven file still waits to upload from this
     /// device.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {

@@ -619,8 +619,8 @@ impl LibraryManager {
     }
 
     /// Insert all of an import's data in one transaction, so the release exists
-    /// complete or not at all. A Remote import (`destination`) records its
-    /// upload in the same write.
+    /// complete or not at all. A Remote import stages its files for the cloud
+    /// in the same write, kept here once stored when it asks for that.
     ///
     /// The pictures of the artists the import creates are staged from
     /// `artist_images`, the ones fetched for [`Self::new_discogs_artists`],
@@ -637,7 +637,6 @@ impl LibraryManager {
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: &[crate::import::DiscogsArtistImage],
-        destination: crate::import::ImportDestination,
     ) -> Result<(), LibraryError> {
         let expected = self
             .database
@@ -672,13 +671,6 @@ impl LibraryManager {
                 },
             )
             .await?;
-        if matches!(
-            destination,
-            crate::import::ImportDestination::Remote { pin: true }
-        ) {
-            self.enqueue_attached_release_pin(release.id.clone())
-                .await?;
-        }
         Ok(())
     }
 

@@ -128,32 +128,48 @@ impl Database {
         .await
     }
 
-    /// Whether the file of `table`'s row `row_id` waits in this device's
-    /// upload queue, live.
+    /// Whether the coven file `table`'s row `row_id` references waits in
+    /// this device's upload queue, live.
     pub fn subscribe_row_file_queued_for_test(
         &self,
         table: &str,
         row_id: &str,
     ) -> coven::LiveQuery<bool> {
-        let (table, row_id) = (table.to_string(), row_id.to_string());
-        self.inner.handle.subscribe(move |sql| {
-            Ok(sql.query_row(
-                "SELECT EXISTS (SELECT 1 FROM coven_uploads \
-                 WHERE table_name = ?1 AND key = coven_key(?2))",
-                [&table, &row_id],
-                |row| row.get(0),
-            )?)
-        })
+        let statement = format!(
+            "SELECT EXISTS (SELECT 1 FROM {table} AS t \
+             JOIN coven_uploads AS upload ON upload.file = t.{column} WHERE t.id = ?1)",
+            column = file_column_for_test(table),
+        );
+        let row_id = row_id.to_string();
+        self.inner
+            .handle
+            .subscribe(move |sql| Ok(sql.query_row(&statement, [&row_id], |row| row.get(0))?))
     }
 
-    /// How many of the files waiting in this device's upload queue are
-    /// declared by `table`'s rows.
+    /// How many of the files waiting in this device's upload queue `table`'s
+    /// rows reference.
     pub async fn queued_upload_count_in_table_for_test(&self, table: &str) -> Result<i64, DbError> {
-        let table = table.to_string();
+        let statement = format!(
+            "SELECT COUNT(*) FROM coven_uploads AS upload \
+             JOIN {table} AS t ON t.{column} = upload.file",
+            column = file_column_for_test(table),
+        );
+        self.read(move |sql| Ok(sql.query_row(&statement, [], |row| row.get(0))?))
+            .await
+    }
+
+    /// How many of the files waiting in this device's upload queue are in
+    /// `namespace`.
+    pub async fn queued_upload_count_in_namespace_for_test(
+        &self,
+        namespace: &str,
+    ) -> Result<i64, DbError> {
+        let namespace = namespace.to_string();
         self.read(move |sql| {
             Ok(sql.query_row(
-                "SELECT COUNT(*) FROM coven_uploads WHERE table_name = ?1",
-                [table],
+                "SELECT COUNT(*) FROM coven_uploads AS upload \
+                 JOIN coven_files AS f ON f.id = upload.file WHERE f.namespace = ?1",
+                [namespace],
                 |row| row.get(0),
             )?)
         })
@@ -186,13 +202,13 @@ impl Database {
         let root_id = root_id.to_string();
         self.read(move |sql| {
             Ok(sql.query(
-                "SELECT upload.table_name, f.id FROM release_files AS f \
-                 JOIN coven_uploads AS upload \
-                     ON upload.table_name = 'release_files' AND upload.key = coven_key(f.id) \
+                "SELECT 'release_files', f.id FROM release_files AS f \
+                 JOIN coven_uploads AS upload ON upload.file = f.file \
                  WHERE f.release_id = ?1 \
                  UNION ALL \
-                 SELECT upload.table_name, ?1 FROM coven_uploads AS upload \
-                 WHERE upload.table_name = 'covers' AND upload.key = coven_key(?1)",
+                 SELECT 'covers', cover.id FROM covers AS cover \
+                 JOIN coven_uploads AS upload ON upload.file = cover.file \
+                 WHERE cover.id = ?1",
                 [root_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )?)
@@ -209,28 +225,6 @@ impl Database {
             Ok(())
         })
         .await
-    }
-
-    /// Clear a row's user-provided file as a change another device made would,
-    /// abandoning this device's pending attachment on it.
-    pub async fn clear_user_file_for_test(&self, table: &str, id: &str) -> Result<(), DbError> {
-        let (table, id) = (table.to_string(), id.to_string());
-        self.call_sql(move |sql| {
-            sql.clear_user_file(&table, id.as_str())?;
-            Ok(())
-        })
-        .await
-    }
-
-    /// This device's abandoned attachments, oldest first.
-    pub async fn abandoned_attachments_for_test(
-        &self,
-    ) -> Result<Vec<coven::AbandonedAttachment>, DbError> {
-        self.inner
-            .handle
-            .abandoned_attachments()
-            .await
-            .map_err(DbError::from)
     }
 
     /// Answer one text-valued query against this device's library.
@@ -338,5 +332,14 @@ impl Database {
             .map_err(DbError::from)
         })
         .await
+    }
+}
+
+/// The column of `table` that references a coven file.
+fn file_column_for_test(table: &str) -> &'static str {
+    match table {
+        "release_files" | "covers" | "artist_images" => "file",
+        "people" => "avatar_id",
+        other => panic!("{other} references no coven file"),
     }
 }

@@ -44,13 +44,11 @@ pub(super) async fn write_artist_image(db: &Database, artist: &str, content: &st
             id: artist.into(),
             image_type: LibraryImageType::Artist,
             content_type: ContentType::Jpeg,
-            file_size: bytes.len() as i64,
             width: None,
             height: None,
             source: "file_tags".into(),
             source_url: None,
             created_at: super::fixed_now(),
-            revision: uuid::Uuid::new_v4().to_string(),
         },
         bytes,
     )

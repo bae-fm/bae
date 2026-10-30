@@ -68,14 +68,7 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
             .unwrap();
     }
     let cover_bytes = b"cover-bytes";
-    let cover = DbLibraryImage::cover(
-        &release.id,
-        "local",
-        None,
-        cover_bytes,
-        manager.clock.now().into(),
-        manager.new_id(),
-    );
+    let cover = DbLibraryImage::cover(&release.id, "local", None, manager.clock.now().into());
     manager
         .store_library_image(&cover, cover_bytes)
         .await

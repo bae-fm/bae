@@ -11,8 +11,9 @@ pub(crate) struct PendingRow {
     /// The record, without the error behind it: only this process holds
     /// that, and [`Database::subscribe_pending_causes`] gives it.
     pub(crate) record: coven::PendingRecord,
-    /// For a file's record, the row on this device whose file it is; `None`
-    /// for any other record, or a file no row here names.
+    /// For a file's record, the row on this device whose file it is; for a
+    /// move's, the release file whose original it names. `None` for any
+    /// other record, or a file no row here names.
     pub(crate) file_row: Option<FileRow>,
 }
 
@@ -30,10 +31,13 @@ impl Database {
             })?;
             rows.into_iter()
                 .map(|(record, columns)| {
-                    Ok(PendingRow {
-                        record,
-                        file_row: columns.file_row()?,
-                    })
+                    let file_row = match &record.reason {
+                        coven::PendingReason::Original { path, .. } => {
+                            moved_original_on(&sql, path)?
+                        }
+                        _ => columns.file_row()?,
+                    };
+                    Ok(PendingRow { record, file_row })
                 })
                 .collect::<Result<_, DbError>>()
                 .map_err(CovenError::from)
@@ -57,4 +61,45 @@ pub(super) fn pending_rows_query() -> String {
         "SELECT file.record, {FILE_ROW_COLUMNS} FROM coven_pending AS file {FILE_ROW_JOINS} \
          ORDER BY file.position"
     )
+}
+
+/// The release file whose original this device recorded at `path`, as a
+/// move's record names it: what a move of a release's files is about.
+/// `None` when no release file here has it.
+fn moved_original_on(
+    sql: &SqlReadContext<'_>,
+    path: &std::path::Path,
+) -> Result<Option<FileRow>, DbError> {
+    // coven observes and reads only originals whose path is valid Unicode.
+    let path = path.to_str().ok_or_else(|| {
+        DbError::Message(format!(
+            "a move's original path is not UTF-8: {}",
+            path.display()
+        ))
+    })?;
+    let named = sql
+        .query_row(
+            "SELECT f.release_id, f.original_filename, album.title \
+             FROM local_release_files AS l \
+             JOIN release_files AS f ON f.id = l.file_id \
+             JOIN releases AS r ON r.id = f.release_id \
+             JOIN albums AS album ON album.id = r.album_id \
+             WHERE l.path = ?1",
+            [path],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()?;
+    Ok(named.map(
+        |(release_id, file_name, album_title)| FileRow::ReleaseFile {
+            release_id,
+            file_name,
+            album_title,
+        },
+    ))
 }

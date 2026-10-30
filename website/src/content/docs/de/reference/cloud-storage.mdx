@@ -28,7 +28,7 @@ CloudKit braucht gar keinen Ablauf: coven steuert es auf Apple-Plattformen als d
 
 Im Zuhause beginnt jeder Objektpfad mit der Store-ID der Mediathek: covens nummerierte Abfolge von Änderungen, seine Snapshots, Beitrittsanfragen und gespeicherte Dateien. Mehrere Mediatheken können sich einen Dropbox- oder OneDrive-Ordner teilen, ohne die Objekte der anderen zu berühren.
 
-Jedes Objekt wird verschlüsselt und unter einem zufälligen Namen gespeichert; einen Klartextmodus gibt es nicht. Die Dateien von bae gehören zu Zeilen dreier synchronisierter Tabellen, `release_files`, `covers` und `artist_images`, dazu der Avatar in jeder `people`-Zeile. Der Pfad einer Datei wird festgelegt, wenn sie an ihre Zeile angehängt wird, sodass das Umbenennen eines Albums sie nie verschiebt. Siehe [Verschlüsselung](/de/reference/encryption).
+Jedes Objekt wird verschlüsselt und unter einem zufälligen Namen gespeichert; einen Klartextmodus gibt es nicht. Die Dateien von bae sind coven-Dateien, auf die Zeilen von vier synchronisierten Tabellen verweisen: `release_files`, `covers`, `artist_images` und der Avatar in jeder `people`-Zeile. Der Pfad einer Datei wird festgelegt, wenn sie bereitgestellt wird, sodass das Umbenennen eines Albums sie nie verschiebt. Siehe [Verschlüsselung](/de/reference/encryption).
 
 ## Verhalten in echten Netzwerken
 

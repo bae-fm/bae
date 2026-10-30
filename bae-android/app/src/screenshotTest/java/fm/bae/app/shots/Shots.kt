@@ -176,7 +176,6 @@ fun SyncActivityNeedingAttention() {
                 onOpenSettings = {},
                 onOpenDownloads = {},
                 onRetryNow = {},
-                onDismissAbandoned = {},
             )
         }
     }

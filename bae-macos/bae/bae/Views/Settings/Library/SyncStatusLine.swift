@@ -90,7 +90,11 @@ struct SyncStatusLine: View {
         case .resumeUploads:
             try await sync.setSyncPaused(false)
         case .retryOperation(let id):
-            try await sync.retryPendingOperation(id)
+            try await sync.pendingActions.retryOperation(id)
+        case .retryDownload(let releaseId):
+            try await sync.pendingActions.retryDownload(releaseId)
+        case .cancelUpload(let releaseId, let id):
+            try await sync.pendingActions.cancelFailedMove(releaseId, id)
         case .restoreFromCode:
             onRestoreFromCode()
         case .wait, .restoreFile, .review:

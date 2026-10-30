@@ -148,17 +148,16 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     );
 }
 
-/// coven verifies a file's plaintext against its row's content hash on every
-/// cloud fetch, so the file attached to a `covers` row must be the bytes
-/// actually stored — the resized thumbnail the import writes, never the image
-/// it was made from — and the row's size must be theirs. The row names the
-/// file's hash once its upload completes.
+/// coven verifies a file's plaintext against its record's content hash on
+/// every cloud fetch, so the coven file a `covers` row references must hold
+/// the bytes actually stored — the resized thumbnail the import writes, never
+/// the image it was made from — and their size. The record carries the
+/// file's hash once it is stored.
 async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
-    let cover =
-        f.db.find_library_image(release_id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .expect("cover row");
+    f.db.find_library_image(release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("cover row");
     let bytes = support::read_cover_image_bytes(&f.library_manager, release_id)
         .await
         .expect("cover file readable");
@@ -168,14 +167,15 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
         .await
         .unwrap()
         .expect("the cover's file");
-    let attached_hash: String =
-        file.content_hash().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
-    assert_eq!(attached_hash, bae_util::fs::hash_bytes(&bytes));
-    assert_eq!(file.plaintext_size(), bytes.len() as u64);
+    if let coven::FilePlace::Cloud { content_hash, .. } = file.place() {
+        let stored_hash: String =
+            content_hash.as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+        assert_eq!(stored_hash, bae_util::fs::hash_bytes(&bytes));
+    }
     assert_eq!(
-        cover.file_size,
-        bytes.len() as i64,
-        "the covers row's file_size must be the size of the stored file",
+        file.size(),
+        bytes.len() as u64,
+        "the cover's coven file must be the size of the stored bytes",
     );
 }
 

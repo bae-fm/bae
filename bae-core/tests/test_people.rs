@@ -54,7 +54,7 @@ fn png(image: image::RgbImage) -> Vec<u8> {
 }
 
 #[tokio::test]
-async fn a_profile_names_its_avatar_once_the_upload_completes() {
+async fn a_profile_names_each_new_avatar_at_once() {
     let directory = tempfile::tempdir().unwrap();
     let (manager, database, storage) =
         storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
@@ -81,17 +81,21 @@ async fn a_profile_names_its_avatar_once_the_upload_completes() {
     );
     manager.set_avatar(Some(second_source)).await.unwrap();
     let second = database.profile(profile.id).await.unwrap().unwrap();
-    // The profile row names a new avatar only once its upload completes; this
-    // device reads its own new avatar before then.
-    assert_eq!(first.avatar_id, None);
-    assert_eq!(second.avatar_id, None);
+    // The profile row references each new avatar's coven file from the write
+    // that sets it; a new avatar is a new file.
+    assert!(first.avatar_id.is_some());
+    assert!(second.avatar_id.is_some());
+    assert_ne!(first.avatar_id, second.avatar_id);
     assert_eq!(
         manager.avatar(profile.id).await.unwrap().unwrap(),
         second_jpeg
     );
     manager.drain_uploads_for_test().await.unwrap();
     let stored = database.profile(profile.id).await.unwrap().unwrap();
-    assert!(stored.avatar_id.is_some(), "the uploaded avatar is named");
+    assert_eq!(
+        stored.avatar_id, second.avatar_id,
+        "the upload changes no row"
+    );
     assert_eq!(
         manager.avatar(profile.id).await.unwrap().unwrap(),
         second_jpeg

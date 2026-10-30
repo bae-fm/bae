@@ -408,13 +408,13 @@ pub(super) fn insert_artist_role_row(
 ))]
 const INSERT_RELEASE_FILE_SQL: &str = r#"
     INSERT INTO release_files (
-        id, release_id, original_filename, file_size, content_type,
+        id, release_id, original_filename, file_size, content_type, file,
         source_audio_layout, source_audio_content_type, source_audio_duration_ms,
         source_audio_sample_rate_hz, source_audio_bits_per_sample,
         source_audio_bitrate_kbps, source_audio_channels,
         created_at
     ) VALUES (
-        :id, :release_id, :original_filename, :file_size, :content_type,
+        :id, :release_id, :original_filename, :file_size, :content_type, :file,
         :source_audio_layout, :source_audio_content_type, :source_audio_duration_ms,
         :source_audio_sample_rate_hz, :source_audio_bits_per_sample,
         :source_audio_bitrate_kbps, :source_audio_channels,
@@ -422,8 +422,8 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
     )
 "#;
 
-/// Validate the file name and bind the application-owned columns. Hash and
-/// location belong to coven and never appear in application SQL.
+/// Validate the file name and bind the row's columns, `file` the coven file
+/// it references, or `None` for a file this device keeps local.
 #[cfg(any(
     test,
     feature = "test-utils",
@@ -431,6 +431,7 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
 ))]
 fn with_file_row_params<T>(
     file: &DbFile,
+    coven_file: Option<coven::FileId>,
     write: impl FnOnce(&[(&str, &dyn rusqlite::ToSql)]) -> Result<T, DbError>,
 ) -> Result<T, DbError> {
     crate::storage::path_fragment::validate_path_fragment(
@@ -475,6 +476,7 @@ fn with_file_row_params<T>(
         ":original_filename": file.original_filename,
         ":file_size": file.file_size,
         ":content_type": file.content_type.as_str(),
+        ":file": coven_file,
         ":source_audio_layout": source_audio_layout,
         ":source_audio_content_type": source_audio_content_type,
         ":source_audio_duration_ms": source_audio_duration_ms,
@@ -486,38 +488,32 @@ fn with_file_row_params<T>(
     })
 }
 
-/// Insert a release file row that attaches the person's original for upload,
-/// and record that original on this device: until the upload completes the row
-/// names no file, and this device plays the file from its original.
+/// Insert a release file row referencing `coven_file`, the coven file the
+/// write staged from the person's original for the cloud, and record that
+/// original on this device.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_external_file_row(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
     original: &coven::UserFile,
-    attachment: coven::PreparedUserFile,
+    coven_file: coven::FileId,
 ) -> Result<(), DbError> {
-    with_file_row_params(file, |params| {
-        conn.insert_user_file(
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            file.id.as_str(),
-            attachment,
-            INSERT_RELEASE_FILE_SQL,
-            params,
-        )
-        .map_err(DbError::from)
+    with_file_row_params(file, Some(coven_file), |params| {
+        conn.execute(INSERT_RELEASE_FILE_SQL, params)
+            .map_err(DbError::from)
     })?;
     record_original_on(conn, file, original)
 }
 
-/// Insert a release file row whose original stays on this device, not
-/// attached for upload.
+/// Insert a release file row whose original stays on this device, with no
+/// coven file.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_local_file_row(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
     original: &coven::UserFile,
 ) -> Result<(), DbError> {
-    with_file_row_params(file, |params| {
+    with_file_row_params(file, None, |params| {
         conn.execute(INSERT_RELEASE_FILE_SQL, params)
             .map_err(DbError::from)
     })?;
@@ -554,14 +550,14 @@ fn record_original_on(
     Ok(())
 }
 
-/// Insert an unattached file row. Tests that exercise bytes attach a real file
-/// through the production registration path.
+/// Insert a file row naming no coven file. Tests that exercise bytes stage
+/// a real file through the production import or move path.
 #[cfg(any(test, feature = "test-utils"))]
 pub(super) fn insert_file_row_for_test(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
 ) -> Result<(), DbError> {
-    with_file_row_params(file, |params| {
+    with_file_row_params(file, None, |params| {
         conn.execute(INSERT_RELEASE_FILE_SQL, params)
             .map(|_| ())
             .map_err(DbError::from)
@@ -673,34 +669,35 @@ fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, 
     value.map(|value| sqlite_count(value, what)).transpose()
 }
 
+/// Write an image's row, pointing it at `file`, the coven file its write
+/// staged.
 pub(super) fn upsert_library_image_row(
     conn: &SqlContext<'_, '_>,
     image: &DbLibraryImage,
+    file: &coven::FileId,
 ) -> Result<(), DbError> {
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, created_at, revision) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, file, content_type, width, height, source, source_url, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
+                 file = excluded.file, \
                  content_type = excluded.content_type, \
-                 file_size = excluded.file_size, \
                  width = excluded.width, \
                  height = excluded.height, \
                  source = excluded.source, \
-                 source_url = excluded.source_url, \
-                 revision = excluded.revision"
+                 source_url = excluded.source_url"
         ),
         params![
             image.id,
+            file,
             image.content_type.as_str(),
-            image.file_size,
             image.width,
             image.height,
             image.source,
             image.source_url,
             image.created_at.to_rfc3339(),
-            image.revision,
         ],
     )
     .map(|_| ())

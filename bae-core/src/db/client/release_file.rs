@@ -1,10 +1,10 @@
-//! Readers for a release file: the stored file its row names, through coven,
-//! or otherwise this device's original.
+//! Readers for a release file: the coven file its row references, through
+//! coven, or otherwise this device's original.
 use super::*;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 pub(crate) enum ReleaseFileStream {
-    Stored(coven::FileStream),
+    Coven(coven::FileStream),
     Local {
         file: tokio::sync::Mutex<tokio::fs::File>,
         source: coven::UserFile,
@@ -13,13 +13,13 @@ pub(crate) enum ReleaseFileStream {
 impl ReleaseFileStream {
     pub(crate) fn plaintext_size(&self) -> u64 {
         match self {
-            Self::Stored(stream) => stream.plaintext_size(),
+            Self::Coven(stream) => stream.plaintext_size(),
             Self::Local { source, .. } => source.size,
         }
     }
     pub(crate) async fn read_at(&self, offset: u64, len: u64) -> Result<Vec<u8>, DbError> {
         match self {
-            Self::Stored(stream) => Ok(stream.read_at(offset, len).await?),
+            Self::Coven(stream) => Ok(stream.read_at(offset, len).await?),
             Self::Local { file, source } => {
                 if offset.checked_add(len).is_none_or(|end| end > source.size) {
                     return Err(DbError::Message(format!(
@@ -54,9 +54,9 @@ impl Database {
             .find_file_by_id(id)
             .await?
             .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
-        if row.stored {
-            let file = self.file_ref("release_files", id).await?;
-            return Ok(ReleaseFileStream::Stored(
+        if let Some(file) = row.file {
+            let file = self.file_ref(file).await?;
+            return Ok(ReleaseFileStream::Coven(
                 self.open_file_stream(&file).await?,
             ));
         }

@@ -4,12 +4,10 @@ use super::*;
 /// device keeps it whole, as `coven_pins` says, and while this process
 /// downloads it to be kept, the file coven downloads, as `coven_downloading`
 /// lists it.
-const RELEASE_FILE_PINS: &str = "SELECT f.id, pin.kept IS 1, downloading.file \
+const RELEASE_FILE_PINS: &str = "SELECT f.id, pin.file IS NOT NULL, downloading.file \
      FROM release_files AS f \
-     LEFT JOIN coven_pins AS pin \
-         ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id) \
-     LEFT JOIN coven_downloading AS downloading \
-         ON downloading.table_name = 'release_files' AND downloading.key = coven_key(f.id) \
+     LEFT JOIN coven_pins AS pin ON pin.file = f.file \
+     LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
      WHERE f.release_id = ?1";
 
 /// [`RELEASE_FILE_PINS`] for `release_id`, by release file id.
@@ -245,10 +243,9 @@ impl Database {
 
     pub(crate) async fn file_ref(
         &self,
-        table: &str,
-        row_id: &str,
+        file: coven::FileId,
     ) -> Result<coven::FileRef, coven::DbError> {
-        self.inner.handle.file_ref(table, row_id).await
+        self.inner.handle.file_ref(file).await
     }
 
     pub(crate) async fn read_file(
@@ -302,20 +299,13 @@ impl Database {
         self.inner.handle.unpin(files).await
     }
 
-    pub(crate) async fn rows_pinned(
+    pub(crate) async fn files_pinned(
         &self,
-        table: &str,
-        row_ids: Vec<String>,
+        files: &[coven::FileId],
     ) -> Result<Vec<Option<bool>>, DbError> {
         self.inner
             .handle
-            .rows_pinned(
-                table,
-                row_ids
-                    .iter()
-                    .map(|id| coven::RowKey::from(id.as_str()))
-                    .collect(),
-            )
+            .files_pinned(files)
             .await
             .map_err(DbError::from)
     }
@@ -344,17 +334,6 @@ impl Database {
 
     pub(crate) async fn retry_uploads_now(&self) -> Result<coven::DrainOutcome, coven::SyncError> {
         self.inner.handle.retry_uploads_now().await
-    }
-
-    pub(crate) async fn set_cache_budget(
-        &self,
-        namespace: &str,
-        max_bytes: u64,
-    ) -> Result<(), coven::DbError> {
-        self.inner
-            .handle
-            .set_cache_budget(namespace, max_bytes)
-            .await
     }
 
     pub(crate) async fn generate_restore_code(&self) -> Result<String, coven::SyncError> {

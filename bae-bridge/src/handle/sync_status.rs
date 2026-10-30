@@ -104,9 +104,14 @@ forward! { async this => {
         ))
     }
 
-    /// Forget an abandoned upload the person has seen in the activity list.
-    fn dismiss_abandoned_attachment(record: std::sync::Arc<crate::types::BridgeAbandonedRecord>) -> () {
-        Ok(this.services.dismiss_abandoned_attachment(record.0).await?)
+    /// End the release's failed move to the cloud, `id`, as its pending
+    /// record offers (`BridgePendingAction::CancelUpload`): the release is
+    /// local here again.
+    fn cancel_failed_release_move(release_id: String, id: i64) -> () {
+        Ok(this
+            .services
+            .cancel_failed_release_move(&release_id, coven::MoveId(id))
+            .await?)
     }
     /// Retry sync with the provider this library already has configured: connect
     /// if a failed startup left no connection, then run a cycle now. The failure

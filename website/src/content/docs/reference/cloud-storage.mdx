@@ -28,7 +28,7 @@ CloudKit needs no flow at all: coven drives it on Apple platforms as the signed-
 
 Inside the home, every object path starts with the library's store id: coven's numbered sequence of changes, its snapshots, join requests, and stored files. Several libraries can share one Dropbox or OneDrive folder without touching each other's objects.
 
-Every object is encrypted and stored under a random name; there is no plaintext mode. bae's files belong to rows of three synced tables, `release_files`, `covers`, and `artist_images`, plus the avatar on each `people` row. A file's path is fixed when it is attached to its row, so renaming an album never moves it. See [Encryption](/reference/encryption).
+Every object is encrypted and stored under a random name; there is no plaintext mode. bae's files are coven files that rows of four synced tables reference: `release_files`, `covers`, `artist_images`, and the avatar on each `people` row. A file's path is fixed when it is staged, so renaming an album never moves it. See [Encryption](/reference/encryption).
 
 ## Behavior under real networks
 

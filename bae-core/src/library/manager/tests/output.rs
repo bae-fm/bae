@@ -13,7 +13,6 @@ async fn make_exportable_release(
     let (release, _) =
         insert_export_release_rows(manager, source_dir, folder_name, files).await;
     manager.upload_release(&release.id, true).await.unwrap();
-    wait_for_offline_copy_request(manager, &release.id).await;
     // The sync loop this fixture's tests connect drains the queue itself, so
     // wait for the upload to finish rather than counting a drain pass this
     // test does not own.

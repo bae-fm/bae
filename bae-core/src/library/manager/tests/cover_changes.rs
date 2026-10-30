@@ -136,19 +136,25 @@ async fn assert_changed_cover(
     assert_eq!((decoded.width(), decoded.height()), dimensions);
     assert_eq!(std::fs::read(&source_path).unwrap(), cover_bytes);
 
-    // The row describes the stored thumbnail: JPEG, and its size matches.
+    // The row describes the stored thumbnail, a JPEG, and its coven file
+    // holds the thumbnail's bytes.
     let row = manager
         .get_library_image(&release.id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .expect("cover row stored");
     assert_eq!(row.content_type, ContentType::Jpeg);
-    assert_eq!(row.file_size, stored.len() as i64);
+    assert_eq!(
+        cover_file(&manager, &release.id).await.size(),
+        stored.len() as u64
+    );
 }
 
-/// A cover can be changed again and again. coven never rewrites stored bytes:
-/// each change attaches a new file to the same `covers` row, which moves the
-/// cover's version. Captured references to the replaced file must be refused.
+/// A cover can be changed again and again. A coven file never changes its
+/// bytes: each change stages a new file the same `covers` row references,
+/// which moves the cover's version. The replaced file goes with its last
+/// reference: still on this device only, a reference taken to it before
+/// reads nothing.
 #[tokio::test]
 async fn change_cover_twice_replaces_the_cover_file() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -217,20 +223,17 @@ async fn change_cover_twice_replaces_the_cover_file() {
     };
 
     change_to(&green).await.unwrap();
-    let first = cover_row().await;
+    cover_row().await;
     let first_version = cover_version().await;
-    let first_ref = manager.database.file_ref("covers", &release.id).await.unwrap();
+    let first_ref = cover_file(&manager, &release.id).await;
 
-    // The second change attaches a new file to the row that already has one.
+    // The second change points the row that already has a cover at a new
+    // file.
     change_to(&red).await.unwrap();
-    let second = cover_row().await;
-    assert!(
-        manager.database.abandoned_attachments_for_test().await.unwrap().is_empty(),
-        "replacing a cover still uploading is the person's own change and lists nothing"
-    );
+    cover_row().await;
 
-    // The row names a new file, and describes the bytes that file holds.
-    let second_ref = manager.database.file_ref("covers", &release.id).await.unwrap();
+    // The row names a new file, which holds the second image's bytes.
+    let second_ref = cover_file(&manager, &release.id).await;
     assert_ne!(
         second_ref.id(),
         first_ref.id(),
@@ -242,29 +245,24 @@ async fn change_cover_twice_replaces_the_cover_file() {
         .await
         .unwrap()
         .expect("cover file stored");
-    assert_eq!(
-        manager.database.file_ref("covers", &release.id).await.unwrap().content_hash().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>().as_str(),
-        bae_util::fs::hash_bytes(&stored).as_str()
-    );
-    assert_eq!(second_ref.plaintext_size(), stored.len() as u64);
-    // The row describes the file every device sees: the first, until the
-    // second's upload completes.
-    assert_eq!(second.file_size, first.file_size);
+    assert_eq!(second_ref.size(), stored.len() as u64);
 
     // The bytes really are the second image's, not the first's.
-    let first_stored_len = first.file_size;
     assert_ne!(
-        stored.len() as i64,
-        first_stored_len,
+        stored.len() as u64,
+        first_ref.size(),
         "the two source images must produce different thumbnails for this test to mean anything"
     );
 
     assert!(matches!(manager.database.read_file(&first_ref).await,
-        Err(coven::FileReadError::Database(coven::DbError::FileRefChanged { .. }))));
+        Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))));
 }
 
+/// Replacing an uploaded cover deletes its coven file with its last
+/// reference: a reference this device took to it before reads nothing, and
+/// the new file reads the new bytes.
 #[tokio::test]
-async fn replacing_an_uploaded_cover_refuses_its_captured_reference() {
+async fn replacing_an_uploaded_cover_ends_its_captured_reference() {
     let (manager, _temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let album = create_test_album();
@@ -272,13 +270,13 @@ async fn replacing_an_uploaded_cover_refuses_its_captured_reference() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     store_test_cover(&manager, &release.id, b"first cover").await;
-    let first = manager.database.file_ref("covers", &release.id).await.unwrap();
+    let first = cover_file(&manager, &release.id).await;
     manager.drain_uploads_expecting_work().await.unwrap();
     store_test_cover(&manager, &release.id, b"second cover").await;
-    let second = manager.database.file_ref("covers", &release.id).await.unwrap();
+    let second = cover_file(&manager, &release.id).await;
     manager.drain_uploads_expecting_work().await.unwrap();
     assert_ne!(first.id(), second.id());
     assert!(matches!(manager.database.read_file(&first).await,
-        Err(coven::FileReadError::Database(coven::DbError::FileRefChanged { .. }))));
+        Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))));
     assert_eq!(manager.database.read_file(&second).await.unwrap(), b"second cover");
 }

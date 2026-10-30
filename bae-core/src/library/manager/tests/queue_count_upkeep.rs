@@ -1,7 +1,8 @@
 // The queued count and first queued place `release_listing` keeps per
 // release, against those probed from coven's `coven_uploads` file by file,
-// through random library writes and uploads: attaching, completing and
-// cancelling uploads, abandoning one by deleting its file's row, a file moving
+// through random library writes and uploads: moving releases to the cloud,
+// completing and cancelling uploads, retiring one by deleting its file's row,
+// a file moving
 // between releases, covers queued beside them, and deletes.
 //
 // `include!`d into `manager::tests`, beside `pin_count_upkeep.rs`, whose
@@ -21,10 +22,10 @@ async fn queue_listing_disagreements(manager: &LibraryManager) -> Vec<String> {
              LEFT JOIN release_listing l ON l.release_id = r.id \
              JOIN (SELECT r2.id AS release_id, \
                      (SELECT COUNT(*) FROM release_files f JOIN coven_uploads u \
-                        ON u.table_name = 'release_files' AND u.key = coven_key(f.id) \
+                        ON u.file = f.file \
                       WHERE f.release_id = r2.id) AS queued, \
                      (SELECT MIN(u.position) FROM release_files f JOIN coven_uploads u \
-                        ON u.table_name = 'release_files' AND u.key = coven_key(f.id) \
+                        ON u.file = f.file \
                       WHERE f.release_id = r2.id) AS first \
                    FROM releases r2) probe ON probe.release_id = r.id \
              WHERE l.release_id IS NULL OR l.queued_count <> probe.queued \
@@ -42,7 +43,7 @@ async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
         .database
         .query_texts_for_test(
             "SELECT f.release_id FROM coven_uploads u \
-             JOIN release_files f ON u.table_name = 'release_files' AND u.key = coven_key(f.id) \
+             JOIN release_files f ON u.file = f.file \
              GROUP BY f.release_id ORDER BY MIN(u.position)",
         )
         .await

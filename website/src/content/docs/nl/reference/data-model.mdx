@@ -34,11 +34,11 @@ De bewerkingen van twee apparaten worden cel voor cel samengevoegd, waarbij de l
 
 ## Blobs
 
-Audio en afbeeldingen gaan door de bestandslaag van coven, elk soort met zijn eigen apparaatcachebudget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), en de avatars op `people` (64 MiB).
+Audio en afbeeldingen zijn coven-bestanden, elk soort een naamruimte met zijn eigen apparaatcachebudget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), en `avatars` (64 MiB). Een rij verwijst naar zijn bestand via de id van het coven-bestand: `file` op `release_files`, `covers` en `artist_images`, en `avatar_id` op `people`. De grootte, de inhoudshash en de locatie van het bestand zijn van coven en worden gelezen via een join met `coven_files`.
 
-Releasebestanden zijn van de gebruiker en worden lui gecachet: de bestanden van een lokale release zijn de bestanden van de gebruiker op hun oorspronkelijke paden, vastgelegd in `local_release_files`; de release naar de cloud verplaatsen koppelt elk bestand in één write aan zijn `release_files`-rij, en andere apparaten halen het bij de eerste read in de cache. Hoezen, artiestafbeeldingen en avatars zijn van bae en worden vroeg gecachet: bae produceert de bytes (hoezen worden opnieuw gerenderd als JPEG-thumbnails van maximaal 600px breed), en elk apparaat haalt ze op zodra hun rijen aankomen zodat rasters lokaal renderen.
+Releasebestanden zijn van de gebruiker: de bestanden van een lokale release zijn de bestanden van de gebruiker op hun oorspronkelijke paden, vastgelegd in `local_release_files`, en de rijen ervan verwijzen naar geen enkel coven-bestand. De release naar de cloud verplaatsen zet elk bestand in één write klaar bij coven en laat elke rij naar zijn bestand wijzen; zodra het laatste is opgeslagen, zet coven ze allemaal tegelijk over naar de cloud, en andere apparaten halen elk bij de eerste read in de cache. Hoezen, artiestafbeeldingen en avatars zijn van bae: bae produceert de bytes (hoezen worden opnieuw gerenderd als JPEG-thumbnails van maximaal 600px breed), en een apparaat haalt elk op wanneer het voor het eerst wordt getoond en houdt het tot het budget van zijn naamruimte het verdringt.
 
-Elk bestand wordt versleuteld geüpload onder een willekeurige naam, op een pad dat wordt vastgelegd wanneer het aan zijn rij wordt gekoppeld, zodat een latere naamswijziging het object nooit verplaatst.
+Elk bestand wordt versleuteld geüpload onder een willekeurige naam, op een pad dat wordt vastgelegd wanneer het wordt klaargezet, zodat een latere naamswijziging het object nooit verplaatst. Een bestand verandert nooit van bytes: een nieuwe afbeelding is een nieuw bestand.
 
 ## Identiteit van een rip
 

@@ -34,11 +34,11 @@ Le modifiche di due dispositivi si fondono cella per cella, e la modifica più t
 
 ## Blob
 
-Audio e immagini passano dal livello file di coven, ciascun tipo con il proprio budget di cache per dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) e gli avatar di `people` (64 MiB).
+Audio e immagini sono file di coven, ciascun tipo uno spazio dei nomi con il proprio budget di cache per dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) e `avatars` (64 MiB). Una riga fa riferimento al suo file tramite l'id del file di coven: `file` in `release_files`, `covers` e `artist_images`, e `avatar_id` in `people`. Dimensione, hash del contenuto e posizione del file appartengono a coven e si leggono con un join su `coven_files`.
 
-I file delle release appartengono all'utente e sono memorizzati in cache su richiesta: i file di una release locale sono i file dell'utente nei loro percorsi originali, registrati in `local_release_files`; spostare la release nel cloud allega ogni file alla sua riga `release_files` in una sola scrittura, e gli altri dispositivi lo recuperano in cache alla prima lettura. Copertine, immagini artista e avatar appartengono a bae e sono memorizzati in cache in anticipo: bae produce i byte (le copertine vengono renderizzate di nuovo come miniature JPEG larghe al massimo 600px), e ogni dispositivo li recupera appena arrivano le loro righe così le griglie si mostrino localmente.
+I file delle release appartengono all'utente: i file di una release locale sono i file dell'utente nei loro percorsi originali, registrati in `local_release_files`, e le sue righe non fanno riferimento a nessun file di coven. Spostare la release nel cloud prepara ogni file in coven in una sola scrittura e fa puntare ogni riga al suo file; quando l'ultimo è conservato, coven li passa tutti insieme al cloud, e gli altri dispositivi recuperano ciascuno in cache alla prima lettura. Copertine, immagini artista e avatar appartengono a bae: bae produce i byte (le copertine vengono renderizzate di nuovo come miniature JPEG larghe al massimo 600px), e un dispositivo recupera ciascuno la prima volta che viene mostrato e lo tiene finché il budget del suo spazio dei nomi non lo rimuove.
 
-Ogni file viene caricato cifrato sotto un nome casuale, in un percorso fissato quando viene allegato alla sua riga, così una rinomina successiva non sposta mai l'oggetto.
+Ogni file viene caricato cifrato sotto un nome casuale, in un percorso fissato quando viene preparato, così una rinomina successiva non sposta mai l'oggetto. Un file non cambia mai i suoi byte: un'immagine nuova è un file nuovo.
 
 ## Identità di un rip
 

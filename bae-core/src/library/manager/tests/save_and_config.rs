@@ -134,14 +134,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     store_test_cover(&manager, &release.id, b"first cover").await;
     let concurrent = manager.clone();
     let concurrent_release = release.id.clone();
-    let late = DbLibraryImage::cover(
-        &release.id,
-        "local",
-        None,
-        b"late cover",
-        manager.clock.now().into(),
-        manager.new_id(),
-    );
+    let late = DbLibraryImage::cover(&release.id, "local", None, manager.clock.now().into());
 
     let error = manager
         .database

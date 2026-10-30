@@ -19,7 +19,7 @@ pub enum PendingSubjectName {
     ArtistImage,
     /// A person's profile picture.
     Avatar,
-    /// A release file or cover whose row or release is gone.
+    /// A release file or cover no row of the library names any more.
     DeletedReleaseFile,
     /// A file no row on this device names.
     File,
@@ -75,11 +75,13 @@ impl PartialEq for PendingWait {
 }
 
 impl PendingWait {
-    pub(crate) fn of(record: &coven::PendingRecord) -> Self {
+    /// The wait of `record`, about a file of the release `release_id` when
+    /// it names one.
+    pub(crate) fn of(record: &coven::PendingRecord, release_id: Option<&str>) -> Self {
         Self {
             reason: record.reason.clone(),
             cause: record.cause.clone(),
-            action: pending_action(record),
+            action: pending_action(record, release_id),
         }
     }
 
@@ -110,6 +112,7 @@ fn reports_failure(reason: &coven::PendingReason) -> bool {
         | R::AccountInUse { .. }
         | R::AccessRemains { .. }
         | R::FileUnavailable(_)
+        | R::Original { .. }
         | R::Rejected(_)
         | R::Paused
         | R::Removed
@@ -141,13 +144,19 @@ impl PendingItem {
 
     fn named(record: coven::PendingRecord, file_row: Option<FileRow>) -> Self {
         use coven::PendingSubject as S;
-        let wait = PendingWait::of(&record);
+        let release_id = match &file_row {
+            Some(FileRow::ReleaseFile { release_id, .. }) => Some(release_id.as_str()),
+            _ => None,
+        };
+        let wait = PendingWait::of(&record, release_id);
         let subject = match record.subject {
             S::Write(_) => PendingSubjectName::LocalChanges,
             S::Slot(_) => PendingSubjectName::LibraryChanges,
             S::KeyCopy { .. } => PendingSubjectName::KeyCopy,
             S::Snapshot(_) => PendingSubjectName::Snapshot,
-            S::File { .. } => file_row.map_or(PendingSubjectName::File, PendingSubjectName::from),
+            S::Upload { .. } | S::Download { .. } | S::Keep { .. } | S::Move { .. } => {
+                file_row.map_or(PendingSubjectName::File, PendingSubjectName::from)
+            }
             S::Operation { kind, .. } => PendingSubjectName::Operation(kind),
             S::Retention { .. } => PendingSubjectName::Retention,
             S::Audience(coven::Audience::Store) => PendingSubjectName::LibraryData,
@@ -164,6 +173,7 @@ impl From<FileRow> for PendingSubjectName {
     fn from(row: FileRow) -> Self {
         match row {
             FileRow::ReleaseFile {
+                release_id: _,
                 file_name,
                 album_title,
             } => Self::ReleaseFile {

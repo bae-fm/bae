@@ -388,7 +388,8 @@ impl Database {
             .await
     }
 
-    /// A local release's original is device-local until explicitly attached.
+    /// A local release's original is device-local until it moves to the
+    /// cloud.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_external_file_for_test(
         &self,
@@ -428,10 +429,14 @@ impl Database {
         let release_id = release_id.to_string();
         self.read(move |sql| {
             Ok(sql.query(
-                "SELECT f.*, l.path AS original_path FROM release_files AS f \
-                 LEFT JOIN local_release_files AS l ON l.file_id = f.id \
-                 WHERE f.release_id = ?1 \
-                 ORDER BY f.original_filename COLLATE natural_order, f.id",
+                concat!(
+                    "SELECT ",
+                    release_file_columns!(),
+                    ", l.path AS original_path FROM release_files AS f \
+                     LEFT JOIN local_release_files AS l ON l.file_id = f.id \
+                     WHERE f.release_id = ?1 \
+                     ORDER BY f.original_filename COLLATE natural_order, f.id"
+                ),
                 params![release_id],
                 |row| {
                     Ok((
@@ -492,7 +497,11 @@ impl Database {
         let (release_id, file_id) = (release_id.to_string(), file_id.to_string());
         self.read(move |sql| {
             sql.query_row(
-                "SELECT * FROM release_files WHERE id = ? AND release_id = ?",
+                concat!(
+                    "SELECT ",
+                    release_file_columns!(),
+                    " FROM release_files AS f WHERE f.id = ? AND f.release_id = ?"
+                ),
                 params![file_id, release_id],
                 row_to_file,
             )
@@ -507,7 +516,11 @@ impl Database {
         let file_id = file_id.to_string();
         self.read(move |sql| {
             sql.query_row(
-                "SELECT * FROM release_files WHERE id = ?",
+                concat!(
+                    "SELECT ",
+                    release_file_columns!(),
+                    " FROM release_files AS f WHERE f.id = ?"
+                ),
                 params![file_id],
                 row_to_file,
             )
@@ -560,29 +573,51 @@ impl Database {
             .iter()
             .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
             .collect();
-        // Each image's bytes attach to its row, which coven finds by the row's id.
-        let image_files: Vec<(String, String, Vec<u8>)> = library_image
+        // Each image's bytes are staged as a coven file, in the order of
+        // `library_image` then `artist_images`, which the rows then reference.
+        let image_files: Vec<(&'static str, Vec<u8>)> = library_image
             .iter()
             .chain(artist_images.iter())
-            .map(|(image, bytes)| {
-                (
-                    image.image_type.namespace().to_string(),
-                    image.id.clone(),
-                    bytes.clone(),
-                )
-            })
+            .map(|(image, bytes)| (image.image_type.namespace(), bytes.clone()))
             .collect();
+        // Each original going to the cloud is staged as a coven file, which its
+        // row references; a local one stays this device's, with no coven file.
+        let mut rows_to_insert = Vec::with_capacity(files.len());
+        let mut cloud_originals = Vec::new();
+        for prepared in files {
+            match prepared.source {
+                crate::import::service::PreparedImportSource::Local(original) => {
+                    rows_to_insert.push((prepared.row, original, false));
+                }
+                crate::import::service::PreparedImportSource::Shared {
+                    original,
+                    prepared: user_file,
+                    keep_here,
+                } => {
+                    cloud_originals.push(match keep_here {
+                        true => coven::UserSource::CloudKeptHere(user_file),
+                        false => coven::UserSource::Cloud(user_file),
+                    });
+                    rows_to_insert.push((prepared.row, original, true));
+                }
+            }
+        }
         let records = rows.records.to_vec();
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         let now = now_dt.to_rfc3339();
         self.write_with_files(
             move |w| {
-                for (namespace, id, bytes) in image_files {
-                    w.put_file(namespace, id, bytes);
-                }
-                Ok(())
+                let images: Vec<coven::FileId> = image_files
+                    .into_iter()
+                    .map(|(namespace, bytes)| w.put_file(namespace, bytes, coven::Place::Cloud))
+                    .collect();
+                let originals: Vec<coven::FileId> = cloud_originals
+                    .into_iter()
+                    .map(|source| w.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, source))
+                    .collect();
+                Ok((images, originals))
             },
-            move |sql| {
+            move |sql, (image_file_ids, original_file_ids)| {
                 let tx = &sql;
                 require_import_commit_guard(tx, &guard)?;
                 end_import_attempt_of_commit(tx, &guard)?;
@@ -684,16 +719,18 @@ impl Database {
                     insert_track_artist_role_row(tx, role)?;
                 }
 
-                for prepared in files {
-                    match prepared.source {
-                        crate::import::service::PreparedImportSource::Local(original) => {
-                            insert_local_file_row(tx, &prepared.row, &original)?;
-                        }
-                        crate::import::service::PreparedImportSource::Shared {
-                            original,
-                            attachment,
-                        } => {
-                            insert_external_file_row(tx, &prepared.row, &original, attachment)?;
+                let mut original_file_ids = original_file_ids.into_iter();
+                for (row, original, cloud) in &rows_to_insert {
+                    match cloud {
+                        false => insert_local_file_row(tx, row, original)?,
+                        true => {
+                            let file = original_file_ids.next().ok_or_else(|| {
+                                DbError::Message(format!(
+                                    "release file {} has no staged coven file",
+                                    row.id
+                                ))
+                            })?;
+                            insert_external_file_row(tx, row, original, file)?;
                         }
                     }
                 }
@@ -708,11 +745,12 @@ impl Database {
                     insert_scrub_points_row(tx, points)?;
                 }
 
-                if let Some((image, _)) = &library_image {
-                    upsert_library_image_row(tx, image)?;
-                }
-                for (image, _) in &artist_images {
-                    upsert_library_image_row(tx, image)?;
+                for ((image, _), file) in library_image
+                    .iter()
+                    .chain(artist_images.iter())
+                    .zip(&image_file_ids)
+                {
+                    upsert_library_image_row(tx, image, file)?;
                 }
 
                 Ok(())
@@ -726,25 +764,21 @@ impl Database {
     /// Delete a release in one write. Its album's next release in album order
     /// is then the primary; nothing else is written for that.
     /// Shared artists and works remain available to other releases and devices.
-    /// Deleting abandons the attachment of each of its files this device is
-    /// still uploading; the person asked for that, so its record is dismissed.
+    /// Each coven file of the release goes with its last reference, and an
+    /// upload of one this device still has queued is retired.
     pub async fn delete_release_with_cleanup(
         &self,
         plan: ReleaseDeletion,
     ) -> Result<bool, DbError> {
-        let abandoned = self.own_abandonments(&plan.file_rows()).await?;
-        let vacated = self
-            .call_sql(move |sql| {
-                plan.apply_on(&sql)?;
-                sql.execute(
-                    "DELETE FROM releases WHERE id = ?",
-                    params![plan.release_id()],
-                )?;
-                vacate_album_on(&sql, plan.album_id())
-            })
-            .await?;
-        self.dismiss_own_abandonments(&abandoned).await;
-        Ok(vacated)
+        self.call_sql(move |sql| {
+            plan.apply_on(&sql)?;
+            sql.execute(
+                "DELETE FROM releases WHERE id = ?",
+                params![plan.release_id()],
+            )?;
+            vacate_album_on(&sql, plan.album_id())
+        })
+        .await
     }
 
     /// Read what deleting `release_id` owes coven; see [`ReleaseDeletion`].

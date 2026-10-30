@@ -456,9 +456,7 @@ impl LibraryManager {
                 &artist.id,
                 bae_catalogs::catalog::Catalog::Discogs.as_str(),
                 Some(source_url.clone()),
-                jpeg,
                 self.now(),
-                self.new_id(),
             );
             images.push((row, jpeg.clone()));
         }

@@ -34,11 +34,11 @@ Las ediciones de dos dispositivos se combinan celda por celda, y la edición pos
 
 ## Blobs
 
-El audio y las imágenes pasan por la capa de archivos de coven, cada tipo con su propio presupuesto de caché por dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) y los avatares de `people` (64 MiB).
+El audio y las imágenes son archivos de coven, cada tipo un espacio de nombres con su propio presupuesto de caché por dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) y `avatars` (64 MiB). Una fila referencia su archivo por el id del archivo de coven: `file` en `release_files`, `covers` y `artist_images`, y `avatar_id` en `people`. El tamaño, el hash del contenido y la ubicación del archivo son de coven y se leen con una unión con `coven_files`.
 
-Los archivos de lanzamiento son del usuario y se guardan en caché bajo demanda: los archivos de un lanzamiento local son los archivos del usuario en sus rutas originales, registrados en `local_release_files`; mover el lanzamiento a la nube adjunta cada archivo a su fila de `release_files` en una sola escritura, y otros dispositivos lo traen a la caché en la primera lectura. Las portadas, imágenes de artistas y avatares son de bae y se guardan en caché con anticipación: bae produce los bytes (las portadas se vuelven a renderizar como miniaturas JPEG de como máximo 600px de ancho), y cada dispositivo las obtiene en cuanto llegan sus filas para que las cuadrículas se muestren localmente.
+Los archivos de lanzamiento son del usuario: los archivos de un lanzamiento local son los archivos del usuario en sus rutas originales, registrados en `local_release_files`, y sus filas no referencian ningún archivo de coven. Mover el lanzamiento a la nube prepara cada archivo en coven en una sola escritura y hace que cada fila apunte a su archivo; cuando el último queda guardado, coven los pasa todos a la nube a la vez, y otros dispositivos traen cada uno a la caché en la primera lectura. Las portadas, imágenes de artistas y avatares son de bae: bae produce los bytes (las portadas se vuelven a renderizar como miniaturas JPEG de como máximo 600px de ancho), y un dispositivo obtiene cada una cuando se muestra por primera vez y la conserva hasta que el presupuesto de su espacio de nombres la desaloja.
 
-Cada archivo se sube cifrado bajo un nombre aleatorio, en una ruta fijada cuando se adjunta a su fila, para que un cambio de nombre posterior nunca mueva el objeto.
+Cada archivo se sube cifrado bajo un nombre aleatorio, en una ruta fijada cuando se prepara, para que un cambio de nombre posterior nunca mueva el objeto. Un archivo nunca cambia sus bytes: una imagen nueva es un archivo nuevo.
 
 ## Identidad de una copia
 

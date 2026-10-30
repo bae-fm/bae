@@ -274,6 +274,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
             file_size: 1,
             content_type: bae_util::content_type::ContentType::from_mime(mime),
             source_audio: None,
+            file: None,
             stored: false,
             created_at: chrono::Utc::now(),
         })
@@ -375,6 +376,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             file_size: size,
             content_type: bae_util::content_type::ContentType::from_mime(mime),
             source_audio: None,
+            file: None,
             stored: false,
             created_at: chrono::Utc::now(),
         })
@@ -496,6 +498,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
         file_size: 12_345,
         content_type: bae_util::content_type::ContentType::Flac,
         source_audio: Some(source_audio.clone()),
+        file: None,
         stored: false,
         created_at: chrono::Utc::now(),
     })

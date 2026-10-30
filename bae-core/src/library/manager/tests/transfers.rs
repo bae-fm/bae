@@ -67,7 +67,7 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
         "got {reason:?}"
     );
     assert!(manager.pending().await.unwrap().iter().any(|record|
-        crate::library::pending_action(record) == crate::library::PendingAction::RestoreFile));
+        crate::library::pending_action(record, None) == crate::library::PendingAction::RestoreFile));
 }
 
 /// A shared local release with no path on this device says it isn't uploaded:
@@ -198,7 +198,10 @@ async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
     assert!(!manager.pending().await.unwrap().is_empty());
     manager.cancel_release_upload(&release.id).await.expect_err("the missing original prevents restoring local playback");
-    assert!(manager.database.current_file("release_files", &file_id).await.unwrap().is_some(), "the attachment stays pending");
+    assert!(
+        manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().file.is_some(),
+        "the file stays moving"
+    );
     assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 1);
 }
 
@@ -207,103 +210,100 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(&manager, &temp.path().join("second"), "Album", &[("b.flac", b"audio")]).await;
     manager.cancel_all_release_uploads().await.unwrap();
-    // Clearing a pending attachment abandons it, so its upload leaves the
-    // queue, and the person's own cancel leaves no record listed.
+    // A file no row references any more goes, so its upload leaves the
+    // queue.
     assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.database.abandoned_attachments_for_test().await.unwrap().is_empty());
+    assert!(manager.pending().await.unwrap().is_empty());
     for release in [first, second] {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
-            assert!(manager.database.current_file("release_files", &file.id).await.unwrap().is_none());
+            assert!(file.file.is_none());
             assert!(manager.database.external_file(&file.id).await.unwrap().is_some(), "the original plays again");
         }
     }
 }
 
-/// Deleting a release abandons the attachment of each file still queued: its
-/// upload leaves the queue, since no row can name it any more.
+/// Deleting a release deletes the coven file of each of its files: its upload
+/// leaves the queue, since no row references the file any more.
 #[tokio::test]
-async fn deleting_a_release_abandons_its_queued_uploads() {
+async fn deleting_a_release_retires_its_queued_uploads() {
     let (manager, temp, release, _) = queued_upload_fixture("queued").await;
     manager.delete_release(&release.id).await.unwrap();
     assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
-    assert!(manager.database.abandoned_attachments_for_test().await.unwrap().is_empty(),
-        "the person's own deletion leaves no record listed");
+    assert!(manager.pending().await.unwrap().is_empty());
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
 }
 
-/// An upload whose row a change this device didn't make deletes is listed as
-/// a file of a deleted release, and dismissing it forgets it.
+/// A change that deletes the row of a file still uploading, or takes the row
+/// off its file, deletes the file with its last reference: its upload leaves
+/// the queue and nothing is left pending.
 #[tokio::test]
-async fn an_upload_whose_row_is_gone_is_listed_until_dismissed() {
-    let (manager, _temp, _release, file_id) = queued_upload_fixture("gone").await;
-    manager.start().unwrap();
-    let mut values = manager.subscribe_sync_status_values();
-    manager
-        .database
-        .execute_for_test("DELETE FROM release_files WHERE id = ?1", vec![file_id])
-        .await
-        .unwrap();
-    let listed = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if !items.is_empty())),
-    )
-    .await
-    .expect("the abandoned upload is listed")
-    .unwrap()
-    .clone();
-    let Some(Ok(items)) = listed.abandoned else {
-        unreachable!("waited for a listed record");
-    };
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0].subject, PendingSubjectName::DeletedReleaseFile);
-    assert_eq!(items[0].reason, coven::AbandonReason::RowGone);
-    manager.dismiss_abandoned_attachment(items[0].file).await.unwrap();
-    tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if items.is_empty())),
-    )
-    .await
-    .expect("dismissing takes it off the list")
-    .unwrap();
+async fn an_upload_whose_row_no_longer_references_it_leaves_the_queue() {
+    for change in [
+        "DELETE FROM release_files WHERE id = ?1",
+        "UPDATE release_files SET file = NULL WHERE id = ?1",
+    ] {
+        let (manager, _temp, _release, file_id) = queued_upload_fixture("changed").await;
+        manager
+            .database
+            .execute_for_test(change, vec![file_id])
+            .await
+            .unwrap();
+        assert_eq!(
+            manager.database.queued_upload_count_for_test().await.unwrap(),
+            0,
+            "{change}"
+        );
+        assert!(manager.pending().await.unwrap().is_empty(), "{change}");
+    }
 }
 
-/// An upload a change this device didn't make abandons is listed, named by
-/// its row and with why, until the person dismisses it.
+/// An original that changes before its upload fails its release's move: the
+/// pending list names the file and offers Cancel Upload, which ends the move
+/// and makes the release local here again.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn an_upload_abandoned_by_another_change_is_listed_until_dismissed() {
-    let (manager, _temp, _release, file_id) = queued_upload_fixture("abandoned").await;
+async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
+    let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
+    std::fs::write(temp.path().join("changed/a.flac"), b"changed after the move").unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status_values();
-    manager.database.clear_user_file_for_test("release_files", &file_id).await.unwrap();
-    let listed = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if !items.is_empty())),
-    )
-    .await
-    .expect("the abandoned upload is listed")
-    .unwrap()
-    .clone();
-    let Some(Ok(items)) = listed.abandoned else {
-        unreachable!("waited for a listed record");
-    };
-    assert_eq!(items.len(), 1);
+    let listed = pending_list_until(&mut values, |items| {
+        items
+            .iter()
+            .any(|item| matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. }))
+    })
+    .await;
+    let item = listed
+        .iter()
+        .find(|item| matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. }))
+        .unwrap();
     assert_eq!(
-        items[0].subject,
+        item.subject,
         PendingSubjectName::ReleaseFile {
             file_name: "a.flac".into(),
             album_title: "Test Album".into(),
         }
     );
-    assert_eq!(items[0].reason, coven::AbandonReason::Cleared);
-    manager.dismiss_abandoned_attachment(items[0].file).await.unwrap();
-    tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if items.is_empty())),
-    )
-    .await
-    .expect("dismissing takes it off the list")
-    .unwrap();
+    let crate::library::PendingAction::CancelUpload { release_id, id } = item.wait.action.clone()
+    else {
+        unreachable!("found by its action");
+    };
+    assert_eq!(release_id, release.id);
+    manager
+        .cancel_failed_release_move(&release_id, id)
+        .await
+        .unwrap();
+    for file in release_files(&manager, &release.id).await {
+        assert!(file.file.is_none(), "the release is local again");
+    }
+    pending_list_until(&mut values, |items| {
+        !items
+            .iter()
+            .any(|item| matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. }))
+    })
+    .await;
 }
 
 /// An upload whose original vanished is listed in the sync status, named by
@@ -356,14 +356,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
     )
     .await;
     let cover_bytes = b"cover-bytes";
-    let cover = DbLibraryImage::cover(
-        &release.id,
-        "local",
-        None,
-        cover_bytes,
-        manager.clock.now().into(),
-        manager.new_id(),
-    );
+    let cover = DbLibraryImage::cover(&release.id, "local", None, manager.clock.now().into());
     manager
         .store_library_image(&cover, cover_bytes)
         .await
@@ -580,29 +573,26 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
     );
 }
 
+/// A release moved to the cloud to be kept here goes through no download
+/// queue entry: once its move finishes, coven keeps each file whole on this
+/// device itself, and the release is pinned.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn attachment_commits_before_its_offline_copy_runs_in_downloads() {
+async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     let (manager, temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    manager.set_downloads_paused(true).await.unwrap();
     let release = insert_local_release_with_files(
         &manager,
-        &temp.path().join("pin-after-attachment"),
+        &temp.path().join("kept"),
         "Album",
         &[("audio.flac", b"audio")],
     )
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
     assert_eq!(attached_file_count(&manager, &release.id).await, 1);
-    let queue = download_queue_now(&manager).await;
-    assert_eq!(queue.rows.len(), 1);
-    assert_eq!(queue.rows[0].op.release_id, release.id);
-    assert!(matches!(
-        queue.rows[0].op.state,
-        crate::library::DownloadPhase::Queued
-    ));
-    manager.set_downloads_paused(false).await.unwrap();
-    download_queue_until(&manager, |queue| queue.rows.is_empty()).await;
+    assert!(download_queue_now(&manager).await.rows.is_empty());
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
+    wait_for_kept_release(&manager, &release.id).await;
     assert!(
         manager
             .find_release_storage_summary(&release.id)

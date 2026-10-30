@@ -10,17 +10,16 @@ use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspector {
     /// The release's entry in each transfer queue that holds one: downloads,
-    /// then exports, then uploads; while coven fetches the copies its pins
-    /// wait for, that fetch after its download.
+    /// then exports, then uploads; while coven downloads the files this
+    /// device keeps here, that fetch after its download.
     pub transfers: Vec<StorageInspectorTransfer>,
     pub files: Vec<StorageInspectorFile>,
 }
 
 /// One row of the inspector's file list: a release file and its upload,
-/// if one is queued: coven queues at most one pending attachment per row;
-/// and while the release is pinning, where the file's pin stands: every file
-/// while the download queue pins the release, and each pinned file while
-/// coven fetches the copies its pins wait for.
+/// if one is queued; and while the release is pinning, where the file's pin
+/// stands: every file while the download queue pins the release, and each
+/// file coven keeps here while coven downloads them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspectorFile {
     pub file: FileDetail,
@@ -49,10 +48,9 @@ pub enum StorageInspectorTransfer {
         operation: DownloadRow,
         summary: Option<Vec<crate::library::TransferCount>>,
     },
-    /// Coven fetching the copies the release's pins wait for, outside the
-    /// download queue, as it does for the pins an upload carries to the
-    /// stored files: `summary` counts the pinned files downloading, waiting
-    /// and kept, each left out at zero.
+    /// Coven downloading the release's files a move to the cloud asked this
+    /// device to keep here, outside the download queue: `summary` counts the
+    /// files downloading and kept, each left out at zero.
     PinFetch {
         summary: Vec<crate::library::TransferCount>,
     },
@@ -87,8 +85,8 @@ impl StorageInspector {
     /// record with the error `causes` holds for it; its entry in each queue
     /// (`entries`, and its files waiting to upload, `upload`); while its
     /// download waits or runs, each file's pin and the download's count of
-    /// them; and otherwise, while any of its pins waits for its copy, each
-    /// pinned file's pin and coven's fetch counting them.
+    /// them; and otherwise, while coven downloads a file it keeps here, each
+    /// file's pin and coven's fetch counting them.
     pub(crate) fn of(
         release_id: &str,
         files: Vec<crate::db::DbStorageInspectorFile>,
@@ -122,7 +120,7 @@ impl StorageInspector {
                     },
                     pending: upload.pending.map(|mut record| {
                         record.cause = causes.cause(&record);
-                        PendingWait::of(&record)
+                        PendingWait::of(&record, Some(release_id))
                     }),
                 }),
                 pin: match pinning {
@@ -173,8 +171,8 @@ impl StorageInspector {
 }
 
 /// What brings a pinning release's files to this device: its entry in the
-/// download queue while it waits or runs, or else coven fetching the copies
-/// its pins wait for.
+/// download queue while it waits or runs, or else coven downloading the
+/// files it keeps here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Pinning {
     Download,
@@ -182,7 +180,7 @@ enum Pinning {
 }
 
 /// The release's entry in each queue, downloads first, then coven's fetch of
-/// the copies its pins wait for, then exports, then its files waiting to
+/// the files it keeps here, then exports, then its files waiting to
 /// upload (`upload`); `pins` summarizes its files for whichever pins them.
 fn storage_inspector_transfers(
     release_id: &str,

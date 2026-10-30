@@ -42,7 +42,7 @@ Xác nhận một lượt nhập chạy theo thứ tự:
 3. **Chọn bìa**: art đã chọn (từ xa, ảnh thư mục, hoặc nhúng) được render lại thành thumbnail hiển thị; bản gốc được giữ trong các tệp của bản phát hành nếu nó đến từ thư mục.
 4. **Ghi nguyên tử**: bản phát hành, track, ghi công, danh tính, định dạng, segment, tệp và bìa commit trong một transaction. Không có trạng thái nhập nửa chừng.
 
-Bản phát hành được tạo với tham chiếu tới tệp của người dùng tại chỗ. Với một lượt nhập lên đám mây, coven đọc và tính hash từng tệp trước khi ghi, và chính lần ghi đó gắn mọi tệp vào hàng của nó và đưa lượt tải lên vào hàng đợi. Một lượt nhập cục bộ thì thay vào đó ghi đường dẫn, kích thước và thời điểm sửa đổi của từng tệp trên thiết bị này; byte của nó chỉ được đọc nếu sau này bản phát hành được chuyển lên đám mây. Dù theo cách nào, byte gốc của tệp vẫn là nguồn sự thật trong suốt quá trình; không thứ gì người dùng đưa cho bae bị xóa hoặc thay đổi.
+Bản phát hành được tạo với tham chiếu tới tệp của người dùng tại chỗ. Với một lượt nhập lên đám mây, coven đọc và tính hash từng tệp trước khi ghi, và chính lần ghi đó chuẩn bị mọi tệp với coven, trỏ từng hàng tới tệp của nó, và đưa lượt tải lên vào hàng đợi. Một lượt nhập cục bộ thì thay vào đó ghi đường dẫn, kích thước và thời điểm sửa đổi của từng tệp trên thiết bị này; byte của nó chỉ được đọc nếu sau này bản phát hành được chuyển lên đám mây. Dù theo cách nào, byte gốc của tệp vẫn là nguồn sự thật trong suốt quá trình; không thứ gì người dùng đưa cho bae bị xóa hoặc thay đổi.
 
 ## Nhận ra bản rip
 

@@ -162,38 +162,37 @@ impl Database {
         Ok(())
     }
 
-    pub async fn set_avatar(&self, avatar: Option<(String, Vec<u8>)>) -> Result<(), ProfileError> {
+    /// Set the person's avatar to `avatar`, a JPEG, staged as a new coven
+    /// file the profile row references; `None` clears it. The file the row
+    /// named before goes with its last reference.
+    pub async fn set_avatar(&self, avatar: Option<Vec<u8>>) -> Result<(), ProfileError> {
         let person = self.own_profile().await?.id.to_string();
         match avatar {
-            Some((id, bytes)) => {
-                // A new avatar replaces one still uploading; the person asked
-                // for that, so the abandoned upload's record is dismissed.
-                let abandoned = self
-                    .own_abandonments(&[(crate::sync::PEOPLE_NAMESPACE, person.clone())])
-                    .await?;
-                let file_id = id.clone();
+            Some(bytes) => {
                 self.write_with_files(
                     move |batch| {
-                        batch.put_file(crate::sync::PEOPLE_NAMESPACE, file_id, bytes);
-                        Ok(())
+                        Ok(batch.put_file(
+                            crate::sync::AVATARS_NAMESPACE,
+                            bytes,
+                            coven::Place::Cloud,
+                        ))
                     },
-                    move |sql| {
+                    move |sql, file| {
                         update_profile(
                             &sql,
                             "UPDATE people SET avatar_id = ? WHERE id = ?",
-                            params![id, person],
+                            params![file, person],
                         )?;
                         Ok(())
                     },
                 )
                 .await?;
-                self.dismiss_own_abandonments(&abandoned).await;
             }
             None => {
                 self.call_sql(move |sql| {
                     update_profile(
                         &sql,
-                        "UPDATE people SET avatar_id = NULL, file_size = NULL WHERE id = ?",
+                        "UPDATE people SET avatar_id = NULL WHERE id = ?",
                         [person],
                     )?;
                     Ok(())
@@ -204,17 +203,14 @@ impl Database {
         Ok(())
     }
 
-    /// The person's avatar as this device sees it: this device's own avatar
-    /// while its upload runs, otherwise the stored file their row names.
-    /// `None` when there is none here, as while another device uploads it.
+    /// The person's avatar, read through coven from wherever it has the
+    /// file their row references. `None` when the row references none.
     pub async fn avatar(&self, person: coven::MemberId) -> Result<Option<Vec<u8>>, ProfileError> {
-        self.profile(person).await?.ok_or(ProfileError::Missing)?;
-        let Some(file) = self
-            .current_file(crate::sync::PEOPLE_NAMESPACE, person.to_string().as_str())
-            .await?
-        else {
+        let profile = self.profile(person).await?.ok_or(ProfileError::Missing)?;
+        let Some(avatar) = profile.avatar_id else {
             return Ok(None);
         };
+        let file = self.coven_file(avatar).await?;
         Ok(Some(
             self.inner
                 .handle

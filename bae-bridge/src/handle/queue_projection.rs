@@ -188,7 +188,6 @@ impl crate::types::BridgeSyncStatusSnapshot {
         let bae_core::library::SyncStatusSnapshot {
             status: _,
             pending,
-            abandoned: _,
             error: _,
             retry_effect: _,
         } = snapshot;

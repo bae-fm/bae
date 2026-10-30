@@ -55,7 +55,6 @@
                         records: activity.attention,
                         perform: nil
                     )
-                    AbandonedAttachmentsView(attachments: activity.abandoned)
                     Button(
                         localizedCoreString("core.activity.open_settings"),
                         action: onOpenSettings

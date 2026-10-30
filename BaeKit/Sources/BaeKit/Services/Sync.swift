@@ -36,7 +36,6 @@ public final class Sync: Sendable, Observable {
     public let cancelReleaseTransition: @Sendable (String) async throws -> Void
     public let setSyncPaused: @Sendable (Bool) async throws -> Void
     public let reconnectSync: @Sendable () async throws -> Void
-    public let retryPendingOperation: @Sendable (Int64) async throws -> Void
     public let setMaxConcurrentUploads: @Sendable (UInt32) async throws -> Void
     public let storageLocation:
         @Sendable () async throws -> BridgeStorageLocation?
@@ -45,6 +44,8 @@ public final class Sync: Sendable, Observable {
             BridgeS3Detection
     /// The requests that ask sync to run now, none of which waits for it.
     public let nudges: SyncNudges
+    /// What a pending record's action asks core to do.
+    public let pendingActions: SyncPendingActions
 
     public init(
         disconnectCloudProvider: @escaping @Sendable () async throws -> Void = {
@@ -114,10 +115,6 @@ public final class Sync: Sendable, Observable {
         reconnectSync: @escaping @Sendable () async throws -> Void = {
             throw StubError.notImplemented
         },
-        retryPendingOperation:
-            @escaping @Sendable (Int64) async throws -> Void = { _ in
-                throw StubError.notImplemented
-            },
         setMaxConcurrentUploads:
             @escaping @Sendable (UInt32) async throws -> Void = { _ in
                 throw StubError.notImplemented
@@ -131,7 +128,8 @@ public final class Sync: Sendable, Observable {
             async throws -> BridgeS3Detection = { _, _ in
                 throw StubError.notImplemented
             },
-        nudges: SyncNudges = SyncNudges()
+        nudges: SyncNudges = SyncNudges(),
+        pendingActions: SyncPendingActions = SyncPendingActions()
     ) {
         self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
@@ -152,11 +150,11 @@ public final class Sync: Sendable, Observable {
         self.cancelReleaseTransition = cancelReleaseTransition
         self.setSyncPaused = setSyncPaused
         self.reconnectSync = reconnectSync
-        self.retryPendingOperation = retryPendingOperation
         self.setMaxConcurrentUploads = setMaxConcurrentUploads
         self.storageLocation = storageLocation
         self.detectS3Settings = detectS3Settings
         self.nudges = nudges
+        self.pendingActions = pendingActions
     }
 
     public convenience init(
@@ -207,9 +205,6 @@ public final class Sync: Sendable, Observable {
             },
             setSyncPaused: { try await handle.setSyncPaused(paused: $0) },
             reconnectSync: { try await handle.reconnectSync() },
-            retryPendingOperation: {
-                try await handle.retryPendingOperation(id: $0)
-            },
             setMaxConcurrentUploads: {
                 try await handle.setMaxConcurrentUploads(n: $0)
             },
@@ -217,7 +212,8 @@ public final class Sync: Sendable, Observable {
             detectS3Settings: {
                 try await handle.detectS3Settings(location: $0, credentials: $1)
             },
-            nudges: SyncNudges(handle: handle)
+            nudges: SyncNudges(handle: handle),
+            pendingActions: SyncPendingActions(handle: handle)
         )
     }
 
@@ -257,6 +253,46 @@ public struct SyncNudges: Sendable {
             triggerSync: { handle.triggerSync() },
             retryNow: { try await handle.retryNow() },
             reportNetworkChange: { handle.reportNetworkChange() }
+        )
+    }
+}
+
+/// What a pending record's action asks core to do, by the action.
+public struct SyncPendingActions: Sendable {
+    /// Retry one of coven's failed operations.
+    public let retryOperation: @Sendable (Int64) async throws -> Void
+    /// Pin a release again, as a failed pin's record offers.
+    public let retryDownload: @Sendable (String) async throws -> Void
+    /// End a release's failed move to the cloud, as its record offers: the
+    /// release is local here again.
+    public let cancelFailedMove: @Sendable (String, Int64) async throws -> Void
+
+    public init(
+        retryOperation: @escaping @Sendable (Int64) async throws -> Void = {
+            _ in throw StubError.notImplemented
+        },
+        retryDownload: @escaping @Sendable (String) async throws -> Void = {
+            _ in throw StubError.notImplemented
+        },
+        cancelFailedMove:
+            @escaping @Sendable (String, Int64) async throws -> Void = { _, _ in
+                throw StubError.notImplemented
+            }
+    ) {
+        self.retryOperation = retryOperation
+        self.retryDownload = retryDownload
+        self.cancelFailedMove = cancelFailedMove
+    }
+
+    public init(handle: any AppHandleProtocol) {
+        self.init(
+            retryOperation: { try await handle.retryPendingOperation(id: $0) },
+            retryDownload: {
+                try await handle.queuePinReleases(releaseIds: [$0])
+            },
+            cancelFailedMove: {
+                try await handle.cancelFailedReleaseMove(releaseId: $0, id: $1)
+            }
         )
     }
 }

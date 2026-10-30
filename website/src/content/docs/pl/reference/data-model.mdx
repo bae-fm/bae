@@ -34,11 +34,11 @@ Edycje dwóch urządzeń scalają się komórka po komórce, a późniejsza edyc
 
 ## Bloby
 
-Audio i obrazy przechodzą przez warstwę plików coven, każdy rodzaj z własnym limitem cache urządzenia: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) i awatary w `people` (64 MiB).
+Audio i obrazy są plikami coven, każdy rodzaj to przestrzeń nazw z własnym limitem cache urządzenia: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) i `avatars` (64 MiB). Wiersz wskazuje swój plik przez id pliku coven: `file` w `release_files`, `covers` i `artist_images` oraz `avatar_id` w `people`. Rozmiar, skrót zawartości i położenie pliku należą do coven i są odczytywane przez złączenie z `coven_files`.
 
-Pliki wydań należą do użytkownika i są cache'owane leniwie: pliki lokalnego wydania to pliki użytkownika pod ich oryginalnymi ścieżkami, zapisane w `local_release_files`; przeniesienie wydania do chmury dołącza każdy plik do jego wiersza `release_files` w jednym zapisie, a inne urządzenia pobierają go do cache przy pierwszym odczycie. Okładki, obrazy wykonawców i awatary należą do bae i są cache'owane z wyprzedzeniem: bae tworzy bajty (okładki są ponownie renderowane jako miniatury JPEG o szerokości najwyżej 600px), a każde urządzenie pobiera je, gdy tylko dotrą ich wiersze, żeby siatki renderowały się lokalnie.
+Pliki wydań należą do użytkownika: pliki lokalnego wydania to pliki użytkownika pod ich oryginalnymi ścieżkami, zapisane w `local_release_files`, a jego wiersze nie wskazują żadnego pliku coven. Przeniesienie wydania do chmury w jednym zapisie przygotowuje każdy plik w coven i kieruje każdy wiersz na jego plik; gdy ostatni zostanie zapisany, coven przełącza je wszystkie naraz na chmurę, a inne urządzenia pobierają każdy do cache przy pierwszym odczycie. Okładki, obrazy wykonawców i awatary należą do bae: bae tworzy bajty (okładki są ponownie renderowane jako miniatury JPEG o szerokości najwyżej 600px), a urządzenie pobiera każdy z nich, gdy zostanie pierwszy raz pokazany, i trzyma go, dopóki limit jego przestrzeni nazw go nie usunie.
 
-Każdy plik jest wysyłany zaszyfrowany pod losową nazwą, pod ścieżką ustaloną przy dołączaniu do wiersza, więc późniejsza zmiana nazwy nigdy nie przenosi obiektu.
+Każdy plik jest wysyłany zaszyfrowany pod losową nazwą, pod ścieżką ustaloną przy jego przygotowaniu, więc późniejsza zmiana nazwy nigdy nie przenosi obiektu. Plik nigdy nie zmienia swoich bajtów: nowy obraz to nowy plik.
 
 ## Tożsamość ripu
 

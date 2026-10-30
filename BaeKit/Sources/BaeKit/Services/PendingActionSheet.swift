@@ -12,7 +12,7 @@ public enum PendingActionSheet: Identifiable {
         case .review:
             self = .review(record)
         case .wait, .updateApp, .signIn, .reconnect, .resumeUploads,
-            .retryOperation, .restoreFromCode:
+            .retryOperation, .retryDownload, .cancelUpload, .restoreFromCode:
             return nil
         }
     }

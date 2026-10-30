@@ -34,11 +34,11 @@ Izmjene dvaju uređaja spajaju se ćeliju po ćeliju, a kasnija izmjena pobjeđu
 
 ## Blobovi
 
-Zvuk i slike prolaze kroz covenov sloj datoteka, svaka vrsta s vlastitim proračunom predmemorije uređaja: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) i avatari u `people` (64 MiB).
+Zvuk i slike su datoteke covena, svaka vrsta je imenski prostor s vlastitim proračunom predmemorije uređaja: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) i `avatars` (64 MiB). Redak upućuje na svoju datoteku identifikatorom datoteke covena: `file` u `release_files`, `covers` i `artist_images` te `avatar_id` u `people`. Veličina, sažetak sadržaja i lokacija datoteke pripadaju covenu i čitaju se spajanjem s `coven_files`.
 
-Datoteke izdanja pripadaju korisniku i lijeno se predmemoriraju: datoteke lokalnog izdanja korisnikove su datoteke na izvornim putovima, zabilježene u `local_release_files`; premještanje izdanja u oblak pridružuje svaku datoteku njezinu retku `release_files` u jednom pisanju, a drugi je uređaji dohvaćaju u predmemoriju pri prvom čitanju. Omoti, slike izvođača i avatari pripadaju bae i predmemoriraju se unaprijed: bae proizvodi bajtove (omoti se ponovno renderiraju kao JPEG sličice širine najviše 600 px), a svaki ih uređaj dohvaća čim stignu njihovi reci kako bi se mreže prikazivale lokalno.
+Datoteke izdanja pripadaju korisniku: datoteke lokalnog izdanja korisnikove su datoteke na izvornim putovima, zabilježene u `local_release_files`, a njegovi reci ne upućuju ni na jednu datoteku covena. Premještanje izdanja u oblak u jednom pisanju priprema svaku datoteku u covenu i usmjerava svaki redak na njegovu datoteku; kad se spremi posljednja, coven ih sve zajedno prebacuje u oblak, a drugi uređaji dohvaćaju svaku u predmemoriju pri prvom čitanju. Omoti, slike izvođača i avatari pripadaju bae: bae proizvodi bajtove (omoti se ponovno renderiraju kao JPEG sličice širine najviše 600 px), a uređaj dohvaća svaki kad se prvi put prikaže i čuva ga dok ga proračun njegova imenskog prostora ne izbaci.
 
-Svaka se datoteka prenosi šifrirana pod nasumičnim nazivom, na put određen kad se pridruži svom retku, pa kasnije preimenovanje nikad ne premješta objekt.
+Svaka se datoteka prenosi šifrirana pod nasumičnim nazivom, na put određen kad se pripremi, pa kasnije preimenovanje nikad ne premješta objekt. Datoteka nikad ne mijenja svoje bajtove: nova slika je nova datoteka.
 
 ## Identitet ripa
 

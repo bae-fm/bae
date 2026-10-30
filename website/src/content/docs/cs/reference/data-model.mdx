@@ -34,11 +34,11 @@ Plně místní tabulky, nikdy nedeklarované pro coven:
 
 ## Bloby
 
-Audio a obrázky procházejí souborovou vrstvou coven, každý druh s vlastním limitem mezipaměti zařízení: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) a avatary v `people` (64 MiB).
+Audio a obrázky jsou soubory coven, každý druh je jmenný prostor s vlastním limitem mezipaměti zařízení: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) a `avatars` (64 MiB). Řádek odkazuje na svůj soubor identifikátorem souboru coven: `file` v `release_files`, `covers` a `artist_images` a `avatar_id` v `people`. Velikost souboru, hash obsahu a umístění patří coven a čtou se spojením s `coven_files`.
 
-Soubory vydání patří uživateli a ukládají se do mezipaměti líně: soubory místního vydání jsou uživatelovy soubory v jejich původních cestách, zaznamenané v `local_release_files`; přesunutí vydání do cloudu připojí každý soubor k jeho řádku `release_files` jedním zápisem a ostatní zařízení si ho při prvním čtení stáhnou do mezipaměti. Obaly, obrázky interpretů a avatary patří bae a ukládají se předem: bae vytvoří bajty (obaly se znovu vykreslí jako náhledy JPEG o šířce nejvýše 600px) a každé zařízení je načte, jakmile dorazí jejich řádky, aby se mřížky vykreslovaly místně.
+Soubory vydání patří uživateli: soubory místního vydání jsou uživatelovy soubory v jejich původních cestách, zaznamenané v `local_release_files`, a jeho řádky neodkazují na žádný soubor coven. Přesunutí vydání do cloudu jedním zápisem připraví každý soubor v coven a nasměruje každý řádek na jeho soubor; jakmile je uložen poslední, coven je všechny najednou přepne na cloud a ostatní zařízení si každý z nich při prvním čtení stáhnou do mezipaměti. Obaly, obrázky interpretů a avatary patří bae: bae vytvoří bajty (obaly se znovu vykreslí jako náhledy JPEG o šířce nejvýše 600px) a zařízení každý z nich načte, když se poprvé zobrazí, a ponechá si ho, dokud ho limit jeho jmenného prostoru nevytlačí.
 
-Každý soubor se nahrává zašifrovaný pod náhodným názvem, v cestě určené při připojení k jeho řádku, takže pozdější přejmenování objekt nepřesune.
+Každý soubor se nahrává zašifrovaný pod náhodným názvem, v cestě určené při jeho přípravě, takže pozdější přejmenování objekt nepřesune. Soubor nikdy nemění své bajty: nový obrázek je nový soubor.
 
 ## Identita ripu
 

@@ -34,11 +34,11 @@ Les modifications de deux appareils fusionnent cellule par cellule, la modificat
 
 ## Blobs
 
-Audio et images passent par la couche de fichiers de coven, chaque type avec sa propre limite de cache par appareil : `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) et les avatars de `people` (64 MiB).
+Audio et images sont des fichiers coven, chaque type formant un espace de noms avec sa propre limite de cache par appareil : `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) et `avatars` (64 MiB). Une ligne référence son fichier par l’identifiant du fichier coven : `file` dans `release_files`, `covers` et `artist_images`, et `avatar_id` dans `people`. La taille, l’empreinte du contenu et l’emplacement du fichier appartiennent à coven et se lisent par une jointure avec `coven_files`.
 
-Les fichiers de sortie appartiennent à l’utilisateur et sont mis en cache à la demande : les fichiers d’une sortie locale sont les fichiers de l’utilisateur à leurs chemins d’origine, enregistrés dans `local_release_files` ; déplacer la sortie vers le cloud attache chaque fichier à sa ligne `release_files` en une seule écriture, et les autres appareils le récupèrent dans le cache à la première lecture. Les pochettes, images d’artistes et avatars appartiennent à bae et sont mis en cache d’avance : bae produit les octets (les pochettes sont rerendues en vignettes JPEG d’au plus 600 px de large), et chaque appareil les récupère dès que leurs lignes arrivent pour que les grilles s’affichent localement.
+Les fichiers de sortie appartiennent à l’utilisateur : les fichiers d’une sortie locale sont les fichiers de l’utilisateur à leurs chemins d’origine, enregistrés dans `local_release_files`, et ses lignes ne référencent aucun fichier coven. Déplacer la sortie vers le cloud prépare chaque fichier auprès de coven en une seule écriture et fait pointer chaque ligne vers son fichier ; une fois le dernier stocké, coven les bascule tous ensemble vers le cloud, et les autres appareils récupèrent chacun d’eux dans le cache à la première lecture. Les pochettes, images d’artistes et avatars appartiennent à bae : bae produit les octets (les pochettes sont rerendues en vignettes JPEG d’au plus 600 px de large), et un appareil récupère chacun d’eux la première fois qu’il est affiché et le garde jusqu’à ce que la limite de son espace de noms l’évince.
 
-Chaque fichier est envoyé chiffré sous un nom aléatoire, à un chemin fixé quand il est attaché à sa ligne, afin qu’un renommage ultérieur ne déplace jamais l’objet.
+Chaque fichier est envoyé chiffré sous un nom aléatoire, à un chemin fixé quand il est préparé, afin qu’un renommage ultérieur ne déplace jamais l’objet. Un fichier ne change jamais ses octets : une nouvelle image est un nouveau fichier.
 
 ## Identité d’un rip
 

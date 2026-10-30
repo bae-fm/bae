@@ -27,61 +27,25 @@ impl Database {
         self.commit_artist_identity_merge(plan).await
     }
 
+    /// Commit `plan` once the write finds the library as it was planned
+    /// against. The survivor without an image of its own takes the absorbed
+    /// artist's, its row referencing the same coven file: nothing is uploaded
+    /// again.
     async fn commit_artist_identity_merge(
         &self,
         plan: ArtistIdentityMergePlan,
     ) -> Result<(), DbError> {
-        let moved = if let (None, Some(_)) = &plan.images {
-            let reference = self
-                .file_ref("artist_images", &plan.absorbed_artist_id)
-                .await?;
-            let bytes = self
-                .read_file(&reference)
-                .await
-                .map_err(DbError::FileRead)?;
-            Some((reference, bytes))
-        } else {
-            None
-        };
-        let reference = moved.as_ref().map(|(reference, _)| reference.clone());
-        // The absorbed artist's image row goes; an upload of it still queued
-        // here is abandoned by the merge the person chose, so its record is
-        // dismissed.
-        let abandoned = match &plan.images.1 {
-            Some(_) => {
-                self.own_abandonments(&[("artist_images", plan.absorbed_artist_id.clone())])
-                    .await?
+        self.call_sql(move |sql| {
+            let current = plan_artist_identity_merge(&sql, &plan.content_hash, &plan.now)?;
+            if current != plan {
+                return Err(DbError::Message(format!(
+                    "artist identity merge plan for {} changed before commit",
+                    plan.content_hash
+                )));
             }
-            None => Vec::new(),
-        };
-        // The survivor's copied row is the one these bytes attach to.
-        let survivor = plan.surviving_artist_id.clone();
-        self.write_with_files(
-            move |write| {
-                if let Some((_, bytes)) = moved {
-                    write.put_file(crate::sync::ARTIST_IMAGES_NAMESPACE, survivor, bytes);
-                }
-                Ok(())
-            },
-            move |sql| {
-                if let Some(reference) = reference {
-                    sql.validate_file_ref(&reference)?;
-                }
-                let current = plan_artist_identity_merge(&sql, &plan.content_hash, &plan.now)
-                    .map_err(CovenError::from)?;
-                if current != plan {
-                    return Err(CovenError::from(DbError::Message(format!(
-                        "artist identity merge plan for {} changed before commit",
-                        plan.content_hash
-                    ))));
-                }
-                apply_artist_identity_merge(&sql, &plan).map_err(CovenError::from)
-            },
-        )
+            apply_artist_identity_merge(&sql, &plan)
+        })
         .await
-        .map_err(Self::coven_error)?;
-        self.dismiss_own_abandonments(&abandoned).await;
-        Ok(())
     }
 }
 
@@ -94,8 +58,8 @@ struct ArtistIdentityMergePlan {
     discogs_artist_id: String,
     musicbrainz_artist_id: String,
     surviving_sort_name: Option<String>,
-    /// The survivor's and absorbed artist's image versions.
-    images: (Option<String>, Option<String>),
+    /// The coven files of the survivor's and the absorbed artist's images.
+    images: (Option<coven::FileId>, Option<coven::FileId>),
     /// `created_at` for the merge record.
     now: String,
 }
@@ -165,7 +129,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     }
     let surviving_sort_name = discogs_artist.sort_name.or(musicbrainz_artist.sort_name);
     let image =
-        |artist_id: &str| super::files::image_version_on(sql, &LibraryImageType::Artist, artist_id);
+        |artist_id: &str| super::files::image_file_on(sql, &LibraryImageType::Artist, artist_id);
     let surviving_image = image(surviving_artist_id)?;
     let absorbed_image = image(&absorbed_artist_id)?;
 
@@ -231,10 +195,10 @@ fn apply_artist_identity_merge(
 
     if matches!(&plan.images, (None, Some(_))) {
         sql.execute(
-            "INSERT INTO artist_images (id, content_type, file_size, width, height, source, \
-                 source_url, created_at, revision) \
-             SELECT ?, content_type, file_size, width, height, source, source_url, \
-                 created_at, revision FROM artist_images WHERE id = ?",
+            "INSERT INTO artist_images (id, file, content_type, width, height, source, \
+                 source_url, created_at) \
+             SELECT ?, file, content_type, width, height, source, source_url, \
+                 created_at FROM artist_images WHERE id = ?",
             params![plan.surviving_artist_id, plan.absorbed_artist_id],
         )?;
     }

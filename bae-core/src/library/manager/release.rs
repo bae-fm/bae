@@ -551,8 +551,8 @@ impl LibraryManager {
             .collect();
 
         let deletion = self.database.plan_release_deletion(release_id).await?;
-        // Deletion is a local transaction. It abandons the attachment of each
-        // file still queued here, which takes its upload off the queue.
+        // Deletion is a local transaction. Each coven file of the release goes
+        // with its last reference, which takes its upload off the queue.
         self.database.delete_release_with_cleanup(deletion).await?;
 
         if !track_ids.is_empty() {

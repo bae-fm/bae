@@ -196,10 +196,12 @@ pub(super) fn build_release_detail_on(
 }
 
 /// What the library records this device holding for each of a release's audio
-/// files whose row names no stored file: no original (another device imported
+/// files that isn't stored: one whose row names no coven file, or one coven
+/// records on a device only. Each is no original (another device imported
 /// it), or the original's path with the size and modification time recorded at
-/// import, uploading or not. The disk is not read here: a read holds one of the
-/// database's readers, and the disk an original sits on can be slow to answer.
+/// import, moving to the cloud or not. The disk is not read here: a read holds
+/// one of the database's readers, and the disk an original sits on can be slow
+/// to answer.
 pub(super) fn unstored_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
@@ -207,7 +209,8 @@ pub(super) fn unstored_audio_on(
     let rows: Vec<(String, i64, Option<String>, Option<String>)> = sql.query(
         "SELECT f.content_type, f.file_size, l.path, l.modified_at \
          FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
-         WHERE f.release_id = ? AND f.hash IS NULL",
+         LEFT JOIN coven_files coven ON coven.id = f.file \
+         WHERE f.release_id = ? AND coven.hash IS NULL",
         params![release_id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     )?;
@@ -338,9 +341,12 @@ fn process_tracks(joined: Vec<(DbTrack, Option<LibraryCredit>)>) -> Vec<DbTrackW
 /// the import folder lists them, id breaking a tie: the order every list of
 /// a release's files shows (detail, gallery, storage, export), read from the
 /// index of each release's files in that order.
-pub(super) const RELEASE_FILES_IN_ORDER: &str = "SELECT * FROM release_files \
-     WHERE release_id = ?1 \
-     ORDER BY original_filename COLLATE natural_order, id";
+pub(super) const RELEASE_FILES_IN_ORDER: &str = concat!(
+    "SELECT ",
+    release_file_columns!(),
+    " FROM release_files AS f WHERE f.release_id = ?1 \
+     ORDER BY f.original_filename COLLATE natural_order, f.id"
+);
 
 pub(super) fn get_files_for_release_on(
     sql: &SqlReadContext<'_>,
@@ -613,7 +619,8 @@ pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
         file_size: row.get("file_size")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         source_audio,
-        stored: row.get::<_, Option<Vec<u8>>>("hash")?.is_some(),
+        file: row.get("file")?,
+        stored: row.get("stored")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }

@@ -96,7 +96,7 @@ async fn test_delete_release_with_multiple_releases_preserves_album() {
 /// Deleted rows disappear immediately, offline too; the uploads their files
 /// were queued for go with them, and the person's originals stay.
 #[tokio::test]
-async fn deletion_abandons_queued_file_uploads_and_keeps_the_originals() {
+async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
     for delete_album in [false, true] {
         let (manager, temp) = setup_test_manager().await;
         let storage = connect_test_cloud(&manager).await;

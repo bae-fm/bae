@@ -176,46 +176,35 @@ async fn exec_batch(db: &super::Database, sql: &str) {
         .unwrap();
 }
 
-/// Store a real cover holding `content` so coven supplies the file's managed
-/// columns, and return the version reads report for it.
+/// Store a real cover holding `content` as a coven file its row references,
+/// and return the version reads report for it.
 async fn write_cover(db: &super::Database, release: &str, content: &str) -> String {
     let bytes = content.as_bytes();
-    let image = crate::db::DbLibraryImage::cover(
-        release,
-        "discogs",
-        None,
-        bytes,
-        fixed_now(),
-        uuid::Uuid::new_v4().to_string(),
-    );
+    let image = crate::db::DbLibraryImage::cover(release, "discogs", None, fixed_now());
     db.write_library_image(&image, bytes).await.unwrap();
     stored_image_version(db, crate::sync::COVERS_NAMESPACE, release).await
 }
 
 /// The version reads should report for the image on `table`'s row `id`: the
-/// revision its row records, then the content hash of the file the row names
-/// once its upload completed, read from coven's own reference to the file
-/// rather than from the version query.
+/// coven file its row references, then that file's content hash once coven
+/// records it as stored, read from coven's own record of the file rather
+/// than from the version query.
 async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> String {
     let image_type = match table {
         crate::sync::COVERS_NAMESPACE => crate::db::LibraryImageType::Cover,
         crate::sync::ARTIST_IMAGES_NAMESPACE => crate::db::LibraryImageType::Artist,
         other => panic!("{other} holds no library images"),
     };
-    let revision = db
-        .find_library_image(id, &image_type)
+    let file = db
+        .library_image_file(id, &image_type)
         .await
         .unwrap()
-        .expect("the image row")
-        .revision;
-    let file = db.file_ref(table, id).await.unwrap();
-    let stored = match db.inner.handle.file_status(&file).await.unwrap() {
-        coven::FileStatus::Uploading => None,
-        _ => Some(file.content_hash()),
-    };
-    match stored {
-        Some(hash) => format!("{revision}.{}", hex::encode(hash.as_bytes())),
-        None => revision,
+        .expect("the image row");
+    match file.place() {
+        coven::FilePlace::Cloud { content_hash, .. } => {
+            format!("{}.{}", file.id().0, hex::encode(content_hash.as_bytes()))
+        }
+        coven::FilePlace::DeviceOnly { .. } => file.id().0.to_string(),
     }
 }
 

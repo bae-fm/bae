@@ -51,9 +51,9 @@ pub enum BridgeStorageInspectorTransfer {
         operation: BridgeDownloadOp,
         summary: Option<Vec<super::BridgeTransferCount>>,
     },
-    /// Coven fetching the copies the release's pins wait for, outside the
-    /// download queue: `summary` counts the pinned files waiting and kept,
-    /// each left out at zero.
+    /// Coven downloading the release's files a move to the cloud asked this
+    /// device to keep here, outside the download queue: `summary` counts the
+    /// files downloading and kept, each left out at zero.
     PinFetch {
         summary: Vec<super::BridgeTransferCount>,
     },

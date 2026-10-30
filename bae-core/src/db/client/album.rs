@@ -380,19 +380,13 @@ impl Database {
     }
 
     /// Delete the releases the person selected atomically. Refuse if the album
-    /// has changed since planning; coven owns retention of unreferenced files.
-    /// As for one release, the uploads this abandons are the person's own
-    /// doing, and their records are dismissed.
+    /// has changed since planning; each coven file of theirs goes with its
+    /// last reference.
     pub async fn delete_album_with_cleanup(
         &self,
         album_id: &str,
         releases: Vec<ReleaseDeletion>,
     ) -> Result<(), DbError> {
-        let rows: Vec<(&str, String)> = releases
-            .iter()
-            .flat_map(ReleaseDeletion::file_rows)
-            .collect();
-        let abandoned = self.own_abandonments(&rows).await?;
         let album_id = album_id.to_string();
         self.call_sql(move |sql| {
             let mut current: Vec<String> = sql.query(
@@ -420,9 +414,7 @@ impl Database {
             sql.execute("DELETE FROM releases WHERE album_id = ?", params![album_id])?;
             Ok(())
         })
-        .await?;
-        self.dismiss_own_abandonments(&abandoned).await;
-        Ok(())
+        .await
     }
 
     pub async fn set_album_primary_release(

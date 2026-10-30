@@ -161,9 +161,6 @@ async fn album_detail_releases_carry_their_own_pin_state() {
         )
         .await;
         manager.upload_release(&release.id, pin).await.unwrap();
-        if pin {
-            wait_for_offline_copy_request(&manager, &release.id).await;
-        }
         wait_for_landed_upload(&manager, &release.id).await;
         if pin {
             wait_for_kept_release(&manager, &release.id).await;
@@ -349,13 +346,13 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     store_test_cover(&manager, &release.id, b"cover-bytes").await;
 
     manager.upload_release(&release.id, true).await.unwrap();
-    wait_for_offline_copy_request(&manager, &release.id).await;
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 2, "the file and the cover both upload");
+    wait_for_kept_release(&manager, &release.id).await;
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
         file_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
-        "upload with pin leaves the release file pinned"
+        "a move to be kept here leaves the release file pinned"
     );
     assert!(
         !file_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,

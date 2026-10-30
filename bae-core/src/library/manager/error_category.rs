@@ -61,7 +61,11 @@ pub(super) fn pending_reason_category(reason: &coven::PendingReason) -> C {
         | R::AccessRemains { .. }
         | R::Rejected(_) => C::Membership,
         R::Failed(failure) => local_failure_category(*failure),
-        R::Missing { .. } | R::Waits(_) | R::FileUnavailable(_) | R::Paused => C::Internal,
+        R::Missing { .. }
+        | R::Waits(_)
+        | R::FileUnavailable(_)
+        | R::Original { .. }
+        | R::Paused => C::Internal,
         R::Cleanup { operation, .. } => pending_reason_category(operation),
     }
 }
@@ -196,6 +200,7 @@ pub(super) fn file_read_category(error: &coven::FileReadError) -> C {
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::NoStorage => C::Config,
         E::Missing { .. }
+        | E::DeviceOnly { .. }
         | E::UserFileMissing { .. }
         | E::UserFileChanged { .. }
         | E::Integrity { .. }

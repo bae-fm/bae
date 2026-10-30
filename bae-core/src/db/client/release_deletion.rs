@@ -1,16 +1,16 @@
 use super::*;
 
 /// The rows a deletion was planned against. Rechecking inside the write refuses
-/// a deletion when the release moved or its attached files changed meanwhile.
-/// Coven observes the deleted file rows and manages their retained bytes.
+/// a deletion when the release moved or its files changed meanwhile. Each coven
+/// file the deleted rows referenced goes with its last reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseDeletion {
     release_id: String,
     album_id: String,
-    /// File ids and hashes, ordered by id.
-    files: Vec<(String, Option<Vec<u8>>)>,
-    /// The cover's version, when the release has a cover.
-    cover: Option<String>,
+    /// File ids and the coven files they reference, ordered by id.
+    files: Vec<(String, Option<coven::FileId>)>,
+    /// The cover's coven file, when the release has a cover.
+    cover: Option<coven::FileId>,
 }
 
 impl ReleaseDeletion {
@@ -20,16 +20,6 @@ impl ReleaseDeletion {
 
     pub fn album_id(&self) -> &str {
         &self.album_id
-    }
-
-    /// The rows carrying the release's files: each release file, and its
-    /// cover, keyed by the release.
-    pub(super) fn file_rows(&self) -> Vec<(&'static str, String)> {
-        self.files
-            .iter()
-            .map(|(id, _)| ("release_files", id.clone()))
-            .chain([("covers", self.release_id.clone())])
-            .collect()
     }
 
     pub(super) fn plan_on<Q: QueryOne + QueryRows>(
@@ -45,11 +35,16 @@ impl ReleaseDeletion {
             .optional()?
             .ok_or_else(|| DbError::Message(format!("release not found: {release_id}")))?;
         let files = sql.query(
-            "SELECT id, hash FROM release_files WHERE release_id = ? ORDER BY id",
+            "SELECT id, file FROM release_files WHERE release_id = ? ORDER BY id",
             params![release_id],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<Vec<u8>>>(1)?)),
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<coven::FileId>>(1)?,
+                ))
+            },
         )?;
-        let cover = super::files::image_version_on(sql, &LibraryImageType::Cover, release_id)?;
+        let cover = super::files::image_file_on(sql, &LibraryImageType::Cover, release_id)?;
         Ok(Self {
             release_id: release_id.to_string(),
             album_id,

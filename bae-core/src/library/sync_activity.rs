@@ -3,7 +3,7 @@
 
 use crate::library::release_queue::ReleaseQueueProgress;
 use crate::library::CountLabel;
-use crate::library::{AbandonedItem, PendingItem, ReleaseQueueCounts, SyncStatusSnapshot};
+use crate::library::{PendingItem, ReleaseQueueCounts, SyncStatusSnapshot};
 use crate::ui::UiError;
 
 /// What sync is doing now: the work that needs the person and the transfers
@@ -17,9 +17,6 @@ pub struct SyncActivity {
     pub failure: Option<UiError>,
     /// The pending records that need the person; `None` until first read.
     pub attention: Option<Result<Vec<PendingItem>, UiError>>,
-    /// The files this device attached that no row will name, until the
-    /// person dismisses them; `None` until first read.
-    pub abandoned: Option<Result<Vec<AbandonedItem>, UiError>>,
     /// A sync pass is running.
     pub syncing: bool,
     /// The files this device is sending now, if any.
@@ -113,7 +110,6 @@ impl SyncActivity {
         Self {
             failure: status.shown_failure(),
             attention: status.pending.clone(),
-            abandoned: status.abandoned.clone(),
             syncing: status.syncing(),
             uploads,
             downloads,
@@ -129,14 +125,12 @@ impl SyncActivity {
     }
 
     /// Something needs the person: sync failed, a pending record waits on
-    /// them, an upload was abandoned, or a list couldn't be read. The
-    /// indicator shows a warning while it does.
+    /// them, or the list couldn't be read. The indicator shows a warning
+    /// while it does.
     pub fn needs_attention(&self) -> bool {
         self.failure.is_some()
             || matches!(&self.attention, Some(Ok(items)) if !items.is_empty())
             || matches!(&self.attention, Some(Err(_)))
-            || matches!(&self.abandoned, Some(Ok(items)) if !items.is_empty())
-            || matches!(&self.abandoned, Some(Err(_)))
     }
 }
 

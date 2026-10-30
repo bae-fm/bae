@@ -347,6 +347,7 @@ impl LibraryManager {
         self.clock.now().into()
     }
 
+    #[cfg(desktop)]
     pub(crate) fn new_id(&self) -> String {
         self.ids.new_id().to_string()
     }
@@ -514,9 +515,7 @@ impl LibraryManager {
             }
         })?;
         let pending = super::pending_item::PendingFollower::new(self.clone());
-        self.spawn_supervised_task("pending sync records", pending.run())?;
-        let abandoned = super::abandoned::AbandonedFollower::new(self.clone());
-        self.spawn_supervised_task("abandoned attachments", abandoned.run())
+        self.spawn_supervised_task("pending sync records", pending.run())
     }
 
     /// Every deletion of tracks from now on, none dropped, as the ids each

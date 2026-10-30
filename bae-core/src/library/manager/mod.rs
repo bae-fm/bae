@@ -48,8 +48,6 @@ use coven::IdSourceRef;
 mod service;
 pub use service::LibraryOpening;
 
-mod abandoned;
-pub use abandoned::AbandonedItem;
 mod album;
 mod artist;
 mod collections;
@@ -376,9 +374,6 @@ impl From<crate::import::ImportError> for LibraryError {
 pub struct SyncStatusSnapshot {
     pub status: coven::SyncStatus,
     pub pending: Option<Result<Vec<PendingItem>, crate::ui::UiError>>,
-    /// The files this device attached that no row will name, until the
-    /// person dismisses them; `None` until first read.
-    pub abandoned: Option<Result<Vec<AbandonedItem>, crate::ui::UiError>>,
     pub error: Option<crate::ui::UiError>,
     /// What the person's retry would do now, as coven decides it: run a
     /// pass, or be answered at once without one.
@@ -724,7 +719,7 @@ pub struct LibraryManager {
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     /// The manager's own background tasks (queue workers, the sync status,
-    /// pending and abandoned subscriptions, startup sync), which each hold a clone of it and
+    /// pending subscriptions, startup sync), which each hold a clone of it and
     /// so of the store. [`LibraryManager::close`] ends them all.
     tasks: service::BackgroundTasks,
     /// The readers of every deletion of tracks, each hearing all of them in

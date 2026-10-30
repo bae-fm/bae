@@ -315,7 +315,7 @@ impl FileDetail {
 
 /// Where this device's pin of a file stands: kept whole on this device,
 /// downloading now to be kept, as coven's `coven_downloading` lists it, or
-/// waiting for its copy to arrive.
+/// waiting for the download queue's pin of its release to fetch it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FilePin {
     Kept,
@@ -329,8 +329,8 @@ pub enum FilePin {
 
 /// A library image's reference: kind, subject id, and content version. The id is a
 /// release id for a cover and an artist id for an artist image; the version is the
-/// content hash coven records for the image row's file, so it moves exactly when
-/// the bytes do. The UI passes the
+/// image's version (the coven file the row references, with its content hash
+/// once stored), so it moves whenever the bytes a device can read do. The UI passes the
 /// whole reference back to read bytes, so core dispatches to the right table rather
 /// than probe every image namespace.
 #[derive(Debug, Clone, PartialEq, Eq)]

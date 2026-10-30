@@ -11,19 +11,14 @@ public final class SyncActivityStore {
     public private(set) var error: DisplayError?
     private let retryNowAction:
         @Sendable () async throws -> BridgeSyncRetryOutcome
-    private let dismissAbandonedAction:
-        @Sendable (BridgeAbandonedRecord) async throws -> Void
 
     public init(
         activity: BridgeSyncActivity? = nil,
         retryNow:
-            @escaping @Sendable () async throws -> BridgeSyncRetryOutcome,
-        dismissAbandoned:
-            @escaping @Sendable (BridgeAbandonedRecord) async throws -> Void
+            @escaping @Sendable () async throws -> BridgeSyncRetryOutcome
     ) {
         self.activity = activity
         retryNowAction = retryNow
-        dismissAbandonedAction = dismissAbandoned
     }
 
     public func apply(_ activity: BridgeSyncActivity) {
@@ -55,12 +50,6 @@ public final class SyncActivityStore {
             fail(error)
         }
     }
-
-    /// Forget an abandoned upload the person has seen; the next activity
-    /// value no longer lists it.
-    public func dismiss(_ attachment: BridgeAbandonedAttachment) async throws {
-        try await dismissAbandonedAction(attachment.record)
-    }
 }
 
 #if DEBUG
@@ -72,8 +61,7 @@ public final class SyncActivityStore {
         ) -> SyncActivityStore {
             SyncActivityStore(
                 activity: .preview(needsAttention: needsAttention),
-                retryNow: { .synced },
-                dismissAbandoned: { _ in }
+                retryNow: { .synced }
             )
         }
     }
@@ -88,7 +76,6 @@ public final class SyncActivityStore {
                 attention: .ready(
                     records: needsAttention ? [previewSignIn] : []
                 ),
-                abandoned: .ready(attachments: []),
                 syncing: true,
                 uploads: BridgeUploadsInFlight(
                     summaryParts: [

@@ -28,7 +28,7 @@ CloudKit không cần luồng nào: coven điều khiển nó trên nền tảng
 
 Bên trong nhà, mọi đường dẫn đối tượng đều bắt đầu bằng store id của thư viện: chuỗi thay đổi đánh số của coven, các snapshot của nó, yêu cầu tham gia và các tệp đã lưu. Nhiều thư viện có thể dùng chung một thư mục Dropbox hoặc OneDrive mà không chạm vào đối tượng của nhau.
 
-Mọi đối tượng đều được mã hóa và lưu dưới tên ngẫu nhiên; không có chế độ plaintext. Tệp của bae thuộc về các hàng của ba bảng đồng bộ, `release_files`, `covers` và `artist_images`, cùng ảnh đại diện trên mỗi hàng `people`. Đường dẫn của một tệp được cố định khi nó được gắn vào hàng của mình, nên đổi tên album không bao giờ di chuyển nó. Xem [Mã hóa](/vi/reference/encryption).
+Mọi đối tượng đều được mã hóa và lưu dưới tên ngẫu nhiên; không có chế độ plaintext. Tệp của bae là tệp coven mà các hàng của bốn bảng đồng bộ tham chiếu: `release_files`, `covers`, `artist_images`, và ảnh đại diện trên mỗi hàng `people`. Đường dẫn của một tệp được cố định khi nó được chuẩn bị, nên đổi tên album không bao giờ di chuyển nó. Xem [Mã hóa](/vi/reference/encryption).
 
 ## Hành vi dưới mạng thật
 

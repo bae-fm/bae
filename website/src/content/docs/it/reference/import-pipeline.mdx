@@ -42,7 +42,7 @@ Confermare un'importazione esegue, in ordine:
 3. **Scelta della copertina**: la grafica scelta (remota, immagine della cartella o incorporata) viene renderizzata di nuovo in una miniatura di visualizzazione; l'originale viene conservato tra i file della release se proveniva dalla cartella.
 4. **Scrittura atomica**: release, tracce, crediti, identità, formati, segmenti, file e copertina vengono salvati in una transazione. Non esiste uno stato importato a metà.
 
-La release arriva riferendo i file dell'utente sul posto. Per un'importazione nel cloud, coven legge e calcola l'hash di ogni file prima della scrittura, e la stessa scrittura allega ogni file alla sua riga e ne mette in coda il caricamento. Un'importazione locale registra invece percorso, dimensione e data di modifica di ogni file su questo dispositivo; i suoi byte vengono letti solo se la release viene poi spostata nel cloud. In entrambi i casi i byte originali dei file restano la fonte di verità per tutto il tempo; nulla di ciò che l'utente ha dato a bae viene mai eliminato o alterato.
+La release arriva riferendo i file dell'utente sul posto. Per un'importazione nel cloud, coven legge e calcola l'hash di ogni file prima della scrittura, e la stessa scrittura prepara ogni file in coven, fa puntare ogni riga al suo file e ne mette in coda il caricamento. Un'importazione locale registra invece percorso, dimensione e data di modifica di ogni file su questo dispositivo; i suoi byte vengono letti solo se la release viene poi spostata nel cloud. In entrambi i casi i byte originali dei file restano la fonte di verità per tutto il tempo; nulla di ciò che l'utente ha dato a bae viene mai eliminato o alterato.
 
 ## Riconoscere i rip
 

@@ -631,9 +631,10 @@ impl ImportService {
             };
             let prepared_source = match destination {
                 ImportDestination::Local => PreparedImportSource::Local(original),
-                ImportDestination::Remote { .. } => PreparedImportSource::Shared {
+                ImportDestination::Remote { pin } => PreparedImportSource::Shared {
                     original,
-                    attachment: Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
+                    keep_here: pin,
+                    prepared: Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
                         let completed = bytes_read_before_file + u128::from(consumed);
                         let percent = ((completed * 100) / total_bytes).min(100) as u8;
                         let previous = reported_percent_for_progress
@@ -828,9 +829,7 @@ impl ImportService {
                     &db_release.id,
                     &candidate.source,
                     candidate.source_url,
-                    &bytes,
                     library_manager.now(),
-                    library_manager.new_id(),
                 );
                 Some((image, bytes))
             }
@@ -892,7 +891,6 @@ impl ImportService {
                 prepared_files,
                 library_image,
                 artist_images,
-                destination,
             )
             .await?;
 

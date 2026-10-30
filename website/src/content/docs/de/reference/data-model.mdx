@@ -34,11 +34,11 @@ Die Änderungen zweier Geräte werden Zelle für Zelle zusammengeführt, wobei d
 
 ## Blobs
 
-Audio und Bilder gehen durch covens Dateischicht, jede Art mit eigenem Geräte-Cache-Budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) und die Avatare in `people` (64 MiB).
+Audio und Bilder sind coven-Dateien, jede Art ein Namensraum mit eigenem Geräte-Cache-Budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) und `avatars` (64 MiB). Eine Zeile verweist über die ID der coven-Datei auf ihre Datei: `file` in `release_files`, `covers` und `artist_images` und `avatar_id` in `people`. Größe, Inhalts-Hash und Speicherort der Datei gehören coven und werden über einen Join mit `coven_files` gelesen.
 
-Release-Dateien gehören dem Benutzer und werden bei Bedarf gecacht: Die Dateien eines lokalen Releases sind die Dateien des Benutzers an ihren ursprünglichen Pfaden, erfasst in `local_release_files`; das Verschieben des Releases in die Cloud hängt jede Datei in einem Schreibvorgang an ihre `release_files`-Zeile, und andere Geräte holen sie beim ersten Lesen in den Cache. Cover, Künstlerbilder und Avatare gehören bae und werden früh gecacht: bae erzeugt die Bytes (Cover werden als JPEG-Thumbnails mit höchstens 600 px Breite neu gerendert), und jedes Gerät holt sie, sobald ihre Zeilen ankommen, damit Raster lokal rendern.
+Release-Dateien gehören dem Benutzer: Die Dateien eines lokalen Releases sind die Dateien des Benutzers an ihren ursprünglichen Pfaden, erfasst in `local_release_files`, und seine Zeilen verweisen auf keine coven-Datei. Das Verschieben des Releases in die Cloud stellt jede Datei in einem Schreibvorgang bei coven bereit und lässt jede Zeile auf ihre Datei zeigen; sobald die letzte gespeichert ist, schaltet coven sie alle gemeinsam auf die Cloud um, und andere Geräte holen jede beim ersten Lesen in den Cache. Cover, Künstlerbilder und Avatare gehören bae: bae erzeugt die Bytes (Cover werden als JPEG-Thumbnails mit höchstens 600 px Breite neu gerendert), und ein Gerät holt jedes, wenn es zum ersten Mal angezeigt wird, und behält es, bis das Budget seines Namensraums es verdrängt.
 
-Jede Datei wird verschlüsselt unter einem zufälligen Namen hochgeladen, an einem Pfad, der beim Anhängen an ihre Zeile festgelegt wird, sodass eine spätere Umbenennung das Objekt nie verschiebt.
+Jede Datei wird verschlüsselt unter einem zufälligen Namen hochgeladen, an einem Pfad, der beim Bereitstellen festgelegt wird, sodass eine spätere Umbenennung das Objekt nie verschiebt. Eine Datei ändert nie ihre Bytes: Ein neues Bild ist eine neue Datei.
 
 ## Identität eines Rips
 

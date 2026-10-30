@@ -8,9 +8,11 @@ use bae_catalogs::catalog::Catalog;
 pub enum ImportDestination {
     /// Files stay in place on this device; never uploaded.
     Local,
-    /// Attach files in the import transaction and upload them in the background.
+    /// Stage files with coven for the cloud in the import transaction and
+    /// upload them in the background.
     Remote {
-        /// Whether coven keeps the uploaded bytes pinned rather than evictable.
+        /// Whether this device keeps the files whole once they are stored,
+        /// pinned rather than evictable.
         pin: bool,
     },
 }

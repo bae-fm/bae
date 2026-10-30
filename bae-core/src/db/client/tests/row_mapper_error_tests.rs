@@ -61,7 +61,7 @@ fn insert_file(
         None => (None, None, None, None, None),
     };
     conn.execute(
-        "INSERT INTO release_files (id, release_id, original_filename, file_size, content_type, hash, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 1, 'audio/flac', NULL, ?2, \
+        "INSERT INTO release_files (id, release_id, original_filename, file_size, content_type, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 1, 'audio/flac', ?2, \
          ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             id,
@@ -99,7 +99,11 @@ fn only_audio_has_a_layout_and_audio_left_out_of_the_tracklist_has_none() {
 
     let left_out = conn
         .query_row(
-            "SELECT * FROM release_files WHERE id = 'left-out'",
+            concat!(
+                "SELECT ",
+                release_file_columns!(),
+                " FROM release_files AS f WHERE f.id = 'left-out'"
+            ),
             [],
             row_to_file,
         )

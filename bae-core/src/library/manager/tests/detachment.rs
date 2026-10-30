@@ -30,11 +30,7 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
     )
     .await;
     store_test_cover(manager, &release.id, b"cover").await;
-    let cover = manager
-        .database
-        .file_ref("covers", &release.id)
-        .await
-        .unwrap();
+    let cover = cover_file(manager, &release.id).await.id();
     manager.upload_release(&release.id, false).await.unwrap();
     let files = release_files(manager, &release.id).await;
     assert_eq!(files.len(), 2);
@@ -51,7 +47,10 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
         manager.database.set_uploads_paused(false).await.unwrap();
         devices.resume().await;
         devices
-            .converge("SELECT id, hex(hash), location FROM release_files")
+            .converge(
+                "SELECT f.id, f.file, hex(c.hash), c.coordinates FROM release_files AS f \
+                 LEFT JOIN coven_files AS c ON c.id = f.file",
+            )
             .await;
         assert_eq!(
             manager
@@ -115,18 +114,14 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
             expected
         );
     }
-    assert_eq!(
-        manager
-            .database
-            .file_ref("covers", &release.id)
-            .await
-            .unwrap(),
-        cover
-    );
+    assert_eq!(cover_file(manager, &release.id).await.id(), cover);
     manager.database.set_uploads_paused(false).await.unwrap();
     devices.resume().await;
     devices
-        .converge("SELECT id, hex(hash), location FROM release_files")
+        .converge(
+            "SELECT f.id, f.file, hex(c.hash), c.coordinates FROM release_files AS f \
+                 LEFT JOIN coven_files AS c ON c.id = f.file",
+        )
         .await;
     for file in &files {
         assert!(
@@ -157,11 +152,12 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
     }
 }
 
+/// Cancelling the move of a release to be kept here makes it local again:
+/// nothing is left to keep, and it plays from its original.
 #[tokio::test]
-async fn cancelling_upload_with_a_queued_offline_copy_detaches_audio() {
+async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
     let (manager, temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    manager.set_downloads_paused(true).await.unwrap();
     let release = insert_local_release_with_files(
         &manager,
         temp.path(),
@@ -170,12 +166,19 @@ async fn cancelling_upload_with_a_queued_offline_copy_detaches_audio() {
     )
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
-    assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
     manager
         .cancel_release_transition(&release.id)
         .await
         .unwrap();
     assert!(download_queue_now(&manager).await.rows.is_empty());
+    assert_eq!(
+        manager
+            .database
+            .queued_upload_count_for_test()
+            .await
+            .unwrap(),
+        0
+    );
     let files = release_files(&manager, &release.id).await;
     assert_eq!(attached_file_count(&manager, &release.id).await, 0);
     assert_eq!(
@@ -238,9 +241,5 @@ async fn cancelling_a_cover_upload_preserves_completed_audio_and_its_download() 
         .await
         .iter()
         .all(|file| file.stored));
-    assert!(manager
-        .database
-        .file_ref("covers", &release.id)
-        .await
-        .is_ok());
+    cover_file(&manager, &release.id).await;
 }

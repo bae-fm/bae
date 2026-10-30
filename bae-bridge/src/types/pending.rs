@@ -92,6 +92,7 @@ pub(crate) enum PendingReasonKind {
     AccountInUse,
     AccessRemains,
     FileUnavailable,
+    FileChanged,
     FileLost,
     Failed,
     Rejected,
@@ -123,6 +124,14 @@ impl BridgePendingReason {
             R::AccessRemains { .. } => K::AccessRemains,
             R::FileUnavailable(coven::FileMissingReason::Source(_)) => K::FileUnavailable,
             R::FileUnavailable(coven::FileMissingReason::Lost) => K::FileLost,
+            R::Original {
+                failure: coven::FileSourceFailure::Missing,
+                ..
+            } => K::FileUnavailable,
+            R::Original {
+                failure: coven::FileSourceFailure::Changed | coven::FileSourceFailure::Integrity,
+                ..
+            } => K::FileChanged,
             R::Failed(_) => K::Failed,
             R::Rejected(_) => K::Rejected,
             R::Cleanup { .. } => K::Cleanup,
@@ -151,11 +160,25 @@ impl BridgePendingReason {
 pub enum BridgePendingAction {
     Wait,
     UpdateApp,
-    SignIn { provider: BridgeCloudProvider },
+    SignIn {
+        provider: BridgeCloudProvider,
+    },
     Reconnect,
     RestoreFile,
     ResumeUploads,
-    RetryOperation { id: i64 },
+    RetryOperation {
+        id: i64,
+    },
+    /// Pin the release again: `queue_pin_releases`, which queues a failed
+    /// pin again in its place.
+    RetryDownload {
+        release_id: String,
+    },
+    /// End the release's failed move to the cloud: `cancel_failed_release_move`.
+    CancelUpload {
+        release_id: String,
+        id: i64,
+    },
     RestoreFromCode,
     Review,
 }
@@ -172,6 +195,11 @@ impl BridgePendingAction {
             A::RestoreFile => Self::RestoreFile,
             A::ResumeUploads => Self::ResumeUploads,
             A::RetryOperation(id) => Self::RetryOperation { id: id.0 },
+            A::RetryDownload { release_id } => Self::RetryDownload { release_id },
+            A::CancelUpload { release_id, id } => Self::CancelUpload {
+                release_id,
+                id: id.0,
+            },
             A::RestoreFromCode => Self::RestoreFromCode,
             A::Review => Self::Review,
         }
@@ -196,6 +224,7 @@ impl PendingReasonKind {
             R::AccountInUse => "core.pending.reason.account_in_use",
             R::AccessRemains => "core.pending.reason.access_remains",
             R::FileUnavailable => "core.pending.reason.file_unavailable",
+            R::FileChanged => "core.pending.reason.file_changed",
             R::FileLost => "core.pending.reason.file_lost",
             R::Failed => "core.pending.reason.failed",
             R::Rejected => "core.pending.reason.rejected",
@@ -218,7 +247,8 @@ impl BridgePendingAction {
             A::Reconnect => "core.pending.action.reconnect",
             A::RestoreFile => "core.pending.action.restore_file",
             A::ResumeUploads => "core.pending.action.resume_uploads",
-            A::RetryOperation { .. } => "core.pending.action.retry",
+            A::RetryOperation { .. } | A::RetryDownload { .. } => "core.pending.action.retry",
+            A::CancelUpload { .. } => "core.pending.action.cancel_upload",
             A::RestoreFromCode => "core.pending.action.restore_from_code",
             A::Review => "core.pending.action.review",
         })

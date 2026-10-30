@@ -298,6 +298,7 @@ fn loading_builder(
 pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
     builder
         .synced_tables(crate::sync::synced_tables())
+        .namespaces(crate::sync::namespaces())
         .migrations(crate::migrations::all())
         .collation(
             crate::migrations::NATURAL_ORDER,
@@ -412,32 +413,22 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
         folder_relative_value(context.get(0)?, context.get(1)?)
     })
     .expect("bae_folder_relative registers");
-    // The schema indexes coven's `coven_key`, which coven registers on its own
-    // connections. These tests read no coven state, so any deterministic
-    // stand-in lets the index exist: this one returns its one value.
-    conn.create_scalar_function(
-        "coven_key",
-        1,
-        FunctionFlags::SQLITE_UTF8
-            | FunctionFlags::SQLITE_DETERMINISTIC
-            | FunctionFlags::SQLITE_INNOCUOUS,
-        |context| context.get::<rusqlite::types::Value>(0),
-    )
-    .expect("coven_key registers");
     conn.create_collation(
         crate::migrations::NATURAL_ORDER,
         crate::migrations::natural_order,
     )
     .expect("natural_order registers");
-    // The schema's triggers follow coven's `coven_pins` and
+    // The schema's triggers follow coven's `coven_files`, `coven_pins` and
     // `coven_upload_queue`, which coven creates before it migrates; these
-    // tests pin and queue nothing, so empty tables of the same shape let the
-    // triggers exist.
+    // tests record, pin and queue nothing, so empty tables of the same shape
+    // let the triggers exist.
     conn.execute_batch(
-        "CREATE TABLE coven_pins (table_name TEXT NOT NULL, key BLOB NOT NULL, \
-         kept INTEGER NOT NULL, PRIMARY KEY (table_name, key)) STRICT, WITHOUT ROWID; \
-         CREATE TABLE coven_upload_queue (table_name TEXT NOT NULL, key BLOB NOT NULL, \
-         file TEXT NOT NULL, position INTEGER PRIMARY KEY, UNIQUE (table_name, key)) STRICT;",
+        "CREATE TABLE coven_files (id TEXT PRIMARY KEY NOT NULL, audience TEXT NOT NULL, \
+         size INTEGER NOT NULL, hash BLOB, coordinates TEXT NOT NULL, \
+         namespace TEXT NOT NULL) STRICT, WITHOUT ROWID; \
+         CREATE TABLE coven_pins (file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
+         CREATE TABLE coven_upload_queue (file TEXT PRIMARY KEY NOT NULL, \
+         position INTEGER NOT NULL) STRICT, WITHOUT ROWID;",
     )
     .expect("the stand-in coven tables create");
     conn.execute_batch(include_str!("../../migrations/001_initial.sql"))

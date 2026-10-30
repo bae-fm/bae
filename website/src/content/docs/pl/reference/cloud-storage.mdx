@@ -28,7 +28,7 @@ CloudKit nie potrzebuje żadnego przepływu: coven obsługuje go na platformach 
 
 Wewnątrz domu każda ścieżka obiektu zaczyna się od identyfikatora magazynu biblioteki: numerowanej sekwencji zmian coven, jego migawek, próśb o dołączenie i przechowywanych plików. Kilka bibliotek może dzielić jeden folder Dropbox albo OneDrive bez dotykania obiektów pozostałych.
 
-Każdy obiekt jest szyfrowany i przechowywany pod losową nazwą; trybu jawnego nie ma. Pliki bae należą do wierszy trzech synchronizowanych tabel, `release_files`, `covers` i `artist_images`, plus awatar w każdym wierszu `people`. Ścieżka pliku jest ustalana, gdy plik zostaje dołączony do wiersza, więc zmiana nazwy albumu nigdy go nie przenosi. Zobacz [Szyfrowanie](/pl/reference/encryption).
+Każdy obiekt jest szyfrowany i przechowywany pod losową nazwą; trybu jawnego nie ma. Pliki bae to pliki coven, które wskazują wiersze czterech synchronizowanych tabel: `release_files`, `covers`, `artist_images` i awatar w każdym wierszu `people`. Ścieżka pliku jest ustalana, gdy plik zostaje przygotowany, więc zmiana nazwy albumu nigdy go nie przenosi. Zobacz [Szyfrowanie](/pl/reference/encryption).
 
 ## Zachowanie w rzeczywistych sieciach
 

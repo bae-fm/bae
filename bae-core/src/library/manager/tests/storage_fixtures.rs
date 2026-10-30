@@ -114,9 +114,6 @@ async fn uploaded_release_with_files(
 ) -> String {
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
     manager.upload_release(&release.id, pin).await.unwrap();
-    if pin {
-        wait_for_offline_copy_request(manager, &release.id).await;
-    }
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release file uploaded");
     if pin {
@@ -125,25 +122,25 @@ async fn uploaded_release_with_files(
     release.id
 }
 
-/// A release pinned as it uploaded, whose upload completed and whose files'
-/// pins coven carried to the stored files, where they wait: the stored files
+/// A release moved to the cloud to be kept here, whose move finished, and
+/// whose files coven keeps here by downloading their copies: the stored files
 /// can't be read, so coven can't fetch their copies until the test clears
 /// the storage's faults. The manager must already be connected via
 /// [`connect_test_cloud`].
 #[cfg(feature = "test-utils")]
-async fn release_waiting_for_its_carried_pin(
+async fn release_kept_here_waiting_for_its_copy(
     manager: &TestManager,
     dir: &std::path::Path,
     album_title: &str,
 ) -> DbRelease {
     let release =
-        insert_local_release_with_files(manager, dir, album_title, &[("track.flac", b"carried-bytes")])
+        insert_local_release_with_files(manager, dir, album_title, &[("track.flac", b"kept-bytes")])
             .await;
     manager.upload_release(&release.id, true).await.unwrap();
-    wait_for_offline_copy_request(manager, &release.id).await;
 
     // Hold the file's upload as it is created, and from then on refuse every
-    // read of the stored file, so the carried pin can't fetch its copy.
+    // read of the stored file, so coven's pin keeping it here can't fetch
+    // its copy.
     let home = &manager.storage;
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
@@ -187,22 +184,11 @@ async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<co
     refs
 }
 
-/// Wait for every file of a release pinned as it uploaded to be kept whole on
-/// this device. Completing an upload carries each file's pin to the stored
-/// file, and coven fetches its copy from storage after that.
+/// Wait for every file of a release kept here as it moved to the cloud to be
+/// kept whole on this device.
 #[cfg(feature = "test-utils")]
 async fn wait_for_kept_release(manager: &LibraryManager, release_id: &str) {
-    let mut pins = manager.database.subscribe_release_file_pins(release_id);
-    tokio::time::timeout(std::time::Duration::from_secs(20), async {
-        loop {
-            let pins = pins.next().await.expect("the query stays open").unwrap();
-            if pins.values().all(|pin| pin.kept) {
-                break;
-            }
-        }
-    })
-    .await
-    .expect("every pinned file is kept whole");
+    manager.wait_for_kept_release_for_test(release_id).await;
 }
 
 /// [`uploaded_release`] for a test connected with
@@ -224,9 +210,6 @@ async fn upload_release_under_sync_loop(
     )
     .await;
     manager.upload_release(&release.id, pin).await.unwrap();
-    if pin {
-        wait_for_offline_copy_request(manager, &release.id).await;
-    }
     wait_for_landed_upload(manager, &release.id).await;
     if pin {
         wait_for_kept_release(manager, &release.id).await;
@@ -255,17 +238,16 @@ async fn insert_partially_uploaded_release(
     .await;
 
     manager.upload_release(&release.id, true).await.unwrap();
-    wait_for_offline_copy_request(manager, &release.id).await;
     assert_eq!(queued_upload_count(manager).await, 2);
 
     std::fs::remove_file(source_dir.join("b.flac")).unwrap();
-    let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(uploaded, 1);
-    // The uploaded file's row names it; the other's names none until its
-    // upload completes.
+    manager.drain_uploads_expecting_work().await.unwrap();
+    // The move switches no file to the cloud until every one is stored, and
+    // waits for the missing original.
+    assert_eq!(queued_upload_count(manager).await, 2);
     assert_eq!(
         release_files(manager, &release.id).await.iter().filter(|file| file.stored).count(),
-        1
+        0
     );
     release
 }
@@ -388,47 +370,31 @@ async fn playback_error_reason_for_file(
 /// and its file in one coven batch. Storing different bytes again replaces the
 /// cover, as `change_cover` does.
 async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u8]) {
-    let cover = DbLibraryImage::cover(
-        release_id,
-        "local",
-        None,
-        bytes,
-        manager.clock.now().into(),
-        manager.new_id(),
-    );
+    let cover = DbLibraryImage::cover(release_id, "local", None, manager.clock.now().into());
     manager
         .store_library_image(&cover, bytes)
         .await
         .unwrap();
 }
 
-/// Whether coven keeps a row's file in the pinned cache. Asked of that row's
-/// own file rather than through a release's pin marker, which counts the
-/// release's files and never its cover.
+/// Whether coven keeps the coven file a row references in the pinned cache.
+/// Asked of that row's own file rather than through a release's pin marker,
+/// which counts the release's files and never its cover.
 #[cfg(feature = "test-utils")]
 async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
+    let file = match namespace {
+        crate::sync::RELEASE_FILES_NAMESPACE => manager.release_file_ref(row_id).await.unwrap(),
+        crate::sync::COVERS_NAMESPACE => cover_file(manager, row_id).await,
+        other => panic!("no pinned files in {other}"),
+    };
     manager
         .database
-        .rows_pinned(namespace, vec![row_id.to_string()])
+        .files_pinned(&[file.id()])
         .await
-        .expect("read the row's pin state")
+        .expect("read the file's pin state")
         .first()
         .copied()
         .flatten()
-        .expect("the file-bearing row exists")
+        .expect("this device has a record of the file")
 }
 
-#[cfg(feature = "test-utils")]
-async fn wait_for_offline_copy_request(manager: &LibraryManager, release: &str) {
-    let queue = download_queue_until(manager, |queue| {
-        queue.rows.iter().all(|row| {
-            row.op.release_id != release
-                || matches!(row.op.state, crate::library::DownloadPhase::Failed { .. })
-        })
-    })
-    .await;
-    assert!(
-        !queue.rows.iter().any(|row| row.op.release_id == release),
-        "offline copy failed: {queue:?}"
-    );
-}

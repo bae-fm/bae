@@ -41,7 +41,7 @@ impl LibraryManager {
                 .await
                 .map_err(crate::people::ProfileError::AvatarResizeTask)?
                 .map_err(|detail| crate::people::ProfileError::AvatarImage { detail })?;
-                Some((self.ids.new_id().to_string(), jpeg))
+                Some(jpeg)
             }
             None => None,
         };

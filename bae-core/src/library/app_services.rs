@@ -621,13 +621,17 @@ impl AppServices {
         self.inner.manager.retry_pending_operation(id).await
     }
 
-    /// Forget an abandoned attachment the person has seen in the activity
-    /// list.
-    pub async fn dismiss_abandoned_attachment(
+    /// End the release's failed move to the cloud, `id`, as its pending
+    /// record offers: the release is local here again.
+    pub async fn cancel_failed_release_move(
         &self,
-        file: coven::FileId,
+        release_id: &str,
+        id: coven::MoveId,
     ) -> Result<(), crate::library::LibraryError> {
-        self.inner.manager.dismiss_abandoned_attachment(file).await
+        self.inner
+            .manager
+            .cancel_failed_release_move(release_id, id)
+            .await
     }
 
     /// Everything sync is doing now, live, for the activity indicator.

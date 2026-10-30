@@ -28,7 +28,7 @@ CloudKit-এর কোনো flow লাগে না: coven Apple প্ল্�
 
 ঘরের ভেতরে প্রতিটি object path লাইব্রেরির store id দিয়ে শুরু হয়: coven-এর নম্বর দেওয়া পরিবর্তনের ক্রম, তার snapshot, যোগদানের অনুরোধ এবং রাখা ফাইল। একাধিক লাইব্রেরি একে অপরের object না ছুঁয়ে একটি Dropbox বা OneDrive ফোল্ডার ভাগ করতে পারে।
 
-প্রতিটি object encrypted হয়ে এলোমেলো নামের নিচে রাখা হয়; plaintext mode নেই। bae-এর ফাইল তিনটি সিঙ্ক হওয়া টেবিলের সারির অংশ: `release_files`, `covers` এবং `artist_images`, সঙ্গে প্রতিটি `people` সারির অবতার। একটি ফাইলের path তার সারির সঙ্গে যুক্ত হওয়ার সময় নির্দিষ্ট হয়, তাই অ্যালবামের নাম বদলালে সেটি কখনও নড়ে না। [Encryption](/bn/reference/encryption) দেখুন।
+প্রতিটি object encrypted হয়ে এলোমেলো নামের নিচে রাখা হয়; plaintext mode নেই। bae-এর ফাইল হলো coven ফাইল, যাদের চারটি সিঙ্ক হওয়া টেবিলের সারি reference করে: `release_files`, `covers`, `artist_images`, এবং প্রতিটি `people` সারির অবতার। একটি ফাইলের path প্রস্তুত হওয়ার সময় নির্দিষ্ট হয়, তাই অ্যালবামের নাম বদলালে সেটি কখনও নড়ে না। [Encryption](/bn/reference/encryption) দেখুন।
 
 ## বাস্তব network-এ আচরণ
 

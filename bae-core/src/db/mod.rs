@@ -6,7 +6,6 @@ mod models;
 // Only an import names its own artist credits from outside `db`.
 #[cfg(test)]
 pub(crate) use client::resolved_in_an_empty_library;
-pub(crate) use client::AbandonedRow;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::ArtistCredits;
 pub(crate) use client::FileRow;

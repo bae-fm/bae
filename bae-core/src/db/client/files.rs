@@ -1,9 +1,9 @@
 use super::*;
 
 impl Database {
-    /// Replace an image's bytes and row atomically; coven manages the old file.
-    /// Replacing an image this device is still uploading abandons that upload;
-    /// the person asked for that, so its record is dismissed.
+    /// Replace an image's bytes and row atomically: the write stages the bytes
+    /// as a new coven file and points the row at it, and the file the row named
+    /// before goes with its last reference.
     pub async fn write_library_image(
         &self,
         image: &DbLibraryImage,
@@ -42,41 +42,29 @@ impl Database {
         let namespace = image.image_type.namespace();
         let (image_type, id) = (image.image_type.clone(), image.id.clone());
         let planned = self
-            .read(move |sql| image_revision_on(&sql, &image_type, &id))
+            .read(move |sql| image_file_on(&sql, &image_type, &id))
             .await?;
         after_planning().await;
-        let abandoned = self
-            .own_abandonments(&[(namespace, image.id.clone())])
-            .await?;
-        // coven attaches the bytes to the row whose file id column — the row's
-        // own `id` — names them.
-        let file_id = image.id.clone();
         let bytes = bytes.to_vec();
         self.write_with_files(
-            move |w| {
-                w.put_file(namespace, file_id, bytes);
-                Ok(())
-            },
-            move |sql| {
+            move |w| Ok(w.put_file(namespace, bytes, coven::Place::Cloud)),
+            move |sql, file| {
                 // Refuse a replacement when another write of the image landed
-                // since planning. The image's upload completing changes none
-                // of this.
-                let current = image_revision_on(&sql, &image.image_type, &image.id)
-                    .map_err(CovenError::from)?;
+                // since planning: the row names another file than it did.
+                let current =
+                    image_file_on(&sql, &image.image_type, &image.id).map_err(CovenError::from)?;
                 if current != planned {
                     return Err(CovenError::from(DbError::Message(format!(
                         "{} image for {} changed after planning",
                         namespace, image.id
                     ))));
                 }
-                upsert_library_image_row(&sql, &image).map_err(CovenError::from)?;
+                upsert_library_image_row(&sql, &image, &file).map_err(CovenError::from)?;
                 Ok(())
             },
         )
         .await
-        .map_err(Self::coven_error)?;
-        self.dismiss_own_abandonments(&abandoned).await;
-        Ok(())
+        .map_err(Self::coven_error)
     }
 
     /// Find a host-provided image (cover / artist image) by its subject id. The
@@ -155,19 +143,26 @@ impl Database {
         }))
     }
 
-    /// The file a row carries as this device sees it: this device's pending
-    /// attachment while its upload runs, otherwise the stored file the row
-    /// names. `None` when the row names no file here.
-    pub(crate) async fn current_file(
+    /// coven's record of the file `file`, as this device reads it now.
+    pub(crate) async fn coven_file(&self, file: coven::FileId) -> Result<coven::FileRef, DbError> {
+        Ok(self.file_ref(file).await?)
+    }
+
+    /// The coven file a library image's row names, as this device reads it
+    /// now; `None` when there is no such row.
+    pub(crate) async fn library_image_file(
         &self,
-        table: &str,
-        row_id: &str,
+        id: &str,
+        image_type: &LibraryImageType,
     ) -> Result<Option<coven::FileRef>, DbError> {
-        match self.file_ref(table, row_id).await {
-            Ok(file) => Ok(Some(file)),
-            Err(coven::DbError::FileAbsent { .. }) => Ok(None),
-            Err(error) => Err(error.into()),
-        }
+        let (image_type, id) = (image_type.clone(), id.to_string());
+        let Some(file) = self
+            .read(move |sql| image_file_on(&sql, &image_type, &id))
+            .await?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(self.coven_file(file).await?))
     }
 
     /// The releases whose own files are queued, in upload queue order
@@ -186,20 +181,20 @@ impl Database {
     }
 }
 
-/// A library image's version: the revision of the write that last set its
-/// bytes, then the content hash of the stored file its row names once there is
-/// one. The bytes a device reads for an image change only with one of them:
-/// a write changes the revision on every device as it arrives, while the row
-/// names the new file only once its upload completes (coven §17.2), which
-/// changes the hash. So the version moves whenever any device's bytes for the
-/// image can, though not only then.
+/// A library image's version: the coven file its row names, then a dot and
+/// that file's content hash in lowercase hex once `coven_files` records it as
+/// stored. A new image is a new file, so the version moves on every device
+/// with the write that sets it. Sentinel: the hash part goes with bae commit
+/// 5, which makes images bound references that reach other devices with
+/// their file stored. Until then another device sees a new image's file on
+/// its uploader only, and the hash moves the version once it can read it.
 ///
-/// This is that version of the image row `alias` names, as a SQL expression:
-/// the revision, then a dot and the hash in lowercase hex once there is one.
+/// This is that version of the image row `alias` names, as a SQL expression.
 pub(super) fn image_version_sql(alias: &str) -> String {
     format!(
-        "(CASE WHEN {alias}.hash IS NULL THEN {alias}.revision \
-          ELSE {alias}.revision || '.' || lower(hex({alias}.hash)) END)"
+        "({alias}.file || COALESCE((SELECT '.' || lower(hex(coven.hash)) \
+          FROM coven_files AS coven \
+          WHERE coven.id = {alias}.file AND coven.hash IS NOT NULL), ''))"
     )
 }
 
@@ -241,19 +236,18 @@ pub(super) fn image_version_on<Q: QueryOne>(
         .optional()?)
 }
 
-/// The revision of the write that last set one image's bytes, or `None` when
-/// there is no such row.
-fn image_revision_on<Q: QueryOne>(
+/// The coven file one image row names, or `None` when there is no such row.
+pub(super) fn image_file_on<Q: QueryOne>(
     sql: &Q,
     image_type: &LibraryImageType,
     id: &str,
-) -> Result<Option<String>, DbError> {
+) -> Result<Option<coven::FileId>, DbError> {
     let table = image_table(image_type);
     Ok(sql
         .query_row(
-            &format!("SELECT revision FROM {table} WHERE id = ?"),
+            &format!("SELECT file FROM {table} WHERE id = ?"),
             params![id],
-            |row| row.get::<_, String>(0),
+            |row| row.get::<_, coven::FileId>(0),
         )
         .optional()?)
 }

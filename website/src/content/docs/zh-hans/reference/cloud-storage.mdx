@@ -28,7 +28,7 @@ CloudKit 完全不需要流程：coven 在 Apple 平台上以已登录 Apple Acc
 
 在主目录内，每个对象路径都以资料库的 store id 开头：coven 的编号变更序列、它的 snapshot、加入请求和已存储的文件。多个资料库可以共用同一个 Dropbox 或 OneDrive 文件夹，而不会触碰彼此的对象。
 
-每个对象都会加密并以随机名称存储；没有明文模式。bae 的文件属于三张同步表 `release_files`、`covers` 和 `artist_images` 的行，以及每个 `people` 行上的头像。文件路径在附加到所属行时就已固定，因此重命名专辑永远不会移动它。见[加密](/zh-hans/reference/encryption)。
+每个对象都会加密并以随机名称存储；没有明文模式。bae 的文件是 coven 文件，由四张同步表的行引用：`release_files`、`covers`、`artist_images`，以及每个 `people` 行上的头像。文件路径在暂存时就已固定，因此重命名专辑永远不会移动它。见[加密](/zh-hans/reference/encryption)。
 
 ## 真实网络下的行为
 

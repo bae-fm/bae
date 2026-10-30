@@ -73,26 +73,23 @@ resolved(artist_id, survivor_id) AS (
 )
 SELECT artist_id, survivor_id FROM resolved WHERE artist_id <> survivor_id;
 
--- One stored picture per artist; `id` is the artist's id.
+-- One stored picture per artist; `id` is the artist's id. `file` is the
+-- picture's coven file (`coven_files`), which a new picture replaces and two
+-- merged artists share.
 CREATE TABLE IF NOT EXISTS artist_images (
     id TEXT PRIMARY KEY,
+    file TEXT NOT NULL,
     content_type TEXT NOT NULL,
-    file_size INTEGER NOT NULL,
     width INTEGER,
     height INTEGER,
     source TEXT NOT NULL,
     source_url TEXT,
     created_at TEXT NOT NULL,
-    -- A new id each time bae writes the image's bytes. It changes on every
-    -- device with the write, while the file columns follow only once the
-    -- upload completes, so an image's version (§4.1) is this and the hash.
-    revision TEXT NOT NULL,
-    -- coven writes both columns when the file's upload completes; until then
-    -- the row names no file, and only the attaching device holds it.
-    hash BLOB,
-    location TEXT,
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
+
+-- An artist image's row by its file, which coven's pending records name.
+CREATE INDEX IF NOT EXISTS idx_artist_images_file ON artist_images (file);
 
 -- An album groups releases; each pressing's own facts are on its `releases`
 -- row.
@@ -225,26 +222,22 @@ CREATE TABLE IF NOT EXISTS releases (
 
 CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id, album_order, id);
 
--- One stored cover per release; `id` is the release's id.
+-- One stored cover per release; `id` is the release's id. `file` is the
+-- cover's coven file (`coven_files`), which a new cover replaces.
 CREATE TABLE IF NOT EXISTS covers (
     id TEXT PRIMARY KEY,
+    file TEXT NOT NULL,
     content_type TEXT NOT NULL,
-    file_size INTEGER NOT NULL,
     width INTEGER,
     height INTEGER,
     source TEXT NOT NULL,
     source_url TEXT,
     created_at TEXT NOT NULL,
-    -- A new id each time bae writes the image's bytes. It changes on every
-    -- device with the write, while the file columns follow only once the
-    -- upload completes, so an image's version (§4.1) is this and the hash.
-    revision TEXT NOT NULL,
-    -- coven writes both columns when the file's upload completes; until then
-    -- the row names no file, and only the attaching device holds it.
-    hash BLOB,
-    location TEXT,
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
+
+-- A cover's row by its file, which coven's pending records name.
+CREATE INDEX IF NOT EXISTS idx_covers_file ON covers (file);
 
 -- The files a release's audio and artwork are stored as, with the facts of the
 -- audio they were imported from.
@@ -252,13 +245,17 @@ CREATE TABLE IF NOT EXISTS release_files (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
     original_filename TEXT NOT NULL,
+    -- Sentinel: bae commit 3, which stages every release file with coven,
+    -- reads a file's size from `coven_files` and drops this column. A local
+    -- release's files have no coven file until then, and their size is here.
     file_size INTEGER NOT NULL,
     content_type TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    -- coven writes both columns when this file's upload completes; until
-    -- then the row names no file, and only the attaching device holds it.
-    hash BLOB,
-    location TEXT,
+    -- The file's coven file (`coven_files`). Sentinel: NULL for a file of a
+    -- release this device keeps local, whose original `local_release_files`
+    -- records; bae commit 3 stages those with coven too and makes this
+    -- NOT NULL.
+    file TEXT,
     -- What the file held before import rewrote it: its own audio ('file') or
     -- one slice of a CUE-described disc ('cue').
     source_audio_layout TEXT,
@@ -310,6 +307,10 @@ CREATE TABLE IF NOT EXISTS release_files (
 CREATE INDEX IF NOT EXISTS idx_release_files_release_order
     ON release_files (release_id, original_filename COLLATE natural_order, id);
 
+-- A release file's row by its coven file, which coven's views and pending
+-- records name.
+CREATE INDEX IF NOT EXISTS idx_release_files_file ON release_files (file);
+
 -- Each release's files by size and by kind (content type), name and id
 -- breaking a tie: the other orders the Storage sheet's file table sorts by,
 -- each read from its index either way.
@@ -320,13 +321,19 @@ CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
 
 -- The original of each release file this device imported, or the copy a
 -- detach made: its path and the modification time recorded then. These paths
--- never leave this device. A row stays through an upload: until the row names
--- a stored file, this device plays the file from here.
+-- never leave this device. While the file's row names no coven file, this
+-- device plays the file from here; a row stays through a move to the cloud,
+-- so cancelling one makes the release local here again. Sentinel: bae commit
+-- 3 stages a local release's files with coven, which records the originals,
+-- and drops this table.
 CREATE TABLE IF NOT EXISTS local_release_files (
     file_id TEXT NOT NULL PRIMARY KEY REFERENCES release_files(id) ON DELETE CASCADE,
     path TEXT NOT NULL,
     modified_at TEXT NOT NULL
 ) STRICT;
+
+-- An original by its path, which a record of coven's about moving it names.
+CREATE INDEX IF NOT EXISTS idx_local_release_files_path ON local_release_files (path);
 
 -- The folder hash (SHA-256 over sorted relative paths, sizes and modification
 -- times) of the files this device imported each release from. Another device's
@@ -1163,18 +1170,16 @@ END;
 -- `album_title` and the credit keys copied from its album's `album_listing`
 -- row; `media_empty` (1 for a release stating no medium) and `media_key`
 -- (every stated medium with its count, in order); its files' count and total
--- size; `stored`, 1 when it has files and every one names its stored file;
--- `pinned_count`, how many of its files coven's `coven_pins` lists as kept
--- whole on this device, and `waiting_pin_count`, how many it lists waiting
--- for coven to fetch their copies; `queued_count` and
+-- size; `stored`, 1 when it has files and every one names a coven file
+-- `coven_files` records as stored; `pinned_count`, how many of its files
+-- coven's `coven_pins` lists as kept whole on this device; `queued_count` and
 -- `first_queued_position`, how many of its files coven's
 -- `coven_upload_queue` lists and the place of the first of them (NULL with
 -- none); `download_queued`, 1 while this device's download queue holds it
 -- waiting or downloading; and `storage_order`, where it sorts by storage,
 -- worked out from those in the same write: uploading (0), pinning (1) while
--- its files are coming to this device, by the download queue or by coven
--- fetching the copies its pins wait for, local (2), pinned (3), in the
--- cloud only (4).
+-- the download queue brings its files to this device, local (2), pinned (3),
+-- in the cloud only (4).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -1188,13 +1193,12 @@ CREATE TABLE IF NOT EXISTS release_listing (
     total_size INTEGER NOT NULL,
     stored INTEGER NOT NULL,
     pinned_count INTEGER NOT NULL,
-    waiting_pin_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
     download_queued INTEGER NOT NULL CHECK (download_queued IN (0, 1)),
     storage_order INTEGER GENERATED ALWAYS AS (CASE
         WHEN queued_count > 0 THEN 0
-        WHEN download_queued = 1 OR waiting_pin_count > 0 THEN 1
+        WHEN download_queued = 1 THEN 1
         WHEN stored = 0 THEN 2
         WHEN file_count > 0 AND pinned_count = file_count THEN 3
         ELSE 4 END) VIRTUAL,
@@ -1286,7 +1290,7 @@ BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
-        waiting_pin_count, queued_count, first_queued_position, download_queued)
+        queued_count, first_queued_position, download_queued)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            json_array_length(r.media) = 0,
            (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'),
@@ -1296,20 +1300,17 @@ BEGIN
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
            (SELECT COALESCE(SUM(f.file_size), 0) FROM release_files f WHERE f.release_id = r.id),
            EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id)
-             AND NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL),
+             AND NOT EXISTS (SELECT 1 FROM release_files f
+                             LEFT JOIN coven_files coven ON coven.id = f.file
+                             WHERE f.release_id = r.id AND coven.hash IS NULL),
            (SELECT COUNT(*) FROM release_files f
-            JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id)
-            WHERE f.release_id = r.id AND pin.kept = 1),
+            JOIN coven_pins pin ON pin.file = f.file
+            WHERE f.release_id = r.id),
            (SELECT COUNT(*) FROM release_files f
-            JOIN coven_pins pin ON pin.table_name = 'release_files' AND pin.key = coven_key(f.id)
-            WHERE f.release_id = r.id AND pin.kept = 0),
-           (SELECT COUNT(*) FROM release_files f
-            JOIN coven_upload_queue queued
-                ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
+            JOIN coven_upload_queue queued ON queued.file = f.file
             WHERE f.release_id = r.id),
            (SELECT MIN(queued.position) FROM release_files f
-            JOIN coven_upload_queue queued
-                ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
+            JOIN coven_upload_queue queued ON queued.file = f.file
             WHERE f.release_id = r.id),
            EXISTS (SELECT 1 FROM download_queue download
                    WHERE download.release_id = r.id AND download.state IN ('queued', 'active'))
@@ -1328,7 +1329,6 @@ BEGIN
         total_size = excluded.total_size,
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
-        waiting_pin_count = excluded.waiting_pin_count,
         queued_count = excluded.queued_count,
         first_queued_position = excluded.first_queued_position,
         download_queued = excluded.download_queued;
@@ -1370,7 +1370,7 @@ BEGIN
     INSERT INTO release_listing_refresh (release_id) VALUES (NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_file_changed AFTER UPDATE OF release_id, file_size, hash ON release_files
+CREATE TRIGGER IF NOT EXISTS release_listing_file_changed AFTER UPDATE OF release_id, file_size, file ON release_files
 BEGIN
     INSERT INTO release_listing_refresh (release_id) VALUES (OLD.release_id);
     INSERT INTO release_listing_refresh (release_id) VALUES (NEW.release_id);
@@ -1396,75 +1396,70 @@ BEGIN
     SELECT id FROM releases WHERE album_id = NEW.album_id;
 END;
 
--- A release file's key as coven's state views name it (`coven_key`), so a
--- read joining coven's upload queue or pins reaches the file by its key.
-CREATE INDEX IF NOT EXISTS idx_release_files_coven_key ON release_files (coven_key(id));
-
--- A release's key as coven's views name it, which is its cover's key too: a
--- pending record or an abandoned attachment on a cover finds the cover's
--- release by it.
-CREATE INDEX IF NOT EXISTS idx_releases_coven_key ON releases (coven_key(id));
-
--- A release file's pin moves its release's pinned and waiting counts, in
--- the transaction that changes the pin: this device's own write, another
--- device's applied, or coven's own as a file is pinned, downloads, uploads
--- or is unpinned. A pin begins kept (a pinned file still queued here, or a
--- pinned whole copy) or waiting for its copy (a pin carried from a
--- completed upload that kept no copy of its own), and a waiting pin's
--- `kept` turns to 1 as its copy lands, moving it from the waiting count to
--- the pinned one. A file whose row is gone, or whose release is not listed
--- yet, moves nothing: the refresh above counts its release's pins from
--- `coven_pins` as it writes the release's row.
-CREATE TRIGGER IF NOT EXISTS release_listing_file_pinned AFTER INSERT ON coven_pins
-WHEN NEW.table_name = 'release_files'
+-- A release file's coven file being recorded, switched to its stored bytes
+-- or deleted refreshes its release: whether the release is stored follows
+-- its files' records, which coven changes with no change to a row of bae's,
+-- in this device's write completing an upload and as another device's write
+-- applies. A record no release file names moves nothing.
+CREATE TRIGGER IF NOT EXISTS release_listing_coven_file_added AFTER INSERT ON coven_files
 BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count + NEW.kept,
-        waiting_pin_count = waiting_pin_count + 1 - NEW.kept
-    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
+    INSERT INTO release_listing_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = NEW.id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_file_kept AFTER UPDATE OF kept ON coven_pins
-WHEN NEW.table_name = 'release_files' AND OLD.kept <> NEW.kept
+CREATE TRIGGER IF NOT EXISTS release_listing_coven_file_switched AFTER UPDATE OF coordinates ON coven_files
 BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count + NEW.kept - OLD.kept,
-        waiting_pin_count = waiting_pin_count + OLD.kept - NEW.kept
-    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
+    INSERT INTO release_listing_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_coven_file_removed AFTER DELETE ON coven_files
+BEGIN
+    INSERT INTO release_listing_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = OLD.id;
+END;
+
+-- A release file's pin moves its release's pinned count, in the transaction
+-- that changes the pin: this device's own write, another device's applied,
+-- or coven's own as a file is pinned, kept here or unpinned. A pin is listed
+-- only once the whole file is on this device. A file no release file names,
+-- or whose release is not listed yet, moves nothing: the refresh above counts
+-- its release's pins from `coven_pins` as it writes the release's row.
+CREATE TRIGGER IF NOT EXISTS release_listing_file_pinned AFTER INSERT ON coven_pins
+BEGIN
+    UPDATE release_listing SET pinned_count = pinned_count + 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = NEW.file);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_file_unpinned AFTER DELETE ON coven_pins
-WHEN OLD.table_name = 'release_files'
 BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count - OLD.kept,
-        waiting_pin_count = waiting_pin_count - 1 + OLD.kept
-    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = OLD.key);
+    UPDATE release_listing SET pinned_count = pinned_count - 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
 END;
 
 -- A release file joining or leaving this device's upload queue moves its
 -- release's queued count and first place, in the transaction that changes
--- the queue: attaching the file, completing or abandoning its upload, or
--- clearing it. A newer attachment to the same row leaves the queue and joins
--- it again. A file whose row is gone, or whose release is not listed yet,
--- moves nothing: the refresh above counts its release's queued files from
--- `coven_upload_queue` as it writes the release's row.
+-- the queue: staging the file for the cloud, its move switching it to the
+-- cloud, its upload retiring, or the row no longer naming it. A file no
+-- release file names, or whose release is not listed yet, moves nothing: the
+-- refresh above counts its release's queued files from `coven_upload_queue`
+-- as it writes the release's row.
 CREATE TRIGGER IF NOT EXISTS release_listing_file_queued AFTER INSERT ON coven_upload_queue
-WHEN NEW.table_name = 'release_files'
 BEGIN
     UPDATE release_listing SET queued_count = queued_count + 1,
         first_queued_position = MIN(COALESCE(first_queued_position, NEW.position), NEW.position)
-    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = NEW.key);
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = NEW.file);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_file_unqueued AFTER DELETE ON coven_upload_queue
-WHEN OLD.table_name = 'release_files'
 BEGIN
     UPDATE release_listing SET queued_count = queued_count - 1,
         first_queued_position = CASE WHEN first_queued_position = OLD.position
             THEN (SELECT MIN(queued.position) FROM release_files f
-                  JOIN coven_upload_queue queued
-                      ON queued.table_name = 'release_files' AND queued.key = coven_key(f.id)
+                  JOIN coven_upload_queue queued ON queued.file = f.file
                   WHERE f.release_id = release_listing.release_id)
             ELSE first_queued_position END
-    WHERE release_id = (SELECT release_id FROM release_files WHERE coven_key(id) = OLD.key);
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
 END;
 
 -- Library search (§2.3) matches a query anywhere inside a title or a name,
@@ -4910,19 +4905,19 @@ CREATE TABLE IF NOT EXISTS source_release_unfetched (
 ) STRICT;
 
 -- Profiles retain the stable member id even after membership removal.
--- Only coven writes file hashes and locations; no avatar means no file.
+-- `avatar_id` is the profile picture's coven file (`coven_files`); NULL is
+-- no picture.
 CREATE TABLE people (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     private_circle TEXT NOT NULL,
     history_sharing TEXT NOT NULL CHECK (history_sharing IN ('private', 'household')),
-    avatar_id TEXT,
-    file_size INTEGER,
-    hash BLOB,
-    location TEXT
+    avatar_id TEXT
 ) STRICT;
 -- Profiles list by name.
 CREATE INDEX people_name ON people(name, id);
+-- A profile by its picture's file, which coven's pending records name.
+CREATE INDEX people_avatar ON people(avatar_id);
 
 -- Ratings identify one person's judgment of an album or one release's track.
 CREATE TABLE ratings (

@@ -28,7 +28,7 @@ CloudKit n’a besoin d’aucun flux : coven le pilote sur les plateformes Apple
 
 Dans l’emplacement, chaque chemin d’objet commence par l’identifiant de stockage de la bibliothèque : la séquence numérotée de changements de coven, ses instantanés, les demandes d’adhésion et les fichiers stockés. Plusieurs bibliothèques peuvent partager un même dossier Dropbox ou OneDrive sans toucher aux objets des autres.
 
-Chaque objet est chiffré et stocké sous un nom aléatoire ; il n’existe pas de mode en clair. Les fichiers de bae appartiennent à des lignes de trois tables synchronisées, `release_files`, `covers` et `artist_images`, plus l’avatar de chaque ligne `people`. Le chemin d’un fichier est fixé quand il est attaché à sa ligne, donc renommer un album ne le déplace jamais. Consultez [Chiffrement](/fr/reference/encryption).
+Chaque objet est chiffré et stocké sous un nom aléatoire ; il n’existe pas de mode en clair. Les fichiers de bae sont des fichiers coven que référencent des lignes de quatre tables synchronisées : `release_files`, `covers`, `artist_images` et l’avatar de chaque ligne `people`. Le chemin d’un fichier est fixé quand il est préparé, donc renommer un album ne le déplace jamais. Consultez [Chiffrement](/fr/reference/encryption).
 
 ## Comportement sur de vrais réseaux
 

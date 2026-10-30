@@ -128,8 +128,8 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
         .cancel_release_transition(&release.id)
         .await
         .unwrap();
-    // Clearing the pending attachment abandons it, so its upload leaves the
-    // queue.
+    // Taking the row off its coven file deletes the file with its last
+    // reference, so its upload leaves the queue.
     assert!(handle.uploads().await.unwrap().files.is_empty());
     assert!(manager
         .get_files_for_release(&release.id)

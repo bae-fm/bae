@@ -106,13 +106,15 @@ pub(crate) struct PreparedImportFile {
     pub(crate) source: PreparedImportSource,
 }
 
-/// Every original is recorded on this device; a shared one is also attached
-/// to its row for upload.
+/// Every original is recorded on this device; a shared one is also staged
+/// with coven for the cloud, read whole once, and kept whole here once stored
+/// when `keep_here` says so.
 pub(crate) enum PreparedImportSource {
     Local(coven::UserFile),
     Shared {
         original: coven::UserFile,
-        attachment: coven::PreparedUserFile,
+        prepared: coven::PreparedUserFile,
+        keep_here: bool,
     },
 }
 

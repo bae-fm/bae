@@ -26,9 +26,9 @@ async fn a_releases_queued_files_are_found_by_its_files() {
     ] {
         let plan = plan(&db, statement).await;
         assert!(
-            plan.iter().any(|step| step.starts_with("SEARCH")
-                && step.contains("(table_name=? AND key=?)")),
-            "the queue is not searched by row: {plan:?}"
+            plan.iter()
+                .any(|step| step.starts_with("SEARCH") && step.contains("(file=?)")),
+            "the queue is not searched by file: {plan:?}"
         );
         assert!(
             !plan

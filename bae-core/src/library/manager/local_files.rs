@@ -158,7 +158,13 @@ impl LibraryManager {
                     "making release local was cancelled".into(),
                 ));
             }
-            let reference = self.database.file_ref("release_files", &id).await?;
+            let reference = self.release_file_ref(&id).await?;
+            let coven::FilePlace::Cloud { content_hash, .. } = reference.place() else {
+                return Err(LibraryError::Storage(format!(
+                    "release file {id} is not in the cloud"
+                )));
+            };
+            let expected = *content_hash.as_bytes();
             let stream = self
                 .database
                 .open_file_stream(&reference)
@@ -181,7 +187,6 @@ impl LibraryManager {
                 })
                 .await?;
             }
-            let expected = *reference.content_hash().as_bytes();
             let source = blocking_io(move || {
                 use std::io::{Seek, SeekFrom};
                 output.sync_all()?;
@@ -215,7 +220,7 @@ impl LibraryManager {
                 })
             })
             .await?;
-            originals.push((id, reference, source));
+            originals.push((id, reference.id(), source));
         }
         if cancel.is_cancelled() {
             return Err(LibraryError::Storage(

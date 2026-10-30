@@ -9,7 +9,6 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.ArtistDetailSubscription
 import uniffi.bae_bridge.ArtistSearchSubscription
-import uniffi.bae_bridge.BridgeAbandonedRecord
 import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeAddedDeviceWatch
 import uniffi.bae_bridge.BridgeAlbum
@@ -726,10 +725,6 @@ internal open class FakeAppHandle(
         unfaked("cancelReleaseTransition")
     }
 
-    override suspend fun dismissAbandonedAttachment(record: BridgeAbandonedRecord) {
-        unfaked("dismissAbandonedAttachment")
-    }
-
     override suspend fun getUploadsPaused(): Boolean = unfaked("getUploadsPaused")
 
     override fun getSyncStatus(): BridgeSyncStatusSnapshot = unfaked("getSyncStatus")
@@ -752,6 +747,13 @@ internal open class FakeAppHandle(
 
     override suspend fun retryPendingOperation(id: Long) {
         unfaked("retryPendingOperation")
+    }
+
+    override suspend fun cancelFailedReleaseMove(
+        releaseId: String,
+        id: Long,
+    ) {
+        unfaked("cancelFailedReleaseMove")
     }
 
     override suspend fun setSyncPaused(paused: Boolean) {

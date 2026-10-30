@@ -93,6 +93,7 @@ where
 
     /// Queue every entry in order, passing over a release already queued,
     /// and wake the worker if any went in. Returns whether any did.
+    #[cfg(desktop)]
     pub(crate) async fn enqueue_all(
         &self,
         entries: Vec<ReleaseQueueEntry<Extra>>,

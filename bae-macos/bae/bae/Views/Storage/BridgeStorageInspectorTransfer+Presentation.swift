@@ -2,7 +2,7 @@ import BaeKit
 
 extension BridgeStorageInspectorTransfer {
     /// Which transfer the entry is: a release has at most one entry in each
-    /// queue, and at most one fetch by coven of the copies its pins wait for.
+    /// queue, and at most one fetch by coven of the files it keeps here.
     var queueId: Int {
         switch self {
         case .download: 0

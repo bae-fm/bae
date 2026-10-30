@@ -42,7 +42,7 @@ Potwierdzenie importu uruchamia po kolei:
 3. **Wybór okładki**: wybrana grafika (zdalna, obraz z folderu albo osadzona) jest ponownie renderowana do miniatury wyświetlania; oryginał zostaje wśród plików wydania, jeśli pochodził z folderu.
 4. **Atomowy zapis**: wydanie, utwory, przypisania, tożsamości, formaty, segmenty, pliki i okładka zapisują się w jednej transakcji. Nie istnieje stan częściowo zaimportowany.
 
-Wydanie trafia do biblioteki, wskazując pliki użytkownika na miejscu. Przy imporcie do chmury coven czyta i liczy skrót każdego pliku przed zapisem, a ten sam zapis dołącza każdy plik do jego wiersza i kolejkuje jego wysłanie. Import lokalny zapisuje zamiast tego ścieżkę, rozmiar i czas modyfikacji każdego pliku na tym urządzeniu; jego bajty są czytane dopiero, jeśli wydanie zostanie później przeniesione do chmury. W obu przypadkach oryginalne bajty plików pozostają źródłem prawdy przez cały czas; nic, co użytkownik dał bae, nie jest nigdy usuwane ani zmieniane.
+Wydanie trafia do biblioteki, wskazując pliki użytkownika na miejscu. Przy imporcie do chmury coven czyta i liczy skrót każdego pliku przed zapisem, a ten sam zapis przygotowuje każdy plik w coven, kieruje każdy wiersz na jego plik i kolejkuje jego wysłanie. Import lokalny zapisuje zamiast tego ścieżkę, rozmiar i czas modyfikacji każdego pliku na tym urządzeniu; jego bajty są czytane dopiero, jeśli wydanie zostanie później przeniesione do chmury. W obu przypadkach oryginalne bajty plików pozostają źródłem prawdy przez cały czas; nic, co użytkownik dał bae, nie jest nigdy usuwane ani zmieniane.
 
 ## Rozpoznawanie ripów
 

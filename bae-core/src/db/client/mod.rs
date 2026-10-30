@@ -25,6 +25,15 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::warn;
 
+/// The columns of a release file row `f` that `row_to_file` reads: its own,
+/// and `stored`, whether coven records the file it references as stored.
+macro_rules! release_file_columns {
+    () => {
+        "f.*, EXISTS (SELECT 1 FROM coven_files AS coven \
+         WHERE coven.id = f.file AND coven.hash IS NOT NULL) AS stored"
+    };
+}
+
 mod album;
 pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{
@@ -49,8 +58,6 @@ use artist_resolution::{relink_album_artists, relink_track_artists};
 // Only the import write resolves credits inside a release's own write.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use artist_resolution::{artist_write_failure, relink};
-mod abandoned;
-pub(crate) use abandoned::AbandonedRow;
 mod file_row;
 pub(crate) use file_row::FileRow;
 mod pending;
@@ -260,24 +267,25 @@ impl Database {
     where
         R: Send + 'static,
     {
-        self.write_with_files(|_| Ok(()), move |sql| f(sql).map_err(CovenError::from))
+        self.write_with_files(|_| Ok(()), move |sql, ()| f(sql).map_err(CovenError::from))
             .await
             .map_err(Self::coven_error)
     }
 
     /// Keep coven's file-staging buffers off the caller's async stack, including
     /// the import worker's stack. Row-only writes use this same boundary.
-    fn write_with_files<R>(
+    fn write_with_files<T, R>(
         &self,
-        build: impl FnOnce(&mut coven::WriteBatch) -> Result<(), CovenError> + Send + 'static,
-        sql: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, CovenError>
+        stage: impl FnOnce(&mut coven::WriteBatch<'_>) -> Result<T, CovenError> + Send + 'static,
+        sql: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>, T) -> Result<R, CovenError>
             + Send
             + 'static,
     ) -> impl std::future::Future<Output = Result<R, CovenError>> + Send + '_
     where
+        T: Send + 'static,
         R: Send + 'static,
     {
-        Box::pin(self.inner.handle.write_with_files(build, sql))
+        Box::pin(self.inner.handle.write_with_files(stage, sql))
     }
 
     pub fn from_handle(handle: CovenHandle, clock: ClockRef) -> Self {

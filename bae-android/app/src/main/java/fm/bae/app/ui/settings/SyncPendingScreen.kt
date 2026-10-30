@@ -112,6 +112,16 @@ private class PendingActionRunner(
                 perform("retry pending operation ${action.id}") { handle.retryPendingOperation(action.id) }
             }
 
+            is BridgePendingAction.RetryDownload -> {
+                perform("pin ${action.releaseId} again") { handle.queuePinReleases(listOf(action.releaseId)) }
+            }
+
+            is BridgePendingAction.CancelUpload -> {
+                perform("cancel the failed upload of ${action.releaseId}") {
+                    handle.cancelFailedReleaseMove(action.releaseId, action.id)
+                }
+            }
+
             BridgePendingAction.RestoreFromCode -> {
                 actions.restoreFromCode()
             }

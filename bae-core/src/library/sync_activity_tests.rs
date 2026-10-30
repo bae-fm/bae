@@ -16,7 +16,6 @@ fn status() -> SyncStatusSnapshot {
             finished_at: std::time::UNIX_EPOCH,
         },
         pending: Some(Ok(Vec::new())),
-        abandoned: Some(Ok(Vec::new())),
         retry_effect: coven::RetryEffect::Pass,
         error: None,
     }
@@ -64,8 +63,8 @@ fn transfers_are_movement() {
     assert_eq!(paused.uploads, None);
 }
 
-/// A sync failure, a pending record that needs the person or an abandoned
-/// upload marks the indicator; a failed read of any list does too.
+/// A sync failure or a pending record that needs the person marks the
+/// indicator; a failed read of the pending list does too.
 #[test]
 fn failures_and_pending_records_need_attention() {
     let mut failed = status();
@@ -87,16 +86,6 @@ fn failures_and_pending_records_need_attention() {
     let mut unread = status();
     unread.pending = Some(Err(UiError::internal("no records")));
     assert!(new(&unread).needs_attention());
-    let mut abandoned = status();
-    abandoned.abandoned = Some(Ok(vec![crate::library::AbandonedItem {
-        subject: crate::library::PendingSubjectName::ArtistImage,
-        file: coven::FileId(uuid::Uuid::from_u128(1)),
-        reason: coven::AbandonReason::Replaced,
-    }]));
-    assert!(new(&abandoned).needs_attention());
-    let mut abandoned_unread = status();
-    abandoned_unread.abandoned = Some(Err(UiError::internal("no records")));
-    assert!(new(&abandoned_unread).needs_attention());
 }
 
 /// The list's lines name what is sending or downloading, then what waits,

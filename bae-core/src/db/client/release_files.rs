@@ -25,7 +25,10 @@ pub(super) fn release_files_in(order: ReleaseFileOrder) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ");
-    format!("SELECT * FROM release_files WHERE release_id = ?1 ORDER BY {terms}")
+    format!(
+        "SELECT {} FROM release_files AS f WHERE f.release_id = ?1 ORDER BY {terms}",
+        release_file_columns!()
+    )
 }
 
 /// The files `request` names in its order; `None` when the library holds no

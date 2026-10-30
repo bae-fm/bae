@@ -34,11 +34,11 @@ As edições de dois dispositivos se mesclam célula por célula, e a edição p
 
 ## Blobs
 
-Áudio e imagens passam pela camada de arquivos de coven, cada tipo com seu próprio limite de cache por dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) e os avatares de `people` (64 MiB).
+Áudio e imagens são arquivos de coven, cada tipo um espaço de nomes com seu próprio limite de cache por dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) e `avatars` (64 MiB). Uma linha referencia seu arquivo pelo id do arquivo de coven: `file` em `release_files`, `covers` e `artist_images`, e `avatar_id` em `people`. O tamanho, o hash do conteúdo e a localização do arquivo são de coven, lidos com um join em `coven_files`.
 
-Arquivos de lançamento são do usuário e armazenados em cache sob demanda: os arquivos de um lançamento local são os arquivos do usuário nos caminhos originais, registrados em `local_release_files`; mover o lançamento para a nuvem anexa cada arquivo à sua linha de `release_files` em uma única escrita, e outros dispositivos o buscam para o cache na primeira leitura. Capas, imagens de artistas e avatares são de bae e armazenados de antemão: bae produz os bytes (capas são renderizadas novamente como miniaturas JPEG com no máximo 600px de largura), e todo dispositivo os busca assim que as linhas chegam para que grades renderizem localmente.
+Arquivos de lançamento são do usuário: os arquivos de um lançamento local são os arquivos do usuário nos caminhos originais, registrados em `local_release_files`, e suas linhas não referenciam nenhum arquivo de coven. Mover o lançamento para a nuvem prepara cada arquivo em coven em uma única escrita e faz cada linha apontar para seu arquivo; quando o último é armazenado, coven passa todos juntos para a nuvem, e outros dispositivos buscam cada um para o cache na primeira leitura. Capas, imagens de artistas e avatares são de bae: bae produz os bytes (capas são renderizadas novamente como miniaturas JPEG com no máximo 600px de largura), e um dispositivo busca cada um quando ele é mostrado pela primeira vez e o mantém até que o limite do seu espaço de nomes o remova.
 
-Todo arquivo sobe criptografado com um nome aleatório, em um caminho fixado quando ele é anexado à sua linha, para que uma renomeação posterior nunca mova o objeto.
+Todo arquivo sobe criptografado com um nome aleatório, em um caminho fixado quando ele é preparado, para que uma renomeação posterior nunca mova o objeto. Um arquivo nunca muda seus bytes: uma imagem nova é um arquivo novo.
 
 ## Identidade de um rip
 
