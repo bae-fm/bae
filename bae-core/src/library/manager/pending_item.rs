@@ -82,6 +82,39 @@ impl PendingWait {
             action: pending_action(record),
         }
     }
+
+    /// Whether coven retries this record's failure by itself, so a retry
+    /// now can clear it: the record offers only waiting, and its reason is a
+    /// failure, not a wait on other work such as another device's upload.
+    pub(crate) fn retries_by_itself(&self) -> bool {
+        self.action == PendingAction::Wait && reports_failure(&self.reason)
+    }
+}
+
+/// Whether the reason reports a failure; a cleanup reports its own
+/// condition, as coven retries it.
+fn reports_failure(reason: &coven::PendingReason) -> bool {
+    use coven::PendingReason as R;
+    match reason {
+        R::Cleanup { cleanup, .. } => reports_failure(cleanup),
+        R::Storage { .. } | R::Failed(_) => true,
+        R::Missing { .. }
+        | R::Waits(_)
+        | R::KeyUnavailable { .. }
+        | R::UpdateRequired(_)
+        | R::NoStorage
+        | R::Refused(_)
+        | R::WritesRefused { .. }
+        | R::ProviderPending { .. }
+        | R::PendingOwner { .. }
+        | R::AccountInUse { .. }
+        | R::AccessRemains { .. }
+        | R::FileUnavailable(_)
+        | R::Rejected(_)
+        | R::Paused
+        | R::Removed
+        | R::MemberKeysReplaced { .. } => false,
+    }
 }
 
 /// One thing coven is waiting on, as the pending list shows it.

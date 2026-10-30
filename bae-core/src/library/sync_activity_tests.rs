@@ -17,6 +17,7 @@ fn status() -> SyncStatusSnapshot {
         },
         pending: Some(Ok(Vec::new())),
         abandoned: Some(Ok(Vec::new())),
+        retry_effect: coven::RetryEffect::Pass,
         error: None,
     }
 }
@@ -232,4 +233,23 @@ fn a_failure_no_record_shows_is_its_own_line() {
     };
     unrecorded.pending = pending(connection(coven::StorageFailure::Network));
     assert!(activity(&unrecorded).failure.is_some());
+}
+
+/// The list offers Retry Now for a pass a server error failed while coven
+/// would run a pass for the retry, and not while a held failure would
+/// answer it at once; nor with nothing failing.
+#[test]
+fn the_list_offers_retry_only_when_a_retry_runs_a_pass_that_can_clear_a_failure() {
+    let failed = |retry_effect| {
+        let mut failed = status();
+        failed.status = coven::SyncStatus::Failed {
+            error: coven::SyncFailure::Storage(answered_s3(coven::StorageFailure::Network)),
+        };
+        failed.pending = pending(connection(coven::StorageFailure::Network));
+        failed.retry_effect = retry_effect;
+        activity(&failed).retry_offered
+    };
+    assert!(failed(coven::RetryEffect::Pass));
+    assert!(!failed(coven::RetryEffect::Failed));
+    assert!(!activity(&status()).retry_offered);
 }

@@ -474,17 +474,24 @@ impl LibraryManager {
         self.database.every_row_for_test().await.unwrap()
     }
 
-    /// Subscribe to the sync loop's status and publish the current status
-    /// line value. Call once after construction, with a tokio runtime
-    /// available.
+    /// Subscribe to the sync loop's status and what a retry would do, and
+    /// publish the current status line value. Call once after construction,
+    /// with a tokio runtime available.
     pub fn start(&self) -> Result<(), LibraryError> {
-        let mut rx = self.database.subscribe_sync_status();
+        let mut statuses = self.database.subscribe_sync_status();
+        let mut effects = self.database.subscribe_retry_effect();
         let lm = self.clone();
         self.spawn_supervised_task("sync status subscription", async move {
+            let mut first = true;
             loop {
-                let status = rx.borrow_and_update().clone();
-                // `set_status` logs the failure, once, as it appears or changes.
-                if matches!(status, coven::SyncStatus::Failed { .. }) {
+                let status_changed = first || statuses.has_changed().unwrap_or(false);
+                first = false;
+                let status = statuses.borrow_and_update().clone();
+                // coven publishes what a retry would do before the status a
+                // pass leaves, so the effect read after it is at least as new.
+                let effect = *effects.borrow_and_update();
+                // `set_sync` logs the failure, once, as it appears or changes.
+                if status_changed && matches!(status, coven::SyncStatus::Failed { .. }) {
                     match lm.database.storage_config().await {
                         Ok(Some(storage)) => lm.diagnostics.event(TelemetryEvent::SyncFailed {
                             provider: storage.provider(),
@@ -496,8 +503,12 @@ impl LibraryManager {
                         }
                     }
                 }
-                lm.sync_status.set_status(status);
-                if rx.changed().await.is_err() {
+                lm.sync_status.set_sync(status, effect);
+                let open = tokio::select! {
+                    changed = statuses.changed() => changed.is_ok(),
+                    changed = effects.changed() => changed.is_ok(),
+                };
+                if !open {
                     break;
                 }
             }

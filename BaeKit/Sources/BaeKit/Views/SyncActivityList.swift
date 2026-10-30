@@ -2,8 +2,9 @@
     import SwiftUI
 
     /// What sync is doing on this device, as the title bar's indicator opens it:
-    /// what needs the person first, then what is moving, and Retry Now. Its
-    /// sections go inside the platform's list or form.
+    /// what needs the person first, then what is moving, and Retry Now while
+    /// core offers it, when a retry can clear a failure. Its sections go
+    /// inside the platform's list or form.
     public struct SyncActivityList: View {
         /// Opens the sync settings, where each record that needs the person
         /// offers its action.
@@ -31,8 +32,10 @@
                 if let error = store.error {
                     ErrorDetailDisclosure(error: error)
                 }
-                Button(localizedCoreString("core.activity.retry_now")) {
-                    Task { await store.retryNow() }
+                if store.activity?.retryOffered == true {
+                    Button(localizedCoreString("core.activity.retry_now")) {
+                        Task { await store.retryNow() }
+                    }
                 }
             }
         }

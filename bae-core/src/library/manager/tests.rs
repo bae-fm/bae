@@ -273,6 +273,7 @@ include!("tests/upload_pin.rs");
 include!("tests/pin_count_upkeep.rs");
 include!("tests/queue_count_upkeep.rs");
 include!("tests/pending_list.rs");
+include!("tests/retry_offer.rs");
 include!("tests/upload_transfers.rs");
 include!("tests/downloads.rs");
 include!("tests/pin_transfers.rs");

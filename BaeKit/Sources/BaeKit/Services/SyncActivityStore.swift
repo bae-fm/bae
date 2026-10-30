@@ -96,7 +96,8 @@ public final class SyncActivityStore {
                         BridgeCountLabel(key: "core.queue.queued", count: 10),
                     ]
                 ),
-                downloads: nil
+                downloads: nil,
+                retryOffered: false
             )
         }
 

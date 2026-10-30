@@ -2069,7 +2069,22 @@ beside its record would read as a second problem. Then one row per
 thing moving: a pass syncing the library's changes, the uploads ("2
 uploading · 10 queued", with the bytes their providers confirmed), and the
 offline downloads, which on the phones open the downloads list. With nothing
-to show it says everything is up to date. *Retry Now* is always there; it retries everything at once, as
+to show it says everything is up to date. *Retry Now* shows only while pressing
+it would run a pass and a failure that pass can clear holds work back. coven
+publishes what a retry made now would do, decided as it answers the retry
+([coven api.md
+E5](https://github.com/bae-fm/coven/blob/main/spec/api.md#e5-storage-and-sync)):
+run a pass, or be answered at once because sync isn't running, a failure only
+the person can clear holds every pass (signing in again, an update, a reset),
+or the provider asked every request to wait. Retry Now shows only while it
+would run a pass, and comes back on its own when such a wait ends. The failure
+is the pass's own, such as storage unreachable or answering with a server
+error, or with the pass not failing, a pending record's that coven retries by
+itself after a wait: an upload a server error refused, or a local disk failure.
+A blocked slot and coven's own failed operation count as their records do. A
+failure only an update, a reset or nothing clears, such as a removed device,
+never shows it, nor does a record waiting on another device's work; a record
+waiting on the person offers its own action. It retries everything at once, as
 pulling to refresh does.
 
 **Abandoned uploads.** A file this device attached can lose its row before

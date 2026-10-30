@@ -20,6 +20,9 @@ pub struct BridgeSyncActivity {
     pub syncing: bool,
     pub uploads: Option<BridgeUploadsInFlight>,
     pub downloads: Option<BridgeDownloadsInFlight>,
+    /// The list offers Retry Now: a retry would run a pass, and a failure
+    /// that pass can clear holds work back.
+    pub retry_offered: bool,
 }
 
 impl BridgeSyncActivity {
@@ -33,6 +36,7 @@ impl BridgeSyncActivity {
             syncing,
             uploads,
             downloads,
+            retry_offered,
         } = activity;
         Self {
             moving,
@@ -43,6 +47,7 @@ impl BridgeSyncActivity {
             syncing,
             uploads: uploads.map(BridgeUploadsInFlight::from_core),
             downloads: downloads.map(BridgeDownloadsInFlight::from_core),
+            retry_offered,
         }
     }
 }

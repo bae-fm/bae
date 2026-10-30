@@ -149,8 +149,9 @@ private fun SyncActivitySheet(
 
 /**
  * What sync is doing: what needs the person first, then what is moving, and
- * Retry Now. The uploads' line shows the bytes [uploadTransfer] says they have
- * moved, which change apart from [activity].
+ * Retry Now while core offers it, when a retry can clear a failure. The
+ * uploads' line shows the bytes [uploadTransfer] says they have moved, which
+ * change apart from [activity].
  */
 @Composable
 internal fun SyncActivityList(
@@ -179,9 +180,11 @@ internal fun SyncActivityList(
             }
         }
         error?.let { shown -> item { ErrorDetailDisclosure(shown) } }
-        item {
-            OutlinedButton(onClick = onRetryNow) {
-                Text(context.coreString("core.activity.retry_now"))
+        if (activity?.retryOffered == true) {
+            item {
+                OutlinedButton(onClick = onRetryNow) {
+                    Text(context.coreString("core.activity.retry_now"))
+                }
             }
         }
     }

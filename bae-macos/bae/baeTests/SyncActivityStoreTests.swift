@@ -30,7 +30,8 @@ struct SyncActivityStoreTests {
             abandoned: .ready(attachments: []),
             syncing: false,
             uploads: nil,
-            downloads: nil
+            downloads: nil,
+            retryOffered: false
         )
     }
 }

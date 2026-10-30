@@ -34,5 +34,6 @@ class SyncActivityStoreTest {
             syncing = false,
             uploads = null,
             downloads = null,
+            retryOffered = false,
         )
 }

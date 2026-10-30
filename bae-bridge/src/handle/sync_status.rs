@@ -91,9 +91,11 @@ forward! { sync this => {
 
 forward! { async this => {
     /// The person asked to retry everything now: pulling to refresh, or
-    /// Retry Now in the sync activity list. Ends every ordinary backoff,
-    /// answered or not, and runs a pass; provider cooldowns and failures that
-    /// need the person's action hold. Automatic triggers call `trigger_sync`.
+    /// Retry Now in the sync activity list, which the list shows only while
+    /// `BridgeSyncActivity::retry_offered` says it runs a pass that can clear
+    /// a failure.
+    /// Ends every ordinary backoff, answered or not, and runs a pass;
+    /// provider cooldowns and failures that need the person's action hold. Automatic triggers call `trigger_sync`.
     /// Returns when the first pass after the request ends, with what came of
     /// it; a pass held by a cooldown or such a failure answers at once.
     fn retry_now() -> crate::types::BridgeSyncRetryOutcome {

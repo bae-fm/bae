@@ -317,6 +317,7 @@ object PreviewData {
                         ),
                 ),
             downloads = null,
+            retryOffered = false,
         )
 
     /** The upload queue's transfer while [syncActivity]'s files are sent. */

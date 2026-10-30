@@ -380,6 +380,9 @@ pub struct SyncStatusSnapshot {
     /// person dismisses them; `None` until first read.
     pub abandoned: Option<Result<Vec<AbandonedItem>, crate::ui::UiError>>,
     pub error: Option<crate::ui::UiError>,
+    /// What the person's retry would do now, as coven decides it: run a
+    /// pass, or be answered at once without one.
+    pub retry_effect: coven::RetryEffect,
 }
 
 /// The settings status line. Platforms localize these cases and the item count.

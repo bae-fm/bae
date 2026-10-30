@@ -190,6 +190,7 @@ impl crate::types::BridgeSyncStatusSnapshot {
             pending,
             abandoned: _,
             error: _,
+            retry_effect: _,
         } = snapshot;
         Self {
             indicator,

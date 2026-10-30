@@ -537,6 +537,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
         status: coven::SyncStatus::Disconnected,
         pending: None,
         abandoned: None,
+        retry_effect: coven::RetryEffect::Pass,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -565,6 +566,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
         },
         pending: Some(Ok(Vec::new())),
         abandoned: Some(Ok(Vec::new())),
+        retry_effect: coven::RetryEffect::Pass,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -594,6 +596,7 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
             ),
         )])),
         abandoned: Some(Ok(Vec::new())),
+        retry_effect: coven::RetryEffect::Pass,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);

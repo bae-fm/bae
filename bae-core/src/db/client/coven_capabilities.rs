@@ -83,6 +83,13 @@ impl Database {
         self.inner.handle.subscribe_sync_status()
     }
 
+    /// What `retry_now` would do if called now, decided as coven answers it.
+    pub(crate) fn subscribe_retry_effect(
+        &self,
+    ) -> tokio::sync::watch::Receiver<coven::RetryEffect> {
+        self.inner.handle.subscribe_retry_effect()
+    }
+
     pub(crate) async fn pending(&self) -> Result<Vec<coven::PendingRecord>, DbError> {
         self.inner.handle.pending().await.map_err(DbError::from)
     }
