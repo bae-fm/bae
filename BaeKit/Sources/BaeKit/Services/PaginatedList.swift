@@ -300,7 +300,7 @@ where Row.ID: Sendable {
                 }
                 else {
                     logger.error(
-                        "Live page failed: \(error.localizedDescription)"
+                        "Live page failed: \(String(reflecting: error))"
                     )
                     self.onError(error)
                     self.pages[page]?.answer()

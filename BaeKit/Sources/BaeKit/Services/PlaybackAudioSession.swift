@@ -46,7 +46,7 @@
             }
             catch {
                 logger.error(
-                    "Failed to deactivate the audio session: \(error.localizedDescription)"
+                    "Failed to deactivate the audio session: \(String(reflecting: error))"
                 )
             }
         }

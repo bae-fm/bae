@@ -159,7 +159,7 @@ extension TriageRowView {
         case .complete, nil:
             return nil
         case .error(let error):
-            return error.displayLine
+            return error.localizedLine
         }
     }
 

@@ -593,7 +593,7 @@ extension ImportStore {
                     guard let observation,
                         self?.candidate(forKey: key)?
                             .libraryStatusObservation === observation,
-                        (error as? BridgeError)?.displayLine != nil
+                        (error as? BridgeError)?.localizedLine != nil
                     else { return }
                     self?.reportFailure(error)
                 }

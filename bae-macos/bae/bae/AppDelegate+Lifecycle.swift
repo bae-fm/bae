@@ -63,7 +63,7 @@ extension AppDelegate {
             }
             catch {
                 baeAppLogger.error(
-                    "OAuth registration failed: \(error.localizedDescription)"
+                    "OAuth registration failed: \(String(reflecting: error))"
                 )
                 signInSettings = DisplayError(error)
             }
@@ -81,7 +81,7 @@ extension AppDelegate {
             // keyring, so discovery runs and the welcome screen lists them
             // under this error.
             baeAppLogger.error(
-                "Keyring initialization failed: \(error.localizedDescription)"
+                "Keyring initialization failed: \(String(reflecting: error))"
             )
             secureStorage = DisplayError(error)
             keyringReady = false

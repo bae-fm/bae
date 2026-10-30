@@ -2,11 +2,11 @@ import BaeKit
 import Foundation
 import Testing
 
-/// uniffi gives `BridgeError` an `errorDescription` of `String(reflecting: self)`,
-/// so `localizedDescription` on anything the bridge threw is a raw Rust enum
-/// dump. These pin that a failure on its way to a human goes through core's keyed
-/// line instead, that the opaque detail survives for the copy button, and that an
-/// error core says has no line produces nothing at all rather than a blank one.
+/// These pin that a failure on its way to a human reads as core's keyed line,
+/// never the generated enum's reflection — through `DisplayError` and through
+/// Foundation's own `localizedDescription` alike — that the opaque detail
+/// survives for the copy button, and that an error core says has no line
+/// produces nothing at all rather than a blank one.
 @Suite("DisplayError from any Error")
 struct DisplayErrorTests {
     @Test("a bridge diagnostic renders its category's line, not the enum dump")
@@ -42,7 +42,6 @@ struct DisplayErrorTests {
     @Test("a cancellation produces no error to display")
     func cancelledProducesNothing() {
         #expect(DisplayError(BridgeError.Cancelled as any Error) == nil)
-        #expect((BridgeError.Cancelled as any Error).displayLine == nil)
         #expect(BridgeError.Cancelled.localizedLine == nil)
     }
 
@@ -60,17 +59,46 @@ struct DisplayErrorTests {
         #expect(displayed.detail == nil)
     }
 
-    @Test("displayLine agrees with DisplayError for the same error")
-    func displayLineAgrees() throws {
-        let error: any Error = BridgeError.Diagnostic(
+    /// What a `catch` sees is `any Error`, and what Foundation shows for one is
+    /// its `localizedDescription`. For a bridge error that is core's keyed line,
+    /// with the counts its category carries, not the generated enum's
+    /// reflection.
+    @Test("a bridge error's localizedDescription is core's line")
+    func localizedDescriptionIsCoreLine() {
+        let diagnostic: any Error = BridgeError.Diagnostic(
             category: .network,
             detail: "connection reset"
         )
+        let counted: any Error = BridgeError.Diagnostic(
+            category: .metadataTrackCount(folderTracks: 9, releaseTracks: 10),
+            detail: "track count"
+        )
+        let notFound: any Error = BridgeError.NotFound(
+            entity: .library,
+            id: "library-1"
+        )
 
-        let line = try #require(error.displayLine)
-
-        #expect(line == DisplayError(error)?.line)
-        #expect(!line.contains("BridgeError"))
+        #expect(
+            diagnostic.localizedDescription
+                == BridgeErrorCategory.network.localizedLine
+        )
+        #expect(!diagnostic.localizedDescription.contains("BridgeError"))
+        #expect(!diagnostic.localizedDescription.contains("connection reset"))
+        #expect(
+            diagnostic.localizedDescription == DisplayError(diagnostic)?.line
+        )
+        #expect(
+            counted.localizedDescription
+                == BridgeErrorCategory.metadataTrackCount(
+                    folderTracks: 9,
+                    releaseTracks: 10
+                )
+                .localizedLine
+        )
+        #expect(
+            notFound.localizedDescription
+                == BridgeEntityKind.library.notFoundLine
+        )
     }
 
     @Test("context preserves the typed error line and diagnostic detail")

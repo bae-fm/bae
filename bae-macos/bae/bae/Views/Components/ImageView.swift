@@ -133,7 +133,7 @@ struct ImageView: View {
                 """
                 Failed to load \
                 \(requested.description): \
-                \(error.localizedDescription)
+                \(String(reflecting: error))
                 """
             )
             lastLoad = SlotLoad(content: requested, state: .pending(.failed))

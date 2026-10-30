@@ -247,7 +247,7 @@ struct MembersSection: View {
         }
         catch {
             logger.error(
-                "Failed to generate the add-device code: \(error.localizedDescription)"
+                "Failed to generate the add-device code: \(String(reflecting: error))"
             )
             // No line means core reported a cancellation; keep the spinner.
             guard DisplayError(error) != nil else { return }
@@ -265,7 +265,7 @@ struct MembersSection: View {
             }
             catch {
                 logger.error(
-                    "membership change failed: \(error.localizedDescription)"
+                    "membership change failed: \(String(reflecting: error))"
                 )
                 actionError = DisplayError(error)
             }

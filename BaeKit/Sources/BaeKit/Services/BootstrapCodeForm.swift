@@ -227,7 +227,7 @@ public final class BootstrapCodeForm {
                 logger.debug("bootstrap cancelled")
             }
             catch {
-                logger.error("bootstrap failed: \(error.localizedDescription)")
+                logger.error("bootstrap failed: \(String(reflecting: error))")
                 self.error = DisplayError(error)
             }
         }
@@ -305,7 +305,7 @@ public final class BootstrapCodeForm {
             }
             catch {
                 logger.error(
-                    "resuming the join failed: \(error.localizedDescription)"
+                    "resuming the join failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }

@@ -127,7 +127,7 @@ public final class ReleaseFilesReader {
                     }
                     else {
                         logger.warning(
-                            "release files read failed while showing nothing: \(error.localizedDescription)"
+                            "release files read failed while showing nothing: \(String(reflecting: error))"
                         )
                     }
                 }

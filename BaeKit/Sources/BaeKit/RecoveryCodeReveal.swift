@@ -63,7 +63,7 @@ public final class RecoveryCodeReveal {
                     return
                 }
                 logger.error(
-                    "Failed to generate the recovery code: \(error.localizedDescription)"
+                    "Failed to generate the recovery code: \(String(reflecting: error))"
                 )
                 // A failure with no line is a cancellation from core; the
                 // person can ask again.

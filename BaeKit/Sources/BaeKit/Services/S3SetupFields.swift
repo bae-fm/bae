@@ -104,7 +104,7 @@ public final class S3SetupFields {
             }
             catch {
                 logger.error(
-                    "S3 detection failed: \(error.localizedDescription)"
+                    "S3 detection failed: \(String(reflecting: error))"
                 )
                 detectError = DisplayError(error)
             }

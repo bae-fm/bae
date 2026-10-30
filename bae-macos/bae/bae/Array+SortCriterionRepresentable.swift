@@ -37,7 +37,7 @@ where
         }
         catch {
             logger.error(
-                "Failed to encode sort criteria: \(error.localizedDescription)"
+                "Failed to encode sort criteria: \(String(reflecting: error))"
             )
             return nil
         }
@@ -50,7 +50,7 @@ where
         }
         catch {
             logger.error(
-                "Failed to decode sort criteria: \(error.localizedDescription)"
+                "Failed to decode sort criteria: \(String(reflecting: error))"
             )
             return nil
         }

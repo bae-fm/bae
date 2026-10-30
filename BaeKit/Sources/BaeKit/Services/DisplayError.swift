@@ -106,10 +106,10 @@ public struct DisplayError: Equatable, Sendable {
     /// passes through unchanged — which is why a `catch` can be routed here
     /// without first proving what it can throw.
     ///
-    /// Never reach for `localizedDescription` on the way to a human: uniffi gives
-    /// `BridgeError` a `String(reflecting:)` description, so it renders as a raw
-    /// Rust enum dump — untranslated, with the opaque detail welded into the line
-    /// instead of offered to the copy button.
+    /// Route here rather than to `localizedDescription` on the way to a human. A
+    /// bridge error's `localizedDescription` is core's line too, but it leaves
+    /// out the opaque detail the copy button offers, and for a cancellation
+    /// Foundation puts its generic sentence where core says to show nothing.
     ///
     /// Fails when core says the failure has no line to show — a cancellation. A
     /// Swift-origin error always has one: it is prose the UI wrote.
@@ -122,22 +122,5 @@ public struct DisplayError: Equatable, Sendable {
         guard let line = failure.localizedLine else { return nil }
         self.line = line
         self.detail = failure.detail
-    }
-}
-
-extension Error {
-    /// The line to show a human where a line alone is the whole display — a
-    /// tooltip, a row's status text. `nil` means there is nothing to show.
-    /// Never keep it as error state: that drops the opaque detail the "Copy
-    /// Details" action offers, so state holds `DisplayError(error)` instead
-    /// (SwiftLint's `error_state_keeps_its_detail` rule refuses an assignment
-    /// from this outside this file).
-    ///
-    /// This is `localizedDescription`'s job, and `localizedDescription` cannot do
-    /// it: uniffi declares `errorDescription` on `BridgeError` itself as
-    /// `String(reflecting: self)`, an extension cannot override it, and in a
-    /// `catch` the static type is `any Error`, so the debug dump always wins.
-    public var displayLine: String? {
-        DisplayError(self)?.line
     }
 }

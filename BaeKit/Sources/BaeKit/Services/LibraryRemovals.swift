@@ -83,7 +83,7 @@ public final class LibraryRemovals {
         }
         catch {
             logger.error(
-                "Couldn't read unfinished library removals: \(error.localizedDescription)"
+                "Couldn't read unfinished library removals: \(String(reflecting: error))"
             )
             self.error = DisplayError(error)
         }
@@ -121,7 +121,7 @@ public final class LibraryRemovals {
         }
         catch {
             logger.error(
-                "Couldn't close \(libraryId) after its removal stopped: \(error.localizedDescription)"
+                "Couldn't close \(libraryId) after its removal stopped: \(String(reflecting: error))"
             )
         }
     }
@@ -144,7 +144,7 @@ public final class LibraryRemovals {
         }
         catch {
             logger.error(
-                "Couldn't read what removing \(library.id) loses: \(error.localizedDescription)"
+                "Couldn't read what removing \(library.id) loses: \(String(reflecting: error))"
             )
             self.error = DisplayError(error)
             return nil
@@ -177,7 +177,7 @@ public final class LibraryRemovals {
             }
             catch {
                 logger.error(
-                    "Couldn't remove \(libraryId): \(error.localizedDescription)"
+                    "Couldn't remove \(libraryId): \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }
@@ -223,7 +223,7 @@ public final class LibraryRemovals {
             }
             catch {
                 logger.error(
-                    "Couldn't finish removing a library: \(error.localizedDescription)"
+                    "Couldn't finish removing a library: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }

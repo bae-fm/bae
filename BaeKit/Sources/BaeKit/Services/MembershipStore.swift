@@ -165,7 +165,7 @@ public final class MembershipStore {
     }
 
     private func fail(_ error: any Error) {
-        logger.error("membership read failed: \(error.localizedDescription)")
+        logger.error("membership read failed: \(String(reflecting: error))")
         self.error = DisplayError(error)
     }
 }

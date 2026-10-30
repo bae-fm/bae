@@ -32,15 +32,15 @@ excluded:
   - .claude
 
 custom_rules:
-  # A failure core reported carries a diagnostic the line leaves out; state
-  # that keeps only `displayLine` drops it, and with it the details disclosure
-  # and its copy action. Hold the `DisplayError` and render
-  # `ErrorDetailDisclosure`.
+  # A failure core reported carries a diagnostic its line leaves out; state
+  # that keeps only an error's `localizedDescription` (for a bridge error,
+  # core's line) drops it, and with it the details disclosure and its copy
+  # action. Hold the `DisplayError` and render `ErrorDetailDisclosure`.
   error_state_keeps_its_detail:
     name: "Error state keeps its detail"
-    regex: '=\s*[^=\n]*\.displayLine\b'
+    regex: '=\s*[^=\n]*\.localizedDescription\b'
     excluded:
       - ".*/DisplayError\\.swift$"
       - ".*/DisplayErrorTests\\.swift$"
-    message: "Hold the DisplayError (DisplayError(error)) and render ErrorDetailDisclosure instead of keeping only its displayLine"
+    message: "Hold the DisplayError (DisplayError(error)) and render ErrorDetailDisclosure instead of keeping only its localizedDescription"
     severity: error

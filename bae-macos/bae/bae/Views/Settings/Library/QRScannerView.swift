@@ -98,7 +98,7 @@ struct QRScannerView: View {
         }
         catch {
             logger.error(
-                "Failed to open camera input: \(error.localizedDescription)"
+                "Failed to open camera input: \(String(reflecting: error))"
             )
             state = .unavailable
             return
@@ -250,7 +250,7 @@ private struct CameraPreview: NSViewRepresentable {
                 if !didLogDecodeFailure {
                     didLogDecodeFailure = true
                     logger.error(
-                        "QR frame decoding failed: \(error.localizedDescription)"
+                        "QR frame decoding failed: \(String(reflecting: error))"
                     )
                 }
                 return

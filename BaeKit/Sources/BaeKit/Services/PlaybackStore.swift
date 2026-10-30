@@ -249,7 +249,7 @@ extension PlaybackStore {
         }
         catch {
             logger.warning(
-                "upcoming range [\(offset), \(end)) was not requested: \(error.localizedDescription)"
+                "upcoming range [\(offset), \(end)) was not requested: \(String(reflecting: error))"
             )
             upcomingFailure = DisplayError(error)
         }
@@ -301,7 +301,7 @@ extension PlaybackStore {
                 catch {
                     if !Task.isCancelled {
                         logger.warning(
-                            "upcoming queue read failed: \(error.localizedDescription)"
+                            "upcoming queue read failed: \(String(reflecting: error))"
                         )
                         self?.upcomingFailure = DisplayError(error)
                     }

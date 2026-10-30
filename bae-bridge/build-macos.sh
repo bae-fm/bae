@@ -131,6 +131,9 @@ BINDGEN="$CARGO_TARGET_DIR/$CARGO_PROFILE/uniffi-bindgen"
 INSTALLED_BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"
 XCFRAMEWORK="BaeKit/Frameworks/BaeBridgeFFI.xcframework"
 COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
+# The generator's settings: a change to them changes the bindings without
+# changing the static library.
+UNIFFI_CONFIG="bae-bridge/uniffi.toml"
 EXPECTED_STAMP="$CARGO_PROFILE|$BAE_BRIDGE_FEATURES"
 NEEDS_GENERATION=0
 
@@ -140,6 +143,7 @@ else
     STAMP_CONTENT="$(cat "$COMPLETION_STAMP")"
     if [[ "$STAMP_CONTENT" != "$EXPECTED_STAMP" ]] ||
        [[ "$STATIC_LIB" -nt "$COMPLETION_STAMP" ]] ||
+       [[ "$UNIFFI_CONFIG" -nt "$COMPLETION_STAMP" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridge.swift" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.modulemap" ]] ||

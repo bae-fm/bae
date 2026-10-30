@@ -74,7 +74,7 @@ public struct HistorySharingSection: View {
             }
             catch {
                 logger.error(
-                    "profile change failed: \(error.localizedDescription)"
+                    "profile change failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }

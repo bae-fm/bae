@@ -256,7 +256,7 @@ extension WelcomeChooseView {
             }
             catch {
                 logger.error(
-                    "Library creation failed: \(error.localizedDescription)"
+                    "Library creation failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }

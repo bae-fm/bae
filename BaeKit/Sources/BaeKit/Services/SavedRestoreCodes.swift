@@ -52,7 +52,7 @@ public final class SavedRestoreCodes {
                 return
             }
             logger.error(
-                "Saved restore code lookup failed: \(error.localizedDescription)"
+                "Saved restore code lookup failed: \(String(reflecting: error))"
             )
             list = .failed(failure)
         }
@@ -89,7 +89,7 @@ public final class SavedRestoreCodes {
                 return
             }
             logger.error(
-                "Saved restore code delete failed: \(error.localizedDescription)"
+                "Saved restore code delete failed: \(String(reflecting: error))"
             )
             deleteError = failure
             return

@@ -138,7 +138,7 @@ struct LibrarySettingsTab: View {
             }
             catch {
                 logger.error(
-                    "Couldn't read what removing the library loses: \(error.localizedDescription)"
+                    "Couldn't read what removing the library loses: \(String(reflecting: error))"
                 )
                 removalError = DisplayError(error)
             }
@@ -254,7 +254,7 @@ private struct UploadPauseToggle: View {
                         do { try await sync.setSyncPaused(paused) }
                         catch {
                             logger.error(
-                                "Failed to set upload pause: \(error.localizedDescription)"
+                                "Failed to set upload pause: \(String(reflecting: error))"
                             )
                             uiStore.showError(error)
                         }

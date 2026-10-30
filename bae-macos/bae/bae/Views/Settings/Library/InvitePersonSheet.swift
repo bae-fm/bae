@@ -169,7 +169,7 @@ struct InvitePersonSheet: View {
             }
             catch {
                 logger.error(
-                    "invite creation failed: \(error.localizedDescription)"
+                    "invite creation failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }

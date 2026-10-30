@@ -57,7 +57,7 @@ final class WelcomeListings {
                 return
             }
             logger.error(
-                "Local library discovery failed: \(error.localizedDescription)"
+                "Local library discovery failed: \(String(reflecting: error))"
             )
             localLibraries = .failed(failure)
         }

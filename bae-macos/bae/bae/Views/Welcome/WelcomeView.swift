@@ -116,7 +116,7 @@ struct WelcomeView: View {
         catch is CancellationError {}
         catch {
             logger.error(
-                "listing the joins under way failed: \(error.localizedDescription)"
+                "listing the joins under way failed: \(String(reflecting: error))"
             )
             resumeError = DisplayError(error)
         }

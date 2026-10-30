@@ -235,7 +235,7 @@ extension AppDelegate {
             catch {
                 // The welcome screen shows `loadError`.
                 baeAppLogger.error(
-                    "Failed to list libraries: \(error.localizedDescription)"
+                    "Failed to list libraries: \(String(reflecting: error))"
                 )
                 loadError = LoadError(.libraryList, error)
                 screen = .welcome
@@ -358,7 +358,7 @@ extension AppDelegate {
             }
             catch {
                 baeAppLogger.error(
-                    "Closing the library to restore it failed: \(error.localizedDescription)"
+                    "Closing the library to restore it failed: \(String(reflecting: error))"
                 )
                 self.loadError = LoadError(.restoreClose, error)
                 self.screen = .welcome
@@ -409,7 +409,7 @@ extension AppDelegate {
             }
             catch {
                 baeAppLogger.error(
-                    "Device reset failed: \(error.localizedDescription)"
+                    "Device reset failed: \(String(reflecting: error))"
                 )
                 self.loadError = LoadError(.deviceReset, error)
                 self.screen = startedFrom
@@ -513,7 +513,7 @@ extension AppDelegate {
             }
             catch {
                 baeAppLogger.error(
-                    "Failed to close the library another replaced: \(error.localizedDescription)"
+                    "Failed to close the library another replaced: \(String(reflecting: error))"
                 )
             }
         }
@@ -547,7 +547,7 @@ extension AppDelegate {
             onSuccess: { self.libraries = $0 },
             onError: {
                 baeAppLogger.error(
-                    "Failed to list libraries: \($0.localizedDescription)"
+                    "Failed to list libraries: \(String(reflecting: $0))"
                 )
             }
         )
@@ -582,7 +582,7 @@ extension AppDelegate {
             },
             onError: {
                 baeAppLogger.error(
-                    "Failed to rename \(libraryId): \($0.localizedDescription)"
+                    "Failed to rename \(libraryId): \(String(reflecting: $0))"
                 )
                 self.renameLibrarySheet?.error = DisplayError($0)
             }
@@ -615,7 +615,7 @@ extension AppDelegate {
             }
             catch {
                 baeAppLogger.error(
-                    "Failed to remove library: \(error.localizedDescription)"
+                    "Failed to remove library: \(String(reflecting: error))"
                 )
                 await self.reopen(service, error: DisplayError(error))
             }
@@ -631,7 +631,7 @@ extension AppDelegate {
         }
         catch let closeError {
             baeAppLogger.error(
-                "Failed to close the library after its removal stopped: \(closeError.localizedDescription)"
+                "Failed to close the library after its removal stopped: \(String(reflecting: closeError))"
             )
         }
         releaseLibrarySession(service)

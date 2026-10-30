@@ -126,7 +126,7 @@ struct InviteCodeSheet: View {
             }
             catch {
                 logger.error(
-                    "invite cancel failed: \(error.localizedDescription)"
+                    "invite cancel failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }

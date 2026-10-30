@@ -93,7 +93,7 @@ extension ImportSearchFlow {
             )
         case .failure(let error):
             logger.error(
-                "Metadata application failed: \(error.localizedDescription)"
+                "Metadata application failed: \(String(reflecting: error))"
             )
             if case .pick = application {
                 importStore.metadataApplicationFailed(

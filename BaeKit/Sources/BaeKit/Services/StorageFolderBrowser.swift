@@ -204,7 +204,7 @@ public final class StorageFolderBrowser {
             }
             catch {
                 logger.error(
-                    "folder setup step failed: \(error.localizedDescription)"
+                    "folder setup step failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
             }

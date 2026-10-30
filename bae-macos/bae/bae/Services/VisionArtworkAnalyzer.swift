@@ -87,7 +87,7 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         }
         catch {
             logger.error(
-                "analyze perform failed for \(path): \(error.localizedDescription)"
+                "analyze perform failed for \(path): \(String(reflecting: error))"
             )
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }

@@ -308,7 +308,7 @@ public final class ImageStore: Sendable, Observable {
                     """
                     Failed to warm \
                     \(content.description): \
-                    \(error.localizedDescription)
+                    \(String(reflecting: error))
                     """
                 )
             }

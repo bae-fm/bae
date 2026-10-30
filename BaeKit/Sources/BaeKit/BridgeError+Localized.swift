@@ -86,6 +86,19 @@ extension BridgeError {
     }
 }
 
+/// A bridge error's `localizedDescription` is core's keyed line in the current
+/// locale. The generated type has no `LocalizedError` conformance of its own:
+/// `bae-bridge/uniffi.toml` leaves out uniffi's, whose description is
+/// `String(reflecting: self)`, a dump of the Rust value.
+///
+/// A cancellation has no line, so Foundation substitutes its generic sentence
+/// for it. Whatever shows an error to a person goes through `DisplayError`,
+/// which shows nothing for a cancellation and keeps a diagnostic's detail for
+/// the copy button.
+extension BridgeError: LocalizedError {
+    public var errorDescription: String? { localizedLine }
+}
+
 extension BridgePlaybackErrorReason {
     /// The localized, user-facing line for this playback failure, or `nil` when
     /// there is none. The actionable cases, where this device can't reach the

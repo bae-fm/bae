@@ -275,7 +275,7 @@ struct SetupStep<Fields: View>: View {
                 logger.debug("Connect attempt cancelled")
             }
             catch {
-                logger.error("Connect failed: \(error.localizedDescription)")
+                logger.error("Connect failed: \(String(reflecting: error))")
                 self.error = DisplayError(error)
             }
         }

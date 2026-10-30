@@ -90,7 +90,7 @@ public final class DetailReader<Value: Sendable> {
             // A read that can no longer be pointed anywhere has ended; the
             // next `show` opens another.
             logger.warning(
-                "detail read showing \(shown) could not be cleared, so it is closed: \(error.localizedDescription)"
+                "detail read showing \(shown) could not be cleared, so it is closed: \(String(reflecting: error))"
             )
             closeRead()
         }
@@ -136,7 +136,7 @@ public final class DetailReader<Value: Sendable> {
                     else {
                         // Nothing is shown to report it on; the read goes on.
                         logger.warning(
-                            "detail read failed while showing nothing: \(error.localizedDescription)"
+                            "detail read failed while showing nothing: \(String(reflecting: error))"
                         )
                     }
                 }

@@ -1,0 +1,9 @@
+# Read by uniffi-bindgen from this crate's root when it generates the bindings.
+
+[bindings.swift]
+# uniffi's own `LocalizedError` conformance gives every error an
+# `errorDescription` of `String(reflecting: self)`, a dump of the Rust value, so
+# a bridge error's `localizedDescription` would read as the enum, untranslated.
+# Leaving it out lets BaeKit declare the conformance itself, with core's keyed
+# line in the current locale (`BaeKit/Sources/BaeKit/BridgeError+Localized.swift`).
+omit_localized_error_conformance = true

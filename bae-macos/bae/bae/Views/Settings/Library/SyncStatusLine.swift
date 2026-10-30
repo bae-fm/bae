@@ -70,7 +70,7 @@ struct SyncStatusLine: View {
             do { try await sync.reconnectSync() }
             catch {
                 // The failure reaches the status line as its error.
-                logger.error("Reconnect failed: \(error.localizedDescription)")
+                logger.error("Reconnect failed: \(String(reflecting: error))")
             }
         }
     }
