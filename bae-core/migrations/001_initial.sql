@@ -3842,15 +3842,17 @@ BEGIN
       AND NOT EXISTS (SELECT 1 FROM import_list_placement AS member
                       WHERE member.watched_folder_path = NEW.watched_folder_path
                         AND member.group_name = NEW.group_name AND member.item <> 'group');
+    -- The newest member is the first of the group's members newest first,
+    -- read off `import_list_newest_first_members` without passing the rest.
     UPDATE import_list_placement
-    SET group_date = (SELECT MAX(member.own_date) FROM import_list_placement AS member
-                      WHERE member.watched_folder_path = NEW.watched_folder_path
-                        AND member.group_name = NEW.group_name AND member.item <> 'group')
+    SET group_date = newest.own_date
+    FROM (SELECT member.own_date FROM import_list_placement AS member
+          WHERE member.watched_folder_path = NEW.watched_folder_path
+            AND member.group_name = NEW.group_name AND member.item <> 'group'
+          ORDER BY member.item = 'group' DESC, member.own_date IS NULL, member.own_date DESC
+          LIMIT 1) AS newest
     WHERE watched_folder_path = NEW.watched_folder_path AND item = 'group' AND key = NEW.group_name
-      AND group_date IS NOT (SELECT MAX(member.own_date) FROM import_list_placement AS member
-                             WHERE member.watched_folder_path = NEW.watched_folder_path
-                               AND member.group_name = NEW.group_name
-                               AND member.item <> 'group');
+      AND group_date IS NOT newest.own_date;
 END;
 
 

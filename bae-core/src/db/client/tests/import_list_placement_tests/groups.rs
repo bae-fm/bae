@@ -172,3 +172,54 @@ async fn a_moved_release_changes_group() {
         ])
     );
 }
+
+/// Placing a release under a group costs the same however many releases the
+/// group already holds, each newer than the last as a scan writing a
+/// copied-in collection finds them: only the header holds the group's date,
+/// and the newest member is read off the group's index. Counted in SQLite's
+/// own steps for the write of the release's scan row, its triggers' included.
+#[test]
+fn a_member_costs_the_same_however_large_its_group() {
+    let conn = crate::library::bare_library_connection();
+    let root = crate::import::watched_folder::host_root("/music");
+    conn.execute_batch(&format!(
+        "INSERT INTO watched_import_folders (path, position) VALUES ('{root}', 0);
+         INSERT INTO folder_scan_roots (watched_folder_path, generation, status, volume)
+         VALUES ('{root}', 1, 'scanning', 'local');"
+    ))
+    .unwrap();
+    let place = |n: i64| -> i32 {
+        let display_path = format!("Collection/Album {n}");
+        let path = folder_below(&root, &display_path)
+            .to_string_lossy()
+            .into_owned();
+        conn.execute(
+            "INSERT INTO folder_discovery (folder, first_seen_at, settled) VALUES (?, ?, 1)",
+            rusqlite::params![path, n],
+        )
+        .unwrap();
+        let mut write = conn
+            .prepare(
+                "INSERT INTO scan_candidate
+                     (watched_folder_path, path, generation, kind, name, display_path, folder,
+                      file_root, scope, content_hash)
+                 VALUES (?1, ?2, 1, 'valid', ?3, ?4, ?2, ?2, 'direct', ?2)",
+            )
+            .unwrap();
+        write
+            .execute(rusqlite::params![
+                root,
+                path,
+                format!("Album {n}"),
+                display_path
+            ])
+            .unwrap();
+        write.get_status(rusqlite::StatementStatus::VmStep)
+    };
+    let early = (0..20).map(place).last().unwrap();
+    let late = (20..2_000).map(place).last().unwrap();
+    assert!(
+        late < early * 3 / 2,
+        "placing the 20th member took {early} steps, the 2,000th {late}"
+    );
+}
