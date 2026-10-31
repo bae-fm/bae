@@ -3190,6 +3190,16 @@ release's or track's id as UTF-8, or a candidate's key.
   removing that library waits for the close first. After a removal deleted
   the store, only the runtime is left to end. An open that fails after the
   library started closes it the same way before its runtime ends.
+- **`release_memory`** gives back the pages the library's store keeps cached
+  that no read or write is using; later reads load what they need again. SQLite
+  keeps every connection's unused pages in one pool for the process, so coven
+  frees them all, the writer's included, with one call on an idle reader. It is
+  safe at any time and never waits for a write. The Android app calls it each
+  time `onTrimMemory` asks, at every level, which includes bae leaving the
+  screen and waiting in the background, and on `onLowMemory`, while a library is
+  open. The iOS app, once it has a library to show, calls it on
+  `didReceiveMemoryWarningNotification` and `didEnterBackgroundNotification`.
+  The macOS app doesn't: the OS ends no app there for holding memory.
 - **Subscriptions** take a callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery. Each runs
   as one of the library's tasks, and so does every task core starts to read

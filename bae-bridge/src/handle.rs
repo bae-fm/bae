@@ -136,6 +136,7 @@ mod library_projection;
 #[cfg(feature = "desktop")]
 mod library_status;
 mod live;
+mod memory;
 mod playback_persistence;
 mod queue_projection;
 mod queue_upcoming;

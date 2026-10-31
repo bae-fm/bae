@@ -100,6 +100,11 @@ impl Database {
         self.inner.handle.transfer_limits()
     }
 
+    /// Give back the pages SQLite keeps cached that no statement is using.
+    pub(crate) async fn release_memory(&self) -> Result<(), DbError> {
+        Ok(self.inner.handle.release_memory().await?)
+    }
+
     pub(crate) fn stop_sync(&self) {
         self.inner.handle.stop_sync();
     }

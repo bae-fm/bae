@@ -118,6 +118,7 @@ class OpenLibrary internal constructor(
     private var eventJob: Job? = null
     private var widgetJob: Job? = null
     private var networkReports: NetworkChangeReporter? = null
+    private var memoryRelease: MemoryRelease? = null
 
     /**
      * How many of this library's screens are composed. Closing waits for none
@@ -133,8 +134,9 @@ class OpenLibrary internal constructor(
 
     /**
      * Subscribe to retained values first, then route transient notifications
-     * through the event adapter, and report to the handle each time its
-     * network may be back ([NetworkChangeReporter]).
+     * through the event adapter, report to the handle each time its network
+     * may be back ([NetworkChangeReporter]), and give back its store's cached
+     * memory each time Android asks ([MemoryRelease]).
      *
      * The [PlaybackService] is not started here: Android starts a service only
      * from the foreground, so `PlaybackSystemHooks` starts it when playback
@@ -178,6 +180,7 @@ class OpenLibrary internal constructor(
                 lifecycle = ProcessLifecycleOwner.get().lifecycle,
                 report = appHandle::reportNetworkChange,
             ).also(NetworkChangeReporter::start)
+        memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
         observeNowPlayingForWidget(scope)
     }
 
@@ -406,6 +409,8 @@ class OpenLibrary internal constructor(
         // Then: a report must never reach the handle once it closes.
         networkReports?.stop()
         networkReports = null
+        memoryRelease?.stop()
+        memoryRelease = null
         browserPages.cancel()
         libraryQueries.cancel()
         // Detach the audio-focus listener + becoming-noisy receiver: they call

@@ -397,6 +397,7 @@ impl AppServices {
     delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_sync!(manager, network_changed => network_changed() -> ());
+    delegate_async!(manager, release_memory => release_memory() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, retry_now => retry_now() -> impl std::future::Future<Output = crate::library::SyncRetryOutcome> + Send + 'static);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);

@@ -739,6 +739,10 @@ internal open class FakeAppHandle(
         unfaked("reconnectSync")
     }
 
+    override suspend fun releaseMemory() {
+        unfaked("releaseMemory")
+    }
+
     override fun reportNetworkChange() {
         unfaked("reportNetworkChange")
     }

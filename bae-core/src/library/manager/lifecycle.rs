@@ -1,4 +1,4 @@
-//! Names and removal follow coven's shared store lifecycle.
+//! Names, removal, keys and memory follow coven's shared store lifecycle.
 
 use super::*;
 
@@ -48,5 +48,12 @@ impl LibraryManager {
 
     pub fn store_key_state(&self) -> Result<coven::StoreKeyState, LibraryError> {
         Ok(self.database.store_key_state()?)
+    }
+
+    /// Give back the memory the store's SQLite connections keep cached, for
+    /// when the OS warns of low memory or the app leaves the screen. Reads
+    /// after it load what they need again.
+    pub async fn release_memory(&self) -> Result<(), LibraryError> {
+        Ok(self.database.release_memory().await?)
     }
 }
