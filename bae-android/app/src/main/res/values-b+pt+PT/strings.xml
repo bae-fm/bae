@@ -30,6 +30,11 @@
     <string name="play_next">Reproduzir a seguir</string>
     <string name="add_to_queue">Adicionar à fila</string>
     <string name="track_options">Opções da faixa</string>
+    <string name="album_options">Opções do álbum</string>
+    <string name="delete_album">Eliminar álbum…</string>
+    <string name="delete_album_confirm_title">Eliminar este álbum?</string>
+    <string name="delete_album_confirm_body">Todas as edições deste álbum são eliminadas da biblioteca, juntamente com as cópias dos respetivos ficheiros que o bae guarda neste dispositivo e no seu armazenamento. Os ficheiros nas suas próprias pastas não são eliminados. Não é possível anular.</string>
+    <string name="delete_album_confirm">Eliminar</string>
     <string name="now_playing">A reproduzir</string>
     <string name="paused">Em pausa</string>
     <string name="previous_track">Faixa anterior</string>

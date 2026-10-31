@@ -129926,6 +129926,525 @@
           }
         }
       }
+    },
+    "Delete Album…" : {
+      "comment" : "Album grid card menu and album detail menu: delete the album, asking first",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حذف الألبوم…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изтриване на албума…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smazat album…"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slet album…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album löschen…"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Διαγραφή άλμπουμ…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Album…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar álbum…"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poista albumi…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer l'album…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחק אלבום…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izbriši album…"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album törlése…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina album…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムを削除…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앨범 삭제…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett album…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album verwijderen…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuń album…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Excluir álbum…"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar álbum…"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Șterge albumul…"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odstrániť album…"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radera album…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albümü Sil…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видалити альбом…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除专辑…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除專輯…"
+          }
+        }
+      }
+    },
+    "Delete Album" : {
+      "comment" : "Album grid and album detail: title of the alert asking before an album is deleted",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حذف الألبوم"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изтриване на албума"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smazat album"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slet album"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album löschen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Διαγραφή άλμπουμ"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Album"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar álbum"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poista albumi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer l'album"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחק אלבום"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izbriši album"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album törlése"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina album"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アルバムを削除"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앨범 삭제"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett album"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album verwijderen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuń album"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Excluir álbum"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar álbum"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Șterge albumul"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odstrániť album"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radera album"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albümü Sil"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видалити альбом"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除专辑"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除專輯"
+          }
+        }
+      }
+    },
+    "Every release of this album is deleted from the library, along with the copies of their files that bae keeps on this Mac and in your storage. Files in your own folders aren't deleted. This cannot be undone." : {
+      "comment" : "Album grid and album detail: what deleting an album deletes and keeps",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تُحذف كل إصدارات هذا الألبوم من المكتبة، مع نسخ ملفاتها التي يحتفظ بها bae على هذا الـ Mac وفي التخزين. لا يتم حذف الملفات الموجودة في مجلداتك. لا يمكن التراجع عن هذا."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всички издания на този албум се изтриват от библиотеката заедно с копията на файловете им, които bae пази на този Mac и в хранилището ви. Файловете във вашите папки не се изтриват. Действието е необратимо."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Všechna vydání tohoto alba se smažou z knihovny spolu s kopiemi jejich souborů, které bae uchovává na tomto Macu a ve vašem úložišti. Soubory ve vašich složkách se nesmažou. Akci nelze vrátit zpět."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle udgivelser af dette album slettes fra biblioteket sammen med de kopier af deres filer, som bae gemmer på denne Mac og i dit lager. Filer i dine egne mapper slettes ikke. Det kan ikke fortrydes."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Veröffentlichungen dieses Albums werden aus der Bibliothek gelöscht, zusammen mit den Kopien ihrer Dateien, die bae auf diesem Mac und in deinem Speicher aufbewahrt. Dateien in deinen eigenen Ordnern werden nicht gelöscht. Das kann nicht rückgängig gemacht werden."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Όλες οι κυκλοφορίες αυτού του άλμπουμ διαγράφονται από τη βιβλιοθήκη, μαζί με τα αντίγραφα των αρχείων τους που κρατά το bae σε αυτό το Mac και στον χώρο αποθήκευσής σας. Τα αρχεία στους δικούς σας φακέλους δεν διαγράφονται. Η ενέργεια δεν αναιρείται."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every release of this album is deleted from the library, along with the copies of their files that bae keeps on this Mac and in your storage. Files in your own folders aren't deleted. This cannot be undone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas las ediciones de este álbum se eliminan de la biblioteca, junto con las copias de sus archivos que bae guarda en este Mac y en tu almacenamiento. Los archivos de tus propias carpetas no se eliminan. Esta acción no se puede deshacer."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaikki tämän albumin julkaisut poistetaan kirjastosta yhdessä niiden tiedostojen kopioiden kanssa, joita bae säilyttää tässä Macissa ja tallennustilassasi. Omissa kansioissasi olevia tiedostoja ei poisteta. Toimintoa ei voi kumota."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes les éditions de cet album sont supprimées de la bibliothèque, ainsi que les copies de leurs fichiers que bae conserve sur ce Mac et dans votre stockage. Les fichiers de vos propres dossiers ne sont pas supprimés. Cette action est irréversible."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל המהדורות של האלבום הזה יימחקו מהספרייה, יחד עם העותקים של הקבצים שלהן ש‑bae שומר ב‑Mac הזה ובאחסון שלך. קבצים בתיקיות שלך אינם נמחקים. לא ניתן לבטל פעולה זו."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sva izdanja ovog albuma brišu se iz fonoteke, zajedno s kopijama njihovih datoteka koje bae čuva na ovom Macu i u vašoj pohrani. Datoteke u vašim mapama ne brišu se. Ovo se ne može poništiti."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az album összes kiadása törlődik a könyvtárból, a fájljaik azon másolataival együtt, amelyeket a bae ezen a Macen és a tárhelyeden tárol. A saját mappáidban lévő fájlok nem törlődnek. A művelet nem vonható vissza."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutte le pubblicazioni di questo album vengono eliminate dalla libreria, insieme alle copie dei loro file che bae conserva su questo Mac e nel tuo spazio di archiviazione. I file nelle tue cartelle non vengono eliminati. L'azione non può essere annullata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアルバムのすべてのリリースがライブラリから削除され、bae がこの Mac とストレージに保持しているファイルのコピーも削除されます。自分のフォルダ内のファイルは削除されません。この操作は取り消せません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앨범의 모든 릴리스가 라이브러리에서 삭제되며, bae가 이 Mac과 저장소에 보관하는 파일 사본도 함께 삭제됩니다. 내 폴더의 파일은 삭제되지 않습니다. 되돌릴 수 없습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle utgivelser av dette albumet slettes fra biblioteket, sammen med kopiene av filene deres som bae oppbevarer på denne Macen og i lagringen din. Filer i dine egne mapper slettes ikke. Dette kan ikke angres."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle releases van dit album worden uit de bibliotheek verwijderd, samen met de kopieën van hun bestanden die bae op deze Mac en in je opslag bewaart. Bestanden in je eigen mappen worden niet verwijderd. Dit kan niet ongedaan worden gemaakt."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wszystkie wydania tego albumu zostaną usunięte z biblioteki razem z kopiami ich plików, które bae przechowuje na tym Macu i w Twoim magazynie. Pliki w Twoich folderach nie są usuwane. Tej operacji nie można cofnąć."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todos os lançamentos deste álbum são excluídos da biblioteca, junto com as cópias dos arquivos deles que o bae mantém neste Mac e no seu armazenamento. Os arquivos nas suas próprias pastas não são excluídos. Isso não pode ser desfeito."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas as edições deste álbum são eliminadas da biblioteca, juntamente com as cópias dos respetivos ficheiros que o bae guarda neste Mac e no seu armazenamento. Os ficheiros nas suas próprias pastas não são eliminados. Não é possível anular."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toate edițiile acestui album sunt șterse din bibliotecă, împreună cu copiile fișierelor lor pe care bae le păstrează pe acest Mac și în stocarea ta. Fișierele din dosarele tale nu sunt șterse. Acțiunea nu poate fi anulată."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Všetky vydania tohto albumu sa odstránia z knižnice spolu s kópiami ich súborov, ktoré bae uchováva v tomto Macu a v tvojom úložisku. Súbory v tvojich priečinkoch sa neodstránia. Nedá sa to vrátiť späť."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alla utgåvor av det här albumet raderas från biblioteket, tillsammans med kopiorna av deras filer som bae sparar på den här Macen och i din lagring. Filer i dina egna mappar raderas inte. Det går inte att ångra."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu albümün tüm yayınları, bae'nin bu Mac'te ve depolamanızda tuttuğu dosya kopyalarıyla birlikte kitaplıktan silinir. Kendi klasörlerinizdeki dosyalar silinmez. Bu işlem geri alınamaz."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усі релізи цього альбому буде видалено з бібліотеки разом із копіями їхніх файлів, які bae зберігає на цьому Mac і у вашому сховищі. Файли у ваших власних теках не видаляються. Цю дію не можна скасувати."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此专辑的所有版本都会从库中删除，bae 在这台 Mac 和你的存储中保存的文件副本也会一并删除。你自己文件夹中的文件不会被删除。此操作无法撤销。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此專輯的所有發行都會從資料庫中刪除，bae 在這台 Mac 和你的儲存空間中保存的檔案副本也會一併刪除。你自己資料夾中的檔案不會被刪除。此操作無法復原。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

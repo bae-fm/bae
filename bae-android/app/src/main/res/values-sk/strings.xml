@@ -30,6 +30,11 @@
     <string name="play_next">Prehrať ako ďalšie</string>
     <string name="add_to_queue">Pridať do poradia</string>
     <string name="track_options">Možnosti skladby</string>
+    <string name="album_options">Možnosti albumu</string>
+    <string name="delete_album">Odstrániť album…</string>
+    <string name="delete_album_confirm_title">Odstrániť tento album?</string>
+    <string name="delete_album_confirm_body">Všetky vydania tohto albumu sa odstránia z knižnice spolu s kópiami ich súborov, ktoré bae uchováva v tomto zariadení a v tvojom úložisku. Súbory v tvojich priečinkoch sa neodstránia. Nedá sa to vrátiť späť.</string>
+    <string name="delete_album_confirm">Odstrániť</string>
     <string name="now_playing">Prehráva sa</string>
     <string name="paused">Pozastavené</string>
     <string name="previous_track">Predchádzajúca skladba</string>

@@ -1,7 +1,7 @@
 import Foundation
 
-/// The bulk-action menu a grid card presents: how many albums it targets and the
-/// three actions, each already bound to those targets. Built by the grid from
+/// The bulk-action menu a grid card presents: how many albums it targets and
+/// its actions, each already bound to those targets. Built by the grid from
 /// `AlbumGridSelection.targets`; both the SwiftUI context menu and the
 /// AppKit ellipsis menu render from this one definition. Labels switch to the
 /// plural form (carrying the count) when more than one album is targeted.
@@ -10,6 +10,9 @@ struct AlbumCardMenu {
     let onPlay: () -> Void
     let onAddToQueue: () -> Void
     let onAddNext: () -> Void
+    /// Ask to delete the album the menu targets; `nil` when it targets
+    /// several, since an album is deleted one at a time.
+    let onDelete: (() -> Void)?
 
     var playLabel: String {
         targetCount > 1
@@ -27,5 +30,9 @@ struct AlbumCardMenu {
         targetCount > 1
             ? String(localized: "Add \(targetCount) Albums Next")
             : String(localized: "Add Next")
+    }
+
+    var deleteLabel: String {
+        String(localized: "Delete Album…")
     }
 }

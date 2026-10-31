@@ -16,9 +16,15 @@ struct LibraryView: View {
     var configStore
     @Environment(LibraryProjectionStore.self)
     private var libraryProjections
+    @Environment(ReleaseEditor.self)
+    private var releaseEditor
     /// The header's collapse, fed by the panes' `reportsHeaderScroll`.
     @State
     private var headerCollapse = HeaderCollapse()
+    /// The album a grid card's menu asked to delete, while its confirmation
+    /// shows.
+    @State
+    private var albumIdPendingDelete: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -138,6 +144,24 @@ extension LibraryView {
         }
     }
 
+    /// Delete the album `albumId`, closing its detail if it is open; a
+    /// failure leaves the album in the grid and says why.
+    private func deleteAlbum(_ albumId: String) {
+        let releaseEditor = releaseEditor
+        let uiStore = uiStore
+        Task {
+            do {
+                try await releaseEditor.deleteAlbum(albumId)
+                if uiStore.selectedAlbumId == albumId {
+                    uiStore.closeAlbumDetail()
+                }
+            }
+            catch {
+                uiStore.showError(error)
+            }
+        }
+    }
+
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
@@ -218,9 +242,16 @@ extension LibraryView {
                                 order: AlbumGridOrder(session: session)
                             )
                         },
+                        onDeleteAlbum: { albumId in
+                            albumIdPendingDelete = albumId
+                        },
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)
                     }
+                    .deleteAlbumConfirmation(
+                        albumId: $albumIdPendingDelete,
+                        onDelete: deleteAlbum
+                    )
                 }
             }
             else {
@@ -374,6 +405,7 @@ extension LibraryView {
         return LibraryView()
             .environment(Playback.stub())
             .environment(Queue.stub())
+            .environment(ReleaseEditor.stub())
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
@@ -394,6 +426,7 @@ extension LibraryView {
         return LibraryView()
             .environment(Playback.stub())
             .environment(Queue.stub())
+            .environment(ReleaseEditor.stub())
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
@@ -415,6 +448,7 @@ extension LibraryView {
             .environment(ImageStore.stub())
             .environment(Playback.stub())
             .environment(Queue.stub())
+            .environment(ReleaseEditor.stub())
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
@@ -440,6 +474,7 @@ extension LibraryView {
             .environment(ImageStore.stub())
             .environment(Playback.stub())
             .environment(Queue.stub())
+            .environment(ReleaseEditor.stub())
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
@@ -459,6 +494,7 @@ extension LibraryView {
         return LibraryView()
             .environment(Playback.stub())
             .environment(Queue.stub())
+            .environment(ReleaseEditor.stub())
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))

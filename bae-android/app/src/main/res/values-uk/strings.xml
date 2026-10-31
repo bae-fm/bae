@@ -30,6 +30,11 @@
     <string name="play_next">Відтворити наступним</string>
     <string name="add_to_queue">Додати в чергу</string>
     <string name="track_options">Параметри треку</string>
+    <string name="album_options">Параметри альбому</string>
+    <string name="delete_album">Видалити альбом…</string>
+    <string name="delete_album_confirm_title">Видалити цей альбом?</string>
+    <string name="delete_album_confirm_body">Усі релізи цього альбому буде видалено з бібліотеки разом із копіями їхніх файлів, які bae зберігає на цьому пристрої та у вашому сховищі. Файли у ваших власних теках не видаляються. Цю дію не можна скасувати.</string>
+    <string name="delete_album_confirm">Видалити</string>
     <string name="now_playing">Зараз відтворюється</string>
     <string name="paused">Призупинено</string>
     <string name="previous_track">Попередній трек</string>

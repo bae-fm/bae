@@ -376,9 +376,10 @@ impl Database {
         .await
     }
 
-    /// Delete the releases the person selected atomically. Refuse if the album
-    /// has changed since planning; each coven file of theirs goes with its
-    /// last reference.
+    /// Delete every release of `album_id` in one write, each as `releases`
+    /// planned it. Refuse if the album's releases or any of theirs changed
+    /// since planning; each coven file of theirs goes with its last
+    /// reference.
     pub async fn delete_album_with_cleanup(
         &self,
         album_id: &str,

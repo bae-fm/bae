@@ -2,9 +2,10 @@ import BaeKit
 import Foundation
 
 /// Release-level mutations and the remote-cover fetch the editor needs.
-/// Covers cover changes, pinning, deletion, primary-release selection,
-/// opening a release edit session (whose own commands apply a catalog, pick
-/// its album and save), and the remote-cover gallery fetch.
+/// Covers cover changes, pinning, deleting a release or a whole album,
+/// primary-release selection, opening a release edit session (whose own
+/// commands apply a catalog, pick its album and save), and the remote-cover
+/// gallery fetch.
 @MainActor
 final class ReleaseEditor: Observable {
     let changeCover:
@@ -17,6 +18,8 @@ final class ReleaseEditor: Observable {
     let makeReleaseLocal:
         @Sendable (_ releaseId: String, _ newPath: URL) async throws -> Void
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
+    /// Delete an album: every release it holds and what each owns.
+    let deleteAlbum: @Sendable (_ albumId: String) async throws -> Void
     let setPrimaryRelease:
         @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
     /// Open an edit session of the caller's own on a release: its form as
@@ -46,6 +49,9 @@ final class ReleaseEditor: Observable {
         deleteRelease: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
+        deleteAlbum: @escaping @Sendable (String) async throws -> Void = {
+            _ in
+        },
         setPrimaryRelease:
             @escaping @Sendable (String, String) async throws -> Void = {
                 _,
@@ -68,6 +74,7 @@ final class ReleaseEditor: Observable {
         moveReleasesToCloudAction = moveReleasesToCloud
         self.makeReleaseLocal = makeReleaseLocal
         self.deleteRelease = deleteRelease
+        self.deleteAlbum = deleteAlbum
         self.setPrimaryRelease = setPrimaryRelease
         self.openReleaseEdit = openReleaseEdit
         self.releaseCover = releaseCover
@@ -92,6 +99,7 @@ final class ReleaseEditor: Observable {
                 )
             },
             deleteRelease: { try await handle.deleteRelease(releaseId: $0) },
+            deleteAlbum: { try await handle.deleteAlbum(albumId: $0) },
             setPrimaryRelease: {
                 try await handle.setPrimaryRelease(albumId: $0, releaseId: $1)
             },

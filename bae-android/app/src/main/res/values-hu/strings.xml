@@ -30,6 +30,11 @@
     <string name="play_next">Lejátszás következőként</string>
     <string name="add_to_queue">Hozzáadás a sorhoz</string>
     <string name="track_options">Szám beállításai</string>
+    <string name="album_options">Album beállításai</string>
+    <string name="delete_album">Album törlése…</string>
+    <string name="delete_album_confirm_title">Törlöd ezt az albumot?</string>
+    <string name="delete_album_confirm_body">Az album összes kiadása törlődik a könyvtárból, a fájljaik azon másolataival együtt, amelyeket a bae ezen az eszközön és a tárhelyeden tárol. A saját mappáidban lévő fájlok nem törlődnek. A művelet nem vonható vissza.</string>
+    <string name="delete_album_confirm">Törlés</string>
     <string name="now_playing">Most szól</string>
     <string name="paused">Szüneteltetve</string>
     <string name="previous_track">Előző szám</string>

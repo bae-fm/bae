@@ -117,7 +117,8 @@ private struct AlbumCardStack<Art: View>: View {
             targetCount: 1,
             onPlay: {},
             onAddToQueue: {},
-            onAddNext: {}
+            onAddNext: {},
+            onDelete: {}
         )
         HStack(spacing: ThemeSpace.section) {
             AlbumCardView(

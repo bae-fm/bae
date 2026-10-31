@@ -165,6 +165,17 @@ primary. "Set as Primary Release" moves a release before the album's others,
 and is refused for a release of another album. Moving or deleting a release
 writes nothing else: the next release in the order is then the primary.
 
+Deleting a release deletes, in one write, its tracks and their places in the
+queue, its files and its cover (§4.2). Deleting an album deletes every release
+it holds in one write, and is refused for an album holding none. An album
+left with no release is never deleted itself: another device may have added a
+release to it while apart. It is inert, since every listing shows only albums
+holding a release, and a release that lands in it later fills it again. Both
+deletes ask first, saying what goes and that it can't be undone. On macOS the
+album detail's menu offers *Delete Release* and *Delete Album…*, and a grid
+card's menu offers *Delete Album…* when it acts on one album; on Android the
+album page's menu offers *Delete Album…*.
+
 An album credited to the various-artists artist alone is a *compilation*, and
 its tracks show their own artists. The flag is decided from the album's
 credits at every write of them, an import's or an edit's, so it never outlives
@@ -1514,7 +1525,7 @@ Other devices go on showing the release without playing it.
   leaves it a local release on that device.
 - **Deleting a release** deletes its files' coven records with its rows, and
   with them coven's records of their originals; the originals stay where they
-  are.
+  are. Deleting an album does this for each of its releases.
 - **Uploads queue.** Files go up three at a time by default, a setting from
   one to eight. The queue can be paused, and stays paused across restarts; a
   paused upload keeps its place. The pause holds release files only: a cover,
@@ -1750,8 +1761,8 @@ from wherever they are: the person's own path, the cache, or storage.
 
 **Edge cases.**
 
-- **Deleting a release** deletes its rows and coven's copies of its files. The
-  person's own files are never deleted.
+- **Deleting a release or an album** deletes their rows and coven's copies of
+  their files. The person's own files are never deleted.
 - **A device with no cloud home** has only local releases; moving to the cloud
   needs one.
 - **What disconnecting would cost.** bae counts the uploaded releases this

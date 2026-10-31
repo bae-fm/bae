@@ -30,6 +30,11 @@
     <string name="play_next">Αναπαραγωγή ως επόμενο</string>
     <string name="add_to_queue">Προσθήκη στην ουρά</string>
     <string name="track_options">Επιλογές κομματιού</string>
+    <string name="album_options">Επιλογές άλμπουμ</string>
+    <string name="delete_album">Διαγραφή άλμπουμ…</string>
+    <string name="delete_album_confirm_title">Διαγραφή αυτού του άλμπουμ;</string>
+    <string name="delete_album_confirm_body">Όλες οι κυκλοφορίες αυτού του άλμπουμ διαγράφονται από τη βιβλιοθήκη, μαζί με τα αντίγραφα των αρχείων τους που κρατά το bae σε αυτή τη συσκευή και στον αποθηκευτικό σας χώρο. Τα αρχεία στους δικούς σας φακέλους δεν διαγράφονται. Η ενέργεια δεν αναιρείται.</string>
+    <string name="delete_album_confirm">Διαγραφή</string>
     <string name="now_playing">Αναπαράγεται τώρα</string>
     <string name="paused">Σε παύση</string>
     <string name="previous_track">Προηγούμενο κομμάτι</string>

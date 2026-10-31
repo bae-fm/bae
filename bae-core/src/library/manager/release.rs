@@ -548,8 +548,9 @@ impl LibraryManager {
                 LibraryError::TrackMapping(format!("Release not found: {release_id}"))
             })?;
 
-        // Read the track ids before the delete cascades them away — playback needs
-        // them to clear the queue.
+        // Read the track ids before the delete cascades them away — the player
+        // stops a deleted track it plays or has loaded next. The queue's rows
+        // leave in the delete's own transaction.
         let track_ids: Vec<String> = self
             .get_tracks_for_release(release_id)
             .await?

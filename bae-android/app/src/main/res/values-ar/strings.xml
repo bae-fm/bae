@@ -30,6 +30,11 @@
     <string name="play_next">تشغيل كالتالي</string>
     <string name="add_to_queue">إضافة إلى قائمة الانتظار</string>
     <string name="track_options">خيارات المقطوعة</string>
+    <string name="album_options">خيارات الألبوم</string>
+    <string name="delete_album">حذف الألبوم…</string>
+    <string name="delete_album_confirm_title">حذف هذا الألبوم؟</string>
+    <string name="delete_album_confirm_body">تُحذف كل إصدارات هذا الألبوم من المكتبة، مع نسخ ملفاتها التي يحتفظ بها bae على هذا الجهاز وفي مساحة التخزين لديك. لا تُحذف الملفات الموجودة في مجلداتك. لا يمكن التراجع عن هذا.</string>
+    <string name="delete_album_confirm">حذف</string>
     <string name="now_playing">قيد التشغيل الآن</string>
     <string name="paused">متوقف مؤقتًا</string>
     <string name="previous_track">المقطوعة السابقة</string>

@@ -94,6 +94,7 @@ struct AlbumGridRevealTests {
                 onPlay: { _ in },
                 onAddToQueue: { _ in },
                 onAddNext: { _ in },
+                onDeleteAlbum: { _ in },
                 expansionContent: { albumId in
                     TrackRows(albumId: albumId, stage: stage)
                 }

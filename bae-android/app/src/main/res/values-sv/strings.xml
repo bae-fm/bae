@@ -30,6 +30,11 @@
     <string name="play_next">Spela härnäst</string>
     <string name="add_to_queue">Lägg till i kön</string>
     <string name="track_options">Spåralternativ</string>
+    <string name="album_options">Albumalternativ</string>
+    <string name="delete_album">Radera album…</string>
+    <string name="delete_album_confirm_title">Radera det här albumet?</string>
+    <string name="delete_album_confirm_body">Alla utgåvor av det här albumet raderas från biblioteket, tillsammans med kopiorna av deras filer som bae sparar på den här enheten och i din lagring. Filer i dina egna mappar raderas inte. Det går inte att ångra.</string>
+    <string name="delete_album_confirm">Radera</string>
     <string name="now_playing">Spelas nu</string>
     <string name="paused">Pausad</string>
     <string name="previous_track">Föregående spår</string>

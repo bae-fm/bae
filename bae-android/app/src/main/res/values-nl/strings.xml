@@ -30,6 +30,11 @@
     <string name="play_next">Hierna afspelen</string>
     <string name="add_to_queue">Toevoegen aan wachtrij</string>
     <string name="track_options">Nummeropties</string>
+    <string name="album_options">Albumopties</string>
+    <string name="delete_album">Album verwijderen…</string>
+    <string name="delete_album_confirm_title">Dit album verwijderen?</string>
+    <string name="delete_album_confirm_body">Alle releases van dit album worden uit de bibliotheek verwijderd, samen met de kopieën van hun bestanden die bae op dit apparaat en in je opslag bewaart. Bestanden in je eigen mappen worden niet verwijderd. Dit kan niet ongedaan worden gemaakt.</string>
+    <string name="delete_album_confirm">Verwijderen</string>
     <string name="now_playing">Speelt nu</string>
     <string name="paused">Gepauzeerd</string>
     <string name="previous_track">Vorig nummer</string>

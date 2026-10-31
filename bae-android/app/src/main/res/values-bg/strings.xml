@@ -30,6 +30,11 @@
     <string name="play_next">Възпроизведи следващо</string>
     <string name="add_to_queue">Добави в опашката</string>
     <string name="track_options">Опции за песента</string>
+    <string name="album_options">Опции за албума</string>
+    <string name="delete_album">Изтриване на албума…</string>
+    <string name="delete_album_confirm_title">Да се изтрие ли този албум?</string>
+    <string name="delete_album_confirm_body">Всички издания на този албум се изтриват от библиотеката заедно с копията на файловете им, които bae пази на това устройство и в хранилището ви. Файловете във вашите папки не се изтриват. Действието е необратимо.</string>
+    <string name="delete_album_confirm">Изтриване</string>
     <string name="now_playing">Текущо възпроизвеждане</string>
     <string name="paused">На пауза</string>
     <string name="previous_track">Предишна песен</string>

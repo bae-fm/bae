@@ -117,6 +117,19 @@ fn queue_entry_precomputes_duration_clock() {
 
 /// A handle over a fresh, empty library, built the way the app builds one.
 pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
+    let (runtime, manager, root) = fresh_test_library(test_name);
+    (start_test_handle(runtime, manager), root)
+}
+
+/// A fresh library opened in a directory named for `test_name`, on the
+/// runtime a handle over it runs on.
+pub(super) fn fresh_test_library(
+    test_name: &str,
+) -> (
+    tokio::runtime::Runtime,
+    bae_core::library::LibraryManager,
+    std::path::PathBuf,
+) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
         Ok(()) => {}
@@ -156,27 +169,31 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
                 bae_core::providers::Providers::offline(),
             ))
             .expect("open test library");
+    (runtime, manager, root)
+}
+
+/// Start a handle over `manager` on `runtime`, as the app starts one.
+pub(super) fn start_test_handle(
+    runtime: tokio::runtime::Runtime,
+    manager: bae_core::library::LibraryManager,
+) -> Arc<super::AppHandle> {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))
         .expect("start test app services");
     #[cfg(any(target_os = "ios", target_os = "android"))]
     let services = {
-        let playback = manager
-            .start_playback_service(
+        let playback = runtime
+            .block_on(manager.start_playback_service(
                 runtime.handle().clone(),
                 50,
                 true,
                 bae_core::playback::AudioFocus::Unshared,
-            )
-            .await
+            ))
             .expect("start playback");
         bae_core::library::AppServices::new(manager, playback)
     };
-    let handle =
-        Arc::new(super::AppHandle::start(services, runtime).expect("the bridge handle starts"));
-
-    (handle, root)
+    Arc::new(super::AppHandle::start(services, runtime).expect("the bridge handle starts"))
 }
 
 #[cfg(not(feature = "desktop"))]

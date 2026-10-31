@@ -48,6 +48,11 @@
     <string name="play_next">Play Next</string>
     <string name="add_to_queue">Add to Queue</string>
     <string name="track_options">Track options</string>
+    <string name="album_options">Album options</string>
+    <string name="delete_album">Delete Album…</string>
+    <string name="delete_album_confirm_title">Delete this album?</string>
+    <string name="delete_album_confirm_body">Every release of this album is deleted from the library, along with the copies of their files that bae keeps on this device and in your storage. Files in your own folders aren\'t deleted. This can\'t be undone.</string>
+    <string name="delete_album_confirm">Delete</string>
     <string name="now_playing">Now playing</string>
     <string name="paused">Paused</string>
 

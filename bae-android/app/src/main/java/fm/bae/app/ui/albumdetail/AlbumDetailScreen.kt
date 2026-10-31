@@ -120,6 +120,7 @@ fun AlbumDetailScreen(
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
     val appContext = LocalContext.current
     val scope = rememberScreenScope()
+    val deletion = rememberAlbumDeletion(session, albumId, scope, onDeleted = onBack)
 
     DisposableEffect(albumId, session) {
         session.libraryQueries.album.activate(albumId)
@@ -131,7 +132,12 @@ fun AlbumDetailScreen(
     val loadError = query.error?.let(appContext::displayError)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        LibraryDetailTopBar(onBack = onBack)
+        LibraryDetailTopBar(onBack = onBack) {
+            if (detail != null) {
+                AlbumOptionsMenu(onDelete = deletion::ask)
+            }
+        }
+        AlbumDeletionShown(deletion)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
             if (loaded == null) {

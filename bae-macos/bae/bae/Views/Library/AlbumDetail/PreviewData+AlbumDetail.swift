@@ -88,6 +88,7 @@
                 onSaveReleaseAs: {},
                 onSetPrimaryRelease: {},
                 onDeleteRelease: {},
+                onDeleteAlbum: {},
                 onExportTrack: { _ in },
             )
         }

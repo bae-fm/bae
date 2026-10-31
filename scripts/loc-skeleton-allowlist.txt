@@ -131,6 +131,9 @@ it	onboarding_invite_provider
 it	onboarding_invite_provider_mismatch
 it	download_file_count	one
 it	download_remove
+# "Options" and "album" are the French words, as in the catalog's other
+# French "options" and "album" entries.
+fr	album_options
 tr	settings_bucket
 tr	cloud_provider_s3
 nl	shuffle

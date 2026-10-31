@@ -30,6 +30,11 @@
     <string name="play_next">Reproduzir a seguir</string>
     <string name="add_to_queue">Adicionar à fila</string>
     <string name="track_options">Opções da faixa</string>
+    <string name="album_options">Opções do álbum</string>
+    <string name="delete_album">Excluir álbum…</string>
+    <string name="delete_album_confirm_title">Excluir este álbum?</string>
+    <string name="delete_album_confirm_body">Todos os lançamentos deste álbum são excluídos da biblioteca, junto com as cópias dos arquivos deles que o bae mantém neste dispositivo e no seu armazenamento. Os arquivos nas suas próprias pastas não são excluídos. Isso não pode ser desfeito.</string>
+    <string name="delete_album_confirm">Excluir</string>
     <string name="now_playing">Tocando agora</string>
     <string name="paused">Pausado</string>
     <string name="previous_track">Faixa anterior</string>

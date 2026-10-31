@@ -30,6 +30,11 @@
     <string name="play_next">次に再生</string>
     <string name="add_to_queue">キューに追加</string>
     <string name="track_options">トラックオプション</string>
+    <string name="album_options">アルバムオプション</string>
+    <string name="delete_album">アルバムを削除…</string>
+    <string name="delete_album_confirm_title">このアルバムを削除しますか？</string>
+    <string name="delete_album_confirm_body">このアルバムのすべてのリリースがライブラリから削除され、bae がこのデバイスとストレージに保持しているファイルのコピーも削除されます。自分のフォルダ内のファイルは削除されません。この操作は取り消せません。</string>
+    <string name="delete_album_confirm">削除</string>
     <string name="now_playing">再生中</string>
     <string name="paused">一時停止中</string>
     <string name="previous_track">前のトラック</string>

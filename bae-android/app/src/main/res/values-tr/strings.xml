@@ -30,6 +30,11 @@
     <string name="play_next">Sırada çal</string>
     <string name="add_to_queue">Kuyruğa ekle</string>
     <string name="track_options">Parça seçenekleri</string>
+    <string name="album_options">Albüm seçenekleri</string>
+    <string name="delete_album">Albümü Sil…</string>
+    <string name="delete_album_confirm_title">Bu albüm silinsin mi?</string>
+    <string name="delete_album_confirm_body">Bu albümün tüm yayınları, bae\'nin bu cihazda ve depolama alanınızda tuttuğu dosya kopyalarıyla birlikte kitaplıktan silinir. Kendi klasörlerinizdeki dosyalar silinmez. Bu işlem geri alınamaz.</string>
+    <string name="delete_album_confirm">Sil</string>
     <string name="now_playing">Çalıyor</string>
     <string name="paused">Duraklatıldı</string>
     <string name="previous_track">Önceki parça</string>

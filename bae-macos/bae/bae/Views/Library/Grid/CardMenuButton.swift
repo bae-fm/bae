@@ -37,6 +37,10 @@ struct CardMenuButton: View {
         nsMenu.addItem(
             MenuItem(title: menu.addNextLabel, handler: menu.onAddNext)
         )
+        if let onDelete = menu.onDelete {
+            nsMenu.addItem(NSMenuItem.separator())
+            nsMenu.addItem(MenuItem(title: menu.deleteLabel, handler: onDelete))
+        }
 
         nsMenu.popUp(
             positioning: nil,

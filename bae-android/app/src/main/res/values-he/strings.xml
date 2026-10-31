@@ -30,6 +30,11 @@
     <string name="play_next">נגן כהבא בתור</string>
     <string name="add_to_queue">הוסף לתור</string>
     <string name="track_options">אפשרויות רצועה</string>
+    <string name="album_options">אפשרויות אלבום</string>
+    <string name="delete_album">מחיקת אלבום…</string>
+    <string name="delete_album_confirm_title">למחוק את האלבום הזה?</string>
+    <string name="delete_album_confirm_body">כל המהדורות של האלבום הזה יימחקו מהספרייה, יחד עם העותקים של הקבצים שלהן ש‑bae שומר במכשיר הזה ובאחסון שלכם. קבצים בתיקיות שלכם אינם נמחקים. לא ניתן לבטל פעולה זו.</string>
+    <string name="delete_album_confirm">מחיקה</string>
     <string name="now_playing">מתנגן כעת</string>
     <string name="paused">מושהה</string>
     <string name="previous_track">הרצועה הקודמת</string>

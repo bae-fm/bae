@@ -312,6 +312,10 @@ internal open class FakeAppHandle(
         unfaked("deleteRelease")
     }
 
+    override suspend fun deleteAlbum(albumId: String) {
+        unfaked("deleteAlbum")
+    }
+
     override suspend fun detachReleaseAudio(
         releaseId: String,
         newPath: ByteArray,

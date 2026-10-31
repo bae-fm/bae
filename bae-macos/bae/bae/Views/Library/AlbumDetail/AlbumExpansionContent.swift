@@ -34,6 +34,7 @@ struct AlbumExpansionContent: View {
     let onSaveReleaseAs: () -> Void
     let onSetPrimaryRelease: () -> Void
     let onDeleteRelease: () -> Void
+    let onDeleteAlbum: () -> Void
     let onExportTrack: (String) -> Void
 
     /// The album cover's side.
@@ -155,9 +156,12 @@ struct AlbumExpansionContent: View {
                 Button("Set as Primary Release") { onSetPrimaryRelease() }
             }
             Divider()
-            Button(role: .destructive, action: onDeleteRelease) {
-                Label("Delete Release", systemImage: "trash")
-            }
+            Button(
+                "Delete Release",
+                role: .destructive,
+                action: onDeleteRelease
+            )
+            Button("Delete Album…", role: .destructive, action: onDeleteAlbum)
         } label: {
             Image(systemName: "ellipsis")
                 .themeIcon(.medium)

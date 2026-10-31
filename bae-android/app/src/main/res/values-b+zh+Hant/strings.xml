@@ -30,6 +30,11 @@
     <string name="play_next">下一首播放</string>
     <string name="add_to_queue">加入佇列</string>
     <string name="track_options">曲目 · 設定</string>
+    <string name="album_options">專輯選項</string>
+    <string name="delete_album">刪除專輯…</string>
+    <string name="delete_album_confirm_title">刪除此專輯？</string>
+    <string name="delete_album_confirm_body">此專輯的所有發行都會從資料庫中刪除，bae 在此裝置和你的儲存空間中保存的檔案副本也會一併刪除。你自己資料夾中的檔案不會被刪除。此操作無法復原。</string>
+    <string name="delete_album_confirm">刪除</string>
     <string name="now_playing">正在播放</string>
     <string name="paused">已暫停</string>
     <string name="previous_track">上一首</string>

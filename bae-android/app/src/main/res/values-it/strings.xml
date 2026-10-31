@@ -30,6 +30,11 @@
     <string name="play_next">Riproduci dopo</string>
     <string name="add_to_queue">Aggiungi alla coda</string>
     <string name="track_options">Opzioni brano</string>
+    <string name="album_options">Opzioni album</string>
+    <string name="delete_album">Elimina album…</string>
+    <string name="delete_album_confirm_title">Eliminare questo album?</string>
+    <string name="delete_album_confirm_body">Tutte le pubblicazioni di questo album vengono eliminate dalla libreria, insieme alle copie dei loro file che bae conserva su questo dispositivo e nel tuo spazio di archiviazione. I file nelle tue cartelle non vengono eliminati. L\'azione non può essere annullata.</string>
+    <string name="delete_album_confirm">Elimina</string>
     <string name="now_playing">In riproduzione</string>
     <string name="paused">In pausa</string>
     <string name="previous_track">Brano precedente</string>

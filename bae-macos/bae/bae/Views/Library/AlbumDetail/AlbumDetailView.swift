@@ -40,6 +40,9 @@ struct AlbumDetailView: View {
     private var showingDeleteConfirmation: Bool = false
     @State
     private var releaseIdPendingDelete: String?
+    /// The album the menu asked to delete, while its confirmation shows.
+    @State
+    private var albumIdPendingDelete: String?
     @State
     private var deleteError: DisplayError?
     @State
@@ -117,6 +120,9 @@ struct AlbumDetailView: View {
                         releaseIdPendingDelete = selectedReleaseId
                         showingDeleteConfirmation = true
                     },
+                    onDeleteAlbum: {
+                        albumIdPendingDelete = albumId
+                    },
                     onExportTrack: { trackId in
                         exportTrack(trackId: trackId)
                     },
@@ -160,6 +166,20 @@ struct AlbumDetailView: View {
             Text(
                 "Are you sure you want to delete this release? This cannot be undone."
             )
+        }
+        .deleteAlbumConfirmation(albumId: $albumIdPendingDelete) { albumId in
+            let releaseEditor = releaseEditor
+            // As for a release: the detail closes only once the delete
+            // succeeds, and a failure keeps the album in view with the error.
+            Task {
+                do {
+                    try await releaseEditor.deleteAlbum(albumId)
+                    uiStore.closeAlbumDetail()
+                }
+                catch {
+                    deleteError = DisplayError(error)
+                }
+            }
         }
     }
 

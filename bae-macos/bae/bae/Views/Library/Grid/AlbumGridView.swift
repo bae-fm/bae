@@ -27,6 +27,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
     let onPlay: ([String]) -> Void
     let onAddToQueue: ([String]) -> Void
     let onAddNext: ([String]) -> Void
+    /// Ask to delete one album.
+    let onDeleteAlbum: (String) -> Void
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
 
@@ -624,7 +626,8 @@ extension AlbumGridView {
             targetCount: targets.count,
             onPlay: { onPlay(targets) },
             onAddToQueue: { onAddToQueue(targets) },
-            onAddNext: { onAddNext(targets) }
+            onAddNext: { onAddNext(targets) },
+            onDelete: targets.count == 1 ? { onDeleteAlbum(albumId) } : nil
         )
     }
 
@@ -654,6 +657,7 @@ extension AlbumGridView {
                 onPlay: { _ in },
                 onAddToQueue: { _ in },
                 onAddNext: { _ in },
+                onDeleteAlbum: { _ in },
             ) { albumId in
                 AlbumDetailView(albumId: albumId)
             }

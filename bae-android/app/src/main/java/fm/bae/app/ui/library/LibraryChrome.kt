@@ -3,6 +3,7 @@ package fm.bae.app.ui.library
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -140,9 +141,15 @@ internal fun LibraryTopBar(
     }
 }
 
-/** A screen inside the library: its bar holds the one way back, labeled with where it goes. */
+/**
+ * A screen inside the library: its bar holds the one way back, labeled with
+ * where it goes, and at its end the screen's own [actions], if it has any.
+ */
 @Composable
-internal fun LibraryDetailTopBar(onBack: () -> Unit) {
+internal fun LibraryDetailTopBar(
+    onBack: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
@@ -154,6 +161,8 @@ internal fun LibraryDetailTopBar(onBack: () -> Unit) {
                 Spacer(modifier = Modifier.width(ThemeSpace.inline))
                 Text(text = stringResource(R.string.library))
             }
+            Spacer(modifier = Modifier.weight(1f))
+            actions()
         }
     }
 }

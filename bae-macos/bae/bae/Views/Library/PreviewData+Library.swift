@@ -192,6 +192,7 @@
                 onPlay: {},
                 onAddToQueue: {},
                 onAddNext: {},
+                onDelete: targetCount > 1 ? nil : {},
             )
         }
 

@@ -206,6 +206,10 @@ forward! { async this => {
         Ok(this.services.delete_release(&release_id).await?)
     }
 
+    fn delete_album(album_id: String) -> () {
+        Ok(this.services.delete_album(&album_id).await?)
+    }
+
     fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String) -> crate::types::BridgeStorageSetup {
         Ok(this
             .services
@@ -417,3 +421,7 @@ fn queue_entry_id(entry_id: &str) -> Option<QueueEntryId> {
         }
     }
 }
+
+#[cfg(all(test, not(feature = "desktop")))]
+#[path = "base_tests.rs"]
+mod tests;

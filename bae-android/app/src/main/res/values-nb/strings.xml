@@ -30,6 +30,11 @@
     <string name="play_next">Spill av som neste</string>
     <string name="add_to_queue">Legg i kø</string>
     <string name="track_options">Sporvalg</string>
+    <string name="album_options">Albumvalg</string>
+    <string name="delete_album">Slett album…</string>
+    <string name="delete_album_confirm_title">Slette dette albumet?</string>
+    <string name="delete_album_confirm_body">Alle utgivelser av dette albumet slettes fra biblioteket, sammen med kopiene av filene deres som bae oppbevarer på denne enheten og i lagringen din. Filer i dine egne mapper slettes ikke. Dette kan ikke angres.</string>
+    <string name="delete_album_confirm">Slett</string>
     <string name="now_playing">Spilles nå</string>
     <string name="paused">Satt på pause</string>
     <string name="previous_track">Forrige spor</string>

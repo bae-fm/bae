@@ -30,6 +30,11 @@
     <string name="play_next">Als Nächstes abspielen</string>
     <string name="add_to_queue">Zur Warteschlange hinzufügen</string>
     <string name="track_options">Titeloptionen</string>
+    <string name="album_options">Albumoptionen</string>
+    <string name="delete_album">Album löschen…</string>
+    <string name="delete_album_confirm_title">Dieses Album löschen?</string>
+    <string name="delete_album_confirm_body">Alle Veröffentlichungen dieses Albums werden aus der Bibliothek gelöscht, zusammen mit den Kopien ihrer Dateien, die bae auf diesem Gerät und in deinem Speicher aufbewahrt. Dateien in deinen eigenen Ordnern werden nicht gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="delete_album_confirm">Löschen</string>
     <string name="now_playing">Aktuelle Wiedergabe</string>
     <string name="paused">Pausiert</string>
     <string name="previous_track">Vorheriger Titel</string>

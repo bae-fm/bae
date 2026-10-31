@@ -33,7 +33,8 @@ struct AlbumGridResizeTests {
                     selection: AlbumGridSelection(),
                     onPlay: { _ in },
                     onAddToQueue: { _ in },
-                    onAddNext: { _ in }
+                    onAddNext: { _ in },
+                    onDeleteAlbum: { _ in }
                 ) { albumId in
                     Text(verbatim: "Detail \(albumId)")
                         .frame(maxWidth: .infinity, minHeight: 240)

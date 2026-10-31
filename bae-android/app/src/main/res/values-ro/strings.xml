@@ -30,6 +30,11 @@
     <string name="play_next">Redă ca următor</string>
     <string name="add_to_queue">Adaugă la coadă</string>
     <string name="track_options">Opțiuni pentru piesă</string>
+    <string name="album_options">Opțiuni pentru album</string>
+    <string name="delete_album">Șterge albumul…</string>
+    <string name="delete_album_confirm_title">Ștergi acest album?</string>
+    <string name="delete_album_confirm_body">Toate edițiile acestui album sunt șterse din bibliotecă, împreună cu copiile fișierelor lor pe care bae le păstrează pe acest dispozitiv și în spațiul tău de stocare. Fișierele din dosarele tale nu sunt șterse. Acțiunea nu poate fi anulată.</string>
+    <string name="delete_album_confirm">Șterge</string>
     <string name="now_playing">Se redă acum</string>
     <string name="paused">În pauză</string>
     <string name="previous_track">Piesa anterioară</string>

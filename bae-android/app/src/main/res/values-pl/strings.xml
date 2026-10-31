@@ -30,6 +30,11 @@
     <string name="play_next">Odtwórz jako następne</string>
     <string name="add_to_queue">Dodaj do kolejki</string>
     <string name="track_options">Opcje utworu</string>
+    <string name="album_options">Opcje albumu</string>
+    <string name="delete_album">Usuń album…</string>
+    <string name="delete_album_confirm_title">Usunąć ten album?</string>
+    <string name="delete_album_confirm_body">Wszystkie wydania tego albumu zostaną usunięte z biblioteki razem z kopiami ich plików, które bae przechowuje na tym urządzeniu i w Twoim magazynie danych. Pliki w Twoich folderach nie są usuwane. Tej operacji nie można cofnąć.</string>
+    <string name="delete_album_confirm">Usuń</string>
     <string name="now_playing">Teraz odtwarzane</string>
     <string name="paused">Wstrzymano</string>
     <string name="previous_track">Poprzedni utwór</string>

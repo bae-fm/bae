@@ -35,6 +35,7 @@
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())
                 .environment(Queue.stub())
+                .environment(ReleaseEditor.stub())
                 .environment(Downloads.stub())
                 .environment(backing.library)
                 .environment(

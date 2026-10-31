@@ -30,6 +30,11 @@
     <string name="play_next">下一首播放</string>
     <string name="add_to_queue">添加到队列</string>
     <string name="track_options">曲目选项</string>
+    <string name="album_options">专辑选项</string>
+    <string name="delete_album">删除专辑…</string>
+    <string name="delete_album_confirm_title">删除此专辑？</string>
+    <string name="delete_album_confirm_body">此专辑的所有版本都会从库中删除，bae 在此设备和你的存储中保存的文件副本也会一并删除。你自己文件夹中的文件不会被删除。此操作无法撤销。</string>
+    <string name="delete_album_confirm">删除</string>
     <string name="now_playing">正在播放</string>
     <string name="paused">已暂停</string>
     <string name="previous_track">上一曲</string>
