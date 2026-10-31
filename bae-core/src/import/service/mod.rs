@@ -308,18 +308,24 @@ enum RootChange {
 
 /// [`root_change`] on a blocking thread: its stats can take as long as a
 /// network mount does to answer, and the coordinator must not wait on that.
-async fn root_change_of(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> RootChange {
+/// Stats that panic are reported to `diagnostics` and read the whole root.
+async fn root_change_of(
+    root: &Path,
+    changed: &[&Path],
+    holds_its_own_release: bool,
+    diagnostics: &crate::diagnostics::Diagnostics,
+) -> RootChange {
     let root = root.to_path_buf();
     let changed: Vec<PathBuf> = changed.iter().map(|path| path.to_path_buf()).collect();
-    let asked = tokio::task::spawn_blocking(move || {
+    bae_util::task_failure::blocking("read what changed under a watched folder", move || {
         let changed: Vec<&Path> = changed.iter().map(PathBuf::as_path).collect();
         root_change(&root, &changed, holds_its_own_release)
     })
-    .await;
-    match asked {
-        Ok(change) => change,
-        Err(error) => std::panic::resume_unwind(error.into_panic()),
-    }
+    .await
+    .unwrap_or_else(|failed| {
+        diagnostics.bug(failed);
+        RootChange::WholeRoot
+    })
 }
 
 /// What `changed` (paths under `root`) asks to be read again.
@@ -472,7 +478,9 @@ struct PersistedScanItems {
 
 struct RootScanTask {
     cancellation: crate::import::folder_scanner::ScanCancellation,
-    task: tokio::task::JoinHandle<()>,
+    /// The pass, which says it ended on the completion channel even when it
+    /// panics.
+    task: crate::diagnostics::ReportedTask,
 }
 
 /// One scan pass has ended. It carries no result because a scan records and
@@ -480,6 +488,43 @@ struct RootScanTask {
 struct RootScanCompletion {
     id: u64,
     path: PathBuf,
+}
+
+/// Run one pass over the root at `path` as `name`, sending its completion on
+/// `completion_tx` when `pass` ends. A pass that panics is reported, and its
+/// completion is sent all the same, so the root is freed and its waiters are
+/// answered.
+fn spawn_pass(
+    name: &'static str,
+    id: u64,
+    path: PathBuf,
+    diagnostics: &crate::diagnostics::Diagnostics,
+    completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
+    pass: impl std::future::Future<Output = ()> + Send + 'static,
+) -> crate::diagnostics::ReportedTask {
+    let panicked_tx = completion_tx.clone();
+    let panicked_path = path.clone();
+    diagnostics.spawn_reported(
+        &tokio::runtime::Handle::current(),
+        name,
+        async move {
+            pass.await;
+            if completion_tx.send(RootScanCompletion { id, path }).is_err() {
+                debug!("folder scan coordinator ended before a pass completed");
+            }
+        },
+        move |_| {
+            if panicked_tx
+                .send(RootScanCompletion {
+                    id,
+                    path: panicked_path,
+                })
+                .is_err()
+            {
+                debug!("folder scan coordinator ended before a panicked pass completed");
+            }
+        },
+    )
 }
 
 type RootScanStarter = Arc<
@@ -534,28 +579,39 @@ fn spawn_folder_reading(
 ) -> RootScanTask {
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
     let reading_cancellation = cancellation.clone();
-    let task = tokio::spawn(async move {
-        let target = request.target().clone();
-        let result =
-            ImportService::change_folder_reading(&path, &target, &scan, &reading_cancellation)
-                .await
-                // The caller wraps the detail as a watch failure itself.
-                .map_err(|error| match error {
-                    crate::import::ImportError::Watch { detail } => detail,
-                    other => other.to_string(),
-                });
-        if let Err(error) = &result {
-            warn!(
-                "folder decision for {} under {} was not stored: {error}",
-                target.0.relative_folder.text(),
-                path.display()
-            );
-        }
-        request.answer(result);
-        if completion_tx.send(RootScanCompletion { id, path }).is_err() {
-            debug!("folder scan coordinator ended before a folder reading completed");
-        }
-    });
+    let diagnostics = scan.services.diagnostics.clone();
+    let pass_path = path.clone();
+    let task = spawn_pass(
+        "store a folder decision",
+        id,
+        path,
+        &diagnostics,
+        completion_tx,
+        async move {
+            let path = pass_path;
+            let target = request.target().clone();
+            // A reading that panics answers its caller as one that failed.
+            let result = bae_util::task_failure::caught(
+                "store a folder decision",
+                ImportService::change_folder_reading(&path, &target, &scan, &reading_cancellation),
+            )
+            .await
+            .unwrap_or_else(|failed| Err(scan.services.diagnostics.bug(failed).into()))
+            // The caller wraps the detail as a watch failure itself.
+            .map_err(|error| match error {
+                crate::import::ImportError::Watch { detail } => detail,
+                other => other.to_string(),
+            });
+            if let Err(error) = &result {
+                warn!(
+                    "folder decision for {} under {} was not stored: {error}",
+                    target.0.relative_folder.text(),
+                    path.display()
+                );
+            }
+            request.answer(result);
+        },
+    );
     RootScanTask { cancellation, task }
 }
 
@@ -569,12 +625,19 @@ fn spawn_changed_folders(
 ) -> RootScanTask {
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
     let reading_cancellation = cancellation.clone();
-    let task = tokio::spawn(async move {
-        ImportService::read_changed_folders(&path, &folders, &scan, &reading_cancellation).await;
-        if completion_tx.send(RootScanCompletion { id, path }).is_err() {
-            debug!("folder scan coordinator ended before changed folders were read");
-        }
-    });
+    let diagnostics = scan.services.diagnostics.clone();
+    let pass_path = path.clone();
+    let task = spawn_pass(
+        "read changed folders again",
+        id,
+        path,
+        &diagnostics,
+        completion_tx,
+        async move {
+            ImportService::read_changed_folders(&pass_path, &folders, &scan, &reading_cancellation)
+                .await;
+        },
+    );
     RootScanTask { cancellation, task }
 }
 
@@ -586,27 +649,27 @@ fn spawn_root_scan(
 ) -> RootScanTask {
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
     let scan_cancellation = cancellation.clone();
-    let completion_path = path.clone();
-    let task = tokio::spawn(async move {
-        if !scan_cancellation.is_cancelled() {
-            // `rescan_and_reconcile` already recorded and announced any error;
-            // passing it on would show it twice.
-            #[expect(
-                clippy::let_underscore_must_use,
-                reason = "the rescan records and announces its own error"
-            )]
-            let _ = ImportService::rescan_and_reconcile(&path, &scan, &scan_cancellation).await;
-        }
-        if completion_tx
-            .send(RootScanCompletion {
-                id,
-                path: completion_path,
-            })
-            .is_err()
-        {
-            debug!("folder scan coordinator ended before scan completion");
-        }
-    });
+    let diagnostics = scan.services.diagnostics.clone();
+    let pass_path = path.clone();
+    let task = spawn_pass(
+        "scan a watched folder",
+        id,
+        path,
+        &diagnostics,
+        completion_tx,
+        async move {
+            if !scan_cancellation.is_cancelled() {
+                // `rescan_and_reconcile` already recorded and announced any
+                // error; passing it on would show it twice.
+                #[expect(
+                    clippy::let_underscore_must_use,
+                    reason = "the rescan records and announces its own error"
+                )]
+                let _ = ImportService::rescan_and_reconcile(&pass_path, &scan, &scan_cancellation)
+                    .await;
+            }
+        },
+    );
     RootScanTask { cancellation, task }
 }
 

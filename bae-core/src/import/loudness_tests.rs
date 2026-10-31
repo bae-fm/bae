@@ -273,6 +273,7 @@ async fn measure(
         &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
+        &crate::diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap()
@@ -308,6 +309,7 @@ async fn measure_failure(path: &std::path::Path, size: u64) -> crate::import::Im
         &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
+        &crate::diagnostics::Diagnostics::noop(),
     )
     .await;
     assert!(audio_formats[0].track_loudness_lufs.is_none());
@@ -555,6 +557,7 @@ async fn peak_open_sources(
         &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
+        &crate::diagnostics::Diagnostics::noop(),
     )
     .await
     .expect("the pass measures every track");

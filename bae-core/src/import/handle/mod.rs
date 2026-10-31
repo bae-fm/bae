@@ -354,6 +354,8 @@ pub struct ImportServiceHandle {
     import_cancels: crate::import::import_cancel::ImportCancels,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
+    /// Where a panic in work the handle starts and nobody awaits is reported.
+    diagnostics: crate::diagnostics::Diagnostics,
 }
 
 #[derive(Debug, Clone)]
@@ -475,12 +477,17 @@ impl ImportServiceHandle {
             directories: _,
             folder_state_commit,
             import_cancels,
+            diagnostics,
         } = services;
         library_manager.spawn_supervised_task(
             "candidate runtime view",
             runtime.clone().keep_view_current(),
-            // The panic is reported; the view stops changing.
-            |_| {},
+            // The view every import list reads is composed in steps beside
+            // the candidate runtime, as its lock guards the runtime; a panic
+            // between them leaves it partway through a change, or no longer
+            // following the table, for the rest of the session. The panic
+            // is reported first, then the process ends.
+            |_| std::process::abort(),
         )?;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
@@ -508,6 +515,7 @@ impl ImportServiceHandle {
             import_cancels,
             watcher,
             runtime_handle,
+            diagnostics,
         })
     }
 

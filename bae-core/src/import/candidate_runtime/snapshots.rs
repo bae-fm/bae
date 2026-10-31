@@ -159,7 +159,7 @@ impl CandidateRuntime {
         &self,
         stored: &HashMap<CandidateKey, StoredStanding>,
     ) -> HashMap<CandidateKey, CandidateRuntimeSnapshot> {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.held();
         let keys: std::collections::HashSet<&CandidateKey> =
             stored.keys().chain(inner.runtime.keys()).collect();
         keys.into_iter()
@@ -177,7 +177,7 @@ impl CandidateRuntime {
         key: &CandidateKey,
     ) -> Result<Option<CandidateRuntimeSnapshot>, LibraryError> {
         let stored = self.database.load_candidate_standing(key).await?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.held();
         Ok(compose(key, Some(&stored), inner.runtime.get(key)))
     }
 
@@ -224,7 +224,7 @@ impl CandidateRuntime {
     pub(super) fn recompose(&self, key: &CandidateKey) {
         let mut percent = None;
         self.view.send_if_modified(|view| {
-            let inner = self.inner.lock().unwrap();
+            let inner = self.held();
             let stored = view.stored.get(key);
             let held = inner.runtime.get(key);
             percent = compose_percent(stored, held);
@@ -238,7 +238,7 @@ impl CandidateRuntime {
     /// the runtime holds now.
     fn recompose_percents(&self) {
         let view = self.view.borrow();
-        let inner = self.inner.lock().unwrap();
+        let inner = self.held();
         let next = compose_percents(&view.stored, &inner.runtime);
         drop(inner);
         drop(view);
@@ -260,7 +260,7 @@ impl CandidateRuntime {
             match read {
                 Ok(read) => {
                     self.view.send_if_modified(|view| {
-                        let inner = self.inner.lock().unwrap();
+                        let inner = self.held();
                         view.take_read(read, |key, stored| {
                             compose(key, stored, inner.runtime.get(key))
                         })

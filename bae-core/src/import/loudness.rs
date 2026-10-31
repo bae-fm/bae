@@ -33,6 +33,9 @@ pub(super) struct LoudnessResult {
 }
 
 /// One track's decode outcome from the blocking measure task.
+/// One track's measurement, as its failure names it.
+const MEASURE_TRACK: &str = "measure a track's loudness";
+
 enum TrackOutcome {
     /// The source was read through: the measurement (absent when
     /// unmeasured/silent/failed), the broken-decode reason (absent when the
@@ -481,7 +484,9 @@ fn decode_track(
 /// [`crate::import::ImportError::SourceRead`] carrying the read's own error.
 /// Nothing has been committed yet, so importing again once the source is
 /// readable is the whole remedy; carrying on would commit tracks that were
-/// never measured or verified.
+/// never measured or verified. A measurement that panics fails the import the
+/// same way, reported to `diagnostics`: what the panicking code got wrong is
+/// not known, so nothing it measured is committed.
 pub(super) async fn measure_loudness(
     event_tx: &crate::import::handle::ImportEventBus,
     parallelism: NonZeroUsize,
@@ -493,6 +498,7 @@ pub(super) async fn measure_loudness(
     candidate_key: &crate::import::CandidateKey,
     release_id: &str,
     import_id: &str,
+    diagnostics: &crate::diagnostics::Diagnostics,
 ) -> Result<LoudnessResult, crate::import::ImportError> {
     // Every source's validated size is established before any is opened, so a
     // missing size fails the pass before a single file is read.
@@ -615,27 +621,31 @@ pub(super) async fn measure_loudness(
         },
         |track, streams| {
             let progress = progress.clone();
+            let diagnostics = diagnostics.clone();
             async move {
                 let index = track.index;
                 let label = format!("{} (track {})", track.title, index + 1);
-                let outcome =
-                    tokio::task::spawn_blocking(move || measure_track(&track, &streams, progress))
-                        .await;
+                let outcome = bae_util::task_failure::blocking(MEASURE_TRACK, move || {
+                    measure_track(&track, &streams, progress)
+                })
+                .await
+                .map_err(|failed| diagnostics.bug(failed))?;
                 match outcome {
-                    Ok(TrackOutcome::Unreadable(error)) => {
+                    TrackOutcome::Unreadable(error) => {
                         Err(crate::import::ImportError::SourceRead {
                             track: label,
                             error,
                         })
                     }
-                    Ok(outcome) => Ok((index, Some(outcome))),
-                    Err(e) => {
-                        warn!("loudness: measurement task panicked: {e}; track stays unmeasured");
-                        Ok((index, None))
-                    }
+                    TrackOutcome::Decoded {
+                        measured,
+                        broken,
+                        scrub_points,
+                    } => Ok((index, measured, broken, scrub_points)),
                 }
             }
         },
+        |failed| diagnostics.bug(failed).into(),
     )
     .await?;
 
@@ -643,15 +653,7 @@ pub(super) async fn measure_loudness(
     let mut track_peaks: Vec<f64> = Vec::new();
     let mut broken_tracks: Vec<String> = Vec::new();
     let mut all_scrub_points: Vec<crate::db::DbScrubPoints> = Vec::new();
-    for (index, outcome) in outcomes {
-        let Some(TrackOutcome::Decoded {
-            measured,
-            broken,
-            scrub_points,
-        }) = outcome
-        else {
-            continue;
-        };
+    for (index, measured, broken, scrub_points) in outcomes {
         all_scrub_points.extend(scrub_points);
         if let Some((meter, loudness_lufs, peak_linear)) = measured {
             audio_formats[index].track_loudness_lufs = Some(loudness_lufs);

@@ -85,17 +85,24 @@ impl ImportServiceHandle {
     ) {
         let library_manager = self.library_manager.clone();
         let runtime = self.runtime.clone();
-        self.runtime_handle.spawn(async move {
-            let found =
-                search_source(&library_manager, source, &query, CallPriority::Interactive).await;
-            if !runtime.land_search(&candidate_key, run, source, found) {
-                debug!(
-                    "{}'s {} search landed on no run; it was cleared or superseded",
-                    candidate_key,
-                    source.as_str()
-                );
-            }
-        });
+        let panicked_runtime = self.runtime.clone();
+        let panicked_key = candidate_key.clone();
+        // A search that panics lands as failed, so its source stops showing
+        // a search under way.
+        self.diagnostics.spawn_reported(
+            &self.runtime_handle,
+            "search one source",
+            async move {
+                let found =
+                    search_source(&library_manager, source, &query, CallPriority::Interactive)
+                        .await;
+                land_source_search(&runtime, &candidate_key, run, source, found);
+            },
+            move |failed| {
+                let failure = crate::signals::Failure::Internal(failed.into());
+                land_source_search(&panicked_runtime, &panicked_key, run, source, Err(failure));
+            },
+        );
     }
 
     /// Land what the documents of `release`, which a pick read, state its
@@ -417,5 +424,22 @@ impl ImportServiceHandle {
             Ok(revision)
         })
         .await
+    }
+}
+
+/// Land one source's answer on `candidate_key`'s search run `run`.
+fn land_source_search(
+    runtime: &crate::import::CandidateRuntime,
+    candidate_key: &crate::import::CandidateKey,
+    run: u64,
+    source: Catalog,
+    found: crate::import::search::SourceLookup,
+) {
+    if !runtime.land_search(candidate_key, run, source, found) {
+        debug!(
+            "{}'s {} search landed on no run; it was cleared or superseded",
+            candidate_key,
+            source.as_str()
+        );
     }
 }

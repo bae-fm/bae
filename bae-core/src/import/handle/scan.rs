@@ -89,11 +89,11 @@ impl ImportServiceHandle {
     ) -> Result<Vec<crate::import::folder_scanner::SheetReferenceOptions>, crate::import::ImportError>
     {
         let (files, _) = self.folder_files_for_binding(&candidate_key).await?;
-        tokio::task::spawn_blocking(move || files.sheet_binding_options(&sheet_file_id))
-            .await
-            .map_err(|e| crate::import::ImportError::Internal {
-                detail: format!("sheet binding option task failed: {e}"),
-            })
+        bae_util::task_failure::blocking("offer a sheet's audio bindings", move || {
+            files.sheet_binding_options(&sheet_file_id)
+        })
+        .await
+        .map_err(|failed| self.library_manager.bug(failed).into())
     }
 
     /// Bind a FILE reference of one of a candidate's track sheets to an audio
@@ -741,7 +741,7 @@ impl ImportServiceHandle {
                 .map(|(key, _)| key.clone())
                 .collect::<std::collections::BTreeSet<_>>();
             let decided = edits.clone();
-            let settled = tokio::task::spawn_blocking(move || {
+            let settled = bae_util::task_failure::blocking("apply a file decision", move || {
                 let mut settled = Vec::with_capacity(matching_files.len());
                 for (key, mut files) in matching_files {
                     files.apply_candidate_file_edits(&decided)?;
@@ -750,9 +750,7 @@ impl ImportServiceHandle {
                 Ok::<_, crate::import::folder_scanner::UnreadableAudio>(settled)
             })
             .await
-            .map_err(|e| crate::import::ImportError::Internal {
-                detail: format!("candidate file edit task failed: {e}"),
-            })??;
+            .map_err(|failed| self.library_manager.bug(failed))??;
 
             let settled_files = settled
                 .iter()
@@ -776,19 +774,18 @@ impl ImportServiceHandle {
             let mut replacement = current_candidate.clone();
             replacement.files = settled_files.clone();
             let reads = crate::import::folder_scanner::FileReads::new(self.file_tags.clone());
-            let initialized = tokio::task::spawn_blocking(move || {
-                crate::import::file_metadata_seed::FileMetadataSeed::read(
-                    &replacement,
-                    stored.scan_generation,
-                    &reads,
-                    None,
-                )
-                .map(|seed| seed.draft)
-            })
-            .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("replacement track metadata task failed: {error}"),
-            })??;
+            let initialized =
+                bae_util::task_failure::blocking("read the files' track metadata", move || {
+                    crate::import::file_metadata_seed::FileMetadataSeed::read(
+                        &replacement,
+                        stored.scan_generation,
+                        &reads,
+                        None,
+                    )
+                    .map(|seed| seed.draft)
+                })
+                .await
+                .map_err(|failed| self.library_manager.bug(failed))??;
             let draft = crate::import::pane::redraw_draft_for_files(
                 current_files,
                 settled_files,

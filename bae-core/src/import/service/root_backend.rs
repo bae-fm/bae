@@ -34,19 +34,23 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
     async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String> {
         let watcher = self.folder_watcher.clone();
         let path = path.to_path_buf();
-        tokio::task::spawn_blocking(move || watcher.uninstall(&path))
-            .await
-            .map_err(|error| format!("folder watch removal task panicked: {error}"))
+        bae_util::task_failure::blocking("remove a folder's watch", move || {
+            watcher.uninstall(&path)
+        })
+        .await
+        .map_err(|failed| self.library_manager.bug(failed).to_string())
     }
 
     async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String> {
         let watcher = self.folder_watcher.clone();
         let path = path.to_path_buf();
         let snapshot = snapshot.clone();
-        tokio::task::spawn_blocking(move || watcher.reinstall(&path, &snapshot))
-            .await
-            .map_err(|error| format!("folder watch restore task panicked: {error}"))?
-            .map_err(|error| error.to_string())
+        bae_util::task_failure::blocking("restore a folder's watch", move || {
+            watcher.reinstall(&path, &snapshot)
+        })
+        .await
+        .map_err(|failed| self.library_manager.bug(failed).to_string())?
+        .map_err(|error| error.to_string())
     }
 
     async fn remove_durable_roots(

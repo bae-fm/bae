@@ -194,6 +194,10 @@ pub enum FolderScanError {
     Cancelled,
     #[error("{0}")]
     Other(String),
+    /// One of the threads a pass reads folders on at once panicked; the
+    /// others stopped with it. A bug, which the pass's caller reports.
+    #[error("{0}")]
+    Panicked(bae_util::task_failure::TaskFailed),
 }
 
 impl FolderScanError {

@@ -12,12 +12,10 @@ pub(super) async fn run_root_removal(
     folder_state_commit: crate::import::FolderStateCommit,
 ) -> RootRemovalResult {
     let described = describe(roots, parent);
+    // Each pass is waited out, however it ended: one that panicked was
+    // reported where it ran, and installs no more watches.
     for scan in scans {
-        if let Err(error) = scan.task.await {
-            return RootRemovalResult::Failed(format!(
-                "folder scan task failed while removing {described}: {error}"
-            ));
-        }
+        scan.task.ended().await;
     }
     let mut uninstalled: Vec<(&PathBuf, FolderWatchSnapshot)> = Vec::new();
     for root in roots {

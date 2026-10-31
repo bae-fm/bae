@@ -184,7 +184,8 @@ impl SaveService {
     /// A source file is open only while a track reading it is being saved
     /// (see [`run_tracks_over_sources`]); `open` opens one by release file id.
     /// `on_saved` runs as each track's file is written. `existing` says what a
-    /// file already at a track's output path does.
+    /// file already at a track's output path does. A track whose save panics
+    /// fails the save as unfinished, which the caller reports.
     ///
     /// On future-drop the cancel flag flips, the encoder loop exits between
     /// frames, and any partially-written output file is removed.
@@ -221,6 +222,7 @@ impl SaveService {
                     Ok(())
                 }
             },
+            SaveError::from,
         )
         .await
         .map(|_| ())
@@ -228,7 +230,9 @@ impl SaveService {
 
     /// Save every track, in order, into one audio image with a CUE sheet
     /// indexing them. Tracks stream into the image one at a time; a source
-    /// file is open only while a track reading it is being encoded.
+    /// file is open only while a track reading it is being encoded. A track
+    /// whose work panics fails the save as unfinished, which the caller
+    /// reports.
     pub(crate) async fn save_release_image_with_cue(
         plans: Vec<SaveTrackPlan>,
         cover_image_bytes: Option<Vec<u8>>,
@@ -349,11 +353,12 @@ impl SaveService {
                             reply,
                         })
                         .map_err(|error| format!("the release image encoder stopped: {error}"))?;
-                    entry
+                    Ok(entry
                         .await
-                        .map_err(|error| format!("the release image encoder stopped: {error}"))?
+                        .map_err(|error| format!("the release image encoder stopped: {error}"))??)
                 }
             },
+            SaveError::from,
         )
         .await;
         drop(tracks_tx);

@@ -99,8 +99,14 @@ impl ImportService {
             if cancellation.is_cancelled() {
                 return;
             }
-            let Err(error) = Self::read_folder_again(root, folder, None, scan, cancellation).await
-            else {
+            // A reading that panics fails that folder as an error does.
+            let read = bae_util::task_failure::caught(
+                "read a changed folder again",
+                Self::read_folder_again(root, folder, None, scan, cancellation),
+            )
+            .await
+            .unwrap_or_else(|failed| Err(scan.services.diagnostics.bug(failed).into()));
+            let Err(error) = read else {
                 continue;
             };
             if cancellation.is_cancelled() {
@@ -126,19 +132,17 @@ impl ImportService {
                             "{}'s failed reading could not be stored: {status_error}",
                             root.display()
                         );
-                        Self::announce_scan_failure(root, message, &scan.services.event_tx).await;
+                        Self::announce_scan_failure(root, message, &scan.services).await;
                     }
                 }
-                Ok(None) => {
-                    Self::announce_scan_failure(root, message, &scan.services.event_tx).await
-                }
+                Ok(None) => Self::announce_scan_failure(root, message, &scan.services).await,
                 Err(status_error) => {
                     error!(
                         "{}'s generation could not be read to store a failed reading: \
                          {status_error}",
                         root.display()
                     );
-                    Self::announce_scan_failure(root, message, &scan.services.event_tx).await;
+                    Self::announce_scan_failure(root, message, &scan.services).await;
                 }
             }
         }
@@ -193,7 +197,7 @@ impl ImportService {
         let walk_cancellation = cancellation.clone();
         let wants_folder = decision.is_some();
         let ids = services.ids.clone();
-        let walked = tokio::task::spawn_blocking(move || {
+        let walked = bae_util::task_failure::blocking("read a folder again", move || {
             let new_key = || new_grouping_key(ids.as_ref());
             read_top_level_folder(
                 directories.as_ref(),
@@ -211,9 +215,7 @@ impl ImportService {
             )
         })
         .await
-        .map_err(|error| crate::import::ImportError::Internal {
-            detail: format!("folder reading task failed: {error}"),
-        })??;
+        .map_err(|failed| services.diagnostics.bug(failed))??;
         let read_at = started.elapsed();
 
         let mut scanned_decisions = Vec::new();
@@ -249,13 +251,11 @@ impl ImportService {
                     continue;
                 }
             };
-            let folder_date = tokio::task::spawn_blocking(move || {
+            let folder_date = bae_util::task_failure::blocking("read a folder's date", move || {
                 crate::import::folder_scanner::FolderDate::read(&path)
             })
             .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("folder date task failed: {error}"),
-            })??;
+            .map_err(|failed| services.diagnostics.bug(failed))??;
             let seed = library_manager
                 .scan_item_seed(&item, stamp.generation, reads.clone())
                 .await?;

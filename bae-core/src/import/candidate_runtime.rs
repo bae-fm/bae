@@ -210,6 +210,13 @@ pub struct CandidateRuntime {
 type TestReaders<T> = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<T>>>>;
 
 impl CandidateRuntime {
+    /// What the runtime holds, under its lock. The runtime is changed in
+    /// several steps under it, so a panic while it is held leaves it partway
+    /// through a change: taking it then reports that and ends the process.
+    fn held(&self) -> std::sync::MutexGuard<'_, Inner> {
+        crate::diagnostics::lock_or_crash(&self.diagnostics, "the candidate runtime", &self.inner)
+    }
+
     /// A runtime over the standings table of `database`, which the library
     /// emptied as it opened, reporting its bugs to `diagnostics`.
     pub(crate) fn new(database: Database, diagnostics: crate::diagnostics::Diagnostics) -> Self {
@@ -282,9 +289,7 @@ impl CandidateRuntime {
     /// The signals extraction has found for a key so far, or `None` before it
     /// has reported any.
     pub fn signals(&self, key: &CandidateKey) -> Option<Signals> {
-        self.inner
-            .lock()
-            .unwrap()
+        self.held()
             .signals
             .get(key)
             .map(|(_, signals)| signals.clone())
@@ -293,9 +298,7 @@ impl CandidateRuntime {
     /// The signals `run` was judged against, or `None` once the key is on
     /// another run.
     pub(super) fn run_signals(&self, key: &CandidateKey, run: IdentifyRunId) -> Option<Signals> {
-        self.inner
-            .lock()
-            .unwrap()
+        self.held()
             .signals
             .get(key)
             .filter(|(extracted, _)| *extracted == run)
@@ -312,7 +315,7 @@ impl CandidateRuntime {
     /// that leaves a reader who has read them. A key whose signals went with
     /// its files is left out.
     pub(crate) fn signals_since(&self, seen: u64) -> (u64, Vec<(CandidateKey, Signals)>) {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.held();
         let moved = inner
             .signal_changes
             .since(seen)
@@ -354,7 +357,7 @@ impl CandidateRuntime {
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
         let (result, changed) = {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.held();
             let previous = inner.runtime.get(key).cloned();
             let mut next = previous.clone().unwrap_or_default();
             let result = mutate(&mut inner, &mut next);
@@ -414,9 +417,7 @@ impl CandidateRuntime {
     /// answer is refused because that part is no longer looking.
     pub(super) fn switch_source_off(&self, source: Catalog) {
         let searching: Vec<CandidateKey> = self
-            .inner
-            .lock()
-            .unwrap()
+            .held()
             .runtime
             .iter()
             .filter(|(_, state)| state.search.is_some())
@@ -434,9 +435,7 @@ impl CandidateRuntime {
     /// Whether `run` is still the run `key`'s search is on.
     #[cfg(test)]
     pub(super) fn search_run_is_current(&self, key: &CandidateKey, run: u64) -> bool {
-        self.inner
-            .lock()
-            .unwrap()
+        self.held()
             .runtime
             .get(key)
             .and_then(|state| state.search.as_ref())
@@ -520,7 +519,7 @@ impl CandidateRuntime {
     fn end_candidate(&self, key: &CandidateKey) {
         self.end_work(key);
         let signals_removed = {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.held();
             let removed = inner.signals.remove(key).is_some();
             if removed {
                 inner.signal_changes.record(key);
@@ -540,7 +539,7 @@ impl CandidateRuntime {
         let key = candidate.key();
         let shape = CandidateShape::of(candidate);
         let reshaped = {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.held();
             let previous = inner.shapes.insert(key.clone(), shape.clone());
             previous.is_some_and(|previous| previous != shape)
         };
@@ -553,9 +552,7 @@ impl CandidateRuntime {
     /// so the key ends.
     fn reshape(&self, candidate: &FolderCandidate) {
         let key = candidate.key();
-        self.inner
-            .lock()
-            .unwrap()
+        self.held()
             .shapes
             .insert(key.clone(), CandidateShape::of(candidate));
         self.end_candidate(&key);
@@ -563,7 +560,7 @@ impl CandidateRuntime {
 
     /// The scan no longer lists the key, so it ends.
     fn forget(&self, key: &CandidateKey) {
-        self.inner.lock().unwrap().shapes.remove(key);
+        self.held().shapes.remove(key);
         self.end_candidate(key);
     }
 
@@ -646,7 +643,7 @@ impl CandidateRuntime {
                 priority: _,
             } => {
                 let moved = {
-                    let mut inner = self.inner.lock().unwrap();
+                    let mut inner = self.held();
                     let previous = inner
                         .signals
                         .insert(candidate_key.clone(), (*run, signals.clone()));

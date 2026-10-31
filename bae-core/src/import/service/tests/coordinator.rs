@@ -186,16 +186,26 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
     harness.shutdown().await;
 }
 
+/// A removal waits out its root's cancelled pass however the pass ended —
+/// one that panicked was reported where it ran and never says it is over —
+/// and then removes the root.
 #[tokio::test]
-async fn coordinator_removal_join_failure_restores_a_runnable_root_schedule() {
+async fn coordinator_removal_proceeds_once_its_cancelled_scan_ends_untold() {
     let harness = CoordinatorHarness::new().await;
     let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
     harness.scans.abort(0);
 
-    let error = result.await.unwrap().unwrap_err();
-    assert!(error.contains("folder scan task failed while removing"));
-    harness.scans.wait_for_count(2).await;
-    harness.scans.complete(1);
+    assert_eq!(
+        tokio::time::timeout(HANG_GUARD, result)
+            .await
+            .expect("the removal is answered")
+            .unwrap(),
+        Ok(())
+    );
+    assert_eq!(
+        harness.removal_backend.calls.lock().unwrap().as_slice(),
+        ["uninstall", "remove"]
+    );
     harness.shutdown().await;
 }
 
@@ -576,7 +586,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .await
         .unwrap();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
-    let watcher = Arc::new(FolderWatcher::new(watch_tx));
+    let watcher = Arc::new(FolderWatcher::new(watch_tx, crate::diagnostics::Diagnostics::noop()));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
     let mut events = service.event_tx.every_event();
 
@@ -598,7 +608,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .await
         .expect("cancelled scan did not report task completion")
         .expect("scan task completion channel closed");
-    scan.task.await.unwrap();
+    scan.task.ended().await;
 
     assert!(service
         .library_manager
@@ -723,23 +733,35 @@ async fn coordinator_shutdown_waits_for_active_scan() {
 }
 
 #[tokio::test]
-async fn cancelling_a_panicked_folder_walk_surfaces_the_join_failure() {
+async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
     async fn panic_during_walk() -> super::FolderWalkOutcome {
         panic!("folder walk panic");
     }
 
+    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
     let (item_tx, mut item_rx) = tokio::sync::mpsc::channel(1);
     drop(item_tx);
     let error = ImportService::cancel_and_join_folder_walk(
-        Path::new("/music"),
         &cancellation,
         &mut item_rx,
         tokio::spawn(panic_during_walk()),
+        &diagnostics,
     )
     .await
     .expect_err("a panicked traversal task cannot report a successful cancellation");
 
     assert!(cancellation.is_cancelled());
-    assert!(error.to_string().contains("folder scan task failed"));
+    assert_eq!(
+        error.to_string(),
+        "internal import error: walk a watched folder panicked: folder walk panic"
+    );
+    assert_eq!(
+        bugs.reports(),
+        vec![(
+            "walk a watched folder".to_string(),
+            "walk a watched folder panicked: folder walk panic".to_string()
+        )]
+    );
 }

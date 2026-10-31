@@ -230,7 +230,6 @@ struct FakeStartedScan {
         tokio::sync::mpsc::UnboundedSender<RootScanCompletion>,
         RootScanCompletion,
     )>,
-    abort: tokio::task::AbortHandle,
 }
 
 impl FakeScanStarter {
@@ -246,11 +245,20 @@ impl FakeScanStarter {
             let cancellation = crate::import::folder_scanner::ScanCancellation::new();
             let (finish, finished) = tokio::sync::oneshot::channel();
             let started_path = path.clone();
-            let task = tokio::spawn(async move {
-                finished
-                    .await
-                    .expect("fake scan completion sender was retained");
-            });
+            // The pass ends when it is finished, or when its finish is
+            // dropped unsent: it ended without telling the coordinator.
+            let task = crate::diagnostics::Diagnostics::noop().spawn_reported(
+                &tokio::runtime::Handle::current(),
+                "a fake pass",
+                async move {
+                    #[expect(
+                        clippy::let_underscore_must_use,
+                        reason = "a finish dropped unsent ends the pass as one sent does"
+                    )]
+                    let _ = finished.await;
+                },
+                |_| {},
+            );
             let (reading, folders) = match pass {
                 RootPass::WholeRoot => (None, None),
                 RootPass::Decision(request) => (Some(request), None),
@@ -262,7 +270,6 @@ impl FakeScanStarter {
                 folders,
                 cancellation: cancellation.clone(),
                 completion: Some((finish, completion, RootScanCompletion { id, path })),
-                abort: task.abort_handle(),
             });
             captured.started.notify_one();
             RootScanTask { cancellation, task }
@@ -338,8 +345,14 @@ impl FakeScanStarter {
         self.scans.lock().unwrap()[index].cancellation.clone()
     }
 
+    /// End the pass at `index` without telling the coordinator it ended.
     fn abort(&self, index: usize) {
-        self.scans.lock().unwrap()[index].abort.abort();
+        drop(
+            self.scans.lock().unwrap()[index]
+                .completion
+                .take()
+                .expect("fake scan has not completed"),
+        );
     }
 
     async fn wait_for_cancellation(&self, index: usize) {
@@ -479,6 +492,7 @@ impl CoordinatorHarness {
                 directories: Arc::new(crate::import::folder_scanner::OsDirectoryReader),
                 folder_state_commit: folder_state_commit.clone(),
                 import_cancels: Default::default(),
+                diagnostics: service.diagnostics.clone(),
             },
             starter,
             removal_backend.clone(),
@@ -601,6 +615,7 @@ fn test_scan_services(
             directories,
             folder_state_commit: crate::import::FolderStateCommit::default(),
             import_cancels: Default::default(),
+            diagnostics: service.diagnostics.clone(),
         },
         folder_watcher,
     )
@@ -646,7 +661,10 @@ impl TestService {
                 &self.service,
                 &self.preparations,
                 event_tx,
-                Arc::new(FolderWatcher::new(fs_tx)),
+                Arc::new(FolderWatcher::new(
+                    fs_tx,
+                    crate::diagnostics::Diagnostics::noop(),
+                )),
                 file_tags,
                 directories,
             ),
@@ -672,6 +690,8 @@ include!("tests/groupings.rs");
 include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");
 include!("tests/failed_import_retry.rs");
+include!("tests/panicked_import.rs");
+include!("tests/panicked_scan.rs");
 include!("tests/scan_reads.rs");
 include!("tests/spent_rows.rs");
 include!("tests/stored_names.rs");

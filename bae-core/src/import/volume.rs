@@ -66,13 +66,21 @@ impl VolumeKind {
 ///
 /// Asking can block for as long as a network mount takes to answer — a share
 /// that dropped off can take minutes — so the question is put on a blocking
-/// thread.
-pub(crate) async fn volume_kind(path: &Path) -> VolumeKind {
+/// thread. A question that panics is reported to `diagnostics` and answered
+/// `Local`, as a platform that will not say is.
+pub(crate) async fn volume_kind(
+    path: &Path,
+    diagnostics: &crate::diagnostics::Diagnostics,
+) -> VolumeKind {
     let path = path.to_path_buf();
-    match tokio::task::spawn_blocking(move || platform::volume_kind(&path)).await {
-        Ok(kind) => kind,
-        Err(error) => std::panic::resume_unwind(error.into_panic()),
-    }
+    bae_util::task_failure::blocking("read which volume a folder is on", move || {
+        platform::volume_kind(&path)
+    })
+    .await
+    .unwrap_or_else(|failed| {
+        diagnostics.bug(failed);
+        VolumeKind::Local
+    })
 }
 
 /// When this directory was last touched, in nanoseconds since the epoch, or
@@ -257,7 +265,10 @@ mod tests {
     #[tokio::test]
     async fn a_folder_on_this_machine_is_local() {
         let temp = tempfile::tempdir().unwrap();
-        assert_eq!(volume_kind(temp.path()).await, VolumeKind::Local);
+        assert_eq!(
+            volume_kind(temp.path(), &crate::diagnostics::Diagnostics::noop()).await,
+            VolumeKind::Local
+        );
     }
 
     /// A path nothing is mounted at answers `Local`, so a root that has gone
@@ -266,7 +277,11 @@ mod tests {
     #[tokio::test]
     async fn a_path_that_is_not_there_is_local() {
         assert_eq!(
-            volume_kind(std::path::Path::new("/nowhere-at-all-1a2b3c")).await,
+            volume_kind(
+                std::path::Path::new("/nowhere-at-all-1a2b3c"),
+                &crate::diagnostics::Diagnostics::noop()
+            )
+            .await,
             VolumeKind::Local
         );
     }

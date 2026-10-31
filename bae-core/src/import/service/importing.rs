@@ -1,6 +1,7 @@
 use super::*;
 use crate::import::import_cancel::{ImportRunEnd, ImportStop};
 use crate::import::types::TrackAudio;
+use bae_util::task_failure::{blocking, caught};
 use bae_util::worker_thread::WorkerThread;
 
 impl ImportService {
@@ -29,6 +30,7 @@ impl ImportService {
             preparations,
             clock.clone(),
             ids.clone(),
+            diagnostics.clone(),
         );
         Ok(Self::start_with(
             runtime_handle,
@@ -53,8 +55,14 @@ impl ImportService {
     ) -> ImportServiceHandle {
         let runtime = CandidateRuntime::new(database, diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
-        let mut services =
-            crate::import::ImportServices::new(event_tx, library_manager, preparations, clock, ids);
+        let mut services = crate::import::ImportServices::new(
+            event_tx,
+            library_manager,
+            preparations,
+            clock,
+            ids,
+            diagnostics.clone(),
+        );
         services.file_tags = file_tags;
         Self::start_with(runtime_handle, services, runtime, diagnostics)
             .expect("a test's library is open while its import service starts")
@@ -76,7 +84,7 @@ impl ImportService {
 
         // Constructed before the watcher task spawns; the task doesn't need the
         // watcher, only the `fs_rx` end of its event channel.
-        let folder_watcher = Arc::new(FolderWatcher::new(fs_tx));
+        let folder_watcher = Arc::new(FolderWatcher::new(fs_tx, diagnostics.clone()));
 
         let scan = ScanServices::new(services.clone(), folder_watcher);
         let watcher = WorkerThread::spawn("folder scan coordinator", move |_, watcher_rx| {
@@ -122,19 +130,22 @@ impl ImportService {
         let candidate_key = command.candidate_key.clone();
         let content_hash = expectation.candidate.content_hash.clone();
         let edit_revision = expectation.candidate.file_edit_revision;
+        // A panic in the work fails this import as an error does, so its
+        // failure is recorded and the worker goes on to the next import.
+        let work = self.prepare_and_run_folder_import(
+            import_id.clone(),
+            candidate_key.clone(),
+            command.source,
+            expectation,
+            command.destination,
+        );
         let run = self
             .import_cancels
-            .run(
-                &candidate_key,
-                &import_id,
-                self.prepare_and_run_folder_import(
-                    import_id.clone(),
-                    candidate_key.clone(),
-                    command.source,
-                    expectation,
-                    command.destination,
-                ),
-            )
+            .run(&candidate_key, &import_id, async {
+                caught("an import", work)
+                    .await
+                    .unwrap_or_else(|failed| Err(self.diagnostics.bug(failed).into()))
+            })
             .await;
         let result = match run {
             ImportRunEnd::Ran(result) => result,
@@ -289,13 +300,11 @@ impl ImportService {
             .release_files()
             .cloned()
             .collect::<Vec<_>>();
-        let audio_observations = tokio::task::spawn_blocking(move || {
+        let audio_observations = blocking("validate the import's file identities", move || {
             crate::import::file_identity::validate_scanned_file_identities(&identity_files)
         })
         .await
-        .map_err(|error| crate::import::ImportError::Internal {
-            detail: format!("file identity validation task failed: {error}"),
-        })??;
+        .map_err(|failed| self.diagnostics.bug(failed))??;
         let source_name = stored_candidate.name.to_string();
         let categorized = stored_candidate.files;
 
@@ -731,7 +740,7 @@ impl ImportService {
             let clock = self.clock.clone();
             let ids = self.ids.clone();
             let diagnostics = self.diagnostics.clone();
-            tokio::task::spawn_blocking(move || {
+            blocking("build the import's audio formats", move || {
                 Self::build_audio_formats(
                     &tracks,
                     &file_ids,
@@ -741,9 +750,7 @@ impl ImportService {
                 )
             })
             .await
-            .map_err(|e| crate::import::ImportError::Internal {
-                detail: format!("audio format task failed: {e}"),
-            })??
+            .map_err(|failed| self.diagnostics.bug(failed))??
         };
         let source_file_sizes: HashMap<PathBuf, u64> = discovered_files
             .iter()
@@ -779,6 +786,7 @@ impl ImportService {
             candidate_key,
             &db_release.id,
             import_id,
+            &self.diagnostics,
         )
         .await?;
         db_release.album_loudness_lufs = loudness.album_loudness_lufs;
@@ -816,7 +824,7 @@ impl ImportService {
                 }
             },
             Some(CoverSelection::Local(path)) => {
-                Self::pick_folder_cover(discovered_files, path).await?
+                Self::pick_folder_cover(discovered_files, path, &self.diagnostics).await?
             }
             Some(CoverSelection::Embedded(_)) => {
                 embedded_cover
@@ -836,13 +844,11 @@ impl ImportService {
             Some(candidate) => {
                 // Decoding and re-encoding the image is CPU work.
                 let source = candidate.bytes;
-                let bytes = tokio::task::spawn_blocking(move || {
+                let bytes = blocking("resize the import's cover", move || {
                     bae_util::stored_image::stored_jpeg(&source)
                 })
                 .await
-                .map_err(|e| crate::import::ImportError::Internal {
-                    detail: format!("cover resize task failed: {e}"),
-                })?
+                .map_err(|failed| self.diagnostics.bug(failed))?
                 .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
                 let image = crate::db::DbLibraryImage::cover(
                     &db_release.id,

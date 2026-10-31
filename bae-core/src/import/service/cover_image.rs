@@ -33,6 +33,7 @@ impl ImportService {
     pub(super) async fn pick_folder_cover(
         discovered_files: &[CandidateFile],
         selected_cover_path: &str,
+        diagnostics: &crate::diagnostics::Diagnostics,
     ) -> Result<Option<CoverCandidate>, crate::import::ImportError> {
         use crate::import::ImportError;
 
@@ -49,17 +50,17 @@ impl ImportService {
             })?;
 
         let path = cover_file.path.clone();
-        let bytes = tokio::task::spawn_blocking(move || std::fs::read(&path))
-            .await
-            .map_err(|e| ImportError::Internal {
-                detail: format!("cover read task failed: {e}"),
-            })?
-            .map_err(|e| ImportError::LocalCover {
-                detail: format!(
-                    "Failed to read cover art {}: {e}",
-                    cover_file.path.display()
-                ),
-            })?;
+        let bytes = bae_util::task_failure::blocking("read the import's cover", move || {
+            std::fs::read(&path)
+        })
+        .await
+        .map_err(|failed| diagnostics.bug(failed))?
+        .map_err(|e| ImportError::LocalCover {
+            detail: format!(
+                "Failed to read cover art {}: {e}",
+                cover_file.path.display()
+            ),
+        })?;
 
         Ok(Some(CoverCandidate {
             bytes,

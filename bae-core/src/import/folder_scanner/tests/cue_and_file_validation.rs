@@ -168,6 +168,7 @@ fn unreadable_child_directory_fails_scan() {
         }
         FolderScanError::Other(message) => panic!("expected IO error, got {message}"),
         FolderScanError::Cancelled => panic!("expected IO error, got cancellation"),
+        FolderScanError::Panicked(failed) => panic!("expected IO error, got {failed}"),
     }
 }
 

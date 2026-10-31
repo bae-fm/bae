@@ -1,5 +1,8 @@
 use super::*;
 
+/// The blocking walk of a watched root, as its failure names it.
+const FOLDER_WALK: &str = "walk a watched folder";
+
 impl ImportService {
     /// Mark `root`'s scan generation failed and say so. The stored status is
     /// what the import list's live query reads for the folder's mark; the
@@ -25,7 +28,7 @@ impl ImportService {
         {
             return Ok(false);
         }
-        Self::announce_scan_failure(root, message, &services.event_tx).await;
+        Self::announce_scan_failure(root, message, services).await;
         Ok(true)
     }
 
@@ -36,20 +39,23 @@ impl ImportService {
     pub(super) async fn announce_scan_failure(
         root: &Path,
         message: String,
-        event_tx: &crate::import::handle::ImportEventBus,
+        services: &crate::import::ImportServices,
     ) {
-        let on_network_volume = volume_kind(root).await == VolumeKind::Network;
+        let on_network_volume =
+            volume_kind(root, &services.diagnostics).await == VolumeKind::Network;
         let watched_folder = crate::import::WatchedFolder::from_path(root.to_path_buf());
-        event_tx.send(crate::import::handle::ImportEvent::Scan(
-            ScanEvent::FolderScanStatusChanged {
-                status: crate::import::WatchedFolderScanStatus {
-                    watched_folder_path: watched_folder.path,
-                    watched_folder_name: watched_folder.name,
-                    status: crate::import::FolderScanStatus::Failed { error: message },
-                    on_network_volume,
+        services
+            .event_tx
+            .send(crate::import::handle::ImportEvent::Scan(
+                ScanEvent::FolderScanStatusChanged {
+                    status: crate::import::WatchedFolderScanStatus {
+                        watched_folder_path: watched_folder.path,
+                        watched_folder_name: watched_folder.name,
+                        status: crate::import::FolderScanStatus::Failed { error: message },
+                        on_network_volume,
+                    },
                 },
-            },
-        ));
+            ));
     }
 
     /// Store `items` in one write, in the order the walk yielded them, each
@@ -65,7 +71,7 @@ impl ImportService {
         let library_manager = &services.library_manager;
         let mut dated = Vec::with_capacity(items.len());
         for item in items {
-            let folder_date = Self::folder_date(&item).await?;
+            let folder_date = Self::folder_date(&item, &services.diagnostics).await?;
             dated.push((item, folder_date));
         }
         loop {
@@ -124,6 +130,7 @@ impl ImportService {
     /// sidecar files, which are no release.
     async fn folder_date(
         item: &ScanItem,
+        diagnostics: &crate::diagnostics::Diagnostics,
     ) -> Result<Option<crate::import::folder_scanner::FolderDate>, crate::import::ImportError> {
         let path = match item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
@@ -135,12 +142,12 @@ impl ImportService {
                 })
             }
         };
-        tokio::task::spawn_blocking(move || crate::import::folder_scanner::FolderDate::read(&path))
-            .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("folder date task failed: {error}"),
-            })?
-            .map_err(Into::into)
+        bae_util::task_failure::blocking("read a folder's date", move || {
+            crate::import::folder_scanner::FolderDate::read(&path)
+        })
+        .await
+        .map_err(|failed| diagnostics.bug(failed))?
+        .map_err(Into::into)
     }
 
     /// `item` with the file decisions stored for its files applied, and the
@@ -288,21 +295,23 @@ impl ImportService {
     }
 
     pub(super) async fn cancel_and_join_folder_walk(
-        root: &Path,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
         item_rx: &mut mpsc::Receiver<ScanItem>,
         walk: FolderWalk,
+        diagnostics: &crate::diagnostics::Diagnostics,
     ) -> Result<(), crate::import::ImportError> {
         cancellation.cancel();
         while item_rx.recv().await.is_some() {}
-        match walk.await {
-            Ok(_) => Ok(()),
-            Err(error) => {
-                tracing::error!("folder scan task failed for {}: {error}", root.display());
-                Err(crate::import::ImportError::Internal {
-                    detail: format!("folder scan task failed: {error}"),
-                })
+        let (walked, _, _) = bae_util::task_failure::joined(FOLDER_WALK, walk)
+            .await
+            .map_err(|failed| diagnostics.bug(failed))?;
+        // The walk was stopped, so its own error says only that, unless one
+        // of its threads panicked first.
+        match walked {
+            Err(crate::import::folder_scanner::FolderScanError::Panicked(failed)) => {
+                Err(diagnostics.bug(failed).into())
             }
+            Ok(()) | Err(_) => Ok(()),
         }
     }
 
@@ -331,16 +340,22 @@ impl ImportService {
         cancellation: &crate::import::folder_scanner::ScanCancellation,
     ) -> Result<(), crate::import::ImportError> {
         let services = &scan.services;
-        let event_tx = &services.event_tx;
         let (generation, volume) = match Self::begin_scan(root, services).await {
             Ok(begun) => begun,
             Err(error) => {
                 error!("folder scan of {} could not start: {error}", root.display());
-                Self::announce_scan_failure(root, error.to_string(), event_tx).await;
+                Self::announce_scan_failure(root, error.to_string(), services).await;
                 return Err(error);
             }
         };
-        let outcome = Self::walk_and_reconcile(root, generation, volume, scan, cancellation).await;
+        // A walk that panics fails the scan as an error does, so the root's
+        // stored status says it failed.
+        let outcome = bae_util::task_failure::caught(
+            "scan a watched folder",
+            Self::walk_and_reconcile(root, generation, volume, scan, cancellation),
+        )
+        .await
+        .unwrap_or_else(|failed| Err(services.diagnostics.bug(failed).into()));
         let Err(error) = outcome else {
             return Ok(());
         };
@@ -364,7 +379,7 @@ impl ImportService {
                 "{}'s failed scan could not be stored: {status_error}",
                 root.display()
             );
-            Self::announce_scan_failure(root, error.to_string(), event_tx).await;
+            Self::announce_scan_failure(root, error.to_string(), services).await;
         }
         Err(error)
     }
@@ -376,7 +391,7 @@ impl ImportService {
         services: &crate::import::ImportServices,
     ) -> Result<(u64, VolumeKind), crate::import::ImportError> {
         let event_tx = &services.event_tx;
-        let volume = volume_kind(root).await;
+        let volume = volume_kind(root, &services.diagnostics).await;
         let on_network_volume = volume == VolumeKind::Network;
         let _commit = services.folder_state_commit.lock("begin a scan").await;
         let generation = services
@@ -559,8 +574,13 @@ impl ImportService {
                 )
                 .await?
                 {
-                    Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
-                        .await?;
+                    Self::cancel_and_join_folder_walk(
+                        cancellation,
+                        &mut item_rx,
+                        walk,
+                        &services.diagnostics,
+                    )
+                    .await?;
                     return Ok(());
                 }
                 library_manager
@@ -578,7 +598,13 @@ impl ImportService {
             )
             .await?
             {
-                Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk).await?;
+                Self::cancel_and_join_folder_walk(
+                    cancellation,
+                    &mut item_rx,
+                    walk,
+                    &services.diagnostics,
+                )
+                .await?;
                 return Ok(());
             }
         }
@@ -587,16 +613,16 @@ impl ImportService {
         // channel above. A root read failure preserves the progressive items
         // already committed by this pass plus older items that were not
         // explicitly replaced.
-        let (seen_directories, directory_mtimes) = match walk.await {
-            Ok((Ok(()), seen_directories, directory_mtimes)) => {
-                (seen_directories, directory_mtimes)
+        let walked = bae_util::task_failure::joined(FOLDER_WALK, walk)
+            .await
+            .map_err(|failed| services.diagnostics.bug(failed))?;
+        let (seen_directories, directory_mtimes) = match walked {
+            (Ok(()), seen_directories, directory_mtimes) => (seen_directories, directory_mtimes),
+            // One of the walk's threads panicked; the rest stopped with it.
+            (Err(crate::import::folder_scanner::FolderScanError::Panicked(failed)), _, _) => {
+                return Err(services.diagnostics.bug(failed).into())
             }
-            Ok((Err(e), _, _)) => return Err(e.into()),
-            Err(e) => {
-                return Err(crate::import::ImportError::Internal {
-                    detail: format!("folder scan task panicked: {e}"),
-                })
-            }
+            (Err(e), _, _) => return Err(e.into()),
         };
 
         drop(seen_directories);

@@ -13,6 +13,7 @@
 
 use super::scan::{ScanCancellation, FOLDERS_AT_ONCE};
 use super::FolderScanError;
+use bae_util::task_failure::{caught_sync, TaskFailed};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -172,25 +173,44 @@ fn read_each_at_once(
     let next = AtomicUsize::new(0);
     let read: Vec<std::sync::Mutex<FolderTimes>> =
         indices.iter().map(|_| Default::default()).collect();
+    // Cancelled with the pass, and by a read that panics, so the others stop
+    // without the pass reading as cancelled.
+    let stop = cancellation.child();
+    let panicked: std::sync::Mutex<Option<TaskFailed>> = std::sync::Mutex::new(None);
     std::thread::scope(|threads| {
         for _ in 0..FOLDERS_AT_ONCE.min(indices.len()) {
-            let (next, read) = (&next, &read);
+            let (next, read, stop, panicked) = (&next, &read, &stop, &panicked);
             threads.spawn(move || {
-                while !cancellation.is_cancelled() {
-                    let place = next.fetch_add(1, Ordering::Relaxed);
-                    let Some(index) = indices.get(place) else {
-                        break;
-                    };
-                    let path = root.join(&folders[*index]);
-                    let times = FolderTimes::of_metadata(&path).unwrap_or_else(|error| {
-                        tracing::debug!(path = %path.display(), %error, "folder dates are unreadable");
-                        FolderTimes::default()
-                    });
-                    *read[place].lock().expect("folder dates mutex poisoned") = times;
+                let reading = caught_sync("read folders' dates", || {
+                    while !stop.is_cancelled() {
+                        let place = next.fetch_add(1, Ordering::Relaxed);
+                        let Some(index) = indices.get(place) else {
+                            break;
+                        };
+                        let path = root.join(&folders[*index]);
+                        let times = FolderTimes::of_metadata(&path).unwrap_or_else(|error| {
+                            tracing::debug!(path = %path.display(), %error, "folder dates are unreadable");
+                            FolderTimes::default()
+                        });
+                        *read[place].lock().expect("folder dates mutex poisoned") = times;
+                    }
+                });
+                if let Err(failed) = reading {
+                    stop.cancel();
+                    panicked
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .get_or_insert(failed);
                 }
             });
         }
     });
+    if let Some(failed) = panicked
+        .into_inner()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+    {
+        return Err(FolderScanError::Panicked(failed));
+    }
     cancellation.check()?;
     Ok(read
         .into_iter()

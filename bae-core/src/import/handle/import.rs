@@ -106,29 +106,29 @@ impl ImportServiceHandle {
         } = stored;
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let file_edit_revision = candidate.file_edit_revision;
-        let snapshot = tokio::task::spawn_blocking(move || {
-            let observations = crate::import::file_tag_snapshot::observe_audio_files(&audio_files)?;
-            if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
-                file_tag_snapshot_match(
-                    snapshot,
+        let snapshot =
+            bae_util::task_failure::blocking("read a candidate's file tags", move || {
+                let observations =
+                    crate::import::file_tag_snapshot::observe_audio_files(&audio_files)?;
+                if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
+                    file_tag_snapshot_match(
+                        snapshot,
+                        scan_generation,
+                        file_edit_revision,
+                        &observations,
+                    ) == FileTagSnapshotMatch::Current
+                }) {
+                    return Ok::<_, crate::import::ImportError>(snapshot);
+                }
+                crate::import::file_tag_snapshot::extract_file_tag_snapshot(
+                    &audio_files,
                     scan_generation,
                     file_edit_revision,
-                    &observations,
-                ) == FileTagSnapshotMatch::Current
-            }) {
-                return Ok::<_, crate::import::ImportError>(snapshot);
-            }
-            crate::import::file_tag_snapshot::extract_file_tag_snapshot(
-                &audio_files,
-                scan_generation,
-                file_edit_revision,
-                reader.as_ref(),
-            )
-        })
-        .await
-        .map_err(|error| crate::import::ImportError::Internal {
-            detail: format!("file-tag snapshot task failed: {error}"),
-        })??;
+                    reader.as_ref(),
+                )
+            })
+            .await
+            .map_err(|failed| self.library_manager.bug(failed))??;
         Ok(FileTagSnapshotRead {
             candidate,
             snapshot,
@@ -751,12 +751,18 @@ impl ImportServiceHandle {
     /// written has no one to fail to, so it is a bug, reported as one.
     pub fn cancel_all_imports_in_background(&self) {
         let this = self.clone();
-        self.runtime_handle.spawn(async move {
-            if let Err(error) = this.cancel_all_imports().await {
-                this.library_manager
-                    .report_bug("cancel every waiting import", &error);
-            }
-        });
+        self.diagnostics.spawn_reported(
+            &self.runtime_handle,
+            "cancel every waiting import",
+            async move {
+                if let Err(error) = this.cancel_all_imports().await {
+                    this.library_manager
+                        .report_bug("cancel every waiting import", &error);
+                }
+            },
+            // Reported; no one waits to hear more.
+            |_| {},
+        );
     }
 
     /// End an import cancelled while it waited, and announce it: the worker

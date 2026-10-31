@@ -42,6 +42,16 @@ impl InternalFailure {
     }
 }
 
+/// Work that panicked or never finished is a failure on bae's own side; a
+/// panic was reported as a bug where it was caught.
+impl From<bae_util::task_failure::TaskFailed> for InternalFailure {
+    fn from(failed: bae_util::task_failure::TaskFailed) -> Self {
+        Self {
+            detail: failed.to_string(),
+        }
+    }
+}
+
 /// Why a step that asks a catalog did not answer: the catalog could not, or
 /// bae broke on its way there or back.
 #[derive(Debug, Clone, PartialEq, Eq)]

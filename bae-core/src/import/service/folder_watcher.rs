@@ -20,6 +20,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 use super::watch_batches::{RootEvent, WatchReport, WatchedRoot};
+use crate::diagnostics::lock_or_crash;
 use crate::import::ImportError;
 
 trait WatchBackend: Send {
@@ -69,10 +70,20 @@ pub(super) struct FolderWatchSnapshot {
 /// stored rather than propagated: app start stays infallible, and every later
 /// `install_directory`/`reinstall` returns the stored failure instead of
 /// silently doing nothing — a broken watch breaks folder watching, not the
-/// library. A root whose own watch will not start fails the same way, alone.
+/// library. That thread panicking is stored the same way, reported, with
+/// every watch stopped. A root whose own watch will not start fails the same
+/// way, alone.
+///
+/// The watch table is changed in several steps under its lock, so a panic
+/// while it is held leaves it partway through a change: the next caller to
+/// take the lock reports that and ends the process.
 pub(crate) struct FolderWatcher {
-    state: Mutex<Result<Watches, String>>,
+    state: Arc<Mutex<Result<Watches, String>>>,
+    diagnostics: crate::diagnostics::Diagnostics,
 }
+
+/// The watch table, as a poisoned lock on it is reported.
+const WATCH_TABLE: &str = "the folder watch table";
 
 impl FolderWatcher {
     /// Start gathering what the roots' watches report into one batch per
@@ -84,23 +95,37 @@ impl FolderWatcher {
     /// file and directory in it, which on a network share is tens of seconds
     /// per folder, and nothing here reads a rename as anything but the two
     /// paths it touched.
-    pub(crate) fn new(fs_tx: mpsc::UnboundedSender<WatchReport>) -> Self {
+    pub(crate) fn new(
+        fs_tx: mpsc::UnboundedSender<WatchReport>,
+        diagnostics: crate::diagnostics::Diagnostics,
+    ) -> Self {
         let (raw_tx, raw_rx) = std::sync::mpsc::channel();
-        let state = std::thread::Builder::new()
-            .name("folder-watch-batches".to_string())
-            .spawn(move || super::watch_batches::run(raw_rx, fs_tx))
-            .map(|_| Watches {
-                open: platform_watch(raw_tx),
-                roots: HashMap::new(),
-            })
-            .map_err(|error| {
-                let detail = format!("failed to start gathering folder watch events: {error}");
-                error!("{detail}");
-                detail
-            });
-        Self {
-            state: Mutex::new(state),
+        let state = Arc::new(Mutex::new(Ok(Watches {
+            open: platform_watch(raw_tx),
+            roots: HashMap::new(),
+        })));
+        let failed_state = Arc::downgrade(&state);
+        let failed_diagnostics = diagnostics.clone();
+        let gathering = diagnostics.spawn_thread_reported(
+            "folder-watch-batches",
+            move || super::watch_batches::run(raw_rx, fs_tx),
+            move |failed| {
+                let Some(state) = failed_state.upgrade() else {
+                    debug!("folder watch events stopped being gathered after the watcher closed");
+                    return;
+                };
+                // Every watch stops with the table; what they would report
+                // has nowhere to go.
+                *lock_or_crash(&failed_diagnostics, WATCH_TABLE, &state) =
+                    Err(format!("gathering folder watch events stopped: {failed}"));
+            },
+        );
+        if let Err(error) = gathering {
+            let detail = format!("failed to start gathering folder watch events: {error}");
+            error!("{detail}");
+            *lock_or_crash(&diagnostics, WATCH_TABLE, &state) = Err(detail);
         }
+        Self { state, diagnostics }
     }
 
     pub(crate) fn install_directory(
@@ -111,7 +136,7 @@ impl FolderWatcher {
         let Some(mode) = watch_mode(root, directory) else {
             return Ok(());
         };
-        let mut state = self.state.lock().unwrap();
+        let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
         let watches = state
             .as_mut()
             .map_err(|e| ImportError::Watch { detail: e.clone() })?;
@@ -138,7 +163,7 @@ impl FolderWatcher {
         if uses_recursive_root_watch() {
             return Ok(());
         }
-        let mut state = self.state.lock().unwrap();
+        let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
         let watches = state.as_mut().map_err(|error| ImportError::Watch {
             detail: error.clone(),
         })?;
@@ -170,7 +195,7 @@ impl FolderWatcher {
     /// watches can be put back; nothing when it has none. Stopping a watch
     /// cannot fail, and touches no other root's.
     pub(super) fn uninstall(&self, path: &Path) -> FolderWatchSnapshot {
-        let removed = match self.state.lock().unwrap().as_mut() {
+        let removed = match lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state).as_mut() {
             Ok(watches) => watches.roots.remove(path),
             // The watches never started; nothing was ever installed.
             Err(_) => None,
@@ -191,7 +216,7 @@ impl FolderWatcher {
         snapshot: &FolderWatchSnapshot,
     ) -> Result<(), ImportError> {
         let mut failures = Vec::new();
-        let mut state = self.state.lock().unwrap();
+        let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
         let watches = state.as_mut().map_err(|error| ImportError::Watch {
             detail: error.clone(),
         })?;
@@ -375,7 +400,8 @@ mod tests {
     fn watcher(fake: &FakeWatches) -> FolderWatcher {
         let fake = fake.clone();
         FolderWatcher {
-            state: Mutex::new(Ok(Watches {
+            diagnostics: crate::diagnostics::Diagnostics::noop(),
+            state: Arc::new(Mutex::new(Ok(Watches {
                 open: Box::new(move |root: &Path| {
                     let mut opened = fake.opened.lock().unwrap();
                     *opened += 1;
@@ -386,7 +412,7 @@ mod tests {
                     }) as Box<dyn WatchBackend>)
                 }),
                 roots: HashMap::new(),
-            })),
+            }))),
         }
     }
 
@@ -630,7 +656,7 @@ mod tests {
         let album = root.join("Album");
         std::fs::create_dir(&album).unwrap();
         let (fs_tx, mut fs_rx) = mpsc::unbounded_channel();
-        let watcher = FolderWatcher::new(fs_tx);
+        let watcher = FolderWatcher::new(fs_tx, crate::diagnostics::Diagnostics::noop());
         watcher.install_directory(&root, &root).unwrap();
         watcher.install_directory(&root, &album).unwrap();
 

@@ -52,7 +52,7 @@ async fn explicit_bmp_cover_is_rejected() {
         artwork(ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1)),
     ];
 
-    let error = ImportService::pick_folder_cover(&discovered, "cover.bmp")
+    let error = ImportService::pick_folder_cover(&discovered, "cover.bmp", &crate::diagnostics::Diagnostics::noop())
         .await
         .unwrap_err();
     assert!(matches!(
@@ -80,7 +80,7 @@ async fn a_damaged_image_is_never_picked_as_the_cover() {
         role: crate::import::folder_scanner::FileRole::DamagedImage,
     }];
 
-    let error = ImportService::pick_folder_cover(&discovered, "front.png")
+    let error = ImportService::pick_folder_cover(&discovered, "front.png", &crate::diagnostics::Diagnostics::noop())
         .await
         .unwrap_err();
     assert!(matches!(
@@ -320,7 +320,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
         1,
     ))];
 
-    let err = ImportService::pick_folder_cover(&discovered, "cover.bmp")
+    let err = ImportService::pick_folder_cover(&discovered, "cover.bmp", &crate::diagnostics::Diagnostics::noop())
         .await
         .unwrap_err();
 
@@ -332,7 +332,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
-    let err = ImportService::pick_folder_cover(&[], "cover.bmp")
+    let err = ImportService::pick_folder_cover(&[], "cover.bmp", &crate::diagnostics::Diagnostics::noop())
         .await
         .unwrap_err();
 
@@ -483,7 +483,7 @@ async fn unreadable_selected_cover_is_an_error() {
         1,
     ))];
 
-    let result = ImportService::pick_folder_cover(&discovered, "cover.jpg").await;
+    let result = ImportService::pick_folder_cover(&discovered, "cover.jpg", &crate::diagnostics::Diagnostics::noop()).await;
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();

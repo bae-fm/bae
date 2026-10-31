@@ -109,6 +109,7 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
                 Ok::<_, String>(track.name)
             }
         },
+        |failed| failed.to_string(),
     )
     .await
     .expect("every track runs");
@@ -252,6 +253,7 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
                 }
             }
         },
+        |failed| failed.to_string(),
     )
     .await;
 
@@ -313,6 +315,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
                 Ok::<_, String>(())
             }
         },
+        |failed| failed.to_string(),
     ));
     tokio::select! {
         _ = &mut pass => panic!("the track is still reading"),
@@ -333,4 +336,39 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
         ),
         "the dropped pass stopped its stream: {next_read:?}"
     );
+}
+
+/// A track whose work panics fails the pass with what the caller makes of
+/// the panic, and every file is closed, the panicked track's own included.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let tracks = file_per_track(dir.path(), 3);
+
+    let result: Result<Vec<()>, String> = run_tracks_over_sources(
+        tracks,
+        NonZeroUsize::new(2).unwrap(),
+        |track: &Track| track.files.clone(),
+        |path: &PathBuf| {
+            SourceStream::start(
+                Box::new(LocalReader::new(path)),
+                FILE_BYTES as u64,
+                Box::new(|_| {}),
+            )
+        },
+        |track, _streams| async move {
+            if track.name.starts_with("01") {
+                panic!("{} broke", track.name);
+            }
+            Ok(())
+        },
+        |failed| format!("the pass failed: {failed}"),
+    )
+    .await;
+
+    assert_eq!(
+        result,
+        Err("the pass failed: work on one track panicked: 01 Track.flac broke".to_string())
+    );
+    coven::assert_no_open_files_under(dir.path());
 }

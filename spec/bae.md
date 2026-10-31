@@ -546,14 +546,17 @@ folder's sidecar.
 **Watching.** Each watched folder has its own filesystem watch. A change reads
 again only the folder directly under the watched root that it reached, and
 only after that folder has been quiet for a second, so a download writing into
-one album for an hour holds back only that album.
+one album for an hour holds back only that album. If gathering the watches'
+reports panics, it is reported as a bug and every watch stops; scans, refreshes
+and the network check go on.
 
 A watched folder on a network volume is watched like any other, but on macOS
 and Linux a network mount reports only the changes this machine makes (Windows
 does report a server's changes on an SMB share, through
 `ReadDirectoryChangesW`). bae also checks such a folder every 15 minutes, on
 every platform, which is what notices a change made on the server or from
-another machine, and the import list says so.
+another machine, and the import list says so. A check that panics is reported
+as a bug and reads the whole folder.
 
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
@@ -564,7 +567,11 @@ again. A scan writes as it finds: what it found while its last write ran, up to
 eight entries, goes in one transaction, so an interrupted scan loses at most
 those and the next scan finds them again. Completing removes what it didn't
 see, in the same transaction that marks it complete. A failed or interrupted
-scan keeps both old and new entries. Each entry's write reads only that entry
+scan keeps both old and new entries. A pass that panics fails the scan as an
+error does, stored with the panic's message and reported as a bug; the folder
+is free for its next read, and whoever waited on the pass is answered. A
+panic while removing a watched folder fails the removal the same way, and the
+folder is read again. Each entry's write reads only that entry
 and the entries reading the same files, which it finds by their folders, so it
 costs the same however much else the watched folder holds.
 
@@ -1216,7 +1223,9 @@ Ana clicks Import. bae:
    each 10 seconds of audio past the file's first, its point is the latest
    earlier frame a decode can start at and still play it exactly, with the
    first sample such a decode plays exactly; the decode read the whole file
-   from its first frame. Any other file gets none.
+   from its first frame. Any other file gets none. A measurement that panics
+   fails the import, as a track that can't be read does, and is reported as a
+   bug: nothing it measured is stored.
 5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
@@ -1258,7 +1267,9 @@ Ana clicks Import. bae:
 
 Nothing durable is written before the last step, so a cancel before it leaves
 the library as it was. Once the write begins, a cancel is refused and the
-import completes.
+import completes. An import whose work panics fails as one that errs: its
+failure is recorded on its candidate, it is reported as a bug, and the next
+import runs.
 
 **The cover.** The cover comes from the folder's own image files, an image
 embedded in a tag, or a catalog's image (the Cover Art Archive for
@@ -3539,7 +3550,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 
 | Table | Holds |
 |---|---|
-| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it, for the files it names; its import queued, running or writing its release. Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, the import's steps — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far a run or an import has got is not stored. No row outlives the process: the table is emptied as the library opens |
+| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it, for the files it names; its import queued, running or writing its release. Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, the import's steps — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A panic while composing the runtime's read ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far a run or an import has got is not stored. No row outlives the process: the table is emptied as the library opens |
 | `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws, read by the import counts' own live query: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
 
 ### A.6 Identification

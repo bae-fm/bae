@@ -151,8 +151,12 @@ impl ImportServiceHandle {
             reads.spawn(async move { this.refresh_watched_folder(folder.path).await });
         }
         while let Some(read) = reads.join_next().await {
-            read.map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("a folder read stopped: {error}"),
+            read.map_err(|error| {
+                self.library_manager
+                    .bug(bae_util::task_failure::TaskFailed::of_join(
+                        "read a watched folder",
+                        error,
+                    ))
             })??;
         }
         Ok(self

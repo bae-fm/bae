@@ -10,6 +10,7 @@
 
 use super::super::folder_times::newest_first;
 use super::*;
+use bae_util::task_failure::{caught_sync, TaskFailed};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// What the walk of one folder under the root says to the calling thread.
@@ -24,6 +25,8 @@ enum Said {
         index: usize,
         lent: Result<Vec<FileEntry>, FolderScanError>,
     },
+    /// It panicked, and stopped the others.
+    Panicked(TaskFailed),
 }
 
 pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, D>(
@@ -103,7 +106,9 @@ where
 /// `folders`' order.
 ///
 /// The first folder that fails stops the others and fails the pass with its
-/// error; cancelling the pass stops every folder's walk.
+/// error; cancelling the pass stops every folder's walk. A walk that panics
+/// stops the others too, and fails the pass as
+/// [`FolderScanError::Panicked`], whatever else failed.
 fn read_folders_at_once<R, F, D>(
     walk: &Walk<'_, R>,
     folders: &[PathBuf],
@@ -129,6 +134,7 @@ where
     let next = AtomicUsize::new(0);
     let mut lent: Vec<Option<Vec<FileEntry>>> = folders.iter().map(|_| None).collect();
     let mut failure = None;
+    let mut panicked = None;
     std::thread::scope(|threads| {
         // Bounded, so the walks wait on the calling thread as it waits on
         // whoever takes what they yield.
@@ -142,9 +148,6 @@ where
             };
             let (reader, decisions, new_grouping_key) = (*reader, *decisions, *new_grouping_key);
             threads.spawn(move || {
-                // A walk's look-ahead is its own folder's, so each walk is
-                // its own.
-                let walk = Walk::new(scan, reader, decisions, new_grouping_key);
                 // Nothing takes what the walks say once the calling thread
                 // has stopped listening, so they stop too.
                 let say = |said| {
@@ -152,28 +155,38 @@ where
                         stop.cancel();
                     }
                 };
-                while !stop.is_cancelled() {
-                    let Some(&index) = walk_order.get(next.fetch_add(1, Ordering::Relaxed)) else {
-                        break;
-                    };
-                    let folder = &folders[index];
-                    let lent = scan_top_level_folder(
-                        &walk,
-                        folder,
-                        &mut |directory| say(Said::Directory(directory)),
-                        &mut |item| say(Said::Item(item)),
-                    )
-                    .map(|scanned| match scanned.contains_audio {
-                        true => Vec::new(),
-                        false => scanned.all_files,
-                    });
-                    let failed = lent.is_err();
-                    say(Said::Read { index, lent });
-                    // Said before the others stop, so the folder that
-                    // failed is the first the calling thread hears fail.
-                    if failed {
-                        stop.cancel();
+                let walked = caught_sync("walk a folder under a watched root", || {
+                    // A walk's look-ahead is its own folder's, so each walk is
+                    // its own.
+                    let walk = Walk::new(scan, reader, decisions, new_grouping_key);
+                    while !stop.is_cancelled() {
+                        let Some(&index) = walk_order.get(next.fetch_add(1, Ordering::Relaxed))
+                        else {
+                            break;
+                        };
+                        let folder = &folders[index];
+                        let lent = scan_top_level_folder(
+                            &walk,
+                            folder,
+                            &mut |directory| say(Said::Directory(directory)),
+                            &mut |item| say(Said::Item(item)),
+                        )
+                        .map(|scanned| match scanned.contains_audio {
+                            true => Vec::new(),
+                            false => scanned.all_files,
+                        });
+                        let failed = lent.is_err();
+                        say(Said::Read { index, lent });
+                        // Said before the others stop, so the folder that
+                        // failed is the first the calling thread hears fail.
+                        if failed {
+                            stop.cancel();
+                        }
                     }
+                });
+                if let Err(failed) = walked {
+                    stop.cancel();
+                    say(Said::Panicked(failed));
                 }
             });
         }
@@ -193,9 +206,15 @@ where
                 } => {
                     failure.get_or_insert(error);
                 }
+                Said::Panicked(failed) => {
+                    panicked.get_or_insert(failed);
+                }
             }
         }
     });
+    if let Some(failed) = panicked {
+        return Err(FolderScanError::Panicked(failed));
+    }
     if let Some(error) = failure {
         return Err(error);
     }

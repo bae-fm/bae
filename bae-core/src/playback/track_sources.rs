@@ -22,6 +22,10 @@ use std::num::NonZeroUsize;
 use crate::playback::data_source::{AudioDataReader, FillErrorHandler, FillTask};
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
+use bae_util::task_failure::{caught, TaskFailed};
+
+/// One track's work, as its failure names it.
+const TRACK_WORK: &str = "work on one track";
 
 /// One source file open for the tracks reading it: the buffer its bytes
 /// stream through and the fill task that holds the file.
@@ -76,13 +80,16 @@ impl SourceStream {
 ///
 /// The first error stops admitting tracks; the tracks already running finish,
 /// every file is closed, and that error is returned. Every file is closed
-/// before this returns either way.
+/// before this returns either way. A track whose work panics fails the pass
+/// with the error `panicked` makes of it, which is where the caller reports
+/// it.
 pub(crate) async fn run_tracks_over_sources<K, T, R, E, Fut>(
     tracks: Vec<T>,
     parallelism: NonZeroUsize,
     files_of: impl Fn(&T) -> Vec<K>,
     open: impl Fn(&K) -> SourceStream,
     work: impl Fn(T, HashMap<K, SharedSparseBuffer>) -> Fut,
+    panicked: impl Fn(TaskFailed) -> E,
 ) -> Result<Vec<R>, E>
 where
     K: Eq + Hash + Clone + Send + 'static,
@@ -133,20 +140,28 @@ where
                 streams.insert(file.clone(), stream.buffer.0.clone());
             }
             let task = work(track, streams);
-            running.spawn(async move { (index, files, task.await) });
+            running.spawn(async move { (index, files, caught(TRACK_WORK, task).await) });
         }
 
         let Some(joined) = running.join_next().await else {
             break;
         };
+        // Each task catches its work's panic, and nothing aborts the set
+        // while it is joined, so only its runtime ending can fail the join.
         let (index, files, outcome) = match joined {
             Ok(joined) => joined,
-            Err(error) => std::panic::resume_unwind(error.into_panic()),
+            Err(error) => {
+                failure.get_or_insert(panicked(TaskFailed::of_join(TRACK_WORK, error)));
+                continue;
+            }
         };
         match outcome {
-            Ok(result) => results[index] = Some(result),
-            Err(error) => {
+            Ok(Ok(result)) => results[index] = Some(result),
+            Ok(Err(error)) => {
                 failure.get_or_insert(error);
+            }
+            Err(failed) => {
+                failure.get_or_insert(panicked(failed));
             }
         }
         for file in &files {

@@ -399,8 +399,11 @@ impl LibraryManager {
     /// Open a new scan generation for `watched_folder_path`, recording the
     /// volume it is on.
     pub async fn begin_folder_scan(&self, watched_folder_path: &Path) -> Result<u64, LibraryError> {
-        let volume =
-            crate::import::volume::volume_kind(std::path::Path::new(watched_folder_path)).await;
+        let volume = crate::import::volume::volume_kind(
+            std::path::Path::new(watched_folder_path),
+            &self.diagnostics,
+        )
+        .await;
         self.begin_folder_scan_on(watched_folder_path, volume).await
     }
 

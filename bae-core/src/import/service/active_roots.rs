@@ -33,6 +33,8 @@ pub(super) struct ActiveRoots {
     removal_completions: mpsc::UnboundedSender<RootRemovalCompletion>,
     folder_state_commit: crate::import::FolderStateCommit,
     next_removal_id: u64,
+    /// Where a removal that panics is reported.
+    diagnostics: crate::diagnostics::Diagnostics,
 }
 
 /// What one root has going.
@@ -125,7 +127,8 @@ struct Queued {
 }
 
 struct RootRemovalSchedule {
-    task: tokio::task::JoinHandle<()>,
+    /// The removal, which sends its completion even when it panics.
+    task: crate::diagnostics::ReportedTask,
     /// The roots it stops watching.
     roots: Vec<PathBuf>,
     /// The folder holding exactly `roots` that it watches in their place.
@@ -193,6 +196,7 @@ impl ActiveRoots {
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
         folder_state_commit: crate::import::FolderStateCommit,
+        diagnostics: crate::diagnostics::Diagnostics,
     ) -> (
         Self,
         mpsc::UnboundedReceiver<RootScanCompletion>,
@@ -211,6 +215,7 @@ impl ActiveRoots {
                 removal_completions,
                 folder_state_commit,
                 next_removal_id: 0,
+                diagnostics,
             },
             scan_rx,
             removal_rx,
@@ -336,12 +341,8 @@ impl ActiveRoots {
         let Some(RootActivity::Scanning(mut schedule)) = self.roots.remove(&completion.path) else {
             return;
         };
-        if let Err(error) = schedule.scan.task.await {
-            error!(
-                "folder scan task failed for {}: {error}",
-                completion.path.display()
-            );
-        }
+        // A pass that panicked was reported where it ran.
+        schedule.scan.task.ended().await;
         // The scan reports its own failure; a refresh caller only waits.
         for waiter in schedule.current_waiters.drain(..) {
             if waiter.send(Ok(())).is_err() {
@@ -451,24 +452,40 @@ impl ActiveRoots {
         let backend = self.removal_backend.clone();
         let commit = self.folder_state_commit.clone();
         let completions = self.removal_completions.clone();
+        let panicked_completions = completions.clone();
         let task_roots = roots.clone();
         let task_parent = parent.clone();
-        let task = tokio::spawn(async move {
-            let result = root_tasks::run_root_removal(
-                &task_roots,
-                task_parent.as_deref(),
-                scans,
-                backend.as_ref(),
-                commit,
-            )
-            .await;
-            if completions
-                .send(RootRemovalCompletion { id, result })
-                .is_err()
-            {
-                debug!("folder scan coordinator ended before removal completion");
-            }
-        });
+        // A removal that panics ends as one that failed: its callers hear why,
+        // and the roots it held are read again.
+        let task = self.diagnostics.spawn_reported(
+            &tokio::runtime::Handle::current(),
+            "remove a watched folder",
+            async move {
+                let result = root_tasks::run_root_removal(
+                    &task_roots,
+                    task_parent.as_deref(),
+                    scans,
+                    backend.as_ref(),
+                    commit,
+                )
+                .await;
+                if completions
+                    .send(RootRemovalCompletion { id, result })
+                    .is_err()
+                {
+                    debug!("folder scan coordinator ended before removal completion");
+                }
+            },
+            move |failed| {
+                let result = RootRemovalResult::Failed(failed.to_string());
+                if panicked_completions
+                    .send(RootRemovalCompletion { id, result })
+                    .is_err()
+                {
+                    debug!("folder scan coordinator ended before a panicked removal completed");
+                }
+            },
+        );
         self.removals.insert(
             id,
             RootRemovalSchedule {
@@ -492,12 +509,8 @@ impl ActiveRoots {
         for path in removal.paths() {
             self.roots.remove(path);
         }
-        if let Err(error) = removal.task.await {
-            error!(
-                "folder removal task failed for {:?}: {error}",
-                removal.roots
-            );
-        }
+        // A removal that panicked was reported where it ran.
+        removal.task.ended().await;
         Some(match completion.result {
             RootRemovalResult::Removed {
                 commit,
@@ -602,15 +615,11 @@ impl ActiveRoots {
         }
         for (_, activity) in self.roots.drain() {
             if let RootActivity::Scanning(schedule) = activity {
-                if let Err(error) = schedule.scan.task.await {
-                    error!("folder scan task failed during shutdown: {error}");
-                }
+                schedule.scan.task.ended().await;
             }
         }
         for (_, removal) in self.removals.drain() {
-            if let Err(error) = removal.task.await {
-                error!("folder removal task failed during shutdown: {error}");
-            }
+            removal.task.ended().await;
             for waiter in removal
                 .scan_waiters
                 .into_iter()

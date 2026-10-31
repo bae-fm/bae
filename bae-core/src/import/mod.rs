@@ -227,6 +227,8 @@ pub(crate) struct ImportServices {
     /// cancel: shared by the handle that claims and cancels them and the
     /// worker that runs them.
     import_cancels: import_cancel::ImportCancels,
+    /// Where a panic in import or scan work is reported as the bug it is.
+    diagnostics: crate::diagnostics::Diagnostics,
 }
 
 #[cfg(desktop)]
@@ -237,6 +239,7 @@ impl ImportServices {
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
+        diagnostics: crate::diagnostics::Diagnostics,
     ) -> Self {
         Self {
             event_tx,
@@ -248,6 +251,7 @@ impl ImportServices {
             directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
             folder_state_commit: folder_state_commit::FolderStateCommit::default(),
             import_cancels: import_cancel::ImportCancels::default(),
+            diagnostics,
         }
     }
 }
