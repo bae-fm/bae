@@ -285,6 +285,10 @@ struct MainAppView: View {
             .environment(libraryProjections)
             .environment(uiStore)
             .environment(importScene.store)
+            .environment(
+                \.previewPosition,
+                importScene.store.previewPosition.only
+            )
             .environment(importScene.slot(uiStore: uiStore))
             .environment(ImportSelection())
             .environment(SettingsNavigation())
