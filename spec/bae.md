@@ -546,11 +546,14 @@ another machine, and the import list says so.
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
 damaged image, document, other), the parsed CUE sheets, the tags each audio file carried, and
-when each folder was first seen. A scan writes as it finds; completing removes
-what it didn't see, in the same transaction that marks it complete. A failed or
-interrupted scan keeps both old and new entries. Each write reads only the
-entry it writes and the entries reading the same files, which it finds by their
-folders, so a write costs the same however much else the watched folder holds.
+when each folder was first seen. A scan writes as it finds: what it found
+while its last write ran, up to eight entries, goes in one transaction, so an
+interrupted scan loses at most those and the next scan finds them again.
+Completing removes what it didn't see, in the same transaction that marks it
+complete. A failed or interrupted scan keeps both old and new entries. Each
+entry's write reads only that entry and the entries reading the same files,
+which it finds by their folders, so it costs the same however much else the
+watched folder holds.
 
 **What a scan reads.** A scan reads each file once. It opens a track twice:
 FFmpeg's probe, which says whether it plays, and one read of its tags, which

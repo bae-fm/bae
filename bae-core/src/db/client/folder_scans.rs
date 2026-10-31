@@ -304,19 +304,18 @@ impl Database {
         .await
     }
 
-    /// Store one scan result, deleting the entries it supersedes in the same
-    /// transaction. `None` when `generation` is no longer the root's.
-    pub(crate) async fn save_folder_scan_item_with_seed(
+    /// Store scan results in one transaction, in the order given, each
+    /// deleting the entries it supersedes: a crash loses all of them or none.
+    /// Each write sees the ones before it. `None`, with nothing written, when
+    /// `generation` is no longer the root's.
+    pub(crate) async fn save_folder_scan_items(
         &self,
         watched_folder_path: &str,
         generation: u64,
-        item: &ScanItem,
-        seed: ScanItemSeed,
-        folder_date: Option<crate::import::folder_scanner::FolderDate>,
-    ) -> Result<Option<ScanItemWrite>, DbError> {
+        items: Vec<ScanItemToWrite>,
+    ) -> Result<Option<Vec<(ScanItem, ScanItemWrite)>>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
-        let item = item.clone();
         let observed_at =
             chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
@@ -324,23 +323,25 @@ impl Database {
         }
         self.call(move |sql| {
             ensure_generation(sql, &watched_folder_path, generation)?;
-            write_scan_item(
-                sql,
-                &watched_folder_path,
-                generation,
-                &ScanItemToWrite {
-                    item,
-                    seed,
-                    folder_date,
-                },
-                observed_at,
-                Finding::FirstRead,
-            )
-            .map(Some)
+            let mut writes = Vec::with_capacity(items.len());
+            for to_write in items {
+                let write = write_scan_item(
+                    sql,
+                    &watched_folder_path,
+                    generation,
+                    &to_write,
+                    observed_at,
+                    Finding::FirstRead,
+                )?;
+                writes.push((to_write.item, write));
+            }
+            Ok(Some(writes))
         })
         .await
     }
 
+    /// Store one scan result with no seed and no folder date, as the scan's
+    /// batched write stores it.
     #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn save_folder_scan_item(
         &self,
@@ -348,14 +349,18 @@ impl Database {
         generation: u64,
         item: &ScanItem,
     ) -> Result<Option<ScanItemWrite>, DbError> {
-        self.save_folder_scan_item_with_seed(
-            watched_folder_path,
-            generation,
-            item,
-            ScanItemSeed::Tags(None),
-            None,
-        )
-        .await
+        let writes = self
+            .save_folder_scan_items(
+                watched_folder_path,
+                generation,
+                vec![ScanItemToWrite {
+                    item: item.clone(),
+                    seed: ScanItemSeed::Tags(None),
+                    folder_date: None,
+                }],
+            )
+            .await?;
+        Ok(writes.map(|mut writes| writes.pop().expect("one item stores one write").1))
     }
 
     /// Replace the directories recorded for `watched_folder_path` with those a

@@ -431,25 +431,26 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Store one scan item under `generation`, with the `seed` the caller
-    /// took from [`Self::scan_item_seed`] before the folder-state commit lock.
-    pub(crate) async fn save_folder_scan_item_with_seed(
+    /// Store scan items under `generation` in one write, each with the seed
+    /// the caller took from [`Self::scan_item_seed`] before the folder-state
+    /// commit lock.
+    pub(crate) async fn save_folder_scan_items(
         &self,
         watched_folder_path: &str,
         generation: u64,
-        item: &crate::import::folder_scanner::ScanItem,
-        seed: crate::db::ScanItemSeed,
-        folder_date: Option<crate::import::folder_scanner::FolderDate>,
-    ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
+        items: Vec<crate::db::ScanItemToWrite>,
+    ) -> Result<
+        Option<
+            Vec<(
+                crate::import::folder_scanner::ScanItem,
+                crate::db::ScanItemWrite,
+            )>,
+        >,
+        LibraryError,
+    > {
         Ok(self
             .database
-            .save_folder_scan_item_with_seed(
-                watched_folder_path,
-                generation,
-                item,
-                seed,
-                folder_date,
-            )
+            .save_folder_scan_items(watched_folder_path, generation, items)
             .await?)
     }
 
@@ -534,8 +535,18 @@ impl LibraryManager {
                 )),
             )
             .await?;
-        self.save_folder_scan_item_with_seed(watched_folder_path, generation, item, seed, None)
-            .await
+        let writes = self
+            .save_folder_scan_items(
+                watched_folder_path,
+                generation,
+                vec![crate::db::ScanItemToWrite {
+                    item: item.clone(),
+                    seed,
+                    folder_date: None,
+                }],
+            )
+            .await?;
+        Ok(writes.map(|mut writes| writes.pop().expect("one item stores one write").1))
     }
 
     pub async fn finish_folder_scan(

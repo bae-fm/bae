@@ -29,12 +29,14 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
         ("B", Some(FolderDate::AddedToDirectory(200))),
         ("C", None),
     ] {
-        db.save_folder_scan_item_with_seed(
+        db.save_folder_scan_items(
             &root,
             generation,
-            &ScanItem::Valid(candidate(&root, name)),
-            crate::db::ScanItemSeed::Tags(None),
-            date,
+            vec![crate::db::ScanItemToWrite {
+                item: ScanItem::Valid(candidate(&root, name)),
+                seed: crate::db::ScanItemSeed::Tags(None),
+                folder_date: date,
+            }],
         )
         .await
         .unwrap();
@@ -127,12 +129,14 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
         .begin_folder_scan(&root, crate::import::VolumeKind::Local)
         .await
         .unwrap();
-    db.save_folder_scan_item_with_seed(
+    db.save_folder_scan_items(
         &root,
         generation,
-        &ScanItem::Valid(item),
-        crate::db::ScanItemSeed::Tags(None),
-        Some(FolderDate::Created(123)),
+        vec![crate::db::ScanItemToWrite {
+            item: ScanItem::Valid(item),
+            seed: crate::db::ScanItemSeed::Tags(None),
+            folder_date: Some(FolderDate::Created(123)),
+        }],
     )
     .await
     .unwrap();

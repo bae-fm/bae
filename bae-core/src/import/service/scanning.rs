@@ -53,76 +53,95 @@ impl ImportService {
         ));
     }
 
-    pub(super) async fn persist_scan_item(
+    /// Store `items` in one write, in the order the walk yielded them, each
+    /// with its folder's date. `None`, with nothing stored, when
+    /// `generation` is no longer the root's.
+    async fn persist_scan_items(
         root: &Path,
         generation: u64,
-        item: &ScanItem,
+        items: Vec<ScanItem>,
         reads: &Arc<crate::import::folder_scanner::FileReads>,
         services: &crate::import::ImportServices,
-    ) -> Result<Option<PersistedScanItem>, crate::import::ImportError> {
+    ) -> Result<Option<PersistedScanItems>, crate::import::ImportError> {
         let library_manager = &services.library_manager;
-        let path = match item {
-            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-                Some(candidate.path.clone())
+        let mut dated = Vec::with_capacity(items.len());
+        for item in items {
+            let folder_date = Self::folder_date(&item).await?;
+            dated.push((item, folder_date));
+        }
+        loop {
+            // Each item as the file decisions stored right now describe it, and
+            // what its own tags seed it with, both read before the commit lock:
+            // reading a folder's tags off a network share takes as long as the
+            // share does, and every pane control waits on this lock.
+            let mut prepared = Vec::with_capacity(dated.len());
+            for (item, folder_date) in &dated {
+                let (item, edits_read) =
+                    Self::with_stored_file_edits(item, library_manager).await?;
+                let seed = library_manager
+                    .scan_item_seed(&item, generation, reads.clone())
+                    .await?;
+                prepared.push((
+                    crate::db::ScanItemToWrite {
+                        item,
+                        seed,
+                        folder_date: *folder_date,
+                    },
+                    edits_read,
+                ));
             }
-            ScanItem::Invalid(candidate) => Some(candidate.path.clone()),
-            // A folder's sidecar files are no release, so no release's date.
-            ScanItem::Sidecar(_) => None,
+            let commit = services.folder_state_commit.lock("store scan items").await;
+            // A file decision stored while the tags were being read describes
+            // other files than the ones read: read them again, as decided now.
+            let mut edited = false;
+            for (_, edits_read) in &prepared {
+                let Some((content_hash, read_revision)) = edits_read else {
+                    continue;
+                };
+                let stored = library_manager
+                    .load_candidate_file_edits(content_hash)
+                    .await?;
+                if stored.revision != *read_revision {
+                    edited = true;
+                    break;
+                }
+            }
+            if edited {
+                drop(commit);
+                continue;
+            }
+            let items = prepared.into_iter().map(|(to_write, _)| to_write).collect();
+            let Some(writes) = library_manager
+                .save_folder_scan_items(&root.to_string_lossy(), generation, items)
+                .await?
+            else {
+                return Ok(None);
+            };
+            return Ok(Some(PersistedScanItems { commit, writes }));
+        }
+    }
+
+    /// The date of the folder `item` was read from; `None` for a folder's
+    /// sidecar files, which are no release.
+    async fn folder_date(
+        item: &ScanItem,
+    ) -> Result<Option<crate::import::folder_scanner::FolderDate>, crate::import::ImportError> {
+        let path = match item {
+            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
+            ScanItem::Invalid(candidate) => candidate.path.clone(),
+            ScanItem::Sidecar(_) => return Ok(None),
             ScanItem::Decided { .. } => {
                 return Err(crate::import::ImportError::Internal {
                     detail: "a folder reading is stored as a decision, not as a scan entry".into(),
                 })
             }
         };
-        let folder_date = match path {
-            Some(path) => tokio::task::spawn_blocking(move || {
-                crate::import::folder_scanner::FolderDate::read(&path)
-            })
+        tokio::task::spawn_blocking(move || crate::import::folder_scanner::FolderDate::read(&path))
             .await
             .map_err(|error| crate::import::ImportError::Internal {
                 detail: format!("folder date task failed: {error}"),
-            })??,
-            None => None,
-        };
-        loop {
-            // The item as the file decisions stored right now describe it, and
-            // what its own tags seed it with, both read before the commit lock:
-            // reading a folder's tags off a network share takes as long as the
-            // share does, and every pane control waits on this lock.
-            let (item, edits_read) = Self::with_stored_file_edits(item, library_manager).await?;
-            let seed = library_manager
-                .scan_item_seed(&item, generation, reads.clone())
-                .await?;
-            let commit = services.folder_state_commit.lock("store a scan item").await;
-            // A file decision stored while the tags were being read describes
-            // other files than the ones read: read them again, as decided now.
-            if let Some((content_hash, read_revision)) = &edits_read {
-                let stored = library_manager
-                    .load_candidate_file_edits(content_hash)
-                    .await?;
-                if stored.revision != *read_revision {
-                    drop(commit);
-                    continue;
-                }
-            }
-            let superseded = library_manager
-                .save_folder_scan_item_with_seed(
-                    &root.to_string_lossy(),
-                    generation,
-                    &item,
-                    seed,
-                    folder_date,
-                )
-                .await?;
-            let Some(write) = superseded else {
-                return Ok(None);
-            };
-            return Ok(Some(PersistedScanItem {
-                commit,
-                item,
-                write,
-            }));
-        }
+            })?
+            .map_err(Into::into)
     }
 
     /// `item` with the file decisions stored for its files applied, and the
@@ -232,6 +251,41 @@ impl ImportService {
             }
         }
         Ok(())
+    }
+
+    /// Store `items` and announce what each write changed, adding what it
+    /// wrote and displaced to the pass's tallies. `false` when the root has
+    /// moved past `generation`, and nothing was stored.
+    async fn store_scan_items(
+        root: &Path,
+        generation: u64,
+        items: Vec<ScanItem>,
+        reads: &Arc<crate::import::folder_scanner::FileReads>,
+        services: &crate::import::ImportServices,
+        written_keys: &mut Vec<String>,
+        displaced_keys: &mut Vec<String>,
+    ) -> Result<bool, crate::import::ImportError> {
+        if items.is_empty() {
+            return Ok(true);
+        }
+        let Some(PersistedScanItems {
+            commit: _commit,
+            writes,
+        }) = Self::persist_scan_items(root, generation, items, reads, services).await?
+        else {
+            return Ok(false);
+        };
+        for (item, write) in writes {
+            if !write.changed() {
+                continue;
+            }
+            displaced_keys.extend(write.superseded_keys().iter().cloned());
+            if let Some(display_path) = item.display_path() {
+                written_keys.push(display_path.to_string());
+            }
+            Self::announce_scan_write(item, &write, services).await?;
+        }
+        Ok(true)
     }
 
     pub(super) async fn cancel_and_join_folder_walk(
@@ -394,10 +448,10 @@ impl ImportService {
         // one that keeps rewriting the same entry names it here.
         let mut written_keys: Vec<String> = Vec::new();
         let mut displaced_keys: Vec<String> = Vec::new();
-        // Bound the duplicate candidate payloads waiting on per-item DB commits.
+        // Bound the duplicate candidate payloads waiting on the store's writes.
         // The blocking producer naturally pauses when the async consumer falls
         // behind, which caps memory on fast local trees.
-        let (item_tx, mut item_rx) = mpsc::channel(8);
+        let (item_tx, mut item_rx) = mpsc::channel(SCAN_ITEMS_WAITING);
         let walk = tokio::task::spawn_blocking(move || {
             let mut seen_directories = HashSet::new();
             // When each directory was last touched, for the cheap check that
@@ -471,48 +525,70 @@ impl ImportService {
             (result, seen_directories, directory_mtimes)
         });
 
-        // A stale generation is found out by the write: `save_folder_scan_item`
+        // A stale generation is found out by the write: `save_folder_scan_items`
         // writes nothing and returns `None` once a newer scan or decision has
         // taken the root, and that is where this walk stops.
-        while let Some(item) = item_rx.recv().await {
-            // How the walk read a folder nothing was stored for. It is the
-            // folder's decision from here on, so the flip control on each
-            // candidate it produced has something to rewrite — and a later
-            // scan reads the folder the same way even if the naming rule
-            // changes under it. A reading is stored as a decision, not as a
-            // scan entry, so it never reaches the write below.
-            let item = match item {
-                ScanItem::Decided {
+        while let Some(first) = item_rx.recv().await {
+            // Every item the walk handed over while the last write ran is
+            // stored in one write, so a walk that outpaces its writes commits
+            // once for the items waiting rather than once for each.
+            let mut waiting = vec![first];
+            while waiting.len() < SCAN_ITEMS_WAITING {
+                let Ok(item) = item_rx.try_recv() else {
+                    break;
+                };
+                waiting.push(item);
+            }
+            let mut items = Vec::with_capacity(waiting.len());
+            for item in waiting {
+                // How the walk read a folder nothing was stored for. It is the
+                // folder's decision from here on, so the flip control on each
+                // candidate it produced has something to rewrite — and a later
+                // scan reads the folder the same way even if the naming rule
+                // changes under it. A reading is stored as a decision, not as a
+                // scan entry, after the items the walk yielded before it.
+                let ScanItem::Decided {
                     key,
                     decision,
                     grouping,
-                } => {
-                    library_manager
-                        .record_scanned_folder_release_decision(&key, decision, &grouping)
-                        .await?;
+                } = item
+                else {
+                    items.push(item);
                     continue;
+                };
+                if !Self::store_scan_items(
+                    root,
+                    generation,
+                    std::mem::take(&mut items),
+                    &reads,
+                    services,
+                    &mut written_keys,
+                    &mut displaced_keys,
+                )
+                .await?
+                {
+                    Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
+                        .await?;
+                    return Ok(());
                 }
-                item => item,
-            };
-            let Some(persisted) =
-                Self::persist_scan_item(root, generation, &item, &reads, services).await?
-            else {
+                library_manager
+                    .record_scanned_folder_release_decision(&key, decision, &grouping)
+                    .await?;
+            }
+            if !Self::store_scan_items(
+                root,
+                generation,
+                items,
+                &reads,
+                services,
+                &mut written_keys,
+                &mut displaced_keys,
+            )
+            .await?
+            {
                 Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk).await?;
                 return Ok(());
-            };
-            let PersistedScanItem {
-                commit: _commit,
-                item,
-                write,
-            } = persisted;
-            if !write.changed() {
-                continue;
             }
-            displaced_keys.extend(write.superseded_keys().iter().cloned());
-            if let Some(display_path) = item.display_path() {
-                written_keys.push(display_path.to_string());
-            }
-            Self::announce_scan_write(item, &write, services).await?;
         }
 
         // The walk finished (or failed) once its sender dropped and closed the

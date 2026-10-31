@@ -82,7 +82,7 @@ mod tests {
                 .unwrap()
                 .block_on(async {
                     let commit = FolderStateCommit::default();
-                    let guard = commit.lock("store a scan item").await;
+                    let guard = commit.lock("store scan items").await;
                     tokio::time::advance(held_for).await;
                     drop(guard);
                 });
@@ -96,7 +96,7 @@ mod tests {
             NOTICEABLE_HOLD + Duration::from_millis(20),
         );
         assert!(logs.contains("WARN"), "{logs}");
-        assert!(logs.contains("operation=\"store a scan item\""), "{logs}");
+        assert!(logs.contains("operation=\"store scan items\""), "{logs}");
         assert!(logs.contains("held_ms="), "{logs}");
         assert!(logs.contains("waited_ms="), "{logs}");
     }
@@ -106,7 +106,7 @@ mod tests {
         assert_eq!(logs_of_a_hold(tracing::Level::WARN, Duration::ZERO), "");
         let logs = logs_of_a_hold(tracing::Level::DEBUG, Duration::ZERO);
         assert!(logs.contains("DEBUG"), "{logs}");
-        assert!(logs.contains("operation=\"store a scan item\""), "{logs}");
+        assert!(logs.contains("operation=\"store scan items\""), "{logs}");
     }
 
     #[tokio::test(start_paused = true)]

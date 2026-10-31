@@ -72,16 +72,12 @@ fn set_modified(path: &Path, modified: std::time::SystemTime) {
 async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate) {
     let root = candidate.watched_folder_path.clone();
     let generation = manager.begin_folder_scan(&root).await.unwrap();
-    manager
-        .save_folder_scan_item_with_seed(
-            &root,
-            generation,
-            &crate::import::folder_scanner::ScanItem::Valid(candidate),
-            crate::db::ScanItemSeed::Tags(None),
-            None,
-        )
-        .await
-        .unwrap();
+    let unread = crate::db::ScanItemToWrite {
+        item: crate::import::folder_scanner::ScanItem::Valid(candidate),
+        seed: crate::db::ScanItemSeed::Tags(None),
+        folder_date: None,
+    };
+    manager.save_folder_scan_items(&root, generation, vec![unread]).await.unwrap();
     manager
         .finish_folder_scan(&root, generation, None)
         .await

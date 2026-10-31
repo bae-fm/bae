@@ -461,13 +461,17 @@ type FolderWalkOutcome = (
 
 type FolderWalk = tokio::task::JoinHandle<FolderWalkOutcome>;
 
-/// One scan item after its durable write, with the commit lock still held so
-/// the events announcing it go out before anything else writes.
-struct PersistedScanItem {
+/// How many scan items the walk hands over before it waits on the store, and
+/// so the most one write stores.
+const SCAN_ITEMS_WAITING: usize = 8;
+
+/// Scan items after their durable write, with the commit lock still held so
+/// the events announcing them go out before anything else writes.
+struct PersistedScanItems {
     commit: crate::import::FolderStateCommitGuard,
-    item: ScanItem,
-    /// What the write changed; rows it left as they were are not announced.
-    write: crate::db::ScanItemWrite,
+    /// Each item with what its write changed, in the order they were written;
+    /// rows a write left as they were are not announced.
+    writes: Vec<(ScanItem, crate::db::ScanItemWrite)>,
 }
 
 struct RootScanTask {
