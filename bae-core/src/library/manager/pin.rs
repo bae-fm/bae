@@ -65,36 +65,64 @@ impl LibraryManager {
             // Progress reads belong to the operation: if one fails, finish
             // rolling back its pins before reporting the failure.
             let result = async {
-                let mut pins = manager.database.subscribe_release_file_pins(&release);
+                // Says when the release's pins change. Its value can predate
+                // what the download watch has told since: joined with the
+                // watch, a file whose download just ended would count as
+                // neither kept nor downloading, and the bytes would fall
+                // back. So each count reads the pins itself, after the
+                // watch's state it joins.
+                let pins = manager.database.subscribe_release_file_pins(&release);
+                #[cfg(test)]
+                let pins = {
+                    let hold = manager.pin_reads_hold.clone();
+                    pins.process(move |read| {
+                        hold.wait();
+                        Ok(read)
+                    })
+                };
+                let mut pins = pins;
                 let mut transfers = manager.database.subscribe_download_file_transfers();
                 // How far each file being downloaded has got, as the watch
                 // last told it.
                 let mut moved = std::collections::BTreeMap::new();
-                // Where each file stands, as the query last read it; `None`
-                // until it first does.
+                // Where each file stands, read after the watch's first word
+                // and after each download it told ended; `None` until first
+                // read.
                 let mut read = None;
                 let pin = manager.database.pin(&files);
                 tokio::pin!(pin);
                 let mut rate: Option<crate::library::download_snapshot::DownloadRate> = None;
                 loop {
-                    let finished = tokio::select! {
+                    // Whether the pin finished, and whether the pins must be
+                    // read again before counting.
+                    let (finished, reread) = tokio::select! {
                         _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
                         _ = closing.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled because the library is closing".into())),
                         result = &mut pin => {
                             result.map_err(|error| LibraryError::file_read(format!("pin release {release}"), error))?;
-                            read = Some(manager.database.release_file_pins(&release).await?);
-                            true
+                            (true, true)
                         }
                         next = pins.next() => {
-                            read = Some(next.expect("a pin query reports why it ended, which returns first")?);
-                            false
+                            next.expect("a pin query reports why it ended, which returns first")?;
+                            (false, true)
                         }
                         changes = transfers.next() => {
                             let changes = changes.ok_or_else(|| LibraryError::Storage(format!("pin release {release}: the store closed")))?;
+                            // coven ends a download only after keeping its
+                            // file, so a read after the end counts it kept.
+                            // A share that only started or moved needs no
+                            // read: until the pins say the file downloads it
+                            // counts nothing, and after, its share only grows.
+                            let ended = changes
+                                .iter()
+                                .any(|change| !matches!(change, coven::TransferChange::Updated { .. }));
                             crate::library::file_transfers::apply(&mut moved, changes);
-                            false
+                            (false, ended)
                         }
                     };
+                    if reread {
+                        read = Some(manager.database.release_file_pins(&release).await?);
+                    }
                     let Some(read) = &read else {
                         continue;
                     };

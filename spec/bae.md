@@ -1605,7 +1605,10 @@ goes. Its bytes are the sizes of its files kept whole and, of each file
 `coven_downloading` lists, the share of its size its object has moved, as
 coven's download watch tells it, so they move as a file arrives rather than
 as each lands; a share counts against the file's own size, since the
-watch's bytes are the encrypted object's. Its rate is what it has moved
+watch's bytes are the encrypted object's. They never go back as a file
+lands: whether each file is kept is read after the watch last told of a
+download ending, and coven ends one only once its file is kept, so a file
+just downloaded counts whole, never as nothing. Its rate is what it has moved
 since it began over the time since. Unpinning moves the files into the
 cache, still readable, now evictable.
 

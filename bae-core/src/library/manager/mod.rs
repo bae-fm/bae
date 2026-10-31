@@ -104,6 +104,8 @@ pub use release_edit::ReleaseEditSession;
 mod save;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use save::SaveWindow;
+#[cfg(test)]
+mod hold;
 mod originals;
 mod pending_item;
 mod storage;
@@ -774,7 +776,10 @@ pub struct LibraryManager {
     release_writes: Arc<tokio::sync::Mutex<()>>,
     /// Where a test holds every look at this device's originals.
     #[cfg(test)]
-    disk_hold: Arc<originals::DiskHold>,
+    disk_hold: Arc<hold::Hold>,
+    /// Where a test holds each run of a pin's query of its release's pins.
+    #[cfg(test)]
+    pin_reads_hold: Arc<hold::Hold>,
 }
 
 pub fn generate_mcp_token() -> String {

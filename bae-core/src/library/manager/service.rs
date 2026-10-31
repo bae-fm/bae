@@ -165,6 +165,8 @@ impl LibraryManager {
             release_writes: Arc::default(),
             #[cfg(test)]
             disk_hold: Arc::default(),
+            #[cfg(test)]
+            pin_reads_hold: Arc::default(),
         };
         manager
             .start_queue_workers()

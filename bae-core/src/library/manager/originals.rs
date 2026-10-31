@@ -39,9 +39,8 @@ impl LibraryManager {
     /// Hold every look at this device's originals until the returned hold
     /// drops: a volume busy serving other reads.
     #[cfg(test)]
-    pub(crate) fn hold_disk(&self) -> DiskHeld {
-        *self.disk_hold.held.lock().unwrap() = true;
-        DiskHeld(self.disk_hold.clone())
+    pub(crate) fn hold_disk(&self) -> super::hold::Held {
+        self.disk_hold.hold()
     }
 }
 
@@ -67,36 +66,6 @@ fn on_disk(original: &RecordedOriginal) -> Result<OriginalOnDisk, LibraryError> 
             );
             Ok(OriginalOnDisk::Changed)
         }
-    }
-}
-
-/// Where [`LibraryManager::hold_disk`] holds the looks at originals.
-#[cfg(test)]
-#[derive(Default)]
-pub(crate) struct DiskHold {
-    held: std::sync::Mutex<bool>,
-    released: std::sync::Condvar,
-}
-
-#[cfg(test)]
-impl DiskHold {
-    fn wait(&self) {
-        let _released = self
-            .released
-            .wait_while(self.held.lock().unwrap(), |held| *held)
-            .unwrap();
-    }
-}
-
-/// Lets the looks at originals through when dropped.
-#[cfg(test)]
-pub(crate) struct DiskHeld(Arc<DiskHold>);
-
-#[cfg(test)]
-impl Drop for DiskHeld {
-    fn drop(&mut self) {
-        *self.0.held.lock().unwrap() = false;
-        self.0.released.notify_all();
     }
 }
 

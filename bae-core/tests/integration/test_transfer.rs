@@ -305,9 +305,9 @@ async fn a_release_detail_says_where_its_download_stands() {
 
 /// Pin a Remote cloud-only release: coven fetches its files from the cloud into
 /// the pinned cache, so it reads as (Remote, pinned). Its progress counts
-/// against the release's whole size and reaches that size before the pin
-/// completes. Which steps it reports before that depends on how coven's
-/// download races the pins query, so none is asserted.
+/// against the release's whole size, never goes back, and reaches that size
+/// before the pin completes. Which steps it reports before that depends on
+/// how coven's download races the pins query, so none is asserted.
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
@@ -342,6 +342,12 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     assert!(
         progress.iter().all(|progress| progress.bytes_total == 22),
         "progress counts against the release's size: {progress:?}"
+    );
+    assert!(
+        progress
+            .windows(2)
+            .all(|pair| pair[0].bytes_done <= pair[1].bytes_done),
+        "progress never goes back: {progress:?}"
     );
     assert_eq!(
         progress.last().map(|progress| progress.bytes_done),
