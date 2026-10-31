@@ -290,28 +290,27 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
 /// frees and then running, at the list's one request revision. A row that
 /// finds a slot free starts at once, so its queued moment is no state the
 /// page promises to show.
+///
+/// Each row looks up its own barcode: rows sharing one lookup would answer
+/// the waiting row's from the response cache once the first came back, and
+/// its run could pass running before the page is delivered again.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     let fixture = Fixture::new("batch-identify-rows").await;
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let dirs: Vec<PathBuf> = (0..MAX_IN_FLIGHT + 1)
         .map(|index| {
-            let dir = fixture.disc_id_candidate(&format!("Album {index}"));
+            let dir = fixture.barcode_candidate(&format!("Album {index}"));
             std::fs::write(dir.join(format!("notes-{index}.txt")), format!("{index}")).unwrap();
             dir
         })
         .collect();
-    let probed = fixture.probed_total_ms(&dirs[0]);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-batch", "rg-batch", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release/mb-batch?",
-        200,
-        release_json("mb-batch", "rg-batch", &[probed, 0]),
-    );
-    fixture.provider.hold("/discid/");
+    fixture
+        .provider
+        .route("/release?", 200, r#"{"releases":[]}"#);
+    fixture.provider.hold("query=barcode");
     // Identified only when asked: nothing found here is identified on its own.
     fixture
         .manager
@@ -330,7 +329,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     for key in &keys {
         fixture.identification().rerun_identify(key.clone());
     }
-    wait_for_request(&fixture.provider, "/discid/", MAX_IN_FLIGHT).await;
+    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
 
     let status = |snapshot: &crate::import::ImportListSnapshot, key: &crate::import::CandidateKey| {
         page_live(snapshot)[key].facts.identification.clone()
