@@ -19,7 +19,7 @@ macro_rules! pulled_values {
         #[derive(uniffi::Object)]
         pub struct $object {
             values: bae_core::library::LiveValues<$core>,
-            runtime: tokio::runtime::Handle,
+            runtime: crate::operation_runtime::OperationRuntime,
         }
 
         #[uniffi::export(async_runtime = "tokio", cancellable)]
@@ -29,31 +29,33 @@ macro_rules! pulled_values {
             /// pull waits for the read after it.
             pub async fn next(self: Arc<Self>) -> Result<$bridge, BridgeError> {
                 let runtime = self.runtime.clone();
-                crate::operation_runtime::run(runtime, move || async move {
-                    self.values
-                        .next()
-                        .await
-                        .map(<$bridge>::from_core)
-                        .map_err(values_error)
-                })
-                .await
+                runtime
+                    .run(concat!(stringify!($object), ".next"), move || async move {
+                        self.values
+                            .next()
+                            .await
+                            .map(<$bridge>::from_core)
+                            .map_err(values_error)
+                    })
+                    .await
             }
 
             /// End the subscription: a waiting pull answers that it was
             /// cancelled, and so does every later one.
             pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
                 let runtime = self.runtime.clone();
-                crate::operation_runtime::run(runtime, move || async move {
-                    self.values.cancel().await;
-                    Ok(())
-                })
-                .await
+                runtime
+                    .run(concat!(stringify!($object), ".cancel"), move || async move {
+                        self.values.cancel().await;
+                        Ok(())
+                    })
+                    .await
             }
         }
 
         pub(crate) fn $make(
             values: bae_core::library::LiveValues<$core>,
-            runtime: tokio::runtime::Handle,
+            runtime: crate::operation_runtime::OperationRuntime,
         ) -> Arc<$object> {
             Arc::new($object { values, runtime })
         }
