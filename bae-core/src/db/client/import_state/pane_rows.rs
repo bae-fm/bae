@@ -23,7 +23,7 @@ use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
 use std::str::FromStr;
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
-     labels, country, region, media, status, packaging, discogs_details";
+     country, region, media, status, packaging, discogs_details";
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, medium, side, track_number, stated_length_ms, \
@@ -68,10 +68,11 @@ pub(crate) fn insert_draft(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author, draft_blank, draft_valid) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         rusqlite::params_from_iter(edit_row_values(content_hash, draft, author)),
     )?;
+    insert_label_rows(sql, content_hash, &draft.pressing.labels)?;
     insert_barcode_rows(sql, content_hash, &draft.pressing.barcodes)?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
     insert_draft_body(sql, content_hash, draft)
@@ -94,7 +95,6 @@ pub(super) fn edit_row_values(
         text(&draft.album_title),
         text(&draft.album_year),
         text(&draft.pressing.year),
-        Value::Text(serde_json::to_string(&draft.pressing.labels).expect("label rows serialize")),
         optional(facts.country),
         optional(facts.region),
         Value::Text(super::super::pressing_columns::media_column(
@@ -107,6 +107,27 @@ pub(super) fn edit_row_values(
         Value::Integer(release_edit.is_blank().into()),
         Value::Integer(release_edit.shape().is_ok().into()),
     ]
+}
+
+/// The draft's label rows, as the form holds them, where none are stored.
+pub(super) fn insert_label_rows(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    labels: &[RawLabelEdit],
+) -> Result<(), DbError> {
+    for (position, label) in labels.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_edit_label \
+                 (content_hash, position, name, catalog_number) VALUES (?, ?, ?, ?)",
+            params![
+                content_hash,
+                position as i64,
+                label.name,
+                label.catalog_number
+            ],
+        )?;
+    }
+    Ok(())
 }
 
 /// The draft's barcode rows, as the form holds them, where none are stored.
@@ -379,6 +400,11 @@ pub(crate) fn load_drafts_on(
     let rows = sql.query(
         &format!(
             "SELECT {EDIT_COLUMNS}, \
+                    (SELECT json_group_array(json_object( \
+                         'name', label.name, 'catalog_number', label.catalog_number) \
+                         ORDER BY label.position) \
+                     FROM import_candidate_edit_label AS label \
+                     WHERE label.content_hash = edit.content_hash) AS labels, \
                     (SELECT json_group_array(barcode.barcode ORDER BY barcode.position) \
                      FROM import_candidate_edit_barcode AS barcode \
                      WHERE barcode.content_hash = edit.content_hash) AS barcodes, \
@@ -508,7 +534,7 @@ impl StoredDraftRow {
     }
 }
 
-/// The draft's `labels` column: the form's label rows as typed.
+/// The draft's label rows as typed, as the read's `labels` array holds them.
 fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
     let labels: String = row.get("labels")?;
     serde_json::from_str::<Vec<RawLabelEdit>>(&labels).map_err(|error| {

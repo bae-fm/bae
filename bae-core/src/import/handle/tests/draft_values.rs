@@ -398,3 +398,38 @@ async fn the_draft_keeps_its_barcode_rows_as_typed() {
         ["5012345678900"]
     );
 }
+
+/// The draft keeps its label rows as the form holds them, in order, each field
+/// as typed, a blank row the person has not filled yet included, and keeps
+/// only what the next edit leaves.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_draft_keeps_its_label_rows_as_typed() {
+    let (fixture, hash) = three_track_draft().await;
+    let rows = |labels: &[(&str, &str)]| -> Vec<crate::import::RawLabelEdit> {
+        labels
+            .iter()
+            .map(|(name, catalog_number)| crate::import::RawLabelEdit {
+                name: name.to_string(),
+                catalog_number: catalog_number.to_string(),
+            })
+            .collect()
+    };
+    let set = |labels: Vec<crate::import::RawLabelEdit>| {
+        let handle = fixture.handle.clone();
+        let key = fixture.key.clone();
+        async move {
+            handle
+                .set_candidate_edit_field(&key, crate::import::DraftFieldEdit::Labels(labels))
+                .await
+                .unwrap();
+        }
+    };
+
+    let typed = rows(&[(" Label Name ", "CAT-001"), ("", ""), ("", "CAT 002")]);
+    set(typed.clone()).await;
+    assert_eq!(stored_draft(&fixture.handle, &hash).await.pressing.labels, typed);
+
+    let kept = rows(&[("Other Label", "")]);
+    set(kept.clone()).await;
+    assert_eq!(stored_draft(&fixture.handle, &hash).await.pressing.labels, kept);
+}

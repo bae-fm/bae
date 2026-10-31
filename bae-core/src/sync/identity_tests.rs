@@ -424,9 +424,9 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
             "INSERT INTO import_candidate_state (content_hash, candidate_key) \
                  VALUES ('draft', CAST('/Album' AS BLOB));
              INSERT INTO import_candidate_edit \
-                 (content_hash, album_title, album_year, year, labels, \
+                 (content_hash, album_title, album_year, year, \
                   author, draft_blank, draft_valid) \
-                 VALUES ('draft', 'Album', '', '', '[]', 'person', 0, 1);
+                 VALUES ('draft', 'Album', '', '', 'person', 0, 1);
              INSERT INTO import_candidate_album_artist_assignment \
                  (content_hash, position, assignment_kind, artist_id) \
                  VALUES ('draft', 0, 'picked', '{artist_id}');"

@@ -370,6 +370,7 @@ mod tests {
         "import_candidate_state",
         "import_candidate_folder",
         "import_candidate_edit",
+        "import_candidate_edit_label",
         "import_candidate_edit_barcode",
         "import_candidate_album_artist_assignment",
         "import_candidate_medium",

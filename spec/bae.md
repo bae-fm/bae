@@ -1090,8 +1090,9 @@ track's composers and other roles, the works it performs and the works those
 nest among, and the composers the source credits on the release as a whole. An *audio unit* is
 what one track plays: a whole file, or one slice a bound CUE sheet carves out of
 an image. Units add up: a disc image with two loose bonus tracks offers
-thirteen. The draft's barcodes are kept as the form holds them, one row each
-as typed, a row added and not filled yet included.
+thirteen. The draft's labels and barcodes are kept as the form holds them,
+one row each as typed (a label's name and catalog number each as typed), a
+row added and not filled yet included.
 
 **Track order.** The units play in the order the files' own numbers give
 them. A file's disc and track numbers come from its tags (`DISCNUMBER` and
@@ -3606,7 +3607,7 @@ Keyed by the candidate's content hash.
 | Table | Holds |
 |---|---|
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
-| `import_candidate_edit`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its barcode rows as typed, each track's place and listed length (§3.6) |
+| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed, each track's place and listed length (§3.6) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |

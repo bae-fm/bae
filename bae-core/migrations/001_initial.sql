@@ -2584,11 +2584,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     album_title    TEXT NOT NULL,
     album_year     TEXT NOT NULL,
     year           TEXT NOT NULL,
-    -- The label rows as the form holds them: a JSON array of
-    -- {"name", "catalog_number"} objects, each as typed, empty meaning unset.
-    labels         TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    -- Its barcode rows are its `import_candidate_edit_barcode` rows.
+    -- Its label rows are its `import_candidate_edit_label` rows, its barcode
+    -- rows its `import_candidate_edit_barcode` rows.
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
@@ -2615,6 +2612,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     draft_valid    INTEGER NOT NULL CHECK (draft_valid IN (0, 1)),
     CHECK (country IS NULL OR region IS NULL),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The draft's label rows as the form holds them, in order, each field as
+-- typed, empty meaning unset: a row the person added and has not filled yet
+-- is blank.
+CREATE TABLE IF NOT EXISTS import_candidate_edit_label (
+    content_hash   TEXT NOT NULL,
+    position       INTEGER NOT NULL CHECK (position >= 0),
+    name           TEXT NOT NULL,
+    catalog_number TEXT NOT NULL,
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
 ) STRICT;
 
 -- The draft's barcode rows as the form holds them, in order, each as typed:
