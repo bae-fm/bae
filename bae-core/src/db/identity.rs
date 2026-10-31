@@ -73,6 +73,11 @@ pub fn release_medium_id(release_id: &str, position: u16) -> String {
     id_for(&format!("release medium {release_id} {position}"))
 }
 
+/// The carrier at `position` of a release's media.
+pub fn release_media_id(release_id: &str, position: usize) -> String {
+    id_for(&format!("release media {release_id} {position}"))
+}
+
 /// One artist's credit at one position on a work.
 pub fn work_artist_id(work_id: &str, artist_id: &str, position: i32) -> String {
     id_for(&format!("work artist {work_id} {artist_id} {position}"))

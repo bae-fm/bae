@@ -94,7 +94,7 @@ fn storage_row_select(
         "SELECT \
             r.id AS release_id, \
             r.album_id, \
-            r.media AS release_media, \
+            {release_media} AS release_media, \
             listing.stored AS remote, \
             listing.file_count, \
             listing.total_size, \
@@ -110,6 +110,7 @@ fn storage_row_select(
         LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
         WHERE {filter} AND {searched} AND ({condition})",
         release_cover = super::files::cover_version_sql("r.id"),
+        release_media = super::pressing_columns::release_media_sql("r.id"),
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
         releases_sending = super::queued_uploads::RELEASES_SENDING,
     )

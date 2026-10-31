@@ -541,7 +541,7 @@ pub(super) fn work_release_rows(
             a.title AS album_title,
             r.release_name,
             r.year AS release_year,
-            r.media AS release_media,
+            {media} AS release_media,
             (
                 SELECT COUNT(*)
                 FROM releases indexed_release
@@ -562,6 +562,7 @@ pub(super) fn work_release_rows(
          WHERE tw.work_id = ?
          ORDER BY a.title, r.album_order, r.id",
             cover = super::files::cover_version_sql("r.id"),
+            media = super::pressing_columns::release_media_sql("r.id"),
         ),
         params![work_id],
         row_to_work_release_summary,

@@ -99,7 +99,9 @@ pub(super) fn edit_row_values(
         ),
         optional(facts.country),
         optional(facts.region),
-        Value::Text(facts.media),
+        Value::Text(super::super::pressing_columns::media_column(
+            &draft.pressing.facts.media,
+        )),
         optional(facts.status),
         optional(facts.packaging),
         Value::Text(facts.discogs_details),

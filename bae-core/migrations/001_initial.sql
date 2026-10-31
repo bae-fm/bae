@@ -196,10 +196,7 @@ CREATE TABLE IF NOT EXISTS releases (
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
     region             TEXT CHECK (region IS NULL OR region <> ''),
-    -- A JSON array of {"medium", "count"}, one per carrier in the record's
-    -- order; empty where nothing is stated.
-    media              TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(media) AND json_type(media) = 'array'),
+    -- Its media are its `release_media` rows.
     status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
     packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
     -- What Discogs says about the pressing that no column holds: a JSON array
@@ -221,6 +218,22 @@ CREATE TABLE IF NOT EXISTS releases (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id, album_order, id);
+
+-- The carriers a pressing is made of, each with how many of it there are, in
+-- the record's order: two CDs, one vinyl record. The id derives from
+-- (release, position), so two devices that write one release's media write
+-- the same rows.
+CREATE TABLE IF NOT EXISTS release_media (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    -- Counted from zero.
+    position INTEGER NOT NULL CHECK (position >= 0),
+    -- A `crate::pressing::Medium` key.
+    medium TEXT NOT NULL CHECK (medium <> ''),
+    count INTEGER NOT NULL CHECK (count >= 1),
+    UNIQUE (release_id, position),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
 
 -- One stored cover per release; `id` is the release's id. `file` is the
 -- cover's coven file (`coven_files`), which a new cover replaces.
@@ -1251,9 +1264,9 @@ END;
 
 -- Each release, with what the Storage Manager sorts and filters it by:
 -- `album_title` and the credit keys copied from its album's `album_listing`
--- row; `media_empty` (1 for a release stating no medium) and `media_key`
--- (every stated medium with its count, in order); `created_at`, when the
--- release was added; its files' count and total size; `stored`, 1 when it
+-- row; `media_empty` and `media_key` as `release_media_sort` works them out
+-- from its `release_media`; `created_at`, when the release was added; its
+-- files' count and total size; `stored`, 1 when it
 -- has files and every one names a coven file `coven_files` records as
 -- stored; `pinned_count`, how many of its files
 -- coven's `coven_pins` lists as kept whole on this device; `queued_count` and
@@ -1393,6 +1406,16 @@ BEGIN
     WHERE stored = OLD.stored;
 END;
 
+-- Each release's media as the Storage Manager sorts by them: `media_empty`, 1
+-- for a release stating no medium, and `media_key`, every stated medium with
+-- its count, in order.
+CREATE VIEW IF NOT EXISTS release_media_sort AS
+SELECT r.id AS release_id,
+       NOT EXISTS (SELECT 1 FROM release_media m WHERE m.release_id = r.id) AS media_empty,
+       (SELECT group_concat(printf('%s:%05d', m.medium, m.count), ',' ORDER BY m.position)
+        FROM release_media m WHERE m.release_id = r.id) AS media_key
+FROM releases r;
+
 -- Inserting a release id into `release_listing_refresh` rewrites that
 -- release's row of `release_listing` from the release, its files and its
 -- album's `album_listing` row; a release whose album is not listed yet gets
@@ -1406,10 +1429,8 @@ BEGIN
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
         queued_count, first_queued_position, download_queued)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
-           json_array_length(r.media) = 0,
-           (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'),
-                json_extract(entry.value, '$.count')), ',')
-            FROM json_each(r.media) AS entry),
+           media.media_empty,
+           media.media_key,
            r.created_at,
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
            (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
@@ -1432,6 +1453,7 @@ BEGIN
                    WHERE download.release_id = r.id AND download.state IN ('queued', 'active'))
     FROM releases r
     JOIN album_listing album ON album.album_id = r.album_id
+    JOIN release_media_sort media ON media.release_id = r.id
     WHERE r.id = NEW.release_id
     ON CONFLICT (release_id) DO UPDATE SET
         album_id = excluded.album_id,
@@ -1469,7 +1491,7 @@ END;
 -- to what the release states itself, the release is refreshed by itself. Its
 -- row is refreshed once either way, in one trigger for the same reason as
 -- `release_added`.
-CREATE TRIGGER IF NOT EXISTS release_changed AFTER UPDATE OF album_id, media, created_at ON releases
+CREATE TRIGGER IF NOT EXISTS release_changed AFTER UPDATE OF album_id, created_at ON releases
 BEGIN
     INSERT INTO album_listing_refresh (album_id)
     SELECT OLD.album_id WHERE OLD.album_id IS NOT NEW.album_id
@@ -1479,6 +1501,34 @@ BEGIN
     SELECT NEW.id WHERE OLD.album_id IS NEW.album_id
         OR NOT EXISTS (SELECT 1 FROM release_listing
                        WHERE release_id = NEW.id AND album_id = NEW.album_id);
+END;
+
+-- A release's media changing rewrites only its listing row's media: a
+-- release arriving with its media is refreshed once by `release_added`, and
+-- its media rows, written after it, set the two columns that row's refresh
+-- found none for. A release no row lists yet moves nothing.
+CREATE TRIGGER IF NOT EXISTS release_listing_media_added AFTER INSERT ON release_media
+BEGIN
+    UPDATE release_listing SET (media_empty, media_key) =
+        (SELECT media_empty, media_key FROM release_media_sort
+         WHERE release_id = NEW.release_id)
+    WHERE release_id = NEW.release_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_media_changed AFTER UPDATE OF release_id, position, medium, count ON release_media
+BEGIN
+    UPDATE release_listing SET (media_empty, media_key) =
+        (SELECT media_empty, media_key FROM release_media_sort media
+         WHERE media.release_id = release_listing.release_id)
+    WHERE release_id IN (OLD.release_id, NEW.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_listing_media_removed AFTER DELETE ON release_media
+BEGIN
+    UPDATE release_listing SET (media_empty, media_key) =
+        (SELECT media_empty, media_key FROM release_media_sort
+         WHERE release_id = OLD.release_id)
+    WHERE release_id = OLD.release_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_file_added AFTER INSERT ON release_files

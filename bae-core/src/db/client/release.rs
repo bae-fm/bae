@@ -90,7 +90,7 @@ pub(super) fn update_release_pressing_on(
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     tx.execute(
         r#"UPDATE releases SET year = ?, labels = ?, barcodes = ?,
-            country = ?, region = ?, media = ?, status = ?, packaging = ?,
+            country = ?, region = ?, status = ?, packaging = ?,
             discogs_details = ? WHERE id = ?"#,
         params![
             release.pressing.year,
@@ -98,14 +98,13 @@ pub(super) fn update_release_pressing_on(
             super::pressing_columns::barcodes_column(&release.pressing.barcodes),
             facts.country,
             facts.region,
-            facts.media,
             facts.status,
             facts.packaging,
             facts.discogs_details,
             release.id,
         ],
     )?;
-    Ok(())
+    super::write::replace_release_media(tx, &release.id, &release.pressing.facts.media)
 }
 
 /// Write `metadata`: the release's pressing fields, each named track's title
@@ -287,7 +286,7 @@ impl Database {
         let release_id = track.release_id.clone();
         self.read(move |sql| {
             sql.query_row(
-                "SELECT * FROM releases WHERE id = ?",
+                &release_rows_sql("r.id = ?"),
                 params![release_id],
                 row_to_release,
             )
@@ -824,27 +823,6 @@ impl Database {
             conn.execute(
                 "UPDATE releases SET source_folder_name = ?1 WHERE id = ?2",
                 params![source_folder_name, release_id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Test-only: write a release's media column as text, the way a changeset
-    /// another device wrote lands, so a test can make the release's read fail.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_release_media_text_for_test(
-        &self,
-        release_id: &str,
-        media: &str,
-    ) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        let media = media.to_string();
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE releases SET media = ?1 WHERE id = ?2",
-                params![media, release_id],
             )
             .map(|_| ())
             .map_err(DbError::from)

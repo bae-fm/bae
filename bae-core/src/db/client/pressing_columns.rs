@@ -1,7 +1,8 @@
 //! A pressing's facts as the columns every table that stores them keeps them
-//! in: `country` or `region`, `media` (a JSON array of carriers and counts),
-//! `status`, `packaging`, and `discogs_details` (a JSON array of keys) — and
-//! its `labels`, a JSON array of each label's name and catalog number.
+//! in: `country` or `region`, `media` (a JSON array of carriers and counts, or
+//! a library release's `release_media` rows read as one), `status`,
+//! `packaging`, and `discogs_details` (a JSON array of keys) — and its
+//! `labels`, a JSON array of each label's name and catalog number.
 //!
 //! One writer and one reader, so every table spells the facts the same way
 //! and a value no vocabulary names fails the read instead of turning into
@@ -18,7 +19,6 @@ use rusqlite::Row;
 pub(super) struct FactColumns {
     pub(super) country: Option<&'static str>,
     pub(super) region: Option<&'static str>,
-    pub(super) media: String,
     pub(super) status: Option<&'static str>,
     pub(super) packaging: Option<&'static str>,
     pub(super) discogs_details: String,
@@ -60,7 +60,6 @@ impl FactColumns {
         Self {
             country,
             region,
-            media: serde_json::to_string(&facts.media).expect("media counts serialize"),
             status: facts.status.map(ReleaseStatus::key),
             packaging: facts.packaging.map(Packaging::key),
             discogs_details: serde_json::to_string(&facts.discogs_details)
@@ -102,6 +101,23 @@ pub(super) fn read_facts(row: &Row, prefix: &str) -> rusqlite::Result<PressingFa
     let mut facts = read_facts_without_media(row, prefix)?;
     facts.media = read_media(row, &format!("{prefix}media"))?;
     Ok(facts)
+}
+
+/// Media as a `media` column holds them: a JSON array of carriers and counts.
+#[cfg(desktop)]
+pub(super) fn media_column(media: &[MediaCount]) -> String {
+    serde_json::to_string(media).expect("media counts serialize")
+}
+
+/// The SQL of the library release `release_id`'s media as one `media`
+/// column: its `release_media` rows in order, as the JSON array
+/// [`read_media`] reads.
+pub(super) fn release_media_sql(release_id: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object('medium', m.medium, 'count', m.count) \
+                ORDER BY m.position) \
+          FROM release_media m WHERE m.release_id = {release_id})"
+    )
 }
 
 /// Read a `media` column: the carriers and their counts.

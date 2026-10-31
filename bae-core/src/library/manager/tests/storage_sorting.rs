@@ -376,7 +376,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     manager
         .database
         .execute_for_test(
-            "UPDATE releases SET media = media WHERE id = ?1",
+            "UPDATE releases SET created_at = created_at WHERE id = ?1",
             vec![second.clone()],
         )
         .await

@@ -34,7 +34,7 @@ fn row_to_release_rejects_malformed_created_at() {
     )
     .unwrap();
     let result = conn.query_row(
-        "SELECT * FROM releases WHERE id = 'cccb6034-5922-40d2-8d0b-d94619230882'",
+        &release_rows_sql("r.id = 'cccb6034-5922-40d2-8d0b-d94619230882'"),
         [],
         row_to_release,
     );

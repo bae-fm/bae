@@ -16,7 +16,7 @@ impl Database {
             r.id AS release_id, \
             r.album_id, \
             a.title AS album_title, \
-            r.media, \
+            {media} AS media, \
             listing.stored AS remote, \
             {RELEASE_LISTING_PINNED} AS pinned, \
             {upload_columns}, \
@@ -29,6 +29,7 @@ impl Database {
         LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
         WHERE r.id = ?1",
             artist_names = album_credits_json_sql(),
+            media = super::pressing_columns::release_media_sql("r.id"),
             upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
             releases_sending = super::queued_uploads::RELEASES_SENDING,
         )

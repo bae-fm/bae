@@ -135,11 +135,11 @@ pub(super) fn insert_release_row(
         INSERT INTO releases (
             id, album_id, release_name, year,
             labels, barcodes,
-            country, region, media, status, packaging, discogs_details,
+            country, region, status, packaging, discogs_details,
             source_folder_name,
             album_loudness_lufs, album_peak_linear,
             created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?))
         "#,
         params![
@@ -151,7 +151,6 @@ pub(super) fn insert_release_row(
             super::pressing_columns::barcodes_column(&release.pressing.barcodes),
             facts.country,
             facts.region,
-            facts.media,
             facts.status,
             facts.packaging,
             facts.discogs_details,
@@ -161,9 +160,64 @@ pub(super) fn insert_release_row(
             release.created_at.to_rfc3339(),
             release.album_id,
         ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    )?;
+    replace_release_media(conn, &release.id, &release.pressing.facts.media)
+}
+
+/// Make the release `release_id`'s media exactly `media`, in order, touching
+/// only the rows that differ: a row is a place in the list, so another
+/// device's edit of another place merges with this one.
+pub(super) fn replace_release_media(
+    conn: &SqlContext<'_, '_>,
+    release_id: &str,
+    media: &[bae_types::pressing::MediaCount],
+) -> Result<(), DbError> {
+    let stored: HashMap<String, (String, i64)> = conn
+        .query(
+            "SELECT id, medium, count FROM release_media WHERE release_id = ?",
+            params![release_id],
+            |row| Ok((row.get::<_, String>(0)?, (row.get(1)?, row.get(2)?))),
+        )?
+        .into_iter()
+        .collect();
+    let rows: Vec<(String, usize, &bae_types::pressing::MediaCount)> = media
+        .iter()
+        .enumerate()
+        .map(|(position, count)| {
+            (
+                crate::db::identity::release_media_id(release_id, position),
+                position,
+                count,
+            )
+        })
+        .collect();
+    for id in stored.keys() {
+        if !rows.iter().any(|(row_id, _, _)| row_id == id) {
+            conn.execute("DELETE FROM release_media WHERE id = ?", params![id])?;
+        }
+    }
+    for (id, position, count) in &rows {
+        let medium = count.medium.key();
+        let quantity = i64::from(count.count);
+        match stored.get(id) {
+            Some((stored_medium, stored_count))
+                if stored_medium == medium && *stored_count == quantity => {}
+            Some(_) => {
+                conn.execute(
+                    "UPDATE release_media SET medium = ?, count = ? WHERE id = ?",
+                    params![medium, quantity, id],
+                )?;
+            }
+            None => {
+                conn.execute(
+                    "INSERT INTO release_media (id, release_id, position, medium, count) \
+                     VALUES (?, ?, ?, ?, ?)",
+                    params![id, release_id, *position as i64, medium, quantity],
+                )?;
+            }
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn insert_release_medium_row(

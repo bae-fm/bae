@@ -136,7 +136,10 @@ holds: a particular CD, LP or download, with its own year, labels, catalog
 numbers, barcodes, country, media, status and packaging. A pressing can be
 printed with more than one barcode (an EAN and a UPC): it keeps every one its
 source states, in order, each product once, and the editor shows one row per
-barcode, each removable, with a row to add another, as it does labels. A saved
+barcode, each removable, with a row to add another, as it does labels. Its
+media are a list of carriers, each with how many of it there are (two CDs, one
+vinyl record), kept one row per place in the list, so two devices editing
+different places of one release's media at once keep both edits. A saved
 CUE sheet's `CATALOG` line states the barcode when every one names the same
 product, and none otherwise.
 
@@ -3494,7 +3497,8 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
+| `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type and size in pixels |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
@@ -3694,6 +3698,7 @@ the transfer queues (A.9) are not declared, so they never sync.
 | `releases` | independent | store | | |
 | `release_records` | shared key | store | | |
 | `release_mediums` | shared key | store | | |
+| `release_media` | shared key | store | | |
 | `tracks` | independent | store | | |
 | `track_artists` | shared key | store | | |
 | `works` | shared key | store | | |

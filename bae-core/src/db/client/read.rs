@@ -133,7 +133,7 @@ pub(super) fn find_release_by_id_on(
     release_id: &str,
 ) -> Result<Option<DbRelease>, DbError> {
     sql.query_row(
-        "SELECT * FROM releases WHERE id = ?",
+        &release_rows_sql("r.id = ?"),
         params![release_id],
         row_to_release,
     )
@@ -146,7 +146,7 @@ pub(super) fn get_releases_for_album_on(
     album_id: &str,
 ) -> Result<Vec<DbRelease>, DbError> {
     sql.query(
-        "SELECT * FROM releases WHERE album_id = ? ORDER BY album_order, id",
+        &release_rows_sql("r.album_id = ? ORDER BY r.album_order, r.id"),
         params![album_id],
         row_to_release,
     )
@@ -638,6 +638,15 @@ pub(super) fn release_mediums_on(
         params![release_id],
         row_to_release_medium,
     )?))
+}
+
+/// A `SELECT` of the `releases` rows `condition` names (and orders), each with
+/// its media as one `media` column, as [`row_to_release`] reads them.
+pub(super) fn release_rows_sql(condition: &str) -> String {
+    format!(
+        "SELECT r.*, {media} AS media FROM releases r WHERE {condition}",
+        media = super::pressing_columns::release_media_sql("r.id"),
+    )
 }
 
 pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {

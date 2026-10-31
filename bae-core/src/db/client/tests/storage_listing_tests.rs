@@ -362,9 +362,55 @@ fn a_release_changing_refreshes_its_listing_once() {
     write(
         &mut conn,
         "DELETE FROM refreshed;
-         UPDATE releases SET media = '[{\"medium\": \"vinyl\", \"count\": 1}]'
+         UPDATE releases SET created_at = '2026-01-04T00:00:00Z'
          WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
     );
     assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
     assert_eq!(refreshes(&conn, RELEASE_EARLY), 0);
+}
+
+/// `release`'s listing row's media columns.
+fn listed_media(conn: &rusqlite::Connection, release: &str) -> (bool, Option<String>) {
+    conn.query_row(
+        "SELECT media_empty, media_key FROM release_listing WHERE release_id = ?1",
+        [release],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )
+    .unwrap()
+}
+
+/// A release's media rows arriving, changing and leaving set its listing
+/// row's media, in order, without refreshing the rest of the row.
+#[test]
+fn a_release_s_media_rows_set_its_listing_s_media() {
+    let mut conn = counting_refreshes();
+    write(
+        &mut conn,
+        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+             ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+             ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 0);
+         INSERT INTO release_media (id, release_id, position, medium, count) VALUES
+             ('media-1', 'af4421de-5174-45a9-81fc-74110bc5f85d', 1, 'cd', 1),
+             ('media-0', 'af4421de-5174-45a9-81fc-74110bc5f85d', 0, 'vinyl', 2);",
+    );
+    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
+    assert_eq!(
+        listed_media(&conn, RELEASE_LATE),
+        (false, Some("vinyl:00002,cd:00001".to_string()))
+    );
+
+    write(
+        &mut conn,
+        "DELETE FROM refreshed;
+         UPDATE release_media SET count = 3 WHERE id = 'media-0';",
+    );
+    assert_eq!(
+        listed_media(&conn, RELEASE_LATE),
+        (false, Some("vinyl:00003,cd:00001".to_string()))
+    );
+
+    write(&mut conn, "DELETE FROM release_media;");
+    assert_eq!(listed_media(&conn, RELEASE_LATE), (true, None));
+    assert_eq!(refreshes(&conn, RELEASE_LATE), 0);
 }
