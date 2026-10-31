@@ -27,6 +27,28 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
 }
 
 #[tokio::test]
+async fn a_library_s_connections_keep_bae_s_page_cache_size() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::TestCoven::new();
+    let handle = create_library(
+        installation.builder(app_dir.store_layout()),
+        crate::library_name::LibraryName::parse("Cached Library").unwrap(),
+    )
+    .await
+    .unwrap();
+    #[cfg(desktop)]
+    let mebibytes = 64;
+    #[cfg(not(desktop))]
+    let mebibytes = 16;
+    assert_eq!(
+        handle.sqlite_settings().await.unwrap().cache_size,
+        coven::CacheSize::Kibibytes(mebibytes * 1024)
+    );
+    handle.close().await.unwrap();
+}
+
+#[tokio::test]
 async fn failed_creation_removes_the_partial_library() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();

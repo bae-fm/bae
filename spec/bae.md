@@ -3318,6 +3318,17 @@ order surfaces list catalogs (MusicBrainz, Discogs, then the rest by name),
 which indexes order records by, and bae's other SQL functions; each is
 deterministic, with a version that works the same way.
 
+Each connection coven opens to a library keeps a page cache of up to 64 MiB on
+desktop and 16 MiB on phones, against SQLite's default of 2 MiB. A cache holds
+only the pages its connection has read, so a small library uses no more than
+its size; a large one keeps more of its indexes in memory, which a play from a
+library-sized list writes to across their whole width. coven opens six such
+connections to a library (its writer, the one that checkpoints the WAL, and
+four readers), so at most 384 MiB on desktop and 96 MiB on a phone go to these
+caches, reached only by a library larger than that whose every connection has
+read that much of it. The three connections to coven's own input database
+keep SQLite's default.
+
 ### A.1 The library
 
 All sync.

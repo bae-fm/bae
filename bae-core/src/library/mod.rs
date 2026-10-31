@@ -305,10 +305,24 @@ fn loading_builder(
     ))
 }
 
-/// bae's store as every handle opens it: its synced tables, its schema, and
-/// the collation and SQL functions the schema names.
+/// The most each connection to a library keeps in its page cache. A cache
+/// holds only pages its connection has read, so a small library stays below
+/// it; a large one keeps more of its indexes in memory, which a library-sized
+/// play's fill writes to across their whole width. Phones get less: coven
+/// opens six connections to a library, each of which may fill its cache.
+#[cfg(desktop)]
+const PAGE_CACHE_KIB: u32 = 64 * 1024;
+#[cfg(not(desktop))]
+const PAGE_CACHE_KIB: u32 = 16 * 1024;
+
+/// bae's store as every handle opens it: its page cache size, its synced
+/// tables, its schema, and the collation and SQL functions the schema names.
 pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
     builder
+        .sqlite_settings(coven::SqliteSettings {
+            cache_size: Some(coven::CacheSize::Kibibytes(PAGE_CACHE_KIB)),
+            ..Default::default()
+        })
         .synced_tables(crate::sync::synced_tables())
         .namespaces(crate::sync::namespaces())
         .migrations(crate::migrations::all())
