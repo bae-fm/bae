@@ -47,4 +47,6 @@ android {
 dependencies {
     api("net.java.dev.jna:jna:5.15.0@aar")
     api("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+    // @RequiresApi on the cleaner uniffi.toml's `android = true` generates.
+    implementation("androidx.annotation:annotation:1.9.1")
 }

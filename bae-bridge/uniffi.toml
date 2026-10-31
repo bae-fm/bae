@@ -13,3 +13,11 @@ omit_localized_error_conformance = true
 # choices in UserDefaults by encoding the bridge's own sort types. Swift can't
 # synthesize the conformance from an extension in another file.
 generate_codable_conformance = true
+
+[bindings.kotlin]
+# The bindings free a Rust object through a cleaner. Without this, uniffi
+# picks java.lang.ref.Cleaner by probing for the class, a call Android Lint
+# rejects below API 33 (the app's minSdk is 26). With it, uniffi checks the
+# device's API level: Android's SystemCleaner on API 34 and later, JNA's
+# cleaner before.
+android = true
