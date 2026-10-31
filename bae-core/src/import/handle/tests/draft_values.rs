@@ -411,6 +411,7 @@ async fn the_draft_keeps_its_label_rows_as_typed() {
             .map(|(name, catalog_number)| crate::import::RawLabelEdit {
                 name: name.to_string(),
                 catalog_number: catalog_number.to_string(),
+                ..Default::default()
             })
             .collect()
     };

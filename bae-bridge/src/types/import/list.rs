@@ -364,6 +364,7 @@ pub struct BridgeCandidateSession {
 pub enum BridgePaneCommand {
     Import,
     ChooseArtistIdentity,
+    ChooseLabelIdentity,
     ReadFileTags,
     ChangeLookups,
     ChangeSearchWords,
@@ -400,6 +401,7 @@ mirror_enum! {
     variants: {
         Import,
         ChooseArtistIdentity,
+        ChooseLabelIdentity,
         ReadFileTags,
         ChangeLookups,
         ChangeSearchWords,
@@ -491,8 +493,57 @@ pub enum BridgeImportFailure {
         conflict: BridgeArtistIdentityConflict,
         error: BridgeError,
     },
+    /// One incoming label's catalog ids matched two library labels; the pane
+    /// offers to choose how this import names the label.
+    LabelIdentityConflict {
+        conflict: BridgeLabelIdentityConflict,
+        error: BridgeError,
+    },
     /// Any other failure: a generic line and its diagnostic detail.
     Other { error: BridgeError },
+}
+
+/// A library label as a conflict names it. Mirrors
+/// `bae_core::import::ExistingLabel`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeExistingLabel {
+    pub label_id: String,
+    pub name: String,
+    pub musicbrainz_label_id: Option<String>,
+    pub discogs_label_id: Option<String>,
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeExistingLabel = bae_core::import::ExistingLabel,
+    from_core: pub(crate) fn,
+    fields: { label_id, name, musicbrainz_label_id, discogs_label_id },
+}
+
+/// The two library labels an incoming label's two catalog ids name.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeLabelIdentityConflict {
+    pub incoming_label_name: String,
+    pub discogs_label: BridgeExistingLabel,
+    pub musicbrainz_label: BridgeExistingLabel,
+}
+
+/// The person's answer to a label conflict on the import page. Mirrors the
+/// core choice without deciding which label an answer names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeLabelIdentityConflictChoice {
+    SameLabel,
+    DiscogsLabel,
+    MusicBrainzLabel,
+    Neither,
+    ChangeMatch,
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeLabelIdentityConflictChoice = bae_core::import::LabelIdentityConflictChoice,
+    into_core: pub(crate) fn,
+    variants: { SameLabel, DiscogsLabel, MusicBrainzLabel, Neither, ChangeMatch },
 }
 
 /// The two library rows an incoming cross-provider artist identity connected.

@@ -54,14 +54,21 @@ mod artist_identity_choice;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_identity_merge;
 mod artist_resolution;
+#[cfg(desktop)]
+mod label_identity_choice;
+mod label_resolution;
 #[cfg(test)]
 pub(crate) use artist_resolution::resolved_in_an_empty_library;
 pub(crate) use artist_resolution::ArtistCredits;
-pub use artist_resolution::ArtistWriteError;
+pub use artist_resolution::IdentityWriteError;
 use artist_resolution::{relink_album_artists, relink_track_artists};
+#[cfg(desktop)]
+use label_resolution::import_label_write;
+use label_resolution::label_write;
+pub(crate) use label_resolution::LabelWrite;
 // Only the import write resolves credits inside a release's own write.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use artist_resolution::{artist_write_failure, relink};
+use artist_resolution::{identity_write_failure, relink};
 mod file_row;
 pub(crate) use file_row::FileRow;
 mod pending;
@@ -202,6 +209,9 @@ struct DatabaseInner {
     handle: CovenHandle,
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
     clock: ClockRef,
+    /// Where a row a write makes takes its fresh id: a new label known only
+    /// by its name.
+    ids: coven::IdSourceRef,
     profile_creation: tokio::sync::Mutex<()>,
     history_registration: tokio::sync::Mutex<()>,
 }
@@ -323,11 +333,12 @@ impl Database {
         Box::pin(self.inner.handle.write_with_files(stage, sql))
     }
 
-    pub fn from_handle(handle: CovenHandle, clock: ClockRef) -> Self {
+    pub fn from_handle(handle: CovenHandle, clock: ClockRef, ids: coven::IdSourceRef) -> Self {
         Database {
             inner: Arc::new(DatabaseInner {
                 handle,
                 clock,
+                ids,
                 profile_creation: tokio::sync::Mutex::new(()),
                 history_registration: tokio::sync::Mutex::new(()),
             }),
@@ -350,7 +361,7 @@ impl Database {
         .clock(clock.clone())
         .create_store("Test Library")
         .await?;
-        Ok(Self::from_handle(handle, clock))
+        Ok(Self::from_handle(handle, clock, Arc::new(coven::UuidIds)))
     }
 }
 

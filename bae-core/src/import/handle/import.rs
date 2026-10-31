@@ -416,6 +416,40 @@ impl ImportServiceHandle {
         .await
     }
 
+    /// Store the person's label answer while this candidate is editable.
+    pub async fn choose_candidate_label_identity(
+        &self,
+        candidate_key: &crate::import::CandidateKey,
+        metadata_revision: u64,
+        choice: crate::import::LabelIdentityConflictChoice,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let key = candidate_key.clone();
+        self.committed(async move {
+            let _commit = this
+                .folder_state_commit
+                .lock("choose an import label")
+                .await;
+            let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| {
+                crate::import::ImportError::Internal {
+                    detail: format!("{key} is not a scanned folder candidate"),
+                }
+            })?;
+            this.candidate_standing(&key, &candidate)
+                .await?
+                .editable()?;
+            this.library_manager
+                .choose_import_label_identity(
+                    &candidate.files.content_hash(),
+                    metadata_revision,
+                    choice,
+                )
+                .await?;
+            Ok(())
+        })
+        .await
+    }
+
     /// Check a submitted Discogs key against Discogs and store it unless
     /// Discogs rejects it; a key that could not be checked is stored as
     /// unvalidated.

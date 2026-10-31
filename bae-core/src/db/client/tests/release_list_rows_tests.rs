@@ -1,6 +1,6 @@
-//! A release's media and barcodes are rows, one per place in their list: a
-//! device's edit of them reaches every other device, and two devices editing
-//! different places at once keep both edits.
+//! A release's media, barcodes and labels are rows, one per place in their
+//! list: a device's edit of them reaches every other device, and two devices
+//! editing different places at once keep both edits.
 
 use super::*;
 use bae_types::pressing::{MediaCount, Medium};
@@ -163,4 +163,86 @@ async fn check_barcodes(devices: &mut crate::sync::test_devices::TwoDevices) {
     set_barcodes(devices.b().database(), &["0123456789029"]).await;
     devices.converge(BARCODE_ROWS).await;
     assert_eq!(barcodes_on(devices.a().database()).await, ["0123456789029"]);
+}
+
+/// Make `RELEASE`'s labels `labels` on `db`, as an edit writes them.
+async fn set_labels(db: &crate::db::Database, labels: Vec<bae_types::pressing::ReleaseLabel>) {
+    let parts = db.label_parts(&labels);
+    db.call(move |conn| {
+        super::super::label_resolution::write_release_labels_on(
+            conn,
+            RELEASE,
+            &labels,
+            &super::super::label_write(&parts),
+        )
+        .map_err(super::super::IdentityWriteError::into_db_error)
+    })
+    .await
+    .unwrap();
+}
+
+/// `RELEASE`'s labels as `db` reads the release.
+async fn labels_on(db: &crate::db::Database) -> Vec<bae_types::pressing::ReleaseLabel> {
+    db.find_release_by_id(RELEASE)
+        .await
+        .unwrap()
+        .unwrap()
+        .pressing
+        .labels
+}
+
+const LABEL_ROWS: &str = "SELECT id || ':' || name || ':' || ifnull(discogs_label_id, '') \
+     FROM labels UNION ALL \
+     SELECT id || ':' || position || ':' || ifnull(label_id, '') || ':' \
+         || ifnull(catalog_number, '') FROM release_labels ORDER BY 1";
+
+/// Two devices, apart, each write a label Discogs names onto one release:
+/// both make the one label row its id names, and once each has the other's
+/// write, both read the release with the label at each place either wrote.
+#[test]
+fn label_rows_converge_on_both_devices() {
+    crate::sync::test_devices::run_two_device_test(check_labels);
+}
+
+async fn check_labels(devices: &mut crate::sync::test_devices::TwoDevices) {
+    use bae_types::pressing::ReleaseLabel;
+    let rhino = |number: &str| {
+        ReleaseLabel::new(Some("Rhino".to_string()), Some(number.to_string()))
+            .unwrap()
+            .with_ids(None, Some("7190".to_string()))
+    };
+    devices
+        .a()
+        .database()
+        .call(seed_artist_album_release)
+        .await
+        .unwrap();
+    devices.converge(LABEL_ROWS).await;
+
+    devices.pause().await;
+    set_labels(devices.a().database(), vec![rhino("R2 1")]).await;
+    set_labels(
+        devices.b().database(),
+        vec![
+            rhino("R2 1"),
+            ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap(),
+        ],
+    )
+    .await;
+    devices.resume().await;
+    devices.converge(LABEL_ROWS).await;
+
+    let both = vec![
+        ReleaseLabel::new(Some("Rhino".to_string()), Some("R2 1".to_string())).unwrap(),
+        ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap(),
+    ];
+    assert_eq!(labels_on(devices.a().database()).await, both);
+    assert_eq!(labels_on(devices.b().database()).await, both);
+    let labels: i64 = devices
+        .a()
+        .database()
+        .read(|sql| Ok(sql.query_row("SELECT count(*) FROM labels", [], |row| row.get(0))?))
+        .await
+        .unwrap();
+    assert_eq!(labels, 1);
 }

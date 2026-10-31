@@ -313,6 +313,16 @@ fn shared_labels(current: &[RawLabelEdit], offered: &[RawReleaseEdit]) -> Vec<Ra
         let names = lists.iter().map(|list| stated(&list[position].name));
         if let Some(name) = agreed_values(names, |a, b| text_match::same_label_name(a, b)) {
             label.name = name.to_string();
+            // The ids every row states for the label, each where all agree.
+            let ids = |id: fn(&RawLabelEdit) -> &Option<String>| {
+                agreed_values(
+                    lists.iter().map(|list| id(&list[position]).as_deref()),
+                    |a, b| a == b,
+                )
+                .map(str::to_string)
+            };
+            label.musicbrainz_label_id = ids(|row| &row.musicbrainz_label_id);
+            label.discogs_label_id = ids(|row| &row.discogs_label_id);
         }
         let numbers = lists.iter().map(|list| {
             let number = &list[position].catalog_number;

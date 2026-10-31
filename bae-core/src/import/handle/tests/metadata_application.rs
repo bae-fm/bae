@@ -39,7 +39,7 @@ fn seed_discogs_release(
         }],
     })
     .to_string();
-    bae_catalogs::discogs::client::parse_discogs_release_json(&raw_release)
+    bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
     providers.discogs().seed_release_cache(release_id, raw_release);
     providers.discogs().seed_artist_image_response("1", None);
@@ -67,6 +67,7 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
             crate::import::DraftFieldEdit::Labels(vec![crate::import::RawLabelEdit {
                 name: "Typed Label".to_string(),
                 catalog_number: String::new(),
+                ..Default::default()
             }]),
         )
         .await
@@ -128,6 +129,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         vec![crate::import::RawLabelEdit {
             name: "Label Name".to_string(),
             catalog_number: "CAT-1".to_string(),
+            ..Default::default()
         }]
     );
     assert_eq!(

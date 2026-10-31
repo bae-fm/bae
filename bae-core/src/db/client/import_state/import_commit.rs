@@ -60,12 +60,12 @@ pub(crate) fn end_import_attempt_of_commit(
 /// moved. One hash is one release on this device. The import was refused when
 /// asked for if this device already held the hash; an import of the same files
 /// that landed in between leaves the hash taken, and the unique hash refuses
-/// this commit whole as [`ArtistWriteError::FilesAlreadyImported`].
+/// this commit whole as [`IdentityWriteError::FilesAlreadyImported`].
 pub(crate) fn record_import_origin_on(
     sql: &SqlContext<'_, '_>,
     guard: &ImportCommitGuard,
     release_id: &str,
-) -> Result<(), ArtistWriteError> {
+) -> Result<(), IdentityWriteError> {
     match guard {
         ImportCommitGuard::Candidate { expectation, .. } => {
             let content_hash = &expectation.candidate.content_hash;
@@ -88,7 +88,7 @@ pub(crate) fn record_import_origin_on(
                         .optional()?;
                     match imported {
                         Some(release_id) => {
-                            Err(ArtistWriteError::FilesAlreadyImported { release_id })
+                            Err(IdentityWriteError::FilesAlreadyImported { release_id })
                         }
                         None => Err(rusqlite::Error::SqliteFailure(failure, message).into()),
                     }
@@ -104,8 +104,9 @@ pub(crate) fn record_import_origin_on(
 /// Delete, inside the commit, what the candidate holds that nothing reads once
 /// its release is in: the identify verdict (its releases and ledger go with it), what
 /// the person let the lookups use, where the pane was, the covers the applied
-/// release offered the picker, the artist decisions this commit just resolved
-/// its credits by, and the library album picked for it. The Done row and the
+/// release offered the picker, the artist and label decisions this commit
+/// just resolved its credits and labels by, and the library album picked for
+/// it. The Done row and the
 /// imported folder's pane read the rest: the draft, its source, the link and
 /// the cover draw the row, and the clues mark the files they were read off. A
 /// commit that does not land deletes none of it, so a retry finds the
@@ -123,6 +124,7 @@ pub(crate) fn delete_what_the_import_spent_on(
                 "import_candidate_session",
                 "import_candidate_cover_option",
                 "import_candidate_artist_identity_choice",
+                "import_candidate_label_identity_choice",
                 "import_candidate_album_pick",
             ] {
                 sql.execute(

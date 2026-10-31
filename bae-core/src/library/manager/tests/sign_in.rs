@@ -57,7 +57,7 @@ async fn manager_signing_in_with(
         app_dir.registered_library(&handle.store_id().to_string()),
     );
     let manager = LibraryManager::new(
-        Database::from_handle(handle, clock.clone()),
+        Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds)),
         app_dir,
         Arc::new(ConfigHandle::new(config)),
         clock,

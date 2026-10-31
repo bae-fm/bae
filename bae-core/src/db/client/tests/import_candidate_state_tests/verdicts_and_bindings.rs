@@ -230,7 +230,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let handle = crate::library::configure_store(installation.builder(layout.clone()))
         .clock(clock.clone()).create_store("Test Library").await.unwrap();
     let id = handle.store_id();
-    let db = Database::from_handle(handle, clock.clone());
+    let db = Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
     fetched(&db, "release-a").await;
     let cases = [
         (
@@ -272,7 +272,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
 
     let handle = crate::library::configure_store(installation.builder(layout))
         .clock(clock.clone()).open(id, |_| ()).await.unwrap();
-    let reopened = Database::from_handle(handle, clock);
+    let reopened = Database::from_handle(handle, clock, std::sync::Arc::new(coven::UuidIds));
     let loaded = reopened.load_import_candidate_states().await.unwrap();
 
     for (content_hash, _, _, provenance) in &cases {

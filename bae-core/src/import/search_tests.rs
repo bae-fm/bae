@@ -24,7 +24,7 @@ fn mb_detail(response: &MbReleaseResponse) -> ImportSearchReleaseDetail {
 
 /// The titles a Discogs document reads for the folder's `audio`.
 fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
-    let release = bae_catalogs::discogs::client::parse_discogs_release_json(json)
+    let release = bae_catalogs::discogs::documents::parse_discogs_release_json(json)
         .expect("the Discogs fixture parses");
     crate::import::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(Catalog::Discogs, &release.id),
@@ -638,6 +638,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     response.barcode = Some("4900000000011".to_string());
     response.label_info = vec![bae_catalogs::musicbrainz::MbLabelInfo {
         label: Some(bae_catalogs::musicbrainz::MbLabel {
+            id: None,
             name: Some("Label".to_string()),
         }),
         catalog_number: Some("CAT-8556".to_string()),

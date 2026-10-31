@@ -236,10 +236,16 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    AutomationLabelRow = bae_core::import::RawLabelEdit,
-    into_core: pub(crate) fn,
-    fields: { name, catalog_number },
+/// A label row as an agent types it: a name and a number. The core gives the
+/// row back the ids of the row it was, while it keeps that row's name.
+impl AutomationLabelRow {
+    pub(crate) fn into_core(self) -> bae_core::import::RawLabelEdit {
+        bae_core::import::RawLabelEdit {
+            name: self.name,
+            catalog_number: self.catalog_number,
+            ..Default::default()
+        }
+    }
 }
 
 mirror_enum! {

@@ -25,7 +25,6 @@ pub use client::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{AlbumFields, ReleaseEditWrite};
-pub use client::{ArtistWriteError, Database, ReleaseDeletion};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
@@ -36,6 +35,7 @@ pub(crate) use client::{
 pub use client::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
 };
+pub use client::{Database, IdentityWriteError, ReleaseDeletion};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{FinishedScan, GroupingChanges, ScanItemWrite};
 #[cfg(all(

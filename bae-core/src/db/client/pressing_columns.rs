@@ -2,7 +2,8 @@
 //! in: `country` or `region`, `media` (a JSON array of carriers and counts, or
 //! a library release's `release_media` rows read as one), `status`,
 //! `packaging`, and `discogs_details` (a JSON array of keys) — and its
-//! `labels`, a JSON array of each label's name and catalog number.
+//! `labels`, a list of label rows read as a JSON array of each label's name
+//! and catalog number.
 //!
 //! One writer and one reader, so every table spells the facts the same way
 //! and a value no vocabulary names fails the read instead of turning into
@@ -68,9 +69,20 @@ impl FactColumns {
     }
 }
 
-/// A pressing's labels as their `labels` column holds them.
-pub(super) fn labels_column(labels: &[ReleaseLabel]) -> String {
-    serde_json::to_string(labels).expect("labels serialize")
+/// The SQL of the library release `release_id`'s labels as one `labels`
+/// column: its `release_labels` rows in order, each with the name of the
+/// library label it names as that label shows, as the JSON array
+/// [`read_labels`] reads.
+pub(super) fn release_labels_sql(release_id: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+                 'name', shown.name, 'catalog_number', placed.catalog_number) \
+                 ORDER BY placed.position) \
+          FROM release_labels placed \
+          LEFT JOIN labels shown ON shown.id = {shown} \
+          WHERE placed.release_id = {release_id})",
+        shown = super::label_resolution::shown_label_id("placed.label_id"),
+    )
 }
 
 /// Read a `labels` column: every label, each with its catalog number.

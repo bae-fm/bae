@@ -229,7 +229,7 @@ pub fn seed_discogs_test_release(
     })
     .to_string();
 
-    let parsed = bae_catalogs::discogs::client::parse_discogs_release_json(&raw_json)
+    let parsed = bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_json)
         .expect("the rendered test release parses as the endpoint's own JSON");
     let id = parsed.id.clone();
     providers.discogs().seed_release_cache(&id, raw_json);

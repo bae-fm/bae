@@ -151,7 +151,7 @@ async fn picked_discogs_release() -> DiscogsPick {
         ],
     })
     .to_string();
-    bae_catalogs::discogs::client::parse_discogs_release_json(&raw_release)
+    bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
     handle
         .library_manager

@@ -641,11 +641,13 @@ pub(super) fn release_mediums_on(
 }
 
 /// A `SELECT` of the `releases` rows `condition` names (and orders), each with
-/// its barcodes and its media as one `barcodes` and one `media` column, as
-/// [`row_to_release`] reads them.
+/// its labels, its barcodes and its media as one `labels`, one `barcodes` and
+/// one `media` column, as [`row_to_release`] reads them.
 pub(super) fn release_rows_sql(condition: &str) -> String {
     format!(
-        "SELECT r.*, {barcodes} AS barcodes, {media} AS media FROM releases r WHERE {condition}",
+        "SELECT r.*, {labels} AS labels, {barcodes} AS barcodes, {media} AS media \
+         FROM releases r WHERE {condition}",
+        labels = super::pressing_columns::release_labels_sql("r.id"),
         barcodes = super::pressing_columns::release_barcodes_sql("r.id"),
         media = super::pressing_columns::release_media_sql("r.id"),
     )

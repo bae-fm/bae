@@ -221,10 +221,17 @@ impl ImportService {
         error: &crate::import::ImportError,
         failed_at: chrono::DateTime<chrono::Utc>,
     ) -> crate::import::ImportFailure {
-        let artist_identity_conflict = match error {
+        let identity_conflict = match error {
             crate::import::ImportError::Db(
                 crate::library::LibraryError::ArtistIdentityConflict(conflict),
-            ) => Some(conflict.as_ref().clone()),
+            ) => Some(crate::import::IdentityConflict::Artist(
+                conflict.as_ref().clone(),
+            )),
+            crate::import::ImportError::Db(
+                crate::library::LibraryError::LabelIdentityConflict(conflict),
+            ) => Some(crate::import::IdentityConflict::Label(
+                conflict.as_ref().clone(),
+            )),
             _ => None,
         };
         crate::import::ImportFailure {
@@ -232,7 +239,7 @@ impl ImportService {
                 detail: error.to_string(),
             },
             failed_at,
-            artist_identity_conflict,
+            identity_conflict,
         }
     }
 

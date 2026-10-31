@@ -1,4 +1,5 @@
 pub mod client;
+pub mod documents;
 pub mod formats;
 pub mod models;
 use crate::catalog::Catalog;

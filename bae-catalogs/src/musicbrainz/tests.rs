@@ -319,6 +319,7 @@ async fn only_transient_musicbrainz_failures_are_retried() {
 fn label_info(name: Option<&str>, catalog_number: Option<&str>) -> MbLabelInfo {
     MbLabelInfo {
         label: Some(MbLabel {
+            id: None,
             name: name.map(str::to_string),
         }),
         catalog_number: catalog_number.map(str::to_string),
@@ -349,6 +350,20 @@ fn release_labels_keeps_every_label_info_in_order() {
             stated(None, Some("XY 3")),
             stated(Some("Label C"), None),
         ]
+    );
+}
+
+/// A label keeps MusicBrainz's id for it.
+#[test]
+fn release_labels_keeps_each_labels_id() {
+    let info: MbLabelInfo = serde_json::from_value(serde_json::json!({
+        "catalog-number": "AB 100",
+        "label": {"id": "label-mbid", "name": "Label A"}
+    }))
+    .unwrap();
+    assert_eq!(
+        release_labels(&[info]),
+        vec![stated(Some("Label A"), Some("AB 100")).with_ids(Some("label-mbid".to_string()), None)]
     );
 }
 

@@ -368,7 +368,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
         .create_store("Test Library")
         .await
         .unwrap();
-    let left = Database::from_handle(handle.clone(), clock.clone());
+    let left = Database::from_handle(handle.clone(), clock.clone(), std::sync::Arc::new(coven::UuidIds));
     left.enqueue_releases(vec![crate::library::DownloadEntry {
         release_id: REL_1.to_string(),
         created_at: 0,

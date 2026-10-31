@@ -393,6 +393,7 @@ mod conversion_roundtrip {
                     bae_core::import::RawLabelEdit {
                         name: "Label A".to_string(),
                         catalog_number: "AB 100".to_string(),
+                        ..Default::default()
                     },
                     bae_core::import::RawLabelEdit::default(),
                 ],

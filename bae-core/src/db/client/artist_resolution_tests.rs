@@ -207,7 +207,7 @@ fn a_picked_artist_that_is_gone_refuses_the_write() {
         .unwrap_err();
 
     assert!(
-        matches!(error, ArtistWriteError::Unresolvable(_)),
+        matches!(error, IdentityWriteError::Unresolvable(_)),
         "{error}"
     );
 }
@@ -230,7 +230,7 @@ fn two_artists_holding_the_credits_two_ids_are_the_identity_conflict() {
     )
     .unwrap_err();
 
-    let ArtistWriteError::IdentityConflict(conflict) = error else {
+    let IdentityWriteError::ArtistIdentityConflict(conflict) = error else {
         panic!("expected the identity conflict, got {error}");
     };
     assert_eq!(conflict.discogs_artist.artist_id, "by-discogs");

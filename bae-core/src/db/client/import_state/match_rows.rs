@@ -155,14 +155,17 @@ pub(super) fn store_match(
     for (ordinal, label) in result.labels.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_label \
-                 (content_hash, position, ordinal, name, catalog_number) \
-             VALUES (?, ?, ?, ?, ?)",
+                 (content_hash, position, ordinal, name, catalog_number, \
+                  musicbrainz_label_id, discogs_label_id) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position,
                 ordinal_column(ordinal)?,
                 label.name(),
-                label.catalog_number()
+                label.catalog_number(),
+                label.musicbrainz_label_id(),
+                label.discogs_label_id()
             ],
         )?;
     }

@@ -94,6 +94,7 @@ fn label(name: &str, catalog_number: &str) -> RawLabelEdit {
     RawLabelEdit {
         name: name.to_string(),
         catalog_number: catalog_number.to_string(),
+        ..Default::default()
     }
 }
 

@@ -464,7 +464,7 @@ impl RunningLibrary {
     fn new(app_dir: AppDir, config: Config, handle: coven::CovenHandle) -> Self {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let ids: coven::IdSourceRef = Arc::new(coven::UuidIds);
-        let database = Database::from_handle(handle, clock.clone());
+        let database = Database::from_handle(handle, clock.clone(), ids.clone());
         let manager = LibraryManager::new(
             database.clone(),
             app_dir,

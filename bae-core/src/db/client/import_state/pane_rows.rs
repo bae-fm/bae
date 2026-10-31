@@ -118,12 +118,15 @@ pub(super) fn insert_label_rows(
     for (position, label) in labels.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_edit_label \
-                 (content_hash, position, name, catalog_number) VALUES (?, ?, ?, ?)",
+                 (content_hash, position, name, catalog_number, \
+                  musicbrainz_label_id, discogs_label_id) VALUES (?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position as i64,
                 label.name,
-                label.catalog_number
+                label.catalog_number,
+                label.musicbrainz_label_id,
+                label.discogs_label_id
             ],
         )?;
     }
@@ -401,7 +404,9 @@ pub(crate) fn load_drafts_on(
         &format!(
             "SELECT {EDIT_COLUMNS}, \
                     (SELECT json_group_array(json_object( \
-                         'name', label.name, 'catalog_number', label.catalog_number) \
+                         'name', label.name, 'catalog_number', label.catalog_number, \
+                         'musicbrainz_label_id', label.musicbrainz_label_id, \
+                         'discogs_label_id', label.discogs_label_id) \
                          ORDER BY label.position) \
                      FROM import_candidate_edit_label AS label \
                      WHERE label.content_hash = edit.content_hash) AS labels, \

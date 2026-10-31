@@ -65,6 +65,7 @@ fn command_column(command: PaneCommand) -> &'static str {
     match command {
         PaneCommand::Import => "import",
         PaneCommand::ChooseArtistIdentity => "choose_artist_identity",
+        PaneCommand::ChooseLabelIdentity => "choose_label_identity",
         PaneCommand::ReadFileTags => "read_file_tags",
         PaneCommand::ChangeLookups => "change_lookups",
         PaneCommand::ChangeSearchWords => "change_search_words",
@@ -79,6 +80,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
     Ok(match column {
         "import" => PaneCommand::Import,
         "choose_artist_identity" => PaneCommand::ChooseArtistIdentity,
+        "choose_label_identity" => PaneCommand::ChooseLabelIdentity,
         "read_file_tags" => PaneCommand::ReadFileTags,
         "change_lookups" => PaneCommand::ChangeLookups,
         "change_search_words" => PaneCommand::ChangeSearchWords,

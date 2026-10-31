@@ -83,6 +83,9 @@ private struct ImportOperations: Sendable {
     let chooseCandidateArtistIdentity:
         @Sendable (Data, UInt64, BridgeArtistIdentityConflictChoice)
             async throws -> BridgePaneOutcome
+    let chooseCandidateLabelIdentity:
+        @Sendable (Data, UInt64, BridgeLabelIdentityConflictChoice)
+            async throws -> BridgePaneOutcome
     let setIdentifyAutomatically:
         @MainActor @Sendable (Bool) async throws -> Void
     let setMetadataSourceEnabled:
@@ -269,6 +272,13 @@ extension ImportOperations {
             },
             chooseCandidateArtistIdentity: {
                 try await handle.chooseCandidateArtistIdentity(
+                    candidateKey: $0,
+                    metadataRevision: $1,
+                    choice: $2
+                )
+            },
+            chooseCandidateLabelIdentity: {
+                try await handle.chooseCandidateLabelIdentity(
                     candidateKey: $0,
                     metadataRevision: $1,
                     choice: $2
@@ -481,6 +491,9 @@ final class Importer: Sendable, Observable {
             candidateSignals: candidateSignals,
             startImport: startImport,
             chooseCandidateArtistIdentity: { _, _, _ in
+                throw StubError.notImplemented
+            },
+            chooseCandidateLabelIdentity: { _, _, _ in
                 throw StubError.notImplemented
             },
             setIdentifyAutomatically: setIdentifyAutomatically,
@@ -781,6 +794,19 @@ extension Importer {
         choice: BridgeArtistIdentityConflictChoice
     ) async throws -> BridgePaneOutcome {
         try await operations.chooseCandidateArtistIdentity(
+            candidateKey,
+            metadataRevision,
+            choice
+        )
+    }
+
+    /// Record the person's answer to the candidate's label conflict.
+    func chooseCandidateLabelIdentity(
+        _ candidateKey: Data,
+        metadataRevision: UInt64,
+        choice: BridgeLabelIdentityConflictChoice
+    ) async throws -> BridgePaneOutcome {
+        try await operations.chooseCandidateLabelIdentity(
             candidateKey,
             metadataRevision,
             choice

@@ -317,7 +317,9 @@ fn match_entries_columns() -> String {
          {media} AS match_media, {links} AS match_links, {album_links} AS match_album_links",
         labels = child(
             "import_candidate_match_label",
-            "json_object('name', entry.name, 'catalog_number', entry.catalog_number)",
+            "json_object('name', entry.name, 'catalog_number', entry.catalog_number, \
+                 'musicbrainz_label_id', entry.musicbrainz_label_id, \
+                 'discogs_label_id', entry.discogs_label_id)",
             "entry.ordinal"
         ),
         barcodes = child(

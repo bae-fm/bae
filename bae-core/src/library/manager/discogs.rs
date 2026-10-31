@@ -91,7 +91,7 @@ impl DiscogsSession {
         let mut covers = release.covers;
         if let Some(master_id) = release.master_id {
             let (_, json) = client.get_master(&master_id, priority).await?;
-            for cover in bae_catalogs::discogs::client::parse_discogs_master_covers(&json)? {
+            for cover in bae_catalogs::discogs::documents::parse_discogs_master_covers(&json)? {
                 bae_catalogs::remote_image::push_unique_cover(&mut covers, cover);
             }
         }
@@ -459,7 +459,7 @@ impl LibraryManager {
                 continue;
             };
             let Some(answer) = by_discogs_id.get(discogs_artist_id) else {
-                return Err(crate::db::ArtistWriteError::LibraryChanged.into());
+                return Err(crate::db::IdentityWriteError::LibraryChanged.into());
             };
             let crate::import::DiscogsArtistImage::Image { jpeg, .. } = answer else {
                 continue;

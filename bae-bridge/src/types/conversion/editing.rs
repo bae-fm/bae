@@ -110,11 +110,24 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    BridgeRawLabelEdit = bae_core::import::RawLabelEdit,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    fields: { name, catalog_number },
+/// The editor shows and sends a label row's name and number alone: the ids a
+/// catalog gave the row stay in the core, which gives them back to a row that
+/// keeps the name they came with.
+impl BridgeRawLabelEdit {
+    pub(crate) fn from_core(row: bae_core::import::RawLabelEdit) -> Self {
+        Self {
+            name: row.name,
+            catalog_number: row.catalog_number,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::RawLabelEdit {
+        bae_core::import::RawLabelEdit {
+            name: self.name,
+            catalog_number: self.catalog_number,
+            ..Default::default()
+        }
+    }
 }
 
 mirror_struct! {

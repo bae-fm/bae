@@ -174,14 +174,17 @@ pub(super) fn replace_source_release_on(
     for (position, label) in pressing.labels.iter().enumerate() {
         sql.execute(
             "INSERT INTO source_release_label \
-                 (catalog, release_id, position, name, catalog_number) \
-             VALUES (?, ?, ?, ?, ?)",
+                 (catalog, release_id, position, name, catalog_number, \
+                  musicbrainz_label_id, discogs_label_id) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
                 catalog,
                 key,
                 position as i64,
                 label.name(),
-                label.catalog_number()
+                label.catalog_number(),
+                label.musicbrainz_label_id(),
+                label.discogs_label_id()
             ],
         )?;
     }
@@ -491,19 +494,23 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         serde_json::from_str(&notes).map_err(|error| unreadable("notes", (&notes, error)))?;
     pressing.labels = sql
         .query(
-            "SELECT name, catalog_number FROM source_release_label \
+            "SELECT name, catalog_number, musicbrainz_label_id, discogs_label_id \
+             FROM source_release_label \
              WHERE catalog = ? AND release_id = ? ORDER BY position",
             params![catalog, key],
             |row| {
                 Ok((
                     row.get::<_, Option<String>>(0)?,
                     row.get::<_, Option<String>>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<String>>(3)?,
                 ))
             },
         )?
         .into_iter()
-        .map(|(name, catalog_number)| {
+        .map(|(name, catalog_number, musicbrainz, discogs)| {
             ReleaseLabel::new(name.clone(), catalog_number.clone())
+                .map(|label| label.with_ids(musicbrainz, discogs))
                 .ok_or_else(|| unreadable("label", (name, catalog_number)))
         })
         .collect::<Result<_, DbError>>()?;

@@ -78,7 +78,11 @@ pub fn test_library_from_handle(
     providers: bae_core::providers::Providers,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
     manager_for_database(
-        bae_core::db::Database::from_handle(handle, std::sync::Arc::new(coven::SystemClock)),
+        bae_core::db::Database::from_handle(
+            handle,
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidIds),
+        ),
         dir,
         providers,
     )
@@ -152,7 +156,11 @@ pub fn setup_fresh_library(
         handle.store_id(),
         app_dir.registered_library(&handle.store_id().to_string()),
     );
-    let database = bae_core::db::Database::from_handle(handle, clock.clone());
+    let database = bae_core::db::Database::from_handle(
+        handle,
+        clock.clone(),
+        std::sync::Arc::new(coven::UuidIds),
+    );
     let providers = bae_core::providers::Providers::offline();
     let lm = bae_core::library::LibraryManager::new(
         database,

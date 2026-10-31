@@ -12,6 +12,8 @@ use crate::signals::{BarcodeSignal, DiscIdSignal, InternalFailure, Signals, Sour
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
 mod artist_identity_conflicts;
+#[path = "pane_rows/label_identity_conflicts.rs"]
+mod label_identity_conflicts;
 
 fn pane_candidate() -> CategorizedFiles {
     track_files_candidate(&[("01 Track.flac", 111), ("CDImage.flac", 222)])

@@ -172,7 +172,7 @@ impl ArtistCredits<'_> {
         &self,
         sql: &Q,
         content_hash: Option<&str>,
-    ) -> Result<ResolvedArtists, ArtistWriteError> {
+    ) -> Result<ResolvedArtists, IdentityWriteError> {
         let Some(hash) = content_hash else {
             return self.resolve_on(sql);
         };

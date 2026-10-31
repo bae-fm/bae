@@ -133,6 +133,7 @@ fn vinyl_response() -> bae_catalogs::musicbrainz::MbReleaseResponse {
         label_info: vec![bae_catalogs::musicbrainz::MbLabelInfo {
             catalog_number: Some("CAT-1".to_string()),
             label: Some(bae_catalogs::musicbrainz::MbLabel {
+                id: None,
                 name: Some("Label".to_string()),
             }),
         }],

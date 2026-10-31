@@ -193,10 +193,14 @@ impl Household {
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         let (dir, owner, storage, clock) = Self::owner(provider, sign_in).await;
-        let robin = bae_core::db::Database::from_handle(owner.clone(), clock.clone())
-            .create_profile("Robin")
-            .await
-            .unwrap();
+        let robin = bae_core::db::Database::from_handle(
+            owner.clone(),
+            clock.clone(),
+            std::sync::Arc::new(coven::UuidIds),
+        )
+        .create_profile("Robin")
+        .await
+        .unwrap();
         Self {
             _dir: dir,
             owner,
@@ -346,7 +350,11 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
         .id;
     let name = format!("bae-person:{member}");
     let made = Box::pin(owner.circles().create(&name)).await.unwrap();
-    let database = bae_core::db::Database::from_handle(owner.clone(), clock.clone());
+    let database = bae_core::db::Database::from_handle(
+        owner.clone(),
+        clock.clone(),
+        std::sync::Arc::new(coven::UuidIds),
+    );
     let profile = database.create_profile("Robin").await.unwrap();
     assert_eq!(profile.private_circle, made);
     owner.close().await.unwrap();
@@ -364,7 +372,11 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     for _ in 0..2 {
         Box::pin(owner.circles().create(&name)).await.unwrap();
     }
-    let database = bae_core::db::Database::from_handle(owner.clone(), clock);
+    let database = bae_core::db::Database::from_handle(
+        owner.clone(),
+        clock,
+        std::sync::Arc::new(coven::UuidIds),
+    );
     assert!(matches!(
         database.create_profile("Robin").await,
         Err(ProfileError::InvalidPrivateCircle)
@@ -496,8 +508,11 @@ fn a_replacement_invite_writes_no_profile() {
         .unwrap();
         let (replacement, profile) = joined.unwrap().unwrap();
         assert!(profile.is_none());
-        let database =
-            bae_core::db::Database::from_handle(replacement.clone(), household.clock.clone());
+        let database = bae_core::db::Database::from_handle(
+            replacement.clone(),
+            household.clock.clone(),
+            std::sync::Arc::new(coven::UuidIds),
+        );
         assert_eq!(
             database.profile(rowan.id).await.unwrap(),
             Some(rowan.clone())
@@ -505,8 +520,11 @@ fn a_replacement_invite_writes_no_profile() {
         // The owner's membership lists each member's devices that can sync
         // apart from those that lost access, as coven's own member list has
         // them.
-        let owner =
-            bae_core::db::Database::from_handle(household.owner.clone(), household.clock.clone());
+        let owner = bae_core::db::Database::from_handle(
+            household.owner.clone(),
+            household.clock.clone(),
+            std::sync::Arc::new(coven::UuidIds),
+        );
         let membership = owner.membership().await.unwrap();
         assert!(membership.self_is_admin);
         let listed: Vec<_> = household

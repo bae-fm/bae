@@ -17,6 +17,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let database = bae_core::db::Database::from_handle(
         handle.clone(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidIds),
     );
     let artist = bae_core::db::DbArtist {
         id: uuid::Uuid::new_v4().to_string(),

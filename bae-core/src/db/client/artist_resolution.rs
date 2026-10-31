@@ -26,17 +26,23 @@
 
 use super::*;
 
-/// Why a write that decides artist credits did not commit. Nothing of the
+/// Why a write that decides which library artist each credit and which
+/// library label each release label names did not commit. Nothing of the
 /// write landed; the initiator sees this and may retry once the library or
-/// the credit changes.
+/// the statement changes.
 #[derive(Debug, thiserror::Error)]
-pub enum ArtistWriteError {
+pub enum IdentityWriteError {
     /// Two library artists each hold one of the credit's catalog ids — the
     /// conflict a person resolves on the import page.
     #[error(transparent)]
-    IdentityConflict(Box<crate::import::ArtistIdentityConflict>),
-    /// The credit cannot be linked to the library as it stands: its ids
-    /// contradict the artist they match, or a picked artist no longer exists.
+    ArtistIdentityConflict(Box<crate::import::ArtistIdentityConflict>),
+    /// Two library labels each hold one of the label's catalog ids — the
+    /// conflict a person resolves on the import page.
+    #[error(transparent)]
+    LabelIdentityConflict(Box<crate::import::LabelIdentityConflict>),
+    /// The statement cannot be linked to the library as it stands: its ids
+    /// contradict the artist or label they match, or a picked artist no
+    /// longer exists.
     #[error("{0}")]
     Unresolvable(String),
     /// The library's artists changed between preparing the write and
@@ -55,32 +61,32 @@ pub enum ArtistWriteError {
     Db(#[from] DbError),
 }
 
-/// Carry an [`ArtistWriteError`] out of a coven write closure with its type
-/// intact, so [`Database::artist_write_error`] can hand it back.
-pub(super) fn artist_write_failure(error: ArtistWriteError) -> CovenError {
+/// Carry an [`IdentityWriteError`] out of a coven write closure with its type
+/// intact, so [`Database::identity_write_error`] can hand it back.
+pub(super) fn identity_write_failure(error: IdentityWriteError) -> CovenError {
     match error {
-        ArtistWriteError::Db(error) => CovenError::from(error),
+        IdentityWriteError::Db(error) => CovenError::from(error),
         other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
     }
 }
 
 impl Database {
     /// A write that resolves artist credits: [`Self::call_sql`], with an
-    /// [`ArtistWriteError`] the closure fails with handed back as itself.
-    pub(super) async fn write_resolving_artists<R>(
+    /// [`IdentityWriteError`] the closure fails with handed back as itself.
+    pub(super) async fn write_resolving_identities<R>(
         &self,
-        f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, ArtistWriteError>
+        f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, IdentityWriteError>
             + Send
             + 'static,
-    ) -> Result<R, ArtistWriteError>
+    ) -> Result<R, IdentityWriteError>
     where
         R: Send + 'static,
     {
         self.inner
             .handle
-            .write(move |sql| f(sql).map_err(artist_write_failure))
+            .write(move |sql| f(sql).map_err(identity_write_failure))
             .await
-            .map_err(Self::artist_write_error)
+            .map_err(Self::identity_write_error)
     }
 
     /// Resolve `credits` against the library as it stands, without writing:
@@ -92,7 +98,7 @@ impl Database {
         credits: &[DbArtist],
         picked: &[String],
         content_hash: Option<&str>,
-    ) -> Result<ResolvedArtists, ArtistWriteError> {
+    ) -> Result<ResolvedArtists, IdentityWriteError> {
         let (credits, picked) = (credits.to_vec(), picked.to_vec());
         let content_hash = content_hash.map(str::to_string);
         self.inner
@@ -103,10 +109,10 @@ impl Database {
                     picked: &picked,
                 }
                 .resolve_for_import_on(&sql, content_hash.as_deref())
-                .map_err(artist_write_failure)
+                .map_err(identity_write_failure)
             })
             .await
-            .map_err(Self::artist_write_error)
+            .map_err(Self::identity_write_error)
     }
 
     /// Resolve `credits` and write the rows the resolution inserts and fills
@@ -116,9 +122,9 @@ impl Database {
     pub(crate) async fn find_or_create_artists(
         &self,
         credits: &[DbArtist],
-    ) -> Result<Vec<String>, ArtistWriteError> {
+    ) -> Result<Vec<String>, IdentityWriteError> {
         let credits = credits.to_vec();
-        self.write_resolving_artists(move |sql| {
+        self.write_resolving_identities(move |sql| {
             let resolved = ArtistCredits {
                 credits: &credits,
                 picked: &[],
@@ -140,24 +146,35 @@ impl Database {
             .await
     }
 
-    /// The [`ArtistWriteError`] a coven write closure failed with, or the
+    /// The [`IdentityWriteError`] a coven write closure failed with, or the
     /// database error it failed with otherwise.
-    pub(super) fn artist_write_error(error: CovenError) -> ArtistWriteError {
+    pub(super) fn identity_write_error(error: CovenError) -> IdentityWriteError {
         match error {
             CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(
                 host,
-            ))) => match host.downcast::<ArtistWriteError>() {
+            ))) => match host.downcast::<IdentityWriteError>() {
                 Ok(error) => *error,
-                Err(other) => ArtistWriteError::Db(Self::coven_error(
+                Err(other) => IdentityWriteError::Db(Self::coven_error(
                     rusqlite::Error::UserFunctionError(other).into(),
                 )),
             },
-            other => ArtistWriteError::Db(Self::coven_error(other)),
+            other => IdentityWriteError::Db(Self::coven_error(other)),
         }
     }
 }
 
-impl From<rusqlite::Error> for ArtistWriteError {
+impl IdentityWriteError {
+    /// This error as a database error, for a fixture's write, which no person
+    /// answers a conflict for.
+    pub(super) fn into_db_error(self) -> DbError {
+        match self {
+            Self::Db(error) => error,
+            other => DbError::Message(other.to_string()),
+        }
+    }
+}
+
+impl From<rusqlite::Error> for IdentityWriteError {
     fn from(error: rusqlite::Error) -> Self {
         Self::Db(error.into())
     }
@@ -219,7 +236,7 @@ impl ArtistCredits<'_> {
     pub(super) fn resolve_on<Q: QueryOne + QueryRows>(
         &self,
         sql: &Q,
-    ) -> Result<ResolvedArtists, ArtistWriteError> {
+    ) -> Result<ResolvedArtists, IdentityWriteError> {
         let picked: HashSet<String> = self.picked.iter().cloned().collect();
         resolve_artists_on(sql, self.credits, &picked)
     }
@@ -240,7 +257,7 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
     sql: &Q,
     credits: &[DbArtist],
     picked: &HashSet<String>,
-) -> Result<ResolvedArtists, ArtistWriteError> {
+) -> Result<ResolvedArtists, IdentityWriteError> {
     let mut ids = Vec::with_capacity(credits.len());
     let mut inserts: Vec<DbArtist> = Vec::new();
     let mut external_id_updates: Vec<(String, DbArtist)> = Vec::new();
@@ -248,7 +265,7 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
     for credit in credits {
         if picked.contains(&credit.id) {
             if artist_by_id_on(sql, &credit.id)?.is_none() {
-                return Err(ArtistWriteError::Unresolvable(format!(
+                return Err(IdentityWriteError::Unresolvable(format!(
                     "artist '{}' no longer exists",
                     credit.id
                 )));
@@ -407,7 +424,7 @@ fn resolve_by_name_on<Q: QueryOne + QueryRows>(
     credit: &DbArtist,
     inserts: &mut Vec<DbArtist>,
     external_id_updates: &mut Vec<(String, DbArtist)>,
-) -> Result<String, ArtistWriteError> {
+) -> Result<String, IdentityWriteError> {
     let pending: Vec<usize> = inserts
         .iter()
         .enumerate()
@@ -501,10 +518,10 @@ pub(super) enum CatalogConflict {
 }
 
 impl CatalogConflict {
-    fn into_error(self) -> ArtistWriteError {
+    fn into_error(self) -> IdentityWriteError {
         match self {
-            Self::Identity(conflict) => ArtistWriteError::IdentityConflict(conflict),
-            Self::Contradicted { detail, .. } => ArtistWriteError::Unresolvable(detail),
+            Self::Identity(conflict) => IdentityWriteError::ArtistIdentityConflict(conflict),
+            Self::Contradicted { detail, .. } => IdentityWriteError::Unresolvable(detail),
         }
     }
 
@@ -821,9 +838,9 @@ fn remove_pending_artists(
 fn merge_artist_metadata(
     target: &mut DbArtist,
     incoming: &DbArtist,
-) -> Result<(), ArtistWriteError> {
+) -> Result<(), IdentityWriteError> {
     if !ids_agree(target, incoming) {
-        return Err(ArtistWriteError::Unresolvable(format!(
+        return Err(IdentityWriteError::Unresolvable(format!(
             "artist '{}' has conflicting source IDs",
             incoming.name
         )));

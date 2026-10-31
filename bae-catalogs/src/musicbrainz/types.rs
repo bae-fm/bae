@@ -69,6 +69,12 @@ pub struct MbLabelInfo {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbLabel {
+    /// MusicBrainz's id for the label.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub id: Option<String>,
     #[serde(
         default,
         deserialize_with = "crate::serde_helpers::empty_string_as_none"
@@ -79,11 +85,13 @@ pub struct MbLabel {
 /// Every label a release is pressed under, with its catalog number, in
 /// MusicBrainz's order.
 pub fn release_labels(label_info: &[MbLabelInfo]) -> Vec<bae_types::pressing::ReleaseLabel> {
-    bae_types::pressing::ReleaseLabel::list(label_info.iter().map(|info| {
-        (
-            info.label.as_ref().and_then(|label| label.name.clone()),
+    bae_types::pressing::ReleaseLabel::each_once(label_info.iter().filter_map(|info| {
+        let label = info.label.as_ref();
+        bae_types::pressing::ReleaseLabel::new(
+            label.and_then(|label| label.name.clone()),
             info.catalog_number.clone(),
         )
+        .map(|stated| stated.with_ids(label.and_then(|label| label.id.clone()), None))
     }))
 }
 

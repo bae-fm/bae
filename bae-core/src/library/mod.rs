@@ -717,9 +717,13 @@ async fn with_profile(
 ) -> JoinedLibrary {
     let profile = match invitee {
         Some(name) => Some(
-            crate::db::Database::from_handle(handle.clone(), clock)
-                .create_profile(name)
-                .await,
+            crate::db::Database::from_handle(
+                handle.clone(),
+                clock,
+                std::sync::Arc::new(coven::UuidIds),
+            )
+            .create_profile(name)
+            .await,
         ),
         None => None,
     };

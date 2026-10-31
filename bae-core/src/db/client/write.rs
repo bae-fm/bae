@@ -120,11 +120,13 @@ pub(super) fn insert_album_artist_row(
 /// `source_folder_name` names the folder an export writes under the user's
 /// target directory, so, like a file's name (see [`insert_release_file_row`]),
 /// it must name one. The release is ordered after its album's others, so an
-/// album's first release stays its primary one.
+/// album's first release stays its primary one. Its labels name the library
+/// labels `labels` decides.
 pub(super) fn insert_release_row(
     conn: &SqlContext<'_, '_>,
     release: &DbRelease,
-) -> Result<(), DbError> {
+    labels: &super::LabelWrite<'_>,
+) -> Result<(), IdentityWriteError> {
     if let Some(folder) = &release.source_folder_name {
         crate::storage::stored_name::folder_path(&release.id, folder)
             .map_err(|e| DbError::Message(e.to_string()))?;
@@ -134,12 +136,11 @@ pub(super) fn insert_release_row(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            labels,
             country, region, status, packaging, discogs_details,
             source_folder_name,
             album_loudness_lufs, album_peak_linear,
             created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?))
         "#,
         params![
@@ -147,7 +148,6 @@ pub(super) fn insert_release_row(
             release.album_id,
             release.release_name,
             release.pressing.year,
-            super::pressing_columns::labels_column(&release.pressing.labels),
             facts.country,
             facts.region,
             facts.status,
@@ -160,8 +160,15 @@ pub(super) fn insert_release_row(
             release.album_id,
         ],
     )?;
+    super::label_resolution::write_release_labels_on(
+        conn,
+        &release.id,
+        &release.pressing.labels,
+        labels,
+    )?;
     replace_release_barcodes(conn, &release.id, &release.pressing.barcodes)?;
-    replace_release_media(conn, &release.id, &release.pressing.facts.media)
+    replace_release_media(conn, &release.id, &release.pressing.facts.media)?;
+    Ok(())
 }
 
 /// Make the release `release_id`'s barcodes exactly `barcodes`, in order,

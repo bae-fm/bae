@@ -552,6 +552,36 @@ impl CoordinatorHarness {
 }
 
 #[test]
+fn terminal_import_failure_preserves_a_label_identity_conflict() {
+    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let label = |id: &str| crate::import::ExistingLabel {
+        label_id: id.to_string(),
+        name: "Label Name".to_string(),
+        musicbrainz_label_id: None,
+        discogs_label_id: None,
+    };
+    let conflict = crate::import::LabelIdentityConflict {
+        incoming_label_name: "Label Name".to_string(),
+        discogs_label_id: "7190".to_string(),
+        musicbrainz_label_id: "mb-label".to_string(),
+        discogs_label: label("by-discogs"),
+        musicbrainz_label: label("by-musicbrainz"),
+    };
+    let error = crate::import::ImportError::Db(crate::library::LibraryError::from(
+        crate::db::IdentityWriteError::LabelIdentityConflict(Box::new(conflict.clone())),
+    ));
+
+    let failure = ImportService::terminal_failure(&error, failed_at);
+
+    assert_eq!(
+        failure.identity_conflict,
+        Some(crate::import::IdentityConflict::Label(conflict))
+    );
+}
+
+#[test]
 fn terminal_import_failure_preserves_an_artist_identity_conflict() {
     let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
         .unwrap()
@@ -585,12 +615,12 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 
     assert_eq!(failure.failed_at, failed_at);
     assert!(matches!(
-        failure.artist_identity_conflict,
-        Some(crate::import::ArtistIdentityConflict {
+        failure.identity_conflict,
+        Some(crate::import::IdentityConflict::Artist(crate::import::ArtistIdentityConflict {
             discogs_artist: actual_discogs,
             musicbrainz_artist: actual_musicbrainz,
             ..
-        }) if actual_discogs == discogs_artist && actual_musicbrainz == musicbrainz_artist
+        })) if actual_discogs == discogs_artist && actual_musicbrainz == musicbrainz_artist
     ));
 }
 

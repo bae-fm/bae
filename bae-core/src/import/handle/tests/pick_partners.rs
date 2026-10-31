@@ -345,7 +345,7 @@ fn seed_discogs_release_in(
         }],
     })
     .to_string();
-    bae_catalogs::discogs::client::parse_discogs_release_json(&raw_release)
+    bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
     providers.discogs().seed_release_cache(release_id, raw_release);
     providers.discogs().seed_artist_image_response("1", None);

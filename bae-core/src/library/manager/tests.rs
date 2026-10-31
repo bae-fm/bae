@@ -86,7 +86,8 @@ async fn setup_test_manager_with(
         handle.store_id(),
         app_dir.registered_library(&handle.store_id().to_string()),
     );
-    let database = Database::from_handle(handle, clock.clone());
+    let database =
+        Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
     let manager = LibraryManager::new(
         database,
         app_dir,

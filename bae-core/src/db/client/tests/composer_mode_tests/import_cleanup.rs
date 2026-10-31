@@ -209,7 +209,7 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
             INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', 2026, 0, '2026-01-01T00:00:00Z');
             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('0f3dddda-6465-4f39-acfc-de0bed691179', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, release_name, year, labels, discogs_details, source_folder_name, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0);
+            INSERT INTO releases (id, album_id, release_name, year, discogs_details, source_folder_name, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0);
             INSERT INTO release_media (id, release_id, position, medium, count) VALUES ('2fc6dccf-ed9d-58ae-a838-9527750f14f0', '0252dedb-ee39-4547-8803-438dbeb57a64', 0, 'cd', 1);
 
             INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8', '0252dedb-ee39-4547-8803-438dbeb57a64', 1, 'cd', 1, '2026-01-01T00:00:00Z');

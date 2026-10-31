@@ -138,8 +138,10 @@ printed with more than one barcode (an EAN and a UPC): it keeps every one its
 source states, in order, each product once, and the editor shows one row per
 barcode, each removable, with a row to add another, as it does labels. Its
 media are a list of carriers, each with how many of it there are (two CDs, one
-vinyl record). Its barcodes and its media are each kept one row per place in
-the list, so two devices editing different places of one release's list at
+vinyl record). Its labels are a list of library labels (§2.3), each with the
+catalog number it gives the pressing; a place may state a catalog number
+alone. Its labels, its barcodes and its media are each kept one row per place
+in the list, so two devices editing different places of one release's list at
 once keep both edits. A saved
 CUE sheet's `CATALOG` line states the barcode when every one names the same
 product, and none otherwise.
@@ -354,6 +356,33 @@ name.
 - **A contradicting id.** A credit whose name matches an artist that holds a
   different id of the same catalog is refused outright.
 
+**Record labels.** A label row holds a name, its name key, and the label's
+MusicBrainz and Discogs ids where known. A release's label row names one, or
+none when it states only a catalog number. Which label it names is decided by
+one rule, inside the transaction that writes the release's labels, an
+import's or an edit's save:
+
+1. A label carrying a MusicBrainz or Discogs id is the library label holding
+   that id, followed through any merge.
+2. On an edit, a label carrying no id whose name is the name of a label the
+   release names now is that label, so saving a release keeps its labels.
+3. Otherwise it is the one library label whose name key matches and whose
+   ids don't contradict the label's. The key is the name's words run
+   together without the trade words it ends on ("Records", "Recordings",
+   "Music", "Ltd" and the like), so *Rhino Records* and *Rhino* are one
+   label; a name of trade words alone matches none. Initials are their own
+   key: *DFC* is not *Dance Floor Corporation*.
+4. Several such labels, or none, make a new label.
+
+A label that matches fills in its missing ids. Two labels merge only on the
+import page, when an import's label shows that two library labels are one
+and the person says so (§3.7). Both rows stay, and every read shows the
+survivor, following a chain or a loop as artists do; no list sorts by label,
+so no table keeps the label each label shows as. The artist edge cases hold
+for labels: two ids naming two labels stop the import for the person to
+settle (§3.7), and a label whose name matches a label holding a different id
+of the same catalog is refused.
+
 ### 2.4 Works
 
 Works are compositions. Tracks link to them, in the order a track performs
@@ -397,10 +426,12 @@ key that spells the fact.
 | Row | Id from |
 |---|---|
 | artist | its MusicBrainz artist id, or failing that its Discogs artist id |
+| label | its MusicBrainz label id, or failing that its Discogs label id |
 | work | its MusicBrainz work id |
 | album | its MusicBrainz release group, or failing that its Discogs master |
 | album credit | the album and the place in its list |
 | track credit | the track and the place in its list |
+| release label | the release and the place in its list |
 | work credit | the work, the artist and the position |
 | work part | the parent and child works |
 | release record | the release and the catalog |
@@ -413,8 +444,8 @@ stating one fact write one row
 
 **Edge cases.**
 
-- **An artist known only by name** has nothing that identifies it across
-  devices, so it gets a fresh id. If a later credit gives it a catalog id, it
+- **An artist or a label known only by name** has nothing that identifies it
+  across devices, so it gets a fresh id. If a later credit gives it a catalog id, it
   keeps the id it has; row ids are never rewritten.
 - **An album with no group.** A release whose metadata came from its tags names
   no group, so its album gets a fresh id.
@@ -862,7 +893,9 @@ itself and at its own pace:
 | catalog numbers | both: a number the person picked as it stands; one a found release carries as it stands on MusicBrainz, under the offered releases' artists on Discogs |
 | album and artist title | both, only when every clue above came back empty |
 
-Discogs needs an API key; without one it is not asked. Either catalog can be
+Discogs needs an API key; without one it is not asked. A Discogs label name
+loses the " (2)" Discogs adds to tell two labels of one name apart: the
+label's id tells them apart, and the name is what a release prints. Either catalog can be
 switched off. MusicBrainz is asked no more than once every 1.2 seconds, under
 the rate it allows.
 
@@ -1092,7 +1125,10 @@ what one track plays: a whole file, or one slice a bound CUE sheet carves out of
 an image. Units add up: a disc image with two loose bonus tracks offers
 thirteen. The draft's labels and barcodes are kept as the form holds them,
 one row each as typed (a label's name and catalog number each as typed), a
-row added and not filled yet included.
+row added and not filled yet included. A label row applied from a catalog
+keeps that catalog's label ids while its name stays the one the catalog
+gave; edited to another name, it carries none, and the import decides the
+label by name (§2.3).
 
 **Track order.** The units play in the order the files' own numbers give
 them. A file's disc and track numbers come from its tags (`DISCNUMBER` and
@@ -1273,11 +1309,13 @@ Ana clicks Import. bae:
    left untitled takes its file's name. Each credit, role
    and composer is its own artist credit until that transaction decides which
    library artist it is (§2.3), so two credits naming one artist write one.
+   Each label is its own statement until the same transaction decides which
+   library label it names (§2.3).
    The same transaction deletes what the folder's state holds that nothing
    reads once the release is in: the identify verdict with the releases it
    found, what the person let the lookups use, where the pane was, the covers
-   offered to the picker, the artist decisions it just resolved its credits
-   by, and the album picked for it. The draft, its source, its link and its
+   offered to the picker, the artist and label decisions it just resolved its
+   credits and labels by, and the album picked for it. The draft, its source, its link and its
    cover stay, since the Done row draws them (§3.2), and so do the clues,
    since the imported folder's pane marks the files they were read off. An
    import that fails deletes none of it, so a retry reads what the person
@@ -1353,6 +1391,12 @@ reported and stops for the session, as it does when the library closes.
   wrong guess credits the album to another artist on every device. Her answer
   is stored with the candidate like any pane control (§3.6), and the
   candidate is ready again.
+- **Two ids, two labels.** The same holds for a label: a label carrying a
+  Discogs id and a MusicBrainz id that two library labels hold fails the
+  import with the conflict, and the import page offers the same five
+  answers: the same label (the two merged, §2.3), the Discogs id's label,
+  the MusicBrainz id's label, a new label carrying neither id, or changing
+  the pressing or match.
 - **Identifying a library release again.** A release already in the library
   can be identified again from its own files; its Disc IDs come from the rip
   logs and CUE sheets this device holds of it, and its track lengths from its
@@ -1398,6 +1442,8 @@ editor is written at once, and the session keeps what was applied and picked.
 Cancelling discards the session; nothing is re-read, and there is no reset to
 a source: the library holds no pointer back into one. A release with nothing
 applied saves its edited fields alone, its mediums, roles and works as stored.
+A save decides each label as an import does (§2.3), and a label the person
+left as it was keeps the library label it named.
 
 Every editor opens a session of its own, so the editor sheet and the import
 pane open on the same release, or MCP's re-identify while either is open,
@@ -3496,13 +3542,16 @@ All sync.
 | `artists` | artist: name, folded name, sort name, MusicBrainz and Discogs ids |
 | `artist_credits` | another name a credit prints for an artist, keyed by the artist and the folded name (§2.3) |
 | `artist_merges` | artist absorbed into another (§2.3); the view `merged_artist_survivors` follows each chain to the artist it shows as |
+| `labels` | record label: name, name key, MusicBrainz and Discogs ids (§2.3) |
+| `label_merges` | label absorbed into another (§2.3); the view `merged_label_survivors` follows each chain to the label it shows as |
 | `artist_images` | artist's picture, keyed by the artist: the coven file it references (`file`), with an index by it, its type and size in pixels |
 | `albums` | album: title, year, compilation flag |
 | `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
+| `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
 | `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type and size in pixels |
@@ -3609,7 +3658,7 @@ Keyed by the candidate's content hash.
 | Table | Holds |
 |---|---|
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
-| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed, each track's place and listed length (§3.6) |
+| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
@@ -3619,7 +3668,8 @@ Keyed by the candidate's content hash.
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
 | `import_candidate_session` | where the pane was, and its last failure |
-| `import_candidate_failure`, `import_candidate_artist_identity_conflict` | why the last import failed |
+| `import_candidate_failure`, `import_candidate_artist_identity_conflict`, `import_candidate_label_identity_conflict` | why the last import failed |
+| `import_candidate_artist_identity_choice`, `import_candidate_label_identity_choice` | the person's answers to an artist or label conflict, which the import follows (§3.7) |
 
 Beside them, keyed by the candidate's key as the import list names it:
 
@@ -3635,7 +3685,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_candidate_signals`, `import_candidate_signal_value`, `import_candidate_text_line` | the clues read off a candidate (§3.3) |
 | `import_candidate_lookup_choices`, `import_candidate_chosen_catalog`, `import_candidate_discounted_catalog`, `import_candidate_excluded_barcode` | what the person let the lookups use |
 | `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict |
-| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one |
+| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one; each label with the catalog ids the lookup gave it |
 | `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them; a release a Disc ID's lookup found is what its Disc ID agreement is read from |
 | `import_candidate_lookup_provider`, `import_candidate_lookup_isrc`, `import_candidate_lookup_offered_catalog` | the catalogs the run asked, the ISRCs it looked up, and the catalog numbers it offered to pick |
 
@@ -3662,7 +3712,7 @@ under it.
 | Table | Holds |
 |---|---|
 | `source_release` | one fetched catalog release and every fact an import reads from it but two it reads derived (§3.4): its album's year and its media counts |
-| `source_release_label`, `source_release_barcode` | its labels, each with its catalog number, and its barcodes, in order |
+| `source_release_label`, `source_release_barcode` | its labels, each with its catalog number and the label's catalog ids, and its barcodes, in order |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
 | `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
@@ -3705,6 +3755,9 @@ the transfer queues (A.9) are not declared, so they never sync.
 | `releases` | independent | store | | |
 | `release_records` | shared key | store | | |
 | `release_mediums` | shared key | store | | |
+| `labels` | shared key | store | | |
+| `label_merges` | shared key | store | | |
+| `release_labels` | shared key | store | | |
 | `release_barcodes` | shared key | store | | |
 | `release_media` | shared key | store | | |
 | `tracks` | independent | store | | |
@@ -3843,7 +3896,7 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 | `live_results.rs` | windows and sections of live lists |
 | `import/candidate.rs`, `import/grouping.rs` | watched folders, candidate files, CUE binding, import steps, grouped folders |
 | `import/identify.rs` | clues, lookups, the run's ledger, identify state |
-| `import/list.rs` | the import list, its filter, the candidate pane and its commands |
+| `import/list.rs` | the import list, its filter, the candidate pane and its commands, and the artist and label conflicts an import stops on |
 | `import/search.rs` | catalog search results, pressings and album cards |
 | `import/triage.rs` | candidate rows, states, badges, selection, matched pressings |
 | `cover.rs` | catalog cover galleries |

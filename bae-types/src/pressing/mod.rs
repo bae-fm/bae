@@ -147,13 +147,18 @@ pub enum PhysicalMedium {
 
 /// One label a pressing is released on, with the catalog number that label
 /// gives it. Either half may be unstated, never both, and a catalog's
-/// placeholder for "no number" is no number.
+/// placeholder for "no number" is no number. A named label may carry the ids
+/// the catalogs know it by: what decides which library label it is.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 pub struct ReleaseLabel {
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     catalog_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    musicbrainz_label_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    discogs_label_id: Option<String>,
 }
 
 impl ReleaseLabel {
@@ -166,21 +171,44 @@ impl ReleaseLabel {
         (name.is_some() || catalog_number.is_some()).then_some(Self {
             name,
             catalog_number,
+            musicbrainz_label_id: None,
+            discogs_label_id: None,
         })
+    }
+
+    /// The label with the ids the catalogs know it by. A label stating no
+    /// name keeps none: an id names a label, and a label is known by its name.
+    #[must_use]
+    pub fn with_ids(
+        mut self,
+        musicbrainz_label_id: Option<String>,
+        discogs_label_id: Option<String>,
+    ) -> Self {
+        let named = self.name.is_some();
+        let id = |id: Option<String>| id.filter(|id| named && !id.trim().is_empty());
+        self.musicbrainz_label_id = id(musicbrainz_label_id);
+        self.discogs_label_id = id(discogs_label_id);
+        self
     }
 
     /// The labels `entries` state, in order, each once.
     pub fn list(entries: impl IntoIterator<Item = (Option<String>, Option<String>)>) -> Vec<Self> {
-        let mut labels: Vec<Self> = Vec::new();
-        for label in entries
-            .into_iter()
-            .filter_map(|(name, catalog_number)| Self::new(name, catalog_number))
-        {
-            if !labels.contains(&label) {
-                labels.push(label);
+        Self::each_once(
+            entries
+                .into_iter()
+                .filter_map(|(name, catalog_number)| Self::new(name, catalog_number)),
+        )
+    }
+
+    /// `labels` in order, each once.
+    pub fn each_once(labels: impl IntoIterator<Item = Self>) -> Vec<Self> {
+        let mut once: Vec<Self> = Vec::new();
+        for label in labels {
+            if !once.contains(&label) {
+                once.push(label);
             }
         }
-        labels
+        once
     }
 
     pub fn name(&self) -> Option<&str> {
@@ -189,6 +217,29 @@ impl ReleaseLabel {
 
     pub fn catalog_number(&self) -> Option<&str> {
         self.catalog_number.as_deref()
+    }
+
+    pub fn musicbrainz_label_id(&self) -> Option<&str> {
+        self.musicbrainz_label_id.as_deref()
+    }
+
+    pub fn discogs_label_id(&self) -> Option<&str> {
+        self.discogs_label_id.as_deref()
+    }
+
+    /// Fill each id this label does not carry from `other`, a statement of
+    /// the same label by another record.
+    pub fn take_missing_ids(&mut self, other: &Self) {
+        if self.name.is_none() {
+            return;
+        }
+        if self.musicbrainz_label_id.is_none() {
+            self.musicbrainz_label_id
+                .clone_from(&other.musicbrainz_label_id);
+        }
+        if self.discogs_label_id.is_none() {
+            self.discogs_label_id.clone_from(&other.discogs_label_id);
+        }
     }
 }
 
@@ -201,7 +252,8 @@ impl ReleaseLabel {
     }
 }
 
-/// Read through [`ReleaseLabel::new`], so an entry stating neither half fails.
+/// Read through [`ReleaseLabel::new`] and [`ReleaseLabel::with_ids`], so an
+/// entry stating neither half fails.
 impl<'de> serde::Deserialize<'de> for ReleaseLabel {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         #[derive(serde::Deserialize)]
@@ -211,12 +263,19 @@ impl<'de> serde::Deserialize<'de> for ReleaseLabel {
             name: Option<String>,
             #[serde(default)]
             catalog_number: Option<String>,
+            #[serde(default)]
+            musicbrainz_label_id: Option<String>,
+            #[serde(default)]
+            discogs_label_id: Option<String>,
         }
         let Stated {
             name,
             catalog_number,
+            musicbrainz_label_id,
+            discogs_label_id,
         } = Stated::deserialize(deserializer)?;
         Self::new(name, catalog_number)
+            .map(|label| label.with_ids(musicbrainz_label_id, discogs_label_id))
             .ok_or_else(|| serde::de::Error::custom("a label states neither a name nor a number"))
     }
 }

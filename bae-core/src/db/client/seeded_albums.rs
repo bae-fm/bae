@@ -44,6 +44,10 @@ impl Database {
             .collect();
         let mut originals = Vec::new();
         let mut audios = Vec::new();
+        let labels: Vec<super::label_resolution::LabelParts> = albums
+            .iter()
+            .map(|seeded| self.label_parts(&seeded.release.pressing.labels))
+            .collect();
         for seeded in &mut albums {
             if let Some(audio) = seeded.audio.take() {
                 let mut rows = Vec::with_capacity(audio.files.len());
@@ -81,12 +85,13 @@ impl Database {
                 for artist in &artists {
                     insert_artist_row(tx, artist)?;
                 }
-                for seeded in &albums {
+                for (seeded, labels) in albums.iter().zip(&labels) {
                     insert_album_row(tx, &seeded.album)?;
                     for credit in &seeded.credits {
                         insert_album_artist_row(tx, credit)?;
                     }
-                    insert_release_row(tx, &seeded.release)?;
+                    insert_release_row(tx, &seeded.release, &label_write(labels))
+                        .map_err(identity_write_failure)?;
                     insert_release_medium_row(tx, &seeded.medium)?;
                     for track in &seeded.tracks {
                         insert_track_row(tx, track)?;

@@ -79,6 +79,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
         Arc::new(FixedClock::new(
             (fixed_now() + chrono::Duration::days(1)).into(),
         )),
+        std::sync::Arc::new(coven::UuidIds),
     );
     let generation = later
         .begin_folder_scan(&root, crate::import::VolumeKind::Local)
@@ -158,6 +159,7 @@ fn days_later(db: &Database, days: i64) -> Database {
         Arc::new(FixedClock::new(
             (fixed_now() + chrono::Duration::days(days)).into(),
         )),
+        std::sync::Arc::new(coven::UuidIds),
     )
 }
 

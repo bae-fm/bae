@@ -45,7 +45,7 @@ mod label;
 pub use artist::{artist_name_key, is_various_artists, same_artist_name};
 pub use catalog_number::catalog_key;
 pub use fold::{is_stop_word, normalize, squash, words, written_words};
-pub use label::{same_label_name, LabelName};
+pub use label::{label_name_key, same_label_name, LabelName};
 
 #[cfg(desktop)]
 mod title;

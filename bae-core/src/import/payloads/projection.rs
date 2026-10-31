@@ -115,7 +115,7 @@ impl ReleasePayloads {
                     }
                 }
                 Catalog::Discogs => {
-                    let master = bae_catalogs::discogs::client::parse_discogs_master_json(json)?;
+                    let master = bae_catalogs::discogs::documents::parse_discogs_master_json(json)?;
                     AlbumMetadata {
                         title: master.title.unwrap_or_default(),
                         artists: crate::import::discogs_mapper::discogs_credits(&master.artists),

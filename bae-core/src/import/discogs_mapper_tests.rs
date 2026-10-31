@@ -715,7 +715,7 @@ fn release_barcodes_reach_pressing_metadata() {
             {"type":"Barcode","value":"012345678905","description":"Scanned"},
             {"type":"Barcode","value":"5 012345 678900","description":"EAN"}
         ]}"#;
-    let release = bae_catalogs::discogs::client::parse_discogs_release_json(json).unwrap();
+    let release = bae_catalogs::discogs::documents::parse_discogs_release_json(json).unwrap();
     assert_eq!(release.barcodes, ["0 12345 67890 5", "5 012345 678900"]);
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
@@ -739,7 +739,7 @@ fn blank_pressing_fields_are_absent_in_discogs_documents() {
             "identifiers":[{"type":"Barcode","value":value}]
         })
         .to_string();
-        let release = bae_catalogs::discogs::client::parse_discogs_release_json(&raw).unwrap();
+        let release = bae_catalogs::discogs::documents::parse_discogs_release_json(&raw).unwrap();
         assert!(release.country.is_none());
         let (pressing, media) = pressing(&release);
         assert!(pressing.facts.is_empty());
@@ -765,7 +765,7 @@ fn every_label_and_its_catalog_number_is_read() {
         ]
     })
     .to_string();
-    let release = bae_catalogs::discogs::client::parse_discogs_release_json(&raw).unwrap();
+    let release = bae_catalogs::discogs::documents::parse_discogs_release_json(&raw).unwrap();
     let expected = vec![
         ReleaseLabel::of(Some("Label A"), Some("AB 100")),
         ReleaseLabel::of(Some("Label B"), Some("CL 719")),

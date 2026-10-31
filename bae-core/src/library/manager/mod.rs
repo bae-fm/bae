@@ -155,6 +155,8 @@ pub enum LibraryError {
     Refused(String),
     #[error("Import error: {0}")]
     ArtistIdentityConflict(#[source] Box<crate::import::ArtistIdentityConflict>),
+    #[error("Import error: {0}")]
+    LabelIdentityConflict(#[source] Box<crate::import::LabelIdentityConflict>),
     /// A verbatim release export (reproducing the imported file set) failed.
     #[error("Export error: {0}")]
     Export(String),
@@ -260,20 +262,23 @@ impl From<coven::CovenError> for LibraryError {
     }
 }
 
-impl From<crate::db::ArtistWriteError> for LibraryError {
-    fn from(error: crate::db::ArtistWriteError) -> Self {
+impl From<crate::db::IdentityWriteError> for LibraryError {
+    fn from(error: crate::db::IdentityWriteError) -> Self {
         match error {
-            crate::db::ArtistWriteError::IdentityConflict(conflict) => {
+            crate::db::IdentityWriteError::ArtistIdentityConflict(conflict) => {
                 Self::ArtistIdentityConflict(conflict)
             }
-            crate::db::ArtistWriteError::Db(error) => Self::Database(error),
-            crate::db::ArtistWriteError::FilesAlreadyImported { release_id } => {
+            crate::db::IdentityWriteError::LabelIdentityConflict(conflict) => {
+                Self::LabelIdentityConflict(conflict)
+            }
+            crate::db::IdentityWriteError::Db(error) => Self::Database(error),
+            crate::db::IdentityWriteError::FilesAlreadyImported { release_id } => {
                 Self::Import(Box::new(crate::import::ImportError::FilesAlreadyImported {
                     release_id,
                 }))
             }
-            other @ (crate::db::ArtistWriteError::Unresolvable(_)
-            | crate::db::ArtistWriteError::LibraryChanged) => Self::Refused(other.to_string()),
+            other @ (crate::db::IdentityWriteError::Unresolvable(_)
+            | crate::db::IdentityWriteError::LibraryChanged) => Self::Refused(other.to_string()),
         }
     }
 }
@@ -335,7 +340,9 @@ impl LibraryError {
             LibraryError::Import(error) => error.category(),
             LibraryError::Refused(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
-            LibraryError::ArtistIdentityConflict(_) => C::Import,
+            LibraryError::ArtistIdentityConflict(_) | LibraryError::LabelIdentityConflict(_) => {
+                C::Import
+            }
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),

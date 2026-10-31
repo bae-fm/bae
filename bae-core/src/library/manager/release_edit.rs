@@ -373,7 +373,16 @@ impl LibraryManager {
                 draft.album_title = edit.album_title.clone();
                 draft.album_artist_assignments = edit.album_artist_assignments.clone();
                 draft.album_year = edit.album_year.clone();
-                draft.pressing = edit.pressing.clone();
+                // The editor sends each label's name and number alone; a
+                // label keeping the name the catalog gave it keeps its ids.
+                let labels = crate::import::RawLabelEdit::kept_ids(
+                    edit.pressing.labels.clone(),
+                    &draft.pressing.labels,
+                );
+                draft.pressing = crate::import::RawPressingEdit {
+                    labels,
+                    ..edit.pressing.clone()
+                };
                 for (track, edited) in draft.tracks.iter_mut().zip(&edit.tracks) {
                     track.edit.title = edited.title.clone();
                     track.edit.artist_assignments = edited.artist_assignments.clone();

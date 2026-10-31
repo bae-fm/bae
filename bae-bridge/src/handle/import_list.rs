@@ -18,6 +18,23 @@ forward! { async this => {
                 .await?,
         ))
     }
+
+    /// Record the person's answer to the candidate's label conflict.
+    fn choose_candidate_label_identity(
+        candidate_key: Vec<u8>,
+        metadata_revision: u64,
+        choice: crate::types::BridgeLabelIdentityConflictChoice,
+    ) -> crate::types::BridgePaneOutcome {
+        Ok(crate::types::BridgePaneOutcome::from_core(
+            this.services
+                .pane_choose_label_identity(
+                    &candidate_key.into(),
+                    metadata_revision,
+                    choice.into_core(),
+                )
+                .await?,
+        ))
+    }
 } }
 
 /// The import tab's list, reconfigurable by view and by window, and the

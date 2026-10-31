@@ -41,6 +41,23 @@ impl AppServices {
             .await
     }
 
+    /// Apply the person's answer to the candidate's label conflict.
+    pub async fn pane_choose_label_identity(
+        &self,
+        candidate_key: &crate::import::CandidateKey,
+        metadata_revision: u64,
+        choice: crate::import::LabelIdentityConflictChoice,
+    ) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        import
+            .run_pane_command(
+                candidate_key,
+                PaneCommand::ChooseLabelIdentity,
+                import.choose_candidate_label_identity(candidate_key, metadata_revision, choice),
+            )
+            .await
+    }
+
     /// Link the candidate to the release `link` names and read its draft from
     /// it. A catalog release that fails to load, or that lists another number
     /// of tracks than the folder holds, is told on that release's own row, so

@@ -98,6 +98,18 @@ pub fn same_label_name(a: &str, b: &str) -> bool {
     }
 }
 
+/// A label's name as a library label is found by it: its words with the
+/// trade words it ends on dropped, run together ("Rhino Records" and "Rhino"
+/// are one key). Empty for a name that is nothing but trade words, which
+/// finds no label. Two initials and the name they abbreviate are two keys:
+/// a key is one name's own, and two labels with one key are the same label
+/// by name.
+pub fn label_name_key(name: &str) -> String {
+    LabelName::of(name)
+        .map(|name| name.stated)
+        .unwrap_or_default()
+}
+
 /// `words` without the trade words they end on.
 fn without_trade_words(mut words: Vec<String>) -> Vec<String> {
     while let Some(tail) = tails().iter().find(|tail| words.ends_with(tail)) {
@@ -213,6 +225,22 @@ mod tests {
         assert!(!same("abc", "Alpha Beta Corporation"));
         assert!(!same("ABD", "Alpha Beta Corporation"));
         assert!(!same("Harbor", "Summit"));
+    }
+
+    /// A label's key drops its trade words and runs its words together, so
+    /// spellings with and without them are one key; initials are a key of
+    /// their own, and trade words alone are no key.
+    #[test]
+    fn a_label_key_is_its_words_without_trade_words() {
+        assert_eq!(label_name_key("Rhino Records"), "rhino");
+        assert_eq!(label_name_key("RHINO"), "rhino");
+        assert_eq!(label_name_key("Warner Bros. Records Inc."), "warnerbros");
+        assert_eq!(label_name_key("DFC"), "dfc");
+        assert_ne!(
+            label_name_key("DFC"),
+            label_name_key("Dance Floor Corporation")
+        );
+        assert_eq!(label_name_key("Records"), "");
     }
 
     /// Written names compare as their labels do; names of trade words alone

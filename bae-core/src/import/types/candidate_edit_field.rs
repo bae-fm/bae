@@ -61,7 +61,10 @@ impl DraftFieldEdit {
     pub(crate) fn apply(self, draft: &mut CandidateDraft) {
         match self {
             Self::Text { field, value } => field.set(draft, &value),
-            Self::Labels(labels) => draft.pressing.labels = labels,
+            Self::Labels(labels) => {
+                draft.pressing.labels =
+                    super::RawLabelEdit::kept_ids(labels, &draft.pressing.labels);
+            }
             Self::Barcodes(barcodes) => draft.pressing.barcodes = barcodes,
             Self::PressingFact(choice) => choice.apply(&mut draft.pressing.facts),
         }

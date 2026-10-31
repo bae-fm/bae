@@ -1,7 +1,11 @@
-//! Persisted terminal import failures, including recoverable artist conflicts.
+//! Persisted terminal import failures, including recoverable artist and label
+//! identity conflicts.
 
 use super::*;
-use crate::import::{ArtistIdentityConflict, ExistingArtist, ImportFailure, ImportFailureReason};
+use crate::import::{
+    ArtistIdentityConflict, ExistingArtist, ExistingLabel, IdentityConflict, ImportFailure,
+    ImportFailureReason, LabelIdentityConflict,
+};
 
 /// The diagnostic column read by both the list and the candidate pane.
 pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";
@@ -23,6 +27,16 @@ fn existing_artist_from_row(row: &Row<'_>, prefix: &str) -> rusqlite::Result<Exi
     })
 }
 
+fn existing_label_from_row(row: &Row<'_>, prefix: &str) -> rusqlite::Result<ExistingLabel> {
+    let column = |suffix: &str| format!("{prefix}_{suffix}");
+    Ok(ExistingLabel {
+        label_id: row.get(column("id").as_str())?,
+        name: row.get(column("name").as_str())?,
+        musicbrainz_label_id: row.get(column("musicbrainz_id").as_str())?,
+        discogs_label_id: row.get(column("discogs_id").as_str())?,
+    })
+}
+
 /// The failure the last import of `content_hash` left.
 pub(super) fn load_failure_on(
     sql: &SqlReadContext<'_>,
@@ -41,30 +55,59 @@ pub(super) fn load_failure_on(
                 musicbrainz.id AS musicbrainz_id, musicbrainz.name AS musicbrainz_name, \
                 musicbrainz.sort_name AS musicbrainz_sort_name, \
                 musicbrainz.musicbrainz_artist_id AS musicbrainz_musicbrainz_id, \
-                musicbrainz.discogs_artist_id AS musicbrainz_discogs_id \
+                musicbrainz.discogs_artist_id AS musicbrainz_discogs_id, \
+                label_conflict.incoming_label_name, \
+                label_conflict.discogs_label_id AS incoming_discogs_label_id, \
+                label_conflict.musicbrainz_label_id AS incoming_musicbrainz_label_id, \
+                discogs_label.id AS discogs_label_id, discogs_label.name AS discogs_label_name, \
+                discogs_label.musicbrainz_label_id AS discogs_label_musicbrainz_id, \
+                discogs_label.discogs_label_id AS discogs_label_discogs_id, \
+                musicbrainz_label.id AS musicbrainz_label_id, \
+                musicbrainz_label.name AS musicbrainz_label_name, \
+                musicbrainz_label.musicbrainz_label_id AS musicbrainz_label_musicbrainz_id, \
+                musicbrainz_label.discogs_label_id AS musicbrainz_label_discogs_id \
          FROM import_candidate_failure failure \
          LEFT JOIN import_candidate_artist_identity_conflict conflict \
              ON conflict.content_hash = failure.content_hash \
          LEFT JOIN artists discogs ON discogs.id = conflict.discogs_library_artist_id \
          LEFT JOIN artists musicbrainz ON musicbrainz.id = conflict.musicbrainz_library_artist_id \
+         LEFT JOIN import_candidate_label_identity_conflict label_conflict \
+             ON label_conflict.content_hash = failure.content_hash \
+         LEFT JOIN labels discogs_label \
+             ON discogs_label.id = label_conflict.discogs_library_label_id \
+         LEFT JOIN labels musicbrainz_label \
+             ON musicbrainz_label.id = label_conflict.musicbrainz_library_label_id \
          WHERE failure.content_hash = ?"
         ),
         [content_hash],
         |row| {
-            let conflict = match row.get::<_, Option<String>>("incoming_artist_name")? {
+            let artist = match row.get::<_, Option<String>>("incoming_artist_name")? {
                 None => None,
-                Some(incoming_artist_name) => Some(ArtistIdentityConflict {
-                    incoming_artist_name,
-                    discogs_artist_id: row.get("incoming_discogs_artist_id")?,
-                    musicbrainz_artist_id: row.get("incoming_musicbrainz_artist_id")?,
-                    discogs_artist: existing_artist_from_row(row, "discogs")?,
-                    musicbrainz_artist: existing_artist_from_row(row, "musicbrainz")?,
-                }),
+                Some(incoming_artist_name) => {
+                    Some(IdentityConflict::Artist(ArtistIdentityConflict {
+                        incoming_artist_name,
+                        discogs_artist_id: row.get("incoming_discogs_artist_id")?,
+                        musicbrainz_artist_id: row.get("incoming_musicbrainz_artist_id")?,
+                        discogs_artist: existing_artist_from_row(row, "discogs")?,
+                        musicbrainz_artist: existing_artist_from_row(row, "musicbrainz")?,
+                    }))
+                }
+            };
+            let label = match row.get::<_, Option<String>>("incoming_label_name")? {
+                None => None,
+                Some(incoming_label_name) => Some(IdentityConflict::Label(LabelIdentityConflict {
+                    incoming_label_name,
+                    discogs_label_id: row.get("incoming_discogs_label_id")?,
+                    musicbrainz_label_id: row.get("incoming_musicbrainz_label_id")?,
+                    discogs_label: existing_label_from_row(row, "discogs_label")?,
+                    musicbrainz_label: existing_label_from_row(row, "musicbrainz_label")?,
+                })),
             };
             Ok(ImportFailure {
                 reason: failure_reason_from_row(row)?,
                 failed_at: rfc3339_column(row, "failed_at")?,
-                artist_identity_conflict: conflict,
+                // The write that records a failure records one conflict at most.
+                identity_conflict: artist.or(label),
             })
         },
     )
@@ -72,7 +115,7 @@ pub(super) fn load_failure_on(
     .map_err(DbError::from)
 }
 
-/// Drop the failure the last import of `content_hash` left, and the artist
+/// Drop the failure the last import of `content_hash` left, and the identity
 /// conflict that hangs off it.
 pub(super) fn delete_failure_on(
     sql: &SqlContext<'_, '_>,
@@ -118,25 +161,49 @@ fn save_failure_on(
              error = excluded.error, failed_at = excluded.failed_at",
         params![content_hash, failure.reason.detail, failed_at],
     )?;
-    sql.execute(
-        "DELETE FROM import_candidate_artist_identity_conflict WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    if let Some(conflict) = &failure.artist_identity_conflict {
+    for table in [
+        "import_candidate_artist_identity_conflict",
+        "import_candidate_label_identity_conflict",
+    ] {
         sql.execute(
-            "INSERT INTO import_candidate_artist_identity_conflict (\
-                 content_hash, incoming_artist_name, discogs_artist_id, \
-                 musicbrainz_artist_id, discogs_library_artist_id, \
-                 musicbrainz_library_artist_id) VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                conflict.incoming_artist_name,
-                conflict.discogs_artist_id,
-                conflict.musicbrainz_artist_id,
-                conflict.discogs_artist.artist_id,
-                conflict.musicbrainz_artist.artist_id,
-            ],
+            &format!("DELETE FROM {table} WHERE content_hash = ?"),
+            [content_hash],
         )?;
+    }
+    match &failure.identity_conflict {
+        None => {}
+        Some(IdentityConflict::Artist(conflict)) => {
+            sql.execute(
+                "INSERT INTO import_candidate_artist_identity_conflict (\
+                     content_hash, incoming_artist_name, discogs_artist_id, \
+                     musicbrainz_artist_id, discogs_library_artist_id, \
+                     musicbrainz_library_artist_id) VALUES (?, ?, ?, ?, ?, ?)",
+                params![
+                    content_hash,
+                    conflict.incoming_artist_name,
+                    conflict.discogs_artist_id,
+                    conflict.musicbrainz_artist_id,
+                    conflict.discogs_artist.artist_id,
+                    conflict.musicbrainz_artist.artist_id,
+                ],
+            )?;
+        }
+        Some(IdentityConflict::Label(conflict)) => {
+            sql.execute(
+                "INSERT INTO import_candidate_label_identity_conflict (\
+                     content_hash, incoming_label_name, discogs_label_id, \
+                     musicbrainz_label_id, discogs_library_label_id, \
+                     musicbrainz_library_label_id) VALUES (?, ?, ?, ?, ?, ?)",
+                params![
+                    content_hash,
+                    conflict.incoming_label_name,
+                    conflict.discogs_label_id,
+                    conflict.musicbrainz_label_id,
+                    conflict.discogs_label.label_id,
+                    conflict.musicbrainz_label.label_id,
+                ],
+            )?;
+        }
     }
     Ok(())
 }

@@ -81,18 +81,48 @@ pub struct RawPressingEdit {
     pub facts: bae_types::pressing::PressingFacts,
 }
 
-/// One label row of the form, each field as typed, empty meaning "not set".
+/// One label row of the form, each field as typed, empty meaning "not set",
+/// with the ids the catalog that stated the row knows its label by. The ids
+/// belong to the name they came with: the editors show and send the name and
+/// number alone, and [`RawLabelEdit::kept_ids`] gives a row back the ids of
+/// the row it was, while it keeps that row's name.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawLabelEdit {
     pub name: String,
     pub catalog_number: String,
+    pub musicbrainz_label_id: Option<String>,
+    pub discogs_label_id: Option<String>,
 }
 
 impl RawLabelEdit {
     /// Whether the row states nothing.
     pub fn is_blank(&self) -> bool {
         self.name.trim().is_empty() && self.catalog_number.trim().is_empty()
+    }
+
+    /// `rows` as an editor left them, each with the ids of the row of
+    /// `stated` that has its name: the row at its own place where that one
+    /// has it, else the first. A row whose name no stated row has, typed or
+    /// changed, carries no ids, so a label the person names is found by its
+    /// name.
+    pub fn kept_ids(rows: Vec<Self>, stated: &[Self]) -> Vec<Self> {
+        rows.into_iter()
+            .enumerate()
+            .map(|(position, row)| {
+                let same_name = |stated: &&Self| stated.name == row.name;
+                let source = stated
+                    .get(position)
+                    .filter(same_name)
+                    .or_else(|| stated.iter().find(same_name));
+                Self {
+                    musicbrainz_label_id: source
+                        .and_then(|source| source.musicbrainz_label_id.clone()),
+                    discogs_label_id: source.and_then(|source| source.discogs_label_id.clone()),
+                    ..row
+                }
+            })
+            .collect()
     }
 }
 
@@ -218,12 +248,20 @@ impl RawPressingEdit {
     fn shape(&self) -> Result<bae_types::pressing::Pressing, EditValidationError> {
         Ok(bae_types::pressing::Pressing {
             year: parse_optional_year(&self.year)?,
-            labels: bae_types::pressing::ReleaseLabel::list(self.labels.iter().map(|label| {
-                (
-                    trim_to_option(&label.name),
-                    trim_to_option(&label.catalog_number),
-                )
-            })),
+            labels: bae_types::pressing::ReleaseLabel::each_once(self.labels.iter().filter_map(
+                |label| {
+                    bae_types::pressing::ReleaseLabel::new(
+                        trim_to_option(&label.name),
+                        trim_to_option(&label.catalog_number),
+                    )
+                    .map(|stated| {
+                        stated.with_ids(
+                            label.musicbrainz_label_id.clone(),
+                            label.discogs_label_id.clone(),
+                        )
+                    })
+                },
+            )),
             barcodes: {
                 let mut barcodes: Vec<String> = Vec::new();
                 for barcode in self.barcodes.iter().filter_map(|row| trim_to_option(row)) {
@@ -248,6 +286,8 @@ impl RawPressingEdit {
                 .map(|label| RawLabelEdit {
                     name: label.name().unwrap_or_default().to_string(),
                     catalog_number: label.catalog_number().unwrap_or_default().to_string(),
+                    musicbrainz_label_id: label.musicbrainz_label_id().map(str::to_string),
+                    discogs_label_id: label.discogs_label_id().map(str::to_string),
                 })
                 .collect(),
             barcodes: pressing.barcodes.clone(),

@@ -82,19 +82,20 @@ pub(crate) enum AlbumFields {
     Kept,
 }
 
-/// Write `release`'s pressing over its row.
+/// Write `release`'s pressing over its row, its labels naming the library
+/// labels `labels` decides.
 pub(super) fn update_release_pressing_on(
     tx: &SqlContext<'_, '_>,
     release: &DbRelease,
-) -> Result<(), DbError> {
+    labels: &super::LabelWrite<'_>,
+) -> Result<(), IdentityWriteError> {
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     tx.execute(
-        r#"UPDATE releases SET year = ?, labels = ?,
+        r#"UPDATE releases SET year = ?,
             country = ?, region = ?, status = ?, packaging = ?,
             discogs_details = ? WHERE id = ?"#,
         params![
             release.pressing.year,
-            super::pressing_columns::labels_column(&release.pressing.labels),
             facts.country,
             facts.region,
             facts.status,
@@ -103,8 +104,15 @@ pub(super) fn update_release_pressing_on(
             release.id,
         ],
     )?;
+    super::label_resolution::write_release_labels_on(
+        tx,
+        &release.id,
+        &release.pressing.labels,
+        labels,
+    )?;
     super::write::replace_release_barcodes(tx, &release.id, &release.pressing.barcodes)?;
-    super::write::replace_release_media(tx, &release.id, &release.pressing.facts.media)
+    super::write::replace_release_media(tx, &release.id, &release.pressing.facts.media)?;
+    Ok(())
 }
 
 /// Write `metadata`: the release's pressing fields, each named track's title
@@ -120,7 +128,8 @@ pub(super) fn write_release_metadata_on(
     metadata: &ReleaseMetadataRows,
     album_fields: AlbumFields,
     now: &str,
-) -> Result<(), ArtistWriteError> {
+    labels: &super::LabelWrite<'_>,
+) -> Result<(), IdentityWriteError> {
     let ReleaseMetadataRows {
         album,
         release,
@@ -148,7 +157,7 @@ pub(super) fn write_release_metadata_on(
         replace_album_artists(tx, &album.id, &album_artists, now)?;
     }
 
-    update_release_pressing_on(tx, release)?;
+    update_release_pressing_on(tx, release, labels)?;
 
     for (existing_id, new_track) in track_updates {
         tx.execute(
@@ -167,8 +176,12 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
-        self.call_sql(move |sql| insert_release_row(&sql, &release))
-            .await
+        let labels = self.label_parts(&release.pressing.labels);
+        self.call_sql(move |sql| {
+            insert_release_row(&sql, &release, &label_write(&labels))
+                .map_err(IdentityWriteError::into_db_error)
+        })
+        .await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -212,6 +225,7 @@ impl Database {
             tracks.to_vec(),
             track_artists.to_vec(),
         );
+        let labels = self.label_parts(&release.pressing.labels);
         self.call_sql(move |sql| {
             let tx = &sql;
 
@@ -219,7 +233,8 @@ impl Database {
             for credit in &album_artists {
                 insert_album_artist_row(tx, credit)?;
             }
-            insert_release_row(tx, &release)?;
+            insert_release_row(tx, &release, &label_write(&labels))
+                .map_err(IdentityWriteError::into_db_error)?;
             for medium in &mediums {
                 insert_release_medium_row(tx, medium)?;
             }
@@ -248,10 +263,12 @@ impl Database {
             tracks.to_vec(),
             track_artists.to_vec(),
         );
+        let labels = self.label_parts(&release.pressing.labels);
         self.call_sql(move |sql| {
             let tx = &sql;
 
-            insert_release_row(tx, &release)?;
+            insert_release_row(tx, &release, &label_write(&labels))
+                .map_err(IdentityWriteError::into_db_error)?;
             for medium in &mediums {
                 insert_release_medium_row(tx, medium)?;
             }
@@ -272,10 +289,17 @@ impl Database {
     pub(crate) async fn update_release_metadata_user_edit(
         &self,
         metadata: ReleaseMetadataRows,
-    ) -> Result<(), ArtistWriteError> {
+    ) -> Result<(), IdentityWriteError> {
+        let labels = self.label_parts(&metadata.release.pressing.labels);
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
-        self.write_resolving_artists(move |sql| {
-            write_release_metadata_on(&sql, &metadata, AlbumFields::Written, &now)
+        self.write_resolving_identities(move |sql| {
+            write_release_metadata_on(
+                &sql,
+                &metadata,
+                AlbumFields::Written,
+                &now,
+                &label_write(&labels),
+            )
         })
         .await
     }
@@ -557,7 +581,7 @@ impl Database {
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: NewArtistImages<'_>,
-    ) -> Result<(), ArtistWriteError> {
+    ) -> Result<(), IdentityWriteError> {
         let album = album.cloned();
         let release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files
@@ -602,6 +626,7 @@ impl Database {
         let records = rows.records.to_vec();
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         let now = now_dt.to_rfc3339();
+        let labels = self.label_parts(&release.pressing.labels);
         self.write_with_files(
             move |w| {
                 let images: Vec<coven::FileId> = image_files
@@ -630,14 +655,14 @@ impl Database {
                 };
                 let resolved = credits
                     .resolve_for_import_on(tx, guard.content_hash())
-                    .map_err(artist_write_failure)?;
+                    .map_err(identity_write_failure)?;
                 let inserted: BTreeSet<String> = resolved
                     .inserts
                     .iter()
                     .map(|artist| artist.id.clone())
                     .collect();
                 if inserted != expected_new_artists {
-                    return Err(artist_write_failure(ArtistWriteError::LibraryChanged));
+                    return Err(identity_write_failure(IdentityWriteError::LibraryChanged));
                 }
                 resolved.write_on(tx)?;
                 let artist_ids = resolved.id_map(&artist_credits);
@@ -667,8 +692,13 @@ impl Database {
                     replace_album_artists(tx, &album.id, &album_artists, &now)?;
                 }
 
-                insert_release_row(tx, &release)?;
-                record_import_origin_on(tx, &guard, &release.id).map_err(artist_write_failure)?;
+                insert_release_row(
+                    tx,
+                    &release,
+                    &import_label_write(&labels, guard.content_hash()),
+                )
+                .map_err(identity_write_failure)?;
+                record_import_origin_on(tx, &guard, &release.id).map_err(identity_write_failure)?;
                 // The credits are resolved above, so the artist decisions
                 // this deletes have been read.
                 delete_what_the_import_spent_on(tx, &guard)?;
@@ -746,7 +776,7 @@ impl Database {
         )
         .await
         .map(|_| ())
-        .map_err(Self::artist_write_error)
+        .map_err(Self::identity_write_error)
     }
 
     /// Delete a release in one write. Its album's next release in album order

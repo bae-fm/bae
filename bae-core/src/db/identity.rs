@@ -34,6 +34,20 @@ pub fn artist_id(
     }
 }
 
+/// The label a catalog names, preferring MusicBrainz. `None` for a label
+/// known only by name: nothing identifies it across devices, so it gets an
+/// independent id.
+pub fn label_id(
+    musicbrainz_label_id: Option<&str>,
+    discogs_label_id: Option<&str>,
+) -> Option<String> {
+    match (musicbrainz_label_id, discogs_label_id) {
+        (Some(musicbrainz), _) => Some(id_for(&format!("musicbrainz label {musicbrainz}"))),
+        (None, Some(discogs)) => Some(id_for(&format!("discogs label {discogs}"))),
+        (None, None) => None,
+    }
+}
+
 /// The work a MusicBrainz work id names.
 pub fn work_id(musicbrainz_work_id: &str) -> String {
     id_for(&format!("musicbrainz work {musicbrainz_work_id}"))
@@ -73,6 +87,11 @@ pub fn release_medium_id(release_id: &str, position: u16) -> String {
     id_for(&format!("release medium {release_id} {position}"))
 }
 
+/// The label at `position` of a release's labels.
+pub fn release_label_id(release_id: &str, position: usize) -> String {
+    id_for(&format!("release label {release_id} {position}"))
+}
+
 /// The barcode at `position` of a release's barcodes.
 pub fn release_barcode_id(release_id: &str, position: usize) -> String {
     id_for(&format!("release barcode {release_id} {position}"))
@@ -109,5 +128,8 @@ mod tests {
         );
         assert_eq!(artist_id(Some("x"), Some("y")), artist_id(Some("x"), None));
         assert_eq!(artist_id(None, None), None);
+        assert_ne!(label_id(Some("x"), None), artist_id(Some("x"), None));
+        assert_eq!(label_id(Some("x"), Some("y")), label_id(Some("x"), None));
+        assert_eq!(label_id(None, None), None);
     }
 }

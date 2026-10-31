@@ -35,6 +35,30 @@ struct ImportConfirmationBannersTests {
         )
     }
 
+    private func labelConflictFailure() -> BridgeImportFailure {
+        .labelIdentityConflict(
+            conflict: BridgeLabelIdentityConflict(
+                incomingLabelName: "Label One",
+                discogsLabel: BridgeExistingLabel(
+                    labelId: "library-label-1",
+                    name: "Label One",
+                    musicbrainzLabelId: nil,
+                    discogsLabelId: "discogs-1"
+                ),
+                musicbrainzLabel: BridgeExistingLabel(
+                    labelId: "library-label-2",
+                    name: "Label One Records",
+                    musicbrainzLabelId: "musicbrainz-1",
+                    discogsLabelId: nil
+                )
+            ),
+            error: .Diagnostic(
+                category: .import,
+                detail: "the label identities disagree"
+            )
+        )
+    }
+
     @MainActor
     @Test("artist identity repair remains visible beside the failed row status")
     func artistIdentityRepairRemainsVisibleBesideFailedStatus() async throws {
@@ -66,6 +90,9 @@ struct ImportConfirmationBannersTests {
                 canEdit: true,
                 onRetry: { Issue.record("a conflict does not offer retry") },
                 onChooseArtistIdentity: { choices.append($0) },
+                onChooseLabelIdentity: { _ in
+                    Issue.record("an artist conflict sends no label answer")
+                },
                 onViewInLibrary: { _ in }
             ),
             size: NSSize(width: 720, height: 480)
@@ -93,6 +120,45 @@ struct ImportConfirmationBannersTests {
     }
 
     @MainActor
+    @Test("a label conflict's buttons send all five label choices")
+    func eachLabelButtonSendsItsChoice() async throws {
+        var choices: [BridgeLabelIdentityConflictChoice] = []
+        try await SnapshotTestSupport.withHostedWindow(
+            ImportConfirmationBanners(
+                libraryStatus: nil,
+                importStatus: nil,
+                error: nil,
+                failure: labelConflictFailure(),
+                canEdit: true,
+                onRetry: { Issue.record("a conflict does not offer retry") },
+                onChooseArtistIdentity: { _ in
+                    Issue.record("a label conflict sends no artist answer")
+                },
+                onChooseLabelIdentity: { choices.append($0) },
+                onViewInLibrary: { _ in }
+            ),
+            size: NSSize(width: 720, height: 480)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            #expect(choices.isEmpty)
+            let controls = host.subviews.filter {
+                $0.nextKeyView != nil || $0.previousKeyView != nil
+            }
+            for control in controls {
+                #expect(HostedInput.focus(control, in: window))
+                try HostedInput.keyDown(.space, in: window)
+                try await SnapshotTestSupport.settle(host)
+            }
+            #expect(
+                choices == [
+                    .sameLabel, .discogsLabel, .musicBrainzLabel, .neither,
+                    .changeMatch,
+                ]
+            )
+        }
+    }
+
+    @MainActor
     private func focusControlCount(
         failure: BridgeImportFailure
     ) async throws -> Int {
@@ -110,6 +176,7 @@ struct ImportConfirmationBannersTests {
                 canEdit: true,
                 onRetry: {},
                 onChooseArtistIdentity: { _ in },
+                onChooseLabelIdentity: { _ in },
                 onViewInLibrary: { _ in }
             ),
             size: NSSize(width: 640, height: 480)

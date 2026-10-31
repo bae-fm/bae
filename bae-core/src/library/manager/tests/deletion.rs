@@ -131,7 +131,7 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
         let handle = crate::library::configure_store(
             manager.installation.builder(manager.app_dir.store_layout())
         ).open(id, |_| ()).await.unwrap();
-        let reopened = Database::from_handle(handle, manager.clock.clone());
+        let reopened = Database::from_handle(handle, manager.clock.clone(), std::sync::Arc::new(coven::UuidIds));
         assert_eq!(reopened.every_row_for_test().await.unwrap(), before);
         reopened.close().await.unwrap();
     }

@@ -267,7 +267,7 @@ fn seed_discogs_for_xref(
         }],
     })
     .to_string();
-    bae_catalogs::discogs::client::parse_discogs_release_json(&raw_json)
+    bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_json)
         .expect("the rendered Discogs release parses");
     f.library_manager.providers().discogs().seed_release_cache(release_id, raw_json);
     // MusicBrainz is asked about the release's address and its master's in

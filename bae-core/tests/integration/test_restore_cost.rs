@@ -123,7 +123,11 @@ async fn restore_cost(library: Library) {
         app_dir.registered_library(&handle.store_id().to_string()),
     );
     let manager = LibraryManager::new(
-        bae_core::db::Database::from_handle(handle.clone(), clock.clone()),
+        bae_core::db::Database::from_handle(
+            handle.clone(),
+            clock.clone(),
+            std::sync::Arc::new(coven::UuidIds),
+        ),
         app_dir.clone(),
         Arc::new(ConfigHandle::new(config)),
         clock.clone(),

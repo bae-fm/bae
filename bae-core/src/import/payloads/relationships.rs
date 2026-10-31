@@ -194,7 +194,7 @@ impl ReleasePayloads {
                 incomplete = true;
                 continue;
             };
-            match bae_catalogs::discogs::client::parse_discogs_release_json(json)?.master_id {
+            match bae_catalogs::discogs::documents::parse_discogs_release_json(json)?.master_id {
                 Some(master) => filed.push((key, master)),
                 None => incomplete = true,
             }

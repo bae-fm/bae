@@ -191,10 +191,13 @@ pub async fn unsent_before_removal(
     let handle = super::configure_store(builder)
         .open(store, on_open_progress)
         .await?;
-    let unsent =
-        crate::db::Database::from_handle(handle.clone(), std::sync::Arc::new(coven::SystemClock))
-            .unsent_before_removal()
-            .await;
+    let unsent = crate::db::Database::from_handle(
+        handle.clone(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidIds),
+    )
+    .unsent_before_removal()
+    .await;
     let closed = handle.close().await;
     let unsent = unsent?;
     closed?;

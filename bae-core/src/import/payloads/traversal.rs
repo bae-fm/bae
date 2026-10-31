@@ -55,7 +55,7 @@ pub(super) fn related_documents(
             )
         }
         PayloadSource::Discogs => {
-            let release = bae_catalogs::discogs::client::parse_discogs_release_json(json)?;
+            let release = bae_catalogs::discogs::documents::parse_discogs_release_json(json)?;
             // The release's page states its master, so the walk holds the
             // lookups by both addresses at once and asks them together.
             if let Some(master) = release.master_id {
@@ -66,7 +66,7 @@ pub(super) fn related_documents(
             (Vec::new(), false)
         }
         PayloadSource::DiscogsMaster => {
-            bae_catalogs::discogs::client::parse_discogs_master_json(json)?;
+            bae_catalogs::discogs::documents::parse_discogs_master_json(json)?;
             next.push((PayloadSource::MusicBrainzDiscogsMasterXref, key.to_owned()));
             (Vec::new(), true)
         }

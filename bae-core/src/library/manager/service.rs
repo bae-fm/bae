@@ -84,7 +84,7 @@ impl LibraryManager {
                 handle
             }
         };
-        let database = Database::from_handle(handle, clock.clone());
+        let database = Database::from_handle(handle, clock.clone(), ids.clone());
         // No transfer outlives the process that ran it, so the library opens
         // with its transfer queues empty, before their workers start.
         database.clear_release_queues().await?;

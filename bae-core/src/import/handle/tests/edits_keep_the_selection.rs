@@ -51,6 +51,7 @@ fn field_edits() -> Vec<DraftFieldEdit> {
         DraftFieldEdit::Labels(vec![RawLabelEdit {
             name: "Label Name".to_string(),
             catalog_number: "CAT-2".to_string(),
+            ..Default::default()
         }]),
         DraftFieldEdit::Barcodes(vec!["0123456789012".to_string()]),
         DraftFieldEdit::PressingFact(PressingFactEdit::Status(Some(

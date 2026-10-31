@@ -157,6 +157,12 @@ struct ImportMappingPane: View {
                         $0
                     )
                 },
+                onChooseLabelIdentity: {
+                    commitActions.chooseLabelIdentity(
+                        detail.metadataRevision,
+                        $0
+                    )
+                },
                 onViewInLibrary: commitActions.viewInLibrary,
             )
         }

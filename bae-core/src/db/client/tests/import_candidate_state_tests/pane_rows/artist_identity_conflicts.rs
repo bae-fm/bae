@@ -7,13 +7,15 @@ fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist) -> Import
     ImportFailure {
         reason: crate::import::ImportFailureReason::error("the artist identities disagree"),
         failed_at: fixed_now(),
-        artist_identity_conflict: Some(crate::import::ArtistIdentityConflict {
-            incoming_artist_name: "Artist One".to_string(),
-            discogs_artist_id: "discogs-1".to_string(),
-            musicbrainz_artist_id: "mb-1".to_string(),
-            discogs_artist: discogs.clone().into(),
-            musicbrainz_artist: musicbrainz.clone().into(),
-        }),
+        identity_conflict: Some(crate::import::IdentityConflict::Artist(
+            crate::import::ArtistIdentityConflict {
+                incoming_artist_name: "Artist One".to_string(),
+                discogs_artist_id: "discogs-1".to_string(),
+                musicbrainz_artist_id: "mb-1".to_string(),
+                discogs_artist: discogs.clone().into(),
+                musicbrainz_artist: musicbrainz.clone().into(),
+            },
+        )),
     }
 }
 

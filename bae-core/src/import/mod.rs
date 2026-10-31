@@ -272,9 +272,12 @@ pub use candidates::{
 };
 #[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource};
-pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ImportError;
-pub use error::{ArtistIdentityConflict, ArtistIdentityConflictChoice};
+pub(crate) use error::{artist_source_ids_are_compatible, label_ids_are_compatible};
+pub use error::{
+    ArtistIdentityConflict, ArtistIdentityConflictChoice, ExistingLabel, IdentityConflict,
+    LabelIdentityConflict, LabelIdentityConflictChoice,
+};
 #[cfg(desktop)]
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(desktop)]

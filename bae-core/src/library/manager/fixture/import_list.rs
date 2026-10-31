@@ -219,7 +219,7 @@ impl LibraryManager {
                                 detail: FIXTURE_IMPORT_FAILURE.to_string(),
                             },
                             failed_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
-                            artist_identity_conflict: None,
+                            identity_conflict: None,
                         },
                     )
                     .await

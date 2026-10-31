@@ -30,12 +30,14 @@ impl Pressing {
 
     /// Every label the row's records state, as one list in the order of the
     /// record the row leads with: the lead's labels, then each label another
-    /// record states that the lead does not, in that record's order.
+    /// record states that the lead does not, in that record's order. A label
+    /// two records state carries the ids each knows it by.
     pub fn labels(&self) -> Vec<bae_types::pressing::ReleaseLabel> {
         let mut labels: Vec<bae_types::pressing::ReleaseLabel> = Vec::new();
         for label in self.releases.iter().flat_map(|release| &release.labels) {
-            if !labels.iter().any(|stated| same_label(stated, label)) {
-                labels.push(label.clone());
+            match labels.iter_mut().find(|stated| same_label(stated, label)) {
+                Some(stated) => stated.take_missing_ids(label),
+                None => labels.push(label.clone()),
             }
         }
         labels

@@ -455,12 +455,14 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
     response.label_info = vec![
         bae_catalogs::musicbrainz::MbLabelInfo {
             label: Some(bae_catalogs::musicbrainz::MbLabel {
+                id: None,
                 name: Some("Label A".to_string()),
             }),
             catalog_number: Some("AB 100".to_string()),
         },
         bae_catalogs::musicbrainz::MbLabelInfo {
             label: Some(bae_catalogs::musicbrainz::MbLabel {
+                id: None,
                 name: Some("Label B".to_string()),
             }),
             catalog_number: Some("CL 719".to_string()),

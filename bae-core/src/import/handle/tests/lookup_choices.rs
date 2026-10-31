@@ -306,6 +306,7 @@ pub(super) fn seed_mb_release_with_catalog(
         release_group: None,
         label_info: vec![bae_catalogs::musicbrainz::MbLabelInfo {
             label: Some(bae_catalogs::musicbrainz::MbLabel {
+                id: None,
                 name: Some("Label Name".to_string()),
             }),
             catalog_number: Some(catalog_number.to_string()),

@@ -158,7 +158,7 @@ impl ReleasePayloads {
 
     /// The anchoring Discogs release, parsed, as [`Self::musicbrainz_anchor`].
     fn discogs_anchor(&self) -> Result<DiscogsRelease, ImportError> {
-        bae_catalogs::discogs::client::parse_discogs_release_json(&self.anchor)
+        bae_catalogs::discogs::documents::parse_discogs_release_json(&self.anchor)
             .map_err(|e| self.source_data(format!("stored Discogs release does not parse: {e}")))
     }
 
@@ -173,7 +173,7 @@ impl ReleasePayloads {
         let Some(json) = self.document(PayloadSource::Discogs, &counterpart.key) else {
             return Ok(None);
         };
-        bae_catalogs::discogs::client::parse_discogs_release_json(json)
+        bae_catalogs::discogs::documents::parse_discogs_release_json(json)
             .map(Some)
             .map_err(ImportError::from)
     }
@@ -238,9 +238,8 @@ impl ReleasePayloads {
             .collect();
         for (catalog, key, json) in self.album_documents()? {
             match catalog {
-                Catalog::Discogs => covers.extend(
-                    bae_catalogs::discogs::client::parse_discogs_master_covers(json)?,
-                ),
+                Catalog::Discogs => covers
+                    .extend(bae_catalogs::discogs::documents::parse_discogs_master_covers(json)?),
                 Catalog::MusicBrainz => covers.push(RemoteCover::musicbrainz_release_group(key)),
                 other => not_fetched(other),
             }

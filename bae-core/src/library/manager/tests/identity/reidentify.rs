@@ -712,7 +712,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         }],
     })
     .to_string();
-    bae_catalogs::discogs::client::parse_discogs_release_json(&discogs_raw)
+    bae_catalogs::discogs::documents::parse_discogs_release_json(&discogs_raw)
         .expect("the rendered Discogs release parses");
     manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
     manager.providers().musicbrainz().seed_discogs_page_lookup(&[

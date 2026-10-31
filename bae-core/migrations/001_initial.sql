@@ -184,16 +184,12 @@ CREATE TABLE IF NOT EXISTS releases (
     album_order REAL NOT NULL,
     release_name TEXT,
     year INTEGER,
-    -- Every label the pressing is on, in its source's order: a JSON array of
-    -- {"name", "catalog_number"} objects, each stating one or both.
-    labels             TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
     region             TEXT CHECK (region IS NULL OR region <> ''),
-    -- Its barcodes are its `release_barcodes` rows, its media its
-    -- `release_media` rows.
+    -- Its labels are its `release_labels` rows, its barcodes its
+    -- `release_barcodes` rows, its media its `release_media` rows.
     status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
     packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
     -- What Discogs says about the pressing that no column holds: a JSON array
@@ -215,6 +211,80 @@ CREATE TABLE IF NOT EXISTS releases (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id, album_order, id);
+
+-- Every record label the library knows. A label is found by a catalog id it
+-- carries first, then by `name_key`: `name` read by
+-- `text_match::label_name_key` (its words run together, without the trade
+-- words it ends on), always written together with `name`.
+CREATE TABLE IF NOT EXISTS labels (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL CHECK (name <> ''),
+    name_key TEXT NOT NULL,
+    musicbrainz_label_id TEXT CHECK (musicbrainz_label_id IS NULL OR musicbrainz_label_id <> ''),
+    discogs_label_id TEXT CHECK (discogs_label_id IS NULL OR discogs_label_id <> ''),
+    created_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_labels_name_key ON labels (name_key);
+
+CREATE INDEX IF NOT EXISTS idx_labels_musicbrainz_id ON labels (musicbrainz_label_id);
+
+CREATE INDEX IF NOT EXISTS idx_labels_discogs_id ON labels (discogs_label_id);
+
+-- Two library labels the person confirmed are one: `id` was absorbed into
+-- `into_label_id`. Both rows stay so a release another device gave the
+-- absorbed label still names it; reads go through `merged_label_survivors`.
+CREATE TABLE IF NOT EXISTS label_merges (
+    id TEXT PRIMARY KEY,
+    into_label_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    CHECK (id <> into_label_id),
+    FOREIGN KEY (id) REFERENCES labels (id) ON DELETE CASCADE,
+    FOREIGN KEY (into_label_id) REFERENCES labels (id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_label_merges_into ON label_merges (into_label_id);
+
+-- Each merged label and the label it shows as: the end of its merge chain. A
+-- cycle, left by devices merging a pair in opposite directions, shows as its
+-- smallest id. A label absent here shows as itself.
+CREATE VIEW IF NOT EXISTS merged_label_survivors AS
+WITH RECURSIVE hop(start, current, depth) AS (
+    SELECT id, into_label_id, 1 FROM label_merges
+    UNION ALL
+    SELECT hop.start, merge.into_label_id, hop.depth + 1
+    FROM hop JOIN label_merges merge ON merge.id = hop.current
+    WHERE hop.depth < 64
+),
+resolved(label_id, survivor_id) AS (
+    SELECT start,
+           COALESCE(
+               MIN(CASE WHEN current NOT IN (SELECT id FROM label_merges) THEN current END),
+               MIN(current)
+           )
+    FROM hop
+    GROUP BY start
+)
+SELECT label_id, survivor_id FROM resolved WHERE label_id <> survivor_id;
+
+-- Every label a pressing is on, in its source's order, each naming a library
+-- label, the catalog number that label gives the pressing, or both. The id
+-- derives from (release, position), so two devices that write one release's
+-- labels write the same rows.
+CREATE TABLE IF NOT EXISTS release_labels (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    -- Counted from zero.
+    position INTEGER NOT NULL CHECK (position >= 0),
+    label_id TEXT,
+    catalog_number TEXT CHECK (catalog_number IS NULL OR catalog_number <> ''),
+    UNIQUE (release_id, position),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
+    FOREIGN KEY (label_id) REFERENCES labels (id) ON DELETE CASCADE,
+    CHECK (label_id IS NOT NULL OR catalog_number IS NOT NULL)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_release_labels_label ON release_labels (label_id);
 
 -- Every barcode a pressing is printed with, in its source's order. The id
 -- derives from (release, position), so two devices that write one release's
@@ -2616,12 +2686,15 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
 
 -- The draft's label rows as the form holds them, in order, each field as
 -- typed, empty meaning unset: a row the person added and has not filled yet
--- is blank.
+-- is blank. A row keeps the ids the catalog that stated it knows its label
+-- by while it keeps the name it stated.
 CREATE TABLE IF NOT EXISTS import_candidate_edit_label (
     content_hash   TEXT NOT NULL,
     position       INTEGER NOT NULL CHECK (position >= 0),
     name           TEXT NOT NULL,
     catalog_number TEXT NOT NULL,
+    musicbrainz_label_id TEXT CHECK (musicbrainz_label_id IS NULL OR musicbrainz_label_id <> ''),
+    discogs_label_id     TEXT CHECK (discogs_label_id IS NULL OR discogs_label_id <> ''),
     PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
 ) STRICT;
@@ -2992,7 +3065,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     -- The pane's last command, when it failed: which command, the class of
     -- its failure, and the failure's untranslated text.
     error_command  TEXT CHECK (error_command IN (
-        'import', 'choose_artist_identity', 'read_file_tags',
+        'import', 'choose_artist_identity', 'choose_label_identity', 'read_file_tags',
         'change_lookups', 'change_search_words', 'change_agreements', 'keep_own_draft',
         'link_shared_album', 'unlink')),
     error_category TEXT,
@@ -3095,6 +3168,34 @@ CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_choice (
     choice TEXT NOT NULL CHECK (choice IN ('same_artist', 'discogs_artist', 'musicbrainz_artist', 'neither')),
     artist_id TEXT NOT NULL,
     PRIMARY KEY (content_hash, discogs_artist_id, musicbrainz_artist_id)
+) STRICT;
+
+-- The failure where one incoming label carries a MusicBrainz id and a Discogs
+-- id that two library labels hold.
+CREATE TABLE IF NOT EXISTS import_candidate_label_identity_conflict (
+    content_hash                 TEXT PRIMARY KEY,
+    incoming_label_name          TEXT NOT NULL,
+    discogs_label_id             TEXT NOT NULL,
+    musicbrainz_label_id         TEXT NOT NULL,
+    discogs_library_label_id     TEXT NOT NULL,
+    musicbrainz_library_label_id TEXT NOT NULL,
+    FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_failure (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (discogs_library_label_id) REFERENCES labels (id) ON DELETE CASCADE,
+    FOREIGN KEY (musicbrainz_library_label_id) REFERENCES labels (id) ON DELETE CASCADE
+) STRICT;
+
+-- A person's answer for one conflicting label in this candidate. The label's
+-- ids stay as the catalogs stated them; only a merge attaches both to one
+-- label. For 'neither', label_id reserves the new row's identity; import
+-- creates it in the same transaction as the release.
+CREATE TABLE IF NOT EXISTS import_candidate_label_identity_choice (
+    content_hash TEXT NOT NULL REFERENCES import_candidate_state(content_hash) ON DELETE CASCADE,
+    discogs_label_id TEXT NOT NULL,
+    musicbrainz_label_id TEXT NOT NULL,
+    choice TEXT NOT NULL CHECK (choice IN ('same_label', 'discogs_label', 'musicbrainz_label', 'neither')),
+    label_id TEXT NOT NULL,
+    PRIMARY KEY (content_hash, discogs_label_id, musicbrainz_label_id)
 ) STRICT;
 
 -- ── Identification ────────────────────────────────────────────────────────────
@@ -3353,6 +3454,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_label (
     ordinal        INTEGER NOT NULL CHECK (ordinal >= 0),
     name           TEXT CHECK (name IS NULL OR name <> ''),
     catalog_number TEXT CHECK (catalog_number IS NULL OR catalog_number <> ''),
+    -- The ids the catalogs know a named label by.
+    musicbrainz_label_id TEXT CHECK (musicbrainz_label_id IS NULL OR musicbrainz_label_id <> ''),
+    discogs_label_id     TEXT CHECK (discogs_label_id IS NULL OR discogs_label_id <> ''),
+    CHECK (name IS NOT NULL OR (musicbrainz_label_id IS NULL AND discogs_label_id IS NULL)),
     PRIMARY KEY (content_hash, position, ordinal),
     FOREIGN KEY (content_hash, position)
         REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
@@ -5062,6 +5167,10 @@ CREATE TABLE IF NOT EXISTS source_release_label (
     position       INTEGER NOT NULL CHECK (position >= 0),
     name           TEXT CHECK (name IS NULL OR name <> ''),
     catalog_number TEXT CHECK (catalog_number IS NULL OR catalog_number <> ''),
+    -- The ids the catalogs know a named label by.
+    musicbrainz_label_id TEXT CHECK (musicbrainz_label_id IS NULL OR musicbrainz_label_id <> ''),
+    discogs_label_id     TEXT CHECK (discogs_label_id IS NULL OR discogs_label_id <> ''),
+    CHECK (name IS NOT NULL OR (musicbrainz_label_id IS NULL AND discogs_label_id IS NULL)),
     PRIMARY KEY (catalog, release_id, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE,

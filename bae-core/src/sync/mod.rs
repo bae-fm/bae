@@ -110,6 +110,9 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("release_mediums", RowIdentity::SharedKey),
         SyncedTable::new("release_media", RowIdentity::SharedKey),
         SyncedTable::new("release_barcodes", RowIdentity::SharedKey),
+        SyncedTable::new("labels", RowIdentity::SharedKey),
+        SyncedTable::new("label_merges", RowIdentity::SharedKey),
+        SyncedTable::new("release_labels", RowIdentity::SharedKey),
         SyncedTable::new("tracks", RowIdentity::IndependentUuid),
         SyncedTable::new("track_artists", RowIdentity::SharedKey),
         SyncedTable::new("works", RowIdentity::SharedKey),
@@ -171,6 +174,9 @@ mod tests {
                 "release_mediums",
                 "release_media",
                 "release_barcodes",
+                "labels",
+                "label_merges",
+                "release_labels",
                 "tracks",
                 "track_artists",
                 "works",
@@ -204,6 +210,9 @@ mod tests {
                     | "release_mediums"
                     | "release_media"
                     | "release_barcodes"
+                    | "labels"
+                    | "label_merges"
+                    | "release_labels"
                     | "track_artists"
                     | "works"
                     | "work_artists"
@@ -400,6 +409,8 @@ mod tests {
         "import_identification_batch",
         "import_candidate_artist_identity_conflict",
         "import_candidate_artist_identity_choice",
+        "import_candidate_label_identity_conflict",
+        "import_candidate_label_identity_choice",
         "import_candidate_signals",
         "import_candidate_signal_value",
         "import_candidate_text_line",

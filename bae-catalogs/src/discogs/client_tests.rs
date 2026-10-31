@@ -1,5 +1,6 @@
 use super::*;
 use crate::catalog::Catalog;
+use crate::discogs::documents::parse_discogs_master_covers;
 use crate::remote_image::{DownscaledCopy, RemoteImageSet};
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -251,6 +252,38 @@ fn a_none_catalog_number_is_no_number() {
             "{placeholder}"
         );
     }
+}
+
+/// A release's label keeps Discogs' id for it, and loses the " (n)" Discogs
+/// appends to tell two labels of one name apart; a search result's names lose
+/// it too. A name only ending in a bracket keeps it.
+#[test]
+fn a_label_keeps_its_id_and_loses_its_disambiguation_suffix() {
+    let raw = serde_json::json!({
+        "id": 123, "title": "Album",
+        "labels": [
+            {"id": 7190, "name": "Rhino Records (2)", "catno": "R2 1"},
+            {"id": 12, "name": "Label (UK)"},
+        ]
+    })
+    .to_string();
+    assert_eq!(
+        parse_discogs_release_json(&raw).unwrap().labels,
+        vec![
+            bae_types::pressing::ReleaseLabel::of(Some("Rhino Records"), Some("R2 1"))
+                .with_ids(None, Some("7190".to_string())),
+            bae_types::pressing::ReleaseLabel::of(Some("Label (UK)"), None)
+                .with_ids(None, Some("12".to_string())),
+        ]
+    );
+    let search: DiscogsSearchResult = serde_json::from_value(serde_json::json!({
+        "id": 123, "type": "release", "title": "Album", "label": ["Rhino Records (2)", "Company (14)"]
+    }))
+    .unwrap();
+    assert_eq!(
+        search.label,
+        Some(vec!["Rhino Records".to_string(), "Company".to_string()])
+    );
 }
 
 #[test]

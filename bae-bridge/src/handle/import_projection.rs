@@ -794,22 +794,38 @@ impl crate::types::BridgeImportFailure {
         let bae_core::import::ImportFailure {
             reason,
             failed_at: _,
-            artist_identity_conflict,
+            identity_conflict,
         } = failure;
         let error = crate::types::BridgeError::from_core(reason.ui_error());
-        match artist_identity_conflict {
-            Some(conflict) => Self::ArtistIdentityConflict {
-                conflict: crate::types::BridgeArtistIdentityConflict {
-                    incoming_artist_name: conflict.incoming_artist_name,
-                    discogs_artist: crate::types::BridgeExistingArtist::from_core(
-                        conflict.discogs_artist,
-                    ),
-                    musicbrainz_artist: crate::types::BridgeExistingArtist::from_core(
-                        conflict.musicbrainz_artist,
-                    ),
-                },
-                error,
-            },
+        match identity_conflict {
+            Some(bae_core::import::IdentityConflict::Label(conflict)) => {
+                Self::LabelIdentityConflict {
+                    conflict: crate::types::BridgeLabelIdentityConflict {
+                        incoming_label_name: conflict.incoming_label_name,
+                        discogs_label: crate::types::BridgeExistingLabel::from_core(
+                            conflict.discogs_label,
+                        ),
+                        musicbrainz_label: crate::types::BridgeExistingLabel::from_core(
+                            conflict.musicbrainz_label,
+                        ),
+                    },
+                    error,
+                }
+            }
+            Some(bae_core::import::IdentityConflict::Artist(conflict)) => {
+                Self::ArtistIdentityConflict {
+                    conflict: crate::types::BridgeArtistIdentityConflict {
+                        incoming_artist_name: conflict.incoming_artist_name,
+                        discogs_artist: crate::types::BridgeExistingArtist::from_core(
+                            conflict.discogs_artist,
+                        ),
+                        musicbrainz_artist: crate::types::BridgeExistingArtist::from_core(
+                            conflict.musicbrainz_artist,
+                        ),
+                    },
+                    error,
+                }
+            }
             None => Self::Other { error },
         }
     }

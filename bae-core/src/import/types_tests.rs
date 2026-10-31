@@ -45,6 +45,7 @@ mod edit_shaping_tests {
                 labels: vec![RawLabelEdit {
                     name: "Label Name".to_string(),
                     catalog_number: "CAT-123".to_string(),
+                    ..Default::default()
                 }],
                 facts: bae_types::pressing::PressingFacts {
                     area: Some(bae_types::pressing::area("US")),
@@ -158,6 +159,50 @@ mod edit_shaping_tests {
         assert_eq!(pressing.labels[0].name(), Some("Label"));
     }
 
+    /// A label row an editor sends keeps the catalog ids of the stated row of
+    /// its name, at its own place or another, and shapes with them; a row
+    /// whose name was changed, or typed, carries none.
+    #[test]
+    fn a_label_row_keeps_its_ids_while_it_keeps_its_name() {
+        let row = |name: &str, catalog_number: &str| RawLabelEdit {
+            name: name.to_string(),
+            catalog_number: catalog_number.to_string(),
+            ..Default::default()
+        };
+        let stated = vec![
+            RawLabelEdit {
+                discogs_label_id: Some("7190".to_string()),
+                ..row("Rhino", "R2 1")
+            },
+            RawLabelEdit {
+                musicbrainz_label_id: Some("mb-harbor".to_string()),
+                ..row("Harbor", "")
+            },
+        ];
+        let sent = vec![
+            row("Harbor", "H 2"),
+            row("Rhino Records", "R2 1"),
+            row("New", ""),
+        ];
+        let kept = RawLabelEdit::kept_ids(sent, &stated);
+        assert_eq!(
+            kept.iter()
+                .map(|row| (
+                    row.musicbrainz_label_id.as_deref(),
+                    row.discogs_label_id.as_deref()
+                ))
+                .collect::<Vec<_>>(),
+            [(Some("mb-harbor"), None), (None, None), (None, None)]
+        );
+        let mut form = valid_form();
+        form.pressing.labels = kept;
+        assert_eq!(
+            form.shape().expect("shapes").pressing.labels[0],
+            bae_types::pressing::ReleaseLabel::of(Some("Harbor"), Some("H 2"))
+                .with_ids(Some("mb-harbor".to_string()), None)
+        );
+    }
+
     /// Every label row shapes into a label, in order, with the number typed
     /// beside it; a blank row and a repeated one are left out.
     #[test]
@@ -166,6 +211,7 @@ mod edit_shaping_tests {
         let row = |name: &str, catalog_number: &str| RawLabelEdit {
             name: name.to_string(),
             catalog_number: catalog_number.to_string(),
+            ..Default::default()
         };
         form.pressing.labels = vec![
             row("Label A", "AB 100"),
@@ -279,6 +325,7 @@ mod edit_shaping_tests {
             vec![RawLabelEdit {
                 name: String::new(),
                 catalog_number: "CAT-123".to_string(),
+                ..Default::default()
             }]
         );
 

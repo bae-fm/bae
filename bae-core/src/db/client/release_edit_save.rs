@@ -34,20 +34,33 @@ impl Database {
         change: Option<RecordsChange>,
         write: ReleaseEditWrite,
         album_fields: AlbumFields,
-    ) -> Result<(), ArtistWriteError> {
+    ) -> Result<(), IdentityWriteError> {
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
-        self.write_resolving_artists(move |sql| {
+        let labels = self.label_parts(match &write {
+            ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing.labels,
+            ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing.labels,
+        });
+        self.write_resolving_identities(move |sql| {
             if let Some(change) = &change {
                 super::records::set_records_on(&sql, change, now_dt)?;
             }
             let now = now_dt.to_rfc3339();
             match &write {
-                ReleaseEditWrite::Fields(metadata) => {
-                    write_release_metadata_on(&sql, metadata, album_fields, &now)
-                }
-                ReleaseEditWrite::Applied { rows, picked } => {
-                    write_applied_rows_on(&sql, rows, picked, album_fields, &now)
-                }
+                ReleaseEditWrite::Fields(metadata) => write_release_metadata_on(
+                    &sql,
+                    metadata,
+                    album_fields,
+                    &now,
+                    &label_write(&labels),
+                ),
+                ReleaseEditWrite::Applied { rows, picked } => write_applied_rows_on(
+                    &sql,
+                    rows,
+                    picked,
+                    album_fields,
+                    &now,
+                    &label_write(&labels),
+                ),
             }
         })
         .await
@@ -64,7 +77,8 @@ fn write_applied_rows_on(
     picked: &[String],
     album_fields: AlbumFields,
     now: &str,
-) -> Result<(), ArtistWriteError> {
+    labels: &super::LabelWrite<'_>,
+) -> Result<(), IdentityWriteError> {
     let resolved = ArtistCredits {
         credits: &rows.artists,
         picked,
@@ -101,7 +115,7 @@ fn write_applied_rows_on(
         )?;
         replace_album_artists(tx, &album.id, &album_artists, now)?;
     }
-    super::release::update_release_pressing_on(tx, &rows.release)?;
+    super::release::update_release_pressing_on(tx, &rows.release, labels)?;
 
     // Each medium row is keyed by its release and position, so one the
     // release keeps is rewritten in place; tracks move onto the new rows
