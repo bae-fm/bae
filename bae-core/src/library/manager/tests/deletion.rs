@@ -103,6 +103,7 @@ async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
         let source = temp.path().join("source");
         let release = insert_release_with_queued_uploads(&manager, &source, "Album", &[("track.flac", b"audio")]).await;
         store_test_cover(&manager, &release.id, b"cover").await;
+        finish_bound_uploads(&manager).await;
         storage.set_online(false);
         if delete_album { manager.delete_album(&release.album_id).await.unwrap(); }
         else { manager.delete_release(&release.id).await.unwrap(); }

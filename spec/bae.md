@@ -1390,15 +1390,25 @@ last reference, and coven deletes its stored bytes once nothing refers to them
 When two artists merge (§2.3) and only the absorbed one has an image, the
 survivor's row references the same file: nothing is uploaded again.
 
-The apps and Subsonic clients cache art by an image's version, which must
-move whenever the bytes a device can show for it do. A row references its new
-file at once, and every device receives it with the row, but another device
-can read the file only once its upload completes: until then coven has it on
-the uploading device only. So the version is the file's id, followed by its
-content hash once coven records it as stored. The uploading device's version
-moves with its write; another device's moves when the write arrives, and again
-when the upload completes. Until then that device shows the image it had, or
-none.
+The three image references are bound
+([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)):
+the write that points a row at a new image goes out only once coven has
+stored the image's file, and another device receives the row and the stored
+file in one transaction. So no device but the one that made an image sees a
+row naming an image it can't read, unless a schema change that needs every
+device updated is made between the write and the end of its upload: the row
+then goes out before the change and the stored file after it, and until the
+file arrives other devices can't read the image and show a plain tile where
+it would be. The device that made the image shows it at once, read from
+coven's own copy. Until the file is stored, that device's later writes wait
+behind it too, a rating made right after included, which is why a bound file
+must be small: coven refuses a write naming a file over 1.5 MiB. Every image
+bae stores is a JPEG at most 600 pixels across, which stays under that limit.
+
+The apps and Subsonic clients cache art by an image's version, which must move
+whenever its bytes do. A coven file never changes its bytes, and a new image
+is a new file, so the version is the file's id: it moves on every device with
+the write that sets it.
 
 ### 4.2 Local and uploaded releases
 
@@ -1439,12 +1449,15 @@ Where a file is changes in coven's own record of it, with no change to a row
 of bae's, so the release's listing follows coven's `coven_files`, which also
 gives each file's size (Appendix B).
 
-A local release's cover still uploads, so other devices can show it. coven
-queues it as soon as the cover row is written, with or without storage
-connected. That upload is bae's own file, not the release's: until its audio
-moves, the release reads as local everywhere, and nothing about it reads as
-uploading. Waiting files draw no progress bar; a bar appears only while a
-file's bytes are moving.
+A release's cover is bound (§4.1), so it reaches other devices with the
+release, local or not: the write that imports the release, or sets its cover,
+waits until coven has stored the cover, and other devices receive the
+release's rows and its stored cover together. coven uploads covers apart from
+the release files, never behind them, and pausing uploads doesn't hold them.
+That upload is bae's own file, not the release's: until its audio moves, the
+release reads as local everywhere, and nothing about it reads as uploading.
+Waiting files draw no progress bar; a bar appears only while a file's bytes
+are moving.
 
 **Moving to the cloud.** Moving a release to the cloud reads each of its
 originals whole once, then records one move of all its files in one write
@@ -1488,7 +1501,9 @@ Other devices go on showing the release without playing it.
   are.
 - **Uploads queue.** Files go up three at a time by default, a setting from
   one to eight. The queue can be paused, and stays paused across restarts; a
-  paused upload keeps its place.
+  paused upload keeps its place. The pause holds release files only: a cover,
+  artist image or avatar is part of sending a write, and goes on uploading,
+  up to the same number at a time, counted apart from the release files.
 
 **The Storage Manager** lists every release with its album's title and
 credits, its media, its files' count and total size, whether it is uploaded,
@@ -2183,11 +2198,15 @@ with:
   [coven §15.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#151-declaring-audiences));
 - **whether it is an owner table**: `people`, `ratings`, `history`,
   `playlists` and `playlist_entries` are (§5.5);
-- **the columns that reference a coven file**: `file` on `release_files`,
-  `covers` and `artist_images`, and `avatar_id` on `people`, each a trailing
-  reference: a write setting it goes out at once, and other devices see the
-  file on its uploading device until it is stored
-  ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)).
+- **the columns that reference a coven file**
+  ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)),
+  each with its binding
+  ([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)):
+  `file` on `release_files` is trailing, so a write setting it goes out at
+  once and other devices see the file on its uploading device until it is
+  stored; `file` on `covers` and `artist_images` and `avatar_id` on `people`
+  are bound, with coven's default limit of 1.5 MiB, so a write setting one
+  goes out only once its file is stored, together with it (§4.1).
 
 bae declares its four kinds of file when the store opens, each a coven
 *namespace* with its kind and this device's cache budget (§4.3):
@@ -2196,9 +2215,9 @@ bae's own. Each file is downloaded when it is first read.
 
 Appendix B lists every declaration. A test holds the declarations to exactly
 that list, each table with its identity, audience, owner flag and file
-references, and the namespaces with their kinds and budgets, so a
-device-local table such as `local_release_origin` or `local_history` can't start
-syncing by accident. Another holds every table the schema creates to one
+references with their bindings, and the namespaces with their kinds and
+budgets, so a device-local table such as `local_release_origin` or
+`local_history` can't start syncing by accident. Another holds every table the schema creates to one
 of two lists, declared or device-local, so a new table stays on one device only
 when that was decided.
 
@@ -2373,7 +2392,15 @@ rather than claim the library is synced.
   the same way on Android, and in the list on macOS.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
-- **Pausing** stops uploads and keeps their place, across restarts too.
+- **Pausing** stops uploads of release files and keeps their place, across
+  restarts too. A cover, artist image or avatar goes on uploading: the write
+  naming it waits for it (§4.1).
+- **A cover, artist image or avatar that can't upload** fails as a release
+  file's upload does, and is never given up: a failure coven retries by itself
+  waits and retries, and one only the person can clear, such as a full account
+  or refused credentials, waits for them, its pending record showing it.
+  Meanwhile the write naming the image, and every later write of this device,
+  waits to be sent.
 
 **Resetting a device.** Opening can fail because the database is damaged, and
 sync can find that this installation is another copy of the device, such as
@@ -3460,8 +3487,8 @@ from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). *File* names the
-column that references a coven file, a trailing reference, and the namespace
-its files are in. `local_release_origin`, `local_history`, the import tables (A.4–A.8),
+column that references a coven file, whether the reference is trailing or
+bound (§6.3), and the namespace its files are in. `local_release_origin`, `local_history`, the import tables (A.4–A.8),
 `import_candidate_standing` and `import_identification_batch` among them, and
 the transfer queues (A.9) are not declared, so they never sync.
 
@@ -3483,13 +3510,13 @@ the transfer queues (A.9) are not declared, so they never sync.
 | `track_works` | independent | store | | |
 | `release_artist_roles` | independent | store | | |
 | `track_artist_roles` | independent | store | | |
-| `release_files` | independent | store | | `file`, in `release_files`: the person's own; set by the import; on the importing device only until moved to the cloud; read on first use |
+| `release_files` | independent | store | | `file`, trailing, in `release_files`: the person's own; set by the import; on the importing device only until moved to the cloud; read on first use |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
 | `audio_segment_scrub_points` | independent: its segment | store | | |
-| `covers` | shared key: the release | store | | `file`, in `covers`: bae's own; read on first use |
-| `artist_images` | shared key: the artist | store | | `file`, in `artist_images`: bae's own; read on first use; shared by two merged artists |
-| `people` | shared key: the person's `MemberId` | store | yes | `avatar_id`, in `avatars`: bae's own; read on first use |
+| `covers` | shared key: the release | store | | `file`, bound, in `covers`: bae's own; read on first use |
+| `artist_images` | shared key: the artist | store | | `file`, bound, in `artist_images`: bae's own; read on first use; shared by two merged artists |
+| `people` | shared key: the person's `MemberId` | store | yes | `avatar_id`, bound, in `avatars`: bae's own; read on first use |
 | `ratings` | shared key: the person, and the album or track | store | yes | |
 | `history` | independent, one per play | per row: the person's circle or the store, by their setting | yes | |
 | `playlists` | independent | per row: the person's circle or the store | yes | |

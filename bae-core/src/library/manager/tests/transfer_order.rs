@@ -29,7 +29,7 @@ async fn uploading_releases_keep_their_admission_order() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
+async fn upload_keeps_every_file_in_the_queue() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let mut album = create_test_album();
@@ -66,12 +66,6 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
             .await
             .unwrap();
     }
-    let cover_bytes = b"cover-bytes";
-    let cover = DbLibraryImage::cover(&release.id, "local", None, manager.clock.now().into());
-    manager
-        .store_library_image(&cover, cover_bytes)
-        .await
-        .unwrap();
     let files = release_files(&manager, &release.id).await;
 
     manager.upload_release(&release.id, false).await.unwrap();
@@ -83,7 +77,6 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
             .await
             .unwrap().into_iter().collect::<std::collections::BTreeSet<_>>(),
         vec![
-            (crate::sync::COVERS_NAMESPACE.to_string(), release.id),
             (
                 crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
                 files[0].id.clone(),

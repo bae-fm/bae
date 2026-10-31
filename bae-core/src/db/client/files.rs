@@ -155,21 +155,14 @@ impl Database {
     }
 }
 
-/// A library image's version: the coven file its row names, then a dot and
-/// that file's content hash in lowercase hex once `coven_files` records it as
-/// stored. A new image is a new file, so the version moves on every device
-/// with the write that sets it. Sentinel: the hash part goes with bae commit
-/// 5, which makes images bound references that reach other devices with
-/// their file stored. Until then another device sees a new image's file on
-/// its uploader only, and the hash moves the version once it can read it.
+/// A library image's version: the coven file its row names. A new image is a
+/// new file, and the image's references are bound, so every device receives
+/// the row naming a new file together with the stored file, and the version
+/// moves with that write.
 ///
 /// This is that version of the image row `alias` names, as a SQL expression.
 pub(super) fn image_version_sql(alias: &str) -> String {
-    format!(
-        "({alias}.file || COALESCE((SELECT '.' || lower(hex(coven.hash)) \
-          FROM coven_files AS coven \
-          WHERE coven.id = {alias}.file AND coven.hash IS NOT NULL), ''))"
-    )
+    format!("{alias}.file")
 }
 
 /// The version of the cover of the release `release_id` (a SQL expression),

@@ -379,6 +379,16 @@ async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u
         .unwrap();
 }
 
+/// Run the bound uploads waiting now, a cover's, an artist image's or an
+/// avatar's, to their end. [`connect_test_cloud`]'s pause holds only release
+/// files, and coven's worker starts a bound upload as its write commits, so
+/// this joins that upload rather than racing it. A retry while uploads are
+/// paused tries only bound uploads, so the paused queue stays as it was.
+#[cfg(feature = "test-utils")]
+async fn finish_bound_uploads(manager: &LibraryManager) {
+    manager.database.retry_uploads_now().await.unwrap();
+}
+
 /// Whether coven keeps the coven file a row references in the pinned cache.
 /// Asked of that row's own file rather than through a release's pin marker,
 /// which counts the release's files and never its cover.

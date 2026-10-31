@@ -123,9 +123,12 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // A segment's points are one row, keyed by the segment's id.
         SyncedTable::new("audio_segment_scrub_points", RowIdentity::IndependentUuid)
             .key_columns(["audio_format_segment_id"]),
-        SyncedTable::new("covers", RowIdentity::SharedKey).file_column(FileColumn::new("file")),
+        // An image reaches other devices with its row: the write naming it
+        // waits until its file is stored.
+        SyncedTable::new("covers", RowIdentity::SharedKey)
+            .file_column(FileColumn::new("file").bound()),
         SyncedTable::new("artist_images", RowIdentity::SharedKey)
-            .file_column(FileColumn::new("file")),
+            .file_column(FileColumn::new("file").bound()),
         SyncedTable::new("history", RowIdentity::IndependentUuid)
             .owner_only()
             .audience_column("audience"),
@@ -139,13 +142,14 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .audience_from("playlist_id"),
         SyncedTable::new("people", RowIdentity::SharedKey)
             .owner_only()
-            .file_column(FileColumn::new("avatar_id")),
+            .file_column(FileColumn::new("avatar_id").bound()),
     ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use coven::Binding;
     use std::collections::BTreeSet;
 
     #[test]
@@ -234,14 +238,18 @@ mod tests {
                     "people" | "ratings" | "history" | "playlists" | "playlist_entries"
                 )
             );
-            let columns: Vec<(&str, bool)> = table
+            let columns: Vec<(&str, &Binding, bool)> = table
                 .file_columns()
                 .iter()
-                .map(|column| (column.column(), column.is_write_once()))
+                .map(|column| (column.column(), column.binding(), column.is_write_once()))
                 .collect();
-            let expected: &[(&str, bool)] = match table.name() {
-                "release_files" | "covers" | "artist_images" => &[("file", false)],
-                "people" => &[("avatar_id", false)],
+            let bound = Binding::Bound {
+                limit: coven::BOUND_FILE_LIMIT,
+            };
+            let expected: &[(&str, &Binding, bool)] = match table.name() {
+                "release_files" => &[("file", &Binding::Trailing, false)],
+                "covers" | "artist_images" => &[("file", &bound, false)],
+                "people" => &[("avatar_id", &bound, false)],
                 _ => &[],
             };
             assert_eq!(columns, expected, "{}", table.name());

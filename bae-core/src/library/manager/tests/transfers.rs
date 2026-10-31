@@ -329,9 +329,9 @@ async fn an_upload_missing_its_original_is_listed_by_name() {
     assert_eq!(item.wait.action, crate::library::PendingAction::RestoreFile);
 }
 
-/// A release's cover waits to upload beside its files, carried by the
-/// `covers` row whose key is the release id; it is no file of the release's
-/// upload.
+/// A release's cover, carried by the `covers` row whose key is the release
+/// id, is no file of the release's upload: its reference is bound, so it
+/// uploads through the pause that keeps the release's file waiting.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_releases_cover_is_no_file_of_its_upload() {
@@ -351,6 +351,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
         .await
         .unwrap();
     manager.upload_release(&release.id, false).await.unwrap();
+    finish_bound_uploads(&manager).await;
 
     assert_eq!(
         manager.count_pending_uploads_for_release(&release.id).await.unwrap(),
@@ -363,9 +364,13 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
             .queued_upload_count_in_table_for_test("covers")
             .await
             .unwrap(),
-        1,
-        "the cover waits beside it"
+        0,
+        "the cover uploads through the pause"
     );
+    assert!(matches!(
+        cover_file(&manager, &release.id).await.place(),
+        coven::FilePlace::Cloud { .. }
+    ));
 }
 
 /// An upload command has queued every release it admitted before it

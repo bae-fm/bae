@@ -344,10 +344,11 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     )
     .await;
     store_test_cover(&manager, &release.id, b"cover-bytes").await;
+    finish_bound_uploads(&manager).await;
 
     manager.upload_release(&release.id, true).await.unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(uploaded, 2, "the file and the cover both upload");
+    assert_eq!(uploaded, 1, "the release's file uploads; its cover is stored already");
     wait_for_kept_release(&manager, &release.id).await;
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(

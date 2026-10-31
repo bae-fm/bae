@@ -240,7 +240,7 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
 }
 
 #[tokio::test]
-async fn cancelling_a_cover_upload_preserves_completed_audio_and_its_download() {
+async fn cancelling_every_upload_beside_a_new_cover_preserves_completed_audio_and_its_download() {
     let (manager, _temp, release, _) = queued_upload_fixture("completed").await;
     manager.drain_uploads_expecting_work().await.unwrap();
     manager.set_downloads_paused(true).await.unwrap();

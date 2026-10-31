@@ -255,11 +255,10 @@ async fn change_cover_twice_replaces_the_cover_file() {
         Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))));
 }
 
-/// Replacing an uploaded cover deletes its coven file with its last
-/// reference: a reference this device took to it before reads nothing, and
-/// the new file reads the new bytes.
+/// Replacing an uploaded cover deletes its coven file's record with its last
+/// reference, and the row's new file reads the new bytes.
 #[tokio::test]
-async fn replacing_an_uploaded_cover_ends_its_captured_reference() {
+async fn replacing_an_uploaded_cover_deletes_its_file_record() {
     let (manager, _temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let album = create_test_album();
@@ -267,13 +266,19 @@ async fn replacing_an_uploaded_cover_ends_its_captured_reference() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     store_test_cover(&manager, &release.id, b"first cover").await;
+    finish_bound_uploads(&manager).await;
     let first = cover_file(&manager, &release.id).await;
-    manager.drain_uploads_expecting_work().await.unwrap();
+    assert!(matches!(first.place(), coven::FilePlace::Cloud { .. }), "{:?}", first.place());
     store_test_cover(&manager, &release.id, b"second cover").await;
+    finish_bound_uploads(&manager).await;
     let second = cover_file(&manager, &release.id).await;
-    manager.drain_uploads_expecting_work().await.unwrap();
+    assert!(matches!(second.place(), coven::FilePlace::Cloud { .. }), "{:?}", second.place());
     assert_ne!(first.id(), second.id());
-    assert!(matches!(manager.database.read_file(&first).await,
-        Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))));
+    assert!(matches!(
+        manager.database.coven_file(first.id()).await,
+        Err(crate::db::DbError::Coven(coven::CovenError::Database(
+            coven::DbError::FileAbsent { .. }
+        )))
+    ));
     assert_eq!(manager.database.read_file(&second).await.unwrap(), b"second cover");
 }
