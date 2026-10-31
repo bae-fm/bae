@@ -267,6 +267,20 @@ fn scans(steps: &[String], aliases: &[&str]) -> bool {
     })
 }
 
+/// Whether a plan reads the search tables only by entry: each album's text
+/// looked up by its key, never the pattern searched for in a table's index,
+/// nor a table passed over whole.
+fn reads_search_text_by_entry(steps: &[String]) -> bool {
+    let reads = ["title_text", "artist_text", "printed_text"].map(|alias| {
+        steps
+            .iter()
+            .filter(|step| step.starts_with(&format!("SCAN {alias} ")))
+            .map(|step| step.ends_with("VIRTUAL TABLE INDEX 0:="))
+            .collect::<Vec<_>>()
+    });
+    reads.iter().all(|read| read == &[true])
+}
+
 /// The search pattern of `text`, as a statement binds it.
 fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
     vec![(
@@ -276,10 +290,11 @@ fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
 }
 
 /// A searching Storage Manager list stays on its indexes under every sort
-/// and filter: read in the order's index, each seek searches the index and
-/// sorts nothing; read from what the search finds, each reaches the listing
-/// by its album and sorts only those rows; and its count and its selection
-/// read what the search finds and the selected keys, never the whole list.
+/// and filter: read in the order's index, each seek searches the index,
+/// sorts nothing and tests each album by its own search text; read from what
+/// the search finds, each reaches the listing by its album and sorts only
+/// those rows; and its counts and its selection read what the search finds
+/// and the selected keys, never the whole list.
 #[tokio::test]
 async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index() {
     let (db, _tmp) = library().await;
@@ -320,6 +335,13 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                 )
                 .await;
                 for seek in order.seeks_beside(&key) {
+                    let statement =
+                        storage_window_query(&order, filter, StorageRows::SearchedInOrder, &seek);
+                    let steps = plan(&db, statement, seek.clone(), search.clone()).await;
+                    assert!(
+                        reads_search_text_by_entry(&steps),
+                        "in order {what} {seek:?}: {steps:?}"
+                    );
                     let statement = storage_window_query(&order, filter, StorageRows::Found, &seek);
                     let steps = plan(&db, statement, seek.clone(), search.clone()).await;
                     assert!(
@@ -350,10 +372,23 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                 .unwrap()
             }
         };
-        let steps = read(storage_found_totals_query(filter), search.clone()).await;
+        let mut counted = search.clone();
+        counted.push((":titles", rusqlite::types::Value::Integer(30)));
+        let steps = read(storage_found_totals_query(filter), counted).await;
         assert!(
             !scans(&steps, SEARCH_ALIASES),
             "count {filter:?}: {steps:?}"
+        );
+        // The pass over the titles reads every title once, and nothing else
+        // whole.
+        let steps = read(storage_unfound_totals_query(filter), search.clone()).await;
+        assert!(
+            !scans(&steps, SEARCH_ALIASES)
+                && steps
+                    .iter()
+                    .filter(|step| step.ends_with("VIRTUAL TABLE INDEX 0:"))
+                    .eq(["SCAN untitled VIRTUAL TABLE INDEX 0:"].iter()),
+            "unfound {filter:?}: {steps:?}"
         );
         let mut selected = search.clone();
         selected.push((
@@ -362,36 +397,149 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
         ));
         let steps = read(storage_selected_query(filter, true), selected).await;
         assert!(
-            !scans(&steps, SEARCH_ALIASES),
+            !scans(&steps, SEARCH_ALIASES) && reads_search_text_by_entry(&steps),
             "selection {filter:?}: {steps:?}"
         );
     }
 }
 
-/// How a search reads a window at the top of the list: from what it finds
-/// when it finds few releases, so a rare match never walks the whole index,
-/// and through the order's index when it finds most of them.
+/// The count of `text`'s search under `filter` read from what the indexes
+/// find, unless its pattern is in the titles of `titles` albums: whether it
+/// was read, the count and the size.
+fn found_totals(
+    sql: &SqlReadContext<'_>,
+    filter: StorageFilter,
+    text: &str,
+    titles: i64,
+) -> rusqlite::Result<(bool, i64, i64)> {
+    sql.query_row(
+        &storage_found_totals_query(filter),
+        rusqlite::named_params! {
+            ":search": crate::library::search::search_pattern(text),
+            ":titles": titles,
+        },
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    )
+}
+
+/// The count and size `statement` reads for `text`'s search.
+fn pass_totals(
+    sql: &SqlReadContext<'_>,
+    statement: String,
+    text: &str,
+) -> rusqlite::Result<(i64, i64)> {
+    sql.query_row(
+        &statement,
+        rusqlite::named_params! { ":search": crate::library::search::search_pattern(text) },
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )
+}
+
+/// How a search is read at the top of the list: a rare one counted and read
+/// from what it finds, so it never walks the whole index; one in most titles
+/// left to the pass over the titles and read through the order's index.
 #[tokio::test]
 async fn a_rare_search_reads_what_it_finds_and_a_broad_one_the_index() {
     let (db, _tmp) = library().await;
-    let rows_at_top = |text: &'static str| {
+    let read_at_top = |text: &'static str| {
         let db = &db;
         async move {
             db.read(move |sql| {
                 let query = crate::library::LibrarySearchQuery::parse(text).unwrap();
-                let (count, _, search) = storage_totals_on(&sql, StorageFilter::All, Some(&query))?;
-                Ok((count, search.unwrap().rows(50, 0)))
+                let titles = storage_found_titles(300) as i64;
+                let (counted, _, _) = found_totals(&sql, StorageFilter::All, text, titles)?;
+                let (found, _, search) = storage_totals_on(&sql, StorageFilter::All, Some(&query))?;
+                Ok((found, counted, search.unwrap().rows(50, 0)))
             })
             .await
             .unwrap()
         }
     };
     // The second album's title, "Album 16807", is the only text holding it.
-    assert_eq!(rows_at_top("16807").await, (1, StorageRows::Found));
+    assert_eq!(read_at_top("16807").await, (1, true, StorageRows::Found));
     assert_eq!(
-        rows_at_top("album").await,
-        (300, StorageRows::SearchedInOrder)
+        read_at_top("album").await,
+        (300, false, StorageRows::SearchedInOrder)
     );
+}
+
+/// A search is counted through the indexes while its pattern is in fewer
+/// titles than a pass over every title costs, about a fifth of them.
+#[test]
+fn a_search_in_a_fifth_of_the_titles_is_counted_by_a_pass() {
+    assert_eq!(storage_found_titles(100_000), 21_052);
+    assert_eq!(storage_found_titles(0), 0);
+}
+
+/// Every way a search is counted and read finds the same releases: the
+/// count from what the indexes find and the one taking what a pass over the
+/// titles doesn't find off the listing's counts agree, and so do the list read from what the indexes find and the one
+/// testing each album as the order's index reaches it, for a search found in
+/// titles, in the names the credits show, in a name a credit prints, in
+/// titles and names at once, and in no text.
+#[tokio::test]
+async fn every_search_read_finds_the_same_releases() {
+    let (db, _tmp) = library().await;
+    // The first album's credit prints a name of its own.
+    db.call(|conn| {
+        conn.execute_batch(
+            "INSERT INTO artist_credits (artist_id, name_key, name, created_at) \
+                 VALUES ('00000000-0001-4000-8000-000000000000', 'printed', \
+                         'Printed Name', '2020-01-01T00:00:00Z'); \
+             UPDATE album_artists SET credit_key = 'printed' \
+                 WHERE album_id = '00000000-0002-4000-8000-000000000000';",
+        )
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    let order = storage_order(&StorageSortCriterion {
+        field: StorageSortField::AlbumTitle,
+        direction: SortDirection::Ascending,
+    });
+    for text in ["album 1", "artist 0", "printed", "1", "nothing holds this"] {
+        for filter in [StorageFilter::All, StorageFilter::Local] {
+            let order = order.clone();
+            let (counts, lists) = db
+                .read(move |sql| {
+                    let pattern = crate::library::search::search_pattern(text);
+                    let found = found_totals(&sql, filter, text, i64::MAX)
+                        .map(|(_, count, size)| (count, size));
+                    let unfound = pass_totals(&sql, storage_unfound_totals_query(filter), text)
+                        .map_err(DbError::from)
+                        .and_then(|(unfound, unfound_size)| {
+                            Ok((
+                                storage_count_on(&sql, filter)? as i64 - unfound,
+                                storage_total_size_on(&sql, filter)? as i64 - unfound_size,
+                            ))
+                        });
+                    let lists = [StorageRows::Found, StorageRows::SearchedInOrder].map(|rows| {
+                        let statement =
+                            storage_window_query(&order, filter, rows, &order.everything());
+                        order.everything().bound(u64::MAX, 0, |params| {
+                            let mut params = params.to_vec();
+                            params.push((":search", &pattern));
+                            sql.query(&statement, params.as_slice(), |row| {
+                                row.get::<_, String>("release_id")
+                            })
+                        })
+                    });
+                    let [read, tested] = lists;
+                    Ok(((found?, unfound?), (read?, tested?)))
+                })
+                .await
+                .unwrap();
+            assert_eq!(counts.0, counts.1, "{text:?} {filter:?}: counts");
+            assert_eq!(lists.0, lists.1, "{text:?} {filter:?}: lists");
+            assert_eq!(counts.0 .0 as usize, lists.0.len(), "{text:?} {filter:?}");
+            assert_eq!(
+                lists.0.is_empty(),
+                text == "nothing holds this",
+                "{text:?} {filter:?} finds {}",
+                lists.0.len()
+            );
+        }
+    }
 }
 
 /// The ids in each window of the Storage Manager list `request` reads, as

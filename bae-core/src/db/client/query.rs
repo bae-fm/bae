@@ -780,31 +780,6 @@ pub(super) const CLOUD_ONLY_RELEASE_COUNT: &str =
 pub(super) const RELEASE_LISTING_PINNED: &str =
     "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
 
-/// Whether the album `album_id` names is one library search finds (§2.3)
-/// for the search pattern the parameter `pattern` binds (see
-/// [`crate::library::search::search_pattern`]): its title, or the name of an
-/// artist one of its credits shows or the other name a credit prints, holds
-/// it. Each part reads its search table, and an album two of them find is
-/// listed twice, which the `IN` list holds once, so no part is sorted to
-/// merge them.
-pub(super) fn album_matches_sql(album_id: &str, pattern: &str) -> String {
-    format!(
-        "{album_id} IN ( \
-             SELECT album_id FROM album_search WHERE title GLOB {pattern} \
-             UNION ALL \
-             SELECT credit.album_id FROM artist_search matched_artist \
-             JOIN artist_shown_as shown ON shown.shown_artist_id = matched_artist.artist_id \
-             JOIN album_artists credit ON credit.artist_id = shown.artist_id \
-             WHERE matched_artist.name GLOB {pattern} \
-             UNION ALL \
-             SELECT credit.album_id FROM artist_credit_search matched_credit \
-             JOIN album_artists credit \
-                 ON credit.artist_id = matched_credit.artist_id \
-                AND credit.credit_key = matched_credit.name_key \
-             WHERE matched_credit.name GLOB {pattern})"
-    )
-}
-
 /// The credits of `owner_expr` in `table` (`album_artists` or
 /// `track_artists`), in list order, as a JSON array (see
 /// [`super::read::credits_from_json`]): each the artist it shows after merges,

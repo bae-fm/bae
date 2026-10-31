@@ -2834,13 +2834,19 @@ Reads come two ways:
   it. The playback queue's upcoming tracks are read by offset alone: the
   offset passes over the context lane's positions before any track is read,
   so a deep window costs little. The Storage Manager's search counts what it
-  finds first, from library search's tables, and reads a window from those
-  releases, sorted, when that costs less than passing the releases it doesn't
-  find on the way through the sort's index; so a search finding a handful of
-  releases never walks the whole index, and one finding most of them reads
-  its windows through the index like the unsearched list. Its rows' places
-  also hold only while what library search finds stands (`library_search`
-  in `list_order_versions`). The artist picker's search reads every
+  finds first: from library search's indexes when its text is in fewer
+  album titles than about a fifth of the listed releases, else by taking the
+  releases it doesn't find off the counts kept beside the listing, found in
+  one pass over every title as the album search table keeps it, less the
+  albums a credit's name finds. It reads a window from the releases it
+  finds, sorted, when that costs less than passing the releases it doesn't
+  find on the way through the sort's index, and otherwise tests each release
+  the index reaches by its album's own text in the search tables; so a
+  search finding a handful of releases never walks the whole index, and a
+  window of one finding most of them costs about what the unsearched list's
+  does. Its rows' places also hold only while what library search finds
+  stands (`library_search` in `list_order_versions`). The artist picker's
+  search reads every
   artist its text finds and sorts them, so each window of it is read by its
   offset.
   The Storage Manager's list is also told

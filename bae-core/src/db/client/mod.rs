@@ -35,6 +35,7 @@ macro_rules! release_file_columns {
 }
 
 mod album;
+mod album_search;
 pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{
     ArtistBrowseProjection, ArtistDetailProjection, ComposerBrowseProjection,
@@ -170,6 +171,7 @@ mod read;
 mod scrub_points_column;
 mod write;
 
+use album_search::*;
 #[cfg(desktop)]
 use list_windows::Places;
 use list_windows::{
@@ -184,7 +186,8 @@ use release_projection::{
 };
 #[cfg(test)]
 use release_projection::{
-    storage_found_totals_query, storage_selected_query, storage_window_query, StorageRows,
+    storage_found_titles, storage_found_totals_query, storage_selected_query,
+    storage_unfound_totals_query, storage_window_query, StorageRows,
 };
 pub use release_projection::{
     ReleaseDetailProjection, StorageBrowseProjection, StorageBrowseRequest,
