@@ -467,7 +467,7 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
     conn.execute_batch(
         "CREATE TABLE coven_files (id TEXT PRIMARY KEY NOT NULL, audience TEXT NOT NULL, \
          size INTEGER NOT NULL, hash BLOB, coordinates TEXT NOT NULL, \
-         namespace TEXT NOT NULL) STRICT, WITHOUT ROWID; \
+         namespace TEXT NOT NULL, shares TEXT) STRICT, WITHOUT ROWID; \
          CREATE TABLE coven_pins (file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
          CREATE TABLE coven_upload_queue (file TEXT PRIMARY KEY NOT NULL, \
          position INTEGER NOT NULL) STRICT, WITHOUT ROWID;",
