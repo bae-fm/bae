@@ -15,10 +15,11 @@ pub enum LibraryOpening {
     Open(coven::CovenHandle),
 }
 
-async fn report_background_task_exit(task_name: &'static str, task: tokio::task::JoinHandle<()>) {
-    if let Err(error) = task.await {
-        tracing::error!(task = task_name, %error, "background task failed");
-    }
+/// Work that panicked, as the status line shows it: something that went
+/// wrong in bae.
+fn task_failure_shown(failed: TaskFailed) -> crate::ui::UiError {
+    let error = LibraryError::from(failed);
+    crate::ui::UiError::diagnostic(error.category(), error)
 }
 
 /// A subscription opened while its library closes, from a task the close is
@@ -201,16 +202,20 @@ impl LibraryManager {
         Fut: Future<Output = ()> + Send + 'static,
     {
         let manager = self.clone();
-        self.spawn_supervised_task(task_name, worker(manager))
+        // The panic is reported; the queue's entries then wait until the
+        // library opens again, which empties its table.
+        self.spawn_supervised_task(task_name, worker(manager), |_| {})
     }
 
     /// Run `task` on the manager's runtime until it ends or the manager closes.
-    /// A task that panics is reported, since nothing else awaits it. A library
-    /// that has closed starts nothing and says so to the caller.
+    /// Nothing awaits it, so a panic in it is reported as a bug here, and
+    /// `on_panic` then ends what the task served, so its reader sees it end.
+    /// A library that has closed starts nothing and says so to the caller.
     pub(crate) fn spawn_supervised_task<F>(
         &self,
         task_name: &'static str,
         task: F,
+        on_panic: impl FnOnce(TaskFailed) + Send + 'static,
     ) -> Result<(), LibraryError>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -220,16 +225,20 @@ impl LibraryManager {
             return Err(LibraryError::Closed(task_name));
         }
         let closing = self.tasks.closing.clone();
-        let task = self.runtime_handle.spawn(async move {
-            tokio::select! {
-                () = closing.cancelled() => {}
-                () = task => {}
-            }
-        });
-        self.tasks.tracker.spawn_on(
-            report_background_task_exit(task_name, task),
+        let task = self.diagnostics.spawn_reported(
             &self.runtime_handle,
+            task_name,
+            async move {
+                tokio::select! {
+                    () = closing.cancelled() => {}
+                    () = task => {}
+                }
+            },
+            on_panic,
         );
+        self.tasks
+            .tracker
+            .spawn_on(task.ended(), &self.runtime_handle);
         Ok(())
     }
 
@@ -240,25 +249,37 @@ impl LibraryManager {
         task_name: &'static str,
         stop: crate::library::CancellationToken,
         task: F,
+        on_panic: impl FnOnce(TaskFailed) + Send + 'static,
     ) -> Result<(), LibraryError>
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        self.spawn_supervised_task(task_name, async move {
-            stop.run_until_cancelled(task).await;
-        })
+        self.spawn_supervised_task(
+            task_name,
+            async move {
+                stop.run_until_cancelled(task).await;
+            },
+            on_panic,
+        )
     }
 
     /// Start the task behind a subscription to the library as one of the
     /// manager's tasks, which closing the library ends before the store
-    /// closes; otherwise it runs until it ends. One asked for while the library
+    /// closes; otherwise it runs until it ends. A panic in it is reported,
+    /// and `reader` is told it failed. One asked for while the library
     /// closes starts nothing: the task and the sender it holds are dropped, so
     /// the subscription ends at once.
-    pub(crate) fn spawn_subscription_task<F>(&self, task_name: &'static str, task: F)
-    where
+    pub(crate) fn spawn_subscription_task<F>(
+        &self,
+        task_name: &'static str,
+        reader: impl crate::library::SubscriptionReader,
+        task: F,
+    ) where
         F: Future<Output = ()> + Send + 'static,
     {
-        if let Err(error) = self.spawn_supervised_task(task_name, task) {
+        if let Err(error) = self.spawn_supervised_task(task_name, task, move |failed| {
+            reader.fail(failed.into());
+        }) {
             subscription_unstarted(&error);
         }
     }
@@ -269,11 +290,14 @@ impl LibraryManager {
         &self,
         task_name: &'static str,
         stop: crate::library::CancellationToken,
+        reader: impl crate::library::SubscriptionReader,
         task: F,
     ) where
         F: Future<Output = ()> + Send + 'static,
     {
-        if let Err(error) = self.spawn_stoppable_task(task_name, stop, task) {
+        if let Err(error) = self.spawn_stoppable_task(task_name, stop, task, move |failed| {
+            reader.fail(failed.into());
+        }) {
             subscription_unstarted(&error);
         }
     }
@@ -384,7 +408,6 @@ impl LibraryManager {
 
     /// Report work that panicked apart from its caller as a bug, and hand the
     /// failure back for the caller's own error.
-    #[cfg(desktop)]
     pub(crate) fn bug(
         &self,
         failed: bae_util::task_failure::TaskFailed,
@@ -512,40 +535,57 @@ impl LibraryManager {
         let mut statuses = self.database.subscribe_sync_status();
         let mut effects = self.database.subscribe_retry_effect();
         let lm = self.clone();
-        self.spawn_supervised_task("sync status subscription", async move {
-            let mut first = true;
-            loop {
-                let status_changed = first || statuses.has_changed().unwrap_or(false);
-                first = false;
-                let status = statuses.borrow_and_update().clone();
-                // coven publishes what a retry would do before the status a
-                // pass leaves, so the effect read after it is at least as new.
-                let effect = *effects.borrow_and_update();
-                // `set_sync` logs the failure, once, as it appears or changes.
-                if status_changed && matches!(status, coven::SyncStatus::Failed { .. }) {
-                    match lm.database.storage_config().await {
-                        Ok(Some(storage)) => lm.diagnostics.event(TelemetryEvent::SyncFailed {
-                            provider: storage.provider(),
-                            operation: SyncOperation::Cycle,
-                        }),
-                        Ok(None) => {}
-                        Err(error) => {
-                            warn!(%error, "could not identify sync provider for diagnostics")
+        let stopped = self.clone();
+        self.spawn_supervised_task(
+            "sync status subscription",
+            async move {
+                let mut first = true;
+                loop {
+                    let status_changed = first || statuses.has_changed().unwrap_or(false);
+                    first = false;
+                    let status = statuses.borrow_and_update().clone();
+                    // coven publishes what a retry would do before the status a
+                    // pass leaves, so the effect read after it is at least as new.
+                    let effect = *effects.borrow_and_update();
+                    // `set_sync` logs the failure, once, as it appears or changes.
+                    if status_changed && matches!(status, coven::SyncStatus::Failed { .. }) {
+                        match lm.database.storage_config().await {
+                            Ok(Some(storage)) => lm.diagnostics.event(TelemetryEvent::SyncFailed {
+                                provider: storage.provider(),
+                                operation: SyncOperation::Cycle,
+                            }),
+                            Ok(None) => {}
+                            Err(error) => {
+                                warn!(%error, "could not identify sync provider for diagnostics")
+                            }
                         }
                     }
+                    lm.sync_status.set_sync(status, effect);
+                    let open = tokio::select! {
+                        changed = statuses.changed() => changed.is_ok(),
+                        changed = effects.changed() => changed.is_ok(),
+                    };
+                    if !open {
+                        break;
+                    }
                 }
-                lm.sync_status.set_sync(status, effect);
-                let open = tokio::select! {
-                    changed = statuses.changed() => changed.is_ok(),
-                    changed = effects.changed() => changed.is_ok(),
-                };
-                if !open {
-                    break;
-                }
-            }
-        })?;
+            },
+            // The status line stops following sync, and shows why.
+            move |failed| {
+                stopped
+                    .sync_status
+                    .set_error(Some(task_failure_shown(failed)))
+            },
+        )?;
         let pending = super::pending_item::PendingFollower::new(self.clone());
-        self.spawn_supervised_task("pending sync records", pending.run())
+        let stopped = self.clone();
+        self.spawn_supervised_task("pending sync records", pending.run(), move |failed| {
+            // The pending list stops following coven's records, and the
+            // status line says it couldn't read them.
+            stopped
+                .sync_status
+                .set_pending(Err(task_failure_shown(failed)));
+        })
     }
 
     /// Every deletion of tracks from now on, none dropped, as the ids each
@@ -729,30 +769,6 @@ impl LibraryManager {
         self.diagnostics.report_bug(
             &format!("read or write the {queue} queue's table"),
             &bae_util::error_text::CauseChain(error),
-        );
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn panicked_background_task_is_logged() {
-        let logs = crate::test_logs::capture_warn_logs_async(|| async {
-            report_background_task_exit(
-                "test worker",
-                tokio::spawn(async { panic!("worker panic") }),
-            )
-            .await;
-        })
-        .await;
-
-        assert!(
-            logs.contains("background task failed")
-                && logs.contains("test worker")
-                && logs.contains("panicked"),
-            "the task failure must be named in the log, got: {logs}"
         );
     }
 }

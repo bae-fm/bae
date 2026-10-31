@@ -381,11 +381,11 @@ impl AppServices {
     ) -> crate::library::DetailSubscription<ImportCandidateDetail, crate::import::CandidateKey>
     {
         let (key_tx, mut keys) = tokio::sync::watch::channel(None::<crate::import::CandidateKey>);
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
         let task = crate::library::CancellationToken::new();
-        self.inner.manager.spawn_stoppable_subscription_task("import candidate", task.clone(), async move {
-            let mut query = reconfigurable_live_query_events(&manager, query);
+        self.inner.manager.spawn_stoppable_subscription_task("import candidate", task.clone(), tx.clone(), async move {
+            let mut query = reconfigurable_live_query_events(&manager, query, tx.clone());
             // A key set before this task runs is the first one read.
             let mut key = keys.borrow_and_update().clone();
             if key.is_some() {

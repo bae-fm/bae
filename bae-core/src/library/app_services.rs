@@ -137,9 +137,19 @@ impl AppServices {
     /// library, the track it was playing included, or the store's lock. The
     /// order is the one dropping the last handle to these services keeps;
     /// whichever runs first stops each worker, and the other finds it stopped.
+    /// A step that panics is reported as a bug and fails the close, and the
+    /// steps after it still run, the store's close among them.
     pub async fn close(&self) -> Result<(), crate::library::LibraryError> {
-        self.stop_workers().await;
-        self.inner.manager.close().await
+        let stopped = self.stop_workers().await;
+        let closed = self.inner.manager.close().await;
+        match (stopped, closed) {
+            (Ok(()), closed) => closed,
+            (Err(stopped), Ok(())) => Err(stopped),
+            (Err(stopped), Err(closed)) => Err(crate::library::LibraryError::Cleanup {
+                operation: Box::new(stopped),
+                cleanup: Box::new(closed),
+            }),
+        }
     }
 
     /// Report a bug found in work on these services that has no caller to
@@ -152,8 +162,8 @@ impl AppServices {
     /// Run `task` as the library's own work until it ends, `stop` is
     /// cancelled, or the library closes. Closing or removing the library ends
     /// it with the manager's other tasks, before the store closes, so it never
-    /// reads a closed store. A library that has closed starts nothing and says
-    /// so.
+    /// reads a closed store. A panic in it is reported as a bug. A library
+    /// that has closed starts nothing and says so.
     pub fn spawn_library_task(
         &self,
         task_name: &'static str,
@@ -162,10 +172,10 @@ impl AppServices {
     ) -> Result<(), crate::library::LibraryError> {
         self.inner
             .manager
-            .spawn_stoppable_task(task_name, stop, task)
+            .spawn_stoppable_task(task_name, stop, task, |_| {})
     }
 
-    async fn stop_workers(&self) {
+    async fn stop_workers(&self) -> Result<(), crate::library::LibraryError> {
         self.inner.playback.shutdown().await;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
@@ -173,17 +183,16 @@ impl AppServices {
             let import = self.inner.import.clone();
             // Both joins block until their threads exit, so they run off the
             // runtime rather than stall one of its threads.
-            let stopped = tokio::task::spawn_blocking(move || {
+            bae_util::task_failure::blocking("stop identification and import", move || {
                 // Before the import worker's join, as in the drop: a cancelled
                 // candidate writes no row.
                 identification.stop();
                 import.stop_and_join();
             })
-            .await;
-            if let Err(error) = stopped {
-                std::panic::resume_unwind(error.into_panic());
-            }
+            .await
+            .map_err(|failed| self.inner.manager.bug(failed))?;
         }
+        Ok(())
     }
 
     #[cfg(all(

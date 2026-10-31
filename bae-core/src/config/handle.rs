@@ -24,25 +24,20 @@ impl ConfigHandle {
         self.state.subscribe()
     }
 
-    pub async fn update_preferences(
-        self: &std::sync::Arc<Self>,
-        edit: impl FnOnce(&mut Preferences) + Send + 'static,
-    ) -> Result<(), ConfigError> {
-        let handle = self.clone();
-        match tokio::task::spawn_blocking(move || handle.update_preferences_now(edit)).await {
-            Ok(result) => result,
-            Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
-            Err(error) => Err(ConfigError::Config(format!(
-                "preference write cancelled: {error}"
-            ))),
-        }
-    }
-
+    /// Edit the preferences, replace their file, then publish them. Blocks on
+    /// the file write; [`crate::library::LibraryManager`] runs it off the
+    /// async workers.
     pub(crate) fn update_preferences_now(
         &self,
         edit: impl FnOnce(&mut Preferences),
     ) -> Result<(), ConfigError> {
-        let _writing = self.writing.lock().expect("config writer mutex poisoned");
+        // The lock orders writers and guards no data of its own. A write that
+        // panicked changed at most the file, which is replaced whole or not at
+        // all, and the next write replaces it again from the published value.
+        let _writing = self
+            .writing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut edited = self.state.borrow().clone();
         edit(&mut edited.prefs);
         match edited.save_preferences() {

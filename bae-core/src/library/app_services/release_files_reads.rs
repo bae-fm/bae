@@ -9,17 +9,19 @@ impl AppServices {
     /// Another release or order is a new request on the same read.
     pub fn subscribe_release_files(&self) -> ReleaseFilesSubscription {
         let (request_tx, mut requests) = tokio::sync::watch::channel(None::<ReleaseFilesRequest>);
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "release files",
             task.clone(),
+            tx.clone(),
             async move {
                 let mut request = None;
                 let mut query = reconfigurable_live_query_events(
                     &manager,
                     manager.subscribe_release_files(None),
+                    tx.clone(),
                 );
                 loop {
                     tokio::select! {

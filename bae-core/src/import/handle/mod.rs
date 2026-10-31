@@ -479,6 +479,8 @@ impl ImportServiceHandle {
         library_manager.spawn_supervised_task(
             "candidate runtime view",
             runtime.clone().keep_view_current(),
+            // The panic is reported; the view stops changing.
+            |_| {},
         )?;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),

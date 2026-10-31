@@ -497,7 +497,10 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
             .expect("the live read ends")
         {
             Ok(_) => {}
-            Err(crate::library::LiveReadError::Query(error)) => {
+            Err(
+                crate::library::LiveReadError::Query(error)
+                | crate::library::LiveReadError::Failed(error),
+            ) => {
                 panic!("the live read heard from the closed store: {error}")
             }
             Err(crate::library::LiveReadError::Cancelled) => break,

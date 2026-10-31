@@ -45,6 +45,28 @@ async fn setup_test_manager() -> (TestManager, TempDir) {
 }
 
 async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, TempDir) {
+    setup_test_manager_with(clock, crate::diagnostics::Diagnostics::noop()).await
+}
+
+/// A test manager whose bugs go to the returned reporter.
+async fn setup_test_manager_reporting_bugs() -> (
+    TestManager,
+    TempDir,
+    Arc<crate::diagnostics::RecordingBugReporter>,
+) {
+    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let (manager, temp_dir) = setup_test_manager_with(
+        Arc::new(coven::SystemClock),
+        crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+    )
+    .await;
+    (manager, temp_dir, bugs)
+}
+
+async fn setup_test_manager_with(
+    clock: coven::ClockRef,
+    diagnostics: crate::diagnostics::Diagnostics,
+) -> (TestManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
@@ -71,7 +93,7 @@ async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, 
         Arc::new(ConfigHandle::new(config)),
         clock,
         Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
+        diagnostics,
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
@@ -276,6 +298,7 @@ mod bound_images;
 mod detachment;
 mod memory;
 mod other_device;
+mod panics;
 mod primary_release;
 mod scrub_points_sync;
 #[cfg(feature = "oauth-providers")]

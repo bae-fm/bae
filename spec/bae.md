@@ -2321,7 +2321,9 @@ Synced, Offline, Sync failed, or Sync stopped when the library has a cloud home
 but isn't syncing. A failure's error sits under the line, unless a pending
 record shows it. "Checking sync…"
 shows only until the pending list is first read, and if it can't be read the
-line says "Couldn't read sync status", opening onto the error. Opening it lists each thing coven is waiting on, one of its pending
+line says "Couldn't read sync status", opening onto the error; so it does if
+following the list breaks, a bug reported as one. A break in following sync's
+own status puts that failure under the line. Opening it lists each thing coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 in plain words, in the order they arose, with an action wherever the person
@@ -2406,7 +2408,8 @@ rather than claim the library is synced.
 
 - **Launching offline.** A failed connect at start-up opens the library
   unconnected, and the status line says so. *Reconnect* connects again, or
-  runs the next cycle now when already connected.
+  runs the next cycle now when already connected. A start that breaks on a
+  bug is reported as one and shows on the line the same way.
 - **The network coming back.** Each attempt that finds no network backs off
   longer, up to five minutes. While Ana's phone is locked and idle, Android's
   Doze mode blocks bae's network (App Standby does the same to an app left
@@ -3194,7 +3197,9 @@ release's or track's id as UTF-8, or a candidate's key.
   the library's tasks, its live subscriptions among them, end and its store
   closes, and only then does the runtime shut down. Releasing the handle closes it the same way; the app closes it
   first, off the main thread, to wait for it and hear a failure, which a
-  release reports as a bug. A handle released on the library's own runtime
+  release reports as a bug. A step of the close that breaks on a bug is
+  reported as one and fails the close, and the steps after it still run, the
+  store's close among them. A handle released on the library's own runtime
   closes it on a thread of its own, and opening, resetting, restoring or
   removing that library waits for the close first. After a removal deleted
   the store, only the runtime is left to end. An open that fails after the
@@ -3214,7 +3219,9 @@ release's or track's id as UTF-8, or a candidate's key.
   as one of the library's tasks, and so does every task core starts to read
   and merge its values, so closing or removing the library stops them all
   before the store closes, and none hears from a closed store. One opened on
-  a closed library delivers nothing and is reported as a bug.
+  a closed library delivers nothing and is reported as a bug. A task of one
+  that breaks on a bug is reported as one, and its subscription ends with the
+  failure as its last value, never as if it were cancelled.
 - **Fast values** — transfer bytes and rates, file shares, export
   percents, playback and preview positions, import percents, and how far a
   bulk action has got, which core sends many times a second — reach an app
@@ -3235,7 +3242,9 @@ release's or track's id as UTF-8, or a candidate's key.
   removing the library cancels every one before the store closes: a read
   waiting on one, or asked of it after, answers that it was cancelled, never
   with the closed store, and it takes no new request. One opened as the
-  library closes is cancelled from the start.
+  library closes is cancelled from the start. One whose task breaks on a bug
+  answers with that failure, "Something went wrong", and ends; the bug is
+  reported.
 - **Callbacks the app provides**: UI events, the artwork reader, and on phones
   the sign-in presenter, which shows the provider's page and returns where it
   redirected. Desktops sign in through coven's own browser flow; iCloud runs in
@@ -3334,6 +3343,10 @@ each device and hands playback the channel or sink.
   own guarantee — is logged with its causes and handed to the platform's crash
   reporter as a non-fatal event naming the operation, through the reporter
   each app hands core at launch. Crash reporting itself stays in the apps.
+  A panic in work core runs apart from whoever asked for it — on a blocking
+  thread, as a task or a thread of its own — is such a bug: it is reported,
+  and what the work served ends with it, the operation that asked failing
+  with "Something went wrong", never left waiting.
 - **Logs stay in the platform's log.** Core's and each app's log lines go to
   the platform's own log on the device: the unified log on macOS and iOS,
   logcat on Android, ETW on Windows, the systemd journal on Linux. A

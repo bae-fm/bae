@@ -93,7 +93,6 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
     let (manager, _temp_dir) = setup_test_manager().await;
     // Config claims an Unvalidated key; the keyring has none — the torn state.
     manager
-        .config_handle
         .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Unvalidated)).await
         .unwrap();
 
@@ -156,7 +155,6 @@ async fn discogs_validation_signals_confirm_and_reject() {
     let (manager, _temp_dir) = setup_test_manager().await;
     // A success confirms a stored Unvalidated key.
     manager
-        .config_handle
         .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Unvalidated)).await
         .unwrap();
     manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;

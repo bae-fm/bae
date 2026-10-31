@@ -27,18 +27,20 @@ impl AppServices {
         &self,
     ) -> crate::library::DetailSubscription<StorageInspector> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
         let mut causes = manager.subscribe_pending_causes();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "storage inspector",
             task.clone(),
+            tx.clone(),
             async move {
                 let mut id: Option<String> = None;
                 let mut query = reconfigurable_live_query_events(
                     &manager,
                     manager.subscribe_storage_inspector(None),
+                    tx.clone(),
                 );
                 // The shown release as last read: `None` until it is read,
                 // `Some(None)` once no such release exists.

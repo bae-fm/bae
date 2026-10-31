@@ -88,9 +88,13 @@ impl<Request, T> Drop for ReconfigurableLiveQueryEvents<Request, T> {
     }
 }
 
+/// `reader` is the subscription these events feed: a panic in the task that
+/// owns the query ends that subscription with the failure, as a panic in the
+/// subscription's own task does.
 pub(super) fn reconfigurable_live_query_events<Request, T>(
     manager: &crate::library::LibraryManager,
     mut query: coven::ReconfigurableLiveQuery<Request, T>,
+    reader: impl crate::library::SubscriptionReader,
 ) -> ReconfigurableLiveQueryEvents<Request, T>
 where
     Request: Clone + PartialEq + Send + Sync + 'static,
@@ -99,21 +103,26 @@ where
     let requests = query.requests();
     let (tx, events) = tokio::sync::mpsc::unbounded_channel();
     let task = crate::library::CancellationToken::new();
-    manager.spawn_stoppable_subscription_task("live query events", task.clone(), async move {
-        while let Some(event) = query.next().await {
-            let revision = event.revision;
-            if tx
-                .send((
-                    revision,
-                    event.cause,
-                    event.result.map_err(crate::library::LibraryError::from),
-                ))
-                .is_err()
-            {
-                return;
+    manager.spawn_stoppable_subscription_task(
+        "live query events",
+        task.clone(),
+        reader,
+        async move {
+            while let Some(event) = query.next().await {
+                let revision = event.revision;
+                if tx
+                    .send((
+                        revision,
+                        event.cause,
+                        event.result.map_err(crate::library::LibraryError::from),
+                    ))
+                    .is_err()
+                {
+                    return;
+                }
             }
-        }
-    });
+        },
+    );
     ReconfigurableLiveQueryEvents {
         events,
         requests,
@@ -151,9 +160,12 @@ mod tests {
             bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
             crate::providers::Providers::offline(),
         );
+        let (reader, _read) =
+            tokio::sync::mpsc::unbounded_channel::<Result<(), crate::library::LibraryError>>();
         let mut events = super::reconfigurable_live_query_events(
             &manager,
             manager.subscribe_queue_upcoming(crate::library::LibraryPageWindows::new()),
+            reader,
         );
         database.close().await.unwrap();
         // Results read before the close may still be waiting to be taken.

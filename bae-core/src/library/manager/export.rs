@@ -2,7 +2,6 @@
 //! byte-for-byte. The output queue, staging, marker, and replace logic live in
 //! [`super::output`]; the save (rendered-output) arm in [`super::save`].
 
-use super::blocking::blocking_io;
 use super::*;
 use tracing::info;
 
@@ -63,20 +62,24 @@ impl LibraryManager {
 
         let file_path = staging_dir.join(&relative);
         let file_id = file.id.clone();
-        let mut output = blocking_io(move || {
-            if let Some(parent) = file_path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            use crate::storage::stored_name::{create_new_file, CreateFileError};
-            match create_new_file(&file_path, &relative, &format!("file {file_id}")) {
-                Ok(output) => Ok(output),
-                Err(clash @ CreateFileError::Clash { .. }) => {
-                    Err(LibraryError::Export(clash.to_string()))
+        let mut output = blocking(
+            "create an exported file",
+            move || -> Result<std::fs::File, LibraryError> {
+                if let Some(parent) = file_path.parent() {
+                    std::fs::create_dir_all(parent)?;
                 }
-                Err(CreateFileError::Io(error)) => Err(error.into()),
-            }
-        })
-        .await?;
+                use crate::storage::stored_name::{create_new_file, CreateFileError};
+                match create_new_file(&file_path, &relative, &format!("file {file_id}")) {
+                    Ok(output) => Ok(output),
+                    Err(clash @ CreateFileError::Clash { .. }) => {
+                        Err(LibraryError::Export(clash.to_string()))
+                    }
+                    Err(CreateFileError::Io(error)) => Err(error.into()),
+                }
+            },
+        )
+        .await
+        .map_err(|failed| self.bug(failed))??;
         let mut offset = 0;
         while offset < size {
             let len = EXPORT_WINDOW.min(size - offset);
@@ -84,14 +87,16 @@ impl LibraryManager {
                 .read_at(offset, len)
                 .await
                 .map_err(crate::db::DbError::from)?;
-            output = blocking_io(move || {
-                std::io::Write::write_all(&mut output, &window)?;
-                Ok(output)
+            output = blocking("write an exported file", move || {
+                std::io::Write::write_all(&mut output, &window).map(|()| output)
             })
-            .await?;
+            .await
+            .map_err(|failed| self.bug(failed))??;
             offset += len;
         }
-        blocking_io(move || Ok(output.sync_all()?)).await?;
+        blocking("sync an exported file", move || output.sync_all())
+            .await
+            .map_err(|failed| self.bug(failed))??;
         Ok(())
     }
 }

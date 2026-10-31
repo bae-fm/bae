@@ -42,6 +42,7 @@ use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
 use crate::sync::S3ConfigData;
+use bae_util::task_failure::{blocking, TaskFailed};
 use coven::ClockRef;
 use coven::IdSourceRef;
 
@@ -70,7 +71,6 @@ pub use fixture::{
     FixtureAlbum, FixtureCandidate, FixtureCandidateState, FixturePlaying, FixtureWatchedFolder,
     LibraryFixture, LibraryFixtureError, FIXTURE_IMPORT_FAILURE, FIXTURE_LOOKUP_FAILURE,
 };
-mod blocking;
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree
 /// next to the user's chosen folder — a hidden staging sibling, a marker file, a
@@ -323,7 +323,8 @@ impl LibraryError {
         use crate::ui::UiErrorCategory as C;
         match self {
             LibraryError::Database(_) => C::Database,
-            LibraryError::Config(_) | LibraryError::Validation(_) => C::Config,
+            LibraryError::Config(error) => error.category(),
+            LibraryError::Validation(_) => C::Config,
             LibraryError::Keyring(error) => key_category(error),
             LibraryError::CloudHome(e) => cloud_home_category(e),
             LibraryError::CloudSetup(error) => cloud_setup_category(error),
@@ -355,8 +356,8 @@ impl LibraryError {
 
 /// Work run apart from its caller gave no result: it panicked (a bug the
 /// caller has reported), or its runtime is shutting down under it.
-impl From<bae_util::task_failure::TaskFailed> for LibraryError {
-    fn from(failed: bae_util::task_failure::TaskFailed) -> Self {
+impl From<TaskFailed> for LibraryError {
+    fn from(failed: TaskFailed) -> Self {
         Self::Internal(failed.to_string())
     }
 }

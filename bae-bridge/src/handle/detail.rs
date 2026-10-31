@@ -198,5 +198,6 @@ pub(super) fn live_read_error(error: bae_core::library::LiveReadError) -> Bridge
     match error {
         bae_core::library::LiveReadError::Cancelled => BridgeError::Cancelled,
         bae_core::library::LiveReadError::Query(error) => BridgeError::database_query(error),
+        bae_core::library::LiveReadError::Failed(error) => BridgeError::from(error),
     }
 }

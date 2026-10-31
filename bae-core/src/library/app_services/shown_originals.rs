@@ -6,6 +6,7 @@
 use crate::album_detail::OriginalsSeen;
 use crate::db::RecordedOriginal;
 use crate::library::{LibraryError, LibraryManager};
+use bae_util::task_failure::TaskFailed;
 
 /// What the disk last said of each original a read shows, and the one look
 /// at the disk in flight for them.
@@ -57,15 +58,13 @@ impl ShownOriginals {
         };
         let answer = look.await;
         self.look = None;
-        let answer = match answer {
-            Ok(answer) => answer?,
-            Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
-            Err(error) => {
-                return Err(LibraryError::Internal(format!(
-                    "the look at this device's originals ended: {error}"
-                )))
-            }
-        };
+        // A look that panicked fails the read with the bug it is, reported.
+        let answer = answer.map_err(|error| {
+            self.manager.bug(TaskFailed::of_join(
+                "look at this device's originals",
+                error,
+            ))
+        })??;
         let before = self.seen.clone();
         self.seen.extend(answer);
         self.seen.retain(&self.shown);

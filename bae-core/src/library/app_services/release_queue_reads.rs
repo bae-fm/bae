@@ -52,7 +52,7 @@ impl AppServices {
         let mut query = self.inner.manager.subscribe_download_counts();
         self.inner
             .manager
-            .spawn_subscription_task("download counts", async move {
+            .spawn_subscription_task("download counts", tx.clone(), async move {
                 while let Some(value) = query.next().await {
                     if tx.send(value.map_err(LibraryError::from)).is_err() {
                         return;

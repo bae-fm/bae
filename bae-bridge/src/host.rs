@@ -229,7 +229,9 @@ impl BridgeHost {
                 .handle()
                 .clone(),
             move || async move {
-                Ok(bae_core::library::UnfinishedRemoval::find(&self.app_dir)
+                Ok(self
+                    .diagnostics
+                    .unfinished_removal(&self.app_dir)
                     .await?
                     .map(|removal| {
                         crate::BridgeUnfinishedRemoval::new(
@@ -288,12 +290,9 @@ impl BridgeHost {
             move || async move {
                 self.closed(store).await?;
                 crate::BridgeLibraryRemoval::from_core(
-                    bae_core::library::remove_unopenable_library(
-                        &self.app_dir,
-                        &self.keychain,
-                        store,
-                    )
-                    .await,
+                    self.diagnostics
+                        .remove_unopenable_library(&self.app_dir, &self.keychain, store)
+                        .await,
                 )
             },
         )
@@ -310,7 +309,7 @@ impl BridgeHost {
                 .clone(),
             self.clone(),
             "finish library removals",
-            move || async move { Ok(bae_core::library::finish_removals(&self.app_dir).await?) },
+            move || async move { Ok(self.diagnostics.finish_removals(&self.app_dir).await?) },
         )
         .await
     }

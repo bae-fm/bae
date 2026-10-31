@@ -49,7 +49,7 @@ impl BridgeLibraryRemoval {
             Err(error @ E::Unfinished(_)) => Ok(Self::Unfinished {
                 removal: BridgeUnfinishedRemoval::new(error.category(), &error, true),
             }),
-            Err(error @ (E::Record(_) | E::Store(_))) => Err(BridgeError::diagnostic(
+            Err(error @ (E::Stop(_) | E::Record(_) | E::Store(_))) => Err(BridgeError::diagnostic(
                 crate::BridgeErrorCategory::from_core(error.category()),
                 &error,
             )),

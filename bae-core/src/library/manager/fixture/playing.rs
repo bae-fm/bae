@@ -148,7 +148,7 @@ impl LibraryManager {
             let ids = self.ids.clone();
             let diagnostics = self.diagnostics.clone();
             let tracks = tracks_to_files.clone();
-            tokio::task::spawn_blocking(move || {
+            bae_util::task_failure::blocking("build a fixture's audio formats", move || {
                 crate::import::ImportService::build_audio_formats(
                     &tracks,
                     &file_ids,
@@ -158,7 +158,7 @@ impl LibraryManager {
                 )
             })
             .await
-            .map_err(|error| invalid(error.to_string()))?
+            .map_err(|failed| invalid(self.bug(failed).to_string()))?
             .map_err(|error| invalid(error.to_string()))?
         };
         seeded.tracks = tracks_to_files

@@ -75,16 +75,20 @@ impl<M> WorkerThread<M> {
     /// caller that takes the join handle, so a second `stop_and_join` neither
     /// re-sends it nor joins again.
     ///
-    /// A thread that panicked already reported itself, and this is called from
-    /// teardown paths that must not unwind, so a panic payload is logged rather
-    /// than repropagated.
+    /// A panic that ended the thread is logged here with its message, neither
+    /// reported (this crate has no bug reporter) nor raised again: this runs
+    /// on teardown paths that must not unwind.
     pub fn stop_and_join(&self, stop: impl FnOnce(&mpsc::UnboundedSender<M>)) {
         let Some(thread) = self.thread.lock().unwrap().take() else {
             return;
         };
         stop(&self.tx);
         if let Err(panic) = thread.join() {
-            tracing::warn!("{} panicked before join: {panic:?}", self.name);
+            tracing::warn!(
+                "{} panicked before join: {}",
+                self.name,
+                crate::task_failure::panic_message(panic.as_ref())
+            );
         }
     }
 
@@ -102,10 +106,13 @@ impl<M> WorkerThread<M> {
         };
         stop(&self.tx).await;
         let name = self.name;
-        match tokio::task::spawn_blocking(move || thread.join()).await {
+        match crate::task_failure::blocking("join a worker thread", move || thread.join()).await {
             Ok(Ok(())) => {}
-            Ok(Err(panic)) => tracing::warn!("{name} panicked before join: {panic:?}"),
-            Err(join_err) => tracing::warn!("joining {name} failed: {join_err}"),
+            Ok(Err(panic)) => tracing::warn!(
+                "{name} panicked before join: {}",
+                crate::task_failure::panic_message(panic.as_ref())
+            ),
+            Err(failed) => tracing::warn!("joining {name} failed: {failed}"),
         }
     }
 }

@@ -586,11 +586,14 @@ mirror_enum! {
     },
 }
 
-/// A failed config read or write. The `Config` category is what every one of
-/// these reports, so `?` carries them.
+/// A failed config read or write, in the class core gave it: a setting the
+/// person can fix, or a write that never finished.
 impl From<bae_core::config::ConfigError> for BridgeError {
     fn from(error: bae_core::config::ConfigError) -> Self {
-        BridgeError::config(error)
+        BridgeError::Diagnostic {
+            category: BridgeErrorCategory::from_core(error.category()),
+            detail: error.to_string(),
+        }
     }
 }
 

@@ -504,7 +504,7 @@ impl LibraryManager {
             )
             .await?;
         let candidate = candidate.clone();
-        let read = tokio::task::spawn_blocking(move || {
+        let read = blocking("read a folder's file tags", move || {
             crate::import::file_metadata_seed::FileMetadataSeed::read(
                 &candidate,
                 generation,
@@ -513,7 +513,7 @@ impl LibraryManager {
             )
         })
         .await
-        .map_err(|error| LibraryError::Internal(format!("file tag read task failed: {error}")))?;
+        .map_err(|failed| self.bug(failed))?;
         match read {
             Ok(seed) => Ok(ScanItemSeed::Tags(Some(seed))),
             Err(error) => {

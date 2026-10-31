@@ -46,6 +46,7 @@ pub use file_transfers::{FileTransferChange, FileTransfersWatch};
 pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };
+pub(crate) use live_read::{live_read_channel, SubscriptionReader};
 pub use live_read::{LiveRead, LiveReadError};
 #[cfg(desktop)]
 pub use live_values::{LiveValues, LiveValuesError};

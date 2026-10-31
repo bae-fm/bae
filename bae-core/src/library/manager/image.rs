@@ -90,11 +90,12 @@ impl LibraryManager {
         // the stored bytes, their format, size and hash all describe the thumbnail,
         // not the source.
         // Decoding and re-encoding the image is CPU work.
-        let bytes =
-            tokio::task::spawn_blocking(move || bae_util::stored_image::stored_jpeg(&bytes))
-                .await
-                .map_err(|e| LibraryError::Internal(format!("cover resize task failed: {e}")))?
-                .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
+        let bytes = blocking("resize a cover", move || {
+            bae_util::stored_image::stored_jpeg(&bytes)
+        })
+        .await
+        .map_err(|failed| self.bug(failed))?
+        .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
         let library_image = DbLibraryImage::cover(
             release_id,
             &source,

@@ -186,9 +186,16 @@ impl LibraryManager {
     /// the manager's other background workers.
     pub fn start_sync_at_startup(&self) -> Result<(), LibraryError> {
         let manager = self.clone();
-        self.spawn_supervised_task("startup sync attachment", async move {
-            manager.attach_and_start_sync_at_startup().await;
-        })
+        let failed_start = self.clone();
+        self.spawn_supervised_task(
+            "startup sync attachment",
+            async move {
+                manager.attach_and_start_sync_at_startup().await;
+            },
+            // A start that panicked started no loop, like one that failed:
+            // the status line says why and offers Reconnect.
+            move |failed| failed_start.set_sync_error(Some(&failed.into())),
+        )
     }
 
     /// Start sync at startup, tolerating a failure.

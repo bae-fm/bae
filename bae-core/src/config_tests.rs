@@ -373,8 +373,7 @@ async fn side_pause_countdown_round_trips_through_preferences_toml() {
         let handle = Arc::new(ConfigHandle::new(config));
 
         handle
-            .update_preferences(move |prefs| prefs.side_pause_countdown = countdown)
-            .await
+            .update_preferences_now(move |prefs| prefs.side_pause_countdown = countdown)
             .unwrap();
 
         assert_eq!(
@@ -569,8 +568,7 @@ async fn preference_updates_publish_after_persistence() {
     let handle = Arc::new(ConfigHandle::new(make_test_config(tmp.path().into())));
     let mut changes = handle.subscribe();
     handle
-        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Valid))
-        .await
+        .update_preferences_now(|prefs| prefs.discogs = Some(DiscogsValidation::Valid))
         .unwrap();
     changes.changed().await.unwrap();
     assert_eq!(

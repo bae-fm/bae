@@ -280,6 +280,7 @@ where
     // stack, especially in debug builds. Callers may invoke us from small-stack
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
     // overflow there — so run the whole thing on a thread with a large stack.
+    let reporter = diagnostics.clone();
     let bootstrap_thread = std::thread::Builder::new()
         .name("bae-bootstrap".to_string())
         .stack_size(32 * 1024 * 1024)
@@ -300,15 +301,14 @@ where
             BootstrapError::Internal(format!("Failed to spawn bootstrap thread: {error}"))
         })?;
 
+    // A panic fails the open as something that went wrong, reported as a
+    // bug; what it had built was dropped as the thread unwound.
     bootstrap_thread.join().map_err(|panic| {
-        let message = if let Some(message) = panic.downcast_ref::<&str>() {
-            *message
-        } else if let Some(message) = panic.downcast_ref::<String>() {
-            message.as_str()
-        } else {
-            "non-string panic payload"
-        };
-        BootstrapError::Internal(format!("Bootstrap thread panicked: {message}"))
+        let failed = reporter.bug(bae_util::task_failure::TaskFailed::panicked(
+            "open the library",
+            panic.as_ref(),
+        ));
+        BootstrapError::Internal(failed.to_string())
     })?
 }
 

@@ -35,6 +35,7 @@ impl LibraryManager {
         self.tasks.close().await;
         crate::library::local_lifecycle::remove_recorded(
             &self.app_dir,
+            &self.diagnostics,
             id,
             self.database.delete_store(),
         )

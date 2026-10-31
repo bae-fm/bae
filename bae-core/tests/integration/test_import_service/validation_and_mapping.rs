@@ -28,11 +28,10 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
     )
     .await
     .unwrap();
-    let config_handle = support::test_config(&db, &db_dir.join("preferences"));
-    config_handle
-        .update_preferences(move |prefs| prefs.verify_decode_on_import = verify)
-        .await
-        .expect("set verify_decode_on_import");
+    let mut config =
+        bae_core::config::Config::with_defaults(db.store_id_for_test(), db_dir.join("preferences"));
+    config.prefs.verify_decode_on_import = verify;
+    let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
     let library_manager = LibraryManager::new(
         db.clone(),
         bae_core::config::AppDir::under_home(temp.path()).unwrap(),

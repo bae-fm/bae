@@ -22,7 +22,7 @@ impl LibraryManager {
         }
         #[cfg(test)]
         let disk = self.disk_hold.clone();
-        blocking::blocking_io(move || {
+        blocking("look at originals on disk", move || {
             #[cfg(test)]
             disk.wait();
             originals
@@ -34,6 +34,7 @@ impl LibraryManager {
                 .collect()
         })
         .await
+        .map_err(|failed| self.bug(failed))?
     }
 
     /// Hold every look at this device's originals until the returned hold

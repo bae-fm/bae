@@ -15,14 +15,14 @@ impl AppServices {
         initial: crate::library::StorageBrowseView,
     ) -> crate::library::StorageBrowseSubscription {
         let (view_tx, mut views) = tokio::sync::watch::channel(initial);
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, rx) = crate::library::live_read_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
-        self.inner.manager.spawn_stoppable_subscription_task("storage browse", task.clone(), async move {
+        self.inner.manager.spawn_stoppable_subscription_task("storage browse", task.clone(), tx.clone(), async move {
             let request_for = |view: &crate::library::StorageBrowseView| crate::db::StorageBrowseRequest {
                 sort: view.sort,
                 filter: view.filter,
@@ -34,6 +34,7 @@ impl AppServices {
             let mut query = reconfigurable_live_query_events(
                 &manager,
                 manager.subscribe_storage_browse(request.clone()),
+                tx.clone(),
             );
             let mut last: Option<crate::db::StorageBrowseProjection> = None;
             loop {

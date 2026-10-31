@@ -109,7 +109,7 @@ impl LibraryManager {
     /// [`QueuedReleases::run_serial`]: crate::library::QueuedReleases::run_serial
     ///
     /// All this supplies is how an export runs — spawn the copy task and yield its
-    /// outcome, mapping a panicked task to a failure that names the panic — and the
+    /// outcome, a panicked task failing it and reported as a bug — and the
     /// diagnostics event for the outcome. The copy itself updates the active
     /// export's percent as it writes each file.
     pub(super) async fn run_output_worker(&self) {
@@ -135,6 +135,7 @@ impl LibraryManager {
                     );
                     let release_id = op.release_id.clone();
                     let worker = self.clone();
+                    let manager = self.clone();
                     let task = self.runtime_handle.spawn(async move {
                         worker
                             .export_release_to_dir(&op.release_id, op.payload)
@@ -152,9 +153,11 @@ impl LibraryManager {
                                         "export of {release_id} was cancelled"
                                     )))
                                 }
-                                Err(join_error) => Err(LibraryError::Export(format!(
-                                    "export task for {release_id} panicked: {join_error}"
-                                ))),
+                                // A panic fails the entry as any failure does, and is
+                                // reported as the bug it is.
+                                Err(join_error) => Err(manager
+                                    .bug(TaskFailed::of_join("export a release", join_error))
+                                    .into()),
                             }
                         };
                         Ok((0, RunningOp::new(abort, outcome)))
@@ -210,8 +213,11 @@ impl LibraryManager {
         let staging_path = request
             .target_dir
             .join(output_sibling(&folder, "export", release_id));
-        let staging =
-            super::blocking::blocking_io(move || Ok(StagingDir::create(staging_path)?)).await?;
+        let staging = blocking("create an output's staging folder", move || {
+            StagingDir::create(staging_path)
+        })
+        .await
+        .map_err(|failed| self.bug(failed))??;
 
         match request.kind {
             crate::library::OutputKind::Export => {
@@ -233,11 +239,15 @@ impl LibraryManager {
 
         let staging_path = staging.path().to_path_buf();
         let marker_release_id = release_id.to_string();
-        super::blocking::blocking_io(move || {
-            write_output_marker(&staging_path, &marker_release_id)?;
-            replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
-        })
-        .await?;
+        blocking(
+            "move an output into place",
+            move || -> Result<(), LibraryError> {
+                write_output_marker(&staging_path, &marker_release_id)?;
+                replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
+            },
+        )
+        .await
+        .map_err(|failed| self.bug(failed))??;
         staging.disarm();
         Ok(())
     }

@@ -14,18 +14,19 @@ impl AppServices {
         &self,
     ) -> crate::library::DetailSubscription<crate::album_detail::AlbumDetail> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, rx) = crate::library::live_read_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
-        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), async move {
+        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
             let mut id = ids.borrow_and_update().clone();
             let mut query = reconfigurable_live_query_events(
                 &manager,
                 manager.subscribe_album_detail(id.clone()),
+                tx.clone(),
             );
             let mut last: Option<crate::db::AlbumDetailProjection> = None;
             loop {
@@ -83,18 +84,19 @@ impl AppServices {
         &self,
     ) -> crate::library::DetailSubscription<crate::album_detail::ReleaseDetail> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, rx) = crate::library::live_read_channel();
         let services = self.clone();
         let manager = services.inner.manager.clone();
         let mut cloud_home = manager.subscribe_cloud_home();
         let mut transfers = ShownTransfers::new(services.subscribe_transfer_values());
         let mut originals = ShownOriginals::new(manager.clone());
         let task = crate::library::CancellationToken::new();
-        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), async move {
+        self.inner.manager.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
             let mut id = ids.borrow_and_update().clone();
             let mut query = reconfigurable_live_query_events(
                 &manager,
                 manager.subscribe_release_detail(id.clone()),
+                tx.clone(),
             );
             let mut last: Option<crate::db::ReleaseDetailProjection> = None;
             let resolve = |id: &Option<String>,
@@ -233,13 +235,16 @@ where
     Id: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
 {
     let (id_tx, mut ids) = tokio::sync::watch::channel(None::<Id>);
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, rx) = crate::library::live_read_channel();
     let task = crate::library::CancellationToken::new();
-    manager
-        .clone()
-        .spawn_stoppable_subscription_task("detail", task.clone(), async move {
+    manager.clone().spawn_stoppable_subscription_task(
+        "detail",
+        task.clone(),
+        tx.clone(),
+        async move {
             let mut id = ids.borrow_and_update().clone();
-            let mut query = reconfigurable_live_query_events(&manager, open(id.clone()));
+            let mut query =
+                reconfigurable_live_query_events(&manager, open(id.clone()), tx.clone());
             loop {
                 tokio::select! {
                     event = query.recv() => {
@@ -261,6 +266,7 @@ where
                     }
                 }
             }
-        });
+        },
+    );
     crate::library::DetailSubscription::new(id_tx, rx, task)
 }

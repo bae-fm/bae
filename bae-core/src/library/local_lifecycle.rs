@@ -10,12 +10,16 @@
 //! a lookup never sees a removal that is still waiting on coven.
 
 use crate::config::{AppDir, ConfigError};
+use crate::diagnostics::Diagnostics;
 use crate::library::LibraryError;
 use std::collections::{BTreeSet, HashSet};
 use tracing::{debug, warn};
 
 #[derive(Debug, thiserror::Error)]
 pub enum LibraryRemovalError {
+    /// The library's services did not stop, so nothing was removed.
+    #[error("the library's services didn't stop, so nothing was removed: {0}")]
+    Stop(#[source] LibraryError),
     /// Recording the removal failed, so nothing was removed.
     #[error("couldn't record the removal, so nothing was removed: {0}")]
     Record(#[source] LibraryError),
@@ -33,7 +37,9 @@ impl LibraryRemovalError {
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         match self {
             Self::Store(error) => super::manager::deletion_category(error),
-            Self::Record(source) | Self::Unfinished(source) => source.category(),
+            Self::Stop(source) | Self::Record(source) | Self::Unfinished(source) => {
+                source.category()
+            }
         }
     }
 }
@@ -79,9 +85,12 @@ impl UnfinishedRemoval {
     /// The recorded removals that never finished. A record whose store coven
     /// still lists is a removal that stopped before the delete: it is cleared
     /// here and reported, and the library can be removed again.
-    pub async fn find(app_dir: &AppDir) -> Result<Option<Self>, LibraryError> {
-        let _lock = RemovalLock::acquire(app_dir).await?;
-        let records = removal_records(app_dir).await?;
+    pub async fn find(
+        app_dir: &AppDir,
+        diagnostics: &Diagnostics,
+    ) -> Result<Option<Self>, LibraryError> {
+        let _lock = RemovalLock::acquire(app_dir, diagnostics).await?;
+        let records = removal_records(app_dir, diagnostics).await?;
         if records.is_empty() {
             return Ok(None);
         }
@@ -89,7 +98,7 @@ impl UnfinishedRemoval {
         let (not_removed, files_remain): (Vec<_>, Vec<_>) =
             records.into_iter().partition(|id| listed.contains(id));
         for &id in &not_removed {
-            delete_record(app_dir, id).await?;
+            delete_record(app_dir, diagnostics, id).await?;
         }
         Ok(Some(Self {
             files_remain,
@@ -110,18 +119,21 @@ impl UnfinishedRemoval {
 /// Complete every recorded removal: for a store coven no longer lists, delete
 /// bae's files for it, then its record; for one coven still lists, only the
 /// record, since the delete never happened.
-pub async fn finish_removals(app_dir: &AppDir) -> Result<(), LibraryError> {
-    let _lock = RemovalLock::acquire(app_dir).await?;
-    let records = removal_records(app_dir).await?;
+pub async fn finish_removals(
+    app_dir: &AppDir,
+    diagnostics: &Diagnostics,
+) -> Result<(), LibraryError> {
+    let _lock = RemovalLock::acquire(app_dir, diagnostics).await?;
+    let records = removal_records(app_dir, diagnostics).await?;
     if records.is_empty() {
         return Ok(());
     }
     let listed = listed_stores(app_dir).await?;
     for id in records {
         if !listed.contains(&id) {
-            delete_library_files(app_dir, id).await?;
+            delete_library_files(app_dir, diagnostics, id).await?;
         }
-        delete_record(app_dir, id).await?;
+        delete_record(app_dir, diagnostics, id).await?;
     }
     Ok(())
 }
@@ -132,10 +144,12 @@ pub async fn finish_removals(app_dir: &AppDir) -> Result<(), LibraryError> {
 /// playback and import services first.
 pub async fn remove_local_library(
     app_dir: &AppDir,
+    diagnostics: &Diagnostics,
     handle: &coven::CovenHandle,
 ) -> Result<(), LibraryRemovalError> {
     remove_recorded(
         app_dir,
+        diagnostics,
         handle.store_id(),
         handle.delete_store(coven::IfUnsent::Discard),
     )
@@ -152,11 +166,13 @@ pub async fn remove_local_library(
 /// copies, the one it loaded and the one it replaced.
 pub async fn remove_unopenable_library(
     app_dir: &AppDir,
+    diagnostics: &Diagnostics,
     keychain: &super::Keychain,
     store_id: coven::StoreId,
 ) -> Result<(), LibraryRemovalError> {
     remove_recorded(
         app_dir,
+        diagnostics,
         store_id,
         keychain.discard_store(&app_dir.store_layout().store_dir(&store_id)),
     )
@@ -189,25 +205,26 @@ pub async fn unsent_before_removal(
 /// files and the record. A refused delete clears the record again.
 pub(crate) async fn remove_recorded(
     app_dir: &AppDir,
+    diagnostics: &Diagnostics,
     store_id: coven::StoreId,
     delete_store: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
 ) -> Result<(), LibraryRemovalError> {
-    let _lock = RemovalLock::acquire(app_dir)
+    let _lock = RemovalLock::acquire(app_dir, diagnostics)
         .await
         .map_err(LibraryRemovalError::Record)?;
-    write_record(app_dir, store_id)
+    write_record(app_dir, diagnostics, store_id)
         .await
         .map_err(LibraryRemovalError::Record)?;
     if let Err(error) = delete_store.await {
-        if let Err(record) = delete_record(app_dir, store_id).await {
+        if let Err(record) = delete_record(app_dir, diagnostics, store_id).await {
             warn!(%store_id, %record, "the removal record outlives coven's refusal; finding unfinished removals reports it");
         }
         return Err(error.into());
     }
-    delete_library_files(app_dir, store_id)
+    delete_library_files(app_dir, diagnostics, store_id)
         .await
         .map_err(LibraryRemovalError::Unfinished)?;
-    delete_record(app_dir, store_id)
+    delete_record(app_dir, diagnostics, store_id)
         .await
         .map_err(LibraryRemovalError::Unfinished)
 }
@@ -221,9 +238,9 @@ struct RemovalLock {
 
 impl RemovalLock {
     /// Wait for the lock.
-    async fn acquire(app_dir: &AppDir) -> Result<Self, LibraryError> {
+    async fn acquire(app_dir: &AppDir, diagnostics: &Diagnostics) -> Result<Self, LibraryError> {
         let path = app_dir.removal_lock();
-        tokio::task::spawn_blocking(move || {
+        file_work(diagnostics, "take the removal lock", move || {
             let file = std::fs::OpenOptions::new()
                 .create(true)
                 .truncate(false)
@@ -235,7 +252,6 @@ impl RemovalLock {
             Ok(Self { _file: file })
         })
         .await
-        .map_err(unfinished_work)?
     }
 }
 
@@ -251,9 +267,13 @@ async fn listed_stores(app_dir: &AppDir) -> Result<HashSet<coven::StoreId>, Libr
 }
 
 /// Write the record, synced along with the directories naming it.
-async fn write_record(app_dir: &AppDir, store_id: coven::StoreId) -> Result<(), LibraryError> {
+async fn write_record(
+    app_dir: &AppDir,
+    diagnostics: &Diagnostics,
+    store_id: coven::StoreId,
+) -> Result<(), LibraryError> {
     let records = app_dir.removal_records();
-    tokio::task::spawn_blocking(move || {
+    file_work(diagnostics, "write a removal record", move || {
         std::fs::create_dir_all(&records).map_err(|error| io_at(&records, error))?;
         let parent = records
             .parent()
@@ -264,25 +284,34 @@ async fn write_record(app_dir: &AppDir, store_id: coven::StoreId) -> Result<(), 
         Ok(())
     })
     .await
-    .map_err(unfinished_work)?
 }
 
-async fn delete_record(app_dir: &AppDir, store_id: coven::StoreId) -> Result<(), LibraryError> {
+async fn delete_record(
+    app_dir: &AppDir,
+    diagnostics: &Diagnostics,
+    store_id: coven::StoreId,
+) -> Result<(), LibraryError> {
     let record = app_dir.removal_records().join(store_id.to_string());
-    tokio::task::spawn_blocking(move || match std::fs::remove_file(&record) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(io_at(&record, error)),
-    })
+    file_work(
+        diagnostics,
+        "delete a removal record",
+        move || match std::fs::remove_file(&record) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(io_at(&record, error)),
+        },
+    )
     .await
-    .map_err(unfinished_work)?
 }
 
 /// The ids of the recorded removals. Anything else in the records directory
 /// (a temporary file an interrupted write left) is passed over.
-async fn removal_records(app_dir: &AppDir) -> Result<BTreeSet<coven::StoreId>, LibraryError> {
+async fn removal_records(
+    app_dir: &AppDir,
+    diagnostics: &Diagnostics,
+) -> Result<BTreeSet<coven::StoreId>, LibraryError> {
     let root = app_dir.removal_records();
-    tokio::task::spawn_blocking(move || {
+    file_work(diagnostics, "list the removal records", move || {
         let entries = match std::fs::read_dir(&root) {
             Ok(entries) => entries,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -308,7 +337,6 @@ async fn removal_records(app_dir: &AppDir) -> Result<BTreeSet<coven::StoreId>, L
         Ok(records)
     })
     .await
-    .map_err(unfinished_work)?
 }
 
 /// A library id exactly as bae writes it: a canonical UUID.
@@ -321,10 +349,11 @@ fn parse_library_id(name: &str) -> Option<coven::StoreId> {
 /// directory.
 async fn delete_library_files(
     app_dir: &AppDir,
+    diagnostics: &Diagnostics,
     store_id: coven::StoreId,
 ) -> Result<(), LibraryError> {
     let app_dir = app_dir.clone();
-    tokio::task::spawn_blocking(move || {
+    file_work(diagnostics, "delete a removed library's files", move || {
         let id = store_id.to_string();
         let pointer = app_dir.active_library_pointer();
         match std::fs::read_to_string(&pointer) {
@@ -343,11 +372,18 @@ async fn delete_library_files(
         }
     })
     .await
-    .map_err(unfinished_work)?
 }
 
-fn unfinished_work(error: tokio::task::JoinError) -> LibraryError {
-    LibraryError::Internal(format!("removal file work did not complete: {error}"))
+/// Run a removal's file work on a blocking thread. A panic in it is reported
+/// as a bug and fails the step, which the removal's record lets run again.
+async fn file_work<T: Send + 'static>(
+    diagnostics: &Diagnostics,
+    operation: &'static str,
+    work: impl FnOnce() -> Result<T, LibraryError> + Send + 'static,
+) -> Result<T, LibraryError> {
+    bae_util::task_failure::blocking(operation, work)
+        .await
+        .map_err(|failed| diagnostics.bug(failed))?
 }
 
 /// Keep the path in the error: a bare "Permission denied" names no file.

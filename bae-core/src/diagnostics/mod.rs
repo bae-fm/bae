@@ -208,27 +208,35 @@ impl Diagnostics {
         }
     }
 
+    /// The sink `config` describes, reporting bugs to `bugs` as well as the
+    /// log.
     pub fn configure(
         config: DiagnosticsConfig,
         clock: ClockRef,
         ids: IdSourceRef,
+        bugs: Arc<dyn BugReporter>,
     ) -> Result<Self, DiagnosticsError> {
         let DiagnosticsConfig::Enabled(config) = config else {
-            return Ok(Self::noop());
+            return Ok(Self::noop().reporting_bugs_to(bugs));
         };
         if !config.is_complete() {
             return Err(DiagnosticsError::IncompleteConfig);
         }
         let config = config.normalized();
         let transport = DatadogTransport::new()?;
-        Self::with_transport(config, clock, ids, Arc::new(transport))
+        Self::with_transport(config, clock, ids, Arc::new(transport), Some(bugs))
     }
 
+    /// A sink shipping its events through `transport` from a worker thread of
+    /// its own, reporting bugs to `bugs` (when there is a reporter) as well
+    /// as the log. A panic in the worker is reported there: crash reporting
+    /// does not go through the worker. Telemetry then stops for the session.
     pub(crate) fn with_transport(
         config: DatadogDiagnosticsConfig,
         clock: ClockRef,
         ids: IdSourceRef,
         transport: Arc<dyn DiagnosticsTransport>,
+        bugs: Option<Arc<dyn BugReporter>>,
     ) -> Result<Self, DiagnosticsError> {
         let (tx, rx) = mpsc::unbounded_channel();
         let app = config.app.clone();
@@ -240,20 +248,25 @@ impl Diagnostics {
             .enable_all()
             .build()
             .map_err(DiagnosticsError::BuildRuntime)?;
-        std::thread::Builder::new()
-            .name("bae-diagnostics".to_string())
-            .spawn(move || runtime.block_on(worker.run()))
-            .map_err(DiagnosticsError::SpawnWorker)?;
-
-        Ok(Self {
+        let diagnostics = Self {
             inner: Arc::new(DiagnosticsInner::Worker {
                 tx,
                 app,
                 clock,
                 session_id,
             }),
-            bugs: None,
-        })
+            bugs,
+        };
+        // Never joined: the worker runs for the life of the process. After a
+        // panic, events are dropped with a log line saying the worker stopped.
+        diagnostics
+            .spawn_thread_reported(
+                "bae-diagnostics",
+                move || runtime.block_on(worker.run()),
+                |_| {},
+            )
+            .map_err(DiagnosticsError::SpawnWorker)?;
+        Ok(diagnostics)
     }
 
     /// This sink, reporting the bugs core finds to `bugs` as well as the log.

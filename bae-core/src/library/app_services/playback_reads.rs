@@ -19,7 +19,7 @@ impl AppServices {
         let services = self.clone();
         self.inner
             .manager
-            .spawn_subscription_task("playback values", async move {
+            .spawn_subscription_task("playback values", tx.clone(), async move {
                 let mut values = services.inner.playback.subscribe_values();
                 let mut current = values.borrow_and_update().clone();
                 let mut request = current.state.track_id().map(str::to_string);
@@ -29,6 +29,7 @@ impl AppServices {
                         .inner
                         .manager
                         .subscribe_track_display(request.clone()),
+                    tx.clone(),
                 );
                 // The display read for `request`; `None` until that read arrives.
                 let mut display: Option<Option<crate::playback::TrackDisplay>> = None;

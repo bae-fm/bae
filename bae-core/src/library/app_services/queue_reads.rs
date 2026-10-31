@@ -14,7 +14,7 @@ impl AppServices {
         let mut query = self.inner.manager.subscribe_queue_value();
         self.inner
             .manager
-            .spawn_subscription_task("queue values", async move {
+            .spawn_subscription_task("queue values", tx.clone(), async move {
                 while let Some(value) = query.next().await {
                     if tx
                         .send(value.map_err(crate::library::LibraryError::from))
@@ -37,16 +37,18 @@ impl AppServices {
     pub fn subscribe_queue_upcoming(&self) -> crate::library::QueueUpcomingSubscription {
         let (windows_tx, mut windows) =
             tokio::sync::watch::channel(crate::library::LibraryPageWindows::new());
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "queue upcoming",
             task.clone(),
+            tx.clone(),
             async move {
                 let mut query = reconfigurable_live_query_events(
                     &manager,
                     manager.subscribe_queue_upcoming(windows.borrow_and_update().clone()),
+                    tx.clone(),
                 );
                 loop {
                     tokio::select! {

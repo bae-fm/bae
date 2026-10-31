@@ -67,7 +67,12 @@ fn enabled_config_requires_every_value() {
     incomplete.client_token = String::new();
     assert!(!DiagnosticsConfig::Enabled(incomplete.clone()).sends_events());
     assert!(matches!(
-        Diagnostics::configure(DiagnosticsConfig::Enabled(incomplete), clock(), ids()),
+        Diagnostics::configure(
+            DiagnosticsConfig::Enabled(incomplete),
+            clock(),
+            ids(),
+            Arc::new(crate::diagnostics::RecordingBugReporter::default()),
+        ),
         Err(DiagnosticsError::IncompleteConfig)
     ));
 
@@ -160,8 +165,9 @@ fn retry_decision_retries_transient_failures_only() {
 #[tokio::test]
 async fn batching_flushes_events_through_transport() {
     let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-    let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-        .expect("diagnostics starts");
+    let diagnostics =
+        Diagnostics::with_transport(config(), clock(), ids(), transport.clone(), None)
+            .expect("diagnostics starts");
     diagnostics.event(TelemetryEvent::AppStarted {});
 
     diagnostics.flush().await.expect("flush succeeds");
@@ -176,8 +182,9 @@ async fn batching_flushes_events_through_transport() {
 #[tokio::test]
 async fn events_carry_device_and_session_ids() {
     let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-    let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-        .expect("diagnostics starts");
+    let diagnostics =
+        Diagnostics::with_transport(config(), clock(), ids(), transport.clone(), None)
+            .expect("diagnostics starts");
     // Once enriched, two events from one instance share the session id and
     // carry the device id.
     diagnostics.set_device_id("device-abc".to_string());
@@ -196,8 +203,9 @@ async fn events_carry_device_and_session_ids() {
 #[tokio::test]
 async fn device_id_enrichment_is_absent_before_and_present_after() {
     let transport = Arc::new(RecordingTransport::new(vec![Ok(()), Ok(())]));
-    let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-        .expect("diagnostics starts");
+    let diagnostics =
+        Diagnostics::with_transport(config(), clock(), ids(), transport.clone(), None)
+            .expect("diagnostics starts");
     // Before enrichment: the field is absent from the wire, not a placeholder.
     diagnostics.event(TelemetryEvent::AppStarted {});
     diagnostics.flush().await.expect("first flush succeeds");
@@ -221,8 +229,9 @@ async fn device_id_enrichment_is_absent_before_and_present_after() {
 #[tokio::test]
 async fn second_device_id_set_is_ignored() {
     let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-    let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-        .expect("diagnostics starts");
+    let diagnostics =
+        Diagnostics::with_transport(config(), clock(), ids(), transport.clone(), None)
+            .expect("diagnostics starts");
     diagnostics.set_device_id("first".to_string());
     diagnostics.set_device_id("second".to_string());
     diagnostics.event(TelemetryEvent::AppStarted {});
@@ -249,6 +258,7 @@ async fn distinct_constructions_get_distinct_session_ids() {
         clock(),
         ids.clone(),
         Arc::new(RecordingTransport::new(vec![Ok(())])),
+        None,
     )
     .expect("diagnostics starts");
     let second = Diagnostics::with_transport(
@@ -256,6 +266,7 @@ async fn distinct_constructions_get_distinct_session_ids() {
         clock(),
         ids,
         Arc::new(RecordingTransport::new(vec![Ok(())])),
+        None,
     )
     .expect("diagnostics starts");
 
@@ -282,8 +293,9 @@ async fn failed_flush_keeps_events_buffered_for_later_retry() {
         Err(DiagnosticsError::Status(StatusCode::BAD_REQUEST)),
         Ok(()),
     ]));
-    let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-        .expect("diagnostics starts");
+    let diagnostics =
+        Diagnostics::with_transport(config(), clock(), ids(), transport.clone(), None)
+            .expect("diagnostics starts");
     diagnostics.event(TelemetryEvent::AppStarted {});
 
     assert!(matches!(

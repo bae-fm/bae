@@ -226,7 +226,7 @@ impl LibraryManager {
             Arc::new(|| {}),
         )
         .await
-        .map_err(LibraryError::Save)
+        .map_err(|error| self.save_failed(error))
     }
 
     pub(super) async fn save_release_tracks_to_dir(
@@ -311,7 +311,17 @@ impl LibraryManager {
             on_saved,
         )
         .await
-        .map_err(LibraryError::Save)
+        .map_err(|error| self.save_failed(error))
+    }
+
+    /// A save's failure as the library reports it: a save that could not be
+    /// written fails as a save, and work in it that panicked is reported as
+    /// a bug.
+    fn save_failed(&self, error: crate::library::save::SaveError) -> LibraryError {
+        match error {
+            crate::library::save::SaveError::Failed(detail) => LibraryError::Save(detail),
+            crate::library::save::SaveError::Unfinished(failed) => self.bug(failed).into(),
+        }
     }
 
     async fn save_release_image_with_cue_to_dir(
@@ -362,7 +372,7 @@ impl LibraryManager {
             |file_id: &String| self.open_save_source(&sources[file_id]),
         )
         .await
-        .map_err(LibraryError::Save)
+        .map_err(|error| self.save_failed(error))
     }
 }
 

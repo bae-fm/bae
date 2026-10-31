@@ -236,6 +236,7 @@ fn recording_diagnostics() -> (
         Arc::new(coven::SystemClock),
         Arc::new(coven::SequentialIds::new()),
         transport.clone(),
+        None,
     )
     .expect("diagnostics starts");
     (diagnostics, transport)

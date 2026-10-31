@@ -14,7 +14,7 @@ macro_rules! pref_setter {
     ($(#[$doc:meta])* $name:ident, $field:ident: $ty:ty) => {
         $(#[$doc])*
         pub async fn $name(&self, value: $ty) -> Result<(), crate::config::ConfigError> {
-            self.config_handle
+            self
                 .update_preferences(move |prefs| prefs.$field = value)
                 .await
         }
@@ -22,6 +22,20 @@ macro_rules! pref_setter {
 }
 
 impl LibraryManager {
+    /// Edit the preferences and replace their file, on a blocking thread: the
+    /// write waits on the disk. A panic in it is reported as a bug.
+    pub(super) async fn update_preferences(
+        &self,
+        edit: impl FnOnce(&mut crate::config::Preferences) + Send + 'static,
+    ) -> Result<(), crate::config::ConfigError> {
+        let config_handle = Arc::clone(&self.config_handle);
+        blocking("write the preferences", move || {
+            config_handle.update_preferences_now(edit)
+        })
+        .await
+        .map_err(|failed| self.bug(failed))?
+    }
+
     pub fn get_config(&self) -> crate::config::Config {
         self.config_handle.config().clone()
     }
@@ -62,8 +76,7 @@ impl LibraryManager {
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update_preferences(move |prefs| prefs.identification.automatic = enabled)
+        self.update_preferences(move |prefs| prefs.identification.automatic = enabled)
             .await
     }
 
@@ -76,8 +89,7 @@ impl LibraryManager {
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update_preferences(move |prefs| prefs.identification.import_when_identified = enabled)
+        self.update_preferences(move |prefs| prefs.identification.import_when_identified = enabled)
             .await
     }
 
@@ -86,15 +98,13 @@ impl LibraryManager {
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update_preferences(move |prefs| prefs.import_storage.cloud = enabled)
+        self.update_preferences(move |prefs| prefs.import_storage.cloud = enabled)
             .await
     }
 
     /// Whether a release that goes to the cloud also stays downloaded here.
     pub async fn set_import_pinned(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update_preferences(move |prefs| prefs.import_storage.pinned = enabled)
+        self.update_preferences(move |prefs| prefs.import_storage.pinned = enabled)
             .await
     }
 
@@ -136,8 +146,7 @@ impl LibraryManager {
                 source.display_name()
             )));
         }
-        self.config_handle
-            .update_preferences(move |prefs| prefs.identification.catalogs.set(source, enabled))
+        self.update_preferences(move |prefs| prefs.identification.catalogs.set(source, enabled))
             .await
     }
 
@@ -166,8 +175,7 @@ impl LibraryManager {
         n: u32,
     ) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
-        self.config_handle
-            .update_preferences(move |prefs| prefs.max_concurrent_uploads = n)
+        self.update_preferences(move |prefs| prefs.max_concurrent_uploads = n)
             .await?;
         self.apply_transfer_limits();
         Ok(())
@@ -180,8 +188,7 @@ impl LibraryManager {
         n: u32,
     ) -> Result<(), crate::config::ConfigError> {
         let n = crate::config::validate_concurrency(n)?;
-        self.config_handle
-            .update_preferences(move |prefs| prefs.max_concurrent_downloads = n)
+        self.update_preferences(move |prefs| prefs.max_concurrent_downloads = n)
             .await?;
         self.apply_transfer_limits();
         Ok(())
@@ -231,8 +238,7 @@ impl LibraryManager {
         };
         Self::validate_default_save_preset(&default_track, &presets, true)?;
         Self::validate_default_save_preset(&default_release, &presets, false)?;
-        self.config_handle
-            .update_preferences(move |prefs| prefs.save_presets = presets)
+        self.update_preferences(move |prefs| prefs.save_presets = presets)
             .await
     }
 
@@ -245,8 +251,7 @@ impl LibraryManager {
             &self.config_handle.config().prefs.save_presets,
             true,
         )?;
-        self.config_handle
-            .update_preferences(move |prefs| prefs.default_track_save_preset = preset_id)
+        self.update_preferences(move |prefs| prefs.default_track_save_preset = preset_id)
             .await
     }
 
@@ -259,8 +264,7 @@ impl LibraryManager {
             &self.config_handle.config().prefs.save_presets,
             false,
         )?;
-        self.config_handle
-            .update_preferences(move |prefs| prefs.default_release_save_preset = preset_id)
+        self.update_preferences(move |prefs| prefs.default_release_save_preset = preset_id)
             .await
     }
 
@@ -299,8 +303,7 @@ impl LibraryManager {
         config: crate::config::McpConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.config_handle
-            .update_preferences(move |prefs| prefs.mcp = config)
+        self.update_preferences(move |prefs| prefs.mcp = config)
             .await
     }
 
@@ -335,8 +338,7 @@ impl LibraryManager {
         config: crate::config::SubsonicConfig,
     ) -> Result<(), crate::config::ConfigError> {
         config.validate()?;
-        self.config_handle
-            .update_preferences(move |prefs| prefs.subsonic = config)
+        self.update_preferences(move |prefs| prefs.subsonic = config)
             .await
     }
 
@@ -356,18 +358,20 @@ impl LibraryManager {
         name: &'static str,
     ) -> Result<Option<String>, LibraryError> {
         let database = self.database.clone();
-        match tokio::task::spawn_blocking(move || database.host_secret(name)).await {
-            Ok(secret) => Ok(secret?),
-            Err(error) => std::panic::resume_unwind(error.into_panic()),
-        }
+        let secret = blocking("read a host secret", move || database.host_secret(name))
+            .await
+            .map_err(|failed| self.bug(failed))?;
+        Ok(secret?)
     }
 
     /// Store a host secret in the keychain on a blocking thread.
     async fn set_host_secret(&self, name: &'static str, value: String) -> Result<(), LibraryError> {
         let database = self.database.clone();
-        match tokio::task::spawn_blocking(move || database.set_host_secret(name, &value)).await {
-            Ok(stored) => Ok(stored?),
-            Err(error) => std::panic::resume_unwind(error.into_panic()),
-        }
+        let stored = blocking("store a host secret", move || {
+            database.set_host_secret(name, &value)
+        })
+        .await
+        .map_err(|failed| self.bug(failed))?;
+        Ok(stored?)
     }
 }

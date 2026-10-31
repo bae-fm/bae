@@ -14,10 +14,22 @@ use bae_catalogs::discogs::client::{
 #[cfg(desktop)]
 use bae_catalogs::rate_limiter::CallPriority;
 
-/// Nothing panics while the stored key's client is locked, so a poisoned lock
-/// is a bug and fails loudly.
+/// The client cached for the stored key, locked. The cache is rebuilt from the
+/// keyring whenever it is empty, so a panic that poisoned the lock (one
+/// reported where it was caught) costs only the cached client: it is dropped,
+/// and the next call that needs Discogs builds it again.
 #[cfg(desktop)]
-const DISCOGS_CLIENT_LOCK: &str = "the Discogs client lock is never held across a panic";
+fn lock_discogs_client(
+    cache: &std::sync::Mutex<Option<Arc<DiscogsClient>>>,
+) -> std::sync::MutexGuard<'_, Option<Arc<DiscogsClient>>> {
+    cache.lock().unwrap_or_else(|poisoned| {
+        warn!("a panic interrupted a Discogs key change; the cached client is rebuilt");
+        cache.clear_poison();
+        let mut client = poisoned.into_inner();
+        *client = None;
+        client
+    })
+}
 
 /// One operation's view of Discogs: the client for the stored key, when there
 /// is one Discogs may be asked with, and the other providers a release fetch
@@ -223,21 +235,25 @@ impl LibraryManager {
         #[cfg(desktop)]
         let discogs_client = Arc::clone(&self.discogs_client);
         let token = token.to_string();
-        super::blocking::blocking_io(move || {
-            // Held across the writes, so no call builds a client from a key
-            // halfway through being replaced.
-            #[cfg(desktop)]
-            let mut client = discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
-            database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)?;
-            // The cached client asks with the key just replaced.
-            #[cfg(desktop)]
-            {
-                *client = None;
-            }
-            config_handle.update_preferences_now(|prefs| prefs.discogs = Some(validation))?;
-            Ok(())
-        })
+        blocking(
+            "store the Discogs key",
+            move || -> Result<(), LibraryError> {
+                // Held across the writes, so no call builds a client from a key
+                // halfway through being replaced.
+                #[cfg(desktop)]
+                let mut client = lock_discogs_client(&discogs_client);
+                database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)?;
+                // The cached client asks with the key just replaced.
+                #[cfg(desktop)]
+                {
+                    *client = None;
+                }
+                config_handle.update_preferences_now(|prefs| prefs.discogs = Some(validation))?;
+                Ok(())
+            },
+        )
         .await
+        .map_err(|failed| self.bug(failed))?
     }
 
     /// Clear the config state before deleting the keyring bytes, so a failure
@@ -247,32 +263,35 @@ impl LibraryManager {
         let config_handle = Arc::clone(&self.config_handle);
         #[cfg(desktop)]
         let discogs_client = Arc::clone(&self.discogs_client);
-        super::blocking::blocking_io(move || {
-            #[cfg(desktop)]
-            let mut client = discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
-            config_handle.update_preferences_now(|prefs| prefs.discogs = None)?;
-            #[cfg(desktop)]
-            {
-                *client = None;
-            }
-            #[cfg(desktop)]
-            database.delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
-            Ok(())
-        })
+        blocking(
+            "clear the Discogs key",
+            move || -> Result<(), LibraryError> {
+                #[cfg(desktop)]
+                let mut client = lock_discogs_client(&discogs_client);
+                config_handle.update_preferences_now(|prefs| prefs.discogs = None)?;
+                #[cfg(desktop)]
+                {
+                    *client = None;
+                }
+                #[cfg(desktop)]
+                database.delete_host_secret(crate::keys::DISCOGS_API_KEY)?;
+                Ok(())
+            },
+        )
         .await
+        .map_err(|failed| self.bug(failed))?
     }
 
     pub async fn set_discogs_validation(
         &self,
         validation: DiscogsValidation,
     ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update_preferences(move |prefs| {
-                if prefs.discogs.is_some() {
-                    prefs.discogs = Some(validation);
-                }
-            })
-            .await
+        self.update_preferences(move |prefs| {
+            if prefs.discogs.is_some() {
+                prefs.discogs = Some(validation);
+            }
+        })
+        .await
     }
 
     pub fn discogs_validation(&self) -> Option<DiscogsValidation> {
@@ -397,13 +416,11 @@ impl LibraryManager {
                 continue;
             };
             // Decoding and re-encoding the image is CPU work.
-            let jpeg = tokio::task::spawn_blocking(move || {
+            let jpeg = blocking("resize an artist picture", move || {
                 bae_util::stored_image::stored_jpeg(&image.bytes)
             })
             .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("artist picture resize task failed: {error}"),
-            })?
+            .map_err(|failed| self.bug(failed))?
             .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
             answers.push(crate::import::DiscogsArtistImage::Image {
                 discogs_artist_id,
@@ -489,12 +506,11 @@ impl LibraryManager {
     #[cfg(all(test, desktop))]
     pub(super) async fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
         let config_handle = Arc::clone(&self.config_handle);
-        super::blocking::blocking_io(move || {
+        blocking("record a Discogs validation signal", move || {
             record_discogs_validation_signal(&config_handle, signal);
-            Ok(())
         })
         .await
-        .expect("recording a validation signal does not fail");
+        .expect("recording a validation signal does not panic");
     }
 
     /// Discogs as this library may ask it right now. No client while no key is
@@ -521,7 +537,7 @@ impl LibraryManager {
         let providers = self.providers.clone();
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
-        let mut cached = self.discogs_client.lock().expect(DISCOGS_CLIENT_LOCK);
+        let mut cached = lock_discogs_client(&self.discogs_client);
         let validation = self.config_handle.config().prefs.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
             return Ok(DiscogsSession {
@@ -531,13 +547,23 @@ impl LibraryManager {
         }
         if cached.is_none() {
             let config_handle = Arc::clone(&self.config_handle);
+            let diagnostics = self.diagnostics.clone();
+            let runtime = self.runtime_handle.clone();
             // The client reports from its request path; persisting the
             // signal is a file write, so it goes to a blocking thread, and a
-            // failure to persist is logged there.
+            // failure to persist is logged there. Nothing waits on it, so a
+            // panic in it is reported here.
             let observer = Arc::new(move |signal| {
                 let config_handle = Arc::clone(&config_handle);
-                tokio::task::spawn_blocking(move || {
-                    record_discogs_validation_signal(&config_handle, signal);
+                let diagnostics = diagnostics.clone();
+                runtime.spawn(async move {
+                    let recorded = blocking("record a Discogs validation signal", move || {
+                        record_discogs_validation_signal(&config_handle, signal);
+                    })
+                    .await;
+                    if let Err(failed) = recorded {
+                        diagnostics.bug(failed);
+                    }
                 });
             });
             *cached = self

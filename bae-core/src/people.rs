@@ -77,8 +77,11 @@ pub enum ProfileError {
     /// The image picked for an avatar cannot be decoded or resized.
     #[error("the avatar image failed: {detail}")]
     AvatarImage { detail: String },
-    #[error("avatar resize task failed: {0}")]
-    AvatarResizeTask(tokio::task::JoinError),
+    /// Resizing the avatar ran apart from its caller and gave no result: it
+    /// panicked, which the caller reports as a bug, or its runtime is shutting
+    /// down.
+    #[error(transparent)]
+    Unfinished(#[from] bae_util::task_failure::TaskFailed),
     #[error(transparent)]
     Database(#[from] crate::db::DbError),
     #[error(transparent)]
@@ -102,7 +105,7 @@ impl ProfileError {
             | Self::AvatarImage { .. } => C::Config,
             Self::InvalidPrivateCircle | Self::CirclePending(_) | Self::Sync(_) => C::Membership,
             Self::Database(_) => C::Database,
-            Self::AvatarResizeTask(_) => C::Internal,
+            Self::Unfinished(_) => C::Internal,
         }
     }
 }

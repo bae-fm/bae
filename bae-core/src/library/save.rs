@@ -2,6 +2,7 @@ use crate::library::SaveTrackPlan;
 use crate::playback::track_sources::{run_tracks_over_sources, SourceStream};
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{EncodeFormat, StreamingEncoder};
+use bae_util::task_failure::{blocking, joined, TaskFailed};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -87,6 +88,24 @@ pub(crate) fn save_file_name(stem: &str, extension: &str) -> PathBuf {
 }
 
 pub(crate) struct SaveService;
+
+/// Why a save wrote nothing.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum SaveError {
+    /// A source, the encoder or the disk refused the save.
+    #[error("{0}")]
+    Failed(String),
+    /// Work the save ran on a blocking thread gave no result: it panicked,
+    /// which the caller reports as a bug, or its runtime is shutting down.
+    #[error(transparent)]
+    Unfinished(#[from] TaskFailed),
+}
+
+impl From<String> for SaveError {
+    fn from(detail: String) -> Self {
+        Self::Failed(detail)
+    }
+}
 
 /// What saving a track does with a file already at its output path.
 #[derive(Clone, Copy, Debug)]
@@ -177,7 +196,7 @@ impl SaveService {
         existing: ExistingOutput,
         open: impl Fn(&String) -> SourceStream,
         on_saved: Arc<dyn Fn() + Send + Sync>,
-    ) -> Result<(), String> {
+    ) -> Result<(), SaveError> {
         let cover_image_bytes = Arc::new(cover_image_bytes);
         run_tracks_over_sources(
             tracks,
@@ -218,12 +237,16 @@ impl SaveService {
         catalog: Option<String>,
         preset: crate::config::SavePreset,
         open: impl Fn(&String) -> SourceStream,
-    ) -> Result<(), String> {
+    ) -> Result<(), SaveError> {
         if plans.is_empty() {
-            return Err("release image export requires at least one track".to_string());
+            return Err(SaveError::Failed(
+                "release image export requires at least one track".to_string(),
+            ));
         }
         if plans.len() > 99 {
-            return Err("CUE sheets support at most 99 audio tracks".to_string());
+            return Err(SaveError::Failed(
+                "CUE sheets support at most 99 audio tracks".to_string(),
+            ));
         }
 
         let cancel = Arc::new(AtomicBool::new(false));
@@ -336,52 +359,52 @@ impl SaveService {
         drop(tracks_tx);
         // The encoder's own failure (it could not create the image, or finish
         // it) explains a track's "stopped" better than the track does.
-        encode
-            .await
-            .map_err(|e| format!("encode task join error: {e}"))??;
+        joined("encode a release image", encode).await??;
         let cue_tracks = tracks?;
 
-        tokio::task::spawn_blocking(move || -> Result<(), String> {
-            if cancel.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
+        blocking(
+            "write a release image's CUE sheet and tags",
+            move || -> Result<(), String> {
+                if cancel.load(Ordering::Relaxed) {
+                    return Err("export cancelled".to_string());
+                }
 
-            let cue = render_cue_sheet(
-                &release_title,
-                &release_performer,
-                catalog
-                    .as_deref()
-                    .map(str::trim)
-                    .filter(|catalog| !catalog.is_empty()),
-                year,
-                &audio_filename,
-                cue_file_type,
-                sample_rate,
-                &cue_tracks,
-            );
-            std::fs::write(&output_cue_path, cue)
-                .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
+                let cue = render_cue_sheet(
+                    &release_title,
+                    &release_performer,
+                    catalog
+                        .as_deref()
+                        .map(str::trim)
+                        .filter(|catalog| !catalog.is_empty()),
+                    year,
+                    &audio_filename,
+                    cue_file_type,
+                    sample_rate,
+                    &cue_tracks,
+                );
+                std::fs::write(&output_cue_path, cue)
+                    .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
 
-            if cancel.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
+                if cancel.load(Ordering::Relaxed) {
+                    return Err("export cancelled".to_string());
+                }
 
-            write_tags(
-                &output_audio_path,
-                tag_type,
-                &tags,
-                None,
-                total_tracks,
-                cover_image_bytes.as_deref(),
-            )?;
+                write_tags(
+                    &output_audio_path,
+                    tag_type,
+                    &tags,
+                    None,
+                    total_tracks,
+                    cover_image_bytes.as_deref(),
+                )?;
 
-            if cancel.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
-            Ok(())
-        })
-        .await
-        .map_err(|e| format!("encode task join error: {e}"))??;
+                if cancel.load(Ordering::Relaxed) {
+                    return Err("export cancelled".to_string());
+                }
+                Ok(())
+            },
+        )
+        .await??;
 
         output_guard.commit();
         Ok(())
@@ -394,7 +417,7 @@ impl SaveService {
         output_path: PathBuf,
         codec: crate::config::SaveCodec,
         existing: ExistingOutput,
-    ) -> Result<(), String> {
+    ) -> Result<(), SaveError> {
         let track_id = plan.audio_meta.track.id.clone();
         debug!("Exporting track {} to {}", track_id, output_path.display());
 
@@ -410,7 +433,7 @@ impl SaveService {
 
         let cancel_for_blocking = Arc::clone(&cancel);
         let subject = format!("track {track_id}");
-        tokio::task::spawn_blocking(move || -> Result<(), String> {
+        blocking("encode a saved track", move || -> Result<(), String> {
             let file = match existing {
                 ExistingOutput::Replace => std::fs::File::create(&output_path)
                     .map_err(|e| format!("Failed to create track file: {e}"))?,
@@ -468,8 +491,7 @@ impl SaveService {
             output_guard.commit();
             Ok(())
         })
-        .await
-        .map_err(|e| format!("encode task join error: {e}"))??;
+        .await??;
 
         debug!("Successfully exported track {}", track_id);
         Ok(())

@@ -233,6 +233,26 @@ pub enum ConfigError {
     Stores(#[from] coven::StoreLayoutError),
     #[error(transparent)]
     Storage(#[from] coven::StorageError),
+    /// The write ran apart from its caller and gave no result: it panicked,
+    /// which the caller reports as a bug, or its runtime is shutting down.
+    #[error(transparent)]
+    Unfinished(#[from] bae_util::task_failure::TaskFailed),
+}
+
+impl ConfigError {
+    /// The class the person is shown: a write that never finished is
+    /// something that went wrong in bae, not a setting to fix.
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        match self {
+            Self::Config(_)
+            | Self::Serialization(_)
+            | Self::Io(_)
+            | Self::File(_)
+            | Self::Stores(_)
+            | Self::Storage(_) => crate::ui::UiErrorCategory::Config,
+            Self::Unfinished(_) => crate::ui::UiErrorCategory::Internal,
+        }
+    }
 }
 
 /// TOML has no null value. Spell the no-key state explicitly so every

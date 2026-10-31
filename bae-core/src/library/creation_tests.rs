@@ -529,9 +529,14 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     };
     assert!(store_files().contains(&store.to_string()));
 
-    remove_unopenable_library(&app_dir, &Keychain::InMemory(installation.clone()), store)
-        .await
-        .unwrap();
+    remove_unopenable_library(
+        &app_dir,
+        &crate::diagnostics::Diagnostics::noop(),
+        &Keychain::InMemory(installation.clone()),
+        store,
+    )
+    .await
+    .unwrap();
     assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
     assert_eq!(store_files(), Vec::<String>::new());
     assert!(!app_dir.registered_library(&store.to_string()).exists());
@@ -543,7 +548,12 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
         crate::config::Config::active_library_id(&app_dir).unwrap(),
         None
     );
-    assert!(UnfinishedRemoval::find(&app_dir).await.unwrap().is_none());
+    assert!(
+        UnfinishedRemoval::find(&app_dir, &crate::diagnostics::Diagnostics::noop())
+            .await
+            .unwrap()
+            .is_none()
+    );
 }
 
 /// A library on this device is opened, not restored, so neither its readable

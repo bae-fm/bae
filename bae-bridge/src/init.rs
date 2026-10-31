@@ -169,6 +169,35 @@ impl BridgeDiagnostics {
         ))
     }
 
+    /// The recorded removals that never finished. A panic in reading their
+    /// records is reported through this sink.
+    pub(crate) async fn unfinished_removal(
+        &self,
+        app_dir: &bae_core::config::AppDir,
+    ) -> Result<Option<bae_core::library::UnfinishedRemoval>, bae_core::library::LibraryError> {
+        bae_core::library::UnfinishedRemoval::find(app_dir, &self.inner).await
+    }
+
+    /// Remove the library `store`, which can't open, without opening it. A
+    /// panic in its file work is reported through this sink.
+    pub(crate) async fn remove_unopenable_library(
+        &self,
+        app_dir: &bae_core::config::AppDir,
+        keychain: &bae_core::library::Keychain,
+        store: coven::StoreId,
+    ) -> Result<(), bae_core::library::LibraryRemovalError> {
+        bae_core::library::remove_unopenable_library(app_dir, &self.inner, keychain, store).await
+    }
+
+    /// Complete every recorded removal. A panic in its file work is reported
+    /// through this sink.
+    pub(crate) async fn finish_removals(
+        &self,
+        app_dir: &bae_core::config::AppDir,
+    ) -> Result<(), bae_core::library::LibraryError> {
+        bae_core::library::finish_removals(app_dir, &self.inner).await
+    }
+
     /// The handle a bootstrap built, or its failure shipped as
     /// `app_start_failed` and returned.
     fn opened(
@@ -226,14 +255,15 @@ pub fn configure_diagnostics(
     install_panic_logging();
     let clock = Arc::new(coven::SystemClock);
     let ids = Arc::new(coven::UuidIds);
-    let inner = match Diagnostics::configure(config.into_core(), clock, ids) {
+    let bugs: Arc<dyn bae_core::diagnostics::BugReporter> =
+        Arc::new(PlatformBugReporter(bug_reporter));
+    let inner = match Diagnostics::configure(config.into_core(), clock, ids, bugs.clone()) {
         Ok(diagnostics) => diagnostics,
         Err(error) => {
             tracing::error!("telemetry init failed: {error}; continuing without telemetry");
-            Diagnostics::noop()
+            Diagnostics::noop().reporting_bugs_to(bugs)
         }
-    }
-    .reporting_bugs_to(Arc::new(PlatformBugReporter(bug_reporter)));
+    };
     Arc::new(BridgeDiagnostics { inner })
 }
 

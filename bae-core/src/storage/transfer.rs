@@ -377,6 +377,7 @@ mod tests {
             Arc::new(coven::SystemClock),
             Arc::new(coven::SequentialIds::new()),
             transport.clone(),
+            None,
         )
         .expect("diagnostics starts");
 
