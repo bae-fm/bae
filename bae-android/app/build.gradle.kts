@@ -183,6 +183,12 @@ dependencies {
     // on Android. coven loads its classes whenever it builds the keychain, so
     // opening, creating or restoring a library fails without them.
     implementation("com.google.android.gms:play-services-auth-blockstore:16.4.0")
+    // Block Store's Play services libraries put androidx.fragment 1.1.0 on the
+    // compile classpath. MainActivity's registerForActivityResult needs
+    // Fragment 1.3.0 or later alongside it: older Fragment versions handle
+    // activity results with their own request codes and drop permission
+    // results.
+    implementation("androidx.fragment:fragment:1.8.9")
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
