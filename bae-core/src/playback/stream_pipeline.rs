@@ -10,6 +10,7 @@
 //! diagnostic logging from here so the two players can't drift on the
 //! decode/seek mapping.
 
+use crate::diagnostics::{Diagnostics, ReportedThread};
 use crate::playback::audio_output::{
     audio_event_channel, AudioEvent, AudioEventReceiver, AudioOutput, AudioStream,
 };
@@ -20,6 +21,7 @@ use crate::playback::source::{PlaybackSource, TrackFmt};
 use bae_audio::sparse_buffer::{BufferStop, SharedSparseBuffer};
 use bae_audio::track_stream::{create_track_stream_pair, ReadyReceiver, TrackSink, TrackStream};
 use bae_audio::DecodeError;
+use bae_util::task_failure::blocking;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -31,18 +33,39 @@ use tracing::{debug, error, warn};
 pub(crate) struct StreamPipeline {
     stream: Box<dyn AudioStream>,
     source: Arc<Mutex<PlaybackSource>>,
-    decoder_handle: std::thread::JoinHandle<()>,
+    decoder_handle: ReportedThread,
     /// This decoder's AVIO cancel flag — owned here, not by the prepared track.
     cancel_token: Arc<AtomicBool>,
 }
 
 /// What a decode failure does beyond the shared log: the main player surfaces it
 /// to the UI as a `PlaybackError`; preview only logs.
+#[derive(Clone)]
 pub(crate) enum DecodeFailureReport {
     EmitPlaybackError {
         progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     },
     LogOnly,
+}
+
+impl DecodeFailureReport {
+    /// The decode failed for the reason `message` states. Teardown (seek /
+    /// stop / track change) sets `cancel` before the decoder exits, so a
+    /// failure after it is no failure of the track's.
+    fn decode_failed(&self, cancel: &AtomicBool, message: impl std::fmt::Display) {
+        if let Self::EmitPlaybackError { progress_tx } = self {
+            if !cancel.load(Ordering::Relaxed) {
+                emit_progress(
+                    progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: crate::ui::PlaybackErrorReason::internal(format!(
+                            "Playback decode failed: {message}"
+                        )),
+                    },
+                );
+            }
+        }
+    }
 }
 
 /// One decoder thread to start: the window to decode, the PCM format the ring
@@ -301,6 +324,8 @@ impl StreamDecodeParams {
     /// `sample_rate`/`channels` come from the stored audio format; each
     /// segment's decode re-announces the probed values, so a sink that checks
     /// (the encoder) turns a stored-vs-probed mismatch into a loud failure.
+    /// A read that panicked comes back as [`DecodeError::ReadPanicked`], for
+    /// the caller to report as the bug it is.
     // The Subsonic transcode drives it on every platform; save and export on
     // desktop.
     pub(crate) fn run_to_sink(
@@ -309,7 +334,7 @@ impl StreamDecodeParams {
         channels: u32,
         sink: &mut dyn bae_audio::DecodedSink,
         cancel: Arc<AtomicBool>,
-    ) -> Result<(), String> {
+    ) -> Result<(), DecodeError> {
         sink.on_format(sample_rate, channels);
         push_silence_to_sink(sink, self.leading_silence_frames, channels, &cancel)?;
         for segment in &self.segments {
@@ -320,8 +345,7 @@ impl StreamDecodeParams {
                 segment.span.end_sample,
                 sink,
                 cancel.clone(),
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
         }
         push_silence_to_sink(sink, self.trailing_silence_frames, channels, &cancel)?;
         Ok(())
@@ -363,7 +387,7 @@ fn push_silence_to_sink(
     frames: u64,
     channels: u32,
     cancel: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<(), DecodeError> {
     if frames == 0 {
         return Ok(());
     }
@@ -372,7 +396,7 @@ fn push_silence_to_sink(
     let mut remaining = frames;
     while remaining > 0 {
         if cancel.load(Ordering::Relaxed) {
-            return Err("decode input cancelled".to_string());
+            return Err(DecodeError::InputCancelled);
         }
         let chunk = remaining.min(CHUNK_FRAMES);
         sink.on_samples(&zeros[..(chunk * u64::from(channels)) as usize]);
@@ -385,11 +409,16 @@ fn push_silence_to_sink(
 /// create the sink/stream pair, and run `run_decoder` on a thread. A genuine
 /// decode failure surfaces via the setup's `on_decode_failure` (the main player
 /// emits a `PlaybackError`; preview only logs); normal teardown (seek / stop /
-/// track change cancels the token first) stays silent. Builds no output stream —
-/// that is the caller's next step.
-pub(crate) fn spawn_decoder<T, F>(setup: DecoderSetup, compose: F) -> T
+/// track change cancels the token first) stays silent. A decoder that panics is
+/// reported through `diagnostics` and ends its track the way a failed decode
+/// does. Builds no output stream — that is the caller's next step.
+pub(crate) fn spawn_decoder<T, F>(
+    diagnostics: &Diagnostics,
+    setup: DecoderSetup,
+    compose: F,
+) -> Result<T, PlaybackError>
 where
-    F: FnOnce(TrackStream, std::thread::JoinHandle<()>, Arc<AtomicBool>, ReadyReceiver) -> T,
+    F: FnOnce(TrackStream, ReportedThread, Arc<AtomicBool>, ReadyReceiver) -> T,
 {
     let DecoderSetup {
         decode,
@@ -406,29 +435,26 @@ where
         // Kept to tell a genuine decode failure from normal teardown (seek /
         // stop / track change all cancel the token before the decoder exits).
         let teardown_check = cancel_token.clone();
-        std::thread::spawn(move || {
-            if let Err(e) = decode.run_decoder(&mut sink, decoder_cancel) {
-                if let Some(message) = log_streaming_decode_failure(log_context, e) {
-                    if let DecodeFailureReport::EmitPlaybackError { progress_tx } =
-                        &on_decode_failure
+        let panic_teardown_check = cancel_token.clone();
+        let decode_failure = on_decode_failure.clone();
+        let decoder_diagnostics = diagnostics.clone();
+        diagnostics.spawn_thread_reported(
+            "playback decoder",
+            move || {
+                if let Err(e) = decode.run_decoder(&mut sink, decoder_cancel) {
+                    if let Some(message) =
+                        log_streaming_decode_failure(&decoder_diagnostics, log_context, e)
                     {
-                        if !teardown_check.load(Ordering::Relaxed) {
-                            emit_progress(
-                                progress_tx,
-                                PlaybackProgress::PlaybackError {
-                                    reason: crate::ui::PlaybackErrorReason::internal(format!(
-                                        "Playback decode failed: {message}"
-                                    )),
-                                },
-                            );
-                        }
+                        decode_failure.decode_failed(&teardown_check, message);
                     }
                 }
-            }
-        })
-    };
+            },
+            move |failed| on_decode_failure.decode_failed(&panic_teardown_check, failed),
+        )
+    }
+    .map_err(|error| PlaybackError::task(format!("starting the decoder thread failed: {error}")))?;
 
-    compose(track_stream, handle, cancel_token, ready)
+    Ok(compose(track_stream, handle, cancel_token, ready))
 }
 
 /// Spawn the decoder `setup` describes, build the audio stream on
@@ -439,6 +465,7 @@ where
 /// reader) stays with the buffer's owner — this cancels only the decoder it
 /// spawned. Used by the preview player.
 pub(crate) async fn start_stream_pipeline<T, F>(
+    diagnostics: &Diagnostics,
     audio_output: &mut dyn AudioOutput,
     setup: DecoderSetup,
     fmt: TrackFmt,
@@ -449,10 +476,11 @@ where
     F: FnOnce(StreamPipeline, AudioEventReceiver) -> T,
 {
     let (track_stream, handle, cancel_token) = spawn_decoder(
+        diagnostics,
         setup,
         // Preview has no Loading state; the ready signal goes unused.
         |track_stream, handle, cancel_token, _ready| (track_stream, handle, cancel_token),
-    );
+    )?;
 
     let (stream, source, audio_events) =
         match build_and_play_stream(audio_output, track_stream, fmt, position_update_interval_ms)
@@ -595,7 +623,9 @@ impl StreamPipeline {
         StreamPipeline {
             stream,
             source,
-            decoder_handle: std::thread::spawn(|| {}),
+            decoder_handle: Diagnostics::noop()
+                .spawn_thread_reported("finished decoder", || {}, |_| {})
+                .expect("spawn a decoder thread that has already finished"),
             cancel_token: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -606,26 +636,21 @@ impl StreamPipeline {
 /// token, and join the thread off the async runtime. The buffers are left
 /// uncancelled (the caller retains them across the seek). The decoder's sink
 /// must already be cancelled by the caller (`PlaybackSource::replace` /
-/// `cancel`), so a decoder parked writing a full ring also unparks. Surfaces
-/// a thread panic as an error (decoder bug, real signal); tokio join failures
-/// (panic in the spawn_blocking wrapper itself, runtime shutdown) get a warn.
+/// `cancel`), so a decoder parked writing a full ring also unparks. A decoder
+/// that panicked was reported on its own thread.
 pub(crate) async fn cancel_and_join_decoder(
     cancel_token: &AtomicBool,
     buffers: &[SharedSparseBuffer],
-    handle: std::thread::JoinHandle<()>,
+    handle: ReportedThread,
 ) {
     cancel_token.store(true, Ordering::Release);
     for buffer in buffers {
         buffer.wake_readers();
     }
-    match tokio::task::spawn_blocking(move || handle.join()).await {
-        Ok(Ok(())) => {}
-        Ok(Err(panic)) => {
-            error!("Decoder thread panicked during seek teardown: {:?}", panic);
-        }
-        Err(e) => {
-            warn!("spawn_blocking failed while joining decoder thread: {e}");
-        }
+    // The join itself can't panic, so this fails only when the runtime is
+    // shutting down under it.
+    if let Err(failed) = blocking("join a decoder thread", move || handle.join()).await {
+        warn!("{failed}");
     }
 }
 
@@ -832,6 +857,7 @@ mod tests {
         let mut output = FailingAudioOutput::new();
 
         let result = start_stream_pipeline(
+            &Diagnostics::noop(),
             &mut output,
             DecoderSetup::new(
                 one_segment_decode(buffer.clone()),
@@ -940,6 +966,7 @@ mod tests {
         let (mut output, _capture_rx) = CaptureAudioOutput::new();
 
         let start = start_stream_pipeline(
+            &Diagnostics::noop(),
             &mut output,
             DecoderSetup::new(
                 one_segment_decode(buffer),

@@ -40,6 +40,7 @@ use super::audio_output::{
 use super::device_formats::{CoreAudioDeviceFormats, DeviceFormats, PlayerFormat, StreamFormat};
 use super::resampling_drain::ResamplingDrain;
 use crate::playback::source::PlaybackSource;
+use bae_util::task_failure::caught_sync;
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{BufferSize, ErrorKind, StreamConfig};
 use std::sync::mpsc;
@@ -268,7 +269,16 @@ impl AudioOutput for CpalAudioOutput {
             .build_output_stream(
                 stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    let written = converter.read(data);
+                    // A panic unwinding into the audio system's own frames
+                    // would abort the process (CoreAudio) or end cpal's thread
+                    // unseen (WASAPI, ALSA). It fails the output instead,
+                    // which playback reports and stops on.
+                    let written =
+                        caught_sync("fill the output device's buffer", || converter.read(data))
+                            .unwrap_or_else(|failed| {
+                                converter.panicked(failed);
+                                0
+                            });
                     data[written..].fill(0.0);
                 },
                 stream_error_handler(invalidated),

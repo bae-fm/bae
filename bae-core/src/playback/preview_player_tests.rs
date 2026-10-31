@@ -23,7 +23,12 @@ async fn preview_play_rejects_unprobeable_file() {
     std::fs::write(&path, b"not audio").unwrap();
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let (device, _capture_rx) = CaptureAudioDevice::new();
 
     let started = player
@@ -44,7 +49,12 @@ async fn preview_play_rejects_unprobeable_file() {
 async fn switching_previews_keeps_the_main_player_resume() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let (device, _capture_rx) = CaptureAudioDevice::new();
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/cue_flac/Test Album.flac");
@@ -81,7 +91,12 @@ async fn preview_plays_only_the_requested_sample_window() {
 
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let (device, mut capture_rx) = CaptureAudioDevice::new();
 
     assert!(player.play(target.clone(), &device).await.started());
@@ -144,7 +159,12 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let (device, mut capture_rx) = crate::playback::audio_output::RealtimeCaptureAudioDevice::new();
 
     assert!(player.play(target, &device).await.started());
@@ -251,7 +271,12 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let (capture, mut capture_rx) =
         crate::playback::audio_output::RealtimeCaptureAudioOutput::new();
     let report = Arc::new(std::sync::Mutex::new(None));
@@ -336,7 +361,12 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
 async fn failed_preview_stream_start_leaves_no_active_preview() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let buffer = create_sparse_buffer(0);
 
     let started = player
@@ -354,7 +384,12 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
 
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let (device, _capture_rx) = CaptureAudioDevice::new();
     let next_buffer = create_sparse_buffer(0);
 
@@ -376,10 +411,16 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
 async fn preview_listener_maps_completion_to_preview_completed() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = tokio_mpsc::unbounded_channel();
-    let player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
 
     let (mut audio_tx, audio_rx) = audio_event_channel();
     let handle = spawn_preview_listener(
+        &player.diagnostics,
         player.progress_tx.clone(),
         player.command_tx.clone(),
         audio_rx,
@@ -413,7 +454,12 @@ async fn preview_listener_maps_completion_to_preview_completed() {
 async fn failed_preview_seek_surfaces_idle() {
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
 
     // Set up an active preview over a working capture output.
     let (device, _capture_rx) = CaptureAudioDevice::new();
@@ -460,13 +506,14 @@ async fn failed_preview_seek_surfaces_idle() {
 /// driving a decoder with defaults.
 #[tokio::test]
 async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
-    let unprobeable: Result<Option<bae_audio::ProbeResult>, tokio::task::JoinError> = Ok(None);
+    let unprobeable: Result<Option<bae_audio::ProbeResult>, TaskFailed> = Ok(None);
     assert!(resolve_preview_probe(std::path::Path::new("path"), unprobeable).is_none());
 
-    let join_failed = tokio::spawn(async { panic!("preview probe panic") })
-        .await
-        .map(|()| Option::<bae_audio::ProbeResult>::None);
-    assert!(resolve_preview_probe(std::path::Path::new("path"), join_failed).is_none());
+    let probe_panicked = Err(TaskFailed::Panicked {
+        operation: "probe the file to preview",
+        message: "preview probe panic".to_string(),
+    });
+    assert!(resolve_preview_probe(std::path::Path::new("path"), probe_panicked).is_none());
 }
 
 fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
@@ -483,7 +530,7 @@ fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
 /// A usable probe (positive sample rate and channels) resolves to the probe.
 #[test]
 fn resolve_preview_probe_accepts_usable_format() {
-    let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 2)));
+    let result: Result<_, TaskFailed> = Ok(Some(probe(44100, 2)));
     let resolved = resolve_preview_probe(std::path::Path::new("path"), result)
         .expect("a usable format passes");
     assert_eq!(resolved.sample_rate, 44100);
@@ -494,14 +541,14 @@ fn resolve_preview_probe_accepts_usable_format() {
 /// rejected rather than driving a decoder with a nonsense rate.
 #[test]
 fn resolve_preview_probe_rejects_zero_sample_rate() {
-    let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(0, 2)));
+    let result: Result<_, TaskFailed> = Ok(Some(probe(0, 2)));
     assert!(resolve_preview_probe(std::path::Path::new("path"), result).is_none());
 }
 
 /// A probe reporting zero channels is likewise unusable.
 #[test]
 fn resolve_preview_probe_rejects_zero_channels() {
-    let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 0)));
+    let result: Result<_, TaskFailed> = Ok(Some(probe(44100, 0)));
     assert!(resolve_preview_probe(std::path::Path::new("path"), result).is_none());
 }
 
@@ -518,7 +565,12 @@ async fn ending_a_preview_closes_its_file() {
     std::fs::copy(fixture.join("Test Album.flac"), &second).unwrap();
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
-    let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+    let mut player = PreviewPlayer::new(
+        progress_tx,
+        command_tx,
+        50,
+        crate::diagnostics::Diagnostics::noop(),
+    );
     let (device, _capture_rx) = CaptureAudioDevice::new();
 
     let open_now = |path: &std::path::Path| {

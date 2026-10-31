@@ -1,5 +1,6 @@
 use super::timeline::{PlaybackTimeline, TimelineFold};
 use super::{PlaybackPositions, PlaybackProgress, PlaybackValues};
+use bae_util::task_failure::caught_sync;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::watch;
@@ -16,11 +17,14 @@ pub struct PlaybackProgressHandle {
 impl PlaybackProgressHandle {
     /// Spawn the fan-out task that forwards each event from `progress_rx` to
     /// every live subscriber, after folding it into the values, the positions
-    /// and, read at `clock`'s now, the timeline.
+    /// and, read at `clock`'s now, the timeline. A panic folding one event is
+    /// reported through `diagnostics`, and the fan-out forwards that event and
+    /// serves the next.
     pub fn new(
         mut progress_rx: tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         runtime_handle: tokio::runtime::Handle,
         clock: crate::playback::PlaybackClockRef,
+        diagnostics: crate::diagnostics::Diagnostics,
     ) -> Self {
         let subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>> =
             Arc::new(Mutex::new(Vec::new()));
@@ -33,12 +37,19 @@ impl PlaybackProgressHandle {
             loop {
                 match progress_rx.recv().await {
                     Some(progress) => {
-                        publish_change(&values_tx, |values| values.applying(&progress));
-                        publish_change(&positions_tx, |positions| positions.applying(&progress));
-                        if let Some(next) =
-                            fold.next(&positions_tx.borrow(), &values_tx.borrow(), clock.now())
-                        {
-                            timeline_tx.send_replace(next);
+                        let folded = caught_sync("fold a playback event", || {
+                            publish_change(&values_tx, |values| values.applying(&progress));
+                            publish_change(&positions_tx, |positions| {
+                                positions.applying(&progress)
+                            });
+                            if let Some(next) =
+                                fold.next(&positions_tx.borrow(), &values_tx.borrow(), clock.now())
+                            {
+                                timeline_tx.send_replace(next);
+                            }
+                        });
+                        if let Err(failed) = folded {
+                            diagnostics.bug(failed);
                         }
                         let mut subs = subscriptions_clone.lock().unwrap();
                         subs.retain(|tx| tx.send(progress.clone()).is_ok());
@@ -111,6 +122,7 @@ mod tests {
             progress_rx,
             tokio::runtime::Handle::current(),
             test_clock(),
+            crate::diagnostics::Diagnostics::noop(),
         );
         let mut live = handle.subscribe_all();
         let dropped = handle.subscribe_all();
@@ -148,6 +160,7 @@ mod tests {
             progress_rx,
             tokio::runtime::Handle::current(),
             test_clock(),
+            crate::diagnostics::Diagnostics::noop(),
         );
 
         progress_tx
@@ -166,6 +179,7 @@ mod tests {
             progress_rx,
             tokio::runtime::Handle::current(),
             test_clock(),
+            crate::diagnostics::Diagnostics::noop(),
         );
         let mut events = handle.subscribe_all();
 
@@ -218,6 +232,7 @@ mod tests {
             progress_rx,
             tokio::runtime::Handle::current(),
             test_clock(),
+            crate::diagnostics::Diagnostics::noop(),
         );
         let mut events = handle.subscribe_all();
         let mut values = handle.subscribe_values();

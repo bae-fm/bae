@@ -4,8 +4,10 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
+use crate::diagnostics::Diagnostics;
 use crate::playback::PlaybackError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
+use bae_util::task_failure::{caught, joined};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -135,34 +137,77 @@ pub trait AudioDataReader: Send + 'static {
 
 /// The task filling a buffer from its source. It holds the source open until
 /// the buffer is stopped or dropped; dropping this detaches it.
-pub struct FillTask(tokio::task::JoinHandle<()>);
+pub struct FillTask {
+    task: tokio::task::JoinHandle<()>,
+    diagnostics: Diagnostics,
+}
 
 impl FillTask {
-    /// Wait for the fill to end, which is when its source is closed. A panic
-    /// in the fill resumes here.
+    /// Wait for the fill to end, which is when its source is closed. A panic in
+    /// the fill's work was reported and failed the buffer, so its readers have
+    /// already stopped on it; one in reporting a failure is reported here.
     pub async fn ended(self) {
-        if let Err(error) = self.0.await {
-            if error.is_panic() {
-                std::panic::resume_unwind(error.into_panic());
-            }
+        if let Err(failed) = joined("report a buffer fill's failure", self.task).await {
+            self.diagnostics.bug(failed);
         }
     }
+}
+
+/// Why a fill stopped short of its source's end.
+enum FillFailure {
+    /// The source would not open, so the buffer is not failed yet.
+    Open(PlaybackError),
+    /// A read failed; the fill already failed the buffer with it.
+    Read(Arc<PlaybackError>),
+}
+
+/// Spawn the task running `fill` into `buffer`. A failure fails the buffer,
+/// if the fill hasn't already, and goes to `on_error`. A panic in `fill` is
+/// reported as a bug and fails the buffer the same way, so its readers stop
+/// and `on_error` runs instead of every reader waiting for bytes that never
+/// come. The task holds the buffer only weakly, as the fill does, so dropping
+/// its last reader still ends the fill.
+fn spawn_fill(
+    diagnostics: Diagnostics,
+    buffer: &SharedSparseBuffer,
+    on_error: FillErrorHandler,
+    fill: impl std::future::Future<Output = Result<(), FillFailure>> + Send + 'static,
+) -> FillTask {
+    let buffer = Arc::downgrade(buffer);
+    let fill_diagnostics = diagnostics.clone();
+    let task = tokio::spawn(async move {
+        let error = match caught("fill a playback buffer", fill).await {
+            Ok(Ok(())) => return,
+            Ok(Err(FillFailure::Read(error))) => return report_fill_failure(on_error, error),
+            Ok(Err(FillFailure::Open(error))) => error,
+            Err(failed) => PlaybackError::task(fill_diagnostics.bug(failed)),
+        };
+        match buffer.upgrade() {
+            Some(buffer) => fail_audio_read(on_error, &buffer, error),
+            None => debug!("ignoring read failure on a dropped buffer: {error}"),
+        }
+    });
+    FillTask { task, diagnostics }
 }
 
 /// Reads a file the caller names by path: a file being previewed, or an
 /// import's sources before they are the library's.
 pub struct LocalReader {
     path: std::path::PathBuf,
+    diagnostics: Diagnostics,
 }
 
 impl LocalReader {
-    pub fn new(path: impl Into<std::path::PathBuf>) -> Self {
-        Self { path: path.into() }
+    pub fn new(path: impl Into<std::path::PathBuf>, diagnostics: Diagnostics) -> Self {
+        Self {
+            path: path.into(),
+            diagnostics,
+        }
     }
 }
 
-/// Fail the buffer with a read error raised before its fill started (the
-/// source would not open), then report it.
+/// Fail the buffer with a read error raised outside its fill loop (the source
+/// would not open, or the fill panicked), then report it.
 fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, error: PlaybackError) {
     let error = Arc::new(error);
     // A buffer that already stopped means teardown ran before this read
@@ -189,27 +234,23 @@ impl AudioDataReader for LocalReader {
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let path = self.path;
+        let LocalReader { path, diagnostics } = *self;
+        let fill_buffer = buffer.clone();
 
-        FillTask(tokio::spawn(async move {
+        spawn_fill(diagnostics, &buffer, on_error, async move {
             use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-            let file = match tokio::fs::File::open(&path).await {
-                Ok(f) => f,
-                Err(e) => {
-                    fail_audio_read(
-                        on_error,
-                        &buffer,
-                        PlaybackError::io(format!("Failed to open {}", path.display()), e),
-                    );
-                    return;
-                }
-            };
+            let file = tokio::fs::File::open(&path).await.map_err(|e| {
+                FillFailure::Open(PlaybackError::io(
+                    format!("Failed to open {}", path.display()),
+                    e,
+                ))
+            })?;
             // One handle, seeked per fetch. The fill loop awaits each fetch in
             // turn, so the lock is never actually contended.
             let file = tokio::sync::Mutex::new(file);
 
-            let result = buffer
+            fill_buffer
                 .fill_on_demand(FILL_WINDOW_SIZE, |src_off, len| {
                     let file = &file;
                     let path = &path;
@@ -236,12 +277,9 @@ impl AudioDataReader for LocalReader {
                         Ok(buf)
                     }
                 })
-                .await;
-
-            if let Err(e) = result {
-                report_fill_failure(on_error, e);
-            }
-        }))
+                .await
+                .map_err(FillFailure::Read)
+        })
     }
 }
 
@@ -294,6 +332,7 @@ pub struct CovenFileReader {
     /// the open would otherwise stall on a serial ranged fetch. The shared album
     /// buffer keeps the window, so it's pulled once per image.
     prefetch_file_end: bool,
+    diagnostics: Diagnostics,
 }
 
 impl CovenFileReader {
@@ -303,6 +342,7 @@ impl CovenFileReader {
         arbiter: Arc<FetchArbiter>,
         prefetch_byte: Option<u64>,
         prefetch_file_end: bool,
+        diagnostics: Diagnostics,
     ) -> Self {
         Self {
             db,
@@ -310,6 +350,7 @@ impl CovenFileReader {
             arbiter,
             prefetch_byte,
             prefetch_file_end,
+            diagnostics,
         }
     }
 }
@@ -326,20 +367,32 @@ impl AudioDataReader for CovenFileReader {
             arbiter,
             prefetch_byte,
             prefetch_file_end,
+            diagnostics,
         } = *self;
         let buffer_id = buffer.id();
+        let fill_buffer = buffer.clone();
+        let prefetch_diagnostics = diagnostics.clone();
 
-        FillTask(tokio::spawn(async move {
+        spawn_fill(diagnostics, &buffer, on_error, async move {
+            let buffer = fill_buffer;
             let stream = match db.open_release_file(&file_id).await {
                 Ok(stream) => Arc::new(stream),
-                Err(error) => {
-                    fail_audio_read(on_error, &buffer, playback_error_for_file_read(error));
-                    return;
-                }
+                Err(error) => return Err(FillFailure::Open(playback_error_for_file_read(error))),
             };
             // The length coven proved when it opened the stream, not a number the
             // caller tracked: it bounds the prefetch windows below.
             let source_size = stream.plaintext_size();
+            let prefetch = |start: u64, what: &'static str| {
+                spawn_window_prefetch(
+                    &prefetch_diagnostics,
+                    stream.clone(),
+                    arbiter.clone(),
+                    &buffer,
+                    source_size,
+                    start,
+                    what,
+                )
+            };
 
             // Prefetch the track's start window in parallel with the demuxer's header
             // probe. The decoder reads the header at byte 0, then seeks to the track,
@@ -351,14 +404,7 @@ impl AudioDataReader for CovenFileReader {
             // now, concurrent with the probe, so the seek lands on buffered bytes.
             if let Some(start) = prefetch_byte {
                 if start < source_size {
-                    spawn_window_prefetch(
-                        stream.clone(),
-                        arbiter.clone(),
-                        &buffer,
-                        source_size,
-                        start,
-                        "track-start",
-                    );
+                    prefetch(start, "track-start");
                 }
             }
 
@@ -367,14 +413,7 @@ impl AudioDataReader for CovenFileReader {
             // way, waiting for the fill to come round to a tail nobody had demanded
             // yet. Skipped when the file is a single window (the fill covers it).
             if prefetch_file_end && source_size > CLOUD_STREAM_READ_SIZE {
-                spawn_window_prefetch(
-                    stream.clone(),
-                    arbiter.clone(),
-                    &buffer,
-                    source_size,
-                    source_size - CLOUD_STREAM_READ_SIZE,
-                    "file-end",
-                );
+                prefetch(source_size - CLOUD_STREAM_READ_SIZE, "file-end");
             }
 
             info!("CovenFileReader: buffer={buffer_id} source_size={source_size}");
@@ -384,48 +423,46 @@ impl AudioDataReader for CovenFileReader {
             // competing with the playing track.
             let fetched = AtomicU64::new(0);
             let started = Instant::now();
-            let result = buffer.fill_on_demand(FILL_WINDOW_SIZE, |src_off, len| {
-                let fut = stream.read_at(src_off, len);
-                let arbiter = &arbiter;
-                let fetched = &fetched;
-                async move {
-                    // The playing track fetches immediately; a preload waits
-                    // while the playing track has a fetch in flight so it can't
-                    // slow the current track's start.
-                    let foreground = arbiter.is_foreground(buffer_id);
-                    debug!(
-                        "fetch start buffer={buffer_id} {} off={src_off} len={len} {}ms",
-                        if foreground { "playing" } else { "preload" },
-                        started.elapsed().as_millis(),
-                    );
-                    let fetch_started = Instant::now();
-                    let data = match arbiter.run_gated(foreground, fut).await {
-                        Ok(data) => data,
-                        Err(e) => {
-                            debug!(
-                                "fetch failed buffer={buffer_id} {} off={src_off} len={len} waited={}ms error={e}",
-                                if foreground { "playing" } else { "preload" },
-                                fetch_started.elapsed().as_millis(),
-                            );
-                            return Err(playback_error_for_file_read(e.into()));
-                        }
-                    };
-                    let total =
-                        fetched.fetch_add(data.len() as u64, Ordering::Relaxed) + data.len() as u64;
-                    debug!(
-                        "fetch buffer={buffer_id} {} off={src_off} len={len} total={total}B {}ms",
-                        if foreground { "playing" } else { "preload" },
-                        started.elapsed().as_millis(),
-                    );
-                    Ok(data)
-                }
-            })
-            .await;
-
-            if let Err(e) = result {
-                report_fill_failure(on_error, e);
-            }
-        }))
+            buffer
+                .fill_on_demand(FILL_WINDOW_SIZE, |src_off, len| {
+                    let fut = stream.read_at(src_off, len);
+                    let arbiter = &arbiter;
+                    let fetched = &fetched;
+                    async move {
+                        // The playing track fetches immediately; a preload waits
+                        // while the playing track has a fetch in flight so it can't
+                        // slow the current track's start.
+                        let foreground = arbiter.is_foreground(buffer_id);
+                        debug!(
+                            "fetch start buffer={buffer_id} {} off={src_off} len={len} {}ms",
+                            if foreground { "playing" } else { "preload" },
+                            started.elapsed().as_millis(),
+                        );
+                        let fetch_started = Instant::now();
+                        let data = match arbiter.run_gated(foreground, fut).await {
+                            Ok(data) => data,
+                            Err(e) => {
+                                debug!(
+                                    "fetch failed buffer={buffer_id} {} off={src_off} len={len} waited={}ms error={e}",
+                                    if foreground { "playing" } else { "preload" },
+                                    fetch_started.elapsed().as_millis(),
+                                );
+                                return Err(playback_error_for_file_read(e.into()));
+                            }
+                        };
+                        let total = fetched.fetch_add(data.len() as u64, Ordering::Relaxed)
+                            + data.len() as u64;
+                        debug!(
+                            "fetch buffer={buffer_id} {} off={src_off} len={len} total={total}B {}ms",
+                            if foreground { "playing" } else { "preload" },
+                            started.elapsed().as_millis(),
+                        );
+                        Ok(data)
+                    }
+                })
+                .await
+                .map_err(FillFailure::Read)
+        })
     }
 }
 
@@ -442,9 +479,11 @@ const CLOUD_STREAM_READ_SIZE: u64 = FILL_WINDOW_SIZE;
 /// like the fill: the playing track fetches immediately; a preload yields while
 /// the playing track has a fetch in flight, so preloading the next track can't
 /// steal the current track's startup bandwidth. Best-effort — a failed prefetch
-/// just leaves the fill to fetch the window on demand. `what` labels the window
-/// (track-start / file-end) in the log.
+/// just leaves the fill to fetch the window on demand, and so does one that
+/// panicked, which is reported. `what` labels the window (track-start /
+/// file-end) in the log.
 fn spawn_window_prefetch(
+    diagnostics: &Diagnostics,
     stream: Arc<coven::FileStream>,
     arbiter: Arc<FetchArbiter>,
     buffer: &SharedSparseBuffer,
@@ -456,24 +495,30 @@ fn spawn_window_prefetch(
     let weak = Arc::downgrade(buffer);
     let window = CLOUD_STREAM_READ_SIZE.min(source_size - off);
     let started = Instant::now();
-    tokio::spawn(async move {
-        let foreground = arbiter.is_foreground(buffer_id);
-        let result = arbiter
-            .run_gated(foreground, stream.read_at(off, window))
-            .await;
-        match result {
-            Ok(data) => {
-                if let Some(buf) = weak.upgrade() {
-                    debug!(
-                        "prefetch buffer={buffer_id} {what} off={off} len={window} {}ms",
-                        started.elapsed().as_millis()
-                    );
-                    buf.append_at(off, &data);
+    diagnostics.spawn_reported(
+        &tokio::runtime::Handle::current(),
+        "prefetch a playback buffer window",
+        async move {
+            let foreground = arbiter.is_foreground(buffer_id);
+            let result = arbiter
+                .run_gated(foreground, stream.read_at(off, window))
+                .await;
+            match result {
+                Ok(data) => {
+                    if let Some(buf) = weak.upgrade() {
+                        debug!(
+                            "prefetch buffer={buffer_id} {what} off={off} len={window} {}ms",
+                            started.elapsed().as_millis()
+                        );
+                        buf.append_at(off, &data);
+                    }
                 }
+                Err(e) => debug!("prefetch buffer={buffer_id} {what} off={off} failed: {e}"),
             }
-            Err(e) => debug!("prefetch buffer={buffer_id} {what} off={off} failed: {e}"),
-        }
-    });
+        },
+        // Nothing waits on a prefetch: the fill fetches the window on demand.
+        |_| {},
+    );
 }
 
 #[cfg(test)]
@@ -483,3 +528,7 @@ mod tests;
 #[cfg(test)]
 #[path = "data_source_decode_tests.rs"]
 mod decode_tests;
+
+#[cfg(test)]
+#[path = "data_source_fill_tests.rs"]
+mod fill_tests;

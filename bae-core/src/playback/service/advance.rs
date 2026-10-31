@@ -4,11 +4,13 @@ use super::*;
 /// nothing until a crossing is staged.
 pub(super) fn staged_sides_follow(
     library_manager: &LibraryManager,
+    diagnostics: &Diagnostics,
 ) -> LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>> {
     LibraryFollow::new(
         library_manager.subscribe_playback_track_infos(Vec::new()),
         Vec::new(),
         "the staged crossing's sides",
+        diagnostics,
     )
 }
 
@@ -108,7 +110,8 @@ impl PlaybackService {
         // adopts this decoder. LogOnly: a preload decode failure is logged, never
         // surfaced as a PlaybackError — the promotion path re-decodes through
         // play_track if the preload turns out unusable.
-        let (track_stream, decoder_handle, cancel_token) = spawn_decoder(
+        let spawned = spawn_decoder(
+            &self.diagnostics,
             DecoderSetup::new(
                 decode,
                 prepared.sample_rate,
@@ -121,6 +124,14 @@ impl PlaybackService {
                 (track_stream, decoder_handle, cancel_token)
             },
         );
+        let (track_stream, decoder_handle, cancel_token) = match spawned {
+            Ok(parts) => parts,
+            Err(e) => {
+                error!("Failed to preload track {track_id}: {e}");
+                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+                return;
+            }
+        };
 
         // Same format as the live stream: stage it into the `PlaybackSource` so
         // the audio callback crosses the boundary in place (true gapless).

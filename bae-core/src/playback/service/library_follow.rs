@@ -13,7 +13,7 @@ pub(super) struct LibraryFollow<Request, Value> {
     requests: coven::LiveQueryRequests<Request>,
     request: Request,
     reads: tokio::sync::mpsc::UnboundedReceiver<(Request, Value)>,
-    task: tokio::task::JoinHandle<()>,
+    task: crate::diagnostics::ReportedTask,
 }
 
 impl<Request, Value> LibraryFollow<Request, Value>
@@ -24,27 +24,36 @@ where
     /// Follow `query` on a task of its own. A read that fails is logged under
     /// `what` and the follow keeps running: the next change reads again. One
     /// that fails because the store closed or its handle failed ends the
-    /// query, and the follow reads nothing more.
+    /// query, and the follow reads nothing more. A follow that panics is
+    /// reported through `diagnostics` and reads nothing more either.
     pub(super) fn new(
         mut query: coven::ReconfigurableLiveQuery<Request, Value>,
         request: Request,
         what: &'static str,
+        diagnostics: &crate::diagnostics::Diagnostics,
     ) -> Self {
         let requests = query.requests();
         let (tx, reads) = tokio::sync::mpsc::unbounded_channel();
-        let task = tokio::spawn(async move {
-            while let Some(event) = query.next().await {
-                let request = event.request.clone();
-                match event.result {
-                    Ok(value) => {
-                        if tx.send((request, value)).is_err() {
-                            return;
+        let task = diagnostics.spawn_reported(
+            &tokio::runtime::Handle::current(),
+            "follow a library read for playback",
+            async move {
+                while let Some(event) = query.next().await {
+                    let request = event.request.clone();
+                    match event.result {
+                        Ok(value) => {
+                            if tx.send((request, value)).is_err() {
+                                return;
+                            }
                         }
+                        Err(error) => error!("reading {what} for {request:?} failed: {error}"),
                     }
-                    Err(error) => error!("reading {what} for {request:?} failed: {error}"),
                 }
-            }
-        });
+            },
+            // Its sender went with the task, so `next` waits as it does for a
+            // closed store: the service plays on without the follow.
+            |_| {},
+        );
         Self {
             requests,
             request,
@@ -101,15 +110,26 @@ mod tests {
         )
         .await
         .unwrap();
-        let mut follow =
-            LibraryFollow::new(database.subscribe_album_detail(None), None, "the album");
+        let mut follow = LibraryFollow::new(
+            database.subscribe_album_detail(None),
+            None,
+            "the album",
+            &crate::diagnostics::Diagnostics::noop(),
+        );
 
         database.close().await.unwrap();
 
-        tokio::time::timeout(std::time::Duration::from_secs(10), &mut follow.task)
+        follow_ends(&mut follow).await;
+    }
+
+    /// Wait for `follow`'s task to end, seen as its reads closing: the task
+    /// holds their sender until it ends.
+    async fn follow_ends<Request, Value>(follow: &mut LibraryFollow<Request, Value>) {
+        while tokio::time::timeout(std::time::Duration::from_secs(10), follow.reads.recv())
             .await
             .expect("the follow's task ends")
-            .expect("the follow's task does not fail");
+            .is_some()
+        {}
     }
 
     /// Pointing a follow whose query ended at another request reads nothing,
@@ -124,13 +144,14 @@ mod tests {
         )
         .await
         .unwrap();
-        let mut follow =
-            LibraryFollow::new(database.subscribe_album_detail(None), None, "the album");
+        let mut follow = LibraryFollow::new(
+            database.subscribe_album_detail(None),
+            None,
+            "the album",
+            &crate::diagnostics::Diagnostics::noop(),
+        );
         database.close().await.unwrap();
-        tokio::time::timeout(std::time::Duration::from_secs(10), &mut follow.task)
-            .await
-            .expect("the follow's task ends")
-            .expect("the follow's task does not fail");
+        follow_ends(&mut follow).await;
 
         follow.follow(Some("another album".to_string()));
 

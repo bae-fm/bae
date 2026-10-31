@@ -95,8 +95,9 @@ pub(crate) enum SaveError {
     /// A source, the encoder or the disk refused the save.
     #[error("{0}")]
     Failed(String),
-    /// Work the save ran on a blocking thread gave no result: it panicked,
-    /// which the caller reports as a bug, or its runtime is shutting down.
+    /// Work in the save gave no result: it panicked, on a blocking thread or
+    /// in a decode's read of a source, which the caller reports as a bug; or
+    /// its runtime is shutting down.
     #[error(transparent)]
     Unfinished(#[from] TaskFailed),
 }
@@ -104,6 +105,15 @@ pub(crate) enum SaveError {
 impl From<String> for SaveError {
     fn from(detail: String) -> Self {
         Self::Failed(detail)
+    }
+}
+
+impl From<bae_audio::DecodeError> for SaveError {
+    fn from(error: bae_audio::DecodeError) -> Self {
+        match error {
+            bae_audio::DecodeError::ReadPanicked(failed) => Self::Unfinished(failed),
+            error => Self::Failed(error.to_string()),
+        }
     }
 }
 
@@ -172,7 +182,7 @@ struct ImageTrack {
     performer: String,
     audio_pregap_samples: Option<u64>,
     decode: crate::playback::stream_pipeline::StreamDecodeParams,
-    reply: tokio::sync::oneshot::Sender<Result<CueTrack, String>>,
+    reply: tokio::sync::oneshot::Sender<Result<CueTrack, SaveError>>,
 }
 
 impl SaveService {
@@ -353,9 +363,9 @@ impl SaveService {
                             reply,
                         })
                         .map_err(|error| format!("the release image encoder stopped: {error}"))?;
-                    Ok(entry
+                    entry
                         .await
-                        .map_err(|error| format!("the release image encoder stopped: {error}"))??)
+                        .map_err(|error| format!("the release image encoder stopped: {error}"))?
                 }
             },
             SaveError::from,
@@ -438,7 +448,7 @@ impl SaveService {
 
         let cancel_for_blocking = Arc::clone(&cancel);
         let subject = format!("track {track_id}");
-        blocking("encode a saved track", move || -> Result<(), String> {
+        blocking("encode a saved track", move || -> Result<(), SaveError> {
             let file = match existing {
                 ExistingOutput::Replace => std::fs::File::create(&output_path)
                     .map_err(|e| format!("Failed to create track file: {e}"))?,
@@ -449,11 +459,13 @@ impl SaveService {
                             .file_name()
                             .expect("a track's output path names its file"),
                     );
-                    create_new_file(&output_path, name, &subject).map_err(|error| match error {
-                        CreateFileError::Clash { .. } => error.to_string(),
-                        CreateFileError::Io(error) => {
-                            format!("Failed to create track file: {error}")
-                        }
+                    create_new_file(&output_path, name, &subject).map_err(|error| {
+                        SaveError::Failed(match error {
+                            CreateFileError::Clash { .. } => error.to_string(),
+                            CreateFileError::Io(error) => {
+                                format!("Failed to create track file: {error}")
+                            }
+                        })
                     })?
                 }
             };
@@ -477,7 +489,7 @@ impl SaveService {
             // cancel-to-cleanup window tight. On bail-out OutputPathsGuard
             // removes whatever was written.
             if cancel_for_blocking.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
+                return Err(SaveError::Failed("export cancelled".to_string()));
             }
 
             write_tags(
@@ -490,7 +502,7 @@ impl SaveService {
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
+                return Err(SaveError::Failed("export cancelled".to_string()));
             }
 
             output_guard.commit();
@@ -513,7 +525,7 @@ fn encode_image_track(
     sample_rate: u32,
     channels: u32,
     cancel: Arc<AtomicBool>,
-) -> Result<CueTrack, String> {
+) -> Result<CueTrack, SaveError> {
     let pregap_sample_frames = track
         .decode
         .leading_silence_frames()
@@ -525,14 +537,14 @@ fn encode_image_track(
         .decode
         .run_to_sink(sample_rate, channels, encoder, cancel)?;
     if let Some(error) = encoder.error() {
-        return Err(error.to_string());
+        return Err(SaveError::Failed(error.to_string()));
     }
     let segment_sample_frames = encoder.frames_accepted() - frames_before;
     if pregap_sample_frames > segment_sample_frames {
-        return Err(format!(
+        return Err(SaveError::Failed(format!(
             "track {} pregap exceeds decoded segment length",
             track.track_id
-        ));
+        )));
     }
 
     let start = *current_sample_frame;

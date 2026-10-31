@@ -1223,9 +1223,10 @@ Ana clicks Import. bae:
    each 10 seconds of audio past the file's first, its point is the latest
    earlier frame a decode can start at and still play it exactly, with the
    first sample such a decode plays exactly; the decode read the whole file
-   from its first frame. Any other file gets none. A measurement that panics
-   fails the import, as a track that can't be read does, and is reported as a
-   bug: nothing it measured is stored.
+   from its first frame. Any other file gets none. A measurement that panics,
+   or a read of a track's file that panics, fails the import, as a track that
+   can't be read does, and is reported as a bug: nothing it measured is
+   stored.
 5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
@@ -2746,6 +2747,17 @@ Offline, a track whose bytes aren't on the device stops playback with a typed
 reason the UI shows. A decoder that stops producing for good is caught and
 reported, rather than left behind a frozen position bar.
 
+A panic in playback is a bug, reported to the crash reporter. One that
+leaves the track unable to go on stops playback with an error the person
+sees, rather than a frozen position bar: a panic in a command the player is
+serving (the player then serves the next), in the fill reading a track's bytes
+(which fails its buffer, so the decoder stops at once instead of waiting for
+bytes), in the decoder, or in the output pulling samples for the device or a
+receiver. A panic folding one progress event into what the screens show
+loses that event, and the next one shows. A preview whose event listener
+panics ends with an error. A buffer a panic left partway through a change
+drops its bytes, and its fill fetches them again.
+
 ### 7.7 Outputs
 
 | Output | How it plays |
@@ -2896,7 +2908,8 @@ connects to his laptop, lists the artists, opens an album and plays it.
 - **Streaming.** A track that is one whole file is served as that file, with
   byte ranges. Any other track is decoded from its segments and served as WAV.
   A client that asks for a transcode gets one, MP3 at 128 kbps unless it says
-  otherwise.
+  otherwise. A read of the track that panics during a transcode is reported
+  as a bug and ends the stream.
 - **Login.** Only token login is accepted: the client sends its username, a
   salt of at least six characters, and the MD5 of password plus salt. With no
   username or password set, nobody gets in. Failures come back as Subsonic

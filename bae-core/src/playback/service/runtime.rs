@@ -1,6 +1,8 @@
 use super::*;
 
+use bae_util::task_failure::{caught, caught_sync, TaskFailed};
 use bae_util::worker_thread::WorkerThread;
+use std::ops::ControlFlow;
 
 impl PlaybackService {
     /// Hand the current track's reader fetch priority over a preload's. Called
@@ -86,7 +88,8 @@ impl PlaybackService {
         let sample_rate = prepared.sample_rate;
         let channels = prepared.channels;
 
-        let (track_stream, handle, cancel_token, ready) = spawn_decoder(
+        let spawned = spawn_decoder(
+            &self.diagnostics,
             DecoderSetup::new(
                 decode,
                 sample_rate,
@@ -98,6 +101,15 @@ impl PlaybackService {
             ),
             |track_stream, handle, cancel_token, ready| (track_stream, handle, cancel_token, ready),
         );
+        let (track_stream, handle, cancel_token, ready) = match spawned {
+            Ok(parts) => parts,
+            Err(error) => {
+                if let Some((decoder, buffers)) = outgoing_decoder {
+                    cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
+                }
+                return Err(error);
+            }
+        };
 
         if let Err(error) = self
             .attach_track(track_stream, fmt, sample_rate, channels, staged_next)
@@ -115,20 +127,35 @@ impl PlaybackService {
         }
 
         let command_tx = self.command_tx.clone();
-        tokio::spawn(async move {
-            match ready.await {
-                Ok(()) => dispatch_command(
-                    &command_tx,
-                    PlaybackCommand::TrackReady {
-                        track_id,
-                        generation,
-                    },
-                ),
-                Err(_) => {
-                    debug!("ready watcher dropped before signal for track {track_id}")
+        let progress_tx = self.progress_tx.clone();
+        self.diagnostics.spawn_reported(
+            &tokio::runtime::Handle::current(),
+            "wait for the track's first samples",
+            async move {
+                match ready.await {
+                    Ok(()) => dispatch_command(
+                        &command_tx,
+                        PlaybackCommand::TrackReady {
+                            track_id,
+                            generation,
+                        },
+                    ),
+                    Err(_) => {
+                        debug!("ready watcher dropped before signal for track {track_id}")
+                    }
                 }
-            }
-        });
+            },
+            // The load would wait for its TrackReady forever: stop it with
+            // an error instead.
+            move |failed| {
+                emit_progress(
+                    &progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: crate::ui::PlaybackErrorReason::internal(failed),
+                    },
+                )
+            },
+        );
 
         if let Some((decoder, buffers)) = outgoing_decoder {
             cancel_and_join_decoder(&decoder.cancel_token, &buffers, decoder.handle).await;
@@ -606,6 +633,7 @@ impl PlaybackService {
     /// how the platform shares the speaker, asked before every start.
     pub(crate) fn start(
         library_manager: LibraryManager,
+        diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -614,6 +642,7 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
+            diagnostics,
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -629,6 +658,7 @@ impl PlaybackService {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn start_with_audio_device(
         library_manager: LibraryManager,
+        diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -637,6 +667,7 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
+            diagnostics,
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -649,6 +680,7 @@ impl PlaybackService {
 
     pub(super) fn start_inner(
         library_manager: LibraryManager,
+        diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -657,8 +689,12 @@ impl PlaybackService {
         audio_focus: crate::playback::AudioFocus,
     ) -> PlaybackHandle {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-        let progress_handle =
-            PlaybackProgressHandle::new(progress_rx, runtime_handle.clone(), clock.clone());
+        let progress_handle = PlaybackProgressHandle::new(
+            progress_rx,
+            runtime_handle.clone(),
+            clock.clone(),
+            diagnostics.clone(),
+        );
         let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
         // Taken before the service runs, so no deletion lands unheard between.
         let track_deletions = library_manager.subscribe_track_deletions();
@@ -666,30 +702,17 @@ impl PlaybackService {
         let worker =
             WorkerThread::spawn("playback service thread", move |command_tx, command_rx| {
                 let command_tx_for_completion = command_tx.clone();
+                let follower_diagnostics = diagnostics.clone();
                 runtime_handle.spawn(async move {
                     let mut progress_rx = progress_handle_for_completion.subscribe_all();
                     while let Some(progress) = progress_rx.recv().await {
-                        match progress {
-                            PlaybackProgress::TrackCompleted { track_id } => {
-                                info!(
-                                    "Auto-advance: Track completed, sending AutoAdvance \
-                                     command: {track_id}"
-                                );
-                                dispatch_command(
-                                    &command_tx_for_completion,
-                                    PlaybackCommand::AutoAdvance { track_id },
-                                );
-                            }
-                            // A mid-flight read failure fails the buffer and the decoder
-                            // exits without a TrackCompleted, so without this the UI would
-                            // sit in Playing forever.
-                            PlaybackProgress::PlaybackError { .. } => {
-                                dispatch_command(
-                                    &command_tx_for_completion,
-                                    PlaybackCommand::HaltOnError,
-                                );
-                            }
-                            _ => {}
+                        // One event at a time: a panic turning one into a
+                        // command is reported, and the next is served.
+                        let followed = caught_sync("follow a playback event", || {
+                            follow_progress(&command_tx_for_completion, progress)
+                        });
+                        if let Err(failed) = followed {
+                            follower_diagnostics.bug(failed);
                         }
                     }
                 });
@@ -708,10 +731,13 @@ impl PlaybackService {
                             progress_tx.clone(),
                             command_tx.clone(),
                             position_update_interval_ms,
+                            diagnostics.clone(),
                         );
-                        let staged_sides = advance::staged_sides_follow(&library_manager);
+                        let staged_sides =
+                            advance::staged_sides_follow(&library_manager, &diagnostics);
                         let mut service = PlaybackService {
                             library_manager,
+                            diagnostics,
                             command_tx: command_tx.clone(),
                             command_rx,
                             progress_tx,
@@ -740,7 +766,11 @@ impl PlaybackService {
                         // "Restore on launch" off starts with nothing in playback;
                         // opening the library emptied the queue for it.
                         if restore_playback {
-                            service.restore_from_cache().await;
+                            let restored =
+                                caught("restore playback", service.restore_from_cache()).await;
+                            if let Err(failed) = restored {
+                                service.recover_from_panic(failed).await;
+                            }
                         } else {
                             debug!("restore on launch is off; starting with nothing in playback");
                         }
@@ -760,363 +790,98 @@ impl PlaybackService {
         audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut countdown = side_countdown::SideCountdownWait::new();
         loop {
-            countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
-            self.follow_staged_sides();
-            tokio::select! {
-                (_, sides) = self.staged_sides.next() => {
-                    self.handle_staged_crossing_sides(sides).await;
-                }
-                _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() || self.preview.is_active() => {
-                    self.drain_current_audio_events().await;
-                    self.follow_preview_output_device().await;
-                    self.checkpoint_listening().await;
-                    self.publish_audible_completion();
-                }
-                deadline = countdown.elapsed(), if countdown.is_armed() => {
-                    self.side_pause_countdown_elapsed(deadline).await;
-                }
-                Some(command) = self.command_rx.recv() => {
-            // Apply a boundary the callback already crossed before a command can
-            // replace its source and discard the finishing track's last samples.
-            self.drain_current_audio_events().await;
-            // A deletion sent before this command applies before it, so the
-            // command reads and edits the queue the library left. The
-            // deletions arrive on a channel of their own, which the select
-            // below may poll after this one.
-            while let Ok(track_ids) = track_deletions.try_recv() {
-                self.handle_tracks_deleted(track_ids).await;
+            let follows = caught_sync("follow the side countdown and the staged sides", || {
+                countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
+                self.follow_staged_sides();
+            });
+            if let Err(failed) = follows {
+                self.recover_from_panic(failed).await;
+                continue;
             }
-            // One event per user-intent command, at the point the loop picks it
-            // up. Internal/system commands, queries, and continuous inputs map to
-            // `None` and ship nothing.
-            if let Some(kind) = playback_command_kind(&command) {
-                self.record_telemetry(TelemetryEvent::PlaybackCommand { command: kind });
-            }
-            if cancels_side_pause_countdown(&command) {
-                self.cancel_side_pause_countdown();
-            }
-            match command {
-                PlaybackCommand::Play(track_id) => {
-                    self.handle_play(track_id).await;
-                }
-                PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle } => {
-                    // A shuffled play starts wherever the shuffle puts first.
-                    let start = match (shuffle, start_track_id) {
-                        (true, _) => ReleaseStart::Shuffled,
-                        (false, None) => ReleaseStart::First,
-                        (false, Some(track_id)) => ReleaseStart::Track(track_id),
-                    };
-                    let fill = ContextFill::Release { release_id: release_id.clone(), start };
-                    match self.playback_queue.play(fill).await {
-                        Ok(ContextFilled::Playing { current, track_count }) => {
-                            self.start_filled_context(
-                                current.track_id,
-                                PlaybackStartSource::Release,
-                                track_count,
-                            )
-                            .await;
-                        }
-                        Ok(ContextFilled::NoTracks) => {
-                            warn!("PlayRelease: release {release_id} has no tracks");
-                        }
-                        // A named track the release no longer has — an edit removed
-                        // it since the caller read it — plays nothing rather than
-                        // some other track.
-                        Ok(ContextFilled::StartMissing) => {
-                            error!("PlayRelease: the track to start from is not on release {release_id}");
-                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                        }
-                        Err(e) => {
-                            error!("Failed to play release {release_id}: {e}");
-                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                        }
-                    }
-                }
-                PlaybackCommand::PlayReleases(release_ids) => {
-                    // The source names exactly the releases that have tracks.
-                    match self.playback_queue.play(ContextFill::Releases(release_ids)).await {
-                        Ok(ContextFilled::Playing { current, track_count }) => {
-                            self.start_filled_context(
-                                current.track_id,
-                                PlaybackStartSource::Releases,
-                                track_count,
-                            )
-                            .await;
-                        }
-                        Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
-                            warn!("PlayReleases: no playable releases; nothing to play");
-                        }
-                        Err(e) => {
-                            error!("PlayReleases: couldn't fill the queue: {e}");
-                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                        }
-                    }
-                }
-                PlaybackCommand::PlayLibraryShuffled => {
-                    match self.playback_queue.play(ContextFill::LibraryShuffled).await {
-                        Ok(ContextFilled::Playing { current, track_count }) => {
-                            self.start_filled_context(
-                                current.track_id,
-                                PlaybackStartSource::LibraryShuffled,
-                                track_count,
-                            )
-                            .await;
-                        }
-                        Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
-                            warn!("PlayLibraryShuffled: the library has no tracks; nothing to play");
-                        }
-                        Err(e) => {
-                            error!("PlayLibraryShuffled: couldn't fill the queue: {e}");
-                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                        }
-                    }
-                }
-                PlaybackCommand::Pause => {
-                    self.pause();
-                    self.capture_listening_position();
-                    self.persist_listening().await;
-                }
-                PlaybackCommand::Resume => {
-                    self.resume().await;
-                }
-                PlaybackCommand::CancelSidePauseCountdown => {
-                    self.cancel_side_pause_countdown();
-                }
-                PlaybackCommand::Stop => {
-                    self.stop().await;
-                }
-                PlaybackCommand::Next => {
-                    self.handle_next().await;
-                }
-                PlaybackCommand::AutoAdvance { track_id } => {
-                    self.handle_auto_advance(track_id).await;
-                }
-                PlaybackCommand::TrackReady {
-                    track_id,
-                    generation,
-                } => {
-                    self.resolve_track_ready(track_id, generation).await;
-                }
-                PlaybackCommand::HaltOnError => {
-                    self.halt_on_error().await;
-                }
-                PlaybackCommand::ReadFailed { buffer_id, error } => {
-                    self.handle_read_failed(buffer_id, error).await;
-                }
-                PlaybackCommand::Previous => {
-                    self.handle_previous().await;
-                }
-                PlaybackCommand::Seek(time) => self.seek_to_track_time(time).await,
-                PlaybackCommand::SeekByRatio(ratio) => self.seek_by_ratio(ratio).await,
-                PlaybackCommand::SetVolume(volume) => {
-                    self.set_volume(volume);
-                }
-                PlaybackCommand::SetMuted(muted) => {
-                    // Already in that state means nothing changes and nothing
-                    // emits. Otherwise the new audible level comes back — zero on
-                    // mute, the level from before the mute on unmute. Receiver
-                    // mute is flaky across devices, so the remote device follows
-                    // that level rather than a mute command of its own.
-                    if let Some(level) = self.volume.set_muted(muted, self.audio_output.as_ref()) {
-                        self.renderer.set_remote_volume(level);
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::VolumeChanged { volume: level },
-                        );
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::MuteChanged { is_muted: muted },
-                        );
-                    }
-                }
-                PlaybackCommand::AddToQueue(track_ids) => {
-                    let added = self.playback_queue.add_to_queue(track_ids).await;
-                    self.queue_added(added).await;
-                }
-                PlaybackCommand::AddNext(track_ids) => {
-                    let added = self.playback_queue.add_next(track_ids).await;
-                    self.queue_added(added).await;
-                }
-                PlaybackCommand::AddReleaseToQueue(release_id) => {
-                    match self.library_manager.get_track_ids(&release_id).await {
-                        Ok(track_ids) if !track_ids.is_empty() => {
-                            let added = self.playback_queue.add_to_queue(track_ids).await;
-                            self.queue_added(added).await;
-                        }
-                        Ok(_) => {}
-                        Err(e) => {
-                            error!("Failed to add release {release_id} to queue: {e}");
-                            self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
-                        }
-                    }
-                }
-                PlaybackCommand::AddReleaseNext(release_id) => {
-                    match self.library_manager.get_track_ids(&release_id).await {
-                        Ok(track_ids) if !track_ids.is_empty() => {
-                            let added = self.playback_queue.add_next(track_ids).await;
-                            self.queue_added(added).await;
-                        }
-                        Ok(_) => {}
-                        Err(e) => {
-                            error!("Failed to add release {release_id} next in queue: {e}");
-                            self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
-                        }
-                    }
-                }
-                PlaybackCommand::InsertInQueue(track_ids, index) => {
-                    let added = self.playback_queue.insert_at(index, track_ids).await;
-                    self.queue_added(added).await;
-                }
-                PlaybackCommand::RemoveFromQueue(entry_id) => {
-                    match self.playback_queue.remove(entry_id).await {
-                        Ok(Some(removed)) => {
-                            if self
-                                .current_track_id()
-                                .map(|id| id == removed.track_id)
-                                .unwrap_or(false)
-                            {
-                                self.stop().await;
-                            } else {
-                                self.on_queue_mutated().await;
-                            }
-                        }
-                        // The id named no queued entry — a stale UI action against a
-                        // queue that already moved on.
-                        Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                        Err(e) => self.queue_failed("remove a queue entry", e),
-                    }
-                }
-                PlaybackCommand::ReorderQueue { entry_id, before } => {
-                    match self.playback_queue.reorder(entry_id, before).await {
-                        Ok(true) => self.on_queue_mutated().await,
-                        Ok(false) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                        Err(e) => self.queue_failed("reorder the queue", e),
-                    }
-                }
-                PlaybackCommand::ClearUpNext => {
-                    match self.playback_queue.clear_up_next().await {
-                        Ok(()) => self.on_queue_mutated().await,
-                        Err(e) => self.queue_failed("clear Up Next", e),
-                    }
-                }
-                PlaybackCommand::ClearPlayingFrom => {
-                    match self.playback_queue.clear_playing_from().await {
-                        Ok(()) => self.on_queue_mutated().await,
-                        Err(e) => self.queue_failed("clear the context lane", e),
-                    }
-                }
-                PlaybackCommand::SetRepeatMode(mode) => {
-                    self.apply_repeat_mode(mode).await;
-                }
-                PlaybackCommand::SetShuffle(on) => {
-                    // Shuffling changes what plays next, so the preload and the
-                    // staged side-pause reconcile like any queue mutation.
-                    match self.playback_queue.set_shuffle(on).await {
-                        Ok(()) => self.on_queue_mutated().await,
-                        Err(e) => self.queue_failed("shuffle the queue", e),
-                    }
-                }
-                PlaybackCommand::ReevaluateSidePauseStaging => {
-                    self.reevaluate_side_pause_staging().await;
-                }
-                PlaybackCommand::SkipTo(entry_id) => {
-                    match self.playback_queue.skip_to(entry_id).await {
-                        Ok(Some(entry)) => {
-                            info!(
-                                "SkipTo: jumping to queue entry {}, track {}",
-                                entry.id, entry.track_id
-                            );
-                            self.play_track(
-                                &entry.track_id,
-                                TrackStart::Direct,
-                                PlayTarget::Playing,
-                                TrackTransition::Manual,
-                            )
-                            .await;
-                        }
-                        // The id named no queued entry — a stale UI action.
-                        Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                        Err(e) => self.queue_failed("skip to a queue entry", e),
-                    }
-                }
-                PlaybackCommand::PreviewPlay(target) => {
-                    self.preview_play(target).await;
-                }
-                PlaybackCommand::PreviewStop => {
-                    self.preview_stop();
-                }
-                PlaybackCommand::PreviewTogglePause => {
-                    self.preview_toggle_pause();
-                }
-                PlaybackCommand::PreviewSeekByRatio(ratio) => {
-                    self.preview
-                        .seek_by_ratio(ratio, self.audio_device.as_ref())
-                        .await;
-                }
-                PlaybackCommand::PreviewCompleted => {
-                    self.preview_completed();
-                }
-                PlaybackCommand::GetVolume(reply) => {
-                    if reply.send(self.audio_output.get_volume()).is_err() {
-                        debug!("volume asked for by a caller that stopped waiting");
-                    }
-                }
-                #[cfg(any(test, feature = "test-utils"))]
-                PlaybackCommand::GetQueue(reply) => {
-                    let value = match self.library_manager.queue_value().await {
-                        Ok(value) => self
-                            .library_manager
-                            .queue_upcoming()
-                            .await
-                            .map(|upcoming| (value, upcoming)),
-                        Err(e) => Err(e),
-                    }
-                    .map_err(|e| e.to_string());
-                    if reply.send(value).is_err() {
-                        debug!("queue asked for by a caller that stopped waiting");
-                    }
-                }
-                PlaybackCommand::Shutdown(reply) => {
-                    if matches!(&self.slot, PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing)) {
-                        self.pause();
-                    }
-                    self.capture_listening_position();
-                    self.finish_listening().await;
-                    self.persist_playback_state().await;
-                    // Closing the library ends its playback: give the speaker
-                    // back so another app can resume.
-                    self.audio_focus.release();
-                    if reply.send(()).is_err() {
-                        debug!("shutdown asked for by a caller that stopped waiting");
-                    }
-                    break;
-                }
-                PlaybackCommand::SaveState(reply) => {
-                    self.persist_playback_state().await;
-                    if reply.send(()).is_err() {
-                        debug!("state save asked for by a caller that stopped waiting");
-                    }
-                }
-                PlaybackCommand::PlayOn(connect) => {
-                    self.handle_play_on(*connect).await;
-                }
-                PlaybackCommand::PlayOnAirPlay(connect) => {
-                    self.handle_play_on_airplay(*connect).await;
-                }
-                PlaybackCommand::StopRemote => {
-                    self.handle_stop_remote().await;
-                }
-                PlaybackCommand::RemoteEvent(event) => {
-                    self.handle_remote_event(event).await;
-                }
-            }
-                }
-                Some(track_ids) = track_deletions.recv() => {
-                    self.handle_tracks_deleted(track_ids).await;
-                }
+            let wake = tokio::select! {
+                (_, sides) = self.staged_sides.next() => Wake::StagedSides(sides),
+                _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() || self.preview.is_active() => Wake::AudioTick,
+                deadline = countdown.elapsed(), if countdown.is_armed() => Wake::CountdownElapsed(deadline),
+                Some(command) = self.command_rx.recv() => Wake::Command(command),
+                Some(track_ids) = track_deletions.recv() => Wake::TracksDeleted(track_ids),
                 else => break,
+            };
+            // One wake at a time under one boundary: a panic in it is reported
+            // and stops playback with an error, and the loop serves the next.
+            match caught("serve playback", self.serve(wake, &mut track_deletions)).await {
+                Ok(ControlFlow::Continue(())) => {}
+                Ok(ControlFlow::Break(())) => break,
+                Err(failed) => self.recover_from_panic(failed).await,
             }
         }
         info!("PlaybackService stopped");
     }
+
+    /// Act on what woke the loop. `Break` once a shutdown has been served.
+    async fn serve(
+        &mut self,
+        wake: Wake,
+        track_deletions: &mut tokio_mpsc::UnboundedReceiver<Vec<String>>,
+    ) -> ControlFlow<()> {
+        match wake {
+            Wake::StagedSides(sides) => self.handle_staged_crossing_sides(sides).await,
+            Wake::AudioTick => {
+                self.drain_current_audio_events().await;
+                self.follow_preview_output_device().await;
+                self.checkpoint_listening().await;
+                self.publish_audible_completion();
+            }
+            Wake::CountdownElapsed(deadline) => self.side_pause_countdown_elapsed(deadline).await,
+            Wake::Command(command) => return self.handle_command(command, track_deletions).await,
+            Wake::TracksDeleted(track_ids) => self.handle_tracks_deleted(track_ids).await,
+        }
+        ControlFlow::Continue(())
+    }
+
+    /// A panic stopped what the loop was serving: report it, and stop
+    /// playback with an error. The pipeline it left can't be trusted, so its
+    /// output goes first, before the stop reads anything from it.
+    async fn recover_from_panic(&mut self, failed: TaskFailed) {
+        let failed = self.diagnostics.bug(failed);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::PlaybackError {
+                reason: crate::ui::PlaybackErrorReason::internal(&failed),
+            },
+        );
+        self.discard_output();
+        if let Err(again) = caught("stop playback after a panic", self.stop()).await {
+            self.diagnostics.bug(again);
+        }
+    }
+}
+
+/// Turn a progress event into the command it asks of the service loop: a
+/// completed track advances the queue, and a mid-flight failure halts playback.
+fn follow_progress(
+    command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    progress: PlaybackProgress,
+) {
+    match progress {
+        PlaybackProgress::TrackCompleted { track_id } => {
+            info!("Auto-advance: Track completed, sending AutoAdvance command: {track_id}");
+            dispatch_command(command_tx, PlaybackCommand::AutoAdvance { track_id });
+        }
+        // A mid-flight read failure fails the buffer and the decoder exits
+        // without a TrackCompleted, so without this the UI would sit in
+        // Playing forever.
+        PlaybackProgress::PlaybackError { .. } => {
+            dispatch_command(command_tx, PlaybackCommand::HaltOnError);
+        }
+        _ => {}
+    }
+}
+
+/// What woke the service loop.
+enum Wake {
+    StagedSides(Vec<PlaybackTrackInfo>),
+    AudioTick,
+    CountdownElapsed(chrono::DateTime<chrono::Utc>),
+    Command(PlaybackCommand),
+    TracksDeleted(Vec<String>),
 }

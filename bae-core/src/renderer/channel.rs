@@ -82,6 +82,10 @@ pub enum RendererError {
     /// A media/transport command (load, play, seek, …) failed.
     #[error("renderer command failed: {0}")]
     Command(String),
+    /// The session's own thread panicked: a bug in bae, reported where it
+    /// was caught.
+    #[error("{0}")]
+    Panicked(bae_util::task_failure::TaskFailed),
 }
 
 /// The operations the session performs against a connected renderer. Each call

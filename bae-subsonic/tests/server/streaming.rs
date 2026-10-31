@@ -648,7 +648,10 @@ fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
     file.write_all(bytes).unwrap();
     file.flush().unwrap();
     let buffer = create_sparse_buffer(bytes.len() as u64);
-    let reader = Box::new(LocalReader::new(file.path().to_str().unwrap()));
+    let reader = Box::new(LocalReader::new(
+        file.path().to_str().unwrap(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    ));
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
     bae_audio::decode_audio(buffer, None, None).expect("decode transcoded bytes")
 }

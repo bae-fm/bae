@@ -49,6 +49,9 @@ enum TrackOutcome {
     /// A read of the source failed, so the decode never saw the track's bytes.
     /// Says nothing about the audio.
     Unreadable(bae_audio::sparse_buffer::SourceReadError),
+    /// A read of the source panicked: a bug, already reported. What the
+    /// decode got is not known, so the track is neither measured nor judged.
+    ReadPanicked(bae_util::task_failure::TaskFailed),
 }
 
 /// Where one loudness pass reports its scan: the candidate row's phase percent,
@@ -346,17 +349,22 @@ struct MeasuredTrack {
 }
 
 /// Decode and meter one track's segments from their open streams, counting
-/// its frames into the pass's progress as they are measured.
+/// its frames into the pass's progress as they are measured. A read that
+/// panics is reported to `diagnostics`.
 fn measure_track(
     track: &MeasuredTrack,
     streams: &HashMap<String, SharedSparseBuffer>,
     progress: LoudnessProgress,
+    diagnostics: &crate::diagnostics::Diagnostics,
 ) -> TrackOutcome {
     let mut sink = LoudnessProgressSink::new(track.total_frames, progress);
     let decoded = decode_track(track, streams, &mut sink);
     sink.finish_progress();
     match decoded {
         Err(DecodeStop::Unreadable(error)) => TrackOutcome::Unreadable(error),
+        Err(DecodeStop::ReadPanicked(failed)) => {
+            TrackOutcome::ReadPanicked(diagnostics.bug(failed))
+        }
         Err(DecodeStop::Failed(reason)) => TrackOutcome::Decoded {
             measured: None,
             broken: Some(reason),
@@ -397,6 +405,8 @@ fn measure_track(
 enum DecodeStop {
     /// A read of the source failed.
     Unreadable(bae_audio::sparse_buffer::SourceReadError),
+    /// A read of the source panicked.
+    ReadPanicked(bae_util::task_failure::TaskFailed),
     /// The decode itself failed, for the reason given.
     Failed(String),
 }
@@ -449,6 +459,7 @@ fn decode_track(
                 .collect())
         }
         Err(bae_audio::DecodeError::SourceRead(error)) => Err(DecodeStop::Unreadable(error)),
+        Err(bae_audio::DecodeError::ReadPanicked(failed)) => Err(DecodeStop::ReadPanicked(failed)),
         Err(e) => {
             warn!(
                 "loudness: decode failed for track {}: {e}; track stays unmeasured",
@@ -484,9 +495,10 @@ fn decode_track(
 /// [`crate::import::ImportError::SourceRead`] carrying the read's own error.
 /// Nothing has been committed yet, so importing again once the source is
 /// readable is the whole remedy; carrying on would commit tracks that were
-/// never measured or verified. A measurement that panics fails the import the
-/// same way, reported to `diagnostics`: what the panicking code got wrong is
-/// not known, so nothing it measured is committed.
+/// never measured or verified. A measurement that panics, or a read of its
+/// source that does, fails the import the same way, reported to
+/// `diagnostics`: what the panicking code got wrong is not known, so nothing
+/// it measured is committed.
 pub(super) async fn measure_loudness(
     event_tx: &crate::import::handle::ImportEventBus,
     parallelism: NonZeroUsize,
@@ -612,7 +624,7 @@ pub(super) async fn measure_loudness(
             let (path, size) = &sources[file_id];
             let error_path = path.clone();
             SourceStream::start(
-                Box::new(LocalReader::new(path)),
+                Box::new(LocalReader::new(path, diagnostics.clone())),
                 *size,
                 Box::new(move |error| {
                     warn!("loudness: streaming {error_path:?} failed: {error}");
@@ -625,8 +637,9 @@ pub(super) async fn measure_loudness(
             async move {
                 let index = track.index;
                 let label = format!("{} (track {})", track.title, index + 1);
+                let track_diagnostics = diagnostics.clone();
                 let outcome = bae_util::task_failure::blocking(MEASURE_TRACK, move || {
-                    measure_track(&track, &streams, progress)
+                    measure_track(&track, &streams, progress, &track_diagnostics)
                 })
                 .await
                 .map_err(|failed| diagnostics.bug(failed))?;
@@ -637,6 +650,7 @@ pub(super) async fn measure_loudness(
                             error,
                         })
                     }
+                    TrackOutcome::ReadPanicked(failed) => Err(failed.into()),
                     TrackOutcome::Decoded {
                         measured,
                         broken,

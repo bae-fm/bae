@@ -9,6 +9,7 @@ use crate::playback::audio_output::{
     AudioDrain, AudioLockMissLog, AudioOutputControls, AudioState, DrainStatus,
 };
 use bae_audio::Resampler;
+use bae_util::task_failure::TaskFailed;
 
 /// The most source frames pulled at once. An output asks for one device
 /// buffer at a time, a few hundred to a few thousand frames; a larger request
@@ -151,13 +152,25 @@ impl ResamplingDrain {
 
     /// Stop yielding after a conversion failed, and tell playback why.
     fn conversion_failed(&mut self, what: &str, error: String) -> Pull {
-        self.failed = true;
-        self.converted.clear();
-        self.drain.report_output_failure(format!(
+        self.fail(format!(
             "converting {what} for {} failed: {error}",
             self.output_name
         ));
         Pull::Idle
+    }
+
+    /// Stop yielding after a [`Self::read`] panicked, and tell playback why.
+    /// The panic's caller catches it at the output's own callback boundary:
+    /// cpal's, which Android's output does not use.
+    #[cfg(not(target_os = "android"))]
+    pub(crate) fn panicked(&mut self, failed: TaskFailed) {
+        self.fail(format!("feeding {}: {failed}", self.output_name));
+    }
+
+    fn fail(&mut self, detail: String) {
+        self.failed = true;
+        self.converted.clear();
+        self.drain.report_output_failure(detail);
     }
 }
 

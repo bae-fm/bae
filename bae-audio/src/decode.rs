@@ -8,10 +8,10 @@
 
 use super::avio::{
     close_input_and_free_custom_avio, free_custom_avio_context, free_format_and_custom_avio,
-    streaming_avio_read_callback, streaming_avio_seek_callback, StreamingAvioContext,
+    streaming_avio_read_callback, streaming_avio_seek_callback, ReadFailure, StreamingAvioContext,
 };
 use super::{av_err_str, DecodeError, DecodedAudio, DecodedSink, AVIO_BUFFER_SIZE};
-use crate::sparse_buffer::{SharedSparseBuffer, SourceReadError};
+use crate::sparse_buffer::SharedSparseBuffer;
 use crate::track_stream::TrackSink;
 use std::cell::Cell;
 use std::os::raw::{c_int, c_void};
@@ -399,7 +399,7 @@ enum BufferInputError {
     /// The open or probe failed because a read of the source failed. Whatever
     /// FFmpeg reported for it (an empty probe reads as "Invalid data found") is
     /// a consequence, not the cause.
-    SourceRead(SourceReadError),
+    Read(ReadFailure),
 }
 
 impl BufferInputError {
@@ -409,7 +409,7 @@ impl BufferInputError {
     fn into_decode_error(self, cancel: &std::sync::atomic::AtomicBool) -> DecodeError {
         let cancelled = cancel.load(std::sync::atomic::Ordering::Relaxed);
         match self {
-            Self::SourceRead(error) => DecodeError::SourceRead(error),
+            Self::Read(failure) => failure.into(),
             Self::Alloc(what) => DecodeError::decode(what),
             Self::Open(_) | Self::Probe(_) if cancelled => DecodeError::InputCancelled,
             Self::Open(ret) => {
@@ -428,7 +428,7 @@ unsafe fn release_buffer_input(
     fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,
     avio_ctx_ptr: *mut StreamingAvioContext,
-) -> Option<SourceReadError> {
+) -> Option<ReadFailure> {
     close_input_and_free_custom_avio(fmt_ctx, avio);
     Box::from_raw(avio_ctx_ptr).read_failure()
 }
@@ -488,7 +488,7 @@ unsafe fn open_buffer_input(
                 }
             };
             let read_failure = Box::from_raw(avio_ctx_ptr).read_failure();
-            return Err(read_failure.map_or(error, BufferInputError::SourceRead));
+            return Err(read_failure.map_or(error, BufferInputError::Read));
         }
     };
 
@@ -678,8 +678,8 @@ unsafe fn decode_buffer_to_sink_impl(
                 stop_at_sample,
                 sink,
             );
-            if let Some(error) = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr) {
-                return Err(DecodeError::SourceRead(error));
+            if let Some(failure) = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr) {
+                return Err(failure.into());
             }
             sink.add_decode_error_count(get_ffmpeg_errors());
             return result.map_err(DecodeError::Decode);
@@ -789,8 +789,8 @@ unsafe fn decode_buffer_to_sink_impl(
     // A failed source read ends FFmpeg's packet loop the way EOF does, so the
     // loop's own result can look clean over a truncated window; the read's
     // error is the outcome.
-    if let Some(error) = read_failure {
-        return Err(DecodeError::SourceRead(error));
+    if let Some(failure) = read_failure {
+        return Err(failure.into());
     }
 
     // A verifying sink flags a broken decode off this count.

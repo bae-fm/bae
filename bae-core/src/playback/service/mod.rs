@@ -30,8 +30,8 @@ use super::RepeatMode;
 use super::{NextEntry, PlaybackQueue, PreviousAction, QueueEntryId};
 use crate::db::{ContextFill, ContextFilled, DbAudioSegmentRole, DbPlaybackState, ReleaseStart};
 use crate::diagnostics::{
-    AnomalyKind, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
-    TelemetryEvent, TrackTransition,
+    AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
+    ReportedThread, TelemetryEvent, TrackTransition,
 };
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
@@ -62,6 +62,7 @@ use tracing::{debug, error, info, trace, warn};
 mod advance;
 mod api;
 mod audio_focus;
+mod commands;
 mod completion;
 use completion::AudibleCompletion;
 mod file_buffers;
@@ -103,7 +104,7 @@ mod tests;
 mod runtime;
 
 struct TrackDecoder {
-    handle: std::thread::JoinHandle<()>,
+    handle: ReportedThread,
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
 }
 
@@ -123,7 +124,14 @@ enum StagedNextOnReplace {
     Preserve,
 }
 
-pub(crate) fn log_streaming_decode_failure(context: &str, error: DecodeError) -> Option<String> {
+/// Log why a streaming decode stopped, and say what the person is told: a
+/// failure of the decode's own, or `None` when there's nothing to tell them
+/// here. A read that panicked is a bug, reported through `diagnostics`.
+pub(crate) fn log_streaming_decode_failure(
+    diagnostics: &Diagnostics,
+    context: &str,
+    error: DecodeError,
+) -> Option<String> {
     match error {
         DecodeError::InputCancelled => {
             debug!("{context} stopped after input cancellation");
@@ -135,6 +143,7 @@ pub(crate) fn log_streaming_decode_failure(context: &str, error: DecodeError) ->
             debug!("{context} stopped on a source read failure the fill reported: {error}");
             None
         }
+        DecodeError::ReadPanicked(failed) => Some(diagnostics.bug(failed).to_string()),
         DecodeError::Decode(message) => {
             error!("{context} failed: {message}");
             Some(message)
@@ -300,7 +309,7 @@ struct PlaybackPreparedTrack {
 
 struct PreloadedNext {
     prepared: PlaybackPreparedTrack,
-    decoder_handle: std::thread::JoinHandle<()>,
+    decoder_handle: ReportedThread,
     /// The preload decoder's cancel flag, moved into its `TrackDecoder` when the
     /// preload becomes current so that track owns one token.
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
@@ -399,6 +408,9 @@ struct OutputStream {
 
 pub struct PlaybackService {
     library_manager: LibraryManager,
+    /// Where the service, its decoders, its fills and its watchers report a
+    /// panic as the bug it is.
+    diagnostics: Diagnostics,
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     command_rx: tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,

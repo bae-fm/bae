@@ -277,14 +277,18 @@ pub(super) fn event_callback(
     })
 }
 
-/// A no-op stand-in for the local decoder while playing remotely: the thread has
-/// already exited and the token is never read. It keeps `CurrentTrack`'s shape
+/// A no-op stand-in for the local decoder while playing remotely: the thread
+/// exits at once and the token is never read. It keeps `CurrentTrack`'s shape
 /// (one always-present decoder) without a real decode running.
-pub(super) fn stub_decoder() -> TrackDecoder {
-    TrackDecoder {
-        handle: std::thread::spawn(|| {}),
+pub(super) fn stub_decoder(diagnostics: &Diagnostics) -> std::io::Result<TrackDecoder> {
+    Ok(TrackDecoder {
+        handle: diagnostics.spawn_thread_reported(
+            "remote playback's local decoder",
+            || {},
+            |_| {},
+        )?,
         cancel_token: Arc::new(AtomicBool::new(false)),
-    }
+    })
 }
 
 impl PlaybackService {
@@ -308,7 +312,24 @@ impl PlaybackService {
         // queue and its cursor are untouched.
         self.teardown_local_playback();
 
-        let session = RendererSession::start(channel, event_callback(self.command_tx.clone()));
+        let session = match RendererSession::start(
+            &self.diagnostics,
+            channel,
+            event_callback(self.command_tx.clone()),
+        ) {
+            Ok(session) => session,
+            Err(error) => {
+                error!("remote: failed to start the renderer session's thread: {error}");
+                emit_progress(
+                    &self.progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: crate::ui::PlaybackErrorReason::internal(error),
+                    },
+                );
+                self.stop().await;
+                return;
+            }
+        };
         session.set_volume(volume);
         self.renderer = Renderer::Remote(RemoteRenderer {
             device: device.clone(),
@@ -574,12 +595,16 @@ impl PlaybackService {
             return;
         }
 
-        self.install_active_track(
-            prepared,
-            stub_decoder(),
-            target.into_track_phase(),
-            start_position,
-        );
+        let decoder = match stub_decoder(&self.diagnostics) {
+            Ok(decoder) => decoder,
+            Err(error) => {
+                error!("remote: failed to start the stand-in decoder for {track_id}: {error}");
+                self.fail_remote(crate::ui::PlaybackErrorReason::internal(error))
+                    .await;
+                return;
+            }
+        };
+        self.install_active_track(prepared, decoder, target.into_track_phase(), start_position);
         if !self.begin_listening().await {
             self.stop().await;
             return;
@@ -683,9 +708,7 @@ impl PlaybackService {
         self.stop_preview_for_main_playback();
         self.discard_current_track();
         self.clear_next_track_state();
-        if let Some(out) = self.output.take() {
-            out.source.lock().unwrap().cancel();
-        }
+        self.discard_output();
         self.audio_output.playback_ended();
         self.file_buffers.cancel_all();
         self.reset_starvation_episode();

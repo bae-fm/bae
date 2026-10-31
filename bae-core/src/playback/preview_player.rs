@@ -15,6 +15,7 @@
 //! keeps the ring fed; the audio callback outputs silence until the first
 //! samples land.
 
+use crate::diagnostics::{Diagnostics, ReportedTask};
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioState,
 };
@@ -28,10 +29,10 @@ use crate::playback::stream_pipeline::{
 };
 use crate::playback::timeline::{StreamPosition, TrackTimeline};
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
+use bae_util::task_failure::{blocking, TaskFailed};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
-use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
 /// One local source window that can be auditioned. The sample span is relative
@@ -146,6 +147,9 @@ pub(crate) struct PreviewPlayer {
     /// resumes it. Switching to another preview keeps it — the main player stays
     /// paused across the switch and is still owed its resume.
     paused_main_player: bool,
+    /// Where the preview's probe, fill, decoder and event listener report a
+    /// panic.
+    diagnostics: Diagnostics,
 }
 
 /// What is being previewed: the source window, how long it plays for, the PCM
@@ -176,7 +180,7 @@ impl PreviewSource {
 struct ActivePreview {
     source: PreviewSource,
     /// The preview event-listener task (aborted on stop/seek).
-    listener_handle: JoinHandle<()>,
+    listener_handle: ReportedTask,
     pipeline: StreamPipeline,
 }
 
@@ -185,6 +189,7 @@ impl PreviewPlayer {
         progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
         command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
         position_update_interval_ms: u32,
+        diagnostics: Diagnostics,
     ) -> Self {
         Self {
             progress_tx,
@@ -193,6 +198,7 @@ impl PreviewPlayer {
             audio_output: None,
             active: None,
             paused_main_player: false,
+            diagnostics,
         }
     }
 
@@ -240,7 +246,7 @@ impl PreviewPlayer {
             }
         };
 
-        let Some(probe) = probe_preview_audio(&target.path).await else {
+        let Some(probe) = probe_preview_audio(&self.diagnostics, &target.path).await else {
             return PreviewPlayOutcome::SetupFailed;
         };
         let Some(duration) = target.duration(probe.duration, probe.sample_rate) else {
@@ -254,7 +260,8 @@ impl PreviewPlayer {
         };
 
         let buffer = create_sparse_buffer(source_size);
-        let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(&target.path));
+        let reader: Box<dyn AudioDataReader> =
+            Box::new(LocalReader::new(&target.path, self.diagnostics.clone()));
         reader.start_reading(
             buffer.clone(),
             preview_fill_error_handler(self.progress_tx.clone()),
@@ -525,14 +532,21 @@ impl PreviewPlayer {
             "Preview decode",
             DecodeFailureReport::LogOnly,
         );
+        let diagnostics = self.diagnostics.clone();
         let active = match start_stream_pipeline(
+            &self.diagnostics,
             self.audio_output.as_deref_mut().unwrap(),
             setup,
             fmt,
             self.position_update_interval_ms,
             move |pipeline, audio_events| ActivePreview {
                 source,
-                listener_handle: spawn_preview_listener(progress_tx, command_tx, audio_events),
+                listener_handle: spawn_preview_listener(
+                    &diagnostics,
+                    progress_tx,
+                    command_tx,
+                    audio_events,
+                ),
                 pipeline,
             },
         )
@@ -579,89 +593,124 @@ impl PreviewPlayer {
 /// Spawn the preview event-listener task. Keeps the preview-specific arms
 /// (Position → `PreviewPositionUpdate`, Completion → `PreviewCompleted`) and
 /// delegates the diagnostics and dropped-event accounting to the shared unit.
+/// A listener that panics is reported, and the preview ends with an error
+/// rather than sit at its last position.
 fn spawn_preview_listener(
+    diagnostics: &Diagnostics,
+    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    audio_events: AudioEventReceiver,
+) -> ReportedTask {
+    let on_panic_progress = progress_tx.clone();
+    let on_panic_command = command_tx.clone();
+    diagnostics.spawn_reported(
+        &tokio::runtime::Handle::current(),
+        "follow the preview's audio events",
+        listen_to_preview(diagnostics.clone(), progress_tx, command_tx, audio_events),
+        move |failed| {
+            emit_progress(
+                &on_panic_progress,
+                PlaybackProgress::PlaybackError {
+                    reason: crate::ui::PlaybackErrorReason::internal(failed),
+                },
+            );
+            dispatch_command(&on_panic_command, PlaybackCommand::PreviewStop);
+        },
+    )
+}
+
+/// The preview event listener's work: turn the preview output's audio events
+/// into preview progress until the preview completes or fails.
+async fn listen_to_preview(
+    diagnostics: Diagnostics,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     mut audio_events: AudioEventReceiver,
-) -> JoinHandle<()> {
-    tokio::spawn(async move {
-        let mut event_tick = tokio::time::interval(Duration::from_millis(10));
-        event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-        loop {
-            event_tick.tick().await;
-            let mut completed = false;
-            while let Some(event) = audio_events.pop() {
-                match event {
-                    // Preview is single-track: every tick carries the same fmt
-                    // built above, so read its fields rather than keeping a
-                    // parallel copy here.
-                    AudioEvent::Position((fmt, position)) => {
-                        emit_progress(
-                            &progress_tx,
-                            PlaybackProgress::PreviewPositionUpdate {
-                                position_ms: position.as_millis(),
-                                progress: fmt.timeline.progress(position),
-                            },
-                        );
-                    }
-                    AudioEvent::Completion(_) => {
-                        // The event's decode stats are dropped: a preview is
-                        // not a library track, so there's nothing to record
-                        // them against.
-                        dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
-                        completed = true;
-                    }
-                    // The output stopped sending partway (on Android, its
-                    // device stream failed or couldn't be reopened on a new
-                    // default device): the preview ends with the reason
-                    // rather than going quiet.
-                    AudioEvent::OutputFailed { detail } => {
-                        emit_progress(
-                            &progress_tx,
-                            PlaybackProgress::PlaybackError {
-                                reason: crate::ui::PlaybackErrorReason::internal(detail),
-                            },
-                        );
-                        break;
-                    }
-                    // Diagnostics (and the never-relevant TrackCrossing) go to
-                    // the shared logger.
-                    other => {
-                        log_stream_diagnostic("preview", &other);
-                    }
+) {
+    let mut event_tick = tokio::time::interval(Duration::from_millis(10));
+    event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    loop {
+        event_tick.tick().await;
+        let mut completed = false;
+        while let Some(event) = audio_events.pop() {
+            match event {
+                // Preview is single-track: every tick carries the same fmt
+                // built above, so read its fields rather than keeping a
+                // parallel copy here.
+                AudioEvent::Position((fmt, position)) => {
+                    emit_progress(
+                        &progress_tx,
+                        PlaybackProgress::PreviewPositionUpdate {
+                            position_ms: position.as_millis(),
+                            progress: fmt.timeline.progress(position),
+                        },
+                    );
                 }
-                if completed {
+                AudioEvent::Completion(_) => {
+                    // The event's decode stats are dropped: a preview is
+                    // not a library track, so there's nothing to record
+                    // them against.
+                    dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
+                    completed = true;
+                }
+                // The output stopped sending partway (on Android, its
+                // device stream failed or couldn't be reopened on a new
+                // default device; anywhere, a pull from the source
+                // panicked): bae's own failure, reported, and the preview
+                // ends with the reason rather than going quiet.
+                AudioEvent::OutputFailed { detail } => {
+                    diagnostics.report_bug("keep the preview's audio output playing", &detail);
+                    emit_progress(
+                        &progress_tx,
+                        PlaybackProgress::PlaybackError {
+                            reason: crate::ui::PlaybackErrorReason::internal(detail),
+                        },
+                    );
                     break;
                 }
-            }
-            if report_dropped_audio_events(&audio_events, "preview") {
-                emit_progress(
-                    &progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: crate::ui::PlaybackErrorReason::internal(
-                            "Preview event queue dropped a required audio event".to_string(),
-                        ),
-                    },
-                );
-                break;
+                // Diagnostics (and the never-relevant TrackCrossing) go to
+                // the shared logger.
+                other => {
+                    log_stream_diagnostic("preview", &other);
+                }
             }
             if completed {
                 break;
             }
         }
-    })
+        if report_dropped_audio_events(&audio_events, "preview") {
+            emit_progress(
+                &progress_tx,
+                PlaybackProgress::PlaybackError {
+                    reason: crate::ui::PlaybackErrorReason::internal(
+                        "Preview event queue dropped a required audio event".to_string(),
+                    ),
+                },
+            );
+            break;
+        }
+        if completed {
+            break;
+        }
+    }
 }
 
-async fn probe_preview_audio(path: &Path) -> Option<bae_audio::ProbeResult> {
+async fn probe_preview_audio(
+    diagnostics: &Diagnostics,
+    path: &Path,
+) -> Option<bae_audio::ProbeResult> {
     let probe_path = path.to_path_buf();
-    let result =
-        tokio::task::spawn_blocking(move || bae_audio::probe_audio_from_path(&probe_path)).await;
+    let result = blocking("probe the file to preview", move || {
+        bae_audio::probe_audio_from_path(&probe_path)
+    })
+    .await
+    .map_err(|failed| diagnostics.bug(failed));
     resolve_preview_probe(path, result)
 }
 
 fn resolve_preview_probe(
     path: &Path,
-    result: Result<Option<bae_audio::ProbeResult>, tokio::task::JoinError>,
+    result: Result<Option<bae_audio::ProbeResult>, TaskFailed>,
 ) -> Option<bae_audio::ProbeResult> {
     let path = path.display();
     match result {
@@ -702,7 +751,12 @@ impl PreviewPlayer {
                 channels: 2,
                 buffer,
             },
-            listener_handle: tokio::spawn(async {}),
+            listener_handle: Diagnostics::noop().spawn_reported(
+                &tokio::runtime::Handle::current(),
+                "follow the preview's audio events",
+                async {},
+                |_| {},
+            ),
             pipeline,
         });
     }

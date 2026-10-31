@@ -631,7 +631,10 @@ async fn test_local_file_reader_full_file() {
     temp_file.write_all(test_data).unwrap();
     temp_file.flush().unwrap();
 
-    let reader = Box::new(LocalReader::new(temp_file.path()));
+    let reader = Box::new(LocalReader::new(
+        temp_file.path(),
+        crate::diagnostics::Diagnostics::noop(),
+    ));
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
@@ -652,7 +655,10 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     temp_file.write_all(&data).unwrap();
     temp_file.flush().unwrap();
 
-    let reader = Box::new(LocalReader::new(temp_file.path()));
+    let reader = Box::new(LocalReader::new(
+        temp_file.path(),
+        crate::diagnostics::Diagnostics::noop(),
+    ));
     let buffer = create_sparse_buffer(source_size);
 
     // Register the seek demand before the fill loop starts (the seek case).
@@ -691,7 +697,10 @@ async fn test_local_file_reader_nonexistent_file() {
     let path = temp_file.path().to_path_buf();
     drop(temp_file);
 
-    let reader = Box::new(LocalReader::new(path));
+    let reader = Box::new(LocalReader::new(
+        path,
+        crate::diagnostics::Diagnostics::noop(),
+    ));
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     let (on_error, mut error_rx) = capturing_error_handler();
@@ -720,7 +729,10 @@ async fn test_local_file_reader_nonexistent_file() {
 async fn test_local_file_reader_read_error_reports_error() {
     let dir = tempfile::tempdir().unwrap();
 
-    let reader = Box::new(LocalReader::new(dir.path()));
+    let reader = Box::new(LocalReader::new(
+        dir.path(),
+        crate::diagnostics::Diagnostics::noop(),
+    ));
     let buffer = create_sparse_buffer(1);
 
     let (on_error, mut error_rx) = capturing_error_handler();
@@ -845,7 +857,11 @@ async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
     let path = dir.path().join("track.flac");
     std::fs::write(&path, vec![7u8; 1024]).unwrap();
     let buffer = create_sparse_buffer(1024);
-    Box::new(LocalReader::new(&path)).start_reading(buffer.clone(), Box::new(|_| {}));
+    Box::new(LocalReader::new(
+        &path,
+        crate::diagnostics::Diagnostics::noop(),
+    ))
+    .start_reading(buffer.clone(), Box::new(|_| {}));
     wait_for_open_files(dir.path(), 1).await;
 
     buffer.cancel();

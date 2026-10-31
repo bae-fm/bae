@@ -73,7 +73,10 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
         |path: &PathBuf| {
             opens.fetch_add(1, Ordering::Relaxed);
             SourceStream::start(
-                Box::new(LocalReader::new(path)),
+                Box::new(LocalReader::new(
+                    path,
+                    crate::diagnostics::Diagnostics::noop(),
+                )),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )
@@ -228,7 +231,10 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
         |track: &Track| track.files.clone(),
         |path: &PathBuf| {
             SourceStream::start(
-                Box::new(LocalReader::new(path)),
+                Box::new(LocalReader::new(
+                    path,
+                    crate::diagnostics::Diagnostics::noop(),
+                )),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )
@@ -289,7 +295,10 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
         |track: &Track| track.files.clone(),
         |path: &PathBuf| {
             SourceStream::start(
-                Box::new(LocalReader::new(path)),
+                Box::new(LocalReader::new(
+                    path,
+                    crate::diagnostics::Diagnostics::noop(),
+                )),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )
@@ -351,7 +360,10 @@ async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
         |track: &Track| track.files.clone(),
         |path: &PathBuf| {
             SourceStream::start(
-                Box::new(LocalReader::new(path)),
+                Box::new(LocalReader::new(
+                    path,
+                    crate::diagnostics::Diagnostics::noop(),
+                )),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )

@@ -13,6 +13,7 @@ use super::audio_output::{
 };
 use super::device_writer::{DeviceStream, DeviceStreamError, DeviceWriter, WriterStep};
 use crate::playback::source::PlaybackSource;
+use bae_util::task_failure::caught_sync;
 use ndk::audio::{
     AudioDirection, AudioError as NdkAudioError, AudioFormat, AudioPerformanceMode,
     AudioStream as NdkAudioStream, AudioStreamBuilder,
@@ -193,8 +194,17 @@ impl AudioOutput for AAudioOutput {
         let (opened_tx, opened_rx) = mpsc::sync_channel(1);
 
         let thread = std::thread::spawn(move || {
-            let opened = open_output_stream(source_sample_rate, source_channels)
-                .map_err(|error| open_error(error, source_sample_rate, source_channels));
+            // A panic ending this thread unseen would leave playback showing
+            // Playing with no sound: opening and each step are caught, and a
+            // panic fails the build or ends the output, which playback
+            // reports.
+            let opened = caught_sync("open the AAudio stream", || {
+                open_output_stream(source_sample_rate, source_channels)
+            })
+            .map_err(|failed| AudioError::Unexpected(failed.to_string()))
+            .and_then(|opened| {
+                opened.map_err(|error| open_error(error, source_sample_rate, source_channels))
+            });
             let stream = match opened {
                 Ok(stream) => stream,
                 Err(error) => {
@@ -226,7 +236,9 @@ impl AudioOutput for AAudioOutput {
                 WRITE_FRAMES * source_channels as usize,
             );
             while !stop_clone.load(Ordering::Acquire) {
-                match writer.step() {
+                let step = caught_sync("write to the AAudio stream", || writer.step())
+                    .unwrap_or_else(|failed| writer.end(failed.to_string()));
+                match step {
                     WriterStep::Wrote => {}
                     WriterStep::Paused => std::thread::sleep(Duration::from_millis(5)),
                     WriterStep::Starved => std::thread::sleep(Duration::from_millis(1)),

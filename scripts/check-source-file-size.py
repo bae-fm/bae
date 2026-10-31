@@ -14,9 +14,7 @@ INLINE_RUST_TEST_LIMIT = 1_000
 # These files each contain one owner and cannot be split without dividing its
 # inherent implementation or widening private state. Their current lengths are
 # frozen: growth must first extract a real responsibility.
-SOURCE_LINE_LIMIT_EXCEPTIONS = {
-    "bae-core/src/playback/service/runtime.rs": 1_184,
-}
+SOURCE_LINE_LIMIT_EXCEPTIONS: dict[str, int] = {}
 SOURCE_SUFFIXES = {
     ".astro",
     ".c",

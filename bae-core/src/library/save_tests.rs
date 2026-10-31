@@ -293,3 +293,57 @@ fn write_tags_round_trips_through_mp4_ilst() {
     assert_eq!(tag.disk(), Some(1));
     assert!(!tag.pictures().is_empty(), "cover embedded");
 }
+
+/// A read of a track's source that panics fails its save as unfinished work,
+/// which the library reports as a bug, never as a save that could not be
+/// written. Sabotage: map `ReadPanicked` to `SaveError::Failed`, and the
+/// track's save fails as an ordinary save error nobody reports.
+#[test]
+fn a_read_that_panics_fails_the_save_as_unfinished() {
+    bae_audio::init();
+    let bytes = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/cue_flac/03 Test Artist - Track Three (Brown Noise).flac"
+    ))
+    .expect("fixture");
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, &bytes);
+    buffer.panic_reads();
+    let (reply, _entry) = tokio::sync::oneshot::channel();
+    let track = ImageTrack {
+        index: 0,
+        track_id: "track-1".to_string(),
+        title: "Track Title".to_string(),
+        performer: "Artist Name".to_string(),
+        audio_pregap_samples: None,
+        decode: crate::playback::stream_pipeline::StreamDecodeParams::new(
+            vec![crate::playback::stream_pipeline::SegmentDecodeParams::new(
+                buffer,
+                crate::db::SegmentSpan::whole_file(),
+                0,
+            )],
+            true,
+            0,
+            0,
+        ),
+        reply,
+    };
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = std::fs::File::create(dir.path().join("image.flac")).unwrap();
+    let cancel = Arc::new(AtomicBool::new(false));
+    let mut encoder = StreamingEncoder::seekable(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        Box::new(file),
+        cancel.clone(),
+    );
+
+    let result = encode_image_track(&track, &mut encoder, &mut 0, 44_100, 2, cancel);
+
+    match result {
+        Err(SaveError::Unfinished(failed)) => assert!(failed.is_panic(), "{failed}"),
+        Err(error) => panic!("a read that panicked leaves the save unfinished: {error}"),
+        Ok(_) => panic!("a read that panicked leaves the save unfinished, not encoded"),
+    }
+}

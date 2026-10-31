@@ -140,9 +140,7 @@ impl PlaybackService {
         // flag, so without this it would park forever. (`follow_output_device`
         // took `self.output` out before calling here and passes that same source
         // back in, so there is nothing to cancel then.)
-        if let Some(old) = self.output.take() {
-            old.source.lock().unwrap().cancel();
-        }
+        self.discard_output();
 
         let (mut audio_event_tx, audio_events) = audio_event_channel();
         for event in carry_events {
@@ -178,6 +176,19 @@ impl PlaybackService {
             channels,
         });
         Ok(())
+    }
+
+    /// Drop the output stream, cancelling its source so a decoder filling the
+    /// source's ring exits. A source a panic poisoned is thrown away with the
+    /// stream, so it is cancelled all the same: cancelling only tells its
+    /// tracks' streams to end.
+    pub(super) fn discard_output(&mut self) {
+        if let Some(out) = self.output.take() {
+            out.source
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .cancel();
+        }
     }
 
     /// Replace the output stream its device stopped playing — `detail` is the

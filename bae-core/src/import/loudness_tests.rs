@@ -379,6 +379,46 @@ async fn measure_loudness_fails_on_a_source_whose_read_fails() {
     assert!(!error.to_string().contains("Invalid data found"), "{error}");
 }
 
+/// A read of a track's source that panics is a bug: it is reported, and the
+/// track comes back as a read that panicked, which fails the import, never
+/// as a broken or unmeasured track the import would commit.
+/// Sabotage: let `decode_track` treat `ReadPanicked` as any other decode
+/// error, and the track comes back broken with nothing reported.
+#[tokio::test]
+async fn a_read_that_panics_is_reported_and_measures_nothing() {
+    bae_audio::init();
+    let bytes = std::fs::read(cue_flac_fixture(
+        "03 Test Artist - Track Three (Brown Noise).flac",
+    ))
+    .expect("fixture");
+    let buffer = create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, &bytes);
+    buffer.panic_reads();
+    let track = MeasuredTrack {
+        index: 0,
+        title: "Track Title".to_string(),
+        total_frames: None,
+        segments: vec![whole_file_main_segment("af-0", "file-0")],
+        byte_seekable: true,
+    };
+    let streams = HashMap::from([("file-0".to_string(), buffer)]);
+    let event_tx =
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
+    let reports = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone());
+
+    let outcome = measure_track(&track, &streams, progress(&event_tx, None), &diagnostics);
+
+    let TrackOutcome::ReadPanicked(failed) = outcome else {
+        panic!("the track is a read that panicked");
+    };
+    assert!(failed.is_panic(), "{failed}");
+    assert_eq!(
+        reports.reports(),
+        vec![(failed.operation().to_string(), failed.to_string())]
+    );
+}
+
 /// A track whose audio format has no segments is skipped (nothing to
 /// decode) and stays unmeasured.
 #[tokio::test]

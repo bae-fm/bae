@@ -63,7 +63,12 @@ fn session_routes_commands_to_the_channel() {
     let state = channel.state.clone();
     let sink = StatusSink::new();
 
-    let session = RendererSession::start(Box::new(channel), sink.callback());
+    let session = RendererSession::start(
+        &crate::diagnostics::Diagnostics::noop(),
+        Box::new(channel),
+        sink.callback(),
+    )
+    .expect("start the session thread");
     session.load(media("http://host/track"));
     session.pause();
     session.seek(Duration::from_secs(42));
@@ -104,7 +109,12 @@ fn session_reports_polled_status_to_the_callback() {
     channel.state.lock().unwrap().default_status = Some(status(RendererPlayerState::Playing));
     let sink = StatusSink::new();
 
-    let session = RendererSession::start(Box::new(channel), sink.callback());
+    let session = RendererSession::start(
+        &crate::diagnostics::Diagnostics::noop(),
+        Box::new(channel),
+        sink.callback(),
+    )
+    .expect("start the session thread");
     let saw_playing = sink.wait_for(|event| {
         matches!(event, RendererSessionEvent::Status(s) if s.player_state == RendererPlayerState::Playing)
     });
@@ -131,7 +141,12 @@ fn session_ends_on_receiver_side_stop() {
         )));
     let sink = StatusSink::new();
 
-    let session = RendererSession::start(Box::new(channel), sink.callback());
+    let session = RendererSession::start(
+        &crate::diagnostics::Diagnostics::noop(),
+        Box::new(channel),
+        sink.callback(),
+    )
+    .expect("start the session thread");
     let ended = sink.wait_for(|event| {
         *event
             == RendererSessionEvent::Ended(RendererError::Connection(
@@ -155,7 +170,12 @@ fn session_reports_a_refused_command_and_continues() {
     channel.state.lock().unwrap().refuse_next_load = Some(refusal.clone());
     let sink = StatusSink::new();
 
-    let session = RendererSession::start(Box::new(channel), sink.callback());
+    let session = RendererSession::start(
+        &crate::diagnostics::Diagnostics::noop(),
+        Box::new(channel),
+        sink.callback(),
+    )
+    .expect("start the session thread");
     session.load(media("http://host/track"));
     // The refusal, then a status polled after it.
     let refused_then_polled = sink.wait_until(|events| {
@@ -193,7 +213,12 @@ fn session_reports_finished_for_queue_advance() {
         .push_back(Ok(status(RendererPlayerState::Finished)));
     let sink = StatusSink::new();
 
-    let session = RendererSession::start(Box::new(channel), sink.callback());
+    let session = RendererSession::start(
+        &crate::diagnostics::Diagnostics::noop(),
+        Box::new(channel),
+        sink.callback(),
+    )
+    .expect("start the session thread");
     let saw_finished = sink.wait_for(|event| {
         matches!(event, RendererSessionEvent::Status(s) if s.player_state == RendererPlayerState::Finished)
     });

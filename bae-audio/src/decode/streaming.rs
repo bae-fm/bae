@@ -160,8 +160,8 @@ unsafe fn decode_audio_streaming_impl(
     drop(resources);
     // A failed source read ends FFmpeg's packet loop the way EOF does; the
     // read's error is the outcome, not the truncated segment.
-    if let Some(error) = read_failure {
-        return Err(DecodeError::SourceRead(error));
+    if let Some(failure) = read_failure {
+        return Err(failure.into());
     }
     let discarded_packet_count = loop_result.map_err(DecodeError::decode)?;
 

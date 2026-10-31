@@ -6,10 +6,11 @@
 //! `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes directly.
 
 use crate::sparse_buffer::{BufferStop, SharedSparseBuffer, SourceReadError};
+use bae_util::task_failure::{caught_sync, TaskFailed};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
 use std::sync::{Arc, OnceLock};
-use tracing::warn;
+use tracing::{debug, warn};
 
 // --- AVIO custom I/O implementation ---
 
@@ -37,6 +38,25 @@ pub(super) unsafe fn free_format_and_custom_avio(
 
 // --- Streaming AVIO over a sparse buffer ---
 
+/// Why a streaming read gave FFmpeg an error code instead of bytes.
+#[derive(Debug, Clone)]
+pub(crate) enum ReadFailure {
+    /// The buffer's source could not be read.
+    Source(SourceReadError),
+    /// The read itself panicked: a bug in bae's read path, which the decode's
+    /// caller reports.
+    Panicked(TaskFailed),
+}
+
+impl From<ReadFailure> for crate::DecodeError {
+    fn from(failure: ReadFailure) -> Self {
+        match failure {
+            ReadFailure::Source(error) => Self::SourceRead(error),
+            ReadFailure::Panicked(failed) => Self::ReadPanicked(failed),
+        }
+    }
+}
+
 /// The sparse-buffer reader a streaming decode reads from. Its `read` blocks
 /// until the fill delivers the bytes.
 pub(crate) struct StreamingAvioContext {
@@ -45,12 +65,12 @@ pub(crate) struct StreamingAvioContext {
     /// Set by the playback service to stop this decoder alone, leaving the others
     /// on the same buffer running.
     cancel_token: Arc<std::sync::atomic::AtomicBool>,
-    /// The source-read error a read of this decoder's hit, if one did. FFmpeg
-    /// only sees an I/O error code from the read callback, and what it makes of
-    /// one depends on where it lands (an empty probe is "Invalid data found", a
-    /// mid-stream one ends the packet loop like EOF), so the decode consults
-    /// this to report the read's own cause instead.
-    read_failure: OnceLock<SourceReadError>,
+    /// Why a read of this decoder's failed, if one did. FFmpeg only sees an
+    /// I/O error code from the read callback, and what it makes of one depends
+    /// on where it lands (an empty probe is "Invalid data found", a mid-stream
+    /// one ends the packet loop like EOF), so the decode consults this to
+    /// report the read's own cause instead.
+    read_failure: OnceLock<ReadFailure>,
 }
 
 impl StreamingAvioContext {
@@ -67,74 +87,109 @@ impl StreamingAvioContext {
         }
     }
 
-    pub(super) fn read_failure(&self) -> Option<SourceReadError> {
+    pub(super) fn read_failure(&self) -> Option<ReadFailure> {
         self.read_failure.get().cloned()
     }
 
     pub(super) fn set_readahead_ceiling(&self, ceiling: u64) {
-        self.reader.lock().unwrap().set_readahead_ceiling(ceiling);
+        match self.reader.lock() {
+            Ok(reader) => reader.set_readahead_ceiling(ceiling),
+            Err(_) => debug!(
+                ceiling,
+                "not setting the read-ahead ceiling: a panicked read stopped this decode's reader"
+            ),
+        }
+    }
+
+    /// Keep the first failure: every later read fails the same way, or
+    /// follows from it.
+    fn record(&self, failure: ReadFailure) {
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "the first failure is kept; a later one repeats it or follows from it"
+        )]
+        let _ = self.read_failure.set(failure);
+    }
+
+    /// Fill `output` from the reader: the byte count, or FFmpeg's EOF or I/O
+    /// error code.
+    fn read(&self, output: &mut [u8]) -> c_int {
+        if self.cancel_token.load(std::sync::atomic::Ordering::Relaxed) {
+            return ffmpeg_sys_next::AVERROR_EOF;
+        }
+        // A reader poisoned by a read that panicked: that panic is already
+        // recorded as this decode's failure.
+        let Ok(mut reader) = self.reader.lock() else {
+            return ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO);
+        };
+        match reader.read(output) {
+            Ok(0) => ffmpeg_sys_next::AVERROR_EOF,
+            Ok(n) => n as c_int,
+            Err(BufferStop::Cancelled) => {
+                // The buffer was cancelled under us: set our own token too, so the
+                // decode loop sees the cancellation rather than reading it as EOF.
+                self.cancel_token
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                ffmpeg_sys_next::AVERROR_EOF
+            }
+            Err(BufferStop::Failed(error)) => {
+                self.record(ReadFailure::Source(error));
+                ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO)
+            }
+        }
+    }
+
+    /// Move the reader as FFmpeg's seek asks: the new position, or -1.
+    fn seek(&self, offset: i64, whence: c_int) -> i64 {
+        if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
+            return self.buffer.get_total_size() as i64;
+        }
+
+        let Ok(mut reader) = self.reader.lock() else {
+            return -1;
+        };
+        let new_pos = match whence {
+            0 => offset as u64,                                    // SEEK_SET
+            1 => (reader.get_read_pos() as i64 + offset) as u64,   // SEEK_CUR
+            2 => (reader.get_total_size() as i64 + offset) as u64, // SEEK_END
+            _ => return -1,
+        };
+
+        if reader.seek(new_pos) {
+            new_pos as i64
+        } else {
+            -1
+        }
     }
 }
 
+/// FFmpeg's read callback. Unwinding out of it would abort the process, so a
+/// panicking read is caught here, recorded as the decode's failure, and
+/// answered with an I/O error.
 pub(crate) unsafe extern "C" fn streaming_avio_read_callback(
     opaque: *mut c_void,
     buf: *mut u8,
     buf_size: c_int,
 ) -> c_int {
     let ctx = &*(opaque as *const StreamingAvioContext);
-
-    if ctx.cancel_token.load(std::sync::atomic::Ordering::Relaxed) {
-        return ffmpeg_sys_next::AVERROR_EOF;
-    }
-
     let output = std::slice::from_raw_parts_mut(buf, buf_size as usize);
-    match ctx.reader.lock().unwrap().read(output) {
-        Ok(0) => ffmpeg_sys_next::AVERROR_EOF,
-        Ok(n) => n as c_int,
-        Err(BufferStop::Cancelled) => {
-            // The buffer was cancelled under us: set our own token too, so the
-            // decode loop sees the cancellation rather than reading it as EOF.
-            ctx.cancel_token
-                .store(true, std::sync::atomic::Ordering::Relaxed);
-            ffmpeg_sys_next::AVERROR_EOF
-        }
-        Err(BufferStop::Failed(error)) => {
-            // Every later read fails the same way (the stop is terminal), so the
-            // first error is the one to keep.
-            #[expect(
-                clippy::let_underscore_must_use,
-                reason = "the first failure is kept; a later one repeats it"
-            )]
-            let _ = ctx.read_failure.set(error);
-            ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO)
-        }
-    }
+    caught_sync("read a streaming decode's bytes", || ctx.read(output)).unwrap_or_else(|failed| {
+        ctx.record(ReadFailure::Panicked(failed));
+        ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO)
+    })
 }
 
+/// FFmpeg's seek callback, caught as the read callback is.
 pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
     opaque: *mut c_void,
     offset: i64,
     whence: c_int,
 ) -> i64 {
     let ctx = &*(opaque as *const StreamingAvioContext);
-
-    if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
-        return ctx.buffer.get_total_size() as i64;
-    }
-
-    let mut reader = ctx.reader.lock().unwrap();
-    let new_pos = match whence {
-        0 => offset as u64,                                    // SEEK_SET
-        1 => (reader.get_read_pos() as i64 + offset) as u64,   // SEEK_CUR
-        2 => (reader.get_total_size() as i64 + offset) as u64, // SEEK_END
-        _ => return -1,
-    };
-
-    if reader.seek(new_pos) {
-        new_pos as i64
-    } else {
+    caught_sync("seek a streaming decode", || ctx.seek(offset, whence)).unwrap_or_else(|failed| {
+        ctx.record(ReadFailure::Panicked(failed));
         -1
-    }
+    })
 }
 
 // --- Reading AVIO over a file ---

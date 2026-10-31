@@ -12,11 +12,30 @@ pub struct TrackDecode {
     decode: crate::playback::stream_pipeline::StreamDecodeParams,
     sample_rate: u32,
     channels: u32,
+    /// The library's, which a read of the decode that panicked is reported
+    /// to.
+    diagnostics: crate::diagnostics::Diagnostics,
 }
 
 impl TrackDecode {
-    /// Decode the track into `sink`, announcing its stored format first.
-    /// Blocking; run it off the async runtime.
+    pub(crate) fn new(
+        decode: crate::playback::stream_pipeline::StreamDecodeParams,
+        sample_rate: u32,
+        channels: u32,
+        diagnostics: crate::diagnostics::Diagnostics,
+    ) -> Self {
+        Self {
+            decode,
+            sample_rate,
+            channels,
+            diagnostics,
+        }
+    }
+
+    /// Decode the track into `sink`, announcing its stored format first: why
+    /// it stopped short, if it did. A read that panicked is reported as a bug
+    /// and fails the decode with the panic's message. Blocking; run it off the
+    /// async runtime.
     pub fn run_to_sink(
         &self,
         sink: &mut dyn bae_audio::DecodedSink,
@@ -24,6 +43,12 @@ impl TrackDecode {
     ) -> Result<(), String> {
         self.decode
             .run_to_sink(self.sample_rate, self.channels, sink, cancel)
+            .map_err(|error| match error {
+                bae_audio::DecodeError::ReadPanicked(failed) => {
+                    self.diagnostics.bug(failed).to_string()
+                }
+                error => error.to_string(),
+            })
     }
 
     /// Block until every file the decode reads has delivered its first bytes,
@@ -604,16 +629,16 @@ impl AppServices {
                 SegmentDecodeParams::new(buffer, segment.span, 0)
             })
             .collect();
-        TrackDecode {
-            decode: StreamDecodeParams::new(
+        self.inner.manager.track_decode(
+            StreamDecodeParams::new(
                 segments,
                 bae_audio::byte_jump_keeps_place(&audio.content_type),
                 audio.generated_pregap_frames(),
                 0,
             ),
-            sample_rate: audio.sample_rate.get(),
-            channels: audio.channels.get(),
-        }
+            audio.sample_rate.get(),
+            audio.channels.get(),
+        )
     }
 
     pub fn get_sync_status(&self) -> crate::library::SyncStatusSnapshot {

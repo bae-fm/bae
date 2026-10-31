@@ -18,6 +18,7 @@ impl LibraryManager {
         self.settle_playback_queue(restore_playback).await?;
         Ok(crate::playback::PlaybackService::start(
             self.clone(),
+            self.diagnostics.clone(),
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -69,6 +70,7 @@ impl LibraryManager {
         self.settle_playback_queue(restore_playback).await?;
         Ok(crate::playback::PlaybackService::start_with_audio_device(
             self.clone(),
+            self.diagnostics.clone(),
             runtime_handle,
             position_update_interval_ms,
             restore_playback,
@@ -90,7 +92,20 @@ impl LibraryManager {
             arbiter,
             prefetch_byte,
             prefetch_file_end,
+            self.diagnostics.clone(),
         ))
+    }
+
+    /// `decode`, a track's stored audio as `sample_rate` and `channels`, as
+    /// one decode for a caller outside the library (a transcode), reporting a
+    /// read of it that panics to the library's diagnostics.
+    pub(crate) fn track_decode(
+        &self,
+        decode: crate::playback::stream_pipeline::StreamDecodeParams,
+        sample_rate: u32,
+        channels: u32,
+    ) -> crate::library::TrackDecode {
+        crate::library::TrackDecode::new(decode, sample_rate, channels, self.diagnostics.clone())
     }
 
     /// Write the device-local playback-state row. Propagates the DB error so the

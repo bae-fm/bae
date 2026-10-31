@@ -12,6 +12,8 @@ use std::sync::atomic::{AtomicU32, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use bae_util::task_failure::caught_sync;
+
 const AUDIO_EVENT_CAPACITY: usize = 2048;
 
 /// What the audio callback does each buffer. Held as a shared atomic the service
@@ -152,6 +154,9 @@ pub(crate) struct AudioDrain {
     audio_events: AudioEventSender,
     position_update_interval: std::time::Duration,
     last_position_update: std::time::Instant,
+    /// Set once a pull from the source panics; from then on the drain yields
+    /// nothing and never touches the source again.
+    failed: bool,
 }
 
 impl AudioDrain {
@@ -169,6 +174,7 @@ impl AudioDrain {
                 position_update_interval_ms as u64,
             ),
             last_position_update: std::time::Instant::now(),
+            failed: false,
         }
     }
 
@@ -185,7 +191,7 @@ impl AudioDrain {
         zero_unfilled: bool,
         lock_miss: Option<&mut AudioLockMissLog>,
     ) -> DrainStatus {
-        if self.controls.get_state() != AudioState::Playing {
+        if self.failed || self.controls.get_state() != AudioState::Playing {
             if zero_unfilled {
                 buf.fill(0.0);
             }
@@ -210,7 +216,25 @@ impl AudioDrain {
             }
         };
 
-        let read = source_guard.pull_samples(buf, &mut self.audio_events);
+        // Caught while the guard is held, so a panicking pull leaves the
+        // source's lock unpoisoned for the playback service, which stops on
+        // the failure and discards the source.
+        let pulled = caught_sync("pull samples from the playing track", || {
+            source_guard.pull_samples(buf, &mut self.audio_events)
+        });
+        let read = match pulled {
+            Ok(read) => read,
+            Err(failed) => {
+                self.failed = true;
+                self.audio_events.push_required(AudioEvent::OutputFailed {
+                    detail: failed.to_string(),
+                });
+                if zero_unfilled {
+                    buf.fill(0.0);
+                }
+                return DrainStatus::Idle;
+            }
+        };
 
         if read == 0 {
             // One Completion per drained track: the source's latch resets on a

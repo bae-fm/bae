@@ -194,8 +194,9 @@ where
         }
     }
 
-    /// Tell playback the output stopped, for the reason `detail` states.
-    fn end(&mut self, detail: String) -> WriterStep {
+    /// Tell playback the output stopped, for the reason `detail` states: a
+    /// device stream that can't go on, or a step that panicked.
+    pub(crate) fn end(&mut self, detail: String) -> WriterStep {
         self.drain.report_output_failure(detail);
         WriterStep::Ended
     }

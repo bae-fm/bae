@@ -57,6 +57,10 @@ pub enum DecodeError {
     /// audio: the bytes never reached the decoder. Carries the read's own error.
     #[error("source read failed: {0}")]
     SourceRead(sparse_buffer::SourceReadError),
+    /// A read of the source panicked: a bug in bae's read path, not the
+    /// source's or the audio's. The caller reports it.
+    #[error("{0}")]
+    ReadPanicked(bae_util::task_failure::TaskFailed),
     /// The bytes that arrived don't decode as audio.
     #[error("{0}")]
     Decode(String),
@@ -70,12 +74,9 @@ impl DecodeError {
     /// Classify a failure after the input was opened: a read failure the AVIO
     /// callback recorded is the cause, whatever FFmpeg reported for it;
     /// otherwise it is the decode's own failure.
-    fn after_read(
-        read_failure: Option<sparse_buffer::SourceReadError>,
-        message: impl Into<String>,
-    ) -> Self {
+    fn after_read(read_failure: Option<avio::ReadFailure>, message: impl Into<String>) -> Self {
         match read_failure {
-            Some(error) => Self::SourceRead(error),
+            Some(failure) => failure.into(),
             None => Self::decode(message),
         }
     }

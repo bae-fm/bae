@@ -264,11 +264,18 @@ fn playback_service_over(
 ) {
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-    let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);
+    let diagnostics = crate::diagnostics::Diagnostics::noop();
+    let preview = PreviewPlayer::new(
+        progress_tx.clone(),
+        command_tx.clone(),
+        50,
+        diagnostics.clone(),
+    );
     let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
-    let staged_sides = advance::staged_sides_follow(&library_manager);
+    let staged_sides = advance::staged_sides_follow(&library_manager, &diagnostics);
     let service = PlaybackService {
         library_manager,
+        diagnostics,
         command_tx,
         command_rx,
         progress_tx,
@@ -410,8 +417,10 @@ fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
     }
 }
 
-fn finished_decoder_handle() -> std::thread::JoinHandle<()> {
-    std::thread::spawn(|| {})
+fn finished_decoder_handle() -> crate::diagnostics::ReportedThread {
+    crate::diagnostics::Diagnostics::noop()
+        .spawn_thread_reported("finished decoder", || {}, |_| {})
+        .expect("spawn a decoder thread that finishes at once")
 }
 
 /// A preloaded next track whose decoder has already finished, holding a cancel
@@ -536,6 +545,7 @@ include!("tests/side_pause_countdown.rs");
 
 include!("tests/history.rs");
 include!("tests/audio_focus.rs");
+include!("tests/panics.rs");
 
 mod image_track_starts;
 mod mp3_scrub_points;

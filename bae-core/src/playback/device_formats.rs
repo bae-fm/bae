@@ -27,8 +27,8 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
-use tracing::warn;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use tracing::{error, warn};
 
 /// Reads and sets an output device's format.
 pub(crate) trait DeviceFormatControl: Send + Sync + 'static {
@@ -69,7 +69,7 @@ impl<C: DeviceFormatControl> DeviceFormats<C> {
     /// lease on a device reads the format the device has now, the one it goes
     /// back to.
     pub(crate) fn lease(self: &Arc<Self>, device: C::Device) -> Result<FormatLease<C>, String> {
-        let mut devices = self.devices.lock().unwrap();
+        let mut devices = self.devices();
         let id = self.next_lease.fetch_add(1, Ordering::Relaxed);
         match devices.get_mut(&device) {
             Some(device_use) => device_use.leases.push((id, None)),
@@ -91,30 +91,39 @@ impl<C: DeviceFormatControl> DeviceFormats<C> {
         })
     }
 
+    /// The devices and their leases. Each change to them is one map or list
+    /// operation, and the CoreAudio calls made while they are held read or
+    /// set a device, not them, so a panic in one never leaves them partway
+    /// through a change, and they stand.
+    fn devices(&self) -> MutexGuard<'_, HashMap<C::Device, DeviceUse<C::Format>>> {
+        self.devices.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     /// Record the format the device runs in now as the one lease `id`'s
     /// stream set.
     fn settle(&self, device: C::Device, id: u64) -> Result<(), String> {
         let format = self.control.format(device)?;
-        let mut devices = self.devices.lock().unwrap();
-        let device_use = devices
+        let mut devices = self.devices();
+        let lease = devices
             .get_mut(&device)
-            .expect("a live lease's device is recorded");
-        let lease = device_use
-            .leases
-            .iter_mut()
-            .find(|(lease, _)| *lease == id)
-            .expect("a live lease is recorded");
+            .and_then(|device_use| device_use.leases.iter_mut().find(|(lease, _)| *lease == id))
+            .ok_or_else(|| format!("lease {id} on device {device:?} is not recorded"))?;
         lease.1 = Some(format);
         Ok(())
     }
 
     /// Lease `id` ended: put the device in the format of its newest stream
-    /// left, or back in the one it had before bae when none is.
+    /// left, or back in the one it had before bae when none is. Runs from the
+    /// lease's `Drop`, so a lease it finds unrecorded is logged, not raised.
     fn release(&self, device: C::Device, id: u64) {
-        let mut devices = self.devices.lock().unwrap();
-        let device_use = devices
-            .get_mut(&device)
-            .expect("a live lease's device is recorded");
+        let mut devices = self.devices();
+        let Some(device_use) = devices.get_mut(&device) else {
+            error!(
+                ?device,
+                id, "a live lease's device is not recorded; its format is not put back"
+            );
+            return;
+        };
         let newest = device_use.leases.last().map(|(lease, _)| *lease) == Some(id);
         device_use.leases.retain(|(lease, _)| *lease != id);
         let restore = match device_use.leases.last() {
@@ -178,7 +187,7 @@ impl<C: DeviceFormatControl> PlayerFormat<C> {
     /// device already runs in the new stream's format when it is the same one,
     /// and goes back to its own when it isn't.
     pub(crate) fn stream_started(&self, lease: FormatLease<C>) -> StreamFormat<C> {
-        drop(self.kept.lock().unwrap().take());
+        drop(kept(&self.kept).take());
         StreamFormat {
             lease: Some(lease),
             kept: self.kept.clone(),
@@ -188,7 +197,7 @@ impl<C: DeviceFormatControl> PlayerFormat<C> {
     /// The player's playback ended: let the kept lease go, putting its device
     /// back.
     pub(crate) fn playback_ended(&self) {
-        drop(self.kept.lock().unwrap().take());
+        drop(kept(&self.kept).take());
     }
 }
 
@@ -201,8 +210,17 @@ pub(crate) struct StreamFormat<C: DeviceFormatControl> {
 impl<C: DeviceFormatControl> Drop for StreamFormat<C> {
     fn drop(&mut self) {
         let lease = self.lease.take();
-        drop(std::mem::replace(&mut *self.kept.lock().unwrap(), lease));
+        drop(std::mem::replace(&mut *kept(&self.kept), lease));
     }
+}
+
+/// A player's kept lease. Taking or replacing it is one step, so a panic
+/// while it was held — in the CoreAudio set a lease's drop makes — leaves it
+/// whole, and it stands.
+fn kept<C: DeviceFormatControl>(
+    kept: &Mutex<Option<FormatLease<C>>>,
+) -> MutexGuard<'_, Option<FormatLease<C>>> {
+    kept.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// An output device's physical format, read and set through CoreAudio. The

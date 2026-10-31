@@ -13,8 +13,9 @@
 use std::ops::ControlFlow;
 use std::sync::mpsc;
 use std::sync::Arc;
-use std::thread::JoinHandle;
 use std::time::Duration;
+
+use crate::diagnostics::{Diagnostics, ReportedThread};
 
 use tracing::{debug, warn};
 
@@ -58,20 +59,32 @@ pub struct RendererSession {
     /// the thread's `recv_timeout` sees the disconnect and exits before the
     /// join.
     command_tx: Option<mpsc::Sender<SessionCommand>>,
-    thread: Option<JoinHandle<()>>,
+    thread: Option<ReportedThread>,
 }
 
 impl RendererSession {
     /// Start a session over an already-connected `channel`, spawning its poll
     /// thread. `on_event` receives every status, every refused command, and
-    /// the session's end.
-    pub fn start(channel: Box<dyn RendererChannel>, on_event: EventCallback) -> Self {
+    /// the session's end. A session thread that panics is reported through
+    /// `diagnostics` and ends the session with the panic as its cause.
+    pub fn start(
+        diagnostics: &Diagnostics,
+        channel: Box<dyn RendererChannel>,
+        on_event: EventCallback,
+    ) -> std::io::Result<Self> {
         let (command_tx, command_rx) = mpsc::channel();
-        let thread = std::thread::spawn(move || run_session(channel, command_rx, on_event));
-        Self {
+        let on_panic_event = on_event.clone();
+        let thread = diagnostics.spawn_thread_reported(
+            "renderer session",
+            move || run_session(channel, command_rx, on_event),
+            move |failed| {
+                on_panic_event(RendererSessionEvent::Ended(RendererError::Panicked(failed)))
+            },
+        )?;
+        Ok(Self {
             command_tx: Some(command_tx),
             thread: Some(thread),
-        }
+        })
     }
 
     /// Load `media` on the renderer and start playing it.
@@ -117,9 +130,7 @@ impl Drop for RendererSession {
         // disconnect and exits its loop; only then can the join complete.
         self.command_tx = None;
         if let Some(thread) = self.thread.take() {
-            if thread.join().is_err() {
-                warn!("renderer session thread panicked before join");
-            }
+            thread.join();
         }
     }
 }

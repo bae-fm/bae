@@ -11,10 +11,10 @@
 use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::sync::Notify;
-use tracing::debug;
+use tracing::{debug, error};
 
 /// Hands each buffer a small process-unique id so the fill's per-window fetch
 /// logs and the decoder's first-sample log can be tied to one track's stream.
@@ -200,6 +200,10 @@ pub struct SparseStreamingBuffer {
     /// and bisected (binary search).
     #[cfg(any(test, feature = "test-instrumentation"))]
     read_log: Mutex<Vec<u64>>,
+    /// Set by a test to make every `read()` panic, standing in for a bug in
+    /// the read path so the test can follow where that panic goes.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    reads_panic: std::sync::atomic::AtomicBool,
 }
 
 impl SparseStreamingBuffer {
@@ -221,7 +225,37 @@ impl SparseStreamingBuffer {
             bytes_fetched: AtomicU64::new(0),
             #[cfg(any(test, feature = "test-instrumentation"))]
             read_log: Mutex::new(Vec::new()),
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            reads_panic: std::sync::atomic::AtomicBool::new(false),
         }
+    }
+
+    /// The buffer's state. A panic while it was held may have left `ranges`
+    /// partway through a merge or an eviction, so those bytes are dropped and
+    /// the fill fetches what its readers need again; the stop and the readers'
+    /// demands change in single steps, so they stand. The panic itself is
+    /// reported where it was caught: in the fill, or in the decoder whose read
+    /// panicked.
+    fn state(&self) -> MutexGuard<'_, SparseInner> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| self.recovered(poisoned.into_inner()))
+    }
+
+    /// `inner`, which a panic left poisoned, with its bytes dropped and the
+    /// poison cleared.
+    fn recovered<'a>(
+        &'a self,
+        mut inner: MutexGuard<'a, SparseInner>,
+    ) -> MutexGuard<'a, SparseInner> {
+        error!(
+            buffer = self.id,
+            "a panic left the buffer's bytes partway through a change; dropping them for the fill to fetch again"
+        );
+        inner.ranges.clear();
+        self.inner.clear_poison();
+        self.wake_fill();
+        inner
     }
 
     /// This buffer's process-unique id, used to correlate fetch/first-sample
@@ -252,7 +286,7 @@ impl SparseStreamingBuffer {
     pub fn wait_until_parked(&self, count: usize) {
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
-            let parked = self.inner.lock().unwrap().parked_reads;
+            let parked = self.state().parked_reads;
             if parked >= count {
                 return;
             }
@@ -305,7 +339,7 @@ impl SparseStreamingBuffer {
         self.bytes_fetched
             .fetch_add(bytes.len() as u64, Ordering::Relaxed);
 
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.state();
         let new_end = offset + bytes.len() as u64;
 
         // Fast path — sequential streaming lands here: extending the last range in
@@ -388,7 +422,7 @@ impl SparseStreamingBuffer {
     /// lowest-position-first so the most-behind reader (the playing track) is fed
     /// before a further-ahead one (a gapless preload).
     pub fn demand_windows(&self) -> Vec<ReaderDemand> {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         let mut windows: Vec<ReaderDemand> = inner.demands.values().copied().collect();
         windows.sort_unstable_by_key(|d| d.pos);
         windows
@@ -403,7 +437,7 @@ impl SparseStreamingBuffer {
         if evicted.is_empty() {
             return;
         }
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.state();
         let mut kept = Vec::with_capacity(inner.ranges.len() + 1);
         for mut range in inner.ranges.drain(..) {
             if range.end() <= evicted.start || range.start >= evicted.end {
@@ -443,7 +477,7 @@ impl SparseStreamingBuffer {
         if from >= limit {
             return None;
         }
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         let mut cursor = from;
         for range in &inner.ranges {
             if range.end() <= cursor {
@@ -467,14 +501,14 @@ impl SparseStreamingBuffer {
 
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn is_buffered(&self, pos: u64) -> bool {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         inner.ranges.iter().any(|r| r.contains(pos))
     }
 
     /// Contiguous bytes buffered from `pos`; 0 if `pos` itself isn't buffered.
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn contiguous_from(&self, pos: u64) -> u64 {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         for range in &inner.ranges {
             if range.contains(pos) {
                 return range.end() - pos;
@@ -621,7 +655,7 @@ impl SparseStreamingBuffer {
     /// parked with every read-ahead window full wakes to see it and exit,
     /// closing its source, rather than holding it until the buffer is dropped.
     fn stop_with(&self, stop: BufferStop) -> bool {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.state();
         if inner.stop.is_some() {
             return false;
         }
@@ -639,17 +673,17 @@ impl SparseStreamingBuffer {
     }
 
     pub fn is_cancelled(&self) -> bool {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         matches!(inner.stop, Some(BufferStop::Cancelled))
     }
 
     fn is_stopped(&self) -> bool {
-        self.inner.lock().unwrap().stop.is_some()
+        self.state().stop.is_some()
     }
 
     /// The source-read error this buffer failed with, if it did.
     pub fn failure(&self) -> Option<SourceReadError> {
-        match &self.inner.lock().unwrap().stop {
+        match &self.state().stop {
             Some(BufferStop::Failed(error)) => Some(error.clone()),
             Some(BufferStop::Cancelled) | None => None,
         }
@@ -657,27 +691,34 @@ impl SparseStreamingBuffer {
 
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn ranges_count(&self) -> usize {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         inner.ranges.len()
     }
 
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn total_buffered(&self) -> u64 {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         inner.ranges.iter().map(|r| r.data.len() as u64).sum()
     }
 
     /// The buffered ranges as `(start, end)` pairs.
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn get_ranges(&self) -> Vec<(u64, u64)> {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.state();
         inner.ranges.iter().map(|r| (r.start, r.end())).collect()
     }
 
     /// Number of live readers' demands currently registered.
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn demand_count(&self) -> usize {
-        self.inner.lock().unwrap().demands.len()
+        self.state().demands.len()
+    }
+
+    /// Test-only: make every later `read()` of this buffer panic, before it
+    /// takes the buffer's state.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub fn panic_reads(&self) {
+        self.reads_panic.store(true, Ordering::Relaxed);
     }
 }
 
@@ -720,7 +761,7 @@ impl BufferReader {
     /// blocks until the fill delivers it. `false` once the buffer has stopped
     /// (the next `read()` says why).
     pub fn seek(&mut self, pos: u64) -> bool {
-        let mut inner = self.buffer.inner.lock().unwrap();
+        let mut inner = self.buffer.state();
         if inner.stop.is_some() {
             return false;
         }
@@ -742,7 +783,11 @@ impl BufferReader {
     /// at EOF; `Err` once the buffer has stopped (or this reader's own cancel
     /// token is set), saying why.
     pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, BufferStop> {
-        let mut inner = self.buffer.inner.lock().unwrap();
+        #[cfg(any(test, feature = "test-instrumentation"))]
+        if self.buffer.reads_panic.load(Ordering::Relaxed) {
+            panic!("a read of buffer {} panicked", self.buffer.id());
+        }
+        let mut inner = self.buffer.state();
 
         loop {
             let token_cancelled = self
@@ -852,7 +897,11 @@ impl BufferReader {
             {
                 inner.parked_reads += 1;
             }
-            inner = self.buffer.data_available.wait(inner).unwrap();
+            inner = self
+                .buffer
+                .data_available
+                .wait(inner)
+                .unwrap_or_else(|poisoned| self.buffer.recovered(poisoned.into_inner()));
             #[cfg(any(test, feature = "test-instrumentation"))]
             {
                 inner.parked_reads -= 1;
@@ -875,9 +924,7 @@ impl BufferReader {
     /// ceiling takes effect promptly.
     pub fn set_readahead_ceiling(&self, ceiling: u64) {
         self.buffer
-            .inner
-            .lock()
-            .unwrap()
+            .state()
             .demands
             .entry(self.id)
             .and_modify(|d| d.ceiling = Some(ceiling))
@@ -897,7 +944,7 @@ impl Drop for BufferReader {
         // decoder handing off to the gapless-preload reader ahead of it). No
         // `data_available` wake: a dropped reader adds no data, so other readers
         // blocked waiting for bytes gain nothing from it.
-        let mut inner = self.buffer.inner.lock().unwrap();
+        let mut inner = self.buffer.state();
         inner.demands.remove(&self.id);
         drop(inner);
         self.buffer.wake_fill();
@@ -907,3 +954,7 @@ impl Drop for BufferReader {
 #[cfg(test)]
 #[path = "sparse_buffer_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "sparse_buffer_poison_tests.rs"]
+mod poison_tests;
