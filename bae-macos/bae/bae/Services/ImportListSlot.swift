@@ -1,9 +1,6 @@
 import BaeKit
 import Foundation
-import OSLog
 import Observation
-
-private let importListLogger = Logger.bae("ImportListSlot")
 
 /// The import sidebar's list machinery: the warm `PaginatedList`, the page
 /// source behind it, and the view that source is showing.
