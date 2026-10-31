@@ -4918,9 +4918,9 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- Discogs master.
     source_group_id    TEXT,
     -- The album's facts: the release's own, or where it states none, those of
-    -- its cross-referenced release and its album's documents.
+    -- its cross-referenced release and its album's documents. Its year reads
+    -- as its first year, else the pressing's year.
     album_title        TEXT NOT NULL,
-    album_year         INTEGER,
     -- The year the album first came out, as its release group's first release
     -- date or its master's year states it; never a pressing's year.
     album_first_year   INTEGER,
@@ -4937,10 +4937,8 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
     region             TEXT CHECK (region IS NULL OR region <> ''),
-    -- A JSON array of {"medium", "count"}, one per carrier in the record's
-    -- order; empty where nothing is stated.
-    media              TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(media) AND json_type(media) = 'array'),
+    -- Its media are counted from source_release_medium (MusicBrainz) or
+    -- source_release_format (Discogs) on read.
     status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
     packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
     -- What Discogs says about the pressing that no column holds: a JSON array

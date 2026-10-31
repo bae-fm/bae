@@ -81,11 +81,41 @@ fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
     u64::try_from(value).map_err(|_| unreadable(what, value))
 }
 
+/// The album year a stored release reads back with: its album's first year,
+/// else its pressing's year.
+fn derived_album_year(first_year: Option<i32>, pressing_year: Option<i32>) -> Option<i32> {
+    first_year.or(pressing_year)
+}
+
+/// Refuse a release whose album year or media counts differ from what its
+/// other facts give, which is all the store keeps of them: an extraction
+/// derives both that way, and storing one that doesn't would read back as
+/// another release.
+fn check_derived_facts(release: &SourceRelease) -> Result<(), DbError> {
+    let metadata = &release.metadata;
+    let derived = derived_album_year(metadata.album.first_year, metadata.pressing.year);
+    if metadata.album.year != derived {
+        return Err(DbError::Message(format!(
+            "{:?} states album year {:?}, not its first year or pressing year {derived:?}",
+            release.release, metadata.album.year
+        )));
+    }
+    let counts = release.stated_media().counts();
+    if metadata.pressing.facts.media != counts {
+        return Err(DbError::Message(format!(
+            "{:?} counts media {:?}, not the {counts:?} its mediums and formats state",
+            release.release, metadata.pressing.facts.media
+        )));
+    }
+    Ok(())
+}
+
 /// Write `release`, replacing whatever was stored for it.
 pub(super) fn replace_source_release_on(
     sql: &SqlContext<'_, '_>,
     release: &SourceRelease,
 ) -> Result<(), DbError> {
+    check_derived_facts(release)?;
     let catalog = release.release.catalog.as_str();
     let key = release.release.key.as_str();
     let metadata = &release.metadata;
@@ -93,17 +123,17 @@ pub(super) fn replace_source_release_on(
     let facts = super::pressing_columns::FactColumns::of(&pressing.facts);
     sql.execute(
         "INSERT INTO source_release \
-             (catalog, release_id, source_group_id, album_title, album_year, \
-              album_first_year, year, labels, barcodes, country, region, media, status, \
+             (catalog, release_id, source_group_id, album_title, \
+              album_first_year, year, labels, barcodes, country, region, status, \
               packaging, discogs_details, notes, archive_release_id, archive_group_id, \
               album_links) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (catalog, release_id) DO UPDATE SET \
              source_group_id = excluded.source_group_id, \
-             album_title = excluded.album_title, album_year = excluded.album_year, \
+             album_title = excluded.album_title, \
              album_first_year = excluded.album_first_year, \
              year = excluded.year, labels = excluded.labels, barcodes = excluded.barcodes, \
-             country = excluded.country, region = excluded.region, media = excluded.media, \
+             country = excluded.country, region = excluded.region, \
              status = excluded.status, packaging = excluded.packaging, \
              discogs_details = excluded.discogs_details, notes = excluded.notes, \
              archive_release_id = excluded.archive_release_id, \
@@ -114,14 +144,12 @@ pub(super) fn replace_source_release_on(
             key,
             release.source_group_id,
             metadata.album.title,
-            metadata.album.year,
             metadata.album.first_year,
             pressing.year,
             super::pressing_columns::labels_column(&pressing.labels),
             super::pressing_columns::barcodes_column(&pressing.barcodes),
             facts.country,
             facts.region,
-            facts.media,
             facts.status,
             facts.packaging,
             facts.discogs_details,
@@ -390,8 +418,8 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     let key = release.key.as_str();
     let head = sql
         .query_row(
-            "SELECT source_group_id, album_title, album_year, year, labels, barcodes, \
-                    archive_release_id, archive_group_id, country, region, media, \
+            "SELECT source_group_id, album_title, year, labels, barcodes, \
+                    archive_release_id, archive_group_id, country, region, \
                     status, packaging, discogs_details, album_first_year, notes, album_links \
              FROM source_release WHERE catalog = ? AND release_id = ?",
             params![catalog, key],
@@ -399,15 +427,16 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                 Ok((
                     row.get::<_, Option<String>>(0)?,
                     row.get::<_, String>(1)?,
-                    row.get::<_, Option<i32>>(2)?,
+                    // The media counts are the mediums' and formats', read
+                    // below.
                     Pressing {
-                        year: row.get(3)?,
+                        year: row.get(2)?,
                         labels: super::pressing_columns::read_labels(row, "labels")?,
                         barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,
-                        facts: super::pressing_columns::read_facts(row, "")?,
+                        facts: super::pressing_columns::read_facts_without_media(row, "")?,
                     },
+                    row.get::<_, Option<String>>(5)?,
                     row.get::<_, Option<String>>(6)?,
-                    row.get::<_, Option<String>>(7)?,
                     row.get::<_, Option<i32>>("album_first_year")?,
                     row.get::<_, String>("notes")?,
                     row.get::<_, Option<String>>("album_links")?,
@@ -418,8 +447,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     let Some((
         source_group_id,
         album_title,
-        album_year,
-        pressing,
+        mut pressing,
         archive_release,
         archive_group,
         album_first_year,
@@ -634,6 +662,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         }
     }
     let mediums = load_mediums(sql, catalog, key)?;
+    pressing.facts.media = catalog_facts.stated_media(&mediums).counts();
     let unfetched = sql
         .query(
             "SELECT document, key, reason FROM source_release_unfetched \
@@ -670,7 +699,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             album: AlbumMetadata {
                 title: album_title,
                 artists: album_artists,
-                year: album_year,
+                year: derived_album_year(album_first_year, pressing.year),
                 first_year: album_first_year,
             },
             pressing,

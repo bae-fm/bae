@@ -124,6 +124,21 @@ pub(crate) enum CatalogFacts {
     },
 }
 
+impl CatalogFacts {
+    /// What a release of these facts with `mediums` states about its media:
+    /// a MusicBrainz release each medium's carrier, a Discogs release its
+    /// format entries.
+    pub(crate) fn stated_media(&self, mediums: &[SourceMedium]) -> StatedMedia {
+        match self {
+            Self::MusicBrainz { .. } if mediums.is_empty() => StatedMedia::Undescribed,
+            Self::MusicBrainz { .. } => {
+                StatedMedia::PerMedium(mediums.iter().map(|medium| medium.medium).collect())
+            }
+            Self::Discogs { media, .. } => media.clone(),
+        }
+    }
+}
+
 /// One medium: a disc, a side pair of a record, a layer of a hybrid disc.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SourceMedium {
@@ -393,13 +408,7 @@ impl SourceRelease {
 
     /// What this release states about its media.
     pub(crate) fn stated_media(&self) -> StatedMedia {
-        match &self.catalog {
-            CatalogFacts::MusicBrainz { .. } if self.mediums.is_empty() => StatedMedia::Undescribed,
-            CatalogFacts::MusicBrainz { .. } => {
-                StatedMedia::PerMedium(self.mediums.iter().map(|medium| medium.medium).collect())
-            }
-            CatalogFacts::Discogs { media, .. } => media.clone(),
-        }
+        self.catalog.stated_media(&self.mediums)
     }
 
     /// The releases on other catalogs this release's own document names as

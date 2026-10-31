@@ -1028,6 +1028,11 @@ that way, while the run is going and after it ends, so a candidate opened
 later shows what its run showed. Its track titles and notes, which only the
 run's ranking reads, are not kept. A run with no clue to lay out keeps none.
 
+A stored release keeps no album year or media count of its own: its album
+year is the year the album first came out, else the pressing's year, and its
+media are counted from its mediums or format entries, as the fetch worked
+them out.
+
 ### 3.5 Picking a pressing
 
 One matching pressing is picked automatically; otherwise the person picks,
@@ -3646,7 +3651,7 @@ under it.
 
 | Table | Holds |
 |---|---|
-| `source_release` | one fetched catalog release and every fact an import reads from it |
+| `source_release` | one fetched catalog release and every fact an import reads from it but two it reads derived (§3.4): its album's year and its media counts |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
 | `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |

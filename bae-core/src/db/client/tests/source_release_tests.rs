@@ -318,6 +318,118 @@ async fn saving_a_release_again_replaces_its_rows() {
     );
 }
 
+/// A release's album year and media counts read back from what the store
+/// keeps of it: its album's first year, else its pressing's year, and the
+/// carriers its mediums (MusicBrainz) or format entries (Discogs) name.
+#[tokio::test]
+async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
+    use bae_types::pressing::{MediaCount, Medium};
+    let (db, _tmp) = empty_db().await;
+    let musicbrainz = |media: serde_json::Value, group: Option<&str>| {
+        let mut anchor = serde_json::json!({
+            "id": "mb-release",
+            "title": "Album Title",
+            "date": "2003",
+            "artist-credit": [{ "name": "Artist Name" }],
+            "media": media,
+            "cover-art-archive": { "front": false, "darkened": false }
+        });
+        if let Some(year) = group {
+            anchor["release-group"] =
+                serde_json::json!({ "id": "mb-group", "first-release-date": year });
+        }
+        ReleasePayloads::for_test(
+            MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+            anchor.to_string(),
+            Vec::new(),
+        )
+    };
+    let discogs = |formats: serde_json::Value, master: Option<i64>| {
+        let anchor = serde_json::json!({
+            "id": 4242,
+            "title": "Album Title",
+            "year": 2003,
+            "master_id": master.map(|_| 909),
+            "formats": formats,
+            "artists": [{ "id": 11, "name": "Artist Name" }],
+            "tracklist": [{ "position": "1", "type_": "track", "title": "Track Title" }]
+        });
+        let documents = master
+            .map(|year| {
+                vec![SourcePayload::new(
+                    PayloadSource::DiscogsMaster,
+                    "909",
+                    serde_json::json!({ "id": 909, "title": "Album Title", "year": year })
+                        .to_string(),
+                )]
+            })
+            .unwrap_or_default();
+        ReleasePayloads::for_test(
+            MetadataRef::new(Catalog::Discogs, "4242"),
+            anchor.to_string(),
+            documents,
+        )
+    };
+    let count = |medium, count| MediaCount { medium, count };
+    for (payloads, album_year, media) in [
+        (
+            musicbrainz(
+                serde_json::json!([
+                    { "format": "CD", "tracks": [{ "number": "1", "title": "Track One" }] },
+                    { "format": "CD", "tracks": [{ "number": "1", "title": "Track Two" }] }
+                ]),
+                Some("1998"),
+            ),
+            Some(1998),
+            vec![count(Medium::Cd, 2)],
+        ),
+        (
+            musicbrainz(serde_json::json!([]), None),
+            Some(2003),
+            Vec::new(),
+        ),
+        (
+            discogs(
+                serde_json::json!([{ "name": "Vinyl", "qty": "2" }, { "name": "CD", "qty": "1" }]),
+                Some(1997),
+            ),
+            Some(1997),
+            vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)],
+        ),
+        (discogs(serde_json::json!([]), None), Some(2003), Vec::new()),
+    ] {
+        let extracted = payloads.extract().unwrap();
+        db.save_source_release(&extracted).await.unwrap();
+        let stored = db
+            .load_source_release(extracted.release())
+            .await
+            .unwrap()
+            .expect("the saved release reads back");
+        assert_eq!(stored.metadata.album.year, album_year);
+        assert_eq!(stored.metadata.pressing.facts.media, media);
+        assert_eq!(stored, extracted);
+    }
+}
+
+/// A release whose album year or media counts are not what its other facts
+/// give is refused, since the store keeps only those other facts.
+#[tokio::test]
+async fn a_release_whose_derived_facts_disagree_is_not_stored() {
+    let (db, _tmp) = empty_db().await;
+    let extracted = musicbrainz_documents().extract().unwrap();
+    let mut year = extracted.clone();
+    year.metadata.album.year = Some(1970);
+    let mut media = extracted.clone();
+    media.metadata.pressing.facts.media.clear();
+    for release in [year, media] {
+        assert!(db.save_source_release(&release).await.is_err());
+        assert_eq!(
+            db.load_source_release(release.release()).await.unwrap(),
+            None
+        );
+    }
+}
+
 /// A release nothing fetched reads back as nothing.
 #[tokio::test]
 async fn an_unfetched_release_reads_as_nothing() {
