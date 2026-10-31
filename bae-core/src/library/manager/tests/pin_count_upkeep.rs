@@ -115,6 +115,8 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
     connect_test_cloud(&manager).await;
     let mut rng = rand::rngs::StdRng::seed_from_u64(0x5eed);
     let mut releases: Vec<HarnessRelease> = Vec::new();
+    // The releases moving to the cloud to be kept here.
+    let mut kept_moves: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     let mut ran: std::collections::BTreeMap<&'static str, usize> = std::collections::BTreeMap::new();
     let mut most_pinned = 0usize;
     for step in 0..400 {
@@ -153,6 +155,9 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let pin = rng.random_bool(0.5);
                 manager.upload_release(&releases[index].id, pin).await.unwrap();
                 releases[index].stage = HarnessStage::Attached;
+                if pin {
+                    kept_moves.insert(releases[index].id.clone());
+                }
                 if pin { "attach pinned" } else { "attach" }
             }
             3 => {
@@ -160,6 +165,12 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                     continue;
                 }
                 manager.drain_uploads_expecting_work().await.unwrap();
+                // coven keeps a release moved to be kept here by fetching its
+                // copy after the move ends; until it has, a later step's
+                // reads race that write.
+                for release in std::mem::take(&mut kept_moves) {
+                    wait_for_kept_release(&manager, &release).await;
+                }
                 for release in &mut releases {
                     if release.stage == HarnessStage::Attached {
                         release.stage = HarnessStage::Remote;
