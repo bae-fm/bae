@@ -14,6 +14,7 @@ pub mod retry;
 pub mod server;
 pub mod session_cache;
 pub mod stored_image;
+pub mod task_failure;
 #[cfg(desktop)]
 pub mod text_encoding;
 pub mod worker_thread;

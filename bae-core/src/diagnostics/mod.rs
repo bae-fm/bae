@@ -22,8 +22,10 @@
 //! a public intake credential for end-user apps. `DD_API_KEY` is never shipped in
 //! bae. baeium configures no-op crash reporting and no-op diagnostics.
 
+mod background;
 mod telemetry;
 
+pub use background::{lock_or_crash, ReportedTask, ReportedThread};
 pub use telemetry::*;
 
 use std::{collections::VecDeque, fmt, sync::Arc, time::Duration};
