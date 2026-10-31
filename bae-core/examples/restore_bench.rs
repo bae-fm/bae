@@ -145,7 +145,7 @@ async fn bench(
     let source = bae_core::library::configure_store(
         bae_core::library::Keychain::System.store_builder(app_dir),
     )
-    .open(store_id)
+    .open(store_id, |_| ())
     .await
     .map_err(|error| format!("open the active library failed: {error}"))?;
     eprintln!(

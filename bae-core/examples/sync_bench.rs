@@ -90,7 +90,7 @@ fn main() {
     let result: Result<(), String> = runtime.block_on(async {
         let handle =
             bae_core::library::configure_store(coven::Coven::builder(app_dir.store_layout()))
-                .open(store_id)
+                .open(store_id, |_| ())
                 .await
                 .map_err(|e| format!("open store failed: {e}"))?;
         let name = handle.store_name().await.map_err(|e| e.to_string())?;

@@ -69,7 +69,7 @@ impl LibraryManager {
                     limits,
                 )
                 .clock(clock.clone())
-                .open(store_id)
+                .open(store_id, |_| ())
                 .await?
             }
             LibraryOpening::Open(handle) => {

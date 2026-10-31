@@ -280,7 +280,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     drop(db);
 
     let handle = crate::library::configure_store(installation.builder(layout))
-        .clock(clock.clone()).open(id).await.unwrap();
+        .clock(clock.clone()).open(id, |_| ()).await.unwrap();
     let reopened = Database::from_handle(handle, clock);
     let loaded = reopened.load_import_candidate_states().await.unwrap();
 

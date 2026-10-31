@@ -171,7 +171,7 @@ pub async fn unsent_before_removal(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
 ) -> Result<coven::UnsentWork, LibraryError> {
-    let handle = super::configure_store(builder).open(store).await?;
+    let handle = super::configure_store(builder).open(store, |_| ()).await?;
     let unsent =
         crate::db::Database::from_handle(handle.clone(), std::sync::Arc::new(coven::SystemClock))
             .unsent_before_removal()

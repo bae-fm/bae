@@ -398,7 +398,7 @@ impl TestDevice {
             crate::library::configure_store(self.installation.builder(self.app.store_layout()))
                 .migrations(migrations)
                 .storage_connector(self.storage.clone())
-                .open(store)
+                .open(store, |_| ())
                 .await
                 .expect("open the device's store again");
         self.library = RunningLibrary::new(self.app.clone(), self.config.clone(), handle);

@@ -80,6 +80,9 @@ impl BridgeBootstrapStatus {
                 next_check: BridgeNextCheck::from_core(next_check),
             },
             coven::BootstrapStatus::Loading => Self::Loading,
+            // Sentinel: removed in the next commit, which carries the open's
+            // steps to the apps. Only here to keep the pin bump to the bump.
+            coven::BootstrapStatus::Opening(_) => Self::Loading,
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
                     .into_iter()

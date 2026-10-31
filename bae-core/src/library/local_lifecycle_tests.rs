@@ -488,7 +488,7 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
             .unwrap();
     assert!(work.is_empty(), "{work:?}");
     let reopened = super::configure_store(home.installation.builder(home.app_dir.store_layout()))
-        .open(id)
+        .open(id, |_| ())
         .await
         .unwrap();
     assert_eq!(reopened.store_name().await.unwrap(), "Library");

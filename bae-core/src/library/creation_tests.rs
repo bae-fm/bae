@@ -18,7 +18,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     assert!(!app_dir.active_library_pointer().exists());
     handle.close().await.unwrap();
     let reopened = configure_store(installation.builder(app_dir.store_layout()))
-        .open(store)
+        .open(store, |_| ())
         .await
         .unwrap();
     assert_eq!(reopened.device_id(), device);
@@ -170,7 +170,7 @@ async fn keys_replaced_elsewhere(
     // This copy learns of the replacement the way the app does, from sync.
     let laptop = configure_store(installation.builder(app_dir.store_layout()))
         .storage_connector(std::sync::Arc::new(storage.for_device()))
-        .open(store)
+        .open(store, |_| ())
         .await
         .unwrap();
     laptop.start_sync().await.unwrap();
@@ -197,7 +197,7 @@ async fn keys_replaced_elsewhere(
 
 /// The library opens on this device as `device`, named Household.
 async fn opens_as(builder: coven::CovenBuilder, store: coven::StoreId, device: coven::DeviceId) {
-    let handle = configure_store(builder).open(store).await.unwrap();
+    let handle = configure_store(builder).open(store, |_| ()).await.unwrap();
     assert_eq!(handle.device_id(), device);
     assert_eq!(handle.store_name().await.unwrap(), "Household");
     handle.close().await.unwrap();
