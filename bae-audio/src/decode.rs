@@ -549,9 +549,9 @@ impl DecodedSink for CollectingSink {
 ///
 /// Sets no read-ahead ceiling on its reader: the fill keeps one window ahead
 /// of the decode and evicts behind it, so a whole-file decode holds about one
-/// window of compressed bytes. (Playback's ceiling
-/// exists to buffer the rest of a track against network stalls; a decode that
-/// consumes as fast as it reads needs only the cushion.)
+/// window of compressed bytes around the decode plus the file's first window.
+/// (Playback's ceiling exists to buffer the rest of a track against network
+/// stalls; a decode that consumes as fast as it reads needs only the cushion.)
 pub fn decode_audio_to_sink(
     buffer: SharedSparseBuffer,
     start_sample: Option<u64>,

@@ -328,9 +328,10 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   the head window, two 32 KiB read-aheads past it (the fill keeps a window
   ahead of the probe's reads until the decode seeks), and the window from
   the point: 4 fetches, 4.66 MB. Opening an MP3 with no ID3v2 tag reads its
-  last 128 bytes for an ID3v1 tag (`ff_id3v1_read` in `mp3_read_header`);
-  the fill evicts the head window behind that read and fetches it again
-  when the demuxer reads on: 7 fetches, 8.89 MB, for the same scrub.
+  last 128 bytes for an ID3v1 tag (`ff_id3v1_read` in `mp3_read_header`).
+  The buffer never evicts a file's first window, so the head survives that
+  jump; the 32 KiB read-ahead past the head window does not, and is fetched
+  again when the demuxer reads on: 6 fetches, 4.69 MB, for the same scrub.
 - **A lossy start is placed on the stream's own sample count.** Sample 0 is
   the stream's `start_time` (an MP3's LAME delay puts it 1,105 samples past
   the first packet), the decoder gets the stream's time base

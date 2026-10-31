@@ -13,10 +13,10 @@ use tokio::sync::Notify;
 use tracing::{debug, error, info};
 
 /// How much a fill fetches at a time: 64 of coven's chunks, 4 MiB. The buffer
-/// keeps one window ahead of a reader that hasn't set its ceiling and one
-/// behind the most-behind reader, and import spaces a FLAC's scrub points so a
-/// seek to one reads from a single window (an MP3's 10 seconds fit in one at
-/// any bitrate).
+/// keeps one window ahead of a reader that hasn't set its ceiling, one behind
+/// the most-behind reader and the file's first window, and import spaces a
+/// FLAC's scrub points so a seek to one reads from a single window (an MP3's
+/// 10 seconds fit in one at any bitrate).
 pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 
 /// Prioritizes audio byte fetches so the track the user is waiting to hear gets
@@ -118,9 +118,9 @@ pub trait AudioDataReader: Send + 'static {
     /// Spawns an async task that follows the readers: it fetches the window each
     /// reader needs next (read-ahead), evicts what they have passed, and idles
     /// when every read-ahead window is full -- so playback starts after one
-    /// window and memory stays bounded to a window around the playhead instead
-    /// of the whole file. Coven's opened file stream supplies verified plaintext
-    /// for each requested window.
+    /// window and memory stays bounded to a window around the playhead, plus
+    /// the file's first window, instead of the whole file. Coven's opened file
+    /// stream supplies verified plaintext for each requested window.
     ///
     /// Returns the fill task, which holds the source open until the buffer is
     /// stopped or dropped. A caller that must know the source is closed awaits

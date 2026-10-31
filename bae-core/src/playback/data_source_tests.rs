@@ -332,13 +332,13 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
     );
 }
 
-/// Playing a file front-to-back recovers every byte, yet the buffer never
-/// holds more than a window around the playhead: the fill evicts what the
-/// reader has passed instead of accumulating the whole file in RAM. Sabotage
-/// check — drop the `evict_before` call and the buffer grows to the full
-/// `source_size`, failing the bound.
+/// Playing a file front-to-back recovers every byte, yet the buffer holds
+/// only the file's first window and a window around the playhead: the fill
+/// evicts what the reader has passed, past the head, instead of accumulating
+/// the whole file in RAM. Sabotage check — drop the eviction and the buffer
+/// grows to the full `source_size`, failing the bound and the evicted middle.
 #[tokio::test]
-async fn forward_play_evicts_so_memory_stays_bounded() {
+async fn forward_play_keeps_the_head_and_evicts_behind_the_playhead() {
     let source_size = 16 * WINDOW;
     let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
 
@@ -352,14 +352,71 @@ async fn forward_play_evicts_so_memory_stays_bounded() {
     );
 
     // No ceiling is set on this reader, so it fetches the cushion ahead and
-    // evicts behind: the whole file passes through but only a window's worth
-    // is retained.
-    let bound = 2 * FILL_WINDOW_SIZE + 2 * WINDOW;
+    // evicts behind: the whole file passes through but only the head and a
+    // few windows at the playhead are retained.
+    let ranges = buffer.get_ranges();
+    assert_eq!(
+        ranges.first(),
+        Some(&(0, WINDOW)),
+        "the file's first window is kept: {ranges:?}"
+    );
+    assert!(
+        !buffer.is_buffered(WINDOW) && !buffer.is_buffered(8 * WINDOW),
+        "the windows the reader passed, past the head, are evicted: {ranges:?}"
+    );
+    let bound = WINDOW + 3 * FILL_WINDOW_SIZE;
     let buffered = buffer.total_buffered();
     assert!(
         buffered <= bound,
         "buffer must stay windowed: held {buffered} bytes, bound {bound}, \
          whole file {source_size}"
+    );
+}
+
+/// A demuxer that reads a file's head, jumps to its end and comes back (FFmpeg
+/// opening an MP3 with no ID3v2 tag reads the last 128 bytes for an ID3v1 tag)
+/// finds the head still buffered: the fill never evicts the file's first
+/// window, so no byte of it is fetched twice. Sabotage — evict from 0 again —
+/// and the read back at the head fetches it a second time.
+#[tokio::test]
+async fn a_jump_to_the_end_and_back_fetches_the_head_once() {
+    let source_size = 8 * WINDOW;
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+
+    let buffer = create_sparse_buffer(source_size);
+    let read_log = start_recording_fill(contents.clone(), None, &buffer);
+
+    let reader_buffer = buffer.clone();
+    let (tail, back) = tokio::task::spawn_blocking(move || {
+        let mut reader = reader_buffer.new_reader();
+        let mut head = [0u8; 4096];
+        assert_eq!(reader.read(&mut head).ok(), Some(head.len()));
+        // The jump to the end moves the eviction floor there; the fill evicts
+        // behind it before it fetches the end's bytes, so by the time this read
+        // returns, everything the fill would drop is gone.
+        assert!(reader.seek(source_size - 128));
+        let mut tail = [0u8; 128];
+        let mut filled = 0;
+        while filled < tail.len() {
+            filled += reader.read(&mut tail[filled..]).expect("the end is read");
+        }
+        assert!(reader.seek(head.len() as u64));
+        let mut back = [0u8; 4096];
+        let n = reader.read(&mut back).expect("the head is read again");
+        (tail, back[..n].to_vec())
+    })
+    .await
+    .expect("head, end and back task");
+
+    assert_eq!(&tail[..], &contents[(source_size - 128) as usize..]);
+    assert_eq!(&back[..], &contents[4096..4096 + back.len()]);
+
+    buffer.cancel();
+    let log = read_log.lock().unwrap().clone();
+    let head_fetches = log.iter().filter(|&&(start, _)| start < WINDOW).count();
+    assert_eq!(
+        head_fetches, 1,
+        "the head is fetched once, not again after the jump to the end; fetches: {log:?}"
     );
 }
 
@@ -426,7 +483,8 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
     let (n, got) = tokio::task::spawn_blocking(move || {
         let mut reader = reader_buffer.new_reader();
         // Play forward well past the second window so [WINDOW, 2*WINDOW) is
-        // evicted (it is more than KEEP_BEHIND behind the playhead).
+        // evicted (it is past the head and more than a window behind the
+        // playhead).
         let mut sink = vec![0u8; 10 * WINDOW as usize];
         let mut filled = 0;
         while filled < sink.len() {

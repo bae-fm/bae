@@ -464,7 +464,8 @@ async fn scrub_fetching(
 /// The cloud cost of a scrub deep into a file larger than a window: the
 /// file's head, which the probe reads, and one window from the point, but
 /// none of the windows between. A file with no ID3v2 tag also costs a fetch
-/// of its last 128 bytes, where FFmpeg looks for an ID3v1 tag on open.
+/// of its last 128 bytes, where FFmpeg looks for an ID3v1 tag on open, but
+/// not a second fetch of the head window the open comes back to.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_scrub_deep_into_a_long_mp3_fetches_its_head_and_the_window_from_its_point() {
     bae_audio::init();
@@ -507,6 +508,16 @@ async fn a_scrub_deep_into_a_long_mp3_fetches_its_head_and_the_window_from_its_p
             fetches.contains(&id3v1),
             !tagged,
             "{name}: the file's last 128 bytes are fetched only without an ID3v2 tag"
+        );
+        // The buffer keeps the file's first window, so the open's jump to the
+        // last 128 bytes and back doesn't fetch the head again.
+        assert_eq!(
+            fetches
+                .iter()
+                .filter(|&&(start, _)| start < FILL_WINDOW_SIZE)
+                .count(),
+            1,
+            "{name}: the head window is fetched once: {fetches:?}"
         );
     }
 }

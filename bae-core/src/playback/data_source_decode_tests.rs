@@ -123,9 +123,9 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
         "live-fill decode must be byte-identical to the pre-filled decode"
     );
 
-    // The residency bound: one 4 MiB read-ahead window plus the 4 MiB
-    // keep-behind margin, with slack for in-flight windows — far below the
-    // whole file. Without eviction (or with a whole-file ceiling) the buffer
+    // The residency bound: one 4 MiB read-ahead window, the 4 MiB
+    // keep-behind margin and the file's 4 MiB first window, with slack for
+    // in-flight windows — far below the whole file. Without eviction (or with a whole-file ceiling) the buffer
     // would hold all ~17 MiB.
     let bound = 13 * 1024 * 1024;
     let buffered = buffer.total_buffered();

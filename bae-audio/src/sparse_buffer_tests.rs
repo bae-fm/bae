@@ -497,29 +497,41 @@ fn blocked_reader_publishes_demand_at_its_blocked_position() {
 }
 
 #[test]
-fn evict_before_drops_passed_ranges_and_trims_a_straddling_one() {
-    let buffer = create_sparse_buffer(24);
+fn evict_drops_ranges_inside_and_keeps_the_bytes_outside() {
+    let buffer = create_sparse_buffer(40);
     buffer.append_at(0, b"0123456789"); // [0, 10)
     buffer.append_at(20, b"abcd"); // [20, 24)
+    buffer.append_at(30, b"ABCDEFGHIJ"); // [30, 40)
 
-    // Evicting mid-range trims its front; the later range is untouched.
-    buffer.evict_before(5);
-    assert_eq!(buffer.get_ranges(), vec![(5, 10), (20, 24)]);
+    // A range spanning the evicted bytes splits around them; one reaching
+    // past the evicted end is trimmed at its front.
+    buffer.evict(3..7);
+    assert_eq!(
+        buffer.get_ranges(),
+        vec![(0, 3), (7, 10), (20, 24), (30, 40)]
+    );
+    buffer.evict(8..32);
+    assert_eq!(buffer.get_ranges(), vec![(0, 3), (7, 8), (32, 40)]);
 
-    // The retained bytes are still correct after the front trim.
+    // The retained bytes are still correct after the split and trims.
     let mut reader = buffer.new_reader();
-    assert!(reader.seek(5));
-    let mut buf = [0u8; 5];
-    assert_eq!(reader.read(&mut buf).ok(), Some(5));
-    assert_eq!(&buf, b"56789");
+    let mut buf = [0u8; 3];
+    assert_eq!(reader.read(&mut buf).ok(), Some(3));
+    assert_eq!(&buf, b"012");
+    assert!(reader.seek(7));
+    assert_eq!(reader.read(&mut buf).ok(), Some(1));
+    assert_eq!(&buf[..1], b"7");
+    assert!(reader.seek(32));
+    assert_eq!(reader.read(&mut buf).ok(), Some(3));
+    assert_eq!(&buf, b"CDE");
     drop(reader);
 
-    // Evicting past a whole range drops it; a range starting exactly at the
-    // floor is kept.
-    buffer.evict_before(20);
-    assert_eq!(buffer.get_ranges(), vec![(20, 24)]);
-    buffer.evict_before(20);
-    assert_eq!(buffer.get_ranges(), vec![(20, 24)]);
+    // Ranges ending at the evicted start or starting at its end are kept, and
+    // an empty range evicts nothing.
+    buffer.evict(3..7);
+    assert_eq!(buffer.get_ranges(), vec![(0, 3), (7, 8), (32, 40)]);
+    buffer.evict(8..8);
+    assert_eq!(buffer.get_ranges(), vec![(0, 3), (7, 8), (32, 40)]);
 }
 
 /// Appending a range that sits entirely before an existing one (a backward

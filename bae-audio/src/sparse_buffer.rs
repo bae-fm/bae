@@ -9,6 +9,7 @@
 //! `BufferReader` with an independent position. Readers never conflict.
 
 use std::collections::HashMap;
+use std::ops::Range;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
@@ -393,24 +394,45 @@ impl SparseStreamingBuffer {
         windows
     }
 
-    /// Drop buffered bytes below `pos`, freeing what every reader has already
-    /// passed. A range entirely below `pos` is removed; a range straddling `pos`
-    /// is trimmed at its front. This is what keeps the buffer bounded to a
-    /// window around the live readers instead of accumulating the whole file.
-    pub fn evict_before(&self, pos: u64) {
+    /// Drop the buffered bytes within `evicted`, freeing what every reader has
+    /// already passed. A range inside it is removed; a range reaching past
+    /// either end keeps the bytes outside it, split in two when it spans the
+    /// whole of `evicted`. This is what keeps the buffer bounded to a window
+    /// around the live readers instead of accumulating the whole file.
+    pub fn evict(&self, evicted: Range<u64>) {
+        if evicted.is_empty() {
+            return;
+        }
         let mut inner = self.inner.lock().unwrap();
-        inner.ranges.retain_mut(|range| {
-            if range.end() <= pos {
-                false
-            } else if range.start < pos {
-                let cut = (pos - range.start) as usize;
-                range.data.drain(..cut);
-                range.start = pos;
-                true
+        let mut kept = Vec::with_capacity(inner.ranges.len() + 1);
+        for mut range in inner.ranges.drain(..) {
+            if range.end() <= evicted.start || range.start >= evicted.end {
+                kept.push(range);
+            } else if range.start >= evicted.start {
+                // Only a tail past `evicted` survives: trim the front in place.
+                if range.end() > evicted.end {
+                    let cut = (evicted.end - range.start) as usize;
+                    range.data.drain(..cut);
+                    range.start = evicted.end;
+                    kept.push(range);
+                }
             } else {
-                true
+                // The front before `evicted` survives, and the tail past it
+                // when the range reaches that far.
+                let tail = (range.end() > evicted.end).then(|| {
+                    let cut = (evicted.end - range.start) as usize;
+                    BufferedRange {
+                        start: evicted.end,
+                        data: range.data.split_off(cut),
+                    }
+                });
+                range.data.truncate((evicted.start - range.start) as usize);
+                range.data.shrink_to_fit();
+                kept.push(range);
+                kept.extend(tail);
             }
-        });
+        }
+        inner.ranges = kept;
     }
 
     /// The first not-yet-buffered sub-range within `[from, limit)`, or `None`
@@ -478,10 +500,12 @@ impl SparseStreamingBuffer {
 
     /// Fetch on demand until the buffer stops or its last real user is
     /// dropped, `window` bytes at a time at most. The fill keeps one window
-    /// ahead of a reader with no ceiling (see `pick_window_gap`), and keeps one
-    /// window behind the most-behind reader before evicting. The wake signal
-    /// remains private: this owner clones it for the loop, then releases its own
-    /// strong reference before every await.
+    /// ahead of a reader with no ceiling (see `pick_window_gap`), keeps one
+    /// window behind the most-behind reader before evicting, and never evicts
+    /// the file's first window, so an open file holds about one window more
+    /// than the window around its readers. The wake signal remains private:
+    /// this owner clones it for the loop, then releases its own strong
+    /// reference before every await.
     ///
     /// A failed fetch (or a short one, as `E::from(ShortRead)`) fails the buffer
     /// with that error, which unblocks every reader with it, and returns it for
@@ -522,7 +546,11 @@ impl SparseStreamingBuffer {
 
             let windows = buffer.demand_windows();
             if let Some(floor) = windows.first() {
-                buffer.evict_before(floor.pos.saturating_sub(window));
+                // The file's first window is never evicted: a demuxer opening
+                // a file reads its head, may jump to the end (an MP3 with no
+                // ID3v2 tag reads its last 128 bytes for an ID3v1 tag) and
+                // comes back, and the jump moves the floor past the head.
+                buffer.evict(window..floor.pos.saturating_sub(window));
             }
             let gap = pick_window_gap(&buffer, &windows, total, window);
             drop(buffer);

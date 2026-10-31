@@ -2656,6 +2656,13 @@ storage a range at a time
 Reading ahead keeps playback from waiting on the network, and a seek fetches
 only what is under the new position. One buffer per file serves every track
 that plays from it, so the eleven tracks of a disc image share one.
+The buffer fetches a 4 MiB window at a time and drops what lies more than a
+window behind the track furthest back in the file, except the file's first
+window, which it keeps while the file is open: opening a file reads its
+start, and some files are read at their end before the read comes back (an
+MP3 with no ID3v2 tag is looked at for an ID3v1 tag in its last 128 bytes),
+so the start is fetched once. An open file holds about that one window more
+than the windows around its tracks.
 
 A track start in a FLAC, WavPack, Opus or Vorbis file jumps to the byte
 import recorded for it, since those files' frames state their own position;
