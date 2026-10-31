@@ -145,9 +145,6 @@ pub(crate) struct TracklistEntry {
     /// The position the catalog prints: `A1`, `1-2`, `3`. Unstated where the
     /// catalog prints none.
     pub(crate) position: Option<String>,
-    /// MusicBrainz's own count of the track within its medium, read where it
-    /// prints no position.
-    pub(crate) number: Option<i64>,
     /// The title the catalog gives the row. A MusicBrainz track with no
     /// usable title keeps none, and reading it fails.
     pub(crate) title: Option<String>,

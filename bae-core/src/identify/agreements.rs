@@ -1,11 +1,11 @@
 //! Which of a result's fields the candidate's own folder states. The disc ID
-//! comes from the lookup that returned the result, since no record states the
-//! disc IDs it carries; the barcode is the folder's own code printed on the
-//! record.
+//! comes from whether a lookup of the folder's disc IDs returned the result,
+//! since no record states the disc IDs it carries; the barcode is the
+//! folder's own code printed on the record.
 
-use super::combine::LookupProvenance;
 use super::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
+use crate::import::MetadataRef;
 use crate::signals::{SourcedValue, TextLine, TextOrigin};
 use bae_types::pressing::{ReleaseArea, ReleaseLabel};
 use bae_types::text_match::{
@@ -90,15 +90,16 @@ impl Agreements {
 }
 
 /// What the candidate's text agrees with about `result`, given what the
-/// folder states over the whole list and the lookups that returned it.
+/// folder states over the whole list and whether a lookup of the folder's
+/// disc IDs returned it.
 pub(crate) fn agreements_of(
     result: &MetadataResult,
     text: &CandidateText,
     facts: &FolderFacts,
-    lookup: &LookupProvenance,
+    by_disc_id: bool,
 ) -> Agreements {
     Agreements {
-        disc_id: lookup.by_disc_id,
+        disc_id: by_disc_id,
         barcode: result
             .barcodes
             .iter()
@@ -126,19 +127,20 @@ pub(crate) fn agreements_of(
 }
 
 /// Each match paired with its agreements, for
-/// [`crate::import::release_group::group_results`]. `provenance` is
-/// index-aligned with `matches`.
+/// [`crate::import::release_group::group_results`]. `by_disc_id` holds the
+/// releases the lookups of the folder's disc IDs returned.
 pub(crate) fn judged_results(
     matches: Vec<MetadataResult>,
-    provenance: &[LookupProvenance],
+    by_disc_id: &HashSet<MetadataRef>,
     text: &CandidateText,
     facts: &FolderFacts,
 ) -> Vec<crate::import::release_group::Judged> {
     matches
         .into_iter()
-        .zip(provenance)
-        .map(|(result, lookup)| {
-            let agreements = agreements_of(&result, text, facts, lookup);
+        .map(|result| {
+            let returned =
+                by_disc_id.contains(&MetadataRef::new(result.source, &result.release_id));
+            let agreements = agreements_of(&result, text, facts, returned);
             (result, agreements)
         })
         .collect()

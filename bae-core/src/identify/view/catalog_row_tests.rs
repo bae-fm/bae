@@ -3,7 +3,7 @@
 
 use super::tests::*;
 use super::*;
-use crate::identify::{Findings, LookupProvenance, NarrowedOut, TerminalVerdict};
+use crate::identify::{Findings, NarrowedOut, TerminalVerdict};
 use crate::import::search::MetadataResult;
 use crate::signals::TextLine;
 use crate::signals::TextOrigin;
@@ -53,27 +53,12 @@ fn resumed(
     ledger: Option<IdentifyRunView>,
     text: CandidateText,
 ) -> IdentifyStateView {
-    let by_disc_id = |count: usize| {
-        vec![
-            LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_isrc: false,
-                by_search: false,
-                by_pressing: false,
-            };
-            count
-        ]
-    };
     let verdict = TerminalVerdict::Found {
         findings: Findings {
-            provenance: by_disc_id(matches.len()),
             // Rows formed the way a run forms them.
             pressings: crate::import::release_group::form_rows(&matches),
             matches,
             narrowed_out: NarrowedOut {
-                provenance: by_disc_id(narrowed_out.len()),
                 pressings: crate::import::release_group::form_rows(&narrowed_out),
                 matches: narrowed_out,
             },

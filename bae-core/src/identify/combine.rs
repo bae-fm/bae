@@ -17,47 +17,14 @@ use crate::import::search::MetadataResult;
 use bae_catalogs::catalog::Catalog;
 use std::collections::{HashMap, HashSet};
 
-/// Which of a run's keys returned one result. Stored with the [`Findings`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LookupProvenance {
-    pub by_disc_id: bool,
-    /// A barcode the folder's files carry.
-    pub by_barcode: bool,
-    /// A catalog number in effect: one the person picked, or one a found
-    /// release carries that the folder states.
-    pub by_catalog: bool,
-    /// The search for the recordings the audio's ISRCs are registered to.
-    pub by_isrc: bool,
-    /// The title search, asked only when the folder's own keys and the
-    /// picked numbers named nothing.
-    pub by_search: bool,
-    /// An offered row's pressing, looked up on a catalog the row had no
-    /// record of: by the release its page names there, its barcode, or its
-    /// catalog number under its label and the artist its record credits.
-    pub by_pressing: bool,
-}
-
-impl LookupProvenance {
-    /// Returned by no key: a release a person chose.
-    pub const CHOSEN: Self = Self {
-        by_disc_id: false,
-        by_barcode: false,
-        by_catalog: false,
-        by_isrc: false,
-        by_search: false,
-        by_pressing: false,
-    };
-}
-
 /// What a run's lookups found once combined: the offered rows and the rows
-/// set aside, each release with its lookups and its pressing row. A failed
-/// run's findings are stored the same way as a found one's.
+/// set aside, each release with its pressing row. Which lookups returned a
+/// release is the run's ledger's to say. A failed run's findings are stored
+/// the same way as a found one's.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Findings {
     /// The offered rows' releases, most-agreed-with first.
     pub matches: Vec<MetadataResult>,
-    /// Index-aligned with `matches`.
-    pub provenance: Vec<LookupProvenance>,
     /// Index-aligned with `matches`: each release's pressing row, numbered
     /// from zero. Kept rather than re-formed, since grouping one list alone
     /// can merge records the run kept apart.
@@ -99,8 +66,6 @@ impl Findings {
 pub struct NarrowedOut {
     /// In signal order, each release once.
     pub matches: Vec<MetadataResult>,
-    /// Index-aligned with `matches`.
-    pub provenance: Vec<LookupProvenance>,
     /// Index-aligned with `matches`: each release's row in this list.
     pub pressings: Vec<u32>,
 }
@@ -142,8 +107,8 @@ impl LookupAnswers {
     }
 }
 
-/// Pool every key's results into what the run found: each release once, with
-/// the keys that returned it. An empty set takes no part.
+/// Pool every key's results into what the run found: each release once. An
+/// empty set takes no part.
 pub fn combine_results(
     answers: LookupAnswers,
     text: &CandidateText,
@@ -154,27 +119,27 @@ pub fn combine_results(
     // How many of the folder's discs each release holds: each disc ID's
     // lookup returns a release only where exactly one of its mediums carries
     // that disc, and the folder's discs are distinct discs, so each disc ID
-    // that returned it is another of its mediums.
+    // that returned it is another of its mediums. A release no disc ID's
+    // lookup returned holds none.
     let mut discs_held: HashMap<ReleaseKey, u32> = HashMap::new();
     for disc in &answers.disc_id {
         for key in release_keys(disc) {
             *discs_held.entry(key).or_default() += 1;
         }
     }
-    let by_signal = [
+    let by_isrc = release_keys(&answers.isrc);
+
+    let present: Vec<&Results> = [
         &disc_id,
         &answers.barcode,
         &answers.catalog,
         &answers.isrc,
         &answers.search,
         &answers.pressing,
-    ];
-    let keys: Vec<HashSet<ReleaseKey>> = by_signal.iter().map(|set| release_keys(set)).collect();
-
-    let present: Vec<&Results> = by_signal
-        .into_iter()
-        .filter(|set| !set.is_empty())
-        .collect();
+    ]
+    .into_iter()
+    .filter(|set| !set.is_empty())
+    .collect();
     if present.is_empty() {
         return Findings::default();
     }
@@ -182,35 +147,16 @@ pub fn combine_results(
     // Every release once, in key order.
     let all = union_all(present);
 
-    let lookup_of = |result: &MetadataResult| {
-        let key = (result.source, result.release_id.clone());
-        LookupProvenance {
-            by_disc_id: keys[0].contains(&key),
-            by_barcode: keys[1].contains(&key),
-            by_catalog: keys[2].contains(&key),
-            by_isrc: keys[3].contains(&key),
-            by_search: keys[4].contains(&key),
-            by_pressing: keys[5].contains(&key),
-        }
-    };
     let facts = FolderFacts::of(text, all.iter());
     let judged: Vec<Judged> = all
         .iter()
         .map(|result| {
-            let agreements = agreements_of(result, text, &facts, &lookup_of(result));
+            let by_disc_id = discs_held.contains_key(&(result.source, result.release_id.clone()));
+            let agreements = agreements_of(result, text, &facts, by_disc_id);
             (result.clone(), agreements)
         })
         .collect();
     let judgements = Judgements::of(&judged, Some(folder.track_count));
-    let returned_by: HashMap<ReleaseKey, LookupProvenance> = all
-        .iter()
-        .map(|result| {
-            (
-                (result.source, result.release_id.clone()),
-                lookup_of(result),
-            )
-        })
-        .collect();
     // Neither offered nor set aside: a row the folder cannot be is no answer.
     let rows: Vec<Pressing> = group_results(judged, Some(folder.track_count))
         .into_iter()
@@ -220,7 +166,7 @@ pub fn combine_results(
     let (offered, set_aside, medium_conflict, notes) = split_rows(
         rows,
         &judgements,
-        &returned_by,
+        &by_isrc,
         &discs_held,
         ripped_from,
         folder,
@@ -257,15 +203,11 @@ pub fn combine_results(
         })
         .collect();
     let (left_out, narrowed_out_pressings) = records(set_aside);
-    let provenance = combined.iter().map(lookup_of).collect();
-    let narrowed_out_provenance = left_out.iter().map(lookup_of).collect();
     Findings {
         matches: combined,
-        provenance,
         pressings,
         narrowed_out: NarrowedOut {
             matches: left_out,
-            provenance: narrowed_out_provenance,
             pressings: narrowed_out_pressings,
         },
         medium_conflict,
@@ -373,19 +315,16 @@ struct Support {
 fn support_of(
     row: &Pressing,
     judgements: &Judgements,
-    provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    by_isrc: &HashSet<ReleaseKey>,
     discs_held: &HashMap<ReleaseKey, u32>,
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
     facts: &FolderFacts,
 ) -> Support {
-    let mut returned = LookupProvenance::CHOSEN;
-    for release in &row.releases {
-        let found = provenance
-            .get(&(release.source, release.release_id.clone()))
-            .expect("a pressing is built from the run's own records");
-        returned.by_isrc |= found.by_isrc;
-    }
+    let returned_by_isrc = row
+        .releases
+        .iter()
+        .any(|release| by_isrc.contains(&(release.source, release.release_id.clone())));
     // A row holds one record per catalog, and only MusicBrainz answers disc
     // IDs, so at most one of its records holds any.
     let shares_toc = row
@@ -403,7 +342,7 @@ fn support_of(
         shares_toc,
         names_album: agreements.names_album()
             + u32::from(facts.names_the_album_year(&row.releases))
-            + u32::from(returned.by_isrc),
+            + u32::from(returned_by_isrc),
         fits_the_tracks: super::fit::TracklistFit::of(
             row.lead().source_tracks.as_ref(),
             folder.track_count,
@@ -435,7 +374,7 @@ fn support_of(
 fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
-    provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    by_isrc: &HashSet<ReleaseKey>,
     discs_held: &HashMap<ReleaseKey, u32>,
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
@@ -453,7 +392,7 @@ fn split_rows(
             support_of(
                 row,
                 judgements,
-                provenance,
+                by_isrc,
                 discs_held,
                 ripped_from,
                 folder,

@@ -1,15 +1,16 @@
 //! Album links as rows: the statements that say what a MusicBrainz release
 //! group is on another catalog.
 //!
-//! Two tables hold them in the one shape. A verdict's match rows carry what a
-//! run's reading found about the match's album, so a list read back from the
-//! store groups as it did. `release_group_album_link` keeps what any reading
-//! found about a group, beyond the list that read it, so a release of either
-//! album carries the other among its records — a Discogs release whose own
-//! documents never reach the release group still names it.
+//! A catalog release's rows and a verdict's match rows carry the statements
+//! read about the release's album, each in the one shape, so a list read back
+//! from the store groups as it did. `release_group_album_link` keeps the
+//! albums any reading found a group to be, beyond the list that read it, so a
+//! release of either album carries the other among its records — a Discogs
+//! release whose own documents never reach the release group still names
+//! it.
 
 use super::*;
-use crate::import::album_links::{AlbumLink, AlbumStatement, GroupStatement};
+use crate::import::album_links::{AlbumLink, AlbumStatement, GroupAlbum};
 use crate::import::MetadataRef;
 
 /// The stored `stated` values, one per [`AlbumStatement`] shape.
@@ -138,32 +139,20 @@ impl<'a> StatementColumns<'a> {
     }
 }
 
-const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key, stated, wikidata_item, \
-     musicbrainz_release, release_catalog, release_key";
+const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key";
 
-fn read_group_link(row: &Row<'_>) -> rusqlite::Result<(String, AlbumLinkRow)> {
-    Ok((
-        row.get(0)?,
-        AlbumLinkRow {
-            catalog: row.get(1)?,
-            key: row.get(2)?,
-            stated: row.get(3)?,
-            wikidata_item: row.get(4)?,
-            musicbrainz_release: row.get(5)?,
-            release_catalog: row.get(6)?,
-            release_key: row.get(7)?,
-        },
-    ))
+fn read_group_link(row: &Row<'_>) -> rusqlite::Result<(String, String, String)> {
+    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
 }
 
-/// Every statement kept about any of `albums`: one naming a MusicBrainz
-/// release group among them as some album, or naming some group as one of
-/// the other catalogs' albums among them.
-pub(super) fn group_statements_on<S: QueryRows>(
+/// Every album kept for any of `albums`: one a MusicBrainz release group
+/// among them was found to be, or one of the other catalogs' albums among
+/// them some group was found to be.
+pub(super) fn group_albums_on<S: QueryRows>(
     sql: &S,
     albums: &[MetadataRef],
-) -> Result<Vec<GroupStatement>, DbError> {
-    let mut statements: Vec<GroupStatement> = Vec::new();
+) -> Result<Vec<GroupAlbum>, DbError> {
+    let mut kept: Vec<GroupAlbum> = Vec::new();
     for album in albums {
         let rows = match album.catalog {
             Catalog::MusicBrainz => sql.query(
@@ -183,22 +172,23 @@ pub(super) fn group_statements_on<S: QueryRows>(
                 read_group_link,
             )?,
         };
-        for (group, row) in rows {
-            let statement = GroupStatement {
+        for (group, catalog, key) in rows {
+            let group_album = GroupAlbum {
                 group,
-                link: row.link()?,
+                album: MetadataRef::new(catalog_of(&catalog)?, key),
             };
-            if !statements.contains(&statement) {
-                statements.push(statement);
+            if !kept.contains(&group_album) {
+                kept.push(group_album);
             }
         }
     }
-    Ok(statements)
+    Ok(kept)
 }
 
-/// The albums kept statements join to a stored release's own albums — its
-/// group, and the albums its records name — on a catalog none of its records
-/// reaches. The release's own catalog is never one: its album is its group.
+/// The albums the kept group albums join to a stored release's own albums —
+/// its group, and the albums its records name — on a catalog none of its
+/// records reaches. The release's own catalog is never one: its album is its
+/// group.
 pub(super) fn joined_albums_on<S: QueryRows>(
     sql: &S,
     catalog: Catalog,
@@ -215,9 +205,9 @@ pub(super) fn joined_albums_on<S: QueryRows>(
         )
         .collect();
     let mut joined: Vec<MetadataRef> = Vec::new();
-    for statement in group_statements_on(sql, &albums)? {
+    for group_album in group_albums_on(sql, &albums)? {
         for album in &albums {
-            let Some(other) = statement.other_than(album) else {
+            let Some(other) = group_album.other_than(album) else {
                 continue;
             };
             let reached = other.catalog == catalog
@@ -234,36 +224,26 @@ pub(super) fn joined_albums_on<S: QueryRows>(
 }
 
 impl Database {
-    /// Keep what reading these release groups found each to be, replacing
-    /// whatever an earlier reading of the same group found. A group whose
-    /// reading named nothing keeps nothing.
+    /// Keep the albums reading these release groups found each to be,
+    /// replacing whatever an earlier reading of the same group found. A group
+    /// whose reading named nothing keeps nothing.
     pub async fn replace_group_album_links(
         &self,
-        read: Vec<(String, Vec<AlbumLink>)>,
+        read: Vec<(String, Vec<MetadataRef>)>,
     ) -> Result<(), DbError> {
         self.call(move |sql| {
-            for (group, links) in &read {
+            for (group, albums) in &read {
                 sql.execute(
                     "DELETE FROM release_group_album_link WHERE release_group = ?",
                     params![group],
                 )?;
-                for link in links {
-                    let columns = StatementColumns::of(&link.stated);
+                for album in albums {
                     sql.execute(
                         &format!(
                             "INSERT INTO release_group_album_link ({GROUP_LINK_COLUMNS}) \
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                             VALUES (?, ?, ?)"
                         ),
-                        params![
-                            group,
-                            link.album.catalog.as_str(),
-                            link.album.key,
-                            columns.stated,
-                            columns.wikidata_item,
-                            columns.musicbrainz_release,
-                            columns.release.map(|release| release.catalog.as_str()),
-                            columns.release.map(|release| release.key.as_str()),
-                        ],
+                        params![group, album.catalog.as_str(), album.key],
                     )?;
                 }
             }

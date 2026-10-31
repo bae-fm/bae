@@ -427,8 +427,8 @@ async fn a_row_moved_to_other_files_moves_both_releases() {
         (
             "import_candidate_verdict",
             "INSERT INTO import_candidate_verdict
-                 (content_hash, kind, kept_own_draft, identified_at)
-             VALUES ('{hash}', 'not_found', 0, '2026-01-01T00:00:00Z');",
+                 (content_hash, kind, kept_own_draft)
+             VALUES ('{hash}', 'not_found', 0);",
             |placed: Placed| placed.needs_you("not_found"),
         ),
         (

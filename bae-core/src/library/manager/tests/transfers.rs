@@ -345,7 +345,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
     )
     .await;
     let cover_bytes = b"cover-bytes";
-    let cover = DbLibraryImage::cover(&release.id, "local", None, manager.clock.now().into());
+    let cover = DbLibraryImage::cover(&release.id, manager.clock.now().into());
     manager
         .store_library_image(&cover, cover_bytes)
         .await

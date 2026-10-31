@@ -161,7 +161,6 @@ forward! { async this => {
             // The library stores the original; its copies are for drawing.
             BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
                 url: selection.image.url,
-                source: selection.source.into_core(),
             },
             BridgeCoverSelection::EmbeddedCover { source_file_id } => {
                 return Err(BridgeError::internal(format!(

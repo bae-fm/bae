@@ -47,7 +47,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     exec(
         &db,
         "INSERT INTO release_records
-         (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1', 'https://musicbrainz.org/release/source-release-1', '2026-01-01T00:00:00Z')",
+         (id, release_id, catalog, kind, key, album_key) VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1')",
         &[IDENTITY_ID, RELEASE_ID],
     )
     .await;
@@ -71,7 +71,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     assert!(!status(&updated, "source-release-2").album_in_library());
 
     exec(&db,
-        "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL, url = 'https://musicbrainz.org/release-group/source-group-1' WHERE id = ?1",
+        "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL WHERE id = ?1",
         &[IDENTITY_ID],
     ).await;
     let album_only = tokio::time::timeout(Duration::from_secs(2), live.next())
@@ -150,8 +150,8 @@ async fn library_statuses_answer_every_check_in_order() {
         &format!(
             "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{OTHER_ALBUM_ID}', 'Older Album', 0, '2025-01-01T00:00:00Z');
              INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', '2025-01-01T00:00:00Z', 0);
-             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES ('{IDENTITY_ID}', '{RELEASE_ID}', 'musicbrainz', 'album', 'group-1', NULL, 'https://musicbrainz.org/release-group/group-1', '2026-01-01T00:00:00Z');
-             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES ('0d8f8a3e-6c1b-4d5e-9a3c-2f1e7b6a5d4c', '{OTHER_RELEASE_ID}', 'musicbrainz', 'pressing', 'pressing-1', 'group-1', 'https://musicbrainz.org/release/pressing-1', '2025-01-01T00:00:00Z');"
+             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES ('{IDENTITY_ID}', '{RELEASE_ID}', 'musicbrainz', 'album', 'group-1', NULL);
+             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES ('0d8f8a3e-6c1b-4d5e-9a3c-2f1e7b6a5d4c', '{OTHER_RELEASE_ID}', 'musicbrainz', 'pressing', 'pressing-1', 'group-1');"
         ),
     )
     .await;

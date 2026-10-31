@@ -1020,7 +1020,8 @@ found is kept, also one no list shows because its tracklist doesn't fit or it
 looks like an offered one; only its lookup shows and counts it. A release is
 kept once, as the run last read it, and every lookup that found it shows it
 that way, while the run is going and after it ends, so a candidate opened
-later shows what its run showed. A run with no clue to lay out keeps none.
+later shows what its run showed. Its track titles and notes, which only the
+run's ranking reads, are not kept. A run with no clue to lay out keeps none.
 
 ### 3.5 Picking a pressing
 
@@ -3474,17 +3475,17 @@ All sync.
 | `artists` | artist: name, folded name, sort name, MusicBrainz and Discogs ids |
 | `artist_credits` | another name a credit prints for an artist, keyed by the artist and the folded name (§2.3) |
 | `artist_merges` | artist absorbed into another (§2.3); the view `merged_artist_survivors` follows each chain to the artist it shows as |
-| `artist_images` | artist's picture, keyed by the artist: the coven file it references (`file`), with an index by it, its type, size in pixels and source |
+| `artist_images` | artist's picture, keyed by the artist: the coven file it references (`file`), with an index by it, its type and size in pixels |
 | `albums` | album: title, year, compilation flag |
 | `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
 | `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
-| `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type, size in pixels and source |
+| `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type and size in pixels |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
-| `release_records` | catalog record of a release: pressing or album, key, album key, URL; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
+| `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
 | `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
 | `track_artists` | track's own credit, one per place in its list, from position 0, as an album's |
@@ -3611,8 +3612,8 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_candidate_signals`, `import_candidate_signal_value`, `import_candidate_text_line` | the clues read off a candidate (§3.3) |
 | `import_candidate_lookup_choices`, `import_candidate_chosen_catalog`, `import_candidate_discounted_catalog`, `import_candidate_excluded_barcode` | what the person let the lookups use |
 | `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict |
-| `import_candidate_match` and its `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with which lookup found a listed one |
-| `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them |
+| `import_candidate_match` and its `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one |
+| `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them; a release a Disc ID's lookup found is what its Disc ID agreement is read from |
 | `import_candidate_lookup_provider`, `import_candidate_lookup_isrc`, `import_candidate_lookup_offered_catalog` | the catalogs the run asked, the ISRCs it looked up, and the catalog numbers it offered to pick |
 
 ### A.7 The import list

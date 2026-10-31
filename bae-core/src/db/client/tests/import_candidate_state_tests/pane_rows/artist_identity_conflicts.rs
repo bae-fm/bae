@@ -196,11 +196,11 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     })
     .await
     .unwrap();
-    for (artist, source, bytes) in [
-        (&discogs.id, "discogs", b"four".as_slice()),
-        (&musicbrainz.id, "musicbrainz", b"one".as_slice()),
+    for (artist, bytes) in [
+        (&discogs.id, b"four".as_slice()),
+        (&musicbrainz.id, b"one".as_slice()),
     ] {
-        store_artist_image(&db, artist, source, bytes).await;
+        store_artist_image(&db, artist, bytes).await;
     }
     let failure = artist_identity_failure(&discogs, &musicbrainz);
     db.save_import_candidate_failure(&hash, 0, &failure)
@@ -292,7 +292,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .is_none());
 }
 
-async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes: &[u8]) {
+async fn store_artist_image(db: &Database, artist_id: &str, bytes: &[u8]) {
     db.write_library_image(
         &DbLibraryImage {
             id: artist_id.to_string(),
@@ -300,8 +300,6 @@ async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes:
             content_type: bae_util::content_type::ContentType::Jpeg,
             width: None,
             height: None,
-            source: source.into(),
-            source_url: None,
             created_at: fixed_now(),
         },
         bytes,
@@ -347,7 +345,7 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
-    store_artist_image(&db, &musicbrainz.id, "musicbrainz", b"absorbed").await;
+    store_artist_image(&db, &musicbrainz.id, b"absorbed").await;
     let absorbed = artist_image_file(&db, &musicbrainz.id).await.id();
     db.save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
         .await

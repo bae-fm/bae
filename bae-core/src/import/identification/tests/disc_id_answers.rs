@@ -87,12 +87,6 @@ async fn a_run_reads_the_releases_its_disc_id_returned_from_that_answer() {
         assert_eq!(result.document_failure, None);
         assert_eq!(result.album_first_year, Some(1981), "the group's page was read");
     }
-    let first = findings
-        .matches
-        .iter()
-        .find(|result| result.release_id == "mb-disc-de")
-        .unwrap();
-    assert_eq!(first.notes, vec!["club edition".to_string()]);
     assert_ne!(
         row.metadata_author,
         crate::import::MetadataAuthor::Identification,

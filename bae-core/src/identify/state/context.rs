@@ -12,7 +12,7 @@ use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
-use crate::import::album_links::{self, AlbumLink, GroupLinks};
+use crate::import::album_links::{self, GroupLinks};
 use crate::import::payloads::DiscIdRelease;
 use crate::import::LookupChoices;
 use crate::import::MetadataRef;
@@ -595,7 +595,7 @@ impl SignalsContext {
 
     /// What the run's MusicBrainz albums were read to be, to keep beyond it
     /// (see [`album_links::to_keep`]).
-    pub(super) fn album_links_to_keep(&self) -> Vec<(String, Vec<AlbumLink>)> {
+    pub(super) fn album_links_to_keep(&self) -> Vec<(String, Vec<MetadataRef>)> {
         let answers = self.lookup_results();
         let list: Vec<&MetadataResult> = answers.all().collect();
         album_links::to_keep(&self.album_groups(&answers), &list)

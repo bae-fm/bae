@@ -297,10 +297,8 @@ const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found
      found.title, found.artist, found.year, found.labels, found.country, found.region, \
      found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
      found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
-     found.album_links, found.source_tracks_kind, found.source_tracks_count, \
-     found.by_disc_id, found.by_barcode, found.by_catalog, found.by_isrc, found.by_search, \
-     found.by_pressing, found.listing, found.document_failure, \
-     found.document_failure_status, found.album_first_year, found.track_titles, found.notes, \
+     found.album_links, found.source_tracks_kind, found.source_tracks_count, found.listing, \
+     found.document_failure, found.document_failure_status, found.album_first_year, \
      found.named_note";
 
 /// What hangs off a match joined as `found`, each list a JSON array in its

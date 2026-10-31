@@ -363,7 +363,7 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub(crate) async fn keep_album_links(
         &self,
-        kept: Vec<(String, Vec<crate::import::album_links::AlbumLink>)>,
+        kept: Vec<(String, Vec<crate::import::MetadataRef>)>,
     ) {
         if let Err(error) = self.database.replace_group_album_links(kept).await {
             tracing::error!("What the release groups were read to be was not kept: {error}");
@@ -424,7 +424,6 @@ impl LibraryManager {
             .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
             answers.push(crate::import::DiscogsArtistImage::Image {
                 discogs_artist_id,
-                source_url,
                 jpeg,
             });
         }
@@ -462,19 +461,10 @@ impl LibraryManager {
             let Some(answer) = by_discogs_id.get(discogs_artist_id) else {
                 return Err(crate::db::ArtistWriteError::LibraryChanged.into());
             };
-            let crate::import::DiscogsArtistImage::Image {
-                source_url, jpeg, ..
-            } = answer
-            else {
+            let crate::import::DiscogsArtistImage::Image { jpeg, .. } = answer else {
                 continue;
             };
-            let row = DbLibraryImage::stored_jpeg(
-                LibraryImageType::Artist,
-                &artist.id,
-                bae_catalogs::catalog::Catalog::Discogs.as_str(),
-                Some(source_url.clone()),
-                self.now(),
-            );
+            let row = DbLibraryImage::stored_jpeg(LibraryImageType::Artist, &artist.id, self.now());
             images.push((row, jpeg.clone()));
         }
         Ok(images)

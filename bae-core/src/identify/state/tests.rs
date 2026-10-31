@@ -36,6 +36,22 @@ fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effec
     (state, effects)
 }
 
+/// Whether a lookup of the folder's disc IDs found `result`, as the run's
+/// ledger records it.
+fn found_by_disc_id(
+    ledger: Option<&crate::identify::IdentifyRunView>,
+    result: &MetadataResult,
+) -> bool {
+    ledger.is_some_and(|ledger| {
+        ledger
+            .disc_id_releases()
+            .contains(&crate::import::MetadataRef::new(
+                result.source,
+                &result.release_id,
+            ))
+    })
+}
+
 /// The records a read of documents asks for.
 fn records_read(
     releases: &[crate::identify::documents::ReleaseToRead],

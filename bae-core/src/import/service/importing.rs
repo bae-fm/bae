@@ -405,9 +405,7 @@ impl ImportService {
         // The selected remote cover and its exact prepared bytes are one
         // candidate revision. Import validates that pair and never fetches it.
         let remote_cover_data = match (&selected_cover, prepared_assets.remote_cover) {
-            (Some(CoverSelection::Remote(remote, source)), Some(image)) => {
-                Some(downloaded_cover(image, &remote.url, *source)?)
-            }
+            (Some(CoverSelection::Remote(_, _)), Some(image)) => Some(downloaded_cover(image)?),
             (Some(CoverSelection::Remote(_, _)), None) => {
                 return Err(crate::import::ImportError::Internal {
                     detail: "selected remote cover has no prepared bytes".into(),
@@ -824,16 +822,10 @@ impl ImportService {
                 }
             },
             Some(CoverSelection::Local(path)) => {
-                Self::pick_folder_cover(discovered_files, path, &self.diagnostics).await?
+                Some(Self::pick_folder_cover(discovered_files, path, &self.diagnostics).await?)
             }
             Some(CoverSelection::Embedded(_)) => {
-                embedded_cover
-                    .take()
-                    .map(|(bytes, _content_type)| cover_image::CoverCandidate {
-                        bytes,
-                        source: "embedded".to_string(),
-                        source_url: None,
-                    })
+                embedded_cover.take().map(|(bytes, _content_type)| bytes)
             }
             None => None,
         };
@@ -841,21 +833,15 @@ impl ImportService {
         // sources — and build the row from that output, so its hash, size and
         // content type describe the file that gets stored rather than its source.
         let cover_winner = match cover_candidate {
-            Some(candidate) => {
+            Some(source) => {
                 // Decoding and re-encoding the image is CPU work.
-                let source = candidate.bytes;
                 let bytes = blocking("resize the import's cover", move || {
                     bae_util::stored_image::stored_jpeg(&source)
                 })
                 .await
                 .map_err(|failed| self.diagnostics.bug(failed))?
                 .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
-                let image = crate::db::DbLibraryImage::cover(
-                    &db_release.id,
-                    &candidate.source,
-                    candidate.source_url,
-                    library_manager.now(),
-                );
+                let image = crate::db::DbLibraryImage::cover(&db_release.id, library_manager.now());
                 Some((image, bytes))
             }
             None => None,

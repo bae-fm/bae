@@ -601,7 +601,8 @@ pub struct ImportCandidateDetail {
     /// The library album an import of it files under.
     pub album: crate::import::DraftAlbum,
     /// Extracted identifying signals pinned to their source files. Independent
-    /// of the selected pressing; result support lives in result provenance.
+    /// of the selected pressing; which lookups found a result is the run's
+    /// ledger's to say.
     pub file_evidence: Vec<FileEvidence>,
     pub metadata_draft: RawReleaseEdit,
     /// What the library holds for every artist credit of the draft and the

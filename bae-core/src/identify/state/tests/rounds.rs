@@ -133,7 +133,7 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
         .iter()
         .find(|(result, _, _)| result.release_id == "dg-1")
         .unwrap_or_else(|| panic!("the Discogs answer is pooled: {rows:?}"));
-    assert!(discogs.1.by_catalog && !discogs.1.by_disc_id);
+    assert!(!discogs.1, "no disc ID's lookup found the Discogs answer");
     let IdentifyState::Found { ledger, .. } = &state else {
         panic!("expected Found, got {state:?}");
     };
@@ -268,8 +268,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
     );
     let rows = rows_of(&state);
     let found = |id: &str| rows.iter().find(|(result, _, _)| result.release_id == id);
-    let (_, lookup, _) = found("dg-1").expect("the label's release is pooled");
-    assert!(lookup.by_pressing);
+    found("dg-1").expect("the label's release is pooled");
     assert!(found("dg-2").is_none(), "another label's number is not it");
 }
 

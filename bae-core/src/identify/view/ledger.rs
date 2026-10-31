@@ -1,6 +1,8 @@
 //! Builds the run's ledger, one step at a time.
 
 use super::*;
+use crate::import::MetadataRef;
+use std::collections::HashSet;
 
 /// Whether any identifier has found a release yet.
 pub(super) fn identifiers_found_something(
@@ -363,6 +365,20 @@ impl LookupView {
 }
 
 impl IdentifyRunView {
+    /// Every release a lookup of the folder's disc IDs found: what the Disc
+    /// ID agreement is read from, since no record states the disc IDs it
+    /// carries.
+    pub(crate) fn disc_id_releases(&self) -> HashSet<MetadataRef> {
+        let DiscIdStepView::Read { discs } = &self.disc_id else {
+            return HashSet::new();
+        };
+        discs
+            .iter()
+            .flat_map(|disc| disc.lookup.releases())
+            .map(|release| MetadataRef::new(release.source, &release.release_id))
+            .collect()
+    }
+
     /// Every lookup's cell, clue by clue, row by row and cell by cell.
     pub(crate) fn lookups(&self) -> Vec<&LookupView> {
         fn cells(cells: &[ProviderCell]) -> impl Iterator<Item = &LookupView> {

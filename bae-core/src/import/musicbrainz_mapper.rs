@@ -437,7 +437,6 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
     TracklistEntry {
         kind: EntryKind::Track,
         position: track.number.clone(),
-        number: track.position,
         title,
         duration_ms: track.length,
         credits,

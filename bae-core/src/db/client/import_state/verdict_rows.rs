@@ -13,8 +13,8 @@ use super::ledger_rows::{
 use super::match_rows::{ordinal_column, store_match, Listing, StoredMatches, Written};
 use super::*;
 use crate::identify::{
-    Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, LookupView, MediumConflict,
-    NamedNote, TerminalVerdict,
+    Findings, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict, NamedNote,
+    TerminalVerdict,
 };
 use crate::import::search::MetadataResult;
 use crate::import::MetadataRef;
@@ -90,15 +90,15 @@ pub(super) fn store_verdict(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, failures_json, error_detail, disc_id_step, \
               barcode_step, catalog_step, isrc_step, search_step, search_album, search_artist, \
-              identified_at, medium_conflict, kept_own_draft) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+              medium_conflict, kept_own_draft) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (content_hash) DO UPDATE SET \
              kind = excluded.kind, track_count = excluded.track_count, \
              failures_json = excluded.failures_json, error_detail = excluded.error_detail, \
              disc_id_step = excluded.disc_id_step, barcode_step = excluded.barcode_step, \
              catalog_step = excluded.catalog_step, isrc_step = excluded.isrc_step, \
              search_step = excluded.search_step, search_album = excluded.search_album, \
-             search_artist = excluded.search_artist, identified_at = excluded.identified_at, \
+             search_artist = excluded.search_artist, \
              medium_conflict = excluded.medium_conflict, \
              kept_own_draft = excluded.kept_own_draft",
         params![
@@ -114,7 +114,6 @@ pub(super) fn store_verdict(
             steps.search,
             steps.search_album,
             steps.search_artist,
-            identification.identified_at.to_rfc3339(),
             medium_conflict,
             identification.kept_own_draft,
         ],
@@ -169,33 +168,23 @@ fn store_matches<'a>(
     content_hash: &str,
     verdict: &'a TerminalVerdict,
 ) -> Result<Vec<&'a MetadataResult>, DbError> {
-    let (matches, provenance, pressings, narrowed_out, named_notes): (
+    let (matches, pressings, narrowed_out, named_notes): (
         &[MetadataResult],
-        &[LookupProvenance],
         &[u32],
         _,
         &[NamedNote],
     ) = match verdict.findings() {
         Some(findings) => (
             &findings.matches,
-            &findings.provenance,
             &findings.pressings,
             Some(&findings.narrowed_out),
             &findings.named_notes,
         ),
-        None => (&[], &[], &[], None, &[]),
+        None => (&[], &[], None, &[]),
     };
-    let (narrowed_matches, narrowed_provenance, narrowed_pressings): (
-        &[MetadataResult],
-        &[LookupProvenance],
-        &[u32],
-    ) = match narrowed_out {
-        Some(narrowed_out) => (
-            &narrowed_out.matches,
-            &narrowed_out.provenance,
-            &narrowed_out.pressings,
-        ),
-        None => (&[], &[], &[]),
+    let (narrowed_matches, narrowed_pressings): (&[MetadataResult], &[u32]) = match narrowed_out {
+        Some(narrowed_out) => (&narrowed_out.matches, &narrowed_out.pressings),
+        None => (&[], &[]),
     };
     let named_note = |result: &MetadataResult| {
         named_notes
@@ -216,23 +205,6 @@ fn store_matches<'a>(
             stray.release.key
         )));
     }
-    let aligned = |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
-        if results.len() == provenance.len() {
-            return Ok(());
-        }
-        Err(DbError::Message(format!(
-            "a verdict for {content_hash} carries {} {what} and {} provenance entries; they \
-             are index-aligned",
-            results.len(),
-            provenance.len()
-        )))
-    };
-    aligned("matches", matches, provenance)?;
-    aligned(
-        "narrowed-out releases",
-        narrowed_matches,
-        narrowed_provenance,
-    )?;
     let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
         if results.len() == rows.len() {
             return Ok(());
@@ -252,22 +224,13 @@ fn store_matches<'a>(
     )?;
     let mut written: Vec<(&MetadataResult, Written<'_>)> = matches
         .iter()
-        .zip(provenance.iter())
         .zip(pressings.iter())
-        .map(|((result, provenance), pressing)| {
-            (
-                result,
-                Written::Offered(provenance, *pressing, named_note(result)),
-            )
-        })
+        .map(|(result, pressing)| (result, Written::Offered(*pressing, named_note(result))))
         .chain(
             narrowed_matches
                 .iter()
-                .zip(narrowed_provenance.iter())
                 .zip(narrowed_pressings.iter())
-                .map(|((result, provenance), pressing)| {
-                    (result, Written::NarrowedOut(provenance, *pressing))
-                }),
+                .map(|(result, pressing)| (result, Written::NarrowedOut(*pressing))),
         )
         .collect();
     for listed in verdict
@@ -297,7 +260,6 @@ pub(super) struct VerdictRow {
     pub(super) failures_json: Option<String>,
     pub(super) error_detail: Option<String>,
     pub(super) ledger: StoredLedger,
-    pub(super) identified_at: DateTime<Utc>,
     pub(super) medium_conflict: Option<MediumConflict>,
     pub(super) kept_own_draft: bool,
 }
@@ -311,7 +273,6 @@ pub(super) fn verdict_columns() -> String {
          verdict.kind AS verdict_kind, verdict.track_count AS verdict_track_count, \
          verdict.failures_json AS verdict_failures_json, \
          verdict.error_detail AS verdict_error_detail, \
-         verdict.identified_at AS verdict_identified_at, \
          verdict.medium_conflict AS verdict_medium_conflict, \
          verdict.kept_own_draft AS verdict_kept_own_draft, {LEDGER_COLUMNS}"
     )
@@ -330,7 +291,6 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbEr
         failures_json: row.get("verdict_failures_json")?,
         error_detail: row.get("verdict_error_detail")?,
         ledger: read_ledger(row)?,
-        identified_at: super::rfc3339_column(row, "verdict_identified_at")?,
         medium_conflict: super::medium_conflict_of(row.get("verdict_medium_conflict")?)?,
         kept_own_draft: row.get("verdict_kept_own_draft")?,
     }))
@@ -349,7 +309,6 @@ pub(super) fn identification_of(
         failures_json,
         error_detail,
         ledger,
-        identified_at,
         medium_conflict,
         kept_own_draft,
     } = row;
@@ -401,12 +360,10 @@ pub(super) fn identification_of(
                         });
                     }
                     findings.matches.push(row.result);
-                    findings.provenance.push(listed.provenance);
                     findings.pressings.push(listed.pressing);
                 }
                 Listing::NarrowedOut(listed) => {
                     findings.narrowed_out.matches.push(row.result);
-                    findings.narrowed_out.provenance.push(listed.provenance);
                     findings.narrowed_out.pressings.push(listed.pressing);
                 }
                 Listing::Unlisted => {}
@@ -479,7 +436,6 @@ pub(super) fn identification_of(
     };
     Ok(DbCandidateIdentifyResult {
         verdict,
-        identified_at,
         kept_own_draft,
     })
 }

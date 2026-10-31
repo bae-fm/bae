@@ -246,7 +246,7 @@ impl LibraryManager {
         .await
         .map_err(|task| failed(self.bug(task).to_string()))?
         .map_err(failed)?;
-        let image = DbLibraryImage::cover(release_id, "local", None, added);
+        let image = DbLibraryImage::cover(release_id, added);
         Ok((image, bytes))
     }
 }

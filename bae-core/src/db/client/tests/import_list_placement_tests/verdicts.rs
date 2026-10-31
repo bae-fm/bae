@@ -56,7 +56,9 @@ async fn keeping_ones_own_draft_leaves_the_release_unmatched() {
     );
     assert_eq!(
         lib.moved(&verdict(
-            "UPDATE import_candidate_verdict SET identified_at = '2026-02-01T00:00:00Z'"
+            "UPDATE import_candidate_verdict SET disc_id_step = 'absent', \
+             barcode_step = 'absent', catalog_step = 'none_found', isrc_step = 'absent', \
+             search_step = 'not_needed'"
         ))
         .await,
         moves([])
@@ -142,9 +144,7 @@ async fn a_found_verdict_names_what_holds_its_pick_back() {
     );
     assert_eq!(
         lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET listing = 'unlisted', pressing = NULL, \
-             by_disc_id = NULL, by_barcode = NULL, by_catalog = NULL, by_isrc = NULL, \
-             by_search = NULL, by_pressing = NULL"
+            "UPDATE import_candidate_match SET listing = 'unlisted', pressing = NULL"
         ))
         .await,
         moves([]),
@@ -152,9 +152,7 @@ async fn a_found_verdict_names_what_holds_its_pick_back() {
     );
     assert_eq!(
         lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET listing = 'offered', pressing = 0, \
-             by_disc_id = 1, by_barcode = 0, by_catalog = 0, by_isrc = 0, by_search = 0, \
-             by_pressing = 0"
+            "UPDATE import_candidate_match SET listing = 'offered', pressing = 0"
         ))
         .await,
         now(&lib, found("Album").needs_you("not_found"))

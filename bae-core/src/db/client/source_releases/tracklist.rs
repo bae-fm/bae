@@ -24,9 +24,8 @@ pub(super) fn insert_entry(
     numbering.entry += 1;
     sql.execute(
         "INSERT INTO source_release_entry \
-             (catalog, release_id, entry, medium, parent, kind, position, number, title, \
-              duration_ms) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             (catalog, release_id, entry, medium, parent, kind, position, title, duration_ms) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             catalog,
             key,
@@ -35,7 +34,6 @@ pub(super) fn insert_entry(
             parent,
             entry.kind.as_str(),
             entry.position,
-            entry.number,
             entry.title,
             entry
                 .duration_ms
@@ -287,7 +285,7 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
     let rows = sql.query(
         &format!(
             "SELECT entry.entry, entry.medium, entry.parent, entry.kind, entry.position, \
-                    entry.number, entry.title, entry.duration_ms, \
+                    entry.title, entry.duration_ms, \
                     (SELECT json_group_array(json_object( \
                          'position', credit.position, 'credited_name', credit.credited_name, \
                          'artist', CASE WHEN credit.name IS NOT NULL \
@@ -315,18 +313,16 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, String>(3)?,
                 row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<i64>>(5)?,
-                row.get::<_, Option<String>>(6)?,
-                row.get::<_, Option<i64>>(7)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, Option<i64>>(6)?,
+                row.get::<_, String>(7)?,
                 row.get::<_, String>(8)?,
-                row.get::<_, String>(9)?,
             ))
         },
     )?;
     let mut entries: Vec<EntryRow> = Vec::with_capacity(rows.len());
     let mut index_of: HashMap<i64, usize> = HashMap::with_capacity(rows.len());
-    for (entry, medium, parent, kind, position, number, title, duration_ms, credits, roles) in rows
-    {
+    for (entry, medium, parent, kind, position, title, duration_ms, credits, roles) in rows {
         index_of.insert(entry, entries.len());
         let credits = stored_list::<StoredCredit>(&credits, "entry credits")?
             .into_iter()
@@ -361,7 +357,6 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
             value: TracklistEntry {
                 kind: EntryKind::parse(&kind).ok_or_else(|| unreadable("entry kind", &kind))?,
                 position,
-                number,
                 title,
                 duration_ms: duration_ms
                     .map(|duration| to_u64(duration, "track duration"))

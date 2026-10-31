@@ -36,7 +36,7 @@
 //! `Triangulating` have no terminal verdict.
 
 use super::agreements::CandidateText;
-use super::combine::{Findings, LookupProvenance, NarrowedOut};
+use super::combine::{Findings, NarrowedOut};
 use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
 use crate::import::search::{MetadataResult, SourceFailure};
@@ -124,7 +124,6 @@ impl TerminalVerdict {
         Self::Found {
             findings: Findings {
                 matches: vec![result],
-                provenance: vec![LookupProvenance::CHOSEN],
                 pressings: vec![0],
                 narrowed_out: NarrowedOut::default(),
                 // A person's pick is theirs to make, whatever the folder's

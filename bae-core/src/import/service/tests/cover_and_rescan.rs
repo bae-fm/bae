@@ -219,15 +219,14 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                     Err(error) => panic!("import completed without its completion event: {error}"),
                 }
             };
-            let cover = test
-                .service
+            // The embedded artwork is no image the store reads, so a stored
+            // cover is the folder's front.jpg.
+            test.service
                 .library_manager
                 .get_library_image(&release_id, &crate::db::LibraryImageType::Cover)
                 .await
                 .unwrap()
-                .unwrap();
-            assert_eq!(cover.source, "local");
-            assert_eq!(cover.source_url.as_deref(), Some("release://front.jpg"));
+                .expect("the folder's cover is stored");
         }
     }
 }

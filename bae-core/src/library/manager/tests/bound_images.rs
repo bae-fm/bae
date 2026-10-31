@@ -186,7 +186,7 @@ async fn an_image_over_the_bound_limit_is_refused() {
     let first = cover_file(&manager, &release.id).await;
 
     let oversized = vec![0u8; usize::try_from(coven::BOUND_FILE_LIMIT).unwrap() + 1];
-    let cover = DbLibraryImage::cover(&release.id, "local", None, manager.clock.now().into());
+    let cover = DbLibraryImage::cover(&release.id, manager.clock.now().into());
     let error = manager
         .store_library_image(&cover, &oversized)
         .await

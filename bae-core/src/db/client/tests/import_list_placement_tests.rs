@@ -308,9 +308,8 @@ impl Library {
         };
         format!(
             "INSERT INTO import_candidate_verdict
-                 (content_hash, kind, track_count, failures_json, error_detail, kept_own_draft,
-                  identified_at)
-             VALUES ('{}', '{kind}', {}, {failures}, {error}, 0, '2026-01-01T00:00:00Z');",
+                 (content_hash, kind, track_count, failures_json, error_detail, kept_own_draft)
+             VALUES ('{}', '{kind}', {}, {failures}, {error}, 0);",
             hash(display_path),
             track_count.map_or("NULL".to_string(), |count| count.to_string()),
         )
@@ -329,10 +328,9 @@ impl Library {
         format!(
             "INSERT INTO import_candidate_match
                  (content_hash, position, listing, pressing, source, release_id, title,
-                  media_kind, album_links, source_tracks_kind, source_tracks_count, by_disc_id,
-                  by_barcode, by_catalog, by_isrc, by_search, by_pressing)
+                  media_kind, album_links, source_tracks_kind, source_tracks_count)
              VALUES ('{}', {position}, 'offered', {pressing}, 'musicbrainz', 'mb-{position}',
-                     'Album', 'undescribed', 'not_asked', {}, {}, 1, 0, 0, 0, 0, 0);",
+                     'Album', 'undescribed', 'not_asked', {}, {});",
             hash(display_path),
             kind.map_or("NULL".to_string(), |kind| format!("'{kind}'")),
             count.map_or("NULL".to_string(), |count| count.to_string()),

@@ -5,7 +5,6 @@
 use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::identify::LookupProvenance;
 use crate::import::album_links::AlbumLinks;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataRef;
@@ -23,12 +22,12 @@ fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
 }
 
 /// Where a release a verdict stores is listed, with what an offered or
-/// narrowed-out one carries: which lookups returned it and its pressing row,
-/// and for an offered one the note the folder's text names its row by.
+/// narrowed-out one carries: its pressing row, and for an offered one the
+/// note the folder's text names its row by.
 #[derive(Clone, Copy)]
 pub(super) enum Written<'a> {
-    Offered(&'a LookupProvenance, u32, Option<&'a str>),
-    NarrowedOut(&'a LookupProvenance, u32),
+    Offered(u32, Option<&'a str>),
+    NarrowedOut(u32),
     Unlisted,
 }
 
@@ -46,17 +45,10 @@ pub(super) fn store_match(
             "a match list is longer than SQLite counts: {error}"
         ))
     })?;
-    let (listing, provenance, pressing, named_note) = match listing {
-        Written::Offered(provenance, pressing, named_note) => (
-            LISTING_OFFERED,
-            Some(provenance),
-            Some(pressing),
-            named_note,
-        ),
-        Written::NarrowedOut(provenance, pressing) => {
-            (LISTING_NARROWED_OUT, Some(provenance), Some(pressing), None)
-        }
-        Written::Unlisted => (LISTING_UNLISTED, None, None, None),
+    let (listing, pressing, named_note) = match listing {
+        Written::Offered(pressing, named_note) => (LISTING_OFFERED, Some(pressing), named_note),
+        Written::NarrowedOut(pressing) => (LISTING_NARROWED_OUT, Some(pressing), None),
+        Written::Unlisted => (LISTING_UNLISTED, None, None),
     };
     let cover = result.cover_art.as_ref();
     let (tracks_kind, tracks_count) = match &result.source_tracks {
@@ -93,11 +85,10 @@ pub(super) fn store_match(
               labels, country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
-              source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
-              by_pressing, listing, document_failure, \
-              document_failure_status, album_first_year, track_titles, notes, named_note) \
+              source_tracks_count, listing, document_failure, document_failure_status, \
+              album_first_year, named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                 ?, ?) \
          ON CONFLICT (content_hash, position) DO UPDATE SET \
              pressing = excluded.pressing, source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
@@ -110,14 +101,10 @@ pub(super) fn store_match(
              source_group_id = excluded.source_group_id, album_links = excluded.album_links, \
              source_tracks_kind = excluded.source_tracks_kind, \
              source_tracks_count = excluded.source_tracks_count, \
-             by_disc_id = excluded.by_disc_id, by_barcode = excluded.by_barcode, \
-             by_catalog = excluded.by_catalog, by_isrc = excluded.by_isrc, \
-             by_search = excluded.by_search, by_pressing = excluded.by_pressing, \
              listing = excluded.listing, \
              document_failure = excluded.document_failure, \
              document_failure_status = excluded.document_failure_status, \
              album_first_year = excluded.album_first_year, \
-             track_titles = excluded.track_titles, notes = excluded.notes, \
              named_note = excluded.named_note",
         params![
             content_hash,
@@ -143,18 +130,10 @@ pub(super) fn store_match(
             album_links_kind,
             tracks_kind,
             tracks_count,
-            provenance.map(|provenance| provenance.by_disc_id),
-            provenance.map(|provenance| provenance.by_barcode),
-            provenance.map(|provenance| provenance.by_catalog),
-            provenance.map(|provenance| provenance.by_isrc),
-            provenance.map(|provenance| provenance.by_search),
-            provenance.map(|provenance| provenance.by_pressing),
             listing,
             document_failure.kind,
             document_failure.status,
             result.album_first_year,
-            serde_json::to_string(&result.track_titles).expect("titles serialize"),
-            serde_json::to_string(&result.notes).expect("notes serialize"),
             named_note,
         ],
     )?;
@@ -293,10 +272,9 @@ pub(super) enum Listing {
     Unlisted,
 }
 
-/// What a release a verdict lists carries beside the release: which lookups
-/// named it, and which pressing row of its list the run put it in.
+/// What a release a verdict lists carries beside the release: which pressing
+/// row of its list the run put it in.
 pub(super) struct ListedMatch {
-    pub(super) provenance: LookupProvenance,
     /// The row's number within this list, as the run numbered it. Rows are
     /// read, never re-formed: a list of a run's answers does not hold what
     /// the run decided its rows against.
@@ -334,7 +312,6 @@ pub(super) struct MatchColumns {
     album_links: String,
     /// The result with its list fields still empty; [`match_of`] fills them.
     result: MetadataResult,
-    provenance: Option<LookupProvenance>,
     named_note: Option<String>,
 }
 
@@ -351,7 +328,6 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         media_kind,
         album_links: album_links_kind,
         mut result,
-        provenance,
         named_note,
     } = columns;
     let MatchEntries {
@@ -425,11 +401,10 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
         other => return Err(unreadable("album_links", other)),
     };
-    let listed = |pressing: Option<i64>, provenance: Option<LookupProvenance>| {
-        let (Some(pressing), Some(provenance)) = (pressing, provenance) else {
+    let listed = |pressing: Option<i64>| {
+        let Some(pressing) = pressing else {
             return Err(DbError::Message(format!(
-                "match {position} of {content_hash} is {listing} but names no pressing row or \
-                 no lookups"
+                "match {position} of {content_hash} is {listing} but names no pressing row"
             )));
         };
         let pressing = u32::try_from(pressing).map_err(|error| {
@@ -438,7 +413,6 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
             ))
         })?;
         Ok(ListedMatch {
-            provenance,
             pressing,
             named_note: None,
         })
@@ -446,14 +420,10 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     let listing = match listing.as_str() {
         LISTING_OFFERED => Listing::Offered(ListedMatch {
             named_note,
-            ..listed(pressing, provenance)?
+            ..listed(pressing)?
         }),
-        LISTING_NARROWED_OUT if named_note.is_none() => {
-            Listing::NarrowedOut(listed(pressing, provenance)?)
-        }
-        LISTING_UNLISTED if pressing.is_none() && provenance.is_none() && named_note.is_none() => {
-            Listing::Unlisted
-        }
+        LISTING_NARROWED_OUT if named_note.is_none() => Listing::NarrowedOut(listed(pressing)?),
+        LISTING_UNLISTED if pressing.is_none() && named_note.is_none() => Listing::Unlisted,
         LISTING_NARROWED_OUT | LISTING_UNLISTED => {
             return Err(DbError::Message(format!(
                 "match {position} of {content_hash} is {listing} but holds what only a listed \
@@ -536,46 +506,10 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
                 row.get("document_failure_status")?,
             )?,
             album_first_year: row.get("album_first_year")?,
-            track_titles: read_strings(row, "track_titles")?,
-            notes: read_strings(row, "notes")?,
+            // Only a run's ranking reads these, so a verdict keeps neither.
+            track_titles: Vec::new(),
+            notes: Vec::new(),
         },
-        provenance: read_provenance(row)?,
         named_note: row.get("named_note")?,
     })
-}
-
-/// Which lookups returned a match, from its six columns: all set for a
-/// listed release, all NULL for an unlisted one.
-fn read_provenance(row: &Row<'_>) -> Result<Option<LookupProvenance>, DbError> {
-    let columns: [Option<bool>; 6] = [
-        row.get("by_disc_id")?,
-        row.get("by_barcode")?,
-        row.get("by_catalog")?,
-        row.get("by_isrc")?,
-        row.get("by_search")?,
-        row.get("by_pressing")?,
-    ];
-    match columns {
-        [None, None, None, None, None, None] => Ok(None),
-        [Some(by_disc_id), Some(by_barcode), Some(by_catalog), Some(by_isrc), Some(by_search), Some(by_pressing)] => {
-            Ok(Some(LookupProvenance {
-                by_disc_id,
-                by_barcode,
-                by_catalog,
-                by_isrc,
-                by_search,
-                by_pressing,
-            }))
-        }
-        _ => Err(DbError::Message(
-            "a match states some of the lookups that returned it and not others".to_string(),
-        )),
-    }
-}
-
-/// Read a match's column that holds a JSON array of strings.
-fn read_strings(row: &Row<'_>, column: &str) -> Result<Vec<String>, DbError> {
-    let stored: String = row.get(column)?;
-    serde_json::from_str(&stored)
-        .map_err(|error| DbError::Message(format!("{column} {stored:?}: {error}")))
 }

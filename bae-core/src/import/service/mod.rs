@@ -15,7 +15,6 @@ use {
     crate::import::folder_scanner::ScanItem,
     crate::import::types::{CoverSelection, ImportPhase, PrepareStep, TrackFile},
     crate::import::WorkGraphRows,
-    bae_catalogs::catalog::Catalog,
     std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
     std::sync::Arc,
@@ -78,7 +77,7 @@ struct PreparedMetadata {
     /// The cover the person picked for this candidate, whatever its source.
     selected_cover: Option<CoverSelection>,
     /// The exact prepared bytes of a picked remote cover.
-    remote_cover_image: Option<cover_image::CoverCandidate>,
+    remote_cover_image: Option<Vec<u8>>,
     /// The file-tag snapshot's artwork; its content type is checked, then
     /// dropped by the resize.
     embedded_cover: Option<(Vec<u8>, bae_util::content_type::ContentType)>,
@@ -208,9 +207,7 @@ pub struct ImportService {
 /// describe what is stored.
 fn downloaded_cover(
     image: bae_catalogs::remote_image::RemoteImage,
-    url: &str,
-    source: Catalog,
-) -> Result<cover_image::CoverCandidate, crate::import::ImportError> {
+) -> Result<Vec<u8>, crate::import::ImportError> {
     let bae_catalogs::remote_image::RemoteImage {
         bytes,
         content_type,
@@ -224,11 +221,7 @@ fn downloaded_cover(
                 .to_string(),
         });
     }
-    Ok(cover_image::CoverCandidate {
-        bytes,
-        source: source.as_str().to_string(),
-        source_url: Some(url.to_string()),
-    })
+    Ok(bytes)
 }
 
 /// The paths in one batch of events that report a change to the watched tree.

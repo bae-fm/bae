@@ -614,5 +614,4 @@ fn the_isrcs_lend_a_row_their_lookup() {
     );
     assert_eq!(offered(&outcome), vec!["rel-by-isrc"]);
     assert_eq!(set_aside(&outcome), vec!["rel-by-title"]);
-    assert!(outcome.provenance[0].by_isrc && outcome.provenance[0].by_search);
 }

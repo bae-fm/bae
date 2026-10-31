@@ -12,7 +12,6 @@ fn track(position: &str, title: &str, length: Option<u64>) -> TracklistEntry {
     TracklistEntry {
         kind: EntryKind::Track,
         position: (!position.is_empty()).then(|| position.to_string()),
-        number: None,
         title: Some(title.to_string()),
         duration_ms: length,
         credits: Vec::new(),

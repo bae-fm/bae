@@ -117,7 +117,6 @@ impl CandidatePreparations {
         prep.candidate_key = verdict.candidate_key.clone();
         prep.identification = Some(DbCandidateIdentifyResult {
             verdict: verdict.verdict.clone(),
-            identified_at: self.database.now(),
             kept_own_draft: false,
         });
         prep.signals = Some(verdict.signals.clone());
@@ -335,7 +334,6 @@ impl CandidatePreparations {
             None => {
                 prep.identification = Some(DbCandidateIdentifyResult {
                     verdict: settled_by_choice,
-                    identified_at: self.database.now(),
                     kept_own_draft: false,
                 })
             }

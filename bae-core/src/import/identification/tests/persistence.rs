@@ -106,17 +106,6 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     notes: Vec::new(),
                 })
                 .collect(),
-            provenance: release_ids
-                .iter()
-                .map(|_| crate::identify::LookupProvenance {
-                    by_disc_id: true,
-                    by_barcode: false,
-                    by_catalog: false,
-                    by_isrc: false,
-                    by_search: false,
-                    by_pressing: false,
-                })
-                .collect(),
             // Each release is a pressing of its own: the group lists several, and
             // which one the folder is, is the open question.
             pressings: (0..release_ids.len() as u32).collect(),

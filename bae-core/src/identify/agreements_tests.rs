@@ -21,24 +21,19 @@ fn result() -> MetadataResult {
     MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", None)
 }
 
-/// What `text` agrees with about `result`, as a list of that one record.
-fn judge(result: &MetadataResult, text: &CandidateText, lookup: &LookupProvenance) -> Agreements {
+/// What `text` agrees with about `result`, as a list of that one record,
+/// with whether a lookup of the folder's disc IDs returned it.
+fn judge(result: &MetadataResult, text: &CandidateText, by_disc_id: bool) -> Agreements {
     agreements_of(
         result,
         text,
         &FolderFacts::of(text, std::slice::from_ref(result)),
-        lookup,
+        by_disc_id,
     )
 }
 
-const NO_LOOKUP: LookupProvenance = LookupProvenance {
-    by_disc_id: false,
-    by_barcode: false,
-    by_catalog: false,
-    by_isrc: false,
-    by_search: false,
-    by_pressing: false,
-};
+/// Returned by no lookup of the folder's disc IDs.
+const NO_LOOKUP: bool = false;
 
 /// The separators a catalog number is printed with vary between the sleeve,
 /// the folder name and the provider's record, so they take no part.
@@ -52,7 +47,7 @@ fn a_catalog_number_is_stated_however_its_separators_fall() {
                 ..result()
             },
             &folder,
-            &NO_LOOKUP,
+            NO_LOOKUP,
         );
         assert!(judged.catalog, "{stated} is what the folder name states");
     }
@@ -68,7 +63,7 @@ fn digits_inside_a_longer_run_state_no_catalog_number() {
             ..result()
         },
         &text(&["0731453120"]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert!(!judged.catalog);
 }
@@ -82,7 +77,7 @@ fn catalog_agrees(number: &str, lines: &[&str]) -> bool {
             ..result()
         },
         &text(lines),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     )
     .catalog
 }
@@ -147,7 +142,7 @@ fn the_number_offered_is_the_number_confirmed() {
 /// A field the result does not state cannot be agreed with.
 #[test]
 fn a_field_the_result_leaves_out_is_no_agreement() {
-    let judged = judge(&result(), &text(&["Harbor 1976 US"]), &NO_LOOKUP);
+    let judged = judge(&result(), &text(&["Harbor 1976 US"]), NO_LOOKUP);
     assert_eq!(judged, Agreements::NONE);
 }
 
@@ -165,7 +160,7 @@ fn the_label_the_year_and_the_country_are_read_out_of_the_text() {
             ..result()
         },
         &text(&["Harbor Records, Inc.", "Made in US · 1976"]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert!(judged.label && judged.year && judged.country);
     assert_eq!(judged.count(), 3);
@@ -184,7 +179,7 @@ fn a_country_code_inside_a_word_states_nothing() {
             ..result()
         },
         &text(&["The House That Blues Built"]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert!(!judged.country);
 }
@@ -194,12 +189,7 @@ fn a_country_code_inside_a_word_states_nothing() {
 /// on the record, whichever search returned it.
 #[test]
 fn the_disc_id_comes_from_the_lookup_and_the_barcode_from_the_record() {
-    let returned_by_both = LookupProvenance {
-        by_disc_id: true,
-        by_barcode: true,
-        ..NO_LOOKUP
-    };
-    let judged = judge(&result(), &CandidateText::default(), &returned_by_both);
+    let judged = judge(&result(), &CandidateText::default(), true);
     assert!(judged.disc_id && !judged.barcode);
 
     let folder = CandidateText::of(
@@ -209,31 +199,9 @@ fn the_disc_id_comes_from_the_lookup_and_the_barcode_from_the_record() {
     );
     let mut printed = result();
     printed.barcodes = vec!["012345678905".to_string()];
-    let judged = judge(&printed, &folder, &NO_LOOKUP);
+    let judged = judge(&printed, &folder, NO_LOOKUP);
     assert!(judged.barcode && !judged.disc_id);
     assert_eq!(judged.count(), 1);
-}
-
-/// A catalog lookup agrees only through the number itself, not because it
-/// returned the release.
-#[test]
-fn a_catalog_lookup_agrees_only_through_the_number() {
-    let catalog_lookup = LookupProvenance {
-        by_disc_id: false,
-        by_barcode: false,
-        by_catalog: true,
-        by_isrc: false,
-        by_search: false,
-        by_pressing: false,
-    };
-    let folder = text(&["Artist One - Album One [LBL-719]"]);
-    let numbered = |number: &str| MetadataResult {
-        labels: vec![ReleaseLabel::of(None, Some(number))],
-        ..result()
-    };
-    assert!(judge(&numbered("LBL 719"), &folder, &catalog_lookup).catalog);
-    assert!(!judge(&numbered("LBL 1719"), &folder, &catalog_lookup).catalog);
-    assert!(!judge(&result(), &folder, &catalog_lookup).catalog);
 }
 
 /// A release on two labels is under both numbers: the folder printing the
@@ -249,7 +217,7 @@ fn the_second_labels_number_and_name_are_agreed_with() {
             ..result()
         },
         &text(&["Artist - Album [CL-719]", "Label B"]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert!(judged.catalog);
     assert!(judged.label);
@@ -306,7 +274,7 @@ fn a_struck_out_catalog_number_states_nothing() {
             ..result()
         },
         &folder,
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert!(!judged.catalog);
 }
@@ -324,14 +292,13 @@ fn striking_out_a_value_leaves_the_other_fields_alone() {
             ..result()
         },
         &folder,
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert!(!judged.catalog);
     assert!(judged.year);
 }
 
-/// A number the person struck out is not a catalog number, whatever lookup
-/// returned a release under it.
+/// A number the person struck out is not a catalog number.
 #[test]
 fn striking_out_a_number_takes_its_agreement_away() {
     let folder = CandidateText::of(&[line("[LBL-1]")], &["LBL-1".to_string()], &[]);
@@ -341,14 +308,7 @@ fn striking_out_a_number_takes_its_agreement_away() {
             ..result()
         },
         &folder,
-        &LookupProvenance {
-            by_disc_id: false,
-            by_barcode: false,
-            by_catalog: true,
-            by_isrc: false,
-            by_search: false,
-            by_pressing: false,
-        },
+        NO_LOOKUP,
     );
     assert!(!judged.catalog);
 }
@@ -370,7 +330,7 @@ fn an_area_agrees_whichever_way_the_folder_spells_it() {
                 ..result()
             },
             &text(&[folder]),
-            &NO_LOOKUP,
+            NO_LOOKUP,
         );
         assert!(judged.country, "{area} against {folder}");
     }
@@ -390,7 +350,7 @@ fn states_country(code: &str, lines: &[TextLine]) -> bool {
             ..result()
         },
         &CandidateText::of(lines, &[], &[]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     )
     .country
 }
@@ -467,7 +427,7 @@ fn an_area_the_folder_does_not_name_is_no_agreement() {
                 ..result()
             },
             &text(&[folder]),
-            &NO_LOOKUP,
+            NO_LOOKUP,
         );
         assert!(!judged.country, "{area} against {folder}");
     }
@@ -484,7 +444,7 @@ fn the_title_and_the_artist_are_read_out_of_the_text() {
             ..result()
         },
         &text(&["Artist Name - Album Title"]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert!(judged.title && judged.artist);
     assert_eq!(judged.names_album(), 2);
@@ -498,7 +458,7 @@ fn the_title_and_the_artist_are_read_out_of_the_text() {
             ..result()
         },
         &text(&["Artist Name - Album Title"]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     );
     assert_eq!(other.names_album(), 0);
     assert_eq!(judged.with(other), judged);
@@ -516,7 +476,7 @@ fn a_title_agrees_in_any_order_of_its_words() {
                 ..result()
             },
             &text(lines),
-            &NO_LOOKUP,
+            NO_LOOKUP,
         )
         .title
     };
@@ -541,7 +501,7 @@ fn a_title_agrees_without_its_trailing_brackets() {
                 ..result()
             },
             &text(lines),
-            &NO_LOOKUP,
+            NO_LOOKUP,
         )
         .title
     };
@@ -612,7 +572,7 @@ fn a_label_agrees_without_the_trade_word_either_of_them_prints() {
                 ..result()
             },
             &text(&[folder]),
-            &NO_LOOKUP,
+            NO_LOOKUP,
         );
         assert!(judged.label, "{stated} against {folder}");
     }
@@ -628,7 +588,7 @@ fn a_label_that_is_only_trade_words_states_nothing() {
                 ..result()
             },
             &text(&["Harbor Records, Inc.", "Meridian Music Entertainment"]),
-            &NO_LOOKUP,
+            NO_LOOKUP,
         );
         assert!(!judged.label, "{stated} names no label");
     }
@@ -649,7 +609,7 @@ fn a_label_the_folder_does_not_name_is_no_agreement() {
                 ..result()
             },
             &text(&[folder]),
-            &NO_LOOKUP,
+            NO_LOOKUP,
         );
         assert!(!judged.label, "{stated} against {folder}");
     }
@@ -662,7 +622,7 @@ fn label_agrees(stated: &str, folder: &str) -> bool {
             ..result()
         },
         &text(&[folder]),
-        &NO_LOOKUP,
+        NO_LOOKUP,
     )
     .label
 }

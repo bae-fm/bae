@@ -576,7 +576,6 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
 /// names the release group among its records, from what the run kept.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
-    use crate::import::album_links::{AlbumLink, AlbumStatement};
     // The pick offers the joined group's album address, which the archive
     // holds no image at.
     let archive = bae_util::http::serve_not_found().await;
@@ -598,16 +597,10 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .library_manager
         .keep_album_links(vec![(
             group.to_string(),
-            vec![AlbumLink {
-                album: crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "909"),
-                stated: AlbumStatement::Release {
-                    musicbrainz_release: "chain-mb-release".to_string(),
-                    twin: crate::import::MetadataRef::new(
-                        bae_catalogs::catalog::Catalog::Discogs,
-                        "70000011",
-                    ),
-                },
-            }],
+            vec![crate::import::MetadataRef::new(
+                bae_catalogs::catalog::Catalog::Discogs,
+                "909",
+            )],
         )])
         .await;
 

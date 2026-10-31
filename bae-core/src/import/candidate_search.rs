@@ -17,7 +17,7 @@
 //! Pure. The driver that runs the lookups and publishes each landing is
 //! [`crate::import::ImportServiceHandle::start_candidate_search`].
 
-use crate::import::album_links::{self, AlbumLink, AlbumLinks, GroupLinks};
+use crate::import::album_links::{self, AlbumLinks, GroupLinks};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::types::{CatalogAvailability, MetadataRef, SourceAvailability};
@@ -219,7 +219,7 @@ impl CandidateSearch {
         &mut self,
         release: &MetadataRef,
         links: AlbumLinks,
-    ) -> Vec<(String, Vec<AlbumLink>)> {
+    ) -> Vec<(String, Vec<MetadataRef>)> {
         if release.catalog != Catalog::MusicBrainz {
             return Vec::new();
         }
@@ -338,6 +338,7 @@ impl CandidateSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::import::album_links::AlbumLink;
 
     /// A library that asks every source.
     fn all_on() -> Vec<CatalogAvailability> {
@@ -493,7 +494,7 @@ mod tests {
 
         let kept = search.record_picked(&musicbrainz("mb-1"), AlbumLinks::Read(vec![link.clone()]));
         assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
-        assert_eq!(kept, vec![("group-x".to_string(), vec![link])]);
+        assert_eq!(kept, vec![("group-x".to_string(), vec![link.album])]);
     }
 
     /// A picked result whose documents link nothing is read against what the
@@ -523,14 +524,16 @@ mod tests {
         assert_eq!(search.groups.len(), 2);
 
         let kept = search.record_picked(&musicbrainz("mb-1"), AlbumLinks::Read(Vec::new()));
-        let joined = AlbumLink {
-            album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
-            stated: crate::import::album_links::AlbumStatement::CatalogNumber {
-                musicbrainz_release: "mb-1".to_string(),
-                release: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1"),
-            },
-        };
-        assert_eq!(kept, vec![("group-x".to_string(), vec![joined])]);
+        assert_eq!(
+            kept,
+            vec![(
+                "group-x".to_string(),
+                vec![crate::import::MetadataRef::new(
+                    Catalog::Discogs,
+                    "master-7"
+                )]
+            )]
+        );
         assert_eq!(search.groups.len(), 1);
     }
 

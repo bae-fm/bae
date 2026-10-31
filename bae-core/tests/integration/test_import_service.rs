@@ -192,7 +192,11 @@ const EMBEDDED_COVER_DIMS: (u32, u32) = (64, 48);
 /// in test audio. The store path decodes every cover and re-encodes it to a
 /// ≤600 JPEG, so fixtures must be genuine images, not hand-written JPEG headers.
 fn embedded_cover_jpeg() -> Vec<u8> {
-    let (w, h) = EMBEDDED_COVER_DIMS;
+    solid_jpeg(EMBEDDED_COVER_DIMS)
+}
+
+/// A real, decodable solid-color JPEG of `(width, height)` pixels.
+fn solid_jpeg((w, h): (u32, u32)) -> Vec<u8> {
     let img = image::RgbImage::from_pixel(w, h, image::Rgb([200, 60, 40]));
     let mut buf = std::io::Cursor::new(Vec::new());
     image::DynamicImage::ImageRgb8(img)

@@ -39,7 +39,6 @@ fn the_tags_isrcs_are_asked_once_in_one_search() {
         panic!("expected Found, got {state:?}");
     };
     assert_eq!(findings.matches[0].release_id, "rel-a");
-    assert!(findings.provenance[0].by_isrc);
 }
 
 /// What the ISRCs return does not stand for the album the way an identifier

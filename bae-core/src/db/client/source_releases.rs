@@ -85,7 +85,6 @@ fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
 pub(super) fn replace_source_release_on(
     sql: &SqlContext<'_, '_>,
     release: &SourceRelease,
-    fetched_at: DateTime<Utc>,
 ) -> Result<(), DbError> {
     let catalog = release.release.catalog.as_str();
     let key = release.release.key.as_str();
@@ -97,8 +96,8 @@ pub(super) fn replace_source_release_on(
              (catalog, release_id, source_group_id, album_title, album_year, \
               album_first_year, year, labels, barcodes, country, region, media, status, \
               packaging, discogs_details, notes, archive_release_id, archive_group_id, \
-              album_links, fetched_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+              album_links) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (catalog, release_id) DO UPDATE SET \
              source_group_id = excluded.source_group_id, \
              album_title = excluded.album_title, album_year = excluded.album_year, \
@@ -109,7 +108,7 @@ pub(super) fn replace_source_release_on(
              discogs_details = excluded.discogs_details, notes = excluded.notes, \
              archive_release_id = excluded.archive_release_id, \
              archive_group_id = excluded.archive_group_id, \
-             album_links = excluded.album_links, fetched_at = excluded.fetched_at",
+             album_links = excluded.album_links",
         params![
             catalog,
             key,
@@ -136,7 +135,6 @@ pub(super) fn replace_source_release_on(
                 .as_ref()
                 .and_then(|archive| archive.group_id.as_deref()),
             album_links_column(&release.catalog)?,
-            fetched_at.to_rfc3339(),
         ],
     )?;
     for table in CHILD_TABLES {
@@ -774,8 +772,7 @@ impl Database {
     /// Store a fetched release, replacing whatever was stored for it.
     pub async fn save_source_release(&self, release: &SourceRelease) -> Result<(), DbError> {
         let release = release.clone();
-        let fetched_at = self.now();
-        self.call(move |sql| replace_source_release_on(sql, &release, fetched_at))
+        self.call(move |sql| replace_source_release_on(sql, &release))
             .await
     }
 }

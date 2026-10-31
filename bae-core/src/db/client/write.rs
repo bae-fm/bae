@@ -598,15 +598,13 @@ pub(super) fn upsert_library_image_row(
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, file, content_type, width, height, source, source_url, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, file, content_type, width, height, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
                  file = excluded.file, \
                  content_type = excluded.content_type, \
                  width = excluded.width, \
-                 height = excluded.height, \
-                 source = excluded.source, \
-                 source_url = excluded.source_url"
+                 height = excluded.height"
         ),
         params![
             image.id,
@@ -614,8 +612,6 @@ pub(super) fn upsert_library_image_row(
             image.content_type.as_str(),
             image.width,
             image.height,
-            image.source,
-            image.source_url,
             image.created_at.to_rfc3339(),
         ],
     )
@@ -638,7 +634,6 @@ pub(super) fn write_release_records(
     conn: &SqlContext<'_, '_>,
     release_id: &str,
     records: &[crate::import::ReleaseRecord],
-    now: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         "DELETE FROM release_records WHERE release_id = ?",
@@ -654,9 +649,8 @@ pub(super) fn write_release_records(
         conn.execute(
             r#"
             INSERT INTO release_records (
-                id, release_id, catalog, kind, key, album_key,
-                url, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                id, release_id, catalog, kind, key, album_key
+            ) VALUES (?, ?, ?, ?, ?, ?)
             "#,
             params![
                 crate::db::identity::release_record_id(release_id, record.catalog()),
@@ -665,8 +659,6 @@ pub(super) fn write_release_records(
                 kind,
                 record.key(),
                 album_key,
-                record.url(),
-                now,
             ],
         )?;
     }

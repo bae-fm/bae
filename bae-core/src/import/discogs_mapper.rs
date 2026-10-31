@@ -256,7 +256,6 @@ fn tracklist_entry(release_id: &str, row: &DiscogsTrack, kind: EntryKind) -> Tra
         kind,
         // Discogs prints an unstated position as the empty string.
         position: (!row.position.is_empty()).then(|| row.position.clone()),
-        number: None,
         title: Some(row.title.clone()),
         duration_ms: row.duration.as_deref().and_then(parse_duration_to_ms),
         credits: discogs_credits(&row.artists)

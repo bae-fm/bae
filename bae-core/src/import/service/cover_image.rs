@@ -3,24 +3,11 @@
 use super::ImportService;
 use crate::import::folder_scanner::CandidateFile;
 
-/// A candidate cover's bytes as they came from their source, with the provenance
-/// the `covers` row records. The bytes here are NOT the stored ones: the import
-/// funnel resizes the winning candidate and builds the row from that output, so
-/// nothing describing a candidate can be mistaken for a description of the file.
-#[derive(Debug)]
-pub(super) struct CoverCandidate {
-    pub bytes: Vec<u8>,
-    /// `covers.source`: "local" for a folder image, "embedded" for a picture
-    /// pulled out of the audio, else the metadata source that supplied the URL.
-    pub source: String,
-    /// `covers.source_url`: "release://{path}" for a folder image, the download
-    /// URL for a remote one, `None` for an embedded picture.
-    pub source_url: Option<String>,
-}
-
 impl ImportService {
-    /// Read the selected cover file's bytes. Nothing is written here, and no row
-    /// is built: the caller resizes the winning candidate and records the result.
+    /// Read the selected cover file's bytes as the folder holds them. Nothing
+    /// is written here, and no row is built: the caller resizes the winning
+    /// candidate and records the result, so nothing describing these bytes
+    /// can be mistaken for a description of the stored file.
     ///
     /// The path is the candidate's stored selection, so a folder that no
     /// longer holds that image is a candidate whose selection no longer
@@ -34,7 +21,7 @@ impl ImportService {
         discovered_files: &[CandidateFile],
         selected_cover_path: &str,
         diagnostics: &crate::diagnostics::Diagnostics,
-    ) -> Result<Option<CoverCandidate>, crate::import::ImportError> {
+    ) -> Result<Vec<u8>, crate::import::ImportError> {
         use crate::import::ImportError;
 
         let cover_file = discovered_files
@@ -62,10 +49,6 @@ impl ImportService {
             ),
         })?;
 
-        Ok(Some(CoverCandidate {
-            bytes,
-            source: "local".to_string(),
-            source_url: Some(format!("release://{}", cover_file.relative_path)),
-        }))
+        Ok(bytes)
     }
 }

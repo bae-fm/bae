@@ -129,7 +129,7 @@ fn a_later_year_picks_the_edition() {
 /// Whether the Year badge shows on the row of `result` among `results`.
 fn year_badge(result: &MetadataResult, results: &[MetadataResult], text: &CandidateText) -> bool {
     let facts = FolderFacts::of(text, results.iter());
-    agreements_of(result, text, &facts, &LookupProvenance::CHOSEN).year
+    agreements_of(result, text, &facts, false).year
 }
 
 /// Two folder years: the earlier is the album's, the later names the

@@ -341,7 +341,6 @@ pub struct CandidatePreparedAssets {
 pub enum DiscogsArtistImage {
     Image {
         discogs_artist_id: String,
-        source_url: String,
         /// The picture as bae stores it: the JPEG
         /// [`bae_util::stored_image::stored_jpeg`] made of what Discogs
         /// served.

@@ -396,9 +396,4 @@ impl Database {
         )
         .await
     }
-
-    /// The instant a write stamps on what it stores.
-    pub(crate) fn now(&self) -> DateTime<Utc> {
-        chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now())
-    }
 }

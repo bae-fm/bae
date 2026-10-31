@@ -34,16 +34,12 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
     );
     match state {
         IdentifyState::Found {
-            findings:
-                Findings {
-                    provenance,
-                    matches,
-                    ..
-                },
+            findings: Findings { matches, .. },
+            ledger,
             ..
         } => {
             assert_eq!(matches.len(), 1);
-            assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
+            assert!(!found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
         other => panic!("expected a barcode-only Found, got {other:?}"),
     }
@@ -85,16 +81,12 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
     );
     match state {
         IdentifyState::Found {
-            findings:
-                Findings {
-                    provenance,
-                    matches,
-                    ..
-                },
+            findings: Findings { matches, .. },
+            ledger,
             ..
         } => {
             assert_eq!(matches.len(), 1);
-            assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
+            assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
         other => panic!("expected a disc-only Found, got {other:?}"),
     }

@@ -155,12 +155,8 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
     );
     match state {
         IdentifyState::Found {
-            findings:
-                Findings {
-                    ref matches,
-                    ref provenance,
-                    ..
-                },
+            findings: Findings { ref matches, .. },
+            ref ledger,
             ..
         } => {
             assert_eq!(
@@ -170,7 +166,7 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
                     .collect::<Vec<_>>(),
                 vec!["rel-b"]
             );
-            assert!(provenance[0].by_disc_id && provenance[0].by_catalog);
+            assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
         other => panic!("expected Found, got {other:?}"),
     }

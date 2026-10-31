@@ -7,15 +7,14 @@ async fn seed_spent_rows(test: &TestService, content_hash: &str) {
     let database = &test.database;
     for statement in [
         "INSERT INTO import_candidate_verdict \
-             (content_hash, kind, track_count, kept_own_draft, identified_at, disc_id_step, \
-              barcode_step, catalog_step, isrc_step, search_step) \
-         VALUES (?1, 'found', 3, 0, '2026-01-01T00:00:00+00:00', 'absent', 'rows', \
-                 'none_found', 'absent', 'not_needed')",
+             (content_hash, kind, track_count, kept_own_draft, disc_id_step, barcode_step, \
+              catalog_step, isrc_step, search_step) \
+         VALUES (?1, 'found', 3, 0, 'absent', 'rows', 'none_found', 'absent', 'not_needed')",
         "INSERT INTO import_candidate_match \
              (content_hash, position, listing, pressing, source, release_id, title, media_kind, \
-              album_links, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, by_pressing) \
+              album_links) \
          VALUES (?1, 0, 'offered', 0, 'musicbrainz', 'release-1', 'Box Set', 'undescribed', \
-                 'not_asked', 0, 1, 0, 0, 0, 0)",
+                 'not_asked')",
         "INSERT INTO import_candidate_lookup_provider (content_hash, position, catalog) \
          VALUES (?1, 0, 'musicbrainz')",
         "INSERT INTO import_candidate_lookup_value \

@@ -227,6 +227,10 @@ async fn test_local_delete_preserves_files() {
     info!("Local delete preserves original files");
 }
 
+/// The size of `scans/back.jpg`, which no other image in the test folder
+/// shares, so the stored cover tells which image it was made from.
+const BACK_SCAN_DIMS: (u32, u32) = (3, 2);
+
 async fn run_import_with_cover_test() {
     let temp_root = TempDir::new().expect("Failed to create temp root");
     let album_dir = temp_root.path().join("album");
@@ -350,20 +354,17 @@ async fn run_import_with_cover_test() {
         .expect("Failed to get cover")
         .expect("Cover should exist in the covers table");
     assert_eq!(cover.content_type, ContentType::Jpeg);
-    assert_eq!(cover.source, "local");
-    let source_url = cover.source_url.as_ref().expect("source_url should be set");
-    assert!(
-        source_url.starts_with("release://"),
-        "source_url should start with release://, got: {}",
-        source_url,
+    // Only the selected image is BACK_SCAN_DIMS; every other one is 1x1.
+    let stored = support::read_cover_image_bytes(&library_manager, &release_id)
+        .await
+        .expect("the cover file is readable");
+    let decoded = image::load_from_memory(&stored).expect("the stored cover decodes");
+    assert_eq!(
+        (decoded.width(), decoded.height()),
+        BACK_SCAN_DIMS,
+        "the stored cover is made from {selected_cover}"
     );
-    assert!(
-        source_url.contains(&selected_cover),
-        "source_url should contain selected cover '{}', got: {}",
-        selected_cover,
-        source_url,
-    );
-    info!("Cover library_image record exists with correct source");
+    info!("Cover library_image record exists, made from the selected image");
     let album_id = library_manager
         .get_album_id_for_release(&release_id)
         .await
@@ -436,7 +437,17 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
     let scans_dir = dir.join("scans");
     fs::create_dir_all(&scans_dir).expect("Failed to create scans directory");
     fs::write(scans_dir.join("front.jpg"), &minimal_jpeg).expect("Failed to write scans/front.jpg");
-    fs::write(scans_dir.join("back.jpg"), &minimal_jpeg).expect("Failed to write scans/back.jpg");
+    let (width, height) = BACK_SCAN_DIMS;
+    let mut back = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(image::RgbImage::from_pixel(
+        width,
+        height,
+        image::Rgb([20, 90, 160]),
+    ))
+    .write_to(&mut back, image::ImageFormat::Jpeg)
+    .expect("encode scans/back.jpg");
+    fs::write(scans_dir.join("back.jpg"), back.into_inner())
+        .expect("Failed to write scans/back.jpg");
     files
         .iter()
         .map(|filename| {

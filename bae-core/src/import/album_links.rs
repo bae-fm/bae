@@ -96,22 +96,22 @@ pub enum AlbumStatement {
     },
 }
 
-/// One statement read about a MusicBrainz release group, kept beyond the list
-/// that read it: `link.album` is the group's album on another catalog.
+/// One album a reading of a MusicBrainz release group found it to be on
+/// another catalog, kept beyond the list that read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GroupStatement {
+pub struct GroupAlbum {
     pub group: String,
-    pub link: AlbumLink,
+    pub album: MetadataRef,
 }
 
-impl GroupStatement {
-    /// The album this statement says `album` is, when it names `album` on
-    /// either side.
+impl GroupAlbum {
+    /// The album this one says `album` is, when it names `album` on either
+    /// side.
     pub fn other_than(&self, album: &MetadataRef) -> Option<MetadataRef> {
         let group = MetadataRef::new(Catalog::MusicBrainz, self.group.clone());
         if *album == group {
-            Some(self.link.album.clone())
-        } else if *album == self.link.album {
+            Some(self.album.clone())
+        } else if *album == self.album {
             Some(group)
         } else {
             None
@@ -200,8 +200,8 @@ pub(crate) fn apply(result: &mut MetadataResult, groups: &[GroupLinks]) {
     }
 }
 
-/// What these groups of `list` were read to be, to keep beyond it: each group
-/// that names an album, and — where `list` holds another catalog's album its
+/// What these groups of `list` were read to be, to keep beyond it — the
+/// albums each names: each group that names an album, and — where `list` holds another catalog's album its
 /// releases were compared against — each that names none, which takes away
 /// what an earlier reading kept. A group found to name nothing with nothing
 /// on the list to compare it against keeps what it had, and so does one whose
@@ -209,16 +209,17 @@ pub(crate) fn apply(result: &mut MetadataResult, groups: &[GroupLinks]) {
 pub(crate) fn to_keep(
     groups: &[GroupLinks],
     list: &[&MetadataResult],
-) -> Vec<(String, Vec<AlbumLink>)> {
+) -> Vec<(String, Vec<MetadataRef>)> {
     let compared = list
         .iter()
         .any(|result| names_other_album(result.source) && result.source_group_id.is_some());
     groups
         .iter()
         .filter_map(|read| match &read.links {
-            AlbumLinks::Read(links) if !links.is_empty() || compared => {
-                Some((read.group.clone(), links.clone()))
-            }
+            AlbumLinks::Read(links) if !links.is_empty() || compared => Some((
+                read.group.clone(),
+                links.iter().map(|link| link.album.clone()).collect(),
+            )),
             AlbumLinks::Read(_) | AlbumLinks::NotAsked | AlbumLinks::Unread => None,
         })
         .collect()

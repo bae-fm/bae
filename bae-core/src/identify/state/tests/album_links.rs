@@ -109,26 +109,28 @@ fn answer_rounds(
     (state, effects, asked)
 }
 
-/// Every release a settled state names with its row and provenance, offered
-/// or set aside.
-fn rows_of(state: &IdentifyState) -> Vec<(MetadataResult, LookupProvenance, u32)> {
-    let IdentifyState::Found { findings, .. } = state else {
+/// Every release a settled state names with its row and whether a lookup of
+/// the folder's disc IDs found it, offered or set aside.
+fn rows_of(state: &IdentifyState) -> Vec<(MetadataResult, bool, u32)> {
+    let IdentifyState::Found {
+        findings, ledger, ..
+    } = state
+    else {
         panic!("expected Found, got {state:?}");
     };
+    let by_disc_id = |result: &MetadataResult| found_by_disc_id(ledger.as_ref(), result);
     findings
         .matches
         .iter()
-        .zip(&findings.provenance)
         .zip(&findings.pressings)
-        .map(|((result, lookup), row)| (result.clone(), lookup.clone(), *row))
+        .map(|(result, row)| (result.clone(), by_disc_id(result), *row))
         .chain(
             findings
                 .narrowed_out
                 .matches
                 .iter()
-                .zip(&findings.narrowed_out.provenance)
                 .zip(&findings.narrowed_out.pressings)
-                .map(|((result, lookup), row)| (result.clone(), lookup.clone(), *row + 100)),
+                .map(|(result, row)| (result.clone(), by_disc_id(result), *row + 100)),
         )
         .collect()
 }
@@ -230,12 +232,11 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
             .unwrap_or_else(|| panic!("{release_id} is on the list: {rows:?}"))
     };
     for (release, linked) in [("mb-1", "dg-1"), ("mb-2", "dg-2")] {
-        let (named, named_lookup, named_row) = of(release);
-        let (_, linked_lookup, linked_row) = of(linked);
+        let (named, named_by_disc_id, named_row) = of(release);
+        let (_, linked_by_disc_id, linked_row) = of(linked);
         assert_eq!(linked_row, named_row, "{linked} shares {release}'s row");
         assert!(named_row < 100, "{release}'s row is offered");
-        assert!(linked_lookup.by_pressing && !linked_lookup.by_disc_id);
-        assert!(named_lookup.by_disc_id && !named_lookup.by_pressing);
+        assert!(named_by_disc_id && !linked_by_disc_id);
         assert_eq!(
             named.album_links,
             AlbumLinks::Read(vec![through("mb-1", "dg-1", "7")]),
@@ -247,7 +248,7 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
     assert_eq!(
         effects,
         vec![Effect::KeepAlbumLinks {
-            kept: vec![("g-1".to_string(), vec![through("mb-1", "dg-1", "7")])],
+            kept: vec![("g-1".to_string(), vec![MetadataRef::new(DG, "7")])],
         }]
     );
 }
@@ -348,7 +349,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
     assert_eq!(
         effects,
         vec![Effect::KeepAlbumLinks {
-            kept: vec![("g-1".to_string(), vec![joined.clone()])],
+            kept: vec![("g-1".to_string(), vec![joined.album.clone()])],
         }]
     );
     let mb = rows_of(&state)

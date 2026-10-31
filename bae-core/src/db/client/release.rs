@@ -678,7 +678,7 @@ impl Database {
                 // none does. The records are uniquely keyed on
                 // `(release_id, catalog)`, so a release never carries two
                 // rows for one catalog.
-                write_release_records(tx, &release.id, &records, &now)?;
+                write_release_records(tx, &release.id, &records)?;
 
                 // Works are globally identified; they go in before their links.
                 for work in &works {

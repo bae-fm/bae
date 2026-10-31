@@ -46,14 +46,6 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
-    let lookup = crate::identify::LookupProvenance {
-        by_disc_id: false,
-        by_barcode: false,
-        by_catalog: false,
-        by_isrc: false,
-        by_search: true,
-        by_pressing: false,
-    };
     let stored = handle
         .preparations
         .store_verdict(&crate::db::NewImportCandidateVerdict {
@@ -63,7 +55,6 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
             verdict: crate::identify::TerminalVerdict::Found {
                 findings: crate::identify::Findings {
                     matches: vec![offered("mb-pressing-1", 1996), offered("mb-pressing-2", 2004)],
-                    provenance: vec![lookup.clone(), lookup],
                     pressings: vec![0, 1],
                     narrowed_out: Default::default(),
                     medium_conflict: None,

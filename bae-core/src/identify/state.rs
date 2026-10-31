@@ -371,7 +371,7 @@ pub enum Effect {
     /// Keep what these release groups were read to be beyond the run. Nothing
     /// answers it.
     KeepAlbumLinks {
-        kept: Vec<(String, Vec<crate::import::album_links::AlbumLink>)>,
+        kept: Vec<(String, Vec<crate::import::MetadataRef>)>,
     },
 }
 

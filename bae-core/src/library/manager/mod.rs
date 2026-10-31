@@ -692,10 +692,7 @@ pub enum CoverSelection {
     /// Use an image file already in the library.
     ReleaseImage { file_id: String },
     /// Download from a remote URL.
-    RemoteCover {
-        url: String,
-        source: bae_catalogs::catalog::Catalog,
-    },
+    RemoteCover { url: String },
 }
 
 /// Verb for a storage transition, used to name the operation in the "ended

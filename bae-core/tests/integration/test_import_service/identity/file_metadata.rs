@@ -235,15 +235,10 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    let cover =
-        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .expect("embedded cover should be written when no folder/remote image exists");
-    assert_eq!(
-        cover.source, "embedded",
-        "cover must be sourced from the embedded picture"
-    );
+    f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("embedded cover should be written when no folder/remote image exists");
 
     // The embedded picture (≤600) keeps its dimensions but the store path
     // re-encodes it to JPEG, so assert on the decoded image, not raw bytes.
@@ -260,10 +255,14 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
+/// The folder image's width/height, other than the embedded artwork's so the
+/// stored cover tells which of the two it was made from.
+const FOLDER_IMAGE_DIMS: (u32, u32) = (40, 30);
+
 /// Import `folder_image` (a path under the album folder) beside audio that
 /// embeds artwork, from file metadata with no explicit cover choice, and
-/// return the stored cover's source.
-async fn file_metadata_cover_source_beside(folder_image: &str) -> String {
+/// return the stored cover's width and height.
+async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -281,7 +280,7 @@ async fn file_metadata_cover_source_beside(folder_image: &str) -> String {
     );
     let image = album_dir.join(folder_image);
     fs::create_dir_all(image.parent().unwrap()).unwrap();
-    fs::write(&image, embedded_cover_jpeg()).unwrap();
+    fs::write(&image, solid_jpeg(FOLDER_IMAGE_DIMS)).unwrap();
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -299,20 +298,30 @@ async fn file_metadata_cover_source_beside(folder_image: &str) -> String {
     f.db.find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
-        .expect("a cover should be written")
-        .source
+        .expect("a cover should be written");
+    let bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
+        .await
+        .expect("cover file readable");
+    let decoded = image::load_from_memory(&bytes).unwrap();
+    (decoded.width(), decoded.height())
 }
 
 /// A folder image named as the front cover leads the tags' embedded artwork.
 #[tokio::test]
 async fn file_metadata_import_front_cover_image_wins_over_embedded_cover() {
-    assert_eq!(file_metadata_cover_source_beside("scans/cover.jpg").await, "local");
+    assert_eq!(
+        file_metadata_cover_dims_beside("scans/cover.jpg").await,
+        FOLDER_IMAGE_DIMS
+    );
 }
 
 /// Embedded artwork leads a folder image not named as the front cover.
 #[tokio::test]
 async fn file_metadata_import_embedded_cover_wins_over_other_folder_images() {
-    assert_eq!(file_metadata_cover_source_beside("scans/back.jpg").await, "embedded");
+    assert_eq!(
+        file_metadata_cover_dims_beside("scans/back.jpg").await,
+        EMBEDDED_COVER_DIMS
+    );
 }
 
 /// File-metadata imports never deduplicate against existing releases — even

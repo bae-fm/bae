@@ -215,8 +215,6 @@ async fn import_with_cover_art() {
             .await
             .unwrap();
     assert!(cover.is_some(), "should have cover image in DB");
-    let cover = cover.unwrap();
-    assert_eq!(cover.source, "local");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
     let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)

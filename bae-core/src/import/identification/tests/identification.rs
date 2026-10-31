@@ -38,12 +38,6 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
         crate::import::CandidateKey::folder(&dir),
         "the row names where the candidate was last seen"
     );
-    let identify = identify_result(&row);
-    assert_eq!(
-        identify.identified_at,
-        fixed_now(),
-        "the row is stamped from the injected clock"
-    );
     assert_eq!(
         fixture.judgement_for(&dir).await,
         (true, None),
@@ -344,14 +338,6 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 track_titles: Vec::new(),
                 notes: Vec::new(),
             }],
-            provenance: vec![crate::identify::LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_isrc: false,
-                by_search: false,
-                by_pressing: false,
-            }],
             pressings: vec![0],
             narrowed_out: crate::identify::NarrowedOut::default(),
             medium_conflict: None,
@@ -547,22 +533,13 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
         .clone();
     let TerminalVerdict::Found {
         findings:
-            crate::identify::Findings {
-                matches,
-                provenance,
-                ..
-            },
+            crate::identify::Findings { matches, .. },
         ..
     } = &verdict
     else {
         panic!("expected the title search's release, got {verdict:?}");
     };
     assert_eq!(matches[0].release_id, "mb-by-title");
-    assert!(
-        provenance[0].by_search,
-        "the row records the title search as what produced it"
-    );
-    assert!(!provenance[0].by_barcode && !provenance[0].by_disc_id);
     assert_eq!(
         fixture.provider.count_containing("query=barcode%3A"),
         1,

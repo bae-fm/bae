@@ -14,8 +14,7 @@ impl Database {
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let records = records.to_vec();
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
-        self.call_sql(move |sql| write_release_records(&sql, &release_id, &records, &now))
+        self.call_sql(move |sql| write_release_records(&sql, &release_id, &records))
             .await
     }
 
@@ -236,7 +235,7 @@ pub(super) fn set_records_on(
     }
 
     // 2. Replace the records and the catalog the draft was read from.
-    write_release_records(tx, release_id, records, &now)?;
+    write_release_records(tx, release_id, records)?;
 
     // 3. Update release: album and where its draft was read. A release
     //    joining another album goes after that album's others.

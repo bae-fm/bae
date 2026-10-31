@@ -473,7 +473,7 @@ impl CandidateRuntime {
         key: &CandidateKey,
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
-    ) -> Vec<(String, Vec<crate::import::album_links::AlbumLink>)> {
+    ) -> Vec<(String, Vec<crate::import::MetadataRef>)> {
         self.set(key, |_, runtime| match runtime.search.as_mut() {
             Some(running) => running.search.record_picked(release, links),
             None => Vec::new(),

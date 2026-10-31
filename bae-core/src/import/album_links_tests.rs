@@ -160,19 +160,20 @@ fn what_is_kept_is_what_the_list_could_say() {
         group: "g-unknown".to_string(),
         links: AlbumLinks::Unread,
     };
-    let groups = [named.clone(), nothing, unknown];
+    let groups = [named, nothing, unknown];
+    let named_albums = vec![MetadataRef::new(Catalog::Discogs, "7")];
 
     let alone = [musicbrainz("mb-1")];
     assert_eq!(
         to_keep(&groups, &alone.iter().collect::<Vec<_>>()),
-        vec![("g-named".to_string(), named.links.read().to_vec())]
+        vec![("g-named".to_string(), named_albums.clone())]
     );
 
     let beside = [musicbrainz("mb-1"), discogs_release("dg-1", "7")];
     assert_eq!(
         to_keep(&groups, &beside.iter().collect::<Vec<_>>()),
         vec![
-            ("g-named".to_string(), named.links.read().to_vec()),
+            ("g-named".to_string(), named_albums),
             ("g-nothing".to_string(), Vec::new()),
         ]
     );

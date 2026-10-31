@@ -307,9 +307,15 @@ impl From<IdentifyState> for IdentifyStateView {
                 context,
             } => {
                 let findings = live_findings(&discid, &barcode, &catalog, &isrc, &search, &context);
-                let folded = fold(findings, &context.text, context.audio.track_count);
+                let run = run_view(&discid, &barcode, &catalog, &isrc, &search, &context);
+                let folded = fold(
+                    findings,
+                    Some(&run),
+                    &context.text,
+                    context.audio.track_count,
+                );
                 IdentifyStateView::Triangulating {
-                    run: run_view(&discid, &barcode, &catalog, &isrc, &search, &context),
+                    run,
                     groups: folded.groups,
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
@@ -323,7 +329,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 context,
             } => {
                 let summary = super::VerdictSummary::of_found(&findings, track_count);
-                let folded = fold(findings, &context.text, track_count);
+                let folded = fold(findings, ledger.as_ref(), &context.text, track_count);
                 IdentifyStateView::Found {
                     run: ledger,
                     groups: folded.groups,
@@ -361,7 +367,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 ledger,
                 context,
             } => {
-                let folded = fold(findings, &context.text, track_count);
+                let folded = fold(findings, ledger.as_ref(), &context.text, track_count);
                 let failure_lines = failures
                     .into_iter()
                     .filter(|failure| !ledger.as_ref().is_some_and(|run| run.shows(failure)))
@@ -435,20 +441,28 @@ struct Cards {
 
 /// Judge the offered and set-aside releases against the candidate's text and
 /// fold both into album cards as one grouping, so an album is one card either
-/// way.
-fn cards(findings: Findings, text: &CandidateText, track_count: u32) -> Cards {
+/// way. `ledger` is the run's, whose disc-ID lookups say which releases agree
+/// on a disc ID; none for a run that laid none out.
+fn cards(
+    findings: Findings,
+    ledger: Option<&IdentifyRunView>,
+    text: &CandidateText,
+    track_count: u32,
+) -> Cards {
     let facts = FolderFacts::of(text, findings.releases());
+    let by_disc_id = ledger
+        .map(IdentifyRunView::disc_id_releases)
+        .unwrap_or_default();
     // The medium conflict is stated by the folder check, not here.
     let Findings {
         matches,
-        provenance,
         pressings,
         narrowed_out,
         medium_conflict: _,
         named_notes,
     } = findings;
-    let offered = judged_results(matches, &provenance, text, &facts);
-    let set_aside = judged_results(narrowed_out.matches, &narrowed_out.provenance, text, &facts);
+    let offered = judged_results(matches, &by_disc_id, text, &facts);
+    let set_aside = judged_results(narrowed_out.matches, &by_disc_id, text, &facts);
     let judgements = Judgements::of(
         &offered
             .iter()
@@ -483,13 +497,14 @@ pub(crate) fn shared_album_of(
         super::TerminalVerdict::Found {
             findings,
             track_count,
-            ..
+            ledger,
         }
         | super::TerminalVerdict::Failed {
             findings,
             track_count,
+            ledger,
             ..
-        } => SharedAlbum::of(&cards(findings, text, track_count).groups),
+        } => SharedAlbum::of(&cards(findings, ledger.as_ref(), text, track_count).groups),
         super::TerminalVerdict::NotFoundAnywhere { .. }
         | super::TerminalVerdict::ManualOnly { .. }
         | super::TerminalVerdict::Error { .. } => None,
@@ -498,12 +513,17 @@ pub(crate) fn shared_album_of(
 
 /// A state's answers as cards, with every row's badges. Badges belong to a row, so every release id in a row answers with the
 /// row's badges.
-fn fold(findings: Findings, text: &CandidateText, track_count: u32) -> Folded {
+fn fold(
+    findings: Findings,
+    ledger: Option<&IdentifyRunView>,
+    text: &CandidateText,
+    track_count: u32,
+) -> Folded {
     let Cards {
         groups: cards,
         judgements,
         named_notes,
-    } = cards(findings, text, track_count);
+    } = cards(findings, ledger, text, track_count);
     let named_note = |pressing: &Pressing| {
         pressing.releases.iter().find_map(|release| {
             named_notes

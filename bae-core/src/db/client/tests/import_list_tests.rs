@@ -2,7 +2,7 @@
 //! and which tables it never touches.
 
 use super::super::*;
-use crate::identify::{LookupProvenance, TerminalVerdict};
+use crate::identify::TerminalVerdict;
 
 use super::{candidate, exec, fixed_now, watched_root};
 use crate::import::folder_scanner::{
@@ -62,14 +62,6 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 album_first_year: None,
                 track_titles: Vec::new(),
                 notes: Vec::new(),
-            }],
-            provenance: vec![LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_isrc: false,
-                by_search: false,
-                by_pressing: false,
             }],
             pressings: vec![0],
             narrowed_out: crate::identify::NarrowedOut::default(),

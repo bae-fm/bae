@@ -84,13 +84,17 @@ pub struct MetadataResult {
     pub album_first_year: Option<i32>,
     /// The title of each track its full document lists for the audio, in
     /// order. Empty where the document was not read, or leaves a track
-    /// untitled. A search result states none.
+    /// untitled. A search result states none. Only a run's ranking reads
+    /// them, so a stored verdict keeps none and its releases read back
+    /// without them.
     pub track_titles: Vec<String>,
     /// What the record writes about which pressing it is, in free text: a
     /// MusicBrainz release's disambiguation, and once its full document is
     /// read, each line of its annotation; a Discogs release's format text,
     /// and once its full document is read, each line of its notes, its
     /// company names and its identifiers too (see `discogs_release_notes`).
+    /// Only a run's ranking reads them, so a stored verdict keeps none and
+    /// its releases read back without them.
     pub notes: Vec<String>,
 }
 

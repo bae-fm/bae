@@ -91,17 +91,12 @@ fn the_title_goes_out_once_the_identifiers_name_nothing() {
     assert!(effects.is_empty());
     match state {
         IdentifyState::Found {
-            findings:
-                Findings {
-                    matches,
-                    provenance,
-                    ..
-                },
+            findings: Findings { matches, .. },
+            ledger,
             ..
         } => {
             assert_eq!(matches.len(), 1);
-            assert!(provenance[0].by_search);
-            assert!(!provenance[0].by_disc_id && !provenance[0].by_barcode);
+            assert!(!found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
         other => panic!("expected Found by the title search, got {other:?}"),
     }
@@ -121,15 +116,10 @@ fn an_identifier_that_named_something_leaves_the_title_unasked() {
         effects.is_empty(),
         "the barcode answered, so nothing searches by title: {effects:?}"
     );
-    match state {
-        IdentifyState::Found {
-            findings: Findings { provenance, .. },
-            ..
-        } => {
-            assert!(provenance[0].by_barcode && !provenance[0].by_search);
-        }
-        other => panic!("expected Found, got {other:?}"),
-    }
+    assert!(
+        matches!(state, IdentifyState::Found { .. }),
+        "expected Found, got {state:?}"
+    );
 }
 
 /// A draft with no title leaves nothing to search by, so the run ends on what

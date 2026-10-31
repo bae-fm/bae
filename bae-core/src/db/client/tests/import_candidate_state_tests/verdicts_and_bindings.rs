@@ -1,7 +1,6 @@
 use super::super::*;
 use crate::identify::{
-    DiscIdStepView, Findings, IdentifyRunView, LookupProvenance, LookupView, NarrowedOut,
-    TerminalVerdict,
+    DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 use crate::import::search::MetadataResult;
@@ -68,8 +67,8 @@ fn sample_match() -> MetadataResult {
         source_tracks: Some(crate::import::search::SourceTracks::Listed { count: 2 }),
         document_failure: None,
         album_first_year: Some(1998),
-        track_titles: vec!["Track One".to_string(), "Track Two".to_string()],
-        notes: vec!["Pressed By Plant Name".to_string()],
+        track_titles: Vec::new(),
+        notes: Vec::new(),
     }
 }
 
@@ -84,14 +83,6 @@ fn sample_verdict() -> TerminalVerdict {
 fn sample_findings() -> Findings {
     Findings {
         matches: vec![sample_match()],
-        provenance: vec![LookupProvenance {
-            by_disc_id: true,
-            by_barcode: true,
-            by_catalog: true,
-            by_isrc: false,
-            by_search: false,
-            by_pressing: false,
-        }],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
         medium_conflict: None,

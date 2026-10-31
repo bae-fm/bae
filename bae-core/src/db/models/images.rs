@@ -45,43 +45,26 @@ pub struct DbLibraryImage {
     pub content_type: ContentType,
     pub width: Option<i32>,
     pub height: Option<i32>,
-    /// "local", "musicbrainz", "discogs"
-    pub source: String,
-    /// MB: CAA image ID, Discogs: URL, local: "release://{path}"
-    pub source_url: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
 impl DbLibraryImage {
     /// The row describing a release's cover, a JPEG
     /// [`bae_util::stored_image::stored_jpeg`] made.
-    pub fn cover(
-        release_id: &str,
-        source: &str,
-        source_url: Option<String>,
-        now: DateTime<Utc>,
-    ) -> Self {
-        Self::stored_jpeg(LibraryImageType::Cover, release_id, source, source_url, now)
+    pub fn cover(release_id: &str, now: DateTime<Utc>) -> Self {
+        Self::stored_jpeg(LibraryImageType::Cover, release_id, now)
     }
 
     /// The row describing the image of `image_type` kept for `id`, a JPEG
     /// [`bae_util::stored_image::stored_jpeg`] made, whose bytes the write
     /// stages with coven.
-    pub fn stored_jpeg(
-        image_type: LibraryImageType,
-        id: &str,
-        source: &str,
-        source_url: Option<String>,
-        now: DateTime<Utc>,
-    ) -> Self {
+    pub fn stored_jpeg(image_type: LibraryImageType, id: &str, now: DateTime<Utc>) -> Self {
         DbLibraryImage {
             id: id.to_string(),
             image_type,
             content_type: ContentType::Jpeg,
             width: None,
             height: None,
-            source: source.to_string(),
-            source_url,
             created_at: now,
         }
     }

@@ -659,8 +659,6 @@ pub(super) fn row_to_library_image(
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         width: row.get("width")?,
         height: row.get("height")?,
-        source: row.get("source")?,
-        source_url: row.get("source_url")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }

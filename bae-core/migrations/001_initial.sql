@@ -82,8 +82,6 @@ CREATE TABLE IF NOT EXISTS artist_images (
     content_type TEXT NOT NULL,
     width INTEGER,
     height INTEGER,
-    source TEXT NOT NULL,
-    source_url TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
@@ -232,8 +230,6 @@ CREATE TABLE IF NOT EXISTS covers (
     content_type TEXT NOT NULL,
     width INTEGER,
     height INTEGER,
-    source TEXT NOT NULL,
-    source_url TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
@@ -351,8 +347,6 @@ CREATE TABLE IF NOT EXISTS release_records (
     catalog     TEXT NOT NULL,
     key         TEXT NOT NULL,
     album_key   TEXT,
-    url         TEXT NOT NULL CHECK (url <> ''),
-    created_at  TEXT NOT NULL,
     kind        TEXT NOT NULL CHECK (kind IN ('pressing', 'album')),
     CHECK (kind = 'pressing' OR album_key IS NULL),
     UNIQUE (release_id, catalog),
@@ -3174,7 +3168,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     -- its releases is the folder's, or it found none. It goes with the
     -- verdict, so the next identification starts without it.
     kept_own_draft INTEGER NOT NULL CHECK (kept_own_draft IN (0, 1)),
-    identified_at TEXT NOT NULL,
     -- The folder's own files rule out every row found: a CD rip where no row
     -- could be a CD, or a sample rate no CD holds where every row is a CD.
     -- Such a verdict is never Ready.
@@ -3252,24 +3245,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- lists tracks for the audio that cannot be read into values.
     source_tracks_kind  TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing', 'unreadable')),
     source_tracks_count INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
-    -- Which of the run's keys returned an offered or narrowed-out release;
-    -- NULL for an unlisted one. Matches against the folder's text are not
-    -- stored; they are read from the text lines each time.
-    by_disc_id          INTEGER CHECK (by_disc_id IN (0, 1)),
-    -- A barcode the folder's files carry.
-    by_barcode          INTEGER CHECK (by_barcode IN (0, 1)),
-    -- A catalog number in effect: picked, or printed by the folder's text
-    -- and carried by a release the run found.
-    by_catalog          INTEGER CHECK (by_catalog IN (0, 1)),
-    -- The search by the ISRCs the audio's tags carry.
-    by_isrc             INTEGER CHECK (by_isrc IN (0, 1)),
-    -- The title search, asked only when the folder's own keys and the picked
-    -- catalog numbers all came back empty.
-    by_search           INTEGER CHECK (by_search IN (0, 1)),
-    -- An offered row's pressing, looked up on a catalog the row had no record
-    -- of: by the release its page names there, its barcode, or its catalog
-    -- number under its label.
-    by_pressing         INTEGER CHECK (by_pressing IN (0, 1)),
     -- Why the release's full document could not be read when the run offered
     -- its row, which then holds what the lookup returned. NULL when it was
     -- read or never asked for.
@@ -3278,15 +3253,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- The year the release's album first came out, as its full document's
     -- release group or master states it.
     album_first_year        INTEGER,
-    -- The title of each track the full document lists for the audio, in
-    -- order: a JSON array of strings, empty where it was not read or leaves a
-    -- track untitled.
-    track_titles            TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(track_titles) AND json_type(track_titles) = 'array'),
-    -- What the full document writes about which pressing it is, in free text:
-    -- a JSON array of strings, empty where it was not read or writes none.
-    notes                   TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(notes) AND json_type(notes) = 'array'),
     -- The note of this release the folder's text names its row by, where the
     -- ranking's notes point went to that row; NULL otherwise, and always for a
     -- release the run does not offer.
@@ -3302,12 +3268,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
     CHECK (listing = 'offered' OR named_note IS NULL),
     CHECK ((listing = 'unlisted') = (pressing IS NULL)),
-    CHECK ((listing = 'unlisted') = (by_disc_id IS NULL)
-           AND (listing = 'unlisted') = (by_barcode IS NULL)
-           AND (listing = 'unlisted') = (by_catalog IS NULL)
-           AND (listing = 'unlisted') = (by_isrc IS NULL)
-           AND (listing = 'unlisted') = (by_search IS NULL)
-           AND (listing = 'unlisted') = (by_pressing IS NULL)),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider')
 ) STRICT;
@@ -5008,7 +4968,6 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- release group.
     archive_release_id TEXT,
     archive_group_id   TEXT,
-    fetched_at         TEXT NOT NULL,
     PRIMARY KEY (catalog, release_id),
     CHECK (archive_release_id IS NOT NULL OR archive_group_id IS NULL),
     CHECK (country IS NULL OR region IS NULL),
@@ -5105,25 +5064,14 @@ CREATE TABLE IF NOT EXISTS source_release_record (
 ) STRICT;
 
 -- What reading a MusicBrainz release group found it to be on another catalog:
--- each album a statement names, in the columns import_candidate_match_album_link
--- uses. A stored release of either album reads the other as one of its
--- records, even when its own documents never reach it. Device-local; reading
--- the group again replaces its rows.
+-- each album a statement names. A stored release of either album reads the
+-- other as one of its records, even when its own documents never reach it.
+-- Device-local; reading the group again replaces its rows.
 CREATE TABLE IF NOT EXISTS release_group_album_link (
     release_group       TEXT NOT NULL CHECK (release_group <> ''),
     catalog             TEXT NOT NULL CHECK (catalog <> '' AND catalog <> 'musicbrainz'),
     key                 TEXT NOT NULL CHECK (key <> ''),
-    stated              TEXT NOT NULL
-        CHECK (stated IN ('page', 'wikidata', 'release', 'barcode', 'catalog_number')),
-    wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
-    musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
-    release_catalog     TEXT CHECK (release_catalog IS NULL OR release_catalog <> ''),
-    release_key         TEXT CHECK (release_key IS NULL OR release_key <> ''),
-    PRIMARY KEY (release_group, catalog, key),
-    CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
-    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (musicbrainz_release IS NOT NULL)),
-    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_catalog IS NOT NULL)),
-    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_key IS NOT NULL))
+    PRIMARY KEY (release_group, catalog, key)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS release_group_album_link_album
     ON release_group_album_link (catalog, key);
@@ -5231,8 +5179,6 @@ CREATE TABLE IF NOT EXISTS source_release_entry (
     kind        TEXT NOT NULL CHECK (kind IN ('track', 'heading', 'index')),
     -- The position the catalog prints ('A1', '1-2'); NULL where it prints none.
     position    TEXT CHECK (position IS NULL OR position <> ''),
-    -- MusicBrainz's own count of the track within its medium.
-    number      INTEGER,
     -- NULL for a MusicBrainz track with no usable title, which reading
     -- refuses.
     title       TEXT,

@@ -28,7 +28,7 @@ pub mod verdict_summary;
 pub mod view;
 
 pub use agreements::{Agreements, CandidateText};
-pub use combine::{Findings, LookupAnswers, LookupProvenance, NamedNote, NarrowedOut};
+pub use combine::{Findings, LookupAnswers, NamedNote, NarrowedOut};
 pub use fit::{unattended_pick, Declined, TracklistFit, UnattendedPick};
 pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;

@@ -3,7 +3,7 @@ use crate::identify::state::{
     step, BarcodeEvidence, CatalogSearch, DiscIdEvidence, IdentifyEvent, LookupState,
     ProviderLookup, SearchProgress, ValueLookup,
 };
-use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, TerminalVerdict};
+use crate::identify::{Findings, IdentifyFailure, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
 use crate::import::search::MetadataResult;
 use crate::signals::SourcedValue;
@@ -659,25 +659,9 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             matches: vec![MetadataResult::for_test(MB, "mb-1", Some("g"))],
-            provenance: vec![LookupProvenance {
-                by_disc_id: true,
-                by_barcode: false,
-                by_catalog: false,
-                by_isrc: false,
-                by_search: false,
-                by_pressing: false,
-            }],
             pressings: vec![0],
             narrowed_out: NarrowedOut {
                 matches: vec![MetadataResult::for_test(DG, "dg-1", Some("g"))],
-                provenance: vec![LookupProvenance {
-                    by_disc_id: false,
-                    by_barcode: true,
-                    by_catalog: false,
-                    by_isrc: false,
-                    by_search: false,
-                    by_pressing: false,
-                }],
                 pressings: vec![0],
             },
             medium_conflict: None,
@@ -712,6 +696,24 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
 
 // ── What agreement narrowed out ─────────────────────────────────────────────
 
+/// A run's ledger whose one disc ID's lookup found `found`: what the Disc ID
+/// agreement is read from.
+fn disc_id_ledger(found: &[MetadataResult]) -> IdentifyRunView {
+    IdentifyRunView {
+        providers: vec![MB],
+        disc_id: DiscIdStepView::Read {
+            discs: vec![crate::identify::DiscIdRow {
+                disc_id: "d".to_string(),
+                lookup: LookupView::answered(&found.to_vec()),
+            }],
+        },
+        barcode: crate::identify::BarcodeStepView::Absent,
+        catalog: CatalogStepView::NoneFound,
+        isrc: crate::identify::IsrcStepView::Absent,
+        search: SearchStepView::NotNeeded,
+    }
+}
+
 /// Rows agreement set aside stay on their album's card, badged and with a
 /// status; an album with no offered row is a card of its own, after every card
 /// that offers one, in the same list.
@@ -734,12 +736,18 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     context.barcode.results = vec![shared];
     context.barcode.matched = Some("A".to_string());
 
+    let disc_answers = context.disc.answers[0].clone();
+    let mut state = crate::identify::state::re_derive_for_tests(context);
+    let IdentifyState::Found { ledger, .. } = &mut state else {
+        panic!("the signals agree on one release");
+    };
+    *ledger = Some(disc_id_ledger(&disc_answers));
     let IdentifyStateView::Found {
         groups,
         agreements,
         narrowed_out_count,
         ..
-    } = IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
+    } = IdentifyStateView::from(state)
     else {
         panic!("the signals agree on one release");
     };
@@ -811,14 +819,6 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
             matches: vec![MetadataResult {
                 source_tracks: Some(listed),
                 ..MetadataResult::for_test(DG, "dg-1", Some("g"))
-            }],
-            provenance: vec![LookupProvenance {
-                by_disc_id: false,
-                by_barcode: true,
-                by_catalog: false,
-                by_isrc: false,
-                by_search: false,
-                by_pressing: false,
             }],
             pressings: vec![0],
             narrowed_out: NarrowedOut::default(),

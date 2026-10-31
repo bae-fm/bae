@@ -9,7 +9,6 @@
 //! importing a second copy is the person's to moderate. Nothing here blocks an
 //! import a person asks for.
 
-use super::combine::LookupProvenance;
 use super::fit::Declined;
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
@@ -44,9 +43,7 @@ pub enum VerdictKind {
     },
 }
 
-/// The match a verdict's findings lead with, as its own columns.
-///
-/// One row of `import_candidate_match` at `list = 'found'`, `position = 0`.
+/// The match a verdict's findings lead with: the first release they offer.
 /// Everything the queue asks of a verdict's matches is asked of this one, but
 /// whether each was read in full: the judgements consult the lead (they only
 /// reach the tracklist comparison when the matches make a single pressing),
@@ -71,16 +68,11 @@ pub struct LeadMatch {
     /// The lead match's cover, with the copies its catalog serves.
     pub cover: Option<bae_catalogs::remote_image::RemoteImageSet>,
     pub source_tracks: Option<SourceTracks>,
-    pub by_disc_id: bool,
-    pub by_barcode: bool,
-    pub by_isrc: bool,
-    pub by_search: bool,
 }
 
 impl LeadMatch {
-    /// The lead of a verdict's findings, from their index-aligned match and
-    /// provenance lists — also how the stored `position = 0` row reads back.
-    pub(crate) fn of(result: &MetadataResult, provenance: Option<&LookupProvenance>) -> Self {
+    /// The lead of a verdict's findings, from its first match.
+    pub(crate) fn of(result: &MetadataResult) -> Self {
         Self {
             release_id: result.release_id.clone(),
             source: result.source,
@@ -94,10 +86,6 @@ impl LeadMatch {
                 .as_ref()
                 .map(|cover: &RemoteCover| cover.image.clone()),
             source_tracks: result.source_tracks.clone(),
-            by_disc_id: provenance.is_some_and(|provenance| provenance.by_disc_id),
-            by_barcode: provenance.is_some_and(|provenance| provenance.by_barcode),
-            by_isrc: provenance.is_some_and(|provenance| provenance.by_isrc),
-            by_search: provenance.is_some_and(|provenance| provenance.by_search),
         }
     }
 }
@@ -172,12 +160,7 @@ impl VerdictSummary {
             pressing_count: findings.map_or(0, |findings| {
                 crate::import::release_group::row_count(&findings.pressings) as u32
             }),
-            lead: findings.and_then(|findings| {
-                findings
-                    .matches
-                    .first()
-                    .map(|result| LeadMatch::of(result, findings.provenance.first()))
-            }),
+            lead: findings.and_then(|findings| findings.matches.first().map(LeadMatch::of)),
             medium_conflict: findings.and_then(|findings| findings.medium_conflict),
             unread_document: findings.is_some_and(|findings| {
                 findings

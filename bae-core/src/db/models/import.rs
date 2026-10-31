@@ -2,8 +2,6 @@
 //! hash of its files: what identification concluded, and what a person
 //! settled through its pane.
 
-use super::*;
-
 /// The current scan stamp for one candidate and whatever file-tag snapshot is
 /// stored beneath it. The stored snapshot may carry an older stamp: callers
 /// compare the two before reuse, while replacement uses the current pair as a
@@ -61,7 +59,6 @@ pub struct VerdictPick {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
     pub verdict: crate::identify::TerminalVerdict,
-    pub identified_at: DateTime<Utc>,
     /// The person kept their own draft over what the verdict offered: none
     /// of its releases is the folder's, or it found none. A decision about
     /// this verdict, so the next one starts without it.

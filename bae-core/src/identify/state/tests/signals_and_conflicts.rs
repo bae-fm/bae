@@ -1,5 +1,5 @@
 use super::*;
-use crate::identify::{IdentifyFailure, LookupProvenance};
+use crate::identify::IdentifyFailure;
 use crate::import::album_links::AlbumLinks;
 use crate::import::LookupChoices;
 use bae_catalogs::catalog::Catalog;
@@ -502,7 +502,7 @@ fn barcode_lookups_start_only_from_settled() {
 }
 
 #[test]
-fn disc_only_resolves_to_found_with_provenance() {
+fn disc_only_resolves_to_found_by_the_disc_id() {
     let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
@@ -515,16 +515,12 @@ fn disc_only_resolves_to_found_with_provenance() {
     );
     match state {
         IdentifyState::Found {
-            findings:
-                Findings {
-                    matches,
-                    provenance,
-                    ..
-                },
+            findings: Findings { matches, .. },
+            ledger,
             ..
         } => {
             assert_eq!(matches.len(), 1);
-            assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
+            assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -553,12 +549,8 @@ fn both_signals_intersect_to_found_combined() {
     );
     match state {
         IdentifyState::Found {
-            findings:
-                Findings {
-                    matches,
-                    provenance,
-                    ..
-                },
+            findings: Findings { matches, .. },
+            ledger,
             ..
         } => {
             assert_eq!(matches.len(), 1);
@@ -566,7 +558,7 @@ fn both_signals_intersect_to_found_combined() {
                 matches[0].release_id,
                 "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
             );
-            assert!(provenance[0].by_disc_id && provenance[0].by_barcode);
+            assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -597,16 +589,12 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     match state {
         IdentifyState::Found {
             context,
-            findings:
-                Findings {
-                    matches,
-                    provenance,
-                    ..
-                },
+            findings: Findings { matches, .. },
+            ledger,
             ..
         } => {
             assert_eq!(matches.len(), 1);
-            assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
+            assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
             assert_eq!(context.disc.results().len(), 1);
             assert_eq!(context.barcode.results.len(), 1);
             assert_eq!(context.barcode.matched.as_deref(), Some("BAR"));
@@ -816,16 +804,10 @@ fn an_unchosen_catalog_number_narrows_nothing() {
     );
     match state {
         IdentifyState::Found {
-            findings:
-                Findings {
-                    matches,
-                    provenance,
-                    ..
-                },
+            findings: Findings { matches, .. },
             ..
         } => {
             assert_eq!(matches.len(), 2);
-            assert!(provenance.iter().all(|p| !p.by_catalog));
         }
         other => panic!("expected Found, got {other:?}"),
     }

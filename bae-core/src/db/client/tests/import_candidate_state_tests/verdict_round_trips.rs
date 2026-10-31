@@ -1,8 +1,8 @@
 use super::*;
 
-/// A stored verdict reads back exactly, provenance and ledger included.
+/// A stored verdict reads back exactly, its ledger included.
 #[tokio::test]
-async fn round_trip_preserves_the_verdict_including_provenance() {
+async fn round_trip_preserves_the_verdict_and_its_ledger() {
     let (db, _tmp) = empty_db().await;
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -28,12 +28,33 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
         .identify
         .as_ref()
         .expect("a stored verdict reads back as an identify result");
-    // The write stamps it from the injected clock.
-    assert_eq!(identify.identified_at, fixed_now());
     assert_eq!(
         identify.verdict, verdict,
-        "the verdict must round-trip exactly, provenance included"
+        "the verdict must round-trip exactly, its ledger included"
     );
+}
+
+/// Only a run's ranking reads a release's track titles and notes, so a stored
+/// verdict keeps neither: its releases read back without them.
+#[tokio::test]
+async fn a_stored_verdict_keeps_no_track_titles_or_notes() {
+    let read_back = TerminalVerdict::Found {
+        findings: Findings {
+            named_notes: Vec::new(),
+            ..sample_findings()
+        },
+        track_count: 11,
+        ledger: None,
+    };
+    let mut live = read_back.clone();
+    let TerminalVerdict::Found { findings, .. } = &mut live else {
+        unreachable!("built as a found verdict");
+    };
+    findings.matches[0].track_titles = vec!["Track One".to_string(), "Track Two".to_string()];
+    findings.matches[0].notes = vec!["Pressed By Plant Name".to_string()];
+
+    let (read, _) = stored_and_read(&live).await;
+    assert_eq!(read, read_back);
 }
 
 /// Everything the rows and cards are grouped by reads back, so a stored verdict
@@ -144,22 +165,8 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     linked.release_id = "44".to_string();
     linked.source_group_id = Some("7".to_string());
     let matches = vec![musicbrainz, discogs, undescribed, unread, linked];
-    let returned = LookupProvenance {
-        by_disc_id: true,
-        ..LookupProvenance::CHOSEN
-    };
     let verdict = TerminalVerdict::Found {
         findings: Findings {
-            provenance: vec![
-                returned.clone(),
-                returned.clone(),
-                returned.clone(),
-                returned,
-                LookupProvenance {
-                    by_pressing: true,
-                    ..LookupProvenance::CHOSEN
-                },
-            ],
             pressings: crate::import::release_group::form_rows(&matches),
             matches: matches.clone(),
             narrowed_out: NarrowedOut::default(),
@@ -361,14 +368,6 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         findings: Findings {
             narrowed_out: NarrowedOut {
                 matches: vec![left_out],
-                provenance: vec![LookupProvenance {
-                    by_disc_id: true,
-                    by_barcode: false,
-                    by_catalog: false,
-                    by_isrc: false,
-                    by_search: false,
-                    by_pressing: false,
-                }],
                 pressings: vec![0],
             },
             ..sample_findings()
@@ -567,22 +566,15 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
         },
         search: SearchStepView::NotNeeded,
     };
-    let returned = |by_disc_id, by_catalog| LookupProvenance {
-        by_disc_id,
-        by_catalog,
-        ..LookupProvenance::CHOSEN
-    };
     let verdict = TerminalVerdict::Failed {
         failures: vec![crate::identify::IdentifyFailure::DiscId(
             LookupFailure::Timeout,
         )],
         findings: Findings {
             matches: vec![offered.clone(), catalogued.clone()],
-            provenance: vec![returned(true, false), returned(false, true)],
             pressings: vec![0, 1],
             narrowed_out: NarrowedOut {
                 matches: vec![set_aside.clone()],
-                provenance: vec![returned(true, false)],
                 pressings: vec![0],
             },
             medium_conflict: None,
@@ -595,6 +587,28 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     let (read, listings) = stored_and_read(&verdict).await;
 
     assert_eq!(read, verdict);
+    // The Disc ID agreement is read from the stored ledger: the releases a
+    // disc ID's lookup found agree on it, and no other.
+    let crate::identify::IdentifyStateView::Failed { agreements, .. } =
+        crate::identify::IdentifyStateView::from(
+            read.clone()
+                .resume_state(Default::default(), Default::default()),
+        )
+    else {
+        panic!("a failed verdict resumes as Failed");
+    };
+    let by_disc_id = |id: &str| {
+        agreements
+            .iter()
+            .find(|(release, _)| release == id)
+            .unwrap_or_else(|| panic!("{id} has badges: {agreements:?}"))
+            .1
+            .fields
+            .disc_id
+    };
+    assert!(by_disc_id("rel-offered"));
+    assert!(by_disc_id("rel-set-aside"));
+    assert!(!by_disc_id("42"), "only the catalog number found it");
     assert_eq!(
         listings,
         vec![
@@ -657,10 +671,6 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             matches: vec![searched.clone()],
-            provenance: vec![LookupProvenance {
-                by_search: true,
-                ..LookupProvenance::CHOSEN
-            }],
             pressings: vec![0],
             ..Findings::default()
         },

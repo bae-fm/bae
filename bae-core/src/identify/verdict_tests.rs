@@ -57,7 +57,6 @@ fn in_flight_states_have_no_terminal_verdict() {
 fn one_disc_id_match() -> Findings {
     Findings {
         matches: vec![mk_result("rel-1")],
-        provenance: vec![disc_id_only()],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
         medium_conflict: None,
@@ -74,9 +73,9 @@ fn found_state() -> IdentifyState {
     }
 }
 
-/// `Found` keeps its matches and provenance.
+/// `Found` keeps its matches and their pressing rows.
 #[test]
-fn found_keeps_its_matches_and_provenance() {
+fn found_keeps_its_matches_and_their_rows() {
     let verdict = TerminalVerdict::try_from(found_state()).unwrap();
     assert_eq!(
         verdict,
@@ -149,17 +148,6 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     ));
 }
 
-fn disc_id_only() -> LookupProvenance {
-    LookupProvenance {
-        by_disc_id: true,
-        by_barcode: false,
-        by_catalog: false,
-        by_isrc: false,
-        by_search: false,
-        by_pressing: false,
-    }
-}
-
 /// What agreement narrowed out stores beside the matches, and the verdict
 /// names it with them.
 #[test]
@@ -170,7 +158,6 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
     };
     findings.narrowed_out = NarrowedOut {
         matches: vec![mk_result("rel-out")],
-        provenance: vec![disc_id_only()],
         pressings: vec![0],
     };
     let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -178,7 +165,6 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
         panic!("a found state stores as a found verdict");
     };
     assert_eq!(findings.narrowed_out.matches, vec![mk_result("rel-out")]);
-    assert_eq!(findings.narrowed_out.provenance, vec![disc_id_only()]);
     assert_eq!(
         verdict
             .named_releases()
@@ -196,7 +182,6 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
         findings: Findings {
             narrowed_out: NarrowedOut {
                 matches: vec![mk_result("rel-out")],
-                provenance: vec![disc_id_only()],
                 pressings: vec![0],
             },
             ..one_disc_id_match()
@@ -211,7 +196,6 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
     };
     let narrowed_out = findings.narrowed_out;
     assert_eq!(narrowed_out.matches, vec![mk_result("rel-out")]);
-    assert_eq!(narrowed_out.provenance, vec![disc_id_only()]);
 }
 
 /// The reducer exposes a failed lookup directly, and verdict conversion
@@ -260,18 +244,9 @@ fn signals_that_share_no_result_store_as_one_match_list() {
         TerminalVerdict::Found {
             findings: Findings {
                 matches: vec![mk_result("rel-a")],
-                provenance: vec![disc_id_only()],
                 pressings: vec![0],
                 narrowed_out: NarrowedOut {
                     matches: vec![mk_result("rel-b")],
-                    provenance: vec![LookupProvenance {
-                        by_disc_id: false,
-                        by_barcode: true,
-                        by_catalog: false,
-                        by_isrc: false,
-                        by_search: false,
-                        by_pressing: false,
-                    }],
                     pressings: vec![0],
                 },
                 medium_conflict: None,

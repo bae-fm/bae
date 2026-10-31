@@ -232,8 +232,8 @@ pub struct BridgeImportCandidateDetail {
     /// The library album an import of it files under.
     pub album: BridgeDraftAlbum,
     /// Extracted identifying signals pinned to their source files. Independent
-    /// of the selected pressing; support for a search result is carried by its
-    /// result provenance instead.
+    /// of the selected pressing; which lookups found a result is the run's
+    /// ledger's to say.
     pub file_evidence: Vec<BridgeFileEvidence>,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: BridgeRawReleaseEdit,

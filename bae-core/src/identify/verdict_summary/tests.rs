@@ -2,7 +2,7 @@
 //! sweep's tests; these are about what the queue asks of the user given one.
 
 use super::*;
-use crate::identify::{Findings, LookupProvenance, NarrowedOut};
+use crate::identify::{Findings, NarrowedOut};
 use crate::import::search::SourceTracks;
 use bae_catalogs::catalog::Catalog;
 
@@ -33,22 +33,10 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
 }
 
 fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
-    let provenance = matches
-        .iter()
-        .map(|_| LookupProvenance {
-            by_disc_id: true,
-            by_barcode: false,
-            by_catalog: false,
-            by_isrc: false,
-            by_search: false,
-            by_pressing: false,
-        })
-        .collect();
     let pressings = crate::import::release_group::form_rows(&matches);
     TerminalVerdict::Found {
         findings: Findings {
             matches,
-            provenance,
             pressings,
             narrowed_out: NarrowedOut::default(),
             medium_conflict: None,
@@ -123,32 +111,6 @@ fn one_verified_match_is_auto_importable() {
     );
 }
 
-/// A lone match the title search found is admitted like any other: the
-/// tracklist check is what guards it.
-#[test]
-fn a_lone_match_found_by_title_is_auto_importable() {
-    let mut verdict = found(vec![result("mb-1", listing(11))], 11);
-    let TerminalVerdict::Found {
-        findings: Findings { provenance, .. },
-        ..
-    } = &mut verdict
-    else {
-        unreachable!("the fixture is a found verdict");
-    };
-    provenance[0] = LookupProvenance {
-        by_disc_id: false,
-        by_barcode: false,
-        by_catalog: false,
-        by_isrc: false,
-        by_search: true,
-        by_pressing: false,
-    };
-    assert_eq!(
-        VerdictSummary::of(&verdict, false).judgement(),
-        (true, None)
-    );
-}
-
 /// The releases agreement narrowed out are not answers: only the matches
 /// count, so a sole verified match is still auto-importable however many the
 /// agreement discarded on the way to it.
@@ -156,13 +118,9 @@ fn a_lone_match_found_by_title_is_auto_importable() {
 fn what_agreement_narrowed_out_is_not_a_match() {
     let TerminalVerdict::Found {
         track_count,
-        findings:
-            Findings {
-                matches,
-                provenance,
-                pressings,
-                ..
-            },
+        findings: Findings {
+            matches, pressings, ..
+        },
         ..
     } = found(vec![result("mb-1", listing(11))], 11)
     else {
@@ -171,18 +129,9 @@ fn what_agreement_narrowed_out_is_not_a_match() {
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             matches,
-            provenance,
             pressings,
             narrowed_out: NarrowedOut {
                 matches: vec![result("mb-2", listing(11))],
-                provenance: vec![LookupProvenance {
-                    by_disc_id: true,
-                    by_barcode: false,
-                    by_catalog: false,
-                    by_isrc: false,
-                    by_search: false,
-                    by_pressing: false,
-                }],
                 pressings: vec![0],
             },
             medium_conflict: None,
@@ -231,24 +180,15 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
         vec![0, 0],
         "forming rows over this list alone makes the two one row"
     );
-    let TerminalVerdict::Found {
-        track_count,
-        findings: Findings { provenance, .. },
-        ..
-    } = found(matches.clone(), 11)
-    else {
-        panic!("a found verdict");
-    };
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             matches,
-            provenance,
             pressings: vec![0, 1],
             narrowed_out: NarrowedOut::default(),
             medium_conflict: None,
             named_notes: Vec::new(),
         },
-        track_count,
+        track_count: 11,
         ledger: None,
     };
     assert_eq!(VerdictSummary::of(&verdict, false).pressing_count, 2);
@@ -431,7 +371,6 @@ fn a_summary_keeps_every_fact_the_judgements_consult() {
                 let lead = summary.lead.as_ref().expect("a found verdict has a lead");
                 assert_eq!(lead.release_id, matches[0].release_id);
                 assert_eq!(lead.source_tracks, matches[0].source_tracks);
-                assert!(lead.by_disc_id, "the lead carries its own provenance");
             }
             TerminalVerdict::NotFoundAnywhere { .. } => {
                 assert_eq!(summary.kind, VerdictKind::NotFound);

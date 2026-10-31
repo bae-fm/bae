@@ -292,7 +292,6 @@ mod identify_mirrors {
     use super::*;
     use bae_catalogs::catalog::Catalog;
     use bae_core::db::LibraryStatus;
-    use bae_core::identify::combine::LookupProvenance;
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
@@ -366,6 +365,34 @@ mod identify_mirrors {
         result
     }
 
+    /// A run's ledger whose one disc ID's lookup found `found`: what the Disc
+    /// ID agreement is read from.
+    fn disc_id_ledger(
+        found: &[bae_core::import::search::MetadataResult],
+    ) -> bae_core::identify::IdentifyRunView {
+        use bae_core::identify::{
+            BarcodeStepView, CatalogStepView, DiscIdRow, DiscIdStepView, IdentifyRunView,
+            IsrcStepView, LookupView, SearchStepView,
+        };
+        use bae_core::import::release_group::{group_results, unranked};
+        IdentifyRunView {
+            providers: vec![Catalog::MusicBrainz],
+            disc_id: DiscIdStepView::Read {
+                discs: vec![DiscIdRow {
+                    disc_id: "disc-1".to_string(),
+                    lookup: LookupView::Found {
+                        count: found.len() as u32,
+                        groups: group_results(unranked(found.to_vec()), None),
+                    },
+                }],
+            },
+            barcode: BarcodeStepView::Absent,
+            catalog: CatalogStepView::NoneFound,
+            isrc: IsrcStepView::Absent,
+            search: SearchStepView::NotNeeded,
+        }
+    }
+
     #[test]
     fn found_state_aligns_agreements_and_pressings_by_release_id() {
         let matches = vec![
@@ -376,31 +403,13 @@ mod identify_mirrors {
             track_count: 12,
             findings: bae_core::identify::Findings {
                 matches: matches.clone(),
-                provenance: vec![
-                    LookupProvenance {
-                        by_disc_id: true,
-                        by_barcode: false,
-                        by_catalog: false,
-                        by_isrc: false,
-                        by_search: false,
-                        by_pressing: false,
-                    },
-                    LookupProvenance {
-                        by_disc_id: true,
-                        by_barcode: true,
-                        by_catalog: false,
-                        by_isrc: false,
-                        by_search: false,
-                        by_pressing: false,
-                    },
-                ],
                 // Two pressings of one album: each release is its own row.
                 pressings: vec![0, 1],
                 narrowed_out: Default::default(),
                 medium_conflict: None,
                 named_notes: Vec::new(),
             },
-            ledger: None,
+            ledger: Some(disc_id_ledger(&matches)),
             context: SignalsContext {
                 text: text_carrying("0123456789012"),
                 ..empty_context()
@@ -446,31 +455,13 @@ mod identify_mirrors {
                     metadata_result("rel-disc", "g-d"),
                     printing(metadata_result("rel-bar", "g-b"), "0123456789012"),
                 ],
-                provenance: vec![
-                    LookupProvenance {
-                        by_disc_id: true,
-                        by_barcode: false,
-                        by_catalog: false,
-                        by_isrc: false,
-                        by_search: false,
-                        by_pressing: false,
-                    },
-                    LookupProvenance {
-                        by_disc_id: false,
-                        by_barcode: true,
-                        by_catalog: false,
-                        by_isrc: false,
-                        by_search: false,
-                        by_pressing: false,
-                    },
-                ],
                 // One release each, so each is its own row.
                 pressings: vec![0, 1],
                 narrowed_out: Default::default(),
                 medium_conflict: None,
                 named_notes: Vec::new(),
             },
-            ledger: None,
+            ledger: Some(disc_id_ledger(&[metadata_result("rel-disc", "g-d")])),
             context: SignalsContext {
                 text: text_carrying("0123456789012"),
                 ..empty_context()

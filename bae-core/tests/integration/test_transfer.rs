@@ -214,8 +214,6 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
             content_type: bae_util::content_type::ContentType::Jpeg,
             width: None,
             height: None,
-            source: "local".to_string(),
-            source_url: None,
             created_at: chrono::Utc::now(),
         },
         bytes,

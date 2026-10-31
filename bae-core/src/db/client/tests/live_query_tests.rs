@@ -46,8 +46,6 @@ pub(super) async fn write_artist_image(db: &Database, artist: &str, content: &st
             content_type: ContentType::Jpeg,
             width: None,
             height: None,
-            source: "file_tags".into(),
-            source_url: None,
             created_at: super::fixed_now(),
         },
         bytes,
@@ -768,7 +766,7 @@ async fn album_detail_subscription_ignores_an_unread_column() {
 
     exec(
         &db,
-        "UPDATE covers SET source_url = 'https://example.test/cover' WHERE id = ?1",
+        "UPDATE covers SET created_at = '2027-01-01T00:00:00Z' WHERE id = ?1",
         &[RELEASE_ID],
     )
     .await;

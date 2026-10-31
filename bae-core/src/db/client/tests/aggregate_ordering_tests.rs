@@ -530,10 +530,10 @@ async fn release_records_are_read_in_catalog_order() {
     let (db, _tmp) = release_detail_db().await;
     db.call(|conn| {
         conn.execute_batch(&format!(
-            "INSERT INTO release_records (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES
-             ('3f0c5d1e-8a2b-4c6d-9e7f-1a2b3c4d5e6f', '{RELEASE_A}', 'spotify', 'album', 'album-s', NULL, 'https://open.spotify.com/album/album-s', '2026-01-01T00:00:00Z'),
-             ('4a1d6e2f-9b3c-4d7e-8f0a-2b3c4d5e6f7a', '{RELEASE_A}', 'discogs', 'pressing', 'pressing-d', NULL, 'https://www.discogs.com/release/pressing-d', '2026-01-01T00:00:00Z'),
-             ('5b2e7f3a-0c4d-4e8f-9a1b-3c4d5e6f7a8b', '{RELEASE_A}', 'musicbrainz', 'pressing', 'pressing-m', 'group-m', 'https://musicbrainz.org/release/pressing-m', '2026-01-01T00:00:00Z');"
+            "INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES
+             ('3f0c5d1e-8a2b-4c6d-9e7f-1a2b3c4d5e6f', '{RELEASE_A}', 'spotify', 'album', 'album-s', NULL),
+             ('4a1d6e2f-9b3c-4d7e-8f0a-2b3c4d5e6f7a', '{RELEASE_A}', 'discogs', 'pressing', 'pressing-d', NULL),
+             ('5b2e7f3a-0c4d-4e8f-9a1b-3c4d5e6f7a8b', '{RELEASE_A}', 'musicbrainz', 'pressing', 'pressing-m', 'group-m');"
         ))?;
         Ok(())
     })
