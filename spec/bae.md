@@ -2907,7 +2907,9 @@ background.
 
 Some listening happens outside bae: a Subsonic app on a phone bae has no app
 for, or an agent tidying the import list. bae can serve both from a desktop.
-Each server is off by default, and its secret lives in the keyring.
+Each server is off by default, and its secret lives in the keyring. A server
+that stops on its own — a failure, or a bug, which is reported — shows as
+failed with why, not as running.
 
 ### 8.1 Subsonic
 
@@ -2922,12 +2924,15 @@ connects to his laptop, lists the artists, opens an album and plays it.
 - **Streaming.** A track that is one whole file is served as that file, with
   byte ranges. Any other track is decoded from its segments and served as WAV.
   A client that asks for a transcode gets one, MP3 at 128 kbps unless it says
-  otherwise. A read of the track that panics during a transcode is reported
-  as a bug and ends the stream.
+  otherwise. A stream that fails partway — a file that can't be read, a decode
+  or encode that fails, a bug — ends with an error, never as if the track
+  ended there. A bug among them, such as a read of the track that panics, is
+  reported as one.
 - **Login.** Only token login is accepted: the client sends its username, a
   salt of at least six characters, and the MD5 of password plus salt. With no
   username or password set, nobody gets in. Failures come back as Subsonic
-  error documents, which clients read, not HTTP errors.
+  error documents, which clients read, not HTTP errors; a request that hits a
+  bug is reported as one and answered with a generic error document.
 - **Where it listens.** On this machine by default; binding to every address
   opens it to the network. The default port is 4533.
 - **Ids** carry their kind: `ar-` an artist, `al-` a release, `tr-` a track. A
@@ -2948,7 +2953,8 @@ and cover, start its import, and read, edit, export or move a library release
 typed error.
 
 The server listens only on this machine, and every request must carry the
-token.
+token. A request that hits a bug is reported as one and answered with an
+internal error (HTTP 500).
 
 ---
 ## 9. API

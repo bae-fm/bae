@@ -14,7 +14,9 @@ use bae_audio::sparse_buffer::BufferStop;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{StreamEncodeFormat, StreamingEncoder};
 use bae_core::db::LibraryImageType;
+use bae_core::diagnostics::Diagnostics;
 use bae_core::library::{AppServices, ResolvedTrackAudio, ResolvedTrackAudioSegment};
+use bae_util::task_failure::{blocking, caught_sync};
 use bytes::Bytes;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -82,25 +84,26 @@ async fn stream_inner(
 
     if wants_original {
         match audio.whole_file() {
-            Some(file) => stream_file(services, file, headers).await,
-            None => stream_encoded(services, &audio, audio.wav_stream_format(), None).await,
+            Some(file) => stream_file(state, file, headers).await,
+            None => stream_encoded(state, &audio, audio.wav_stream_format(), None).await,
         }
     } else {
         let format = transcode_format(&audio, requested_format, max_bitrate);
         let estimated_length = params
             .bool_or("estimateContentLength", false)
             .then(|| estimated_length(&audio, format));
-        stream_encoded(services, &audio, format, estimated_length).await
+        stream_encoded(state, &audio, format, estimated_length).await
     }
 }
 
 /// Serve the stored file that is the track's stream, honoring an HTTP `Range`
 /// request.
 async fn stream_file(
-    services: &AppServices,
+    state: &AppState,
     segment: &ResolvedTrackAudioSegment,
     headers: &HeaderMap,
 ) -> Result<Response, SubError> {
+    let services = &state.services;
     let file = services
         .get_file_by_id(&segment.file_id)
         .await
@@ -117,7 +120,7 @@ async fn stream_file(
     match parse_range(headers, total) {
         Some((start, end_inclusive)) => {
             let len = end_inclusive - start + 1;
-            let body = reader_body(buffer, start, len).await?;
+            let body = reader_body(&state.diagnostics, buffer, start, len).await?;
             Ok(Response::builder()
                 .status(StatusCode::PARTIAL_CONTENT)
                 .header(CONTENT_TYPE, content_type)
@@ -131,7 +134,7 @@ async fn stream_file(
                 .expect("range response builds"))
         }
         None => {
-            let body = reader_body(buffer, 0, total).await?;
+            let body = reader_body(&state.diagnostics, buffer, 0, total).await?;
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header(CONTENT_TYPE, content_type)
@@ -143,13 +146,50 @@ async fn stream_file(
     }
 }
 
+/// The sending half of a streamed response body, as the blocking work that
+/// writes it holds it: each chunk, or the error that ends the body.
+type BodyChunks = mpsc::Sender<Result<Bytes, std::io::Error>>;
+
+/// Run `produce` on the blocking pool, writing a response body through the
+/// sender it is handed, and return the receiving half. A panic in `produce`
+/// is reported and fails the body with an error, so the client sees the
+/// response break instead of ending as if it were whole.
+fn produce_body(
+    diagnostics: &Diagnostics,
+    operation: &'static str,
+    produce: impl FnOnce(BodyChunks) + Send + 'static,
+) -> mpsc::Receiver<Result<Bytes, std::io::Error>> {
+    let (tx, rx) = mpsc::channel(4);
+    let diagnostics = diagnostics.clone();
+    let failing = tx.clone();
+    drop(tokio::task::spawn_blocking(move || {
+        if let Err(failed) = caught_sync(operation, move || produce(tx)) {
+            let failed = diagnostics.bug(failed);
+            end_body(&failing, std::io::Error::other(failed));
+        }
+    }));
+    rx
+}
+
+/// End a body with `error`, so its response aborts instead of ending as if
+/// clean.
+fn end_body(chunks: &BodyChunks, error: std::io::Error) {
+    if let Err(unsent) = chunks.blocking_send(Err(error)) {
+        debug!("the client hung up before hearing why its stream ended: {unsent}");
+    }
+}
+
 /// Stream `len` bytes of `buffer` from `start` as an HTTP body, once the first
 /// chunk is read: a file that can't be read is refused here, before the
 /// response is built. The blocking reads run on the blocking pool; each chunk
 /// is handed to the response through a bounded channel for backpressure.
-async fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Result<Body, SubError> {
-    let (tx, mut rx) = mpsc::channel::<Result<Bytes, BufferStop>>(4);
-    tokio::task::spawn_blocking(move || {
+async fn reader_body(
+    diagnostics: &Diagnostics,
+    buffer: SharedSparseBuffer,
+    start: u64,
+    len: u64,
+) -> Result<Body, SubError> {
+    let mut rx = produce_body(diagnostics, "read a streamed file", move |tx| {
         let mut reader = buffer.new_reader();
         // A stopped buffer refuses the seek; the first read reports why.
         reader.seek(start);
@@ -165,11 +205,7 @@ async fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Result
                 // refused with the reason; after it, the body fails with it,
                 // so the response aborts instead of ending as if clean.
                 Err(stop) => {
-                    #[expect(
-                        clippy::let_underscore_must_use,
-                        reason = "a client that hung up needs no reason"
-                    )]
-                    let _ = tx.blocking_send(Err(stop));
+                    end_body(&tx, stop_error(stop));
                     break;
                 }
                 Ok(n) => {
@@ -186,10 +222,10 @@ async fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Result
     });
     let first = match rx.recv().await {
         Some(Ok(bytes)) => bytes,
-        Some(Err(stop)) => return Err(unreadable(stop)),
+        Some(Err(error)) => return Err(SubError::generic(error.to_string())),
         None => Bytes::new(),
     };
-    let rest = ReceiverStream::new(rx).map(|chunk| chunk.map_err(stop_error));
+    let rest = ReceiverStream::new(rx);
     Ok(Body::from_stream(tokio_stream::once(Ok(first)).chain(rest)))
 }
 
@@ -216,33 +252,44 @@ fn stop_error(stop: BufferStop) -> std::io::Error {
 /// non-seekable sink (the response channel) — a socket can't patch a header,
 /// which is why the encoder's streaming constructor is required.
 async fn stream_encoded(
-    services: &AppServices,
+    state: &AppState,
     audio: &ResolvedTrackAudio,
     format: StreamEncodeFormat,
     content_length: Option<u64>,
 ) -> Result<Response, SubError> {
-    let decode = services.open_track_decode(audio);
-    let decode = tokio::task::spawn_blocking(move || decode.wait_readable().map(|()| decode))
-        .await
-        .map_err(|error| {
-            SubError::generic(format!("waiting for the track's files failed: {error}"))
-        })?
-        .map_err(unreadable)?;
+    let decode = state.services.open_track_decode(audio);
+    let decode = blocking("wait for a streamed track's files", move || {
+        decode.wait_readable().map(|()| decode)
+    })
+    .await
+    .map_err(|failed| SubError::generic(state.diagnostics.bug(failed).to_string()))?
+    .map_err(unreadable)?;
 
-    let (tx, rx) = mpsc::channel::<Result<Bytes, std::io::Error>>(4);
     let cancel = Arc::new(AtomicBool::new(false));
     let track_id = audio.track_id.clone();
-    tokio::task::spawn_blocking(move || {
-        let sink = ChannelSink { tx: tx.clone() };
-        let mut encoder = StreamingEncoder::streaming(format, Box::new(sink), cancel.clone());
-        if let Err(error) = decode.run_to_sink(&mut encoder, cancel.clone()) {
-            warn!("subsonic transcode of {track_id} failed to decode: {error}");
-            return; // dropping tx ends the body
-        }
-        if let Err(error) = encoder.finish() {
-            warn!("subsonic transcode of {track_id} failed to finish: {error}");
-        }
-    });
+    let rx = produce_body(
+        &state.diagnostics,
+        "transcode a streamed track",
+        move |tx| {
+            let sink = ChannelSink { tx: tx.clone() };
+            let mut encoder = StreamingEncoder::streaming(format, Box::new(sink), cancel.clone());
+            if let Err(error) = decode.run_to_sink(&mut encoder, cancel.clone()) {
+                warn!("subsonic transcode of {track_id} failed to decode: {error}");
+                end_body(
+                    &tx,
+                    std::io::Error::other(format!("decoding the track failed: {error}")),
+                );
+                return;
+            }
+            if let Err(error) = encoder.finish() {
+                warn!("subsonic transcode of {track_id} failed to finish: {error}");
+                end_body(
+                    &tx,
+                    std::io::Error::other(format!("finishing the encode failed: {error}")),
+                );
+            }
+        },
+    );
 
     let mut builder = Response::builder()
         .status(StatusCode::OK)
@@ -405,4 +452,43 @@ pub(crate) async fn scrobble(_: AppState, params: Params) -> Result<Option<Eleme
     params.require("id")?;
     debug!("scrobble accepted and ignored (no play-count store)");
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A body whose producer panics partway ends with an error after what it
+    /// sent, never as if the stream were whole, and the panic is reported.
+    #[tokio::test]
+    async fn a_body_whose_producer_panics_ends_with_an_error() {
+        let bugs = Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
+
+        let mut body = produce_body(&diagnostics, "test stream", |tx| {
+            tx.blocking_send(Ok(Bytes::from_static(b"first")))
+                .expect("the test reads the body");
+            panic!("the producer broke its guarantee");
+        });
+
+        assert_eq!(
+            body.recv().await.expect("a first chunk").expect("data"),
+            Bytes::from_static(b"first")
+        );
+        let ended = body
+            .recv()
+            .await
+            .expect("the body does not end cleanly")
+            .expect_err("the body ends with an error");
+        assert!(
+            ended
+                .to_string()
+                .contains("the producer broke its guarantee"),
+            "{ended}"
+        );
+        assert!(body.recv().await.is_none());
+        let reports = bugs.reports();
+        assert_eq!(reports.len(), 1, "{reports:?}");
+        assert_eq!(reports[0].0, "test stream");
+    }
 }

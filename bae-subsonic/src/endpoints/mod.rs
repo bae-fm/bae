@@ -9,7 +9,7 @@ use axum::handler::Handler;
 use axum::routing::get;
 use axum::Router;
 
-use crate::envelope::{error_response, ok_response, Element};
+use crate::envelope::{error_response, ok_response, Element, Format};
 use crate::error::SubError;
 use crate::params::Params;
 use crate::AppState;
@@ -63,6 +63,33 @@ where
             }
         },
     )
+}
+
+/// Answer a request whose handling panicked with a Subsonic error document,
+/// which clients read, in the format the request asked for, and report the
+/// panic: the server goes on serving the next request.
+pub(crate) async fn report_panics(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let uri = request.uri().clone();
+    match bae_util::task_failure::caught("answer a Subsonic request", next.run(request)).await {
+        Ok(response) => response,
+        Err(failed) => {
+            let error = SubError::generic(state.diagnostics.bug(failed).to_string());
+            let format = match Query::<HashMap<String, String>>::try_from_uri(&uri) {
+                Ok(Query(query)) => Params(query).format(),
+                Err(unreadable) => {
+                    tracing::debug!(
+                        "answering a request with no readable query in XML: {unreadable}"
+                    );
+                    Format::Xml
+                }
+            };
+            error_response(&format, &error)
+        }
+    }
 }
 
 /// Register an endpoint that builds its own response — one serving media rather

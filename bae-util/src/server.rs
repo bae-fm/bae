@@ -7,13 +7,17 @@
 //! the error vocabulary each reports, and how each builds its serve future —
 //! so those are the parameters here. Everything else — the state machine, the
 //! locking, the graceful-shutdown token, the task that records a mid-flight
-//! server failure — lives once.
+//! server failure — lives once. A serve future that panics is a bug: the
+//! server's owner reports it through the `bug` it hands the controller, and
+//! the status moves to `Error` like any other failure.
 
 use std::fmt::Display;
 use std::future::{Future, IntoFuture};
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
+
+use crate::task_failure::{caught, TaskFailed};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
@@ -62,11 +66,17 @@ impl<I, E: Clone> State<I, E> {
 
 /// Owns one server's running state. Services embed this and add their own
 /// config handling around it.
+/// How a server's owner reports a bug — its serve future panicking — and
+/// hands the failure back.
+pub type ReportBug = Arc<dyn Fn(TaskFailed) -> TaskFailed + Send + Sync>;
+
 #[derive(Clone)]
 pub struct ServerController<I, E> {
-    /// The service's name in log messages ("MCP", "Subsonic").
+    /// The service's name in log messages ("MCP", "Subsonic"), and the
+    /// operation a panic of its serve future is reported as.
     name: &'static str,
     inner: Arc<Mutex<State<I, E>>>,
+    bug: ReportBug,
 }
 
 impl<I, E> ServerController<I, E>
@@ -74,10 +84,11 @@ where
     I: Clone + PartialEq + Send + 'static,
     E: ServerError + Send + 'static,
 {
-    pub fn new(name: &'static str) -> Self {
+    pub fn new(name: &'static str, bug: ReportBug) -> Self {
         Self {
             name,
             inner: Arc::new(Mutex::new(State::Disabled)),
+            bug,
         }
     }
 
@@ -148,8 +159,9 @@ where
     /// `serve` receives the controller's cancellation token — the future it
     /// returns must stop when that token is cancelled, since [`Self::shutdown`]
     /// cancels it and then waits for the task. A serve future that ends with an
-    /// error moves the controller into `Error` (built through `server_failed`),
-    /// unless a different server has since taken its place.
+    /// error, or panics, moves the controller into `Error` (built through
+    /// `server_failed`), unless a different server has since taken its place;
+    /// a panic is reported first.
     pub async fn start<S, Err>(
         &self,
         identity: I,
@@ -166,20 +178,26 @@ where
         let serving = serve(&cancellation).into_future();
 
         let name = self.name;
+        let bug = self.bug.clone();
         let task_state = self.inner.clone();
         let task_identity = identity.clone();
         let task = tokio::spawn(async move {
-            if let Err(e) = serving.await {
-                let error = server_failed(format!("{name} server stopped with error: {e}"));
-                warn!("{}", error.detail());
-                let mut state = task_state.lock().await;
-                if let State::Running {
-                    identity: running, ..
-                } = &*state
-                {
-                    if *running == task_identity {
-                        *state = State::Error { error };
-                    }
+            let error = match caught(name, serving).await {
+                Ok(Ok(())) => return,
+                Ok(Err(e)) => {
+                    let error = server_failed(format!("{name} server stopped with error: {e}"));
+                    warn!("{}", error.detail());
+                    error
+                }
+                Err(failed) => server_failed(format!("{name} server stopped: {}", bug(failed))),
+            };
+            let mut state = task_state.lock().await;
+            if let State::Running {
+                identity: running, ..
+            } = &*state
+            {
+                if *running == task_identity {
+                    *state = State::Error { error };
                 }
             }
         });
@@ -192,5 +210,62 @@ where
             task,
         };
         status
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex as StdMutex;
+
+    use super::*;
+
+    #[derive(Clone, Debug)]
+    struct Failed(String);
+
+    impl ServerError for Failed {
+        fn detail(&self) -> &str {
+            &self.0
+        }
+    }
+
+    /// A serve future that panics is reported through the owner's `bug` and
+    /// leaves the status `Error`, never `Running` with nothing serving.
+    #[tokio::test]
+    async fn a_serve_future_that_panics_is_reported_and_leaves_the_server_in_error() {
+        let reported = Arc::new(StdMutex::new(Vec::new()));
+        let reporting = reported.clone();
+        let controller = ServerController::<u16, Failed>::new(
+            "Test",
+            Arc::new(move |failed| {
+                reporting.lock().unwrap().push(failed.clone());
+                failed
+            }),
+        );
+        controller
+            .start(1, "http://test".to_string(), Failed, |_| async move {
+                if true {
+                    panic!("the server broke its guarantee");
+                }
+                Ok::<(), std::io::Error>(())
+            })
+            .await;
+        // The serve task runs once this test yields to it.
+        let status = loop {
+            match controller.status().await {
+                ServerStatus::Running { .. } => tokio::task::yield_now().await,
+                status => break status,
+            }
+        };
+
+        let ServerStatus::Error { error } = status else {
+            panic!("a panicked server is in error, got {status:?}");
+        };
+        assert!(
+            error.0.contains("the server broke its guarantee"),
+            "{error:?}"
+        );
+        let reported = reported.lock().unwrap().clone();
+        assert_eq!(reported.len(), 1, "{reported:?}");
+        assert!(reported[0].is_panic());
     }
 }

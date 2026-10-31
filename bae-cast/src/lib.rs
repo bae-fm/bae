@@ -178,9 +178,10 @@ struct EphemeralServer {
 impl EphemeralServer {
     /// Bind the router on `network` at an OS-assigned port, read the port back,
     /// and serve until cancelled. The base URL names the address `network`
-    /// gives, so the receiver can reach it. A server that panics is reported
-    /// through `diagnostics`, reads as [`Self::panicked`], and `on_panic`
-    /// runs, for its owner to end the cast it served.
+    /// gives, so the receiver can reach it. A request that panics is reported
+    /// through `diagnostics` and answered with an error document. A server
+    /// that panics is reported there too, reads as [`Self::panicked`], and
+    /// `on_panic` runs, for its owner to end the cast it served.
     async fn start(
         services: AppServices,
         network: ServingNetwork,
@@ -201,7 +202,7 @@ impl EphemeralServer {
             .port();
         let base_url = format!("http://{url_ip}:{port}");
 
-        let router = bae_subsonic::router(services, credential.clone());
+        let router = bae_subsonic::router(services, credential.clone(), diagnostics.clone());
         let cancel = CancellationToken::new();
         let server_cancel = cancel.clone();
         let panicked = Arc::new(AtomicBool::new(false));

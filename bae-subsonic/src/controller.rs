@@ -15,6 +15,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use bae_core::config::{SubsonicConfig, SubsonicCredential};
+use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
 use bae_util::server::{ServerController, ServerError, ServerStatus};
 
@@ -63,14 +64,25 @@ pub struct SubsonicServerController {
     services: AppServices,
     password_provider: Arc<SubsonicPasswordProvider>,
     server: ServerController<Binding, SubsonicServerError>,
+    /// Where a panic in the server, a request or a stream is reported.
+    diagnostics: Diagnostics,
 }
 
 impl SubsonicServerController {
-    pub fn new(services: AppServices, password_provider: Arc<SubsonicPasswordProvider>) -> Self {
+    pub fn new(
+        services: AppServices,
+        password_provider: Arc<SubsonicPasswordProvider>,
+        diagnostics: Diagnostics,
+    ) -> Self {
+        let reporting = diagnostics.clone();
         Self {
             services,
             password_provider,
-            server: ServerController::new("Subsonic"),
+            server: ServerController::new(
+                "Subsonic",
+                Arc::new(move |failed| reporting.bug(failed)),
+            ),
+            diagnostics,
         }
     }
 
@@ -178,7 +190,7 @@ impl SubsonicServerController {
         };
 
         let url = format!("http://{}:{}/rest", binding.bind_address, binding.port);
-        let router = crate::router(self.services.clone(), credential);
+        let router = crate::router(self.services.clone(), credential, self.diagnostics.clone());
         self.server
             .start(
                 binding,
@@ -230,7 +242,11 @@ mod tests {
     }
 
     fn controller(services: &AppServices, password: Option<&str>) -> SubsonicServerController {
-        SubsonicServerController::new(services.clone(), password_provider(password))
+        SubsonicServerController::new(
+            services.clone(),
+            password_provider(password),
+            Diagnostics::noop(),
+        )
     }
 
     /// An enabled config on loopback with the given port and username.
@@ -295,6 +311,7 @@ mod tests {
         let controller = SubsonicServerController::new(
             services.clone(),
             Arc::new(|| Box::pin(async { Err("keyring is locked".to_string()) })),
+            Diagnostics::noop(),
         );
         let config = enabled_config(free_port(), "listener");
         let status = controller.apply_config(config).await;

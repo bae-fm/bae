@@ -7,7 +7,9 @@ use axum::response::{IntoResponse, Response};
 pub use bae_automation::Automation;
 
 use bae_automation::{AutomationError, AutomationTool};
+use bae_core::diagnostics::Diagnostics;
 use bae_util::server::{ServerController, ServerError, ServerStatus};
+use bae_util::task_failure::caught;
 use rmcp::model::{
     CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams,
     ServerCapabilities, ServerInfo, Tool,
@@ -55,14 +57,22 @@ pub struct McpServerController {
     automation: Automation,
     token_provider: Arc<McpTokenProvider>,
     server: ServerController<u16, McpServerError>,
+    /// Where a panic in the server or in one of its requests is reported.
+    diagnostics: Diagnostics,
 }
 
 impl McpServerController {
-    pub fn new(automation: Automation, token_provider: Arc<McpTokenProvider>) -> Self {
+    pub fn new(
+        automation: Automation,
+        token_provider: Arc<McpTokenProvider>,
+        diagnostics: Diagnostics,
+    ) -> Self {
+        let reporting = diagnostics.clone();
         Self {
             automation,
             token_provider,
-            server: ServerController::new("MCP"),
+            server: ServerController::new("MCP", Arc::new(move |failed| reporting.bug(failed))),
+            diagnostics,
         }
     }
 
@@ -114,6 +124,7 @@ impl McpServerController {
 
         let automation = self.automation.clone();
         let token_provider = self.token_provider.clone();
+        let diagnostics = self.diagnostics.clone();
         self.server
             .start(
                 port,
@@ -128,15 +139,36 @@ impl McpServerController {
                                 .with_sse_keep_alive(None)
                                 .with_cancellation_token(cancellation.child_token()),
                         );
-                    let router = axum::Router::new().nest_service("/mcp", service).layer(
-                        middleware::from_fn_with_state(AuthState { token_provider }, bearer_auth),
-                    );
+                    let router = axum::Router::new()
+                        .nest_service("/mcp", service)
+                        .layer(middleware::from_fn_with_state(
+                            AuthState { token_provider },
+                            bearer_auth,
+                        ))
+                        .layer(middleware::from_fn_with_state(diagnostics, report_panics));
                     let shutdown = cancellation.clone();
                     axum::serve(listener, router)
                         .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
                 },
             )
             .await
+    }
+}
+
+/// Answer a request whose handling panicked with an internal error, and
+/// report the panic: the server goes on serving the next request.
+async fn report_panics(
+    State(diagnostics): State<Diagnostics>,
+    request: Request<Body>,
+    next: Next,
+) -> Response {
+    match caught("answer an MCP request", next.run(request)).await {
+        Ok(response) => response,
+        Err(failed) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            diagnostics.bug(failed).to_string(),
+        )
+            .into_response(),
     }
 }
 

@@ -3,7 +3,7 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_raw_serves_original_bytes_and_ranges() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
     let full = call(
@@ -45,7 +45,7 @@ async fn stream_raw_serves_original_bytes_and_ranges() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let album = call(
         &router,
         "getAlbum",
@@ -105,7 +105,7 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
     let served = call(
@@ -164,7 +164,7 @@ async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let album = call(
         &router,
         "getAlbum",
@@ -203,7 +203,7 @@ async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
     let resp = call(
@@ -267,7 +267,7 @@ async fn stream_transcode_mp3_is_chunked_and_decodes() {
 #[tokio::test(flavor = "multi_thread")]
 async fn cover_art_resolves_every_id_kind() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     // Album id serves the release cover.
     let by_album = call(
@@ -324,7 +324,7 @@ async fn cover_art_resolves_every_id_kind() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_changed_cover_gets_a_new_cover_art_id() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let album_query = authed(&format!("f=json&id=al-{}", lib.per_track_release));
     let cover_art = |album: &Resp| {
         album.sub()["album"]["coverArt"]
@@ -362,7 +362,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_artist_cover_art_is_the_artist_image() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let album = call(
         &router,
         "getAlbum",
@@ -413,7 +413,7 @@ async fn an_artist_cover_art_is_the_artist_image() {
 #[tokio::test(flavor = "multi_thread")]
 async fn scrobble_is_an_accepted_no_op() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
     let resp = call(
@@ -494,7 +494,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     let services = AppServices::for_test(manager.clone())
         .await
         .expect("app services");
-    let router = bae_subsonic::router(services, credential());
+    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let artists = call(&router, "getArtists", &authed("f=json")).await;
     let sub = artists.sub();
@@ -549,7 +549,7 @@ async fn lossy_track_reports_bit_depth_zero() {
     // (AAC-in-MP4 is unsuitable: the MP4 sound sample entry always declares 16,
     // so FFmpeg reports a bit depth for it; Opus carries none.)
     let (services, release_id, _temps) = seed_lossy_release().await;
-    let router = bae_subsonic::router(services, credential());
+    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let album = call(
         &router,
@@ -716,7 +716,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
     let services = AppServices::for_test(manager.clone())
         .await
         .expect("app services");
-    let router = bae_subsonic::router(services, credential());
+    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let response = call(
         &router,

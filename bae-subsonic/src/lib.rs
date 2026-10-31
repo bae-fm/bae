@@ -20,6 +20,7 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 use axum::Router;
 use bae_core::config::SubsonicCredential;
+use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
 
 mod auth;
@@ -34,11 +35,13 @@ mod params;
 
 pub use controller::{SubsonicServerController, SubsonicServerError, SubsonicServerStatus};
 
-/// Shared handler state: the library and the one accepted credential.
+/// Shared handler state: the library, the one accepted credential, and where a
+/// panic in a request or a stream is reported.
 #[derive(Clone)]
 pub(crate) struct AppState {
     services: AppServices,
     credential: Arc<SubsonicCredential>,
+    diagnostics: Diagnostics,
 }
 
 impl FromRef<AppState> for Arc<SubsonicCredential> {
@@ -51,11 +54,17 @@ impl FromRef<AppState> for Arc<SubsonicCredential> {
 /// salted-token auth middleware. Each endpoint is reachable both as `/rest/<n>`
 /// and `/rest/<n>.view` — Subsonic clients append `.view` to the method name.
 /// [`SubsonicServerController`] mounts this on a listener; it is also the seam
-/// integration tests drive directly.
-pub fn router(services: AppServices, credential: SubsonicCredential) -> Router {
+/// integration tests drive directly. A request whose handling panics is
+/// reported to `diagnostics` and answered with a Subsonic error document.
+pub fn router(
+    services: AppServices,
+    credential: SubsonicCredential,
+    diagnostics: Diagnostics,
+) -> Router {
     let state = AppState {
         services,
         credential: Arc::new(credential),
+        diagnostics,
     };
 
     Router::new()
@@ -63,6 +72,10 @@ pub fn router(services: AppServices, credential: SubsonicCredential) -> Router {
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             auth::require_auth,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            endpoints::report_panics,
         ))
         .with_state(state)
 }

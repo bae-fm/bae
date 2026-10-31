@@ -273,7 +273,7 @@ async fn auth_gate() {
     // Spec: token auth. valid → ok; wrong token → 40; missing s/t → 10; short
     // salt → 40; token hex is case-insensitive.
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential());
+    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let ok = call(&router, "ping", &authed("")).await;
     assert!(ok.text().contains(r#"status="ok""#), "valid: {}", ok.text());
@@ -323,7 +323,7 @@ async fn envelope_formats() {
     // Spec: xml is the default; f=json yields JSON; f=jsonp wraps in the
     // callback; every envelope carries openSubsonic, version, and type.
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential());
+    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let xml = call(&router, "ping", &authed("")).await;
     assert!(xml.content_type.contains("xml"));
@@ -349,7 +349,7 @@ async fn envelope_formats() {
 #[tokio::test(flavor = "multi_thread")]
 async fn system_endpoints() {
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential());
+    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let license = call(&router, "getLicense", &authed("f=json")).await;
     assert_eq!(license.sub()["license"]["valid"], true);
@@ -365,7 +365,7 @@ async fn system_endpoints() {
 async fn malformed_and_wrong_kind_ids_are_not_found() {
     // Spec: a malformed id, or a wrong-kind id to getAlbum, is error 70.
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential());
+    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let malformed = call(&router, "getAlbum", &authed("id=not-namespaced")).await;
     assert!(malformed.text().contains(r#"code="70""#));
@@ -379,7 +379,7 @@ async fn malformed_and_wrong_kind_ids_are_not_found() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_artists_indexes_and_counts() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let resp = call(&router, "getArtists", &authed("f=json")).await;
     let artists = &resp.sub()["artists"];
@@ -417,7 +417,7 @@ fn find_artist<'a>(indexes: &'a [Value], name: &str) -> &'a Value {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_artist_lists_releases_as_albums() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     // Resolve the per-track release's artist id, then browse the artist.
     let album = call(
@@ -451,7 +451,7 @@ async fn get_artist_lists_releases_as_albums() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_album_lists_songs_with_required_child_fields() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let resp = call(
         &router,
@@ -477,7 +477,7 @@ async fn get_album_lists_songs_with_required_child_fields() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_album_cue_lists_its_windowed_tracks() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let resp = call(
         &router,
@@ -497,7 +497,7 @@ async fn get_album_cue_lists_its_windowed_tracks() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_song_and_unknown() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let album = call(
         &router,
@@ -526,7 +526,7 @@ async fn get_song_and_unknown() {
 #[tokio::test(flavor = "multi_thread")]
 async fn album_list2_orderings_and_paging() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let names = |resp: &Resp| -> Vec<String> {
         resp.sub()["albumList2"]["album"]
@@ -645,7 +645,7 @@ async fn album_list2_orderings_and_paging() {
 #[tokio::test(flavor = "multi_thread")]
 async fn search3_matches_and_caps() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
 
     // A query matching the per-track album/artist.
     let hit = call(&router, "search3", &authed("f=json&query=Solo")).await;

@@ -303,8 +303,11 @@ impl AppHandle {
             let starting = services.clone();
             let started = runtime.block_on(bae_util::task_failure::joined(
                 "start the desktop services",
-                crate::operation_runtime::spawn(runtime.handle(), move || {
-                    bae_desktop::DesktopServices::start(starting, runtime_handle)
+                crate::operation_runtime::spawn(runtime.handle(), {
+                    let diagnostics = diagnostics.clone();
+                    move || {
+                        bae_desktop::DesktopServices::start(starting, runtime_handle, diagnostics)
+                    }
                 }),
             ));
             match started {

@@ -6,12 +6,14 @@
 use std::sync::Arc;
 
 use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
+use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
 use bae_subsonic::SubsonicServerController;
 pub use bae_subsonic::{SubsonicServerError, SubsonicServerStatus};
 use bae_util::server::{ServerError, ServerStatus};
+use bae_util::task_failure::caught;
 use tokio::runtime::Handle;
 
 pub struct DesktopServices {
@@ -31,7 +33,10 @@ pub enum DesktopConfigError<E: ServerError> {
 }
 
 impl DesktopServices {
-    pub async fn start(services: AppServices, runtime: Handle) -> Self {
+    /// Start the MCP and Subsonic servers the config enables, and keep them in
+    /// step with later config changes. A panic in either server, a request or
+    /// a config change is reported to `diagnostics`.
+    pub async fn start(services: AppServices, runtime: Handle, diagnostics: Diagnostics) -> Self {
         let automation = Automation::new(services.clone(), &runtime);
         let token_manager = services.clone();
         let controller = McpServerController::new(
@@ -45,6 +50,7 @@ impl DesktopServices {
                         .map_err(|e| e.to_string())
                 })
             }),
+            diagnostics.clone(),
         );
         let initial = services.get_config().prefs.mcp;
         controller.apply_config(initial).await;
@@ -64,6 +70,7 @@ impl DesktopServices {
                         .map_err(|e| e.to_string())
                 })
             }),
+            diagnostics.clone(),
         );
         let initial_subsonic = services.get_config().prefs.subsonic;
         subsonic_controller.apply_config(initial_subsonic).await;
@@ -71,24 +78,41 @@ impl DesktopServices {
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();
         let mut config_rx = services.subscribe_config_changes();
-        runtime.spawn(async move {
-            loop {
-                match config_rx.changed().await {
-                    Ok(()) => {
-                        let (mcp, subsonic) = {
-                            let config = config_rx.borrow();
-                            (config.prefs.mcp, config.prefs.subsonic.clone())
-                        };
-                        config_controller.apply_config(mcp).await;
-                        config_subsonic_controller.apply_config(subsonic).await;
-                    }
-                    Err(error) => {
-                        tracing::debug!("config watcher stopped: {error}");
-                        break;
+        let watcher_diagnostics = diagnostics.clone();
+        // Each change is applied under its own catch, so a panic applying one
+        // is reported and the next change is still applied.
+        drop(diagnostics.spawn_reported(
+            &runtime,
+            "watch the server config",
+            async move {
+                loop {
+                    match config_rx.changed().await {
+                        Ok(()) => {
+                            let (mcp, subsonic) = {
+                                let config = config_rx.borrow();
+                                (config.prefs.mcp, config.prefs.subsonic.clone())
+                            };
+                            if let Err(failed) = caught("apply a changed server config", async {
+                                config_controller.apply_config(mcp).await;
+                                config_subsonic_controller.apply_config(subsonic).await;
+                            })
+                            .await
+                            {
+                                watcher_diagnostics.bug(failed);
+                            }
+                        }
+                        Err(error) => {
+                            tracing::debug!("config watcher stopped: {error}");
+                            break;
+                        }
                     }
                 }
-            }
-        });
+            },
+            // Each change is caught above; what is left to panic is the watch
+            // itself, and with it the servers keep the config they last
+            // applied.
+            |_| {},
+        ));
 
         Self {
             services,
@@ -216,7 +240,12 @@ mod tests {
         let (runtime, services, _tmp) = support::runtime_with_services();
 
         runtime.block_on(async {
-            let desktop = DesktopServices::start(services, tokio::runtime::Handle::current()).await;
+            let desktop = DesktopServices::start(
+                services,
+                tokio::runtime::Handle::current(),
+                Diagnostics::noop(),
+            )
+            .await;
             desktop.shutdown().await;
         });
     }
@@ -224,7 +253,11 @@ mod tests {
     #[test]
     fn desktop_controller_calls_do_not_reenter_the_owned_runtime() {
         let (runtime, services, _tmp) = support::runtime_with_services();
-        let desktop = runtime.block_on(DesktopServices::start(services, runtime.handle().clone()));
+        let desktop = runtime.block_on(DesktopServices::start(
+            services,
+            runtime.handle().clone(),
+            Diagnostics::noop(),
+        ));
 
         runtime.block_on(async {
             assert!(matches!(
@@ -261,6 +294,7 @@ mod tests {
                         .map_err(|e| e.to_string())
                 })
             }),
+            Diagnostics::noop(),
         );
 
         // Occupy the port so the runtime bind fails.
