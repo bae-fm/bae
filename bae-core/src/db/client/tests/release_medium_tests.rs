@@ -106,7 +106,7 @@ fn concurrent_medium_removal_and_track_write_leave_no_track_on_a_missing_medium(
     crate::sync::test_devices::run_two_device_test(check_concurrent_medium_removal);
 }
 
-async fn check_concurrent_medium_removal(devices: &crate::sync::test_devices::TwoDevices) {
+async fn check_concurrent_medium_removal(devices: &mut crate::sync::test_devices::TwoDevices) {
     devices.a().database().call(seed_two_discs).await.unwrap();
     let rows = "SELECT t.id || ':' || t.medium_id FROM tracks t \
          UNION ALL SELECT 'medium:' || m.id FROM release_mediums m";

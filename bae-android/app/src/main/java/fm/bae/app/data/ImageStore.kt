@@ -125,7 +125,8 @@ data class ImageByteBudgets(
  *
  * What a cached decode is pinned to — its token — is the content's identity, so
  * no entry can outlive the bytes it came from: a curated image keys on its
- * version (the content hash coven records for its file), and a release
+ * version (the coven file its row names, which also moves when a file on
+ * another device only is stored, so a failed read is asked again), and a release
  * file on its file id (immutable — an import mints a fresh id per file, and a
  * re-import mints new ones rather than repointing an existing row).
  */

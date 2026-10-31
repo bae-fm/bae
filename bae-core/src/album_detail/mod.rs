@@ -329,9 +329,11 @@ pub enum FilePin {
 
 /// A library image's reference: kind, subject id, and content version. The id is a
 /// release id for a cover and an artist id for an artist image; the version is the
-/// image's version (the coven file the row references), so it moves whenever the
-/// image's bytes do. The UI passes the whole reference back to read bytes, so core
-/// dispatches to the right table rather than probe every image namespace.
+/// image's version (the coven file the row references, with the device that has
+/// it while it is on one device only), so it moves whenever the image's bytes do
+/// and again when such a file is stored. The UI passes the whole reference back to
+/// read bytes, so core dispatches to the right table rather than probe every image
+/// namespace.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImageRef {
     pub id: String,

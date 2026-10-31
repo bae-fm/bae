@@ -155,14 +155,26 @@ impl Database {
     }
 }
 
-/// A library image's version: the coven file its row names. A new image is a
-/// new file, and the image's references are bound, so every device receives
-/// the row naming a new file together with the stored file, and the version
-/// moves with that write.
+/// A library image's version: the coven file its row names, then `@` and the
+/// hex of the device that has the file while `coven_files` records it on one
+/// device only. A new image is a new file, so the version moves on every
+/// device with the write that sets it. The image's references are bound, so
+/// another device receives the row with its file stored, except when a
+/// breaking schema raise falls between the write and its upload's
+/// completion: the row then reaches other devices in the raise, naming a file
+/// on its uploader only, and the completion follows. The version moves again
+/// when the file is stored, so an app that couldn't read the image then asks
+/// for it again.
 ///
 /// This is that version of the image row `alias` names, as a SQL expression.
+/// SQLite's `hex` of NULL is an empty string, not NULL, so the device's part
+/// is chosen on `coven_file_device` itself.
 pub(super) fn image_version_sql(alias: &str) -> String {
-    format!("{alias}.file")
+    format!(
+        "(SELECT {alias}.file || CASE WHEN coven_file_device(coven.coordinates) IS NULL THEN '' \
+           ELSE '@' || lower(hex(coven_file_device(coven.coordinates))) END \
+          FROM coven_files AS coven WHERE coven.id = {alias}.file)"
+    )
 }
 
 /// The version of the cover of the release `release_id` (a SQL expression),

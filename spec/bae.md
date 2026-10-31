@@ -1396,19 +1396,24 @@ the write that points a row at a new image goes out only once coven has
 stored the image's file, and another device receives the row and the stored
 file in one transaction. So no device but the one that made an image sees a
 row naming an image it can't read, unless a schema change that needs every
-device updated is made between the write and the end of its upload: the row
-then goes out before the change and the stored file after it, and until the
-file arrives other devices can't read the image and show a plain tile where
-it would be. The device that made the image shows it at once, read from
+device updated is made between the write and the end of its upload. The write
+then goes out together with the change, and the stored file after them: a
+device still on the old app shows neither until it updates, then has the row
+while the file is still on the device that made it, and until the file
+arrives it can't read the image and shows a plain tile where it would be.
+The device that made the image shows it at once, read from
 coven's own copy. Until the file is stored, that device's later writes wait
 behind it too, a rating made right after included, which is why a bound file
 must be small: coven refuses a write naming a file over 1.5 MiB. Every image
 bae stores is a JPEG at most 600 pixels across, which stays under that limit.
 
 The apps and Subsonic clients cache art by an image's version, which must move
-whenever its bytes do. A coven file never changes its bytes, and a new image
-is a new file, so the version is the file's id: it moves on every device with
-the write that sets it.
+whenever its bytes do, and when an image a device couldn't read becomes
+readable. A coven file never changes its bytes, and a new image is a new file,
+so the version is the file's id: it moves on every device with the write that
+sets it. While the file is on one device only, the version also names that
+device, so it moves again when the file is stored, and an app that couldn't
+read the image asks for it again.
 
 ### 4.2 Local and uploaded releases
 

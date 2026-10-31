@@ -14,20 +14,73 @@ use crate::library::LibraryManager;
 const SETTLE: Duration = Duration::from_secs(20);
 
 pub(crate) struct TestDevice {
+    library: RunningLibrary,
+    /// What opening the device's store again needs: its keychain, its app
+    /// directory, its settings and its connection to the shared storage.
+    installation: coven::TestCoven,
+    app: AppDir,
+    config: Config,
+    storage: Arc<coven::MemoryStorage>,
+    _dir: TempDir,
+}
+
+/// The library a device runs over its open store, with the record of its
+/// sync cycles.
+struct RunningLibrary {
     manager: LibraryManager,
     database: Database,
     cycles: Arc<std::sync::Mutex<Cycles>>,
     _watcher: tokio::task::JoinHandle<()>,
-    _dir: TempDir,
 }
 
 impl TestDevice {
     pub(crate) fn manager(&self) -> &LibraryManager {
-        &self.manager
+        &self.library.manager
     }
 
     pub(crate) fn database(&self) -> &Database {
-        &self.database
+        &self.library.database
+    }
+
+    /// Stop the device's sync loop and wait until it has: the pass running
+    /// ends first, and no pass starts until sync starts again.
+    pub(crate) async fn stop_sync(&self) {
+        self.database().stop_sync();
+        let mut status = self.database().subscribe_sync_status();
+        tokio::time::timeout(
+            SETTLE,
+            status.wait_for(|status| matches!(status, coven::SyncStatus::Stopped)),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    }
+
+    /// This device's connection to the shared storage; taking it offline
+    /// leaves the other device's online.
+    pub(crate) fn storage(&self) -> &coven::MemoryStorage {
+        &self.storage
+    }
+
+    /// Run this device's cycles until `condition` holds, or fail naming
+    /// `what`. It requests passes of this device only, so the other device
+    /// runs only the passes its own work starts.
+    pub(crate) async fn wait_until<F, Fut>(&self, what: &str, condition: F)
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = bool>,
+    {
+        let deadline = tokio::time::Instant::now() + SETTLE;
+        loop {
+            self.database().sync_now();
+            if condition().await {
+                return;
+            }
+            if tokio::time::Instant::now() >= deadline {
+                panic!("{what} never came. The last cycle: {}", self.last());
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
     }
 }
 
@@ -61,14 +114,15 @@ where
 }
 
 /// [`run_library_test`] over the library's first device and one device
-/// restored from it; both are closed before the runtime ends.
+/// restored from it; both are closed before the runtime ends. The test may
+/// open either device's store again (`TestDevice::reopen_with`).
 pub(crate) fn run_two_device_test<F>(test: F)
 where
-    F: AsyncFnOnce(&TwoDevices) + Send + 'static,
+    F: AsyncFnOnce(&mut TwoDevices) + Send + 'static,
 {
     on_device_runtime(async move || {
-        let devices = TwoDevices::new().await;
-        test(&devices).await;
+        let mut devices = TwoDevices::new().await;
+        test(&mut devices).await;
         devices.close().await;
     });
 }
@@ -100,6 +154,14 @@ impl TwoDevices {
 
     pub(crate) fn b(&self) -> &TestDevice {
         &self.b
+    }
+
+    pub(crate) fn a_mut(&mut self) -> &mut TestDevice {
+        &mut self.library.first
+    }
+
+    pub(crate) fn b_mut(&mut self) -> &mut TestDevice {
+        &mut self.b
     }
 }
 
@@ -142,7 +204,7 @@ impl Library {
             app.registered_library(&handle.store_id().to_string()),
         );
         Self {
-            first: device(dir, app, config, handle),
+            first: device(dir, app, config, handle, installation, storage.clone()),
             storage,
         }
     }
@@ -158,8 +220,9 @@ impl Library {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::TestCoven::new();
+        let storage = Arc::new(self.storage.for_device());
         let builder = crate::library::configure_store(installation.builder(app.store_layout()))
-            .storage_connector(Arc::new(self.storage.for_device()));
+            .storage_connector(storage.clone());
         let (_sender, cancel) = tokio::sync::watch::channel(false);
         let handle = coven::restore_from_code(
             builder,
@@ -178,8 +241,8 @@ impl Library {
             handle.store_id(),
             app.registered_library(&handle.store_id().to_string()),
         );
-        let device = device(dir, app, config, handle);
-        device.database.start_sync().await.unwrap();
+        let device = device(dir, app, config, handle, installation, storage);
+        device.database().start_sync().await.unwrap();
         device
     }
 }
@@ -189,7 +252,7 @@ impl TwoDevices {
         let library = Library::new().await;
         let code = library
             .first
-            .database
+            .database()
             .generate_restore_code()
             .await
             .unwrap();
@@ -207,21 +270,13 @@ impl TwoDevices {
     /// Wait until both loops have stopped before making concurrent offline edits.
     pub(crate) async fn pause(&self) {
         for device in [self.a(), &self.b] {
-            device.database.stop_sync();
-            let mut status = device.database.subscribe_sync_status();
-            tokio::time::timeout(
-                SETTLE,
-                status.wait_for(|status| matches!(status, coven::SyncStatus::Stopped)),
-            )
-            .await
-            .unwrap()
-            .unwrap();
+            device.stop_sync().await;
         }
     }
 
     pub(crate) async fn resume(&self) {
         for device in [self.a(), &self.b] {
-            device.database.start_sync().await.unwrap();
+            device.database().start_sync().await.unwrap();
         }
     }
 
@@ -267,8 +322,8 @@ impl TwoDevices {
         loop {
             self.a().database().sync_now();
             self.b.database().sync_now();
-            let quiet = self.a().database.unsent_writes_for_test().await.unwrap() == 0
-                && self.b.database.unsent_writes_for_test().await.unwrap() == 0
+            let quiet = self.a().database().unsent_writes_for_test().await.unwrap() == 0
+                && self.b.database().unsent_writes_for_test().await.unwrap() == 0
                 && condition().await;
             let (completed_a, completed_b) = (self.a().completed(), self.b.completed());
             if !quiet {
@@ -279,8 +334,8 @@ impl TwoDevices {
                     Some((from_a, from_b))
                         if completed_a >= from_a + 2 && completed_b >= from_b + 2 =>
                     {
-                        if self.a().database.pending().await.unwrap().is_empty()
-                            && self.b.database.pending().await.unwrap().is_empty()
+                        if self.a().database().pending().await.unwrap().is_empty()
+                            && self.b.database().pending().await.unwrap().is_empty()
                         {
                             return;
                         }
@@ -292,11 +347,11 @@ impl TwoDevices {
                 panic!(
                     "{what} never settled.\nA held {:?} with {} unsent writes after {}\n\
                      B held {:?} with {} unsent writes after {}",
-                    self.a().database.pending().await.unwrap(),
-                    self.a().database.unsent_writes_for_test().await.unwrap(),
+                    self.a().database().pending().await.unwrap(),
+                    self.a().database().unsent_writes_for_test().await.unwrap(),
                     self.a().last(),
-                    self.b.database.pending().await.unwrap(),
-                    self.b.database.unsent_writes_for_test().await.unwrap(),
+                    self.b.database().pending().await.unwrap(),
+                    self.b.database().unsent_writes_for_test().await.unwrap(),
                     self.b.last(),
                 );
             }
@@ -326,18 +381,41 @@ impl TestDevice {
     /// Close the device's library: stop its sync loop, end the manager's
     /// tasks and close its store.
     pub(crate) async fn close(&self) {
-        self.manager
+        self.library
+            .manager
             .close()
             .await
             .expect("close the device's library");
     }
 
+    /// Close the device's library and open its store again with
+    /// `migrations` in place of bae's own, as an update of the app that
+    /// brings a new schema does, then sync again.
+    pub(crate) async fn reopen_with(&mut self, migrations: Vec<coven::Migration>) {
+        self.close().await;
+        let store = self.database().store_id();
+        let handle =
+            crate::library::configure_store(self.installation.builder(self.app.store_layout()))
+                .migrations(migrations)
+                .storage_connector(self.storage.clone())
+                .open(store)
+                .await
+                .expect("open the device's store again");
+        self.library = RunningLibrary::new(self.app.clone(), self.config.clone(), handle);
+        self.database().start_sync().await.unwrap();
+    }
+
     fn completed(&self) -> u64 {
-        self.cycles.lock().expect("cycle record").completed
+        self.library.cycles.lock().expect("cycle record").completed
     }
 
     fn last(&self) -> String {
-        self.cycles.lock().expect("cycle record").last.clone()
+        self.library
+            .cycles
+            .lock()
+            .expect("cycle record")
+            .last
+            .clone()
     }
 }
 
@@ -364,28 +442,47 @@ fn record_cycles(
     (cycles, watcher)
 }
 
-fn device(dir: TempDir, app_dir: AppDir, config: Config, handle: coven::CovenHandle) -> TestDevice {
-    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let ids: coven::IdSourceRef = Arc::new(coven::UuidIds);
-    let database = Database::from_handle(handle, clock.clone());
-    let manager = LibraryManager::new(
-        database.clone(),
-        app_dir,
-        Arc::new(ConfigHandle::new(config)),
-        clock,
-        ids,
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::providers::Providers::offline(),
-    );
-    let (cycles, watcher) = record_cycles(&database);
+fn device(
+    dir: TempDir,
+    app: AppDir,
+    config: Config,
+    handle: coven::CovenHandle,
+    installation: coven::TestCoven,
+    storage: Arc<coven::MemoryStorage>,
+) -> TestDevice {
     TestDevice {
-        manager,
-        database,
-        cycles,
-        _watcher: watcher,
+        library: RunningLibrary::new(app.clone(), config.clone(), handle),
+        installation,
+        app,
+        config,
+        storage,
         _dir: dir,
+    }
+}
+
+impl RunningLibrary {
+    fn new(app_dir: AppDir, config: Config, handle: coven::CovenHandle) -> Self {
+        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+        let ids: coven::IdSourceRef = Arc::new(coven::UuidIds);
+        let database = Database::from_handle(handle, clock.clone());
+        let manager = LibraryManager::new(
+            database.clone(),
+            app_dir,
+            Arc::new(ConfigHandle::new(config)),
+            clock,
+            ids,
+            crate::diagnostics::Diagnostics::noop(),
+            tokio::runtime::Handle::current(),
+            bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+            crate::providers::Providers::offline(),
+        );
+        let (cycles, watcher) = record_cycles(&database);
+        Self {
+            manager,
+            database,
+            cycles,
+            _watcher: watcher,
+        }
     }
 }
 

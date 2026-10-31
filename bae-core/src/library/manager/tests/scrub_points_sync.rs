@@ -8,7 +8,7 @@ fn scrub_points_reach_another_device_with_their_segment() {
     crate::sync::test_devices::run_two_device_test(check_scrub_points_sync);
 }
 
-async fn check_scrub_points_sync(devices: &crate::sync::test_devices::TwoDevices) {
+async fn check_scrub_points_sync(devices: &mut crate::sync::test_devices::TwoDevices) {
     let manager = devices.a().manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);

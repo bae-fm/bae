@@ -185,21 +185,26 @@ async fn write_cover(db: &super::Database, release: &str, content: &str) -> Stri
 }
 
 /// The version reads should report for the image on `table`'s row `id`: the
-/// coven file its row references, read from coven's own record of the file
-/// rather than from the version query.
+/// coven file its row references, then `@` and the device that has it while
+/// it is on one device only, read from coven's own record of the file rather
+/// than from the version query.
 async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> String {
     let image_type = match table {
         crate::sync::COVERS_NAMESPACE => crate::db::LibraryImageType::Cover,
         crate::sync::ARTIST_IMAGES_NAMESPACE => crate::db::LibraryImageType::Artist,
         other => panic!("{other} holds no library images"),
     };
-    db.library_image_file(id, &image_type)
+    let file = db
+        .library_image_file(id, &image_type)
         .await
         .unwrap()
-        .expect("the image row")
-        .id()
-        .0
-        .to_string()
+        .expect("the image row");
+    match file.place() {
+        coven::FilePlace::Cloud { .. } => file.id().0.to_string(),
+        coven::FilePlace::DeviceOnly { device } => {
+            format!("{}@{}", file.id().0, hex::encode(device.0.to_be_bytes()))
+        }
+    }
 }
 
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.

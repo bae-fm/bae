@@ -17,7 +17,7 @@ async fn primary_of(database: &crate::db::Database, album_id: &str) -> String {
         .primary_release_id
 }
 
-async fn check_converging_primaries(devices: &crate::sync::test_devices::TwoDevices) {
+async fn check_converging_primaries(devices: &mut crate::sync::test_devices::TwoDevices) {
     let manager = devices.a().manager();
     let album = create_test_album();
     manager.database.insert_album(&album).await.unwrap();
