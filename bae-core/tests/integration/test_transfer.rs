@@ -127,12 +127,6 @@ fn failed(events: &[TransferProgress]) -> bool {
         .any(|e| matches!(e, TransferProgress::Failed { .. }))
 }
 
-fn completed(events: &[TransferProgress]) -> bool {
-    events
-        .iter()
-        .any(|e| matches!(e, TransferProgress::Complete { .. }))
-}
-
 async fn expect_storage_state(
     subscription: &StorageBrowseSubscription,
     release_id: &str,
@@ -279,8 +273,6 @@ async fn test_unpin_rejects_local_release() {
 // Pin / unpin success — through coven's cache
 // ---------------------------------------------------------------------------
 
-/// Pin a Remote cloud-only release: coven fetches its files from the cloud into
-/// the pinned cache, so it reads as (Remote, pinned).
 /// A release's detail carries its download control's state, read from its
 /// entry in the download queue.
 #[tokio::test]
@@ -311,6 +303,11 @@ async fn a_release_detail_says_where_its_download_stands() {
     );
 }
 
+/// Pin a Remote cloud-only release: coven fetches its files from the cloud into
+/// the pinned cache, so it reads as (Remote, pinned). Its progress counts
+/// against the release's whole size and reaches that size before the pin
+/// completes. Which steps it reports before that depends on how coven's
+/// download races the pins query, so none is asserted.
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
@@ -330,26 +327,26 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
         .finish()
         .await
         .expect("pin task completes");
-    assert!(completed(&events) && !failed(&events), "pin succeeds");
+    let (Some(TransferProgress::Started), Some(TransferProgress::Complete { .. })) =
+        (events.first(), events.last())
+    else {
+        panic!("a pin starts and completes: {events:?}");
+    };
+    let progress: Vec<_> = events[1..events.len() - 1]
+        .iter()
+        .map(|event| match event {
+            TransferProgress::Progress { progress } => progress,
+            other => panic!("only progress between start and completion: {other:?}"),
+        })
+        .collect();
     assert!(
-        matches!(events.first(), Some(TransferProgress::Started)),
-        "pin starts"
+        progress.iter().all(|progress| progress.bytes_total == 22),
+        "progress counts against the release's size: {progress:?}"
     );
-    assert!(
-        events.iter().any(|event| matches!(
-            event,
-            TransferProgress::Progress { progress }
-                if progress.bytes_done == 0 && progress.bytes_total == 22
-        )),
-        "pin reports known byte total"
-    );
-    assert!(
-        events.iter().any(|event| matches!(
-            event,
-            TransferProgress::Progress { progress }
-                if progress.bytes_done == 22 && progress.bytes_total == 22
-        )),
-        "pin reports completed bytes before completion"
+    assert_eq!(
+        progress.last().map(|progress| progress.bytes_done),
+        Some(22),
+        "the pin reports every byte before it completes"
     );
     assert_eq!(
         support::release_storage(&mgr, &release_id).await,
