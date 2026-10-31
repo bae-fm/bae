@@ -221,6 +221,7 @@ final class DesktopSubscriptions {
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
     private var subscriptions: [LiveSubscription] = []
+    /// The import counts' pulls, which stop when this is dropped.
     private var importCounts: ScreenSubscription<ImportCountsSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
