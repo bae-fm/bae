@@ -640,10 +640,12 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
     sql.execute("DELETE FROM playback_context", [])?;
     let play_order = if shuffled { "random()" } else { "unshuffled" };
     // The lane's entries are numbered on from the next free entry number, in
-    // track order, and inserted in that order: the table and its track index
-    // then grow at their end, and only the position index takes its rows out
-    // of order. Each index a library-sized fill writes out of order rereads
-    // and rewrites pages past the page cache for most of its rows.
+    // play order, and inserted in that order: the table and its position
+    // index then grow at their end, and only the track index takes its rows
+    // out of order. An index a library-sized fill writes out of order rereads
+    // and rewrites pages past the page cache for most of its rows; at bae's
+    // page cache size the track index costs a fill less than the position
+    // index would.
     let base = queue_row_on(sql)?.next_entry;
     let mut bound: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":base", &base)];
     if let Some(source) = &rows.source {
@@ -652,14 +654,13 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
     let track_count = sql.execute(
         &format!(
             "INSERT INTO playback_context (entry, position, track_id, unshuffled) \
-             SELECT :base + row_number() OVER (ORDER BY track_id) - 1, \
-                    position, track_id, unshuffled FROM ( \
+             SELECT :base + position - 1, position, track_id, unshuffled FROM ( \
                  SELECT track_id, unshuffled, \
                         row_number() OVER (ORDER BY {play_order}) AS position \
                  FROM (SELECT t.id AS track_id, \
                               row_number() OVER (ORDER BY {source_order}) AS unshuffled \
                        FROM {from})) \
-             ORDER BY track_id",
+             ORDER BY position",
             source_order = rows.source_order,
             from = rows.from,
         ),
