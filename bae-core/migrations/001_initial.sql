@@ -1342,7 +1342,7 @@ BEGIN
     UPDATE list_order_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, waiting_pin_count, pinned_count, first_queued_position ON release_listing
+CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, pinned_count, first_queued_position ON release_listing
 WHEN OLD.album_title IS NOT NEW.album_title
   OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
   OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
@@ -1906,7 +1906,7 @@ CREATE TABLE IF NOT EXISTS playback_state (
     position_ms      INTEGER CHECK (position_ms >= 0),
     volume           REAL NOT NULL,
     is_muted         INTEGER NOT NULL
-);
+) STRICT;
 
 -- ── Transfer queues ───────────────────────────────────────────────────────────
 

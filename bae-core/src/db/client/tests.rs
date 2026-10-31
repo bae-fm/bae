@@ -308,6 +308,8 @@ mod watched_folder_tests;
 
 mod local_foreign_keys;
 
+mod schema_tests;
+
 #[cfg(test)]
 mod release_medium_tests;
 
