@@ -1,7 +1,7 @@
 //! The actual bae schema must satisfy coven's declaration and file contracts.
 
 #[tokio::test]
-async fn real_schema_opens_with_the_declarations_and_unattached_files() {
+async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
     let handle = bae_core::library::configure_store(
@@ -40,17 +40,22 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
-    let file = bae_core::db::DbFile::new(
+    let file = bae_core::db::NewReleaseFile::new(
         &release.id,
         "track.flac",
-        42,
         bae_util::content_type::ContentType::Flac,
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );
-    database.insert_file(&file).await.unwrap();
+    let original = directory.path().join("track.flac");
+    std::fs::write(&original, vec![0; 42]).unwrap();
+    database
+        .insert_file_for_test(&file, &original)
+        .await
+        .unwrap();
     let stored = database.find_file_by_id(&file.id).await.unwrap().unwrap();
     assert!(!stored.stored);
+    assert_eq!(stored.file_size, 42);
     assert!(handle.uploads().await.unwrap().files.is_empty());
     handle.close().await.unwrap();
 }
@@ -68,7 +73,7 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
 }
 
 #[tokio::test]
-async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
+async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
     let handle = bae_core::library::configure_store(
@@ -110,10 +115,9 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
         .unwrap();
     let source = directory.path().join("track.flac");
     std::fs::write(&source, b"audio").unwrap();
-    let file = bae_core::db::DbFile::new(
+    let file = bae_core::db::NewReleaseFile::new(
         &release.id,
         "track.flac",
-        5,
         bae_util::content_type::ContentType::Flac,
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
@@ -127,8 +131,8 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
         .cancel_release_transition(&release.id)
         .await
         .unwrap();
-    // Taking the row off its coven file deletes the file with its last
-    // reference, so its upload leaves the queue.
+    // Cancelling the move retires its uploads; the file stays on this
+    // device only, read from its original.
     assert!(handle.uploads().await.unwrap().files.is_empty());
     assert!(manager
         .get_files_for_release(&release.id)

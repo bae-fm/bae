@@ -105,48 +105,16 @@ impl Database {
             .await
     }
 
-    /// The original this device holds for a release file, `None` when it
-    /// holds none, as for a release another device imported. A row naming a
-    /// coven file has the original coven records for that file here: the
-    /// person's file it was imported from, or the copy making the release
-    /// local again wrote. A row naming none is a local import's, whose
-    /// original `local_release_files` records.
+    /// The original coven records on this device for a release file's coven
+    /// file: the person's file it was imported from, or the copy making the
+    /// release local again wrote. `None` when there is no such row or this
+    /// device records no original for it, as for a release another device
+    /// imported.
     pub async fn external_file(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
-        let id = file_id.to_string();
-        let row = self
-            .read(move |sql| {
-                sql.query_row(
-                    "SELECT f.file, l.path, l.modified_at, f.file_size \
-                     FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
-                     WHERE f.id = ?",
-                    [id],
-                    |row| {
-                        Ok((
-                            row.get::<_, Option<coven::FileId>>(0)?,
-                            row.get::<_, Option<Vec<u8>>>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                            row.get::<_, i64>(3)?,
-                        ))
-                    },
-                )
-                .optional()
-                .map_err(DbError::from)
-            })
-            .await?;
-        let (path, modified_at, size) = match row {
-            None => return Ok(None),
-            Some((Some(file), ..)) => return Ok(self.inner.handle.user_file(file).await?),
-            Some((None, Some(path), Some(modified_at), size)) => (path, modified_at, size),
-            Some((None, ..)) => return Ok(None),
+        let Some(row) = self.find_file_by_id(file_id).await? else {
+            return Ok(None);
         };
-        let modified_at = chrono::DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
-            DbError::Message(format!("invalid original modification time: {error}"))
-        })?;
-        Ok(Some(coven::UserFile {
-            path: path_column::decode(path)?,
-            size: u64::try_from(size).map_err(|error| DbError::Message(error.to_string()))?,
-            modified_at: modified_at.into(),
-        }))
+        Ok(self.inner.handle.user_file(row.file).await?)
     }
 
     /// coven's record of the file `file`, as this device reads it now.

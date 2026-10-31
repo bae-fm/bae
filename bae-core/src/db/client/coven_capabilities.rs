@@ -241,6 +241,12 @@ impl Database {
         self.inner.handle.delete_host_secret(name)
     }
 
+    /// This device's id in the store, which a file on one device only names
+    /// when it is this device's.
+    pub(crate) fn device_id(&self) -> coven::DeviceId {
+        self.inner.handle.device_id()
+    }
+
     pub(crate) async fn file_ref(
         &self,
         file: coven::FileId,

@@ -174,9 +174,8 @@ pub enum BridgePendingAction {
     RetryDownload {
         release_id: String,
     },
-    /// End the release's failed move to the cloud: `cancel_failed_release_move`.
+    /// End a release's failed move to the cloud: `cancel_failed_release_move`.
     CancelUpload {
-        release_id: String,
         id: i64,
     },
     RestoreFromCode,
@@ -196,10 +195,7 @@ impl BridgePendingAction {
             A::ResumeUploads => Self::ResumeUploads,
             A::RetryOperation(id) => Self::RetryOperation { id: id.0 },
             A::RetryDownload { release_id } => Self::RetryDownload { release_id },
-            A::CancelUpload { release_id, id } => Self::CancelUpload {
-                release_id,
-                id: id.0,
-            },
+            A::CancelUpload { id } => Self::CancelUpload { id: id.0 },
             A::RestoreFromCode => Self::RestoreFromCode,
             A::Review => Self::Review,
         }

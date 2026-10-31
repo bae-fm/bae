@@ -63,8 +63,8 @@ pub(super) fn pending_rows_query() -> String {
     )
 }
 
-/// The release file whose original this device recorded at `path`, as a
-/// move's record names it: what a move of a release's files is about.
+/// The release file whose original coven records on this device at `path`,
+/// as a move's record names it: what a move of a release's files is about.
 /// `None` when no release file here has it.
 fn moved_original_on(
     sql: &SqlReadContext<'_>,
@@ -73,11 +73,11 @@ fn moved_original_on(
     let named = sql
         .query_row(
             "SELECT f.release_id, f.original_filename, album.title \
-             FROM local_release_files AS l \
-             JOIN release_files AS f ON f.id = l.file_id \
+             FROM coven_user_files AS u \
+             JOIN release_files AS f ON f.file = u.file \
              JOIN releases AS r ON r.id = f.release_id \
              JOIN albums AS album ON album.id = r.album_id \
-             WHERE l.path = ?1",
+             WHERE u.path = ?1",
             [coven::path_bytes(path)],
             |row| {
                 Ok((

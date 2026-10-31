@@ -60,8 +60,15 @@ fn insert_file(
         ),
         None => (None, None, None, None, None),
     };
+    // The stand-in record of the coven file the row references.
+    let file = bae_test_support::test_uuid(id);
     conn.execute(
-        "INSERT INTO release_files (id, release_id, original_filename, file_size, content_type, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 1, 'audio/flac', ?2, \
+        "INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace) \
+         VALUES (?1, '', 1, '', 'release_files')",
+        [&file],
+    )?;
+    conn.execute(
+        "INSERT INTO release_files (id, release_id, original_filename, content_type, file, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 'audio/flac', ?9, ?2, \
          ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             id,
@@ -71,7 +78,8 @@ fn insert_file(
             duration_ms,
             sample_rate_hz,
             bits_per_sample,
-            channels
+            channels,
+            file
         ],
     )
 }

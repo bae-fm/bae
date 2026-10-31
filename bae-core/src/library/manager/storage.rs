@@ -5,10 +5,10 @@
 use super::*;
 
 impl LibraryManager {
-    /// The path of the original this device recorded for a file, whether or
-    /// not it has been uploaded. `Ok(None)` means there is no original here or
-    /// no such row; coven's cached copies expose no path. Database errors
-    /// propagate.
+    /// The path of the original coven records on this device for a file,
+    /// whether or not it has been uploaded. `Ok(None)` means there is no
+    /// original here or no such row; coven's cached copies expose no path.
+    /// Database errors propagate.
     ///
     /// For the callers that need the user's actual file — the DiscID re-read of the
     /// rip's artifacts — rather than coven's locality-aware byte read.
@@ -22,6 +22,23 @@ impl LibraryManager {
 }
 
 impl LibraryManager {
+    /// This device's id in the store.
+    pub(crate) fn device_id(&self) -> coven::DeviceId {
+        self.database.device_id()
+    }
+
+    /// Whether any of the release's files still waits to upload from this
+    /// device.
+    pub(crate) async fn has_pending_uploads_for_release(
+        &self,
+        release_id: &str,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .has_pending_uploads_for_release(release_id)
+            .await?)
+    }
+
     /// Test-only observability: how many upload entries a release's files still have
     /// queued (zero means every cloud copy is confirmed durable). Production paths
     /// gate on the boolean `has_pending_uploads_for_release` instead.
@@ -69,8 +86,8 @@ impl LibraryManager {
         }
     }
 
-    /// Detach the release's audio and restore its original paths atomically.
-    /// Coven retains uploads needed by shared history; the current rows become local.
+    /// Cancel the release's move to the cloud: its files stay on this device
+    /// only, as they were, and no row changes.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
         self.cancel_release_uploads(vec![release_id.to_string()])
             .await

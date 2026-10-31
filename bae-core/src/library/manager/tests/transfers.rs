@@ -70,35 +70,40 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
         crate::library::pending_action(record, None) == crate::library::PendingAction::RestoreFile));
 }
 
-/// A shared local release with no path on this device says it isn't uploaded:
+/// A local release another device holds says it isn't uploaded here:
 /// nobody started an upload, so there is nothing to wait for.
-#[tokio::test]
-async fn an_unattached_file_on_another_device_is_not_uploaded() {
-    use crate::ui::PlaybackErrorReason;
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    manager.database.insert_album(&album).await.unwrap();
-    let release = insert_local_release_without_local_files(&manager, &album.id).await;
+#[test]
+fn a_file_on_another_device_is_not_uploaded() {
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        use crate::ui::PlaybackErrorReason;
+        let originals = TempDir::new().unwrap();
+        let release = release_on_the_first_device(devices, originals.path(), "Album").await;
+        let manager = devices.b().manager();
 
-    let files = release_files(&manager, &release.id).await;
-    let file = files.first().expect("the release has a file");
-    let reason = playback_error_reason_for_file(&manager, file).await;
-    assert!(
-        matches!(reason, PlaybackErrorReason::NotUploaded),
-        "got {reason:?}"
-    );
+        let files = release_files(manager, &release.id).await;
+        let file = files.first().expect("the release has a file");
+        let reason = playback_error_reason_for_file(manager, file).await;
+        assert!(
+            matches!(reason, PlaybackErrorReason::NotUploaded),
+            "got {reason:?}"
+        );
+    });
 }
 
-/// The read layer surfaces a local release even when no local copy
-/// resolves on this device — there is no availability filter to hide one.
-/// Every release is shared, including one whose files have not been uploaded.
-#[tokio::test]
-async fn surfaces_local_release_with_no_local_files() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+/// The read layer surfaces a local release another device holds — there is
+/// no availability filter to hide one. Every release is shared, including
+/// one whose files have not been uploaded.
+#[test]
+fn surfaces_a_local_release_another_device_holds() {
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        let originals = TempDir::new().unwrap();
+        let release = release_on_the_first_device(devices, originals.path(), "Album").await;
+        check_release_surfaces(devices.b().manager(), &release).await;
+    });
+}
 
-    let album = create_test_album();
-    manager.database.insert_album(&album).await.unwrap();
-    let release = insert_local_release_without_local_files(&manager, &album.id).await;
+async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
+    let album_id = release.album_id.clone();
 
     // Grid and count include the album.
     let page = manager.get_album_page(&[], 0, 10).await.unwrap();
@@ -108,7 +113,7 @@ async fn surfaces_local_release_with_no_local_files() {
 
     // Album detail carries the release.
     let detail = manager
-        .find_album_detail(&album.id)
+        .find_album_detail(&album_id)
         .await
         .unwrap()
         .expect("album surfaces");
@@ -189,21 +194,19 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     assert_eq!(std::fs::read_dir(&dest).unwrap().count(), 0, "no copy is left");
 }
 
-/// A missing original cannot become a playable local release; cancellation
-/// fails before changing any attachment or local path.
+/// A missing original makes its move wait, and cancelling the move needs no
+/// original: the file stays on this device only, with nothing pending.
 #[tokio::test]
-async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
+async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
     let (manager, temp, release, file_id) = queued_upload_fixture("queued").await;
     assert_eq!(manager.count_pending_uploads_for_release(&release.id).await.unwrap(), 1);
     std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
     assert!(!manager.pending().await.unwrap().is_empty());
-    manager.cancel_release_upload(&release.id).await.expect_err("the missing original prevents restoring local playback");
-    assert!(
-        manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().file.is_some(),
-        "the file stays moving"
-    );
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 1);
+    manager.cancel_release_upload(&release.id).await.unwrap();
+    assert!(!manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().stored);
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert!(manager.pending().await.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -211,15 +214,14 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(&manager, &temp.path().join("second"), "Album", &[("b.flac", b"audio")]).await;
     manager.cancel_all_release_uploads().await.unwrap();
-    // A file no row references any more goes, so its upload leaves the
-    // queue.
+    // Cancelling retires each move, so its uploads leave the queue.
     assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.pending().await.unwrap().is_empty());
     for release in [first, second] {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
-            assert!(file.file.is_none());
             assert!(manager.database.external_file(&file.id).await.unwrap().is_some(), "the original plays again");
+            assert_eq!(manager.database.read_release_file(&file.id).await.unwrap().len(), std::fs::metadata(manager.database.external_file(&file.id).await.unwrap().unwrap().path).unwrap().len() as usize);
         }
     }
 }
@@ -235,33 +237,23 @@ async fn deleting_a_release_retires_its_queued_uploads() {
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
 }
 
-/// A change that deletes the row of a file still uploading, or takes the row
-/// off its file, deletes the file with its last reference: its upload leaves
-/// the queue and nothing is left pending.
+/// Deleting the row of a file still uploading deletes the file with its last
+/// reference: its upload leaves the queue and nothing is left pending.
 #[tokio::test]
-async fn an_upload_whose_row_no_longer_references_it_leaves_the_queue() {
-    for change in [
-        "DELETE FROM release_files WHERE id = ?1",
-        "UPDATE release_files SET file = NULL WHERE id = ?1",
-    ] {
-        let (manager, _temp, _release, file_id) = queued_upload_fixture("changed").await;
-        manager
-            .database
-            .execute_for_test(change, vec![file_id])
-            .await
-            .unwrap();
-        assert_eq!(
-            manager.database.queued_upload_count_for_test().await.unwrap(),
-            0,
-            "{change}"
-        );
-        assert!(manager.pending().await.unwrap().is_empty(), "{change}");
-    }
+async fn an_upload_whose_row_is_deleted_leaves_the_queue() {
+    let (manager, _temp, _release, file_id) = queued_upload_fixture("changed").await;
+    manager
+        .database
+        .execute_for_test("DELETE FROM release_files WHERE id = ?1", vec![file_id])
+        .await
+        .unwrap();
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert!(manager.pending().await.unwrap().is_empty());
 }
 
 /// An original that changes before its upload fails its release's move: the
-/// pending list names the file and offers Cancel Upload, which ends the move
-/// and makes the release local here again.
+/// pending list names the file and offers Cancel Upload, which ends the move,
+/// and the release stays on this device only.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
@@ -287,18 +279,14 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
             album_title: "Test Album".into(),
         }
     );
-    let crate::library::PendingAction::CancelUpload { release_id, id } = item.wait.action.clone()
-    else {
+    let crate::library::PendingAction::CancelUpload { id } = item.wait.action.clone() else {
         unreachable!("found by its action");
     };
-    assert_eq!(release_id, release.id);
-    manager
-        .cancel_failed_release_move(&release_id, id)
-        .await
-        .unwrap();
+    manager.cancel_failed_release_move(id).await.unwrap();
     for file in release_files(&manager, &release.id).await {
-        assert!(file.file.is_none(), "the release is local again");
+        assert!(!file.stored, "the release stays on this device");
     }
+    assert_eq!(manager.count_pending_uploads_for_release(&release.id).await.unwrap(), 0);
     pending_list_until(&mut values, |items| {
         !items
             .iter()
@@ -480,8 +468,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     assert!(detail.contains(&active_release.id));
 
     for release in [first_new_release, last_new_release] {
-        assert!(has_pending_uploads(&manager, &release.id).await);
-        assert_eq!(attached_file_count(&manager, &release.id).await, 1);
+        assert_eq!(moving_file_count(&manager, &release.id).await, 1);
     }
 }
 
@@ -503,8 +490,7 @@ async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
         .await
         .expect_err("a duplicate target refuses the whole batch");
 
-    assert!(!has_pending_uploads(&manager, &release.id).await);
-    assert_eq!(attached_file_count(&manager, &release.id).await, 0);
+    assert_eq!(moving_file_count(&manager, &release.id).await, 0);
 }
 
 /// A user retry without a connected cloud must report the refusal to its
@@ -590,7 +576,7 @@ async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     )
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
-    assert_eq!(attached_file_count(&manager, &release.id).await, 1);
+    assert_eq!(moving_file_count(&manager, &release.id).await, 1);
     assert!(download_queue_now(&manager).await.rows.is_empty());
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     wait_for_kept_release(&manager, &release.id).await;
@@ -647,21 +633,31 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
 /// its own originals, another device says the audio isn't uploaded, and an
 /// original removed on the importing device reads as missing, at play time
 /// as well.
-#[tokio::test]
-async fn a_release_says_whether_this_device_can_play_it() {
+#[test]
+fn a_release_says_whether_this_device_can_play_it() {
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        let first = TempDir::new().unwrap();
+        let elsewhere = release_on_the_first_device(devices, first.path(), "Album Elsewhere").await;
+        let originals = TempDir::new().unwrap();
+        check_playability(devices.b().manager(), originals.path(), &elsewhere).await;
+    });
+}
+
+async fn check_playability(
+    manager: &LibraryManager,
+    originals: &std::path::Path,
+    elsewhere: &DbRelease,
+) {
     use crate::album_detail::ReleasePlayability;
     use crate::ui::PlaybackErrorReason;
-    let (manager, temp_dir) = setup_test_manager().await;
-    let originals = temp_dir.path().join("originals");
     let here = insert_local_release_with_files(
-        &manager,
-        &originals,
+        manager,
+        originals,
         "Album Title",
         &[("track.flac", b"track-bytes")],
     )
     .await;
     let playability = |release_id: String| {
-        let manager = &manager;
         async move {
             manager
                 .find_release_detail(&release_id)
@@ -676,9 +672,6 @@ async fn a_release_says_whether_this_device_can_play_it() {
         ReleasePlayability::Playable
     );
 
-    let album = create_test_album();
-    manager.database.insert_album(&album).await.unwrap();
-    let elsewhere = insert_local_release_without_local_files(&manager, &album.id).await;
     assert_eq!(
         playability(elsewhere.id.clone()).await,
         ReleasePlayability::NotUploaded
@@ -689,8 +682,8 @@ async fn a_release_says_whether_this_device_can_play_it() {
         playability(here.id.clone()).await,
         ReleasePlayability::OriginalMissing
     );
-    let file = release_files(&manager, &here.id).await.remove(0);
-    let reason = playback_error_reason_for_file(&manager, &file).await;
+    let file = release_files(manager, &here.id).await.remove(0);
+    let reason = playback_error_reason_for_file(manager, &file).await;
     assert!(
         matches!(reason, PlaybackErrorReason::OriginalMissing),
         "got {reason:?}"

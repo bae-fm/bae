@@ -366,14 +366,14 @@ pub struct DbSendingUploads {
     pub paused: bool,
 }
 
-/// What the library records this device holding for one of a release's audio
-/// files whose row names no stored file yet. Whether that original is still on
-/// the disk is the disk's to say, not the database's.
+/// What coven records this device holding for one of a release's audio
+/// files on one device only. Whether that original is still on the disk is
+/// the disk's to say, not the database's.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DbUnstoredAudio {
-    /// No original here: another device imported the release.
+    /// No original here: the file is on another device.
     Elsewhere,
-    /// This device's original, as it was recorded at import.
+    /// This device's original, as coven recorded it.
     Original(RecordedOriginal),
 }
 

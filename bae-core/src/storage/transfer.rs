@@ -198,16 +198,36 @@ impl ReleaseTransfer {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
 
-        // Pin, unpin and detach act on files whose rows reference coven
-        // files, whether still moving from here or stored; an upload needs
-        // every file to reference none.
-        let attached = self.library_manager.attached_release_file_count(&files);
-        let expected = if action_expects_attached(self.action) {
-            files.len()
-        } else {
-            0
+        // An upload moves files on this device only, none of them moving
+        // already; pin, unpin and detach act on files stored in the cloud.
+        let here = self.library_manager.device_id();
+        let mut ready = match self.action {
+            ReleaseStorageAction::Upload => {
+                !self
+                    .library_manager
+                    .has_pending_uploads_for_release(&self.release_id)
+                    .await?
+            }
+            ReleaseStorageAction::Pin
+            | ReleaseStorageAction::Unpin
+            | ReleaseStorageAction::DetachAudio => true,
         };
-        if attached != expected {
+        for file in &files {
+            let file = self.library_manager.release_file_ref(&file.id).await?;
+            ready &= match (self.action, file.place()) {
+                (ReleaseStorageAction::Upload, coven::FilePlace::DeviceOnly { device }) => {
+                    device == here
+                }
+                (ReleaseStorageAction::Upload, coven::FilePlace::Cloud { .. }) => false,
+                (
+                    ReleaseStorageAction::Pin
+                    | ReleaseStorageAction::Unpin
+                    | ReleaseStorageAction::DetachAudio,
+                    place,
+                ) => matches!(place, coven::FilePlace::Cloud { .. }),
+            };
+        }
+        if !ready {
             return Err(LibraryError::Storage(
                 wrong_state_error(self.action).to_string(),
             ));
@@ -297,18 +317,13 @@ where
     (rx, task)
 }
 
-fn action_expects_attached(action: ReleaseStorageAction) -> bool {
-    matches!(
-        action,
-        ReleaseStorageAction::Pin | ReleaseStorageAction::Unpin | ReleaseStorageAction::DetachAudio
-    )
-}
-
 fn wrong_state_error(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "Cannot pin a local release",
         ReleaseStorageAction::Unpin => "Cannot unpin a local release",
-        ReleaseStorageAction::Upload => "Release is already remote",
+        ReleaseStorageAction::Upload => {
+            "Release is not on this device alone, or is moving to the cloud already"
+        }
         ReleaseStorageAction::DetachAudio => "Release is already local",
     }
 }

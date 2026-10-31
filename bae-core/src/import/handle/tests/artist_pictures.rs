@@ -10,7 +10,7 @@ use super::*;
 /// transport.
 struct DiscogsPick {
     handle: ImportServiceHandle,
-    _tmp: TempDir,
+    tmp: TempDir,
     key: crate::import::CandidateKey,
     images: bae_test_support::RemoteImageHost,
     album_artist_id: String,
@@ -180,7 +180,7 @@ async fn picked_discogs_release() -> DiscogsPick {
 
     DiscogsPick {
         handle,
-        _tmp: tmp,
+        tmp,
         key,
         images,
         album_artist_id: album_artist_id.to_string(),
@@ -347,5 +347,48 @@ async fn the_import_says_it_is_fetching_artist_pictures_while_it_fetches_them() 
         .unwrap_or_else(|error| panic!("import failed: {error}"));
     let artist = pick.track_artist(&release_id).await;
     assert_stored_large_picture(pick.picture_of(&artist.id).await);
+    shut_down(pick.handle).await;
+}
+
+/// A file the scan read that changes before the import stages it fails the
+/// import before any row: the release's rows describe the file the scan
+/// read, and coven would record the one it finds. The files are checked
+/// against the scan before the artist's picture is asked for, and staged
+/// after it answers, so a change while the picture is held reaches only the
+/// staging.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
+    let pick = picked_discogs_release().await;
+    let picture_url = pick.images.serve_image(&pick.picture_path, large_picture());
+    let hold = pick.images.hold_image(&pick.picture_path);
+    pick.seed_artists(picture_url);
+
+    let mut events = pick.handle.every_event();
+    let import_id = pick.handle.start_import(&pick.key).await.unwrap().expect_queued();
+    tokio::time::timeout(HANG_GUARD, hold.arrived())
+        .await
+        .expect("the import asks for the track artist's picture");
+    let changed = pick.tmp.path().join("watched/Album/02 Track.flac");
+    std::fs::File::options()
+        .write(true)
+        .open(&changed)
+        .and_then(|file| file.set_modified(std::time::SystemTime::now()))
+        .expect("set the file's modification time");
+    hold.release();
+
+    let error = await_import_outcome(&mut events, &import_id)
+        .await
+        .expect_err("a file changed since its scan fails the import");
+    assert!(
+        error.contains("changed after its import candidate was scanned"),
+        "{error}"
+    );
+    let rows = pick.handle.library_manager.every_row_for_test().await;
+    for table in ["releases", "release_files"] {
+        assert!(
+            rows.get(table).is_none_or(Vec::is_empty),
+            "the failed import wrote nothing to {table}"
+        );
+    }
     shut_down(pick.handle).await;
 }

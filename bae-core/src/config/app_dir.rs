@@ -48,6 +48,13 @@ impl AppDir {
         self.libraries().join(library_id)
     }
 
+    /// Where a test that seeds release files writes the originals it stages
+    /// them from.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn test_originals(&self) -> PathBuf {
+        self.path.join("test-originals")
+    }
+
     /// The file naming the library this device last opened.
     pub fn active_library_pointer(&self) -> PathBuf {
         self.path.join("active-library")

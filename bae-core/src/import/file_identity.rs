@@ -27,18 +27,39 @@ fn validate_scanned_file_metadata(
             detail: error.to_string(),
         })?;
     if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
-        return Err(crate::import::ImportError::UnusableFile {
-            detail: format!(
-                "{} changed after its import candidate was scanned; rescan before importing",
-                file.path.display()
-            ),
-        });
+        return Err(changed_after_scan(file));
     }
     Ok(crate::import::file_tag_snapshot::FileObservation {
         relative_path: file.relative_path.clone(),
         size: metadata.len(),
         modified_at_ns,
     })
+}
+
+/// Refuse an original whose size or modification time, as coven found them
+/// when it observed or read the file to stage it, are not the ones the scan
+/// recorded: the release's rows describe the file the scan read, and coven
+/// records the one it found.
+pub(super) fn require_scanned_identity(
+    file: &ScannedFile,
+    size: u64,
+    modified_at: std::time::SystemTime,
+) -> Result<(), crate::import::ImportError> {
+    let scanned: std::time::SystemTime =
+        chrono::DateTime::from_timestamp_nanos(file.modified_at_ns).into();
+    if size != file.size || modified_at != scanned {
+        return Err(changed_after_scan(file));
+    }
+    Ok(())
+}
+
+fn changed_after_scan(file: &ScannedFile) -> crate::import::ImportError {
+    crate::import::ImportError::UnusableFile {
+        detail: format!(
+            "{} changed after its import candidate was scanned; rescan before importing",
+            file.path.display()
+        ),
+    }
 }
 
 #[cfg(test)]

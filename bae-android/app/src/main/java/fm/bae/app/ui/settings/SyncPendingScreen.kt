@@ -117,8 +117,8 @@ private class PendingActionRunner(
             }
 
             is BridgePendingAction.CancelUpload -> {
-                perform("cancel the failed upload of ${action.releaseId}") {
-                    handle.cancelFailedReleaseMove(action.releaseId, action.id)
+                perform("cancel the failed upload ${action.id}") {
+                    handle.cancelFailedReleaseMove(action.id)
                 }
             }
 

@@ -104,13 +104,13 @@ forward! { async this => {
         ))
     }
 
-    /// End the release's failed move to the cloud, `id`, as its pending
-    /// record offers (`BridgePendingAction::CancelUpload`): the release is
-    /// local here again.
-    fn cancel_failed_release_move(release_id: String, id: i64) -> () {
+    /// End a release's failed move to the cloud, `id`, as its pending
+    /// record offers (`BridgePendingAction::CancelUpload`): the release stays
+    /// on this device only, as it was.
+    fn cancel_failed_release_move(id: i64) -> () {
         Ok(this
             .services
-            .cancel_failed_release_move(&release_id, coven::MoveId(id))
+            .cancel_failed_release_move(coven::MoveId(id))
             .await?)
     }
     /// Retry sync with the provider this library already has configured: connect

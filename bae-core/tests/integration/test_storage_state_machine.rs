@@ -7,8 +7,8 @@ use bae_test_support as support;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{
-    Database, DbAlbum, DbFile, DbRelease, SortDirection, StorageFilter, StorageSortCriterion,
-    StorageSortField,
+    Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection, StorageFilter,
+    StorageSortCriterion, StorageSortField,
 };
 use bae_core::library::{
     AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
@@ -88,10 +88,9 @@ async fn create_local_release(
     for (name, data) in files {
         let path = source_dir.join(name);
         tokio::fs::write(&path, data).await.unwrap();
-        let db_file = DbFile::new(
+        let db_file = NewReleaseFile::new(
             &release_id,
             name,
-            data.len() as i64,
             ContentType::Flac,
             uuid::Uuid::new_v4().to_string(),
             now,

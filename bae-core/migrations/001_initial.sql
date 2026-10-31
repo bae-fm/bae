@@ -247,17 +247,11 @@ CREATE TABLE IF NOT EXISTS release_files (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
     original_filename TEXT NOT NULL,
-    -- Sentinel: bae commit 3, which stages every release file with coven,
-    -- reads a file's size from `coven_files` and drops this column. A local
-    -- release's files have no coven file until then, and their size is here.
-    file_size INTEGER NOT NULL,
     content_type TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    -- The file's coven file (`coven_files`). Sentinel: NULL for a file of a
-    -- release this device keeps local, whose original `local_release_files`
-    -- records; bae commit 3 stages those with coven too and makes this
-    -- NOT NULL.
-    file TEXT,
+    -- The file's coven file (`coven_files`), which holds its size, its hash
+    -- and where it is: on the device that imported it, or in the cloud.
+    file TEXT NOT NULL,
     -- What the file held before import rewrote it: its own audio ('file') or
     -- one slice of a CUE-described disc ('cue').
     source_audio_layout TEXT,
@@ -313,29 +307,12 @@ CREATE INDEX IF NOT EXISTS idx_release_files_release_order
 -- records name.
 CREATE INDEX IF NOT EXISTS idx_release_files_file ON release_files (file);
 
--- Each release's files by size and by kind (content type), name and id
--- breaking a tie: the other orders the Storage sheet's file table sorts by,
--- each read from its index either way.
-CREATE INDEX IF NOT EXISTS idx_release_files_release_size
-    ON release_files (release_id, file_size, original_filename COLLATE natural_order, id);
+-- Each release's files by kind (content type), name and id breaking a tie:
+-- another order the Storage sheet's file table sorts by, read from its index
+-- either way. Its order by size sorts one release's few dozen files by their
+-- coven files' sizes, with no index.
 CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
     ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
-
--- The original of each release file this device imported, or the copy a
--- detach made: its path, as coven's bytes for it (`coven::path_bytes`), and
--- the modification time recorded then. These paths never leave this device.
--- While the file's row names no coven file, this device plays the file from
--- here; a row stays through a move to the cloud, so cancelling one makes the
--- release local here again. Sentinel: bae commit 3 stages a local release's
--- files with coven, which records the originals, and drops this table.
-CREATE TABLE IF NOT EXISTS local_release_files (
-    file_id TEXT NOT NULL PRIMARY KEY REFERENCES release_files(id) ON DELETE CASCADE,
-    path BLOB NOT NULL,
-    modified_at TEXT NOT NULL
-) STRICT;
-
--- An original by its path, which a record of coven's about moving it names.
-CREATE INDEX IF NOT EXISTS idx_local_release_files_path ON local_release_files (path);
 
 -- The folder hash (SHA-256 over sorted relative paths, sizes and modification
 -- times) of the files this device imported each release from. Another device's
@@ -1441,7 +1418,9 @@ BEGIN
             FROM json_each(r.media) AS entry),
            r.created_at,
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
-           (SELECT COALESCE(SUM(f.file_size), 0) FROM release_files f WHERE f.release_id = r.id),
+           (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
+            JOIN coven_files coven ON coven.id = f.file
+            WHERE f.release_id = r.id),
            EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id)
              AND NOT EXISTS (SELECT 1 FROM release_files f
                              LEFT JOIN coven_files coven ON coven.id = f.file
@@ -1513,7 +1492,7 @@ BEGIN
     INSERT INTO release_listing_refresh (release_id) VALUES (NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_file_changed AFTER UPDATE OF release_id, file_size, file ON release_files
+CREATE TRIGGER IF NOT EXISTS release_listing_file_changed AFTER UPDATE OF release_id, file ON release_files
 BEGIN
     INSERT INTO release_listing_refresh (release_id) VALUES (OLD.release_id);
     INSERT INTO release_listing_refresh (release_id) VALUES (NEW.release_id);

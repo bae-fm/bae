@@ -84,10 +84,7 @@ async fn assert_seeks_search_sorting(
 /// work, every release queued to download and every track in the lane.
 async fn library() -> (Database, tempfile::TempDir) {
     let (db, tmp) = super::temp_db().await;
-    let sql = super::window_cost::seed_sql(0, 300);
-    db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from))
-        .await
-        .unwrap();
+    super::window_cost::seed(&db, &tmp.path().join("originals"), 0, 300).await;
     (db, tmp)
 }
 

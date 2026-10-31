@@ -54,10 +54,9 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
     ] {
         let path = source_dir.join(name);
         std::fs::write(&path, bytes).unwrap();
-        let file = DbFile::new(
+        let file = NewReleaseFile::new(
             &release.id,
             name,
-            bytes.len() as i64,
             bae_util::content_type::ContentType::Flac,
             id.to_string(),
             created_at,

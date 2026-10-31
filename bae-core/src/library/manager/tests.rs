@@ -18,7 +18,7 @@ use super::*;
 use crate::config::Config;
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork,
-    LibraryImageType,
+    LibraryImageType, NewReleaseFile,
 };
 use bae_catalogs::catalog::Catalog;
 use bae_util::content_type::ContentType;
@@ -129,10 +129,13 @@ async fn cover_file(manager: &LibraryManager, release_id: &str) -> coven::FileRe
         .expect("the release has a cover")
 }
 
-/// How many of a release's files reference a coven file: still moving from
-/// here, or stored.
-async fn attached_file_count(manager: &LibraryManager, release_id: &str) -> usize {
-    manager.attached_release_file_count(&release_files(manager, release_id).await)
+/// How many of a release's files wait in this device's upload queue: moving
+/// to the cloud from here.
+async fn moving_file_count(manager: &LibraryManager, release_id: &str) -> i64 {
+    manager
+        .count_pending_uploads_for_release(release_id)
+        .await
+        .unwrap()
 }
 
 async fn album_releases(manager: &LibraryManager, album_id: &str) -> Vec<DbRelease> {

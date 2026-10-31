@@ -749,10 +749,7 @@ internal open class FakeAppHandle(
         unfaked("retryPendingOperation")
     }
 
-    override suspend fun cancelFailedReleaseMove(
-        releaseId: String,
-        id: Long,
-    ) {
+    override suspend fun cancelFailedReleaseMove(id: Long) {
         unfaked("cancelFailedReleaseMove")
     }
 

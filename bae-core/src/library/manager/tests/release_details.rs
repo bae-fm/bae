@@ -31,15 +31,14 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     // `set_original_filename_for_test` exists for. It drives the gallery's file
     // resolution and, as the release's representative file, the pinned-cache
     // check; neither may follow it or panic.
-    let file = DbFile::new(
+    let file = NewReleaseFile::new(
         &release.id,
         "cover.jpg",
-        5,
         bae_util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
-    manager.add_file(&file).await.unwrap();
+    manager.add_file(&file, 5).await.unwrap();
     manager
         .database
         .set_original_filename_for_test(&file.id, "../../etc/y")
@@ -269,16 +268,15 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
         ("01-disc.flac", flac.clone()),
         ("02-bonus.mp3", mp3.clone()),
     ] {
-        let mut file = DbFile::new(
+        let mut file = NewReleaseFile::new(
             &release.id,
             name,
-            1000,
             facts.content_type.clone(),
             Uuid::new_v4().to_string(),
             Utc::now(),
         );
         file.source_audio = Some(facts);
-        manager.add_file(&file).await.unwrap();
+        manager.add_file(&file, 1000).await.unwrap();
     }
 
     let detail = manager
@@ -396,15 +394,14 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
 
     // An image file for the release with no local copy on this device — the
     // release's images live only in the cloud here.
-    let image = crate::db::DbFile::new(
+    let image = crate::db::NewReleaseFile::new(
         &release.id,
         "back.jpg",
-        1234,
         bae_util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
-    manager.add_file(&image).await.unwrap();
+    manager.add_file(&image, 1234).await.unwrap();
 
     let detail = manager
         .find_release_detail(&release.id)
@@ -443,15 +440,14 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
         ("booklet.bmp", ContentType::Bmp, false),
         ("drawing.svg", ContentType::Svg, false),
     ] {
-        let file = DbFile::new(
+        let file = NewReleaseFile::new(
             &release.id,
             name,
-            100,
             content_type,
             Uuid::new_v4().to_string(),
             Utc::now(),
         );
-        manager.add_file(&file).await.unwrap();
+        manager.add_file(&file, 100).await.unwrap();
         if supports_cover {
             eligible.push(file.id.clone());
         }
@@ -641,15 +637,14 @@ async fn a_gallery_read_refuses_another_releases_file() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
     let other = create_test_release(&album.id);
     insert_release(&manager, &other).await;
-    let file = DbFile::new(
+    let file = NewReleaseFile::new(
         &other.id,
         "cover.jpg",
-        5,
         bae_util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
-    manager.add_file(&file).await.unwrap();
+    manager.add_file(&file, 5).await.unwrap();
 
     let error = manager
         .read_gallery_bytes(

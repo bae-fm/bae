@@ -622,17 +622,13 @@ impl AppServices {
         self.inner.manager.retry_pending_operation(id).await
     }
 
-    /// End the release's failed move to the cloud, `id`, as its pending
-    /// record offers: the release is local here again.
+    /// End a release's failed move to the cloud, `id`, as its pending
+    /// record offers: the release stays on this device only, as it was.
     pub async fn cancel_failed_release_move(
         &self,
-        release_id: &str,
         id: coven::MoveId,
     ) -> Result<(), crate::library::LibraryError> {
-        self.inner
-            .manager
-            .cancel_failed_release_move(release_id, id)
-            .await
+        self.inner.manager.cancel_failed_release_move(id).await
     }
 
     /// Everything sync is doing now, live, for the activity indicator.

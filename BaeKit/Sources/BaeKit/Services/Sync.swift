@@ -264,8 +264,8 @@ public struct SyncPendingActions: Sendable {
     /// Pin a release again, as a failed pin's record offers.
     public let retryDownload: @Sendable (String) async throws -> Void
     /// End a release's failed move to the cloud, as its record offers: the
-    /// release is local here again.
-    public let cancelFailedMove: @Sendable (String, Int64) async throws -> Void
+    /// release stays on this device only, as it was.
+    public let cancelFailedMove: @Sendable (Int64) async throws -> Void
 
     public init(
         retryOperation: @escaping @Sendable (Int64) async throws -> Void = {
@@ -274,10 +274,9 @@ public struct SyncPendingActions: Sendable {
         retryDownload: @escaping @Sendable (String) async throws -> Void = {
             _ in throw StubError.notImplemented
         },
-        cancelFailedMove:
-            @escaping @Sendable (String, Int64) async throws -> Void = { _, _ in
-                throw StubError.notImplemented
-            }
+        cancelFailedMove: @escaping @Sendable (Int64) async throws -> Void = {
+            _ in throw StubError.notImplemented
+        }
     ) {
         self.retryOperation = retryOperation
         self.retryDownload = retryDownload
@@ -291,7 +290,7 @@ public struct SyncPendingActions: Sendable {
                 try await handle.queuePinReleases(releaseIds: [$0])
             },
             cancelFailedMove: {
-                try await handle.cancelFailedReleaseMove(releaseId: $0, id: $1)
+                try await handle.cancelFailedReleaseMove(id: $0)
             }
         )
     }

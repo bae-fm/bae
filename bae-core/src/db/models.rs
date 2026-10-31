@@ -402,26 +402,39 @@ impl DbReleaseMediums {
 /// Holds enough of the original file's information to reconstruct the folder
 /// structure on export.
 ///
-/// A file whose row references a coven file is read through coven, from
-/// wherever coven has it. Any other file is read from this device's
-/// original, when it holds one.
+/// Every file is read through coven, from wherever coven has it: the
+/// original on the device that has the file alone, or the cloud.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbFile {
     pub id: String,
     pub release_id: String,
     pub original_filename: String,
+    /// The size coven records for the file.
     pub file_size: i64,
     pub content_type: ContentType,
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
     pub source_audio: Option<crate::album_detail::SourceAudioFile>,
-    /// The coven file the row references. Sentinel: `None` for a file of a
-    /// release kept local on the device that imported it, until bae commit 3
-    /// stages those with coven too.
-    pub file: Option<coven::FileId>,
+    /// The coven file the row references.
+    pub file: coven::FileId,
     /// Whether coven records the file as stored: its move to the cloud
     /// finished.
     pub stored: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+/// A release file's row as a write inserts it, before coven has the file:
+/// the write stages the file and the row references the id staging gives.
+/// Its size and where it is are coven's, read back as [`DbFile`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct NewReleaseFile {
+    pub id: String,
+    pub release_id: String,
+    pub original_filename: String,
+    pub content_type: ContentType,
+    /// The scan's complete facts for this physical source file. `None` for
+    /// non-audio files.
+    pub source_audio: Option<crate::album_detail::SourceAudioFile>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -783,29 +796,22 @@ impl DbReleaseMedium {
     }
 }
 
-impl DbFile {
-    /// Create a file record
-    ///
-    /// Files are linked to releases. Used for reconstructing original file structure
-    /// during export. The coven file its row references comes from the write
-    /// that stages it.
+impl NewReleaseFile {
+    /// A release file's row with no source-audio facts, which the caller
+    /// sets for an audio file.
     pub fn new(
         release_id: &str,
         original_filename: &str,
-        file_size: i64,
         content_type: ContentType,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
-        DbFile {
+        NewReleaseFile {
             id,
             release_id: release_id.to_string(),
             original_filename: original_filename.to_string(),
-            file_size,
             content_type,
             source_audio: None,
-            file: None,
-            stored: false,
             created_at: now,
         }
     }

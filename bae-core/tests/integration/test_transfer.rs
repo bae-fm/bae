@@ -8,7 +8,7 @@ use support::tracing_init;
 use bae_core::album_detail::GallerySource;
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{
-    DbAlbum, DbFile, DbRelease, SortDirection, StorageFilter, StorageSortCriterion,
+    DbAlbum, DbRelease, NewReleaseFile, SortDirection, StorageFilter, StorageSortCriterion,
     StorageSortField,
 };
 use bae_core::library::{
@@ -71,10 +71,9 @@ async fn create_local_release(
     for (name, data) in files {
         let path = source_dir.join(name);
         tokio::fs::write(&path, data).await.unwrap();
-        let file = DbFile::new(
+        let file = NewReleaseFile::new(
             &release_id,
             name,
-            data.len() as i64,
             ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,

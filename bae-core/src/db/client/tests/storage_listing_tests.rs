@@ -3,8 +3,7 @@ use super::super::*;
 const RELEASE_EARLY: &str = "d439555e-9883-4037-a580-48ea33c2c57b";
 const RELEASE_LATE: &str = "af4421de-5174-45a9-81fc-74110bc5f85d";
 
-/// Two releases on albums titled to sort apart, the first with two files of
-/// 10 and 20 bytes, the second with none.
+/// Two releases on albums titled to sort apart.
 const LIBRARY: &str = "
     INSERT INTO albums (id, title, is_compilation, created_at) VALUES
         ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z'),
@@ -12,10 +11,33 @@ const LIBRARY: &str = "
     INSERT INTO releases (id, album_id, created_at, album_order) VALUES
         ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0),
         ('af4421de-5174-45a9-81fc-74110bc5f85d', 'dab6efe2-9b5c-4034-b95e-73cf49f54b9a', '2026-01-01T00:00:00Z', 0);
-    INSERT INTO release_files (id, release_id, original_filename, file_size, content_type, created_at) VALUES
-        ('d3edb846-9b0b-4a64-b0f6-3f117b686bc0', 'd439555e-9883-4037-a580-48ea33c2c57b', 'cover.jpg', 10, 'image/jpeg', '2026-01-01T00:00:00Z'),
-        ('161dd6f3-3bdd-4312-b5d3-8b9d83b53694', 'd439555e-9883-4037-a580-48ea33c2c57b', 'back.jpg', 20, 'image/jpeg', '2026-01-01T00:00:00Z');
 ";
+
+/// Seed the release file `id` of `release`, named `name`, staged on this
+/// device only from an original of `size` zero bytes written under `dir`.
+async fn insert_file(
+    db: &Database,
+    dir: &std::path::Path,
+    (id, release, name, size): (&str, &str, &str, u64),
+) {
+    let original = dir.join(id);
+    std::fs::File::create_new(&original)
+        .unwrap()
+        .set_len(size)
+        .unwrap();
+    db.insert_file_for_test(
+        &NewReleaseFile::new(
+            release,
+            name,
+            bae_util::content_type::ContentType::Jpeg,
+            id.to_string(),
+            chrono::Utc::now(),
+        ),
+        &original,
+    )
+    .await
+    .unwrap();
+}
 
 async fn exec(db: &Database, sql: &'static str) {
     db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from))
@@ -43,8 +65,25 @@ async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
 
 #[tokio::test]
 async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, tmp) = super::temp_db().await;
     exec(&db, LIBRARY).await;
+    // The first release has two files, of 10 and 20 bytes; the second none.
+    for file in [
+        (
+            "d3edb846-9b0b-4a64-b0f6-3f117b686bc0",
+            RELEASE_EARLY,
+            "cover.jpg",
+            10,
+        ),
+        (
+            "161dd6f3-3bdd-4312-b5d3-8b9d83b53694",
+            RELEASE_EARLY,
+            "back.jpg",
+            20,
+        ),
+    ] {
+        insert_file(&db, tmp.path(), file).await;
+    }
     let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
 
     assert_eq!(db.get_storage_count(StorageFilter::All).await.unwrap(), 2);
@@ -64,12 +103,25 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
 
     exec(
         &db,
-        "DELETE FROM release_files WHERE id = '161dd6f3-3bdd-4312-b5d3-8b9d83b53694';
-         INSERT INTO release_files (id, release_id, original_filename, file_size, content_type, created_at) VALUES
-            ('f5008044-8ffe-4227-bdc3-238f85a6a4a6', 'af4421de-5174-45a9-81fc-74110bc5f85d', 'one.jpg', 1, 'image/jpeg', '2026-01-01T00:00:00Z'),
-            ('cda4c2ec-c6fa-422c-a224-d4f56ca5f3f3', 'af4421de-5174-45a9-81fc-74110bc5f85d', 'two.jpg', 2, 'image/jpeg', '2026-01-01T00:00:00Z');",
+        "DELETE FROM release_files WHERE id = '161dd6f3-3bdd-4312-b5d3-8b9d83b53694';",
     )
     .await;
+    for file in [
+        (
+            "f5008044-8ffe-4227-bdc3-238f85a6a4a6",
+            RELEASE_LATE,
+            "one.jpg",
+            1,
+        ),
+        (
+            "cda4c2ec-c6fa-422c-a224-d4f56ca5f3f3",
+            RELEASE_LATE,
+            "two.jpg",
+            2,
+        ),
+    ] {
+        insert_file(&db, tmp.path(), file).await;
+    }
     assert_eq!(
         db.get_storage_total_size(StorageFilter::All).await.unwrap(),
         13

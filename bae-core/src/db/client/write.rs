@@ -118,7 +118,7 @@ pub(super) fn insert_album_artist_row(
 }
 
 /// `source_folder_name` names the folder an export writes under the user's
-/// target directory, so, like a file's name (see [`with_file_row_params`]),
+/// target directory, so, like a file's name (see [`insert_release_file_row`]),
 /// it must name one. The release is ordered after its album's others, so an
 /// album's first release stays its primary one.
 pub(super) fn insert_release_row(
@@ -404,13 +404,13 @@ pub(super) fn insert_artist_role_row(
 ))]
 const INSERT_RELEASE_FILE_SQL: &str = r#"
     INSERT INTO release_files (
-        id, release_id, original_filename, file_size, content_type, file,
+        id, release_id, original_filename, content_type, file,
         source_audio_layout, source_audio_content_type, source_audio_duration_ms,
         source_audio_sample_rate_hz, source_audio_bits_per_sample,
         source_audio_bitrate_kbps, source_audio_channels,
         created_at
     ) VALUES (
-        :id, :release_id, :original_filename, :file_size, :content_type, :file,
+        :id, :release_id, :original_filename, :content_type, :file,
         :source_audio_layout, :source_audio_content_type, :source_audio_duration_ms,
         :source_audio_sample_rate_hz, :source_audio_bits_per_sample,
         :source_audio_bitrate_kbps, :source_audio_channels,
@@ -418,19 +418,18 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
     )
 "#;
 
-/// Check the file's name names a file and bind the row's columns, `file`
-/// the coven file it references, or `None` for a file this device keeps
-/// local.
+/// Insert a release file row referencing `coven_file`, the coven file the
+/// write staged for it, once its name is checked to name a file.
 #[cfg(any(
     test,
     feature = "test-utils",
     not(any(target_os = "ios", target_os = "android"))
 ))]
-fn with_file_row_params<T>(
-    file: &DbFile,
-    coven_file: Option<coven::FileId>,
-    write: impl FnOnce(&[(&str, &dyn rusqlite::ToSql)]) -> Result<T, DbError>,
-) -> Result<T, DbError> {
+pub(super) fn insert_release_file_row(
+    conn: &SqlContext<'_, '_>,
+    file: &NewReleaseFile,
+    coven_file: coven::FileId,
+) -> Result<(), DbError> {
     crate::storage::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)
         .map_err(|e| DbError::Message(e.to_string()))?;
     let source_audio_layout = file
@@ -463,92 +462,25 @@ fn with_file_row_params<T>(
         .as_ref()
         .map(|audio| audio.format.channels);
     let created_at = file.created_at.to_rfc3339();
-    write(rusqlite::named_params! {
-        ":id": file.id,
-        ":release_id": file.release_id,
-        ":original_filename": file.original_filename,
-        ":file_size": file.file_size,
-        ":content_type": file.content_type.as_str(),
-        ":file": coven_file,
-        ":source_audio_layout": source_audio_layout,
-        ":source_audio_content_type": source_audio_content_type,
-        ":source_audio_duration_ms": source_audio_duration_ms,
-        ":source_audio_sample_rate_hz": source_audio_sample_rate_hz,
-        ":source_audio_bits_per_sample": source_audio_bits_per_sample,
-        ":source_audio_bitrate_kbps": source_audio_bitrate_kbps,
-        ":source_audio_channels": source_audio_channels,
-        ":created_at": created_at,
-    })
-}
-
-/// Insert a release file row referencing `coven_file`, the coven file the
-/// write staged from the person's original for the cloud, and record that
-/// original on this device.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn insert_external_file_row(
-    conn: &SqlContext<'_, '_>,
-    file: &DbFile,
-    original: &coven::UserFile,
-    coven_file: coven::FileId,
-) -> Result<(), DbError> {
-    with_file_row_params(file, Some(coven_file), |params| {
-        conn.execute(INSERT_RELEASE_FILE_SQL, params)
-            .map_err(DbError::from)
-    })?;
-    record_original_on(conn, file, original)
-}
-
-/// Insert a release file row whose original stays on this device, with no
-/// coven file.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn insert_local_file_row(
-    conn: &SqlContext<'_, '_>,
-    file: &DbFile,
-    original: &coven::UserFile,
-) -> Result<(), DbError> {
-    with_file_row_params(file, None, |params| {
-        conn.execute(INSERT_RELEASE_FILE_SQL, params)
-            .map_err(DbError::from)
-    })?;
-    record_original_on(conn, file, original)
-}
-
-/// Record on this device the original a release file was imported from.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn record_original_on(
-    conn: &SqlContext<'_, '_>,
-    file: &DbFile,
-    original: &coven::UserFile,
-) -> Result<(), DbError> {
-    if original.size != file.file_size as u64 {
-        return Err(DbError::Message(format!(
-            "original size changed for {}",
-            file.id
-        )));
-    }
     conn.execute(
-        "INSERT INTO local_release_files (file_id, path, modified_at) VALUES (?, ?, ?)",
-        params![
-            file.id,
-            coven::path_bytes(&original.path),
-            chrono::DateTime::<chrono::Utc>::from(original.modified_at).to_rfc3339()
-        ],
+        INSERT_RELEASE_FILE_SQL,
+        rusqlite::named_params! {
+            ":id": file.id,
+            ":release_id": file.release_id,
+            ":original_filename": file.original_filename,
+            ":content_type": file.content_type.as_str(),
+            ":file": coven_file,
+            ":source_audio_layout": source_audio_layout,
+            ":source_audio_content_type": source_audio_content_type,
+            ":source_audio_duration_ms": source_audio_duration_ms,
+            ":source_audio_sample_rate_hz": source_audio_sample_rate_hz,
+            ":source_audio_bits_per_sample": source_audio_bits_per_sample,
+            ":source_audio_bitrate_kbps": source_audio_bitrate_kbps,
+            ":source_audio_channels": source_audio_channels,
+            ":created_at": created_at,
+        },
     )?;
     Ok(())
-}
-
-/// Insert a file row naming no coven file. Tests that exercise bytes stage
-/// a real file through the production import or move path.
-#[cfg(any(test, feature = "test-utils"))]
-pub(super) fn insert_file_row_for_test(
-    conn: &SqlContext<'_, '_>,
-    file: &DbFile,
-) -> Result<(), DbError> {
-    with_file_row_params(file, None, |params| {
-        conn.execute(INSERT_RELEASE_FILE_SQL, params)
-            .map(|_| ())
-            .map_err(DbError::from)
-    })
 }
 
 #[cfg(any(

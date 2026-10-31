@@ -248,7 +248,7 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
 /// read under both all show it.
 #[tokio::test]
 async fn release_files_are_read_in_case_insensitive_natural_order() {
-    let (db, _tmp) = release_detail_db().await;
+    let (db, tmp) = release_detail_db().await;
     // Inserted out of order, mixed case, with a two-digit number.
     for (i, name) in [
         "Track 10.flac",
@@ -267,19 +267,20 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         } else {
             "image/jpeg"
         };
-        db.insert_file(&DbFile {
-            id: bae_test_support::test_uuid(&format!("ordering-file-{i}")),
-            release_id: RELEASE_A.to_string(),
-            original_filename: name.to_string(),
-            file_size: 1,
-            content_type: bae_util::content_type::ContentType::from_mime(mime),
-            source_audio: None,
-            file: None,
-            stored: false,
-            created_at: chrono::Utc::now(),
-        })
-        .await
-        .unwrap();
+        insert_file(
+            &db,
+            tmp.path(),
+            NewReleaseFile {
+                id: bae_test_support::test_uuid(&format!("ordering-file-{i}")),
+                release_id: RELEASE_A.to_string(),
+                original_filename: name.to_string(),
+                content_type: bae_util::content_type::ContentType::from_mime(mime),
+                source_audio: None,
+                created_at: chrono::Utc::now(),
+            },
+            1,
+        )
+        .await;
     }
     let expected = vec![
         "album.cue",
@@ -359,7 +360,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
 #[tokio::test]
 async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
     use crate::library::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
-    let (db, _tmp) = release_detail_db().await;
+    let (db, tmp) = release_detail_db().await;
     for (i, (name, size, mime)) in [
         ("Track 10.flac", 30, "audio/flac"),
         ("cover.jpg", 20, "image/jpeg"),
@@ -369,19 +370,20 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
     .into_iter()
     .enumerate()
     {
-        db.insert_file(&DbFile {
-            id: bae_test_support::test_uuid(&format!("sorted-file-{i}")),
-            release_id: RELEASE_A.to_string(),
-            original_filename: name.to_string(),
-            file_size: size,
-            content_type: bae_util::content_type::ContentType::from_mime(mime),
-            source_audio: None,
-            file: None,
-            stored: false,
-            created_at: chrono::Utc::now(),
-        })
-        .await
-        .unwrap();
+        insert_file(
+            &db,
+            tmp.path(),
+            NewReleaseFile {
+                id: bae_test_support::test_uuid(&format!("sorted-file-{i}")),
+                release_id: RELEASE_A.to_string(),
+                original_filename: name.to_string(),
+                content_type: bae_util::content_type::ContentType::from_mime(mime),
+                source_audio: None,
+                created_at: chrono::Utc::now(),
+            },
+            size,
+        )
+        .await;
     }
     let order = |column, descending| ReleaseFileOrder { column, descending };
     let request = |order| {
@@ -422,31 +424,31 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             ReleaseFileColumn::Name,
             true,
             ["Track 10.flac", "Track 2.flac", "cover.jpg", "album.cue"],
-            "idx_release_files_release_order",
+            Some("idx_release_files_release_order"),
         ),
         (
             ReleaseFileColumn::Size,
             false,
             ["album.cue", "cover.jpg", "Track 2.flac", "Track 10.flac"],
-            "idx_release_files_release_size",
+            None,
         ),
         (
             ReleaseFileColumn::Size,
             true,
             ["Track 10.flac", "Track 2.flac", "cover.jpg", "album.cue"],
-            "idx_release_files_release_size",
+            None,
         ),
         (
             ReleaseFileColumn::Kind,
             false,
             ["album.cue", "Track 2.flac", "Track 10.flac", "cover.jpg"],
-            "idx_release_files_release_kind",
+            Some("idx_release_files_release_kind"),
         ),
         (
             ReleaseFileColumn::Kind,
             true,
             ["cover.jpg", "Track 10.flac", "Track 2.flac", "album.cue"],
-            "idx_release_files_release_kind",
+            Some("idx_release_files_release_kind"),
         ),
     ] {
         let asked = request(order(column, descending));
@@ -468,17 +470,26 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             })
             .await
             .unwrap();
-        assert!(
-            plan.iter().any(|step| step.contains(index))
-                && !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-            "{column:?} descending: {descending} walks {index}: {plan:?}"
-        );
+        match index {
+            Some(index) => assert!(
+                plan.iter().any(|step| step.contains(index))
+                    && !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+                "{column:?} descending: {descending} walks {index}: {plan:?}"
+            ),
+            // Sizes are coven's: the release's few files are found by an
+            // index of the release's and sorted by their coven files' sizes.
+            None => assert!(
+                plan.iter()
+                    .any(|step| step.starts_with("SEARCH f USING") && step.contains("release_id=?")),
+                "{column:?} descending: {descending} finds the release's files by index: {plan:?}"
+            ),
+        }
     }
 }
 
 #[tokio::test]
 async fn release_file_source_audio_facts_round_trip_without_track_rows() {
-    let (db, _tmp) = release_detail_db().await;
+    let (db, tmp) = release_detail_db().await;
     let source_audio = crate::album_detail::SourceAudioFile {
         layout: Some(crate::album_detail::SourceAudioLayout::Cue),
         content_type: bae_util::content_type::ContentType::Flac,
@@ -491,19 +502,20 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
             channels: 2,
         },
     };
-    db.insert_file(&DbFile {
-        id: bae_test_support::test_uuid("source-audio-round-trip"),
-        release_id: RELEASE_A.to_string(),
-        original_filename: "album.flac".to_string(),
-        file_size: 12_345,
-        content_type: bae_util::content_type::ContentType::Flac,
-        source_audio: Some(source_audio.clone()),
-        file: None,
-        stored: false,
-        created_at: chrono::Utc::now(),
-    })
-    .await
-    .unwrap();
+    insert_file(
+        &db,
+        tmp.path(),
+        NewReleaseFile {
+            id: bae_test_support::test_uuid("source-audio-round-trip"),
+            release_id: RELEASE_A.to_string(),
+            original_filename: "album.flac".to_string(),
+            content_type: bae_util::content_type::ContentType::Flac,
+            source_audio: Some(source_audio.clone()),
+            created_at: chrono::Utc::now(),
+        },
+        12_345,
+    )
+    .await;
 
     let files = db.get_files_for_release(RELEASE_A).await.unwrap();
     assert_eq!(files.len(), 1);
@@ -656,4 +668,15 @@ async fn a_tracks_neighbors_are_read_from_the_positions_index() {
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),
         "the read sorts after reading: {plan:?}"
     );
+}
+
+/// Seed a release file, staged on this device only from an original of
+/// `size` zero bytes written under `dir`.
+async fn insert_file(db: &Database, dir: &std::path::Path, file: NewReleaseFile, size: u64) {
+    let original = dir.join(&file.id);
+    std::fs::File::create_new(&original)
+        .unwrap()
+        .set_len(size)
+        .unwrap();
+    db.insert_file_for_test(&file, &original).await.unwrap();
 }

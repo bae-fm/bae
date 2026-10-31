@@ -220,7 +220,7 @@ mod tests {
     #[tokio::test]
     async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
         use crate::config::{Config, ConfigHandle};
-        use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease};
+        use crate::db::{Database, DbAlbum, DbArtist, DbRelease, NewReleaseFile};
         use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
         use chrono::Utc;
@@ -287,15 +287,12 @@ mod tests {
         };
         database.insert_release(&release).await.unwrap();
 
-        let file = DbFile {
+        let file = NewReleaseFile {
             id: "4c3b28d5-7315-48f1-8352-500492675441".to_string(),
             release_id: release.id.clone(),
             original_filename: "cover.jpg".to_string(),
-            file_size: 5,
             content_type: ContentType::Jpeg,
             source_audio: None,
-            file: None,
-            stored: false,
             created_at: Utc::now(),
         };
         let missing_dir = temp.path().join("missing-image-dir");
@@ -303,7 +300,7 @@ mod tests {
         let missing_path = missing_dir.join(&file.original_filename);
         std::fs::write(&missing_path, b"cover").unwrap();
         database
-            .insert_external_file_for_test(&file, &missing_path)
+            .insert_file_for_test(&file, &missing_path)
             .await
             .unwrap();
         std::fs::remove_file(&missing_path).unwrap();
@@ -334,7 +331,7 @@ mod tests {
     #[tokio::test]
     async fn test_resolve_release_identity_local() {
         use crate::config::{Config, ConfigHandle};
-        use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack};
+        use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewReleaseFile};
         use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
         use chrono::Utc;
@@ -427,22 +424,15 @@ mod tests {
             ("02 Test Track 2.flac", ContentType::Flac),
         ] {
             let abs = local_dir.join(filename);
-            let size = std::fs::metadata(&abs).unwrap().len() as i64;
-            let file = DbFile {
+            let file = NewReleaseFile {
                 id: Uuid::new_v4().to_string(),
                 release_id: release.id.clone(),
                 original_filename: filename.to_string(),
-                file_size: size,
                 content_type,
                 source_audio: None,
-                file: None,
-                stored: false,
                 created_at: Utc::now(),
             };
-            database
-                .insert_external_file_for_test(&file, &abs)
-                .await
-                .unwrap();
+            database.insert_file_for_test(&file, &abs).await.unwrap();
         }
 
         // Two track rows, so the assertion below pins the count and the

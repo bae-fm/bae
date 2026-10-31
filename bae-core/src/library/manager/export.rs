@@ -80,7 +80,10 @@ impl LibraryManager {
         let mut offset = 0;
         while offset < size {
             let len = EXPORT_WINDOW.min(size - offset);
-            let window = stream.read_at(offset, len).await?;
+            let window = stream
+                .read_at(offset, len)
+                .await
+                .map_err(crate::db::DbError::from)?;
             output = blocking_io(move || {
                 std::io::Write::write_all(&mut output, &window)?;
                 Ok(output)

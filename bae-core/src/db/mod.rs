@@ -14,7 +14,6 @@ pub(crate) use client::QueueUpcomingRead;
 pub(crate) use client::QueuedPayload;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::RecordsChange;
-pub(crate) use client::ReleaseFileStream;
 pub(crate) use client::ReleaseMetadataRows;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::SelectionWrite;

@@ -462,8 +462,9 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
     .expect("natural_order registers");
     // The schema's triggers follow coven's `coven_files`, `coven_pins` and
     // `coven_upload_queue`, which coven creates before it migrates; these
-    // tests record, pin and queue nothing, so empty tables of the same shape
-    // let the triggers exist.
+    // tests pin and queue nothing, so tables of the same shape let the
+    // triggers exist, and a test whose rows reference a file writes the
+    // file's stand-in record itself.
     conn.execute_batch(
         "CREATE TABLE coven_files (id TEXT PRIMARY KEY NOT NULL, audience TEXT NOT NULL, \
          size INTEGER NOT NULL, hash BLOB, coordinates TEXT NOT NULL, \

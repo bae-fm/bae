@@ -104,7 +104,6 @@ fn a_moves_original_offers_restoring_it_or_cancelling_the_upload() {
             Some("release")
         ),
         PendingAction::CancelUpload {
-            release_id: "release".into(),
             id: coven::MoveId(4),
         }
     );

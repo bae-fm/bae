@@ -624,44 +624,64 @@ impl ImportService {
             let import_id_for_progress = import_id.to_string();
             let reported_percent = Arc::new(std::sync::atomic::AtomicU8::new(last_release_percent));
             let reported_percent_for_progress = Arc::clone(&reported_percent);
-            let original = coven::UserFile {
-                path: file.path.clone(),
-                size: file.size,
-                modified_at: chrono::DateTime::from_timestamp_nanos(file.modified_at_ns).into(),
-            };
-            let prepared_source = match destination {
-                ImportDestination::Local => PreparedImportSource::Local(original),
-                ImportDestination::Remote { pin } => PreparedImportSource::Shared {
-                    original,
-                    keep_here: pin,
-                    prepared: Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
-                        let completed = bytes_read_before_file + u128::from(consumed);
-                        let percent = ((completed * 100) / total_bytes).min(100) as u8;
-                        let previous = reported_percent_for_progress
-                            .swap(percent, std::sync::atomic::Ordering::Relaxed);
-                        if previous != percent {
-                            ImportService::emit_phase_progress_on(
-                                &event_tx,
-                                ImportRun {
-                                    import_id: &import_id_for_progress,
-                                    candidate_key: &candidate_key_for_progress,
-                                },
-                                &release_id_for_progress,
-                                Some(percent),
-                                ImportPhase::ReadingFiles,
-                            );
-                        }
-                    }))
-                    .await
-                    .map_err(|error| {
-                        crate::import::ImportError::UnusableFile {
+            // coven records the original as it finds it now, so what it
+            // finds must be the file the scan read.
+            let source = match destination {
+                ImportDestination::Local => {
+                    let observed = coven::observe_user_file(&file.path)
+                        .await
+                        .map_err(|error| crate::import::ImportError::UnusableFile {
                             detail: format!(
-                                "coven could not prepare {} for import: {error}",
+                                "coven could not observe {} for import: {error}",
                                 file.path.display()
                             ),
-                        }
-                    })?,
-                },
+                        })?;
+                    crate::import::file_identity::require_scanned_identity(
+                        file,
+                        observed.size(),
+                        observed.modified_at(),
+                    )?;
+                    coven::UserSource::DeviceOnly(observed)
+                }
+                ImportDestination::Remote { pin } => {
+                    let prepared =
+                        Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
+                            let completed = bytes_read_before_file + u128::from(consumed);
+                            let percent = ((completed * 100) / total_bytes).min(100) as u8;
+                            let previous = reported_percent_for_progress
+                                .swap(percent, std::sync::atomic::Ordering::Relaxed);
+                            if previous != percent {
+                                ImportService::emit_phase_progress_on(
+                                    &event_tx,
+                                    ImportRun {
+                                        import_id: &import_id_for_progress,
+                                        candidate_key: &candidate_key_for_progress,
+                                    },
+                                    &release_id_for_progress,
+                                    Some(percent),
+                                    ImportPhase::ReadingFiles,
+                                );
+                            }
+                        }))
+                        .await
+                        .map_err(|error| {
+                            crate::import::ImportError::UnusableFile {
+                                detail: format!(
+                                    "coven could not prepare {} for import: {error}",
+                                    file.path.display()
+                                ),
+                            }
+                        })?;
+                    crate::import::file_identity::require_scanned_identity(
+                        file,
+                        prepared.size(),
+                        prepared.modified_at(),
+                    )?;
+                    match pin {
+                        true => coven::UserSource::CloudKeptHere(prepared),
+                        false => coven::UserSource::Cloud(prepared),
+                    }
+                }
             };
             bytes_read += u128::from(file.size);
             let completed_percent = ((bytes_read * 100) / total_bytes).min(100) as u8;
@@ -674,10 +694,9 @@ impl ImportService {
                 );
             }
             last_release_percent = completed_percent;
-            let mut db_file = DbFile::new(
+            let mut db_file = NewReleaseFile::new(
                 &db_release.id,
                 &file.relative_path,
-                file.size as i64,
                 resolve_file_content_type(entry)?,
                 library_manager.new_id(),
                 files_now,
@@ -694,7 +713,7 @@ impl ImportService {
             file_ids.insert(file.path.clone(), db_file.id.clone());
             prepared_files.push(PreparedImportFile {
                 row: db_file,
-                source: prepared_source,
+                source,
             });
             debug!(
                 "Read file {}/{}: {}",
@@ -862,7 +881,8 @@ impl ImportService {
             expectation: committed.expectation,
             import_id: import_id.to_string(),
         };
-        // Attaching the originals queues their uploads in the import transaction.
+        // Staging the originals queues a cloud import's uploads in the import
+        // transaction.
         library_manager
             .finalize_import_atomic(
                 commit_guard,

@@ -8,8 +8,8 @@ use bae_catalogs::rate_limiter::CallPriority;
 
 use {
     crate::db::{
-        DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbTrackArtist,
-        DbTrackArtistRole,
+        DbAlbum, DbAlbumArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist, DbTrackArtistRole,
+        NewReleaseFile,
     },
     crate::import::audio_layout::resolve_track_files,
     crate::import::folder_scanner::ScanItem,
@@ -100,22 +100,13 @@ struct PreparedMetadata {
     album_title: String,
 }
 
-/// A release-file row and the source its destination needs.
+/// A release-file row and its original as its destination stages it: on
+/// this device only, observed, or for the cloud, read whole once and kept
+/// whole here too once stored when the import asks for that. coven records
+/// the original on this device either way.
 pub(crate) struct PreparedImportFile {
-    pub(crate) row: DbFile,
-    pub(crate) source: PreparedImportSource,
-}
-
-/// Every original is recorded on this device; a shared one is also staged
-/// with coven for the cloud, read whole once, and kept whole here once stored
-/// when `keep_here` says so.
-pub(crate) enum PreparedImportSource {
-    Local(coven::UserFile),
-    Shared {
-        original: coven::UserFile,
-        prepared: coven::PreparedUserFile,
-        keep_here: bool,
-    },
+    pub(crate) row: NewReleaseFile,
+    pub(crate) source: coven::UserSource,
 }
 
 fn destination_label(destination: ImportDestination) -> &'static str {

@@ -2,14 +2,13 @@ async fn add_track_audio_sources(
     manager: &LibraryManager,
     track: &crate::db::DbTrack,
     sources: &[(&str, crate::album_detail::SourceAudioLayout)],
-) -> Vec<DbFile> {
+) -> Vec<NewReleaseFile> {
     let now = Utc::now();
     let mut files = Vec::with_capacity(sources.len());
     for (name, layout) in sources {
-        let mut file = DbFile::new(
+        let mut file = NewReleaseFile::new(
             &track.release_id,
             name,
-            1_000,
             ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
@@ -26,7 +25,7 @@ async fn add_track_audio_sources(
             content_type: ContentType::Flac,
             duration_ms: 1_000,
         });
-        manager.add_file(&file).await.unwrap();
+        manager.add_file(&file, 1_000).await.unwrap();
         files.push(file);
     }
     let audio_format = crate::db::DbAudioFormat {

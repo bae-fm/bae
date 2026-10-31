@@ -3,8 +3,8 @@
 use super::*;
 
 impl LibraryManager {
-    /// Move every local file to the cloud in one write; `pin` keeps each file
-    /// whole on this device too once stored.
+    /// Move every file of a release on this device only to the cloud, as one
+    /// move; `pin` keeps each file whole on this device too once stored.
     pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
         let manager = self.clone();
         let release_id = release_id.to_string();
@@ -85,18 +85,12 @@ impl LibraryManager {
         files
             .iter()
             .map(|f| {
-                let file = f.file.ok_or_else(|| {
-                    LibraryError::Storage(format!(
-                        "release file {} has no coven file to make local",
-                        f.id
-                    ))
-                })?;
                 let path = crate::storage::stored_name::file_path(
                     release_id,
                     &f.id,
                     &f.original_filename,
                 )?;
-                Ok((file, path))
+                Ok((f.file, path))
             })
             .collect()
     }
@@ -140,18 +134,11 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// End the release's failed move to the cloud, `id`, as its pending
-    /// record offers: the move is cancelled with coven, and the release is
-    /// local here again, playing from its originals.
-    pub async fn cancel_failed_release_move(
-        &self,
-        release_id: &str,
-        id: coven::MoveId,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .cancel_failed_release_move(release_id, id)
-            .await?)
+    /// End a release's failed move to the cloud, `id`, as its pending
+    /// record offers: coven retires the move, and the release stays on this
+    /// device only, playing from its originals.
+    pub async fn cancel_failed_release_move(&self, id: coven::MoveId) -> Result<(), LibraryError> {
+        Ok(self.database.cancel_failed_release_move(id).await?)
     }
 
     /// Pause or resume the download queue. While paused the worker parks instead
@@ -341,8 +328,8 @@ impl LibraryManager {
     /// The transitions this process registered say what they are: a
     /// audio detachment transfer is stopped by its token, which the registry fires;
     /// a pin is stopped through the download queue, which also holds the pins
-    /// not yet started. Cancelling an upload detaches every audio file and
-    /// restores its original path in the same write.
+    /// not yet started. Cancelling an upload cancels the release's move to
+    /// the cloud, and its files stay on this device only.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
         match self.transitions.cancel(release_id) {
             Some(ReleaseStorageAction::DetachAudio) => return Ok(()),

@@ -378,48 +378,60 @@ impl Database {
         self.read(move |sql| get_releases_for_album_on(&sql, &album_id))
             .await
     }
-    /// Seed a release-file row for tests that do not exercise its file bytes.
-    /// Production creates the row and its Coven-owned hash together in
-    /// `finalize_import_atomic`.
+    /// Seed a release-file row for tests, its file staged from the original
+    /// at `original` as a local import stages it: on this device only, with
+    /// the original's path, size and modification time recorded.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
-        let file = file.clone();
-        self.call_sql(move |sql| insert_file_row_for_test(&sql, &file))
-            .await
+    pub async fn insert_file_for_test(
+        &self,
+        file: &NewReleaseFile,
+        original: &std::path::Path,
+    ) -> Result<coven::FileId, DbError> {
+        let staged = self
+            .insert_files_for_test(vec![(file.clone(), original.to_path_buf())])
+            .await?;
+        Ok(staged[0])
     }
 
-    /// A local release's original is device-local until it moves to the
-    /// cloud.
+    /// [`Self::insert_file_for_test`] for each of `files`, in one write.
+    /// Several rows may name one original.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn insert_external_file_for_test(
+    pub async fn insert_files_for_test(
         &self,
-        file: &DbFile,
-        path: &std::path::Path,
-    ) -> Result<(), DbError> {
-        let metadata = tokio::fs::metadata(path).await?;
-        if metadata.len()
-            != u64::try_from(file.file_size).map_err(|error| DbError::Message(error.to_string()))?
-        {
-            return Err(DbError::LocalFileChanged(path.into()));
+        files: Vec<(NewReleaseFile, std::path::PathBuf)>,
+    ) -> Result<Vec<coven::FileId>, DbError> {
+        let mut rows = Vec::with_capacity(files.len());
+        let mut observed = Vec::with_capacity(files.len());
+        for (file, original) in files {
+            observed.push(coven::observe_user_file(&original).await?);
+            rows.push(file);
         }
-        let path = coven::path_bytes(path);
-        let modified = DateTime::<Utc>::from(metadata.modified()?).to_rfc3339();
-        let file = file.clone();
-        self.call_sql(move |sql| {
-            insert_file_row_for_test(&sql, &file)?;
-            sql.execute(
-                "INSERT INTO local_release_files(file_id,path,modified_at) VALUES(?1,?2,?3)",
-                params![file.id, path, modified],
-            )?;
-            Ok(())
-        })
+        self.write_with_files(
+            move |w| {
+                Ok(observed
+                    .into_iter()
+                    .map(|observed| {
+                        w.put_user_file(
+                            crate::sync::RELEASE_FILES_NAMESPACE,
+                            coven::UserSource::DeviceOnly(observed),
+                        )
+                    })
+                    .collect::<Vec<_>>())
+            },
+            move |sql, staged| {
+                for (file, id) in rows.iter().zip(&staged) {
+                    insert_release_file_row(&sql, file, *id)?;
+                }
+                Ok(staged)
+            },
+        )
         .await
+        .map_err(Self::coven_error)
     }
 
     /// The release's files in their order, each with the path of the original
-    /// this device holds for it (`None` when it holds none): the one coven
-    /// records for a row naming a coven file, else the one
-    /// `local_release_files` records.
+    /// coven records on this device for its file, `None` when it records
+    /// none: for a release another device imported.
     pub async fn get_files_with_originals_for_release(
         &self,
         release_id: &str,
@@ -430,9 +442,8 @@ impl Database {
                 concat!(
                     "SELECT ",
                     release_file_columns!(),
-                    ", CASE WHEN f.file IS NULL THEN l.path ELSE u.path END AS original_path \
+                    ", u.path AS original_path \
                      FROM release_files AS f \
-                     LEFT JOIN local_release_files AS l ON l.file_id = f.id \
                      LEFT JOIN coven_user_files AS u ON u.file = f.file \
                      WHERE f.release_id = ?1 \
                      ORDER BY f.original_filename COLLATE natural_order, f.id"
@@ -582,28 +593,12 @@ impl Database {
             .chain(artist_images.iter())
             .map(|(image, bytes)| (image.image_type.namespace(), bytes.clone()))
             .collect();
-        // Each original going to the cloud is staged as a coven file, which its
-        // row references; a local one stays this device's, with no coven file.
-        let mut rows_to_insert = Vec::with_capacity(files.len());
-        let mut cloud_originals = Vec::new();
-        for prepared in files {
-            match prepared.source {
-                crate::import::service::PreparedImportSource::Local(original) => {
-                    rows_to_insert.push((prepared.row, original, false));
-                }
-                crate::import::service::PreparedImportSource::Shared {
-                    original,
-                    prepared: user_file,
-                    keep_here,
-                } => {
-                    cloud_originals.push(match keep_here {
-                        true => coven::UserSource::CloudKeptHere(user_file),
-                        false => coven::UserSource::Cloud(user_file),
-                    });
-                    rows_to_insert.push((prepared.row, original, true));
-                }
-            }
-        }
+        // Each original is staged as a coven file, on this device only or for
+        // the cloud as its source says, which its row references.
+        let (rows_to_insert, originals): (Vec<NewReleaseFile>, Vec<coven::UserSource>) = files
+            .into_iter()
+            .map(|prepared| (prepared.row, prepared.source))
+            .unzip();
         let records = rows.records.to_vec();
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         let now = now_dt.to_rfc3339();
@@ -613,7 +608,7 @@ impl Database {
                     .into_iter()
                     .map(|(namespace, bytes)| w.put_file(namespace, bytes, coven::Place::Cloud))
                     .collect();
-                let originals: Vec<coven::FileId> = cloud_originals
+                let originals: Vec<coven::FileId> = originals
                     .into_iter()
                     .map(|source| w.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, source))
                     .collect();
@@ -721,20 +716,8 @@ impl Database {
                     insert_track_artist_role_row(tx, role)?;
                 }
 
-                let mut original_file_ids = original_file_ids.into_iter();
-                for (row, original, cloud) in &rows_to_insert {
-                    match cloud {
-                        false => insert_local_file_row(tx, row, original)?,
-                        true => {
-                            let file = original_file_ids.next().ok_or_else(|| {
-                                DbError::Message(format!(
-                                    "release file {} has no staged coven file",
-                                    row.id
-                                ))
-                            })?;
-                            insert_external_file_row(tx, row, original, file)?;
-                        }
-                    }
+                for (row, file) in rows_to_insert.iter().zip(original_file_ids) {
+                    insert_release_file_row(tx, row, file)?;
                 }
 
                 for af in &audio_formats {

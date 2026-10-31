@@ -32,19 +32,18 @@ async fn seed_track_window(
     end_sample: Option<u64>,
     generated_pregap_samples: Option<u64>,
 ) {
-    use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
+    use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
     use bae_util::content_type::ContentType;
     let now = chrono::Utc::now();
     let file_id = bae_test_support::test_uuid(&format!("{track_id}-file"));
-    let file = DbFile::new(
+    let file = NewReleaseFile::new(
         release_id,
         "track.flac",
-        4_096,
         ContentType::Flac,
         file_id.clone(),
         now,
     );
-    library_manager.add_file(&file).await.unwrap();
+    library_manager.add_file(&file, 4_096).await.unwrap();
     let audio_format_id = bae_test_support::test_uuid(&format!("{track_id}-af"));
     let audio_format = DbAudioFormat::new(
         track_id,

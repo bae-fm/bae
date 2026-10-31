@@ -1174,9 +1174,11 @@ Ana clicks Import. bae:
    "Fetching artist pictures…"; an import that creates no Discogs artist
    fetches nothing and its progress never says so.
 3. **Reads each file** where it sits, for a cloud import: coven hashes it, and
-   checks every later download against that hash. A local import records each
-   file's path, size and modification time; its bytes are read when the release
-   is uploaded (§4.2).
+   checks every later download against that hash. For a local import coven
+   only observes each file, recording its path, size and modification time;
+   its bytes are read when the release moves to the cloud (§4.2). Either way
+   a file whose size or modification time is no longer what the scan recorded
+   fails the import before any row is written.
 4. **Measures loudness** by decoding every track: its EBU R128 integrated
    loudness and true peak, and the album's over all its tracks. A near-silent
    track stores no loudness and plays unchanged. The same decode records
@@ -1246,9 +1248,10 @@ on a side and stored as JPEG.
 
 **Where it goes.** Each import lands on this device or goes to the cloud, as
 the person last chose (§4.2), and a cloud import stays whole here too once
-stored when the Pinned choice is on. A cloud import stages its files with
-coven for the cloud in the same transaction as its rows, which queues their
-upload, so the choice is never lost, and needs no connection to record it.
+stored when the Pinned choice is on. Either import stages its files with
+coven in the same transaction as its rows: on this device only for a local
+import, and for the cloud for a cloud import, which queues their upload, so
+the choice is never lost, and needs no connection to record it.
 
 **Automatic identification and import.** By default, each release a scan finds
 for the first time is identified on its own, in the background, behind
@@ -1383,7 +1386,7 @@ the `file` column of `covers` and `artist_images`, `avatar_id` of `people`. A
 coven file never changes its bytes, so changing a cover stages a new file and
 points the release's cover row at it in one write; the old file goes with its
 last reference, and coven deletes its stored bytes once nothing refers to them
-([coven §17.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#179-deleting-stored-files)).
+([coven §17.10](https://github.com/bae-fm/coven/blob/main/spec/coven.md#1710-deleting-stored-files)).
 When two artists merge (§2.3) and only the absorbed one has an image, the
 survivor's row references the same file: nothing is uploaded again.
 
@@ -1404,37 +1407,37 @@ A release is *local*, or *uploaded* so other devices can play it.
 Ana imports her CD rip to her laptop only. The release is local: its files are
 her own, at their path on her laptop. Its rows sync like any release's, so
 Ben's phone shows the album, its tracks and its cover, but can't play it. Ana
-moves it to the cloud. bae stages each file with coven for the cloud, and coven
-uploads it from where it sits; once every file is in storage every device can
-play it. Ana's files stay where they are, untouched.
+moves it to the cloud. coven uploads each file from where it sits; once every
+file is in storage every device can play it. Ana's files stay where they are,
+untouched.
 
-**Where a file plays from.** A `release_files` row references its file by the
+**Every file is coven's.** A `release_files` row references its file by the
 id of a coven file
 ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)),
-or by none while its release is local after import. Each device records the
-originals of the local imports it holds in the device-local table
-`local_release_files`, one row per file with its path, as the system's own
-bytes for it, and its modification time. coven records the original of every
-file it has on a device only, the copy making a release local again wrote
-(§4.4) among them, in its own `coven_user_files`. These paths never leave the
-device. So a device reads each release file by one rule:
+from the write that imports it on. A local import stages each file on the
+importing device only: coven records the original's path, size and
+modification time, reading none of its bytes
+([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
+Before that write, bae compares the size and modification time coven found
+with the ones its scan recorded, and refuses the import if a file changed in
+between: the release's rows describe the file the scan read. coven lists the
+originals it records on this device in `coven_user_files`, and these paths
+never leave the device. Every device reads every release file through coven:
 
-- the row references a coven file: through coven, which reads the original on
-  the device the file is on, moving to the cloud or made local again, and the
-  cache or storage once it is stored;
-- otherwise, this device holds an original: from that original;
-- otherwise the file isn't here. Another device holds it, keeping it local or
-  still moving it to the cloud, and this device can't tell which.
+- the file is stored: from the cache or storage;
+- the file is on this device only: from its original, which coven checks
+  still has its recorded size and modification time;
+- the file is on another device only: it isn't here. Another device has it,
+  keeping it local or still moving it to the cloud.
 
-A release is *uploaded* once every one of its files' rows references a coven
-file stored in the cloud. Until then it is local, on every device. The rows
-sync anyway, so every device knows what the household owns, and a rating or
-playlist entry pointing at a local release's track points at a row every
-device can read
+A release is *uploaded* once every one of its files is stored in the cloud.
+Until then it is local, on every device. The rows sync anyway, so every
+device knows what the household owns, and a rating or playlist entry pointing
+at a local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
-Whether a file is stored changes in coven's own record of it, with no change
-to a row of bae's, so the release's listing follows coven's `coven_files`
-(Appendix B).
+Where a file is changes in coven's own record of it, with no change to a row
+of bae's, so the release's listing follows coven's `coven_files`, which also
+gives each file's size (Appendix B).
 
 A local release's cover still uploads, so other devices can show it. coven
 queues it as soon as the cover row is written, with or without storage
@@ -1443,48 +1446,46 @@ moves, the release reads as local everywhere, and nothing about it reads as
 uploading. Waiting files draw no progress bar; a bar appears only while a
 file's bytes are moving.
 
-**Moving to the cloud.** Moving a release to the cloud stages every one of its
-files for the cloud in one write, each read whole once, and points each row at
-its coven file. The files of that write are one move: coven uploads each, and
-once the last is stored one write of coven's switches them all to the cloud,
-changing no row of bae's
+**Moving to the cloud.** Moving a release to the cloud reads each of its
+originals whole once, then records one move of all its files in one write
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
-So other devices see the release local until its last file lands, and never
-half uploaded. The `local_release_files` rows stay; until the move finishes
-coven reads each file from its original, so this device keeps playing the
-release while it uploads, and the upload list shows it uploading. Before that
-write, bae checks each file still has the size and modification time it
-recorded; a file that changed since import refuses the move. The rows describe
+No row of bae's changes. coven uploads each file, checking every chunk
+against what it read, and once the last is stored one write of coven's
+switches them all to the cloud. So other devices see the release local until
+its last file lands, and never half uploaded. Until then coven reads each file
+from its original, so this device keeps playing the release while it uploads,
+and the upload list shows it uploading. coven refuses the move if an original
+no longer has the size and modification time it recorded: the rows describe
 the file as imported, and a changed file would give every device audio that
-doesn't match them. The stored Pinned choice (Appendix C) asks coven to keep
-each file whole on this device once the move finishes: coven pins it itself and
-downloads its copy from storage, never reading the original for the cache, and
-retries a failed download by itself.
+doesn't match them. A release moves only when every one of its files is on
+this device only and none is moving already; a release made local again
+(§4.4) moves like one imported here. The stored Pinned choice (Appendix C)
+asks coven to keep each file whole on this device once the move finishes:
+coven pins it itself and downloads its copy from storage, never reading the
+original for the cache, and retries a failed download by itself.
 
-If an original changes after the write and before its upload, the move fails:
-none of its files switches, and the pending list names the file and offers
-Cancel Upload, which ends the move and makes the release local here again.
+If an original goes missing before its upload, the move waits for it, the
+pending list naming the file. If one changes, the move fails: none of its
+files switches, and the pending list names the file and offers Cancel Upload.
 
-**Making a release local.** Two actions bring a release's audio back to this
-device alone, every file of the release in one write, so the release plays
-from this device's disk the moment the write lands:
-
-- **Cancelling an upload** while any of its files is still queued, or after
-  its move failed, takes every file of the release off its coven file, and
-  coven forgets each file with its last reference and retires each upload.
-  The release plays from its originals again, which must still be unchanged,
-  unless its move failed because one changed.
-- **Making a release local again** (§4.4): coven copies its files into a
-  folder the person picks and switches every one to this device only, each
-  copy becoming the original it records. No row of bae's changes.
-
-Other devices again show the release but can't play it. What already reached
-storage stays until nothing refers to it; coven then deletes it
-([coven §17.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#179-deleting-stored-files)).
+**Cancelling an upload** while any of its files is still queued, or after its
+move failed, cancels the release's move in one write. Nothing was switched, so
+nothing is taken back and no row changes: every file stays on this device
+only, and the release plays from its originals again, or shows an original
+missing or changed. What already reached storage stays until nothing refers to
+it; coven then deletes it
+([coven §17.10](https://github.com/bae-fm/coven/blob/main/spec/coven.md#1710-deleting-stored-files)).
+Other devices go on showing the release without playing it.
 
 - **A cloud import** (§3.7) stages its files for the cloud in the same write as
-  its rows, kept here once stored when the Pinned choice says so, and records
-  their originals as a local import does.
+  its rows, each read whole once and compared with the scan as a local
+  import's are, kept here once stored when the Pinned choice says so. Its
+  files are one move, as a release moved to the cloud is: other devices see
+  them on the importing device until all are stored, and cancelling its upload
+  leaves it a local release on that device.
+- **Deleting a release** deletes its files' coven records with its rows, and
+  with them coven's records of their originals; the originals stay where they
+  are.
 - **Uploads queue.** Files go up three at a time by default, a setting from
   one to eight. The queue can be paused, and stays paused across restarts; a
   paused upload keeps its place.
@@ -1665,7 +1666,7 @@ Storage holds encrypted objects under random names. Ana's FLAC files are not a
 folder anyone can browse in Dropbox: each is one object, encrypted with a key
 of its own that travels only inside the encrypted writes of its coven file's
 record, at a path coven fixes when the file is staged
-([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-how-a-file-is-stored)).
+([coven §17.5](https://github.com/bae-fm/coven/blob/main/spec/coven.md#175-how-a-file-is-stored)).
 The provider sees no album, artist or file name.
 
 The path is fixed when the file is staged and kept in its coven file's record,
@@ -2096,7 +2097,7 @@ declares it (§6.3), and what a person sees when sync stops (§6.4).
 | Import and scan state (§3.1–§3.6) | People (§5.4) |
 | Fetched catalog data (§3.4) | Ratings, history and playlists (§5.3) |
 | Settings (Appendix C) | |
-| A local release's audio and its paths (§4.2) | |
+| The paths of a local release's originals, in coven's records (§4.2) | |
 | Plays from before the person had a profile (§5.3) | |
 
 Each reason is the same: the data is one device's, and another device would be
@@ -2104,8 +2105,10 @@ wrong to follow it. Ana's queue is what she is listening to, not Ben. A scan is
 of one machine's disk. A fetched catalog release can be fetched by any device
 that wants it. A transfer limit fits one machine's link.
 
-A local release's rows sync like any release's; only its audio, and the paths
-it sits at, stay on the importing device until the person uploads it (§4.2).
+A local release's rows sync like any release's, and so do coven's records of
+its files, each naming the device it is on; only its audio, and the paths coven
+records for its originals, stay on that device until the person moves it to
+the cloud (§4.2).
 
 ### 6.2 Cloud homes
 
@@ -2191,7 +2194,7 @@ bae's own. Each file is downloaded when it is first read.
 Appendix B lists every declaration. A test holds the declarations to exactly
 that list, each table with its identity, audience, owner flag and file
 references, and the namespaces with their kinds and budgets, so a
-device-local table such as `local_release_files` or `local_history` can't start
+device-local table such as `local_release_origin` or `local_history` can't start
 syncing by accident. Another holds every table the schema creates to one
 of two lists, declared or device-local, so a new table stays on one device only
 when that was decided.
@@ -2266,8 +2269,8 @@ cover by its album, an artist image or a profile picture as such, and a
 release file or cover no row names any more, kept only by a lost value
 naming it, as a file of a release that is gone; a file no row here names, of
 no namespace bae knows, is a file. A move's record, about an original its
-upload found missing or changed, is named by the release file this device
-recorded at that original's path. The list is one query over coven's pending
+upload found missing or changed, is named by the release file whose original
+coven records at that path on this device. The list is one query over coven's pending
 records, coven's records of the files they name and the library's rows, so a
 record is named as its row stands in the same read. Any other subject, such
 as an operation or the connection, is named by what it is. In the upload list
@@ -2295,7 +2298,7 @@ connects that location again under this device's name. For the second it
 offers to restore the file: put it back where it was imported from, and coven
 retries the upload. A file that changed instead stops its release's move to
 the cloud, and its record offers *Cancel Upload*, which ends the move and
-makes the release local here again (§4.2). A pin the download queue couldn't
+leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
 in its place or the release anew if it left the queue (§4.3); a file coven
 keeps here after a move retries its own download. Other records offer
@@ -2593,11 +2596,11 @@ The default is off.
 
 Playback plays files on this device, or streams them from storage.
 
-A track's file is read from the person's own path for a local release, through
-coven from that path while the release moves to the cloud or once it is made
-local again (§4.4), from the cache or a
-pin for an uploaded one, and otherwise fetched from storage a range at a time
-([coven §17.6](https://github.com/bae-fm/coven/blob/main/spec/coven.md#176-reading-a-file)).
+A track's file is read through coven: from the original on this device for a
+local release, imported here or made local again (§4.4), moving to the cloud
+or not, from the cache or a pin for an uploaded one, and otherwise fetched from
+storage a range at a time
+([coven §17.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#177-reading-a-file)).
 Reading ahead keeps playback from waiting on the network, and a seek fetches
 only what is under the new position. One buffer per file serves every track
 that plays from it, so the eleven tracks of a disc image share one.
@@ -3273,7 +3276,7 @@ All sync.
 | `work_parts` | work inside a larger work, in order |
 | `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type, size in pixels and source |
-| `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), size, type, the audio facts the scan read, and the coven file it references (`file`), none while its release is local here or on another device, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by size and by content type, name and id breaking a tie, the other orders a release's file table sorts by, each read from its index forward or backward |
+| `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
@@ -3289,7 +3292,6 @@ Beside them, device-local tables:
 
 | Table | One row per |
 |---|---|
-| `local_release_files` | the original this device holds of a release file: its path, a BLOB of coven's bytes for it (`coven::path_bytes`), and its modification time (§4.2), with an index by path. Importing writes it; moving to the cloud leaves it |
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `composer_work` | work and artist shown credited on it |
@@ -3456,8 +3458,7 @@ rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). *File* names the
 column that references a coven file, a trailing reference, and the namespace
-its files are in. `local_release_files`,
-`local_release_origin`, `local_history`, the import tables (A.4–A.8),
+its files are in. `local_release_origin`, `local_history`, the import tables (A.4–A.8),
 `import_candidate_standing` and `import_identification_batch` among them, and
 the transfer queues (A.9) are not declared, so they never sync.
 
@@ -3479,7 +3480,7 @@ the transfer queues (A.9) are not declared, so they never sync.
 | `track_works` | independent | store | | |
 | `release_artist_roles` | independent | store | | |
 | `track_artist_roles` | independent | store | | |
-| `release_files` | independent | store | | `file`, in `release_files`: the person's own; set on moving to the cloud or a cloud import; read on first use; cleared to return to local paths |
+| `release_files` | independent | store | | `file`, in `release_files`: the person's own; set by the import; on the importing device only until moved to the cloud; read on first use |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
 | `audio_segment_scrub_points` | independent: its segment | store | | |

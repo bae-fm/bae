@@ -32,26 +32,17 @@ fn id(kind: u32) -> String {
     format!("printf('%08x-{kind:04x}-4000-8000-%012x', i, i)")
 }
 
-/// Rows `start..end` of every table the lists read: an artist, an album
-/// crediting it with one release, one medium and one track, zero to three
-/// files, a work the artist composed, a download queued for the release and
-/// the track in the context lane. Titles and names run in an order of their
-/// own, unrelated to the ids', and every sort has ties the ids break.
-pub(super) fn seed_sql(start: u64, end: u64) -> String {
+/// Rows `start..end` of every table the lists read but the files: an artist,
+/// an album crediting it with one release, one medium and one track, a work
+/// the artist composed, a download queued for the release and the track in
+/// the context lane. Titles and names run in an order of their own,
+/// unrelated to the ids', and every sort has ties the ids break.
+fn seed_sql(start: u64, end: u64) -> String {
     let rows = format!(
         "WITH RECURSIVE k(i) AS (SELECT {start} UNION ALL SELECT i + 1 FROM k WHERE i + 1 < {end})"
     );
-    let (artist, album, release, credit, medium, track, file, work, work_artist) = (
-        id(1),
-        id(2),
-        id(3),
-        id(4),
-        id(5),
-        id(6),
-        "printf('%08x-0007-4000-8000-%012x', i, j)".to_string(),
-        id(8),
-        id(9),
-    );
+    let (artist, album, release, credit, medium, track, work, work_artist) =
+        (id(1), id(2), id(3), id(4), id(5), id(6), id(8), id(9));
     let created = "strftime('%Y-%m-%dT%H:%M:%SZ', 1600000000 + (i * 7919) % 50000000, 'unixepoch')";
     format!(
         "{rows} INSERT INTO artists (id, name, name_key, created_at) \
@@ -70,11 +61,6 @@ pub(super) fn seed_sql(start: u64, end: u64) -> String {
                                     duration_ms, created_at) \
              SELECT {track}, {release}, printf('Track %06d', i), {medium}, 1, 1, 180000, \
                     {created} FROM k;
-         {rows}, f(j) AS (VALUES (0), (1), (2)) \
-             INSERT INTO release_files (id, release_id, original_filename, file_size, \
-                                        content_type, created_at) \
-             SELECT {file}, {release}, printf('%02d.flac', j), 1000 + (i * 7 + j) % 50000, \
-                    'audio/flac', {created} FROM k JOIN f ON f.j < i % 4;
          {rows} INSERT INTO works (id, title, musicbrainz_work_id, created_at) \
              SELECT {work}, printf('Work %06d', i), {work}, {created} FROM k;
          {rows} INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) \
@@ -87,12 +73,50 @@ pub(super) fn seed_sql(start: u64, end: u64) -> String {
     )
 }
 
-async fn grow_to(db: &Database, from: u64, to: u64) -> Duration {
-    let sql = seed_sql(from, to);
-    let started = Instant::now();
+/// [`seed_sql`]'s rows `start..end`, then each release's zero to three
+/// files, staged on this device only from originals under `originals`, one
+/// original for each size, which every file of that size names.
+pub(super) async fn seed(db: &Database, originals: &std::path::Path, start: u64, end: u64) {
+    let sql = seed_sql(start, end);
     db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from))
         .await
         .unwrap();
+    std::fs::create_dir_all(originals).unwrap();
+    let mut files = Vec::new();
+    for i in start..end {
+        let created = chrono::DateTime::from_timestamp(
+            1_600_000_000 + i64::try_from((i * 7919) % 50_000_000).unwrap(),
+            0,
+        )
+        .unwrap();
+        for j in 0..i % 4 {
+            let size = 1000 + (i * 7 + j) % 50_000;
+            let original = originals.join(format!("{size}.bin"));
+            if !original.exists() {
+                std::fs::File::create_new(&original)
+                    .unwrap()
+                    .set_len(size)
+                    .unwrap();
+            }
+            files.push((
+                NewReleaseFile {
+                    id: format!("{i:08x}-0007-4000-8000-{j:012x}"),
+                    release_id: format!("{i:08x}-0003-4000-8000-{i:012x}"),
+                    original_filename: format!("{j:02}.flac"),
+                    content_type: bae_util::content_type::ContentType::Flac,
+                    source_audio: None,
+                    created_at: created,
+                },
+                original,
+            ));
+        }
+    }
+    db.insert_files_for_test(files).await.unwrap();
+}
+
+async fn grow_to(db: &Database, originals: &std::path::Path, from: u64, to: u64) -> Duration {
+    let started = Instant::now();
+    seed(db, originals, from, to).await;
     started.elapsed()
 }
 
@@ -549,7 +573,7 @@ async fn window_cost() {
     let (db, tmp) = super::empty_db().await;
     let mut held = 0;
     for n in SIZES {
-        let took = grow_to(&db, held, n).await;
+        let took = grow_to(&db, &tmp.path().join("originals"), held, n).await;
         eprintln!("WINDOW_COST seeded n={n} in {:.1} s", took.as_secs_f64());
         let took = grow_import_list(&db, tmp.path(), held, n).await;
         eprintln!("WINDOW_COST scanned n={n} in {:.1} s", took.as_secs_f64());

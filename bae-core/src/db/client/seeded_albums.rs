@@ -19,11 +19,10 @@ pub(crate) struct SeededAlbum {
 }
 
 /// The audio of a [`SeededAlbum`]'s tracks: the release's files, each the
-/// user's own file as an import records it and stages it with coven, and how
-/// each track's
-/// audio is laid out in them.
+/// user's own file read for the cloud as a cloud import stages it, and how
+/// each track's audio is laid out in them.
 pub(crate) struct SeededAudio {
-    pub(crate) files: Vec<(DbFile, coven::UserFile, coven::PreparedUserFile)>,
+    pub(crate) files: Vec<(NewReleaseFile, coven::PreparedUserFile)>,
     pub(crate) audio_formats: Vec<DbAudioFormat>,
     pub(crate) audio_segments: Vec<DbAudioSegment>,
 }
@@ -48,9 +47,9 @@ impl Database {
         for seeded in &mut albums {
             if let Some(audio) = seeded.audio.take() {
                 let mut rows = Vec::with_capacity(audio.files.len());
-                for (file, original, prepared) in audio.files {
+                for (file, prepared) in audio.files {
                     originals.push(prepared);
-                    rows.push((file, original));
+                    rows.push(file);
                 }
                 audios.push((rows, audio.audio_formats, audio.audio_segments));
             }
@@ -100,8 +99,8 @@ impl Database {
                 // user's own file as an import stages it, then the layouts
                 // reading them.
                 for (rows, audio_formats, audio_segments) in &audios {
-                    for (file, original) in rows {
-                        insert_external_file_row(tx, file, original, staged(files.next())?)?;
+                    for file in rows {
+                        insert_release_file_row(tx, file, staged(files.next())?)?;
                     }
                     for format in audio_formats {
                         insert_audio_format_row(tx, format)?;

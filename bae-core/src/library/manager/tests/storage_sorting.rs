@@ -107,18 +107,15 @@ async fn storage_page_sort_by_file_count() {
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
         for i in 0..*file_count {
-            let file = DbFile {
+            let file = NewReleaseFile {
                 id: bae_test_support::test_uuid(&format!("{}-file-{i}", release.id)),
                 release_id: release.id.clone(),
                 original_filename: format!("{i}.flac"),
-                file_size: 1000,
                 content_type: bae_util::content_type::ContentType::Flac,
                 source_audio: None,
-                file: None,
-                stored: false,
                 created_at: Utc::now(),
             };
-            manager.database.insert_file(&file).await.unwrap();
+            manager.add_file(&file, 1000).await.unwrap();
         }
     }
 
@@ -138,24 +135,21 @@ async fn storage_page_sort_by_file_count() {
 async fn storage_page_sort_by_total_size() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
-    for (title, file_size) in &[("Small", 100i64), ("Big", 10_000), ("Medium", 1_000)] {
+    for (title, file_size) in &[("Small", 100u64), ("Big", 10_000), ("Medium", 1_000)] {
         let mut album = create_test_album();
         album.title = title.to_string();
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
-        let file = DbFile {
+        let file = NewReleaseFile {
             id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
             release_id: release.id.clone(),
             original_filename: "a.flac".to_string(),
-            file_size: *file_size,
             content_type: bae_util::content_type::ContentType::Flac,
             source_audio: None,
-            file: None,
-            stored: false,
             created_at: Utc::now(),
         };
-        manager.database.insert_file(&file).await.unwrap();
+        manager.add_file(&file, *file_size).await.unwrap();
     }
 
     let asc = crate::db::StorageSortCriterion {

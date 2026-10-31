@@ -26,25 +26,32 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Test-only: seed a single file row. Production inserts files only as part of
-    /// an import or edit transaction.
+    /// Test-only: seed a single file row, its file staged on this device
+    /// only from an original of `size` zero bytes written under the app
+    /// directory, for a test that doesn't read its bytes. Production inserts
+    /// files only as part of an import.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn add_file(&self, file: &DbFile) -> Result<(), LibraryError> {
-        self.database.insert_file(file).await?;
-        Ok(())
+    pub async fn add_file(
+        &self,
+        file: &crate::db::NewReleaseFile,
+        size: u64,
+    ) -> Result<coven::FileId, LibraryError> {
+        let folder = self.app_dir.test_originals();
+        std::fs::create_dir_all(&folder)?;
+        let path = folder.join(&file.id);
+        std::fs::File::create_new(&path)?.set_len(size)?;
+        self.add_external_file_for_test(file, &path).await
     }
 
-    /// Test-only: seed a file row and register its device-local original path.
+    /// Test-only: seed a file row, its file staged on this device only from
+    /// the original at `path`, as a local import stages it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_external_file_for_test(
         &self,
-        file: &DbFile,
+        file: &crate::db::NewReleaseFile,
         path: &std::path::Path,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .insert_external_file_for_test(file, path)
-            .await?;
-        Ok(())
+    ) -> Result<coven::FileId, LibraryError> {
+        Ok(self.database.insert_file_for_test(file, path).await?)
     }
 
     pub async fn get_release_by_id(

@@ -424,10 +424,7 @@ fn produced_keys() -> Vec<String> {
         BridgePendingAction::RetryDownload {
             release_id: "release".to_string(),
         },
-        BridgePendingAction::CancelUpload {
-            release_id: "release".to_string(),
-            id: 1,
-        },
+        BridgePendingAction::CancelUpload { id: 1 },
         BridgePendingAction::RestoreFromCode,
         BridgePendingAction::Review,
     ] {

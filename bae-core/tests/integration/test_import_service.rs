@@ -292,6 +292,7 @@ include!("test_import_service/scan_and_watch.rs");
 include!("test_import_service/audio_and_loudness.rs");
 include!("test_import_service/reimports.rs");
 include!("test_import_service/storage_choice.rs");
+include!("test_import_service/cloud_moves.rs");
 include!("test_import_service/works_and_covers.rs");
 include!("test_import_service/identity.rs");
 include!("test_import_service/validation_and_mapping.rs");

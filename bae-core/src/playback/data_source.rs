@@ -252,13 +252,10 @@ fn playback_error_for_file_read(error: crate::db::DbError) -> PlaybackError {
         }
         // Audio another device holds: a release nobody uploaded is on the
         // device that imported it, or made it local again.
-        crate::db::DbError::FileNotUploaded(_)
-        | crate::db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
+        crate::db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
             PlaybackError::NotUploaded
         }
-        crate::db::DbError::LocalFileMissing(_)
-        | crate::db::DbError::LocalFileChanged(_)
-        | crate::db::DbError::FileRead(
+        crate::db::DbError::FileRead(
             coven::FileReadError::UserFileMissing { .. }
             | coven::FileReadError::UserFileChanged { .. },
         ) => PlaybackError::OriginalMissing,
@@ -266,7 +263,7 @@ fn playback_error_for_file_read(error: crate::db::DbError) -> PlaybackError {
     }
 }
 
-/// Create a reader for this device's local file or its shared attachment.
+/// Create a reader for a release file, read through coven.
 pub fn create_audio_reader(
     library_manager: &crate::library::LibraryManager,
     file_id: &str,
@@ -409,7 +406,7 @@ impl AudioDataReader for CovenFileReader {
                                 if foreground { "playing" } else { "preload" },
                                 fetch_started.elapsed().as_millis(),
                             );
-                            return Err(playback_error_for_file_read(e));
+                            return Err(playback_error_for_file_read(e.into()));
                         }
                     };
                     let total =
@@ -431,7 +428,7 @@ impl AudioDataReader for CovenFileReader {
     }
 }
 
-// The fill fetches one window at a time off the reader's opened `ReleaseFileStream`, where
+// The fill fetches one window at a time off the reader's opened `coven::FileStream`, where
 // a read is a positioned read of an already-proven handle -- so a window costs its
 // own bytes and nothing more, and the window size is purely a
 // readahead-vs-memory choice rather than a way to amortize per-call overhead.
@@ -447,7 +444,7 @@ const CLOUD_STREAM_READ_SIZE: u64 = FILL_WINDOW_SIZE;
 /// just leaves the fill to fetch the window on demand. `what` labels the window
 /// (track-start / file-end) in the log.
 fn spawn_window_prefetch(
-    stream: Arc<crate::db::ReleaseFileStream>,
+    stream: Arc<coven::FileStream>,
     arbiter: Arc<FetchArbiter>,
     buffer: &SharedSparseBuffer,
     source_size: u64,

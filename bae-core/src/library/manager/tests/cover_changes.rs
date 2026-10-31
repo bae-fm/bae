@@ -59,10 +59,9 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
     let source_path = source_dir.path().join("broken.png");
     let bytes = b"not an image".as_slice();
     std::fs::write(&source_path, bytes).unwrap();
-    let file = DbFile::new(
+    let file = NewReleaseFile::new(
         &release.id,
         "broken.png",
-        bytes.len() as i64,
         ContentType::Png,
         Uuid::new_v4().to_string(),
         Utc::now(),
@@ -99,10 +98,9 @@ async fn assert_changed_cover(
     let source_dir = TempDir::new().unwrap();
     let source_path = source_dir.path().join(filename);
     std::fs::write(&source_path, cover_bytes).unwrap();
-    let file = DbFile::new(
+    let file = NewReleaseFile::new(
         &release.id,
         filename,
-        cover_bytes.len() as i64,
         content_type,
         Uuid::new_v4().to_string(),
         Utc::now(),
@@ -175,10 +173,9 @@ async fn change_cover_twice_replaces_the_cover_file() {
     };
     let add_source = |name: &str, bytes: &[u8]| {
         std::fs::write(source_dir.path().join(name), bytes).unwrap();
-        DbFile::new(
+        NewReleaseFile::new(
             &release.id,
             name,
-            bytes.len() as i64,
             ContentType::Png,
             Uuid::new_v4().to_string(),
             Utc::now(),
@@ -195,7 +192,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
         .await
         .unwrap();
 
-    let change_to = async |file: &DbFile| {
+    let change_to = async |file: &NewReleaseFile| {
         manager
             .change_cover(
                 &release.id,

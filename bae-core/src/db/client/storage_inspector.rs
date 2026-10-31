@@ -57,7 +57,7 @@ pub(super) const INSPECTOR_FILES: &str = concat!(
      LEFT JOIN coven_pins AS pin ON pin.file = f.file \
      LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
      LEFT JOIN coven_uploads AS upload ON upload.file = f.file \
-     LEFT JOIN local_release_files AS original ON original.file_id = f.id \
+     LEFT JOIN coven_user_files AS original ON original.file = f.file \
      WHERE f.release_id = ?1 \
      ORDER BY f.original_filename COLLATE natural_order, f.id"
 );

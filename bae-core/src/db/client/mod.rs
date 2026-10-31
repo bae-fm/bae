@@ -26,11 +26,14 @@ use std::sync::Arc;
 use tracing::warn;
 
 /// The columns of a release file row `f` that `row_to_file` reads: its own,
-/// and `stored`, whether coven records the file it references as stored.
+/// and from coven's record of the file it references, `file_size`, the
+/// file's size, and `stored`, whether the file is stored.
 macro_rules! release_file_columns {
     () => {
-        "f.*, EXISTS (SELECT 1 FROM coven_files AS coven \
-         WHERE coven.id = f.file AND coven.hash IS NOT NULL) AS stored"
+        "f.*, (SELECT coven.size FROM coven_files AS coven WHERE coven.id = f.file) \
+         AS file_size, \
+         (SELECT coven.hash IS NOT NULL FROM coven_files AS coven WHERE coven.id = f.file) \
+         AS stored"
     };
 }
 
@@ -134,10 +137,9 @@ mod release_edit_save;
 pub(crate) use release::AlbumFields;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use release_edit_save::ReleaseEditWrite;
+mod release_deletion;
 mod release_file;
 mod release_locality;
-pub(crate) use release_file::ReleaseFileStream;
-mod release_deletion;
 pub use release_deletion::ReleaseDeletion;
 mod release_projection;
 mod release_queues;

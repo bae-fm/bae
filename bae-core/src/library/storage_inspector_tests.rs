@@ -40,14 +40,17 @@ fn waiting() -> ReleaseUpload {
 
 fn file(id: &str, pin: Option<FilePin>) -> crate::db::DbStorageInspectorFile {
     crate::db::DbStorageInspectorFile {
-        file: crate::db::DbFile::new(
-            "selected",
-            &format!("{id}.flac"),
-            10,
-            bae_util::content_type::ContentType::Flac,
-            id.to_string(),
-            chrono::DateTime::UNIX_EPOCH,
-        ),
+        file: crate::db::DbFile {
+            id: id.to_string(),
+            release_id: "selected".to_string(),
+            original_filename: format!("{id}.flac"),
+            file_size: 10,
+            content_type: bae_util::content_type::ContentType::Flac,
+            source_audio: None,
+            file: coven::FileId(uuid::Uuid::nil()),
+            stored: false,
+            created_at: chrono::DateTime::UNIX_EPOCH,
+        },
         pin,
         upload: None,
     }

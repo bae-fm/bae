@@ -402,10 +402,9 @@ pub enum PendingAction {
     RetryDownload {
         release_id: String,
     },
-    /// End the release's failed move to the cloud, so it is local here
-    /// again: what a move whose original changed waits for.
+    /// End a release's failed move to the cloud, `id`, so its files stay on
+    /// this device only: what a move whose original changed waits for.
     CancelUpload {
-        release_id: String,
         id: coven::MoveId,
     },
     /// Another of the person's devices replaced their keys: this copy can't
@@ -417,8 +416,8 @@ pub enum PendingAction {
 
 /// What the person can do about `record`. `release_id` is the release whose
 /// file the record is about, when it is about one: a failed pin's download
-/// retries by pinning the release again, and a failed move ends by
-/// cancelling the release's upload.
+/// retries by pinning the release again, and a failed move of a release's
+/// files ends by cancelling the move.
 pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -> PendingAction {
     use coven::{PendingReason as R, PendingSubject as S};
     let mut reason = &record.reason;
@@ -451,10 +450,7 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
                 (S::Download { .. }, Some(release_id)) => PendingAction::RetryDownload {
                     release_id: release_id.to_string(),
                 },
-                (S::Move { id }, Some(release_id)) => PendingAction::CancelUpload {
-                    release_id: release_id.to_string(),
-                    id: *id,
-                },
+                (S::Move { id }, Some(_)) => PendingAction::CancelUpload { id: *id },
                 _ => PendingAction::Review,
             },
             coven::Retry::Never => PendingAction::Review,

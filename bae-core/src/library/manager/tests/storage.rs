@@ -670,26 +670,31 @@ async fn the_storage_view_moves_one_subscription() {
 /// the release detail, its storage summary, and the Storage Manager row —
 /// offers it only for a release whose originals are here and unchanged: not
 /// for a release another device imported, nor once an original is gone.
-#[tokio::test]
-async fn upload_is_offered_only_where_this_device_holds_the_originals() {
+#[test]
+fn upload_is_offered_only_where_this_device_holds_the_originals() {
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        let first = TempDir::new().unwrap();
+        let elsewhere = release_on_the_first_device(devices, first.path(), "Album B").await;
+        let originals = TempDir::new().unwrap();
+        check_upload_offered(devices.b().manager(), originals.path(), &elsewhere).await;
+    });
+}
+
+async fn check_upload_offered(
+    manager: &LibraryManager,
+    originals: &std::path::Path,
+    elsewhere: &DbRelease,
+) {
     use crate::album_detail::ReleaseStorageAction;
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let originals = temp_dir.path().join("originals");
     let here = insert_local_release_with_files(
-        &manager,
-        &originals,
+        manager,
+        originals,
         "Album A",
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    let mut album = create_test_album();
-    album.title = "Album B".to_string();
-    manager.database.insert_album(&album).await.unwrap();
-    let elsewhere = insert_local_release_without_local_files(&manager, &album.id).await;
 
     let offered = |release_id: String| {
-        let manager = &manager;
         async move {
             let detail = manager
                 .find_release_detail(&release_id)

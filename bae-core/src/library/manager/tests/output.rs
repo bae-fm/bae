@@ -41,7 +41,7 @@ async fn insert_export_release_rows(
     source_dir: &std::path::Path,
     folder_name: &str,
     files: &[(&str, &[u8])],
-) -> (DbRelease, Vec<DbFile>) {
+) -> (DbRelease, Vec<NewReleaseFile>) {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.source_folder_name = Some(folder_name.to_string());
@@ -51,10 +51,9 @@ async fn insert_export_release_rows(
     let created_at = Utc::now();
     let mut inserted_files = Vec::with_capacity(files.len());
     for (index, (name, bytes)) in files.iter().enumerate() {
-        let file = DbFile::new(
+        let file = NewReleaseFile::new(
             &release.id,
             name,
-            bytes.len() as i64,
             bae_util::content_type::ContentType::Flac,
             bae_test_support::test_uuid(&format!("{}-export-file-{index}", release.id)),
             created_at,
@@ -352,10 +351,9 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     let files: &[(&str, &[u8])] = &[("01.flac", b"first-ok"), ("02.flac", b"second-fails")];
     for (name, bytes) in files {
         std::fs::write(source_dir.join(name), bytes).unwrap();
-        let file = DbFile::new(
+        let file = NewReleaseFile::new(
             &release.id,
             name,
-            bytes.len() as i64,
             bae_util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             Utc::now(),

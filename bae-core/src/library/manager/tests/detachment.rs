@@ -34,14 +34,7 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
     manager.upload_release(&release.id, false).await.unwrap();
     let files = release_files(manager, &release.id).await;
     assert_eq!(files.len(), 2);
-    assert_eq!(attached_file_count(manager, &release.id).await, 2);
-    assert_eq!(
-        manager
-            .count_pending_uploads_for_release(&release.id)
-            .await
-            .unwrap(),
-        2
-    );
+    assert_eq!(moving_file_count(manager, &release.id).await, 2);
 
     if uploaded {
         manager.database.set_uploads_paused(false).await.unwrap();
@@ -52,13 +45,7 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
                  LEFT JOIN coven_files AS c ON c.id = f.file",
             )
             .await;
-        assert_eq!(
-            manager
-                .count_pending_uploads_for_release(&release.id)
-                .await
-                .unwrap(),
-            0
-        );
+        assert_eq!(moving_file_count(manager, &release.id).await, 0);
         // The second device has cached the audio; detachment must still prevent playback.
         for file in &files {
             let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
@@ -90,14 +77,18 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
             .unwrap();
     }
 
-    // Cancelling takes the files off their coven files; making them local
-    // again keeps every row on its file, now on this device only.
-    let expected_attached = if uploaded { files.len() } else { 0 };
-    assert_eq!(
-        attached_file_count(manager, &release.id).await,
-        expected_attached
-    );
+    // Cancelling the move leaves every file on this device only, as it was;
+    // making the release local again switches every file to it. No row
+    // changes either way.
+    assert_eq!(moving_file_count(manager, &release.id).await, 0);
     for file in &files {
+        let row = manager
+            .database
+            .find_file_by_id(&file.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.file, file.file);
         assert!(
             !manager
                 .database
@@ -148,22 +139,15 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
             .unwrap()
             .is_none());
         let read = devices.b().database().read_release_file(&file.id).await;
-        if uploaded {
-            assert!(
-                matches!(
-                    read,
-                    Err(crate::db::DbError::FileRead(
-                        coven::FileReadError::DeviceOnly { .. }
-                    ))
-                ),
-                "{read:?}"
-            );
-        } else {
-            assert!(
-                matches!(read, Err(crate::db::DbError::FileNotUploaded(_))),
-                "{read:?}"
-            );
-        }
+        assert!(
+            matches!(
+                read,
+                Err(crate::db::DbError::FileRead(
+                    coven::FileReadError::DeviceOnly { .. }
+                ))
+            ),
+            "{read:?}"
+        );
         assert!(matches!(
             playback_error_reason_for_file(devices.b().manager(), file).await,
             crate::ui::PlaybackErrorReason::NotUploaded
@@ -171,8 +155,8 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
     }
 }
 
-/// Cancelling the move of a release to be kept here makes it local again:
-/// nothing is left to keep, and it plays from its original.
+/// Cancelling the move of a release to be kept here leaves it on this device
+/// only: nothing is left to keep, and it plays from its original.
 #[tokio::test]
 async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
     let (manager, temp) = setup_test_manager().await;
@@ -199,7 +183,7 @@ async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
         0
     );
     let files = release_files(&manager, &release.id).await;
-    assert_eq!(attached_file_count(&manager, &release.id).await, 0);
+    assert!(files.iter().all(|file| !file.stored));
     assert_eq!(
         manager
             .database
@@ -210,8 +194,11 @@ async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
     );
 }
 
+/// Cancelling every move needs no original: nothing was switched, so every
+/// release stays on this device only, and one whose original went shows it
+/// missing.
 #[tokio::test]
-async fn cancelling_uploads_with_a_missing_original_changes_no_release() {
+async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(
         &manager,
@@ -221,17 +208,17 @@ async fn cancelling_uploads_with_a_missing_original_changes_no_release() {
     )
     .await;
     std::fs::remove_file(temp.path().join("second/b.flac")).unwrap();
-    manager
-        .cancel_all_release_uploads()
-        .await
-        .expect_err("every original is required before detaching");
-    for release in [first, second] {
-        let files = release_files(&manager, &release.id).await;
-        assert_eq!(
-            attached_file_count(&manager, &release.id).await,
-            files.len()
-        );
-        for file in files {
+    manager.cancel_all_release_uploads().await.unwrap();
+    assert_eq!(
+        manager
+            .database
+            .queued_upload_count_for_test()
+            .await
+            .unwrap(),
+        0
+    );
+    for release in [&first, &second] {
+        for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
             assert!(manager
                 .database
@@ -241,6 +228,15 @@ async fn cancelling_uploads_with_a_missing_original_changes_no_release() {
                 .is_some());
         }
     }
+    assert_eq!(
+        manager
+            .find_release_detail(&second.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .playability,
+        crate::album_detail::ReleasePlayability::OriginalMissing
+    );
 }
 
 #[tokio::test]

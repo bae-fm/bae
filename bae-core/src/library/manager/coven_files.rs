@@ -75,7 +75,7 @@ impl LibraryManager {
 
     /// coven's record of the file a release file's row references, as this
     /// device reads it now: what coven's reads, pins and streams take. A
-    /// row that references no coven file, or is gone, is an error.
+    /// row that is gone is an error.
     pub(crate) async fn release_file_ref(
         &self,
         file_id: &str,
@@ -84,18 +84,11 @@ impl LibraryManager {
             .database
             .find_file_by_id(file_id)
             .await?
-            .and_then(|row| row.file)
-            .ok_or_else(|| {
-                LibraryError::Storage(format!("release file {file_id} has no coven file"))
-            })?;
+            .map(|row| row.file)
+            .ok_or_else(|| LibraryError::Storage(format!("no release file {file_id}")))?;
         self.database.coven_file(file).await.map_err(|e| {
             LibraryError::Storage(format!("file reference for release file {file_id}: {e}"))
         })
-    }
-
-    /// How many of these release files reference a coven file.
-    pub(crate) fn attached_release_file_count(&self, files: &[DbFile]) -> usize {
-        files.iter().filter(|file| file.file.is_some()).count()
     }
 
     /// Read through the same local-or-attached source used for playback.

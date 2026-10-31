@@ -280,10 +280,9 @@ async fn insert_local_release_in_album(
     for (index, (name, bytes)) in files.iter().enumerate() {
         let path = dir.join(name);
         std::fs::write(&path, bytes).unwrap();
-        let file = DbFile::new(
+        let file = NewReleaseFile::new(
             &release.id,
             name,
-            bytes.len() as i64,
             bae_util::content_type::ContentType::Flac,
             bae_test_support::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
@@ -296,24 +295,27 @@ async fn insert_local_release_in_album(
     release
 }
 
-/// Insert a local release rooted at a nonexistent directory, so no local copy
-/// resolves on this device. Seeds a `DbFile` row so the release is otherwise
-/// complete.
-async fn insert_local_release_without_local_files(
-    manager: &LibraryManager,
-    album_id: &str,
+/// A local release imported on `devices`' first device, with its one file
+/// on that device only, once the second device has it too: what the second
+/// device sees of a release another device holds.
+async fn release_on_the_first_device(
+    devices: &crate::sync::test_devices::TwoDevices,
+    dir: &std::path::Path,
+    album_title: &str,
 ) -> DbRelease {
-    let release = create_test_release(album_id);
-    insert_release(manager, &release).await;
-    let file = DbFile::new(
-        &release.id,
-        "track1.flac",
-        5,
-        bae_util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    );
-    manager.add_file(&file).await.unwrap();
+    let release = insert_local_release_with_files(
+        devices.a().manager(),
+        dir,
+        album_title,
+        &[("track1.flac", b"audio")],
+    )
+    .await;
+    devices
+        .converge(
+            "SELECT f.id, f.file, c.coordinates FROM release_files AS f \
+             JOIN coven_files AS c ON c.id = f.file",
+        )
+        .await;
     release
 }
 

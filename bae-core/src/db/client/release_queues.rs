@@ -142,7 +142,9 @@ pub(super) fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: 
     format!(
         "SELECT {columns}, q.state, q.error, r.id IS NOT NULL, a.title, \
             COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0), \
-            COALESCE((SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = q.release_id), 0){keys} \
+            COALESCE((SELECT SUM(coven.size) FROM release_files rf \
+                JOIN coven_files coven ON coven.id = rf.file \
+                WHERE rf.release_id = q.release_id), 0){keys} \
          FROM {table} q \
          LEFT JOIN releases r ON r.id = q.release_id \
          LEFT JOIN albums a ON a.id = r.album_id \

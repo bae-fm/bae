@@ -3,7 +3,7 @@
 //! resume row playback starts from.
 
 use super::*;
-use crate::db::{DbFile, SeededAudio};
+use crate::db::{NewReleaseFile, SeededAudio};
 use crate::import::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
 
 /// The album a [`LibraryFixture`]'s library is playing, added after its
@@ -122,16 +122,9 @@ impl LibraryManager {
         let mut files = Vec::new();
         let mut file_ids = std::collections::HashMap::new();
         for (audio, scanned) in analysis.audio_files.iter().zip(scanned_audio) {
-            let metadata = std::fs::metadata(&audio.path)
-                .map_err(|error| invalid(format!("{}: {error}", audio.path.display())))?;
-            let size = metadata.len();
-            let modified_at = metadata
-                .modified()
-                .map_err(|error| invalid(format!("{}: {error}", audio.path.display())))?;
-            let mut file = DbFile::new(
+            let mut file = NewReleaseFile::new(
                 &release_id,
                 &audio.file_reference,
-                size as i64,
                 audio.probe.content_type.clone(),
                 self.ids.new_id().to_string(),
                 added,
@@ -146,13 +139,8 @@ impl LibraryManager {
             let attachment = coven::prepare_user_file(&audio.path, |_| {})
                 .await
                 .map_err(|error| invalid(format!("{}: {error}", audio.path.display())))?;
-            let original = coven::UserFile {
-                path: audio.path.clone(),
-                size,
-                modified_at,
-            };
             file_ids.insert(audio.path.clone(), file.id.clone());
-            files.push((file, original, attachment));
+            files.push((file, attachment));
         }
 
         let built = {

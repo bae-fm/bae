@@ -80,16 +80,19 @@ const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 
 /// Each file this process is sending now and, when it is one of a release's
 /// files, its release and size. One row per upload in flight is read.
-const FILES_SENDING: &str = "SELECT sending.file, f.release_id, f.file_size \
+const FILES_SENDING: &str = "SELECT sending.file, f.release_id, \
+         CASE WHEN f.id IS NOT NULL THEN coven.size END \
      FROM coven_sending AS sending \
-     LEFT JOIN release_files AS f ON f.file = sending.file";
+     LEFT JOIN release_files AS f ON f.file = sending.file \
+     LEFT JOIN coven_files AS coven ON coven.id = sending.file";
 
 /// Each release with files this process is sending now: of its whole size,
 /// the bytes of its files stored, those not queued. Each release is found by
 /// its files from the files in flight.
 const RELEASES_SENDING_BYTES: &str = "SELECT listing.release_id, \
-         listing.total_size - (SELECT SUM(f.file_size) FROM release_files AS f \
+         listing.total_size - (SELECT SUM(coven.size) FROM release_files AS f \
              JOIN coven_upload_queue AS queued ON queued.file = f.file \
+             JOIN coven_files AS coven ON coven.id = f.file \
              WHERE f.release_id = listing.release_id), \
          listing.total_size \
      FROM release_listing AS listing \
