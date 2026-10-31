@@ -652,6 +652,14 @@ impl ImportServiceHandle {
         super::RuntimeSnapshotsWatch::of(&self.runtime)
     }
 
+    /// Each running import's percent, by candidate key, right now, read from
+    /// the standings table and the runtime.
+    pub async fn import_percents(
+        &self,
+    ) -> Result<HashMap<crate::import::CandidateKey, u32>, crate::library::LibraryError> {
+        self.runtime.percents().await
+    }
+
     /// Each running import's percent, by candidate key, now and as it moves.
     pub fn watch_import_percents(
         &self,

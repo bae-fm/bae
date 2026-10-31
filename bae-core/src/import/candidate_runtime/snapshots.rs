@@ -74,6 +74,19 @@ fn compose_percent(
     current_report(import, held)?.percent
 }
 
+/// Every key's import percent from `stored` and what `runtime` holds.
+fn compose_percents(
+    stored: &HashMap<CandidateKey, StoredStanding>,
+    runtime: &HashMap<CandidateKey, CandidateRuntimeState>,
+) -> HashMap<CandidateKey, u32> {
+    stored
+        .iter()
+        .filter_map(|(key, stored)| {
+            compose_percent(Some(stored), runtime.get(key)).map(|percent| (key.clone(), percent))
+        })
+        .collect()
+}
+
 /// A folder candidate's identification as the table holds it, with the
 /// state its run last published.
 fn stored_identification(
@@ -177,6 +190,14 @@ impl CandidateRuntime {
         Ok(self.compose_all(&stored))
     }
 
+    /// Each running import's percent, by key, right now, read from the table
+    /// and the runtime.
+    pub(crate) async fn percents(&self) -> Result<HashMap<CandidateKey, u32>, LibraryError> {
+        let stored = self.database.load_candidate_standings().await?;
+        let inner = self.inner.lock().unwrap();
+        Ok(compose_percents(&stored, &inner.runtime))
+    }
+
     /// What is in flight for `key` as the live read last read the table, with
     /// what the runtime holds now, for a test.
     #[cfg(test)]
@@ -219,14 +240,7 @@ impl CandidateRuntime {
     fn recompose_percents(&self) {
         let view = self.view.borrow();
         let inner = self.inner.lock().unwrap();
-        let next: HashMap<CandidateKey, u32> = view
-            .stored
-            .iter()
-            .filter_map(|(key, stored)| {
-                compose_percent(Some(stored), inner.runtime.get(key))
-                    .map(|percent| (key.clone(), percent))
-            })
-            .collect();
+        let next = compose_percents(&view.stored, &inner.runtime);
         drop(inner);
         drop(view);
         self.percents.send_if_modified(|percents| {
