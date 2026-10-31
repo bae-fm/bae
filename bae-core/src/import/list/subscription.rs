@@ -202,6 +202,13 @@ impl ImportListSubscription {
         })
     }
 
+    /// A handle that counts the list's live query runs, for a test that
+    /// measures which writes rerun it.
+    #[cfg(feature = "test-utils")]
+    pub fn runs_for_test(&self) -> coven::LiveQueryRuns {
+        self.query.runs()
+    }
+
     /// End the live query and close the list: its row, folds and selection
     /// go.
     pub async fn cancel(&self) -> Result<(), ImportListSubscriptionError> {

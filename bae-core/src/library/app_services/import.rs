@@ -318,16 +318,42 @@ impl AppServices {
     pub fn subscribe_import_candidate(
         &self,
     ) -> crate::library::DetailSubscription<ImportCandidateDetail> {
+        self.read_import_candidate(self.inner.manager.subscribe_import_candidate(None))
+    }
+
+    /// [`Self::subscribe_import_candidate`], with a handle that counts its
+    /// live query's runs, for a test that measures which writes rerun it.
+    #[cfg(feature = "test-utils")]
+    pub fn subscribe_import_candidate_with_runs_for_test(
+        &self,
+    ) -> (
+        crate::library::DetailSubscription<ImportCandidateDetail>,
+        coven::LiveQueryRuns,
+    ) {
+        let query = self.inner.manager.subscribe_import_candidate(None);
+        let runs = query.runs();
+        (self.read_import_candidate(query), runs)
+    }
+
+    /// The pane's read through `query`, which starts with no key.
+    fn read_import_candidate(
+        &self,
+        query: coven::ReconfigurableLiveQuery<
+            Option<String>,
+            Option<crate::import::ImportCandidateDetailProjection>,
+        >,
+    ) -> crate::library::DetailSubscription<ImportCandidateDetail> {
         let (key_tx, mut keys) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let manager = self.inner.manager.clone();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task("import candidate", task.clone(), async move {
+            let mut query = reconfigurable_live_query_events(&manager, query);
+            // A key set before this task runs is the first one read.
             let mut key = keys.borrow_and_update().clone();
-            let mut query = reconfigurable_live_query_events(
-                &manager,
-                manager.subscribe_import_candidate(key.clone()),
-            );
+            if key.is_some() {
+                query.set(key.clone());
+            }
             loop {
                 let value = tokio::select! {
                     event = query.recv() => match event {

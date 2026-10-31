@@ -26,6 +26,7 @@ mod test_delete;
 mod test_export;
 mod test_history;
 mod test_image_track_audio;
+mod test_import_live_query_reruns;
 mod test_import_open_files;
 mod test_import_selection;
 mod test_import_service;

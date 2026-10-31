@@ -23,6 +23,10 @@ pub(crate) struct CancellableLiveQuery<Request, Projection> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<Request>>>,
     query: tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<Request, Projection>>>,
     cancellation: CancellationToken,
+    /// The query's run count, held here because a waiting read holds the
+    /// query itself.
+    #[cfg(feature = "test-utils")]
+    runs: coven::LiveQueryRuns,
 }
 
 impl<Request, Projection> CancellableLiveQuery<Request, Projection>
@@ -37,9 +41,17 @@ where
     ) -> Self {
         Self {
             requests: std::sync::Mutex::new(Some(query.requests())),
+            #[cfg(feature = "test-utils")]
+            runs: query.runs(),
             query: tokio::sync::Mutex::new(Some(query)),
             cancellation,
         }
+    }
+
+    /// A handle that counts the query's runs.
+    #[cfg(feature = "test-utils")]
+    pub(crate) fn runs(&self) -> coven::LiveQueryRuns {
+        self.runs.clone()
     }
 
     /// Evaluate a new absolute request and return the revision that will
