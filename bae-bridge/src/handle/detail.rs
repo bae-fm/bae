@@ -12,17 +12,35 @@ macro_rules! detail_subscription {
         snapshot: $snapshot:ident,
         value: $bridge_value:ty,
     ) => {
+        detail_subscription! {
+            object: $object,
+            subscribe: $subscribe,
+            snapshot: $snapshot,
+            value: $bridge_value,
+            id: String = String,
+        }
+    };
+    (
+        object: $object:ident,
+        subscribe: $subscribe:ident,
+        snapshot: $snapshot:ident,
+        value: $bridge_value:ty,
+        id: $id:ty = $core_id:ty,
+    ) => {
         /// One value a detail read delivered: the id it was read for, and that
         /// item's detail, or none once no such item exists.
         #[derive(Debug, Clone, uniffi::Record)]
         pub struct $snapshot {
-            pub id: Option<String>,
+            pub id: Option<$id>,
             pub value: Option<$bridge_value>,
         }
 
         #[derive(uniffi::Object)]
         pub struct $object {
-            inner: bae_core::library::DetailSubscription<<$bridge_value as DetailValue>::Core>,
+            inner: bae_core::library::DetailSubscription<
+                <$bridge_value as DetailValue>::Core,
+                $core_id,
+            >,
             runtime: tokio::runtime::Handle,
         }
 
@@ -40,8 +58,10 @@ macro_rules! detail_subscription {
         #[uniffi::export(async_runtime = "tokio", cancellable)]
         impl $object {
             /// Show `id` from now on; `None` shows nothing.
-            pub fn set_id(&self, id: Option<String>) -> Result<(), BridgeError> {
-                self.inner.set(id).map_err(live_read_error)
+            pub fn set_id(&self, id: Option<$id>) -> Result<(), BridgeError> {
+                self.inner
+                    .set(id.map(<$core_id>::from))
+                    .map_err(live_read_error)
             }
 
             pub async fn next(self: std::sync::Arc<Self>) -> Result<$snapshot, BridgeError> {
@@ -51,7 +71,7 @@ macro_rules! detail_subscription {
                         .next()
                         .await
                         .map(|snapshot| $snapshot {
-                            id: snapshot.id,
+                            id: snapshot.id.map(<$id>::from),
                             value: snapshot.value.map(<$bridge_value>::from_core),
                         })
                         .map_err(live_read_error)
@@ -126,6 +146,7 @@ detail_subscription! {
     subscribe: subscribe_invalid_candidate,
     snapshot: BridgeInvalidCandidateSnapshot,
     value: crate::types::BridgeInvalidCandidateDetail,
+    id: Vec<u8> = bae_core::import::CandidateKey,
 }
 
 #[cfg(feature = "desktop")]
@@ -134,6 +155,7 @@ detail_subscription! {
     subscribe: subscribe_import_candidate,
     snapshot: BridgeImportCandidateSnapshot,
     value: crate::types::BridgeImportCandidateDetail,
+    id: Vec<u8> = bae_core::import::CandidateKey,
 }
 
 detail_subscription! {

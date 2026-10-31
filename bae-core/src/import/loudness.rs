@@ -57,7 +57,7 @@ enum TrackOutcome {
 #[derive(Clone)]
 struct LoudnessProgress {
     event_tx: crate::import::handle::ImportEventBus,
-    candidate_key: String,
+    candidate_key: crate::import::CandidateKey,
     release_id: String,
     import_id: String,
     /// Expected frames across the whole candidate, absent when any track's
@@ -73,14 +73,14 @@ struct LoudnessProgress {
 impl LoudnessProgress {
     fn new(
         event_tx: &crate::import::handle::ImportEventBus,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         release_id: &str,
         import_id: &str,
         scan_total_frames: Option<u64>,
     ) -> Self {
         Self {
             event_tx: event_tx.clone(),
-            candidate_key: candidate_key.to_string(),
+            candidate_key: candidate_key.clone(),
             release_id: release_id.to_string(),
             import_id: import_id.to_string(),
             scan_total_frames,
@@ -490,7 +490,7 @@ pub(super) async fn measure_loudness(
     file_ids: &HashMap<PathBuf, String>,
     source_file_sizes: &HashMap<PathBuf, u64>,
     tracks_to_files: &[TrackFile],
-    candidate_key: &str,
+    candidate_key: &crate::import::CandidateKey,
     release_id: &str,
     import_id: &str,
 ) -> Result<LoudnessResult, crate::import::ImportError> {

@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 
 /// One action the selection or one row's menu offers, how many rows it applies
 /// to, and whether it can run now — core's answer, for the pane a selection
@@ -10,7 +11,7 @@ struct ImportCandidateActionOffer: Identifiable {
     let enabled: Bool
     /// The row a row's menu offers the action for; absent when the selection
     /// offers it.
-    let rowKey: String?
+    let rowKey: Data?
     var id: BridgeCandidateAction { action }
 
     /// The count shown beside the action, absent for combining: it reads every
@@ -34,7 +35,7 @@ struct ImportCandidateActionOffer: Identifiable {
     /// What the row at `key` offers on its own, from the actions its live state
     /// lists, in the order every surface lists them.
     static func row(
-        _ key: String,
+        _ key: Data,
         actions: [BridgeCandidateAction]
     ) -> [ImportCandidateActionOffer] {
         bridgeCandidateSelectionOffers(

@@ -13,7 +13,7 @@ impl ImportServiceHandle {
     /// identification the candidate had going and announces the change.
     pub(crate) async fn link_candidate_shared_album(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
@@ -29,7 +29,7 @@ impl ImportServiceHandle {
 
     async fn link_candidate_shared_album_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();

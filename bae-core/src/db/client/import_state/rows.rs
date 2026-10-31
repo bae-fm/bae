@@ -409,7 +409,7 @@ impl StoredMatchEntries {
 /// SQLite hands them over: everything of the candidate but its matches.
 struct StoredCandidate {
     content_hash: String,
-    folder_path: String,
+    candidate_key: crate::import::CandidateKey,
     metadata_revision: i64,
     author: Option<String>,
     file_edits: super::edit_rows::StoredFileEdits,
@@ -432,7 +432,7 @@ struct StateReadRow {
 fn read_candidate(row: &Row<'_>, content_hash: String) -> Result<StoredCandidate, DbError> {
     Ok(StoredCandidate {
         content_hash,
-        folder_path: row.get("folder_path")?,
+        candidate_key: row.get("candidate_key")?,
         metadata_revision: row.get("metadata_revision")?,
         author: row.get("draft_author")?,
         file_edits: read_file_edits(row)?,
@@ -474,7 +474,7 @@ pub(crate) fn load_states_rows_on(
     let rows = sql.query(
         &format!(
             "WITH candidate AS MATERIALIZED ( \
-                 SELECT state.content_hash, state.folder_path, state.metadata_revision, \
+                 SELECT state.content_hash, state.candidate_key, state.metadata_revision, \
                         edit.author AS draft_author, {FILE_EDITS_COLUMNS}, {signals}, \
                         {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {LOOKUP_CHOICES_COLUMNS}, \
                         {VERDICT_COLUMNS} \
@@ -548,7 +548,7 @@ impl StoredCandidate {
     fn state(self) -> Result<DbImportCandidateState, DbError> {
         let Self {
             content_hash,
-            folder_path,
+            candidate_key,
             metadata_revision,
             author,
             file_edits,
@@ -597,7 +597,7 @@ impl StoredCandidate {
             release_link: link.map(StoredReleaseLink::link).transpose()?,
             file_edits: file_edits.edits()?,
             content_hash,
-            folder_path,
+            candidate_key,
             metadata_revision,
         })
     }

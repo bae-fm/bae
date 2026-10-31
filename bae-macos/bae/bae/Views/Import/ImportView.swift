@@ -53,10 +53,10 @@ struct ImportView: View {
         }
     }
 
-    /// Candidate writes by candidate key; a repeated command cancels the one
-    /// it replaces, and leaving the view cancels them all.
+    /// Candidate writes by what they act on; a repeated command cancels the
+    /// one it replaces, and leaving the view cancels them all.
     @State
-    var candidateMutationTasks: [String: Task<Void, Never>] = [:]
+    var candidateMutationTasks: [ImportTaskKey: Task<Void, Never>] = [:]
     /// Commits the active field edit before a metadata source replaces the
     /// draft.
     @State
@@ -162,7 +162,7 @@ struct ImportView: View {
 
     /// Stop watching `path`. Its candidates leave the selection in the same
     /// write that removes them.
-    func removeWatchedFolder(_ path: String) {
+    func removeWatchedFolder(_ path: Data) {
         Task {
             do {
                 try await importer.removeWatchedFolder(path)
@@ -194,7 +194,7 @@ struct ImportView: View {
                 }
                 uiStore.showError(
                     displayed.addingContext(
-                        "\(folder.name) (\(folder.path))"
+                        "\(folder.name) (\(folder.pathText))"
                     )
                 )
             }
@@ -355,3 +355,16 @@ struct ImportView: View {
             .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 #endif
+
+/// What one of the import view's candidate writes acts on.
+enum ImportTaskKey: Hashable {
+    /// A write to one candidate, by its key.
+    case candidate(Data)
+    /// Revealing one candidate's folders in Finder.
+    case revealSources(Data)
+    /// Reading every release below a folder as one.
+    case combineFolder(BridgeFolderReleaseDecisionKey)
+    case separateSelection
+    case selectionAction
+    case revealSelection
+}

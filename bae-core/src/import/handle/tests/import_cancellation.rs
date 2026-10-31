@@ -7,7 +7,7 @@ use super::*;
 
 /// Two picked candidates with their artists named, on one handle: enough to
 /// have one import running while another waits behind it.
-async fn two_importable() -> (ImportServiceHandle, [TempDir; 2], String, String) {
+async fn two_importable() -> (ImportServiceHandle, [TempDir; 2], crate::import::CandidateKey, crate::import::CandidateKey) {
     let (manager, tmp) = setup_test_manager().await;
     let other = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&manager, &tmp, "First Album").await;
@@ -67,7 +67,7 @@ async fn await_cancelled(
 
 /// What a cancelled import leaves: nothing running for the candidate and no
 /// failure on its row.
-async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &str) {
+async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     assert!(
         handle.candidate_runtime(key).await.unwrap().is_none(),
         "nothing is running for {key}"
@@ -81,7 +81,7 @@ async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &str) {
 }
 
 /// The candidate imports once more, now that nothing holds it.
-async fn assert_imports_again(handle: &ImportServiceHandle, key: &str) {
+async fn assert_imports_again(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     let mut events = handle.every_event();
     let import_id = handle
         .start_import(key)
@@ -264,7 +264,7 @@ fn import_position(import: &crate::import::candidates::ImportInFlight) -> u8 {
 /// Import `key` once more and follow what the candidate shows while it does:
 /// it starts from the queue, its steps only ever move forward, and
 /// the release lands.
-async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: &str) {
+async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     let mut events = handle.every_event();
     let mut changes = handle.runtime.every_change();
     let import_id = handle
@@ -282,7 +282,7 @@ async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: 
             crate::import::candidate_runtime::CandidateRuntimeChange::Updated {
                 key: changed,
                 runtime,
-            } if changed == key => shown.extend(runtime.import),
+            } if changed == key.clone() => shown.extend(runtime.import),
             _ => {}
         }
     }
@@ -345,7 +345,7 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     let library_dir = tmp[0].path().to_path_buf();
     let mut before = store_state(&handle, &library_dir).await;
     let blocked =
-        crate::test_files::UnopenableFile::block(&Path::new(&key).join("02 Track.flac"));
+        crate::test_files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     await_import_outcome(&mut events, &import_id)
@@ -369,7 +369,10 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     // The list places the release by its failure — Found's import error,
     // under Needs You, with its last import failed — and no other row moves.
     let placement = |state: &mut StoreState| state.rows.remove("import_list_placement").unwrap();
-    let failed_row = format!("| candidate | {key} |");
+    let failed_row = format!(
+        "| candidate | {:?} |",
+        rusqlite::types::ValueRef::Blob(key.as_bytes())
+    );
     assert_eq!(
         placement(&mut after),
         placement(&mut before)
@@ -412,7 +415,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     let (handle, tmp, key, _) = two_importable().await;
     let library_dir = tmp[0].path().to_path_buf();
     let blocked =
-        crate::test_files::UnopenableFile::block(&Path::new(&key).join("02 Track.flac"));
+        crate::test_files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
     let mut events = handle.every_event();
     let failed = handle.start_import(&key).await.unwrap().expect_queued();
     let error = await_import_outcome(&mut events, &failed)

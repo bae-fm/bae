@@ -163,21 +163,20 @@ forward! {
         ///
         /// A library release is not a scanned candidate, so core holds what
         /// its runs ask about for the session, from this first run until
-        /// `end_release_identification`.
-        fn auto_identify_release(candidate_key: String, release_id: String) {
-            this.services
-                .identify_release_for_lookup(candidate_key, release_id);
+        /// `end_release_identification`. Its events come under the key
+        /// `bridge_reidentify_key` gives for the release.
+        fn auto_identify_release(release_id: String) {
+            this.services.identify_release_for_lookup(release_id);
         }
 
         /// Make one change to what a library release's session asks about, and
         /// identify it again from the changed choices.
         fn edit_release_lookup_choices(
-            candidate_key: String,
             release_id: String,
             edit: crate::types::BridgeLookupChoiceEdit,
         ) {
             this.services
-                .edit_release_lookup_choices(candidate_key, release_id, edit.into_core());
+                .edit_release_lookup_choices(release_id, edit.into_core());
         }
 
         /// Identify a folder candidate again, over what the candidate says its
@@ -193,8 +192,8 @@ forward! {
         /// A library release being re-identified has no candidate row to read
         /// those inputs from, so its sheet starts its runs with
         /// `auto_identify_release` instead.
-        fn rerun_identify_for_candidate(candidate_key: String) {
-            this.services.rerun_identify(candidate_key);
+        fn rerun_identify_for_candidate(candidate_key: Vec<u8>) {
+            this.services.rerun_identify(candidate_key.into());
         }
 
         /// Cancel every import that has not begun writing its release.
@@ -204,14 +203,14 @@ forward! {
 
         /// Re-ask only the providers whose part of the search failed, keeping what
         /// the others found. A no-op when the candidate has no search running.
-        fn retry_candidate_search(candidate_key: String) {
-            this.services.import_retry_candidate_search(candidate_key);
+        fn retry_candidate_search(candidate_key: Vec<u8>) {
+            this.services.import_retry_candidate_search(candidate_key.into());
         }
 
         /// Drop a candidate's search, so its result area goes back to whatever
         /// identification has to say.
-        fn clear_candidate_search(candidate_key: String) {
-            this.services.import_clear_candidate_search(candidate_key);
+        fn clear_candidate_search(candidate_key: Vec<u8>) {
+            this.services.import_clear_candidate_search(candidate_key.into());
         }
     }
 }
@@ -225,30 +224,30 @@ forward! {
         /// superseded. Clears the failure the pane states for its last
         /// command.
         fn start_candidate_search(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             query: crate::types::BridgeSearchQuery,
         ) -> () {
             Ok(this
                 .services
-                .pane_start_candidate_search(candidate_key, query.into_core())
+                .pane_start_candidate_search(candidate_key.into(), query.into_core())
                 .await?)
         }
 
         /// Keep the candidate's own draft over what its lookup offered — none
         /// of the releases it found is the folder's, or it found none — a pane
         /// command that goes back to the draft.
-        fn keep_candidate_draft(candidate_key: String) -> crate::types::BridgePaneOutcome {
+        fn keep_candidate_draft(candidate_key: Vec<u8>) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
-                this.services.pane_keep_own_draft(&candidate_key).await?,
+                this.services.pane_keep_own_draft(&candidate_key.into()).await?,
             ))
         }
 
         /// Link the candidate to the album the pressings its lookup offers are
         /// of, its pressing unknown, taking what they agree on into its draft
         /// — a pane command that goes back to the draft.
-        fn link_candidate_shared_album(candidate_key: String) -> crate::types::BridgePaneOutcome {
+        fn link_candidate_shared_album(candidate_key: Vec<u8>) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
-                this.services.pane_link_shared_album(&candidate_key).await?,
+                this.services.pane_link_shared_album(&candidate_key.into()).await?,
             ))
         }
 
@@ -261,38 +260,38 @@ forward! {
         /// than the folder holds, comes back as the error, for its own row to
         /// say.
         fn select_candidate_release(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             link: crate::types::BridgePressingLink,
         ) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
                 this.services
-                    .pane_select_release(candidate_key, link.into_core())
+                    .pane_select_release(candidate_key.into(), link.into_core())
                     .await?,
             ))
         }
 
         /// Read the candidate's draft from its files' own tags, a pane command.
         /// The release link stays as it is.
-        fn read_candidate_file_tags(candidate_key: String) -> crate::types::BridgePaneOutcome {
+        fn read_candidate_file_tags(candidate_key: Vec<u8>) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
-                this.services.pane_read_file_tags(candidate_key).await?,
+                this.services.pane_read_file_tags(candidate_key.into()).await?,
             ))
         }
 
         /// Unlink the candidate from its release, a pane command. The draft
         /// stays as it is.
-        fn unlink_candidate_release(candidate_key: String) -> crate::types::BridgePaneOutcome {
+        fn unlink_candidate_release(candidate_key: Vec<u8>) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
-                this.services.pane_unlink_release(&candidate_key).await?,
+                this.services.pane_unlink_release(&candidate_key.into()).await?,
             ))
         }
 
         /// Clear the candidate's draft metadata and source without changing any
         /// physical file or track decisions.
-        fn clear_candidate_metadata(candidate_key: String) -> u64 {
+        fn clear_candidate_metadata(candidate_key: Vec<u8>) -> u64 {
             Ok(this
                 .services
-                .import_clear_candidate_metadata(candidate_key)
+                .import_clear_candidate_metadata(candidate_key.into())
                 .await?)
         }
 
@@ -310,9 +309,9 @@ forward! {
         /// Take in a folder someone chose to import: watch it, or read again
         /// the watched folder that already covers it. The folder's releases
         /// appear in the import list as its read finds them.
-        fn add_watched_folder(path: String) -> () {
+        fn add_watched_folder(path: Vec<u8>) -> () {
             this.services
-                .import_add_watched_folder(path)
+                .import_add_watched_folder(crate::path_bytes::path_from_app(path)?)
                 .await
                 .map_err(BridgeError::import)
         }
@@ -328,23 +327,23 @@ forward! {
         /// Stop identifying one candidate — take it off the identification
         /// queue, ending its run if one started — storing nothing, and go back
         /// to the draft.
-        fn cancel_candidate_identification(candidate_key: String) -> () {
+        fn cancel_candidate_identification(candidate_key: Vec<u8>) -> () {
             Ok(this
                 .services
-                .pane_cancel_identification(&candidate_key)
+                .pane_cancel_identification(&candidate_key.into())
                 .await?)
         }
 
-        fn remove_watched_folder(path: String) -> () {
+        fn remove_watched_folder(path: Vec<u8>) -> () {
             this.services
-                .import_remove_watched_folder(path)
+                .import_remove_watched_folder(crate::path_bytes::path_from_app(path)?)
                 .await
                 .map_err(BridgeError::import)
         }
 
-        fn refresh_watched_folder(path: String) -> () {
+        fn refresh_watched_folder(path: Vec<u8>) -> () {
             this.services
-                .import_refresh_watched_folder(path)
+                .import_refresh_watched_folder(crate::path_bytes::path_from_app(path)?)
                 .await
                 .map_err(BridgeError::import)
         }
@@ -357,12 +356,12 @@ forward! {
         /// Calculated from stored scan facts. The mapping projection also carries
         /// these options for surfaces that render the assignments directly.
         fn sheet_binding_options(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             sheet_file_id: String,
         ) -> Vec<crate::types::BridgeSheetReferenceOptions> {
             Ok(this
                 .services
-                .import_sheet_binding_options(candidate_key, sheet_file_id)
+                .import_sheet_binding_options(candidate_key.into(), sheet_file_id)
                 .await
                 .map_err(BridgeError::import)?
                 .into_iter()
@@ -382,14 +381,14 @@ forward! {
         /// verdict, because a bound sheet is a different disc. The candidate
         /// subscription carries the new roles to the import view.
         fn set_sheet_binding(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             sheet_file_id: String,
             file_reference: String,
             audio_file_id: Option<String>,
         ) -> () {
             Ok(this
                 .services
-                .import_set_sheet_binding(candidate_key, sheet_file_id, file_reference, audio_file_id)
+                .import_set_sheet_binding(candidate_key.into(), sheet_file_id, file_reference, audio_file_id)
                 .await?)
         }
 
@@ -404,39 +403,39 @@ forward! {
         /// verdict, because a re-assigned or ignored sheet is a different
         /// tracklist. The candidate subscription carries it to the import view.
         fn set_sheet_disc(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             sheet_file_id: String,
             disc: crate::types::BridgeSheetDisc,
         ) -> () {
             Ok(this
                 .services
-                .import_set_sheet_disc(candidate_key, sheet_file_id, disc.into_core())
+                .import_set_sheet_disc(candidate_key.into(), sheet_file_id, disc.into_core())
                 .await?)
         }
 
         /// Commit a candidate from what it stores, to where the stored storage
         /// choice says, a pane command.
-        fn start_import(candidate_key: String) -> crate::types::BridgePaneOutcome {
+        fn start_import(candidate_key: Vec<u8>) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
-                this.services.pane_start_import(&candidate_key).await?,
+                this.services.pane_start_import(&candidate_key.into()).await?,
             ))
         }
 
         /// Record the cover the user chose for a candidate. Nothing comes back:
         /// the per-candidate subscription delivers the pane's next value.
-        fn set_candidate_cover(candidate_key: String, cover: BridgeCoverSelection) -> () {
+        fn set_candidate_cover(candidate_key: Vec<u8>, cover: BridgeCoverSelection) -> () {
             Ok(this
                 .services
-                .import_set_candidate_cover(&candidate_key, cover.into_core())
+                .import_set_candidate_cover(&candidate_key.into(), cover.into_core())
                 .await?)
         }
 
         /// Pick the library album a candidate joins, over the one its records
         /// name, or (`None`) leave it to its records.
-        fn set_candidate_album(candidate_key: String, album_id: Option<String>) -> () {
+        fn set_candidate_album(candidate_key: Vec<u8>, album_id: Option<String>) -> () {
             Ok(this
                 .services
-                .import_set_candidate_album(&candidate_key, album_id)
+                .import_set_candidate_album(&candidate_key.into(), album_id)
                 .await?)
         }
 
@@ -459,42 +458,42 @@ forward! {
         /// Move the candidate's pane as the person asked, by the rule core
         /// moves every pane by, so clicking away and back lands where it was.
         fn move_candidate_pane(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             pane_move: crate::types::BridgePaneMove,
         ) -> () {
             Ok(this
                 .services
-                .import_move_candidate_pane(&candidate_key, pane_move.into_core())
+                .import_move_candidate_pane(&candidate_key.into(), pane_move.into_core())
                 .await?)
         }
 
         /// Show identification's results for the candidate: its stored verdict
         /// as it stood, picked row and all, when there is one, and a run
         /// started when there is none.
-        fn identify_automatically(candidate_key: String) -> () {
+        fn identify_automatically(candidate_key: Vec<u8>) -> () {
             Ok(this
                 .services
-                .pane_identify_automatically(candidate_key)
+                .pane_identify_automatically(candidate_key.into())
                 .await?)
         }
 
         /// Record the typed-search form as the person left it.
         fn set_candidate_search_form(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             search: crate::types::BridgeSearchForm,
         ) -> () {
             Ok(this
                 .services
-                .import_set_candidate_search_form(&candidate_key, search.into_core())
+                .import_set_candidate_search_form(&candidate_key.into(), search.into_core())
                 .await?)
         }
 
         /// End a library release's re-identify session: stop its
         /// identification and forget what it asked about.
-        fn end_release_identification(candidate_key: String) -> () {
+        fn end_release_identification(release_id: String) -> () {
             Ok(this
                 .services
-                .end_release_identification(candidate_key)
+                .end_release_identification(&release_id)
                 .await?)
         }
 
@@ -503,12 +502,12 @@ forward! {
         /// when what it looks up changed, a pane command. A run already going
         /// for this candidate is superseded.
         fn edit_candidate_lookup_choices(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             edit: crate::types::BridgeLookupChoiceEdit,
         ) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
                 this.services
-                    .pane_edit_lookup_choices(candidate_key, edit.into_core())
+                    .pane_edit_lookup_choices(candidate_key.into(), edit.into_core())
                     .await?,
             ))
         }
@@ -516,14 +515,14 @@ forward! {
         /// Record one album-level field of the candidate's metadata form as the
         /// user left it.
         fn set_candidate_edit_field(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             field: crate::types::BridgeCandidateEditField,
             value: String,
         ) -> () {
             Ok(this
                 .services
                 .import_set_candidate_edit_field(
-                    &candidate_key,
+                    &candidate_key.into(),
                     bae_core::import::DraftFieldEdit::Text {
                         field: field.into_core(),
                         value,
@@ -534,13 +533,13 @@ forward! {
 
         /// Record the candidate's label rows as the user left them.
         fn set_candidate_labels(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             labels: Vec<crate::types::BridgeRawLabelEdit>,
         ) -> () {
             Ok(this
                 .services
                 .import_set_candidate_edit_field(
-                    &candidate_key,
+                    &candidate_key.into(),
                     bae_core::import::DraftFieldEdit::Labels(
                         labels
                             .into_iter()
@@ -552,11 +551,11 @@ forward! {
         }
 
         /// Record the candidate's barcode rows as the user left them.
-        fn set_candidate_barcodes(candidate_key: String, barcodes: Vec<String>) -> () {
+        fn set_candidate_barcodes(candidate_key: Vec<u8>, barcodes: Vec<String>) -> () {
             Ok(this
                 .services
                 .import_set_candidate_edit_field(
-                    &candidate_key,
+                    &candidate_key.into(),
                     bae_core::import::DraftFieldEdit::Barcodes(barcodes),
                 )
                 .await?)
@@ -564,13 +563,13 @@ forward! {
 
         /// Record one choice of what the candidate's pressing is.
         fn set_candidate_pressing_fact(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             fact: crate::types::BridgePressingFactEdit,
         ) -> () {
             Ok(this
                 .services
                 .import_set_candidate_edit_field(
-                    &candidate_key,
+                    &candidate_key.into(),
                     bae_core::import::DraftFieldEdit::PressingFact(fact.into_core()),
                 )
                 .await?)
@@ -579,25 +578,25 @@ forward! {
         /// Record one mapping-table row's title and artists as the user left
         /// them.
         fn set_candidate_track_edit(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             track: crate::types::BridgeRawTrackEdit,
         ) -> () {
             Ok(this
                 .services
-                .import_set_candidate_track_edit(&candidate_key, track.into_core())
+                .import_set_candidate_track_edit(&candidate_key.into(), track.into_core())
                 .await?)
         }
 
         /// Set the same artist assignments on every named mapping-table row.
         fn set_candidate_track_artists(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             track_ids: Vec<String>,
             assignments: crate::types::BridgeTrackArtistAssignments,
         ) -> () {
             Ok(this
                 .services
                 .import_set_candidate_track_artists(
-                    &candidate_key,
+                    &candidate_key.into(),
                     track_ids,
                     assignments.into_core(),
                 )
@@ -607,13 +606,13 @@ forward! {
         /// Replace the candidate's ordered album-artist choices. Existing artists
         /// are carried by library ID; new artists carry their explicit metadata.
         fn set_candidate_album_artists(
-            candidate_key: String,
+            candidate_key: Vec<u8>,
             assignments: Vec<crate::types::BridgeCredited>,
         ) -> () {
             Ok(this
                 .services
                 .import_set_candidate_album_artists(
-                    &candidate_key,
+                    &candidate_key.into(),
                     assignments
                         .into_iter()
                         .map(crate::types::BridgeCredited::into_core)

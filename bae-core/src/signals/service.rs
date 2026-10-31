@@ -86,7 +86,7 @@ struct ExtractionServiceInner {
 /// One extraction in flight.
 struct RunningExtraction {
     run: IdentifyRunId,
-    key: String,
+    key: crate::import::CandidateKey,
     /// Whether this is still the key's current extraction.
     generation: u64,
     priority: CallPriority,
@@ -95,7 +95,7 @@ struct RunningExtraction {
 
 struct ExtractionRelease {
     inner: Arc<ExtractionServiceInner>,
-    key: String,
+    key: crate::import::CandidateKey,
     generation: u64,
 }
 
@@ -154,7 +154,7 @@ impl ExtractionServiceHandle {
     pub fn start(
         &self,
         run: IdentifyRunId,
-        key: String,
+        key: crate::import::CandidateKey,
         source: ExtractionSource,
         priority: CallPriority,
     ) -> ExtractionWatch {
@@ -181,7 +181,7 @@ impl ExtractionServiceHandle {
     }
 
     /// Cancel a candidate's in-flight extraction.
-    pub fn cancel(&self, key: &str) {
+    pub fn cancel(&self, key: &crate::import::CandidateKey) {
         self.inner
             .candidates
             .cancel_work(CandidateWork::Extraction, key);
@@ -191,7 +191,7 @@ impl ExtractionServiceHandle {
     #[cfg(test)]
     pub(crate) fn cancelled_for_test(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Option<impl std::future::Future<Output = ()> + Send + 'static> {
         self.inner
             .candidates

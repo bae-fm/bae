@@ -24,8 +24,8 @@ pub(crate) struct CandidateSaveExpectation {
 /// Where the scan tables list a candidate: the root it is under and its key.
 #[derive(Debug, Clone)]
 pub(crate) struct ScannedCandidateKey {
-    pub watched_folder_path: String,
-    pub candidate_path: String,
+    pub watched_folder_path: std::path::PathBuf,
+    pub candidate_path: crate::import::CandidateKey,
 }
 
 impl ScannedCandidateKey {
@@ -58,7 +58,7 @@ pub(crate) struct CandidateSaveExtras {
     /// Every folder candidate sharing the hash, with its files settled to
     /// the saved file decisions. Their scan rows are rewritten to this shape
     /// and stamped with the saved file revision.
-    pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
+    pub reshaped_files: Option<Vec<(crate::import::CandidateKey, CategorizedFiles)>>,
     pub pane: CandidatePaneWrite,
     /// The save is a person's decision about what the candidate is, which
     /// ends its identification in the same write: no read sees the decision
@@ -120,7 +120,7 @@ pub(super) fn load_preparation_on(
     let assets = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
     Ok(Some(CandidatePreparation {
         content_hash: state.content_hash,
-        folder_path: state.folder_path,
+        candidate_key: state.candidate_key,
         file_edits: state.file_edits,
         metadata_revision: state.metadata_revision,
         author: state.metadata_author,
@@ -154,12 +154,12 @@ pub(super) fn save_preparation_on(
 
     let changed = sql.execute(
         "UPDATE import_candidate_state SET \
-             folder_path = :folder_path, \
+             candidate_key = :candidate_key, \
              edit_revision = :next_edit, metadata_revision = :next_metadata \
          WHERE content_hash = :content_hash \
            AND edit_revision = :expected_edit AND metadata_revision = :expected_metadata",
         named_params! {
-            ":folder_path": prep.folder_path,
+            ":candidate_key": prep.candidate_key,
             ":next_edit": next_edit,
             ":next_metadata": next_metadata,
             ":content_hash": content_hash,
@@ -337,7 +337,7 @@ pub(super) fn save_preparation_on(
     if extras.ends_identification {
         super::change_identification_on(
             sql,
-            &prep.folder_path,
+            &prep.candidate_key,
             &crate::import::candidate_runtime::IdentificationChange::Ended,
         )?;
     }
@@ -377,7 +377,7 @@ impl Database {
         prep: CandidatePreparation,
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
     ) -> Result<RunVerdictSaved, DbError> {
         self.call(

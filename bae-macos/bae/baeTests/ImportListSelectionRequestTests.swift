@@ -10,11 +10,16 @@ import Testing
 struct ImportListSelectionRequestTests {
     /// Rows 0 to 9 select `row-0` to `row-9`; row 3 is a header, and rows
     /// 5 to 7 have not loaded.
-    private static func key(_ row: Int) -> String? {
+    private static func key(_ row: Int) -> Data? {
         guard row != 3, !(5...7).contains(row), (0..<10).contains(row) else {
             return nil
         }
-        return "row-\(row)"
+        return Self.row(row)
+    }
+
+    /// The key row `index` selects.
+    private static func row(_ index: Int) -> Data {
+        Data("row-\(index)".utf8)
     }
 
     private static func answer(
@@ -22,7 +27,7 @@ struct ImportListSelectionRequestTests {
         current: IndexSet,
         gesture: SelectionGesture,
         target: Int? = nil,
-        anchor: String? = nil
+        anchor: Data? = nil
     ) -> ImportListSelectionRequest.Answer {
         ImportListSelectionRequest(
             proposed: proposed,
@@ -46,9 +51,9 @@ struct ImportListSelectionRequestTests {
                 target: 2
             )
                 == .change(
-                    .replace(keys: ["row-2"]),
-                    shown: ["row-2"],
-                    anchor: "row-2"
+                    .replace(keys: [Self.row(2)]),
+                    shown: [Self.row(2)],
+                    anchor: Self.row(2)
                 )
         )
     }
@@ -71,9 +76,9 @@ struct ImportListSelectionRequestTests {
                 target: 4
             )
                 == .change(
-                    .toggle(add: ["row-4"], remove: []),
-                    shown: ["row-0", "row-1", "row-4"],
-                    anchor: "row-4"
+                    .toggle(add: [Self.row(4)], remove: []),
+                    shown: [Self.row(0), Self.row(1), Self.row(4)],
+                    anchor: Self.row(4)
                 )
         )
         #expect(
@@ -84,9 +89,9 @@ struct ImportListSelectionRequestTests {
                 target: 1
             )
                 == .change(
-                    .toggle(add: [], remove: ["row-1"]),
-                    shown: ["row-0"],
-                    anchor: "row-1"
+                    .toggle(add: [], remove: [Self.row(1)]),
+                    shown: [Self.row(0)],
+                    anchor: Self.row(1)
                 )
         )
     }
@@ -113,12 +118,14 @@ struct ImportListSelectionRequestTests {
                 current: [2],
                 gesture: .extend,
                 target: 9,
-                anchor: "row-2"
+                anchor: Self.row(2)
             )
                 == .change(
-                    .extend(from: "row-2", to: "row-9"),
-                    shown: ["row-2", "row-4", "row-8", "row-9"],
-                    anchor: "row-2"
+                    .extend(from: Self.row(2), to: Self.row(9)),
+                    shown: [
+                        Self.row(2), Self.row(4), Self.row(8), Self.row(9),
+                    ],
+                    anchor: Self.row(2)
                 )
         )
     }
@@ -133,12 +140,12 @@ struct ImportListSelectionRequestTests {
                 current: [],
                 gesture: .extend,
                 target: 9,
-                anchor: "row-2"
+                anchor: Self.row(2)
             )
                 == .change(
-                    .extend(from: "row-2", to: "row-9"),
-                    shown: ["row-8", "row-9"],
-                    anchor: "row-2"
+                    .extend(from: Self.row(2), to: Self.row(9)),
+                    shown: [Self.row(8), Self.row(9)],
+                    anchor: Self.row(2)
                 )
         )
     }
@@ -154,9 +161,9 @@ struct ImportListSelectionRequestTests {
                 gesture: .extend
             )
                 == .change(
-                    .extend(from: "row-1", to: "row-2"),
-                    shown: ["row-1", "row-2"],
-                    anchor: "row-1"
+                    .extend(from: Self.row(1), to: Self.row(2)),
+                    shown: [Self.row(1), Self.row(2)],
+                    anchor: Self.row(1)
                 )
         )
         #expect(
@@ -164,12 +171,12 @@ struct ImportListSelectionRequestTests {
                 proposed: [1],
                 current: [1, 2],
                 gesture: .extend,
-                anchor: "row-1"
+                anchor: Self.row(1)
             )
                 == .change(
-                    .toggle(add: [], remove: ["row-2"]),
-                    shown: ["row-1"],
-                    anchor: "row-1"
+                    .toggle(add: [], remove: [Self.row(2)]),
+                    shown: [Self.row(1)],
+                    anchor: Self.row(1)
                 )
         )
     }

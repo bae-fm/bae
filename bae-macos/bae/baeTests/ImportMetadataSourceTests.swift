@@ -7,19 +7,19 @@ import XCTest
 @testable import bae
 
 private struct ExternalMetadataApplication: Equatable {
-    let key: String
+    let key: Data
     let link: BridgePressingLink
 }
 
 @MainActor
 private final class MetadataSourceRecorder {
     var externalApplications: [ExternalMetadataApplication] = []
-    var fileTagApplications: [String] = []
+    var fileTagApplications: [Data] = []
     var clearError: (any Error)?
     var events: [String] = []
-    var clearedKeys: [String] = []
-    var identifiedKeys: [String] = []
-    var automaticKeys: [String] = []
+    var clearedKeys: [Data] = []
+    var identifiedKeys: [Data] = []
+    var automaticKeys: [Data] = []
     var errors: [DisplayError] = []
 
     var importer: Importer {

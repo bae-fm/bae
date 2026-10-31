@@ -15,7 +15,7 @@ use super::folder_scanner::{
     CandidateFile, CandidateFileEdits, CategorizedFiles, FileRole, FolderCandidate,
     ReleaseFileScope, ReleasePart, SheetBinding,
 };
-use super::ImportError;
+use super::{CandidateKey, ImportError};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -96,8 +96,8 @@ impl GroupingBlock {
 /// exactly as the album would. Members under different watched folders share
 /// no folder, and each takes a prefix of its position and name.
 pub fn compose(
-    key: &str,
-    watched_folder_path: &str,
+    key: &CandidateKey,
+    watched_folder_path: &Path,
     members: &[(FolderCandidate, CandidateFileEdits)],
     parent_files: &[CandidateFile],
 ) -> Result<(FolderCandidate, CandidateFileEdits), ImportError> {
@@ -124,7 +124,7 @@ pub fn compose(
     if !parent_files.is_empty() {
         let parent = shared_parent(members.iter().map(|member| {
             (
-                member.watched_folder_path.as_str(),
+                member.watched_folder_path.as_path(),
                 member.file_root.as_path(),
             )
         }))
@@ -137,8 +137,8 @@ pub fn compose(
                 return Err(ImportError::Internal {
                     detail: format!(
                         "{} is not under {}, the folder {key} sits in",
-                        entry.file.path.display(),
-                        parent.display()
+                        coven::path_text(&entry.file.path),
+                        coven::path_text(&parent)
                     ),
                 });
             }
@@ -163,11 +163,9 @@ pub fn compose(
                     format!("{within}/")
                 }
             }
-            None => {
-                let prefix = format!("{:02} - {}/", position + 1, member.name);
-                super::folder_path::validate_relative_path(prefix.trim_end_matches('/'))?;
-                prefix
-            }
+            // The member's name is one folder name's text, which holds no
+            // `/`, so the prefix is one name of the release's file names.
+            None => format!("{:02} - {}/", position + 1, member.name),
         };
         if member.files.audio().next().is_none() {
             return Err(ImportError::Internal {
@@ -179,7 +177,7 @@ pub fn compose(
                 return Err(ImportError::Internal {
                     detail: format!(
                         "{} belongs to more than one selected folder",
-                        entry.file.path.display()
+                        coven::path_text(&entry.file.path)
                     ),
                 });
             }
@@ -225,11 +223,11 @@ pub fn compose(
         file_root: folder,
         name: first.name.clone(),
         files: CategorizedFiles { files, parts },
-        watched_folder_path: watched_folder_path.to_string(),
+        watched_folder_path: watched_folder_path.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: first.display_path.clone(),
-        grouping: Some(key.to_string()),
+        relative_folder: first.relative_folder.clone(),
+        grouping: Some(key.clone()),
     };
     Ok((release, inherited))
 }
@@ -254,9 +252,9 @@ pub fn compose(
 /// itself the folder the others are in. The watched folder is never one: it is
 /// never a release, so its files are never one's own.
 pub(crate) fn shared_parent<'a>(
-    members: impl IntoIterator<Item = (&'a str, &'a Path)>,
+    members: impl IntoIterator<Item = (&'a Path, &'a Path)>,
 ) -> Option<PathBuf> {
-    let mut shared: Option<(&str, &Path)> = None;
+    let mut shared: Option<(&Path, &Path)> = None;
     for (watched_folder_path, file_root) in members {
         let parent = file_root.parent()?;
         match shared {
@@ -266,7 +264,6 @@ pub(crate) fn shared_parent<'a>(
         }
     }
     let (root, folder) = shared?;
-    let root = Path::new(root);
     (folder != root && folder.starts_with(root)).then(|| folder.to_path_buf())
 }
 
@@ -280,7 +277,7 @@ fn shared_folder(members: &[FolderCandidate]) -> PathBuf {
             }
         }
     }
-    let root = Path::new(&members[0].watched_folder_path);
+    let root = members[0].watched_folder_path.as_path();
     if !shared.starts_with(root) {
         return root.to_path_buf();
     }

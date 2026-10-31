@@ -34,7 +34,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
         .first_queued(&dirs)
         .await
         .expect("one candidate is over the cap and waiting");
-    let waiting_key = waiting.to_string_lossy().into_owned();
+    let waiting_key = crate::import::CandidateKey::folder(&waiting);
     // Read from here, so the first state the waiting candidate reports is the
     // requested run's.
     let mut events = fixture.import.every_event();
@@ -86,7 +86,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
 /// The priority the next run of `key` reports.
 async fn await_run_priority(
     events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
-    key: &str,
+    key: &crate::import::CandidateKey,
 ) -> CallPriority {
     tokio::time::timeout(Duration::from_secs(20), async {
         loop {
@@ -99,7 +99,7 @@ async fn await_run_priority(
                 .await
                 .expect("the import event bus stays open")
             {
-                if candidate_key == key {
+                if candidate_key == key.clone() {
                     return priority;
                 }
             }
@@ -140,7 +140,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     // Whichever of them the automatic admission is running, the person asks
     // about the other one.
-    let running = if fixture.import.is_identifying(&first.to_string_lossy()) {
+    let running = if fixture.import.is_identifying(&crate::import::CandidateKey::folder(&first)) {
         first.clone()
     } else {
         second.clone()
@@ -150,7 +150,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     fixture.start_explicit_lookup(&other);
 
     tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(&other.to_string_lossy()).await
+        while fixture.identification_status(&crate::import::CandidateKey::folder(&other)).await
             != Some(crate::import::IdentificationStatus::Running)
         {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -159,7 +159,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     .await
     .expect("the request supersedes the run that was going");
     assert_eq!(
-        fixture.identification_status(&running.to_string_lossy()).await,
+        fixture.identification_status(&crate::import::CandidateKey::folder(&running)).await,
         Some(crate::import::IdentificationStatus::Queued),
         "the candidate whose run was superseded waits on the answer this one \
          stores rather than being dropped"
@@ -173,10 +173,10 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), async {
         while fixture
-            .identification_status(&running.to_string_lossy()).await
+            .identification_status(&crate::import::CandidateKey::folder(&running)).await
             .is_some()
             || fixture
-                .identification_status(&other.to_string_lossy()).await
+                .identification_status(&crate::import::CandidateKey::folder(&other)).await
                 .is_some()
         {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -195,8 +195,8 @@ async fn automatic_off_leaves_the_queue_to_finish() {
     let requested = fixture.disc_id_candidate("Requested");
     let automatic = fixture.disc_id_candidate("Automatic");
     std::fs::write(automatic.join("notes.txt"), "distinct candidate").unwrap();
-    let requested_key = requested.to_string_lossy().into_owned();
-    let automatic_key = automatic.to_string_lossy().into_owned();
+    let requested_key = crate::import::CandidateKey::folder(&requested);
+    let automatic_key = crate::import::CandidateKey::folder(&automatic);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;

@@ -147,7 +147,7 @@ impl Placed {
 struct Library {
     db: crate::db::Database,
     _tmp: tempfile::TempDir,
-    root: String,
+    root: std::path::PathBuf,
 }
 
 impl Library {
@@ -159,54 +159,103 @@ impl Library {
             _tmp: tmp,
             root,
         };
-        library.run(&library.watch(&library.root.clone(), 0)).await;
+        library.run(&library.watch(&library.root, 0)).await;
         library
     }
 
     /// Watch `root` at `position`, its scan begun.
-    fn watch(&self, root: &str, position: i64) -> String {
+    fn watch(&self, root: &std::path::Path, position: i64) -> String {
         format!(
-            "INSERT INTO watched_import_folders (path, position) VALUES ('{root}', {position});
+            "INSERT INTO watched_import_folders (path, position) VALUES ({root}, {position});
              INSERT INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-             VALUES ('{root}', 1, 'scanning', 'local');"
+             VALUES ({root}, 1, 'scanning', 'local');",
+            root = sql_blob(&coven::path_bytes(root)),
         )
     }
 
-    /// The folder at `display_path` below the watched folder, which is also
-    /// the key of the release scanned there.
-    fn path(&self, display_path: &str) -> String {
+    /// The folder at `display_path` below the watched folder.
+    fn path(&self, display_path: &str) -> std::path::PathBuf {
         folder_below(&self.root, display_path)
-            .to_string_lossy()
-            .into_owned()
+    }
+
+    /// The key of the release scanned at `display_path`.
+    fn key(&self, display_path: &str) -> crate::import::CandidateKey {
+        crate::import::CandidateKey::folder(&self.path(display_path))
+    }
+
+    /// The folder at `display_path` as a SQL literal of its bytes.
+    fn sql(&self, display_path: &str) -> String {
+        sql_blob(&coven::path_bytes(&self.path(display_path)))
+    }
+
+    /// The watched folder as a SQL literal of its bytes.
+    fn sql_root(&self) -> String {
+        sql_blob(&coven::path_bytes(&self.root))
     }
 
     fn release(&self, display_path: &str) -> Item {
-        (self.root.clone(), "candidate", self.path(display_path))
+        (self.root_text(), "candidate", self.text(display_path))
+    }
+
+    /// The release at the folder `relative` below the watched folder.
+    fn release_at(&self, relative: &std::path::Path) -> Item {
+        (
+            self.root_text(),
+            "candidate",
+            coven::path_text(&self.folder(relative)),
+        )
     }
 
     fn invalid(&self, display_path: &str) -> Item {
-        (self.root.clone(), "invalid", self.path(display_path))
+        (self.root_text(), "invalid", self.text(display_path))
     }
 
     fn group(&self, name: &str) -> Item {
-        (self.root.clone(), "group", name.to_string())
+        (self.root_text(), "group", name.to_string())
+    }
+
+    fn root_text(&self) -> String {
+        coven::path_text(&self.root)
+    }
+
+    /// The text of the folder at `display_path`, as a placement row's key
+    /// reads back.
+    fn text(&self, display_path: &str) -> String {
+        coven::path_text(&self.path(display_path))
     }
 
     /// Store the scan's release at `display_path` as `kind`.
     fn scan_as(&self, display_path: &str, kind: &str) -> String {
-        let path = self.path(display_path);
-        let name = last_component(display_path);
+        self.scan_folder(std::path::Path::new(display_path), kind)
+    }
+
+    /// Store the scan's release at the folder `relative` below the watched
+    /// folder as `kind`.
+    fn scan_folder(&self, relative: &std::path::Path, kind: &str) -> String {
+        let folder = self.folder(relative);
+        let relative = crate::import::RelativeFolder::of(relative).unwrap();
+        let name = coven::path_text(std::path::Path::new(folder.file_name().unwrap()));
         let hash = match kind {
             "invalid" => "NULL".to_string(),
-            _ => format!("'{}'", hash(display_path)),
+            _ => format!("'{}'", hash(&relative.text())),
         };
         format!(
             "INSERT INTO scan_candidate
-                 (watched_folder_path, path, generation, kind, name, display_path, folder,
+                 (watched_folder_path, path, generation, kind, name, relative_folder, folder,
                   file_root, scope, content_hash)
-             VALUES ('{root}', '{path}', 1, '{kind}', '{name}', '{display_path}', '{path}',
-                     '{path}', 'direct', {hash});",
-            root = self.root,
+             VALUES ({root}, {path}, 1, '{kind}', '{name}', {relative}, {path},
+                     {path}, 'direct', {hash});",
+            root = self.sql_root(),
+            path = sql_blob(&coven::path_bytes(&folder)),
+            relative = sql_blob(relative.as_bytes()),
+        )
+    }
+
+    /// The folder `relative` below the watched folder.
+    fn folder(&self, relative: &std::path::Path) -> std::path::PathBuf {
+        crate::import::relative_folder::folder_below(
+            &self.root,
+            &crate::import::RelativeFolder::of(relative).unwrap(),
         )
     }
 
@@ -219,8 +268,8 @@ impl Library {
     fn discovered(&self, display_path: &str, first_seen_at: i64) -> String {
         format!(
             "INSERT INTO folder_discovery (folder, first_seen_at, settled)
-             VALUES ('{}', {first_seen_at}, 1);",
-            self.path(display_path)
+             VALUES ({}, {first_seen_at}, 1);",
+            self.sql(display_path)
         )
     }
 
@@ -229,12 +278,12 @@ impl Library {
     fn state(&self, display_path: &str) -> String {
         let hash = hash(display_path);
         format!(
-            "INSERT INTO import_candidate_state (content_hash, folder_path)
-             VALUES ('{hash}', '{path}');
+            "INSERT INTO import_candidate_state (content_hash, candidate_key)
+             VALUES ('{hash}', {path});
              INSERT INTO import_candidate_edit
                  (content_hash, album_title, album_year, year, author, draft_blank, draft_valid)
              VALUES ('{hash}', '', '', '', 'person', 1, 0);",
-            path = self.path(display_path),
+            path = self.sql(display_path)
         )
     }
 
@@ -313,8 +362,8 @@ impl Library {
                     rows("SELECT tab, item, NULL, count FROM import_list_tab_count")?,
                     rows("SELECT pending_entry, NULL, NULL, count FROM import_list_entry_count")?,
                     rows(
-                        "SELECT watched_folder_path, group_name, pending_entry, count \
-                         FROM import_list_group_entry_count",
+                        "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
+                         pending_entry, count FROM import_list_group_entry_count",
                     )?,
                 ];
                 let counted = [
@@ -327,10 +376,10 @@ impl Library {
                          WHERE pending_entry IS NOT NULL GROUP BY pending_entry",
                     )?,
                     rows(
-                        "SELECT watched_folder_path, group_name, pending_entry, count(*) \
-                         FROM import_list_placement \
-                         WHERE item = 'candidate' AND group_name IS NOT NULL \
-                         GROUP BY watched_folder_path, group_name, pending_entry",
+                        "SELECT coven_path_text(watched_folder_path), group_name, pending_entry, \
+                         count(*) FROM import_list_placement \
+                         WHERE item = 'candidate' AND group_folder IS NOT NULL \
+                         GROUP BY watched_folder_path, group_folder, pending_entry",
                     )?,
                 ];
                 Ok((kept, counted))
@@ -378,7 +427,7 @@ impl Library {
             .db
             .read(|sql| {
                 Ok(sql.query(
-                    "SELECT key FROM import_list_placement \
+                    "SELECT coven_path_text(key) FROM import_list_placement \
                      WHERE item = 'group' AND combinable IS NULL",
                     [],
                     |row| row.get::<_, String>(0),
@@ -402,7 +451,8 @@ impl Library {
         self.db
             .read(|sql| {
                 let rows = sql.query(
-                    "SELECT watched_folder_path, item, key, root_position, tab, pending_state,
+                    "SELECT coven_path_text(watched_folder_path), item, coven_path_text(key),
+                            root_position, tab, pending_state,
                             needs_you_reason, group_name, own_date, unit_date, display_path,
                             shown_title, shown_artists
                      FROM import_list_placement",
@@ -449,6 +499,17 @@ impl Library {
             .map(|item| (item.clone(), after.get(item).cloned()))
             .collect()
     }
+}
+
+/// `bytes` as a SQL BLOB literal.
+fn sql_blob(bytes: &[u8]) -> String {
+    format!("X'{}'", hex::encode(bytes))
+}
+
+/// The folder at `display_path` below a watched folder as a SQL literal of its
+/// `RelativeFolder` bytes.
+fn sql_relative(display_path: &str) -> String {
+    sql_blob(crate::import::RelativeFolder::test(display_path).as_bytes())
 }
 
 /// The content hash the fixtures give the release at `display_path`.

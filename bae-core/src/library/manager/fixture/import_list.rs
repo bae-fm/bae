@@ -73,8 +73,9 @@ impl LibraryManager {
     ) -> Result<(), LibraryFixtureError> {
         let mut file_count = 0;
         for folder in folders {
-            let root = crate::import::watched_folder::canonical_absolute_root(&folder.path)
-                .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
+            let root =
+                crate::import::watched_folder::canonical_absolute_root(Path::new(&folder.path))
+                    .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
             self.database
                 .add_watched_import_folder(&root)
                 .await
@@ -88,10 +89,10 @@ impl LibraryManager {
                 .candidates
                 .iter()
                 .map(|candidate| {
-                    let scanned = fixture_candidate(&root, candidate, &mut file_count);
-                    (scanned, candidate.state)
+                    let scanned = fixture_candidate(&root, candidate, &mut file_count)?;
+                    Ok((scanned, candidate.state))
                 })
-                .collect();
+                .collect::<Result<_, LibraryFixtureError>>()?;
             for (candidate, _) in &candidates {
                 self.database
                     .save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
@@ -188,7 +189,7 @@ impl LibraryManager {
                 self.preparations
                     .replace_metadata(
                         &content_hash,
-                        &candidate.path.to_string_lossy(),
+                        &candidate.key(),
                         &draft,
                         Some(&crate::import::MetadataProvenance::ExternalRelease {
                             record: record.clone(),
@@ -240,7 +241,7 @@ impl LibraryManager {
             .store_verdict(&crate::db::NewImportCandidateVerdict {
                 content_hash: candidate.files.content_hash(),
                 file_edit_revision: candidate.file_edit_revision,
-                folder_path: candidate.path.to_string_lossy().into_owned(),
+                candidate_key: candidate.key(),
                 verdict,
                 signals: crate::signals::Signals {
                     origin: crate::signals::AudioOrigin::default(),
@@ -270,14 +271,16 @@ impl LibraryManager {
 /// `candidate` as the scan reads it under `root`: its tracks FLAC files of
 /// three minutes, each sized by the running `file_count`.
 fn fixture_candidate(
-    root: &str,
+    root: &Path,
     candidate: &FixtureCandidate,
     file_count: &mut u64,
-) -> FolderCandidate {
+) -> Result<FolderCandidate, LibraryFixtureError> {
     let path = candidate
         .folder
         .split('/')
-        .fold(PathBuf::from(root), |folder, part| folder.join(part));
+        .fold(root.to_path_buf(), |folder, part| folder.join(part));
+    let relative_folder = crate::import::RelativeFolder::of(Path::new(&candidate.folder))
+        .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
     let files = candidate
         .tracks
         .iter()
@@ -304,7 +307,7 @@ fn fixture_candidate(
             }
         })
         .collect();
-    FolderCandidate {
+    Ok(FolderCandidate {
         path: path.clone(),
         file_root: path,
         name: candidate.folder.clone(),
@@ -312,12 +315,12 @@ fn fixture_candidate(
             files,
             parts: Vec::new(),
         },
-        watched_folder_path: root.to_string(),
+        watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: candidate.folder.clone(),
+        relative_folder,
         grouping: None,
-    }
+    })
 }
 
 /// A MusicBrainz release `release_id` titled as `candidate`'s folder, listing

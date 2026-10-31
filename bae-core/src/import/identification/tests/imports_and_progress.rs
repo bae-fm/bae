@@ -1,7 +1,7 @@
 /// Stand in for starting an import: the claim, then the worker's first
 /// `ImportProgress`, in that order.
 async fn start_import_for(fixture: &Fixture, candidate: &Path) {
-    let candidate_key = candidate.to_string_lossy().into_owned();
+    let candidate_key = crate::import::CandidateKey::folder(candidate);
     fixture
         .import
         .claim_candidate_for_import(&candidate_key, "import-running")
@@ -26,7 +26,7 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
 
     fixture
         .import
-        .claim_candidate_for_import(&candidate.to_string_lossy(), "import-1")
+        .claim_candidate_for_import(&crate::import::CandidateKey::folder(&candidate), "import-1")
         .await;
 
     let change = tokio::time::timeout(Duration::from_secs(1), changes.recv())
@@ -36,7 +36,7 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
     assert!(matches!(
         change,
         crate::import::CandidateRuntimeChange::Updated { key, runtime }
-            if key == candidate.to_string_lossy()
+            if key == crate::import::CandidateKey::folder(&candidate)
                 && runtime.import
                     == Some(crate::import::ImportInFlight {
                         step: crate::import::ImportStep::Preparing(
@@ -128,7 +128,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     // The scan re-announces the claimed candidate, as a watcher re-scan does.
     let claimed = match fixture
         .import
-        .get_candidate(&importing.to_string_lossy())
+        .get_candidate(&crate::import::CandidateKey::folder(&importing))
         .await
     {
         Ok(Some(ImportCandidateSnapshot::Folder { candidate, .. })) => candidate,
@@ -359,7 +359,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
         release_json("mb-drv-1", "rg-drv-1", &[probed, 0]),
     );
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
 
     fixture.drain_automatic().await;
 
@@ -420,7 +420,7 @@ async fn a_cancelled_candidate_writes_no_row() {
     cancelled.cancel();
     let candidate = fixture
         .import
-        .answerable_candidate(&dir.to_string_lossy())
+        .answerable_candidate(&crate::import::CandidateKey::folder(&dir))
         .await
         .unwrap()
         .expect("the scanned candidate is answerable");

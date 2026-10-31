@@ -341,7 +341,7 @@ extension LibraryBrowseQuery where Row == BridgeArtistSummary {
     }
 }
 
-extension DetailQuery where Value == BridgeAlbumDetail {
+extension KeyedDetailQuery where Id == String, Value == BridgeAlbumDetail {
     init(_ subscription: any AlbumDetailSubscriptionProtocol) {
         self.init(
             setId: { try subscription.setId(id: $0) },
@@ -354,7 +354,7 @@ extension DetailQuery where Value == BridgeAlbumDetail {
     }
 }
 
-extension DetailQuery where Value == BridgeRelease {
+extension KeyedDetailQuery where Id == String, Value == BridgeRelease {
     init(_ subscription: any ReleaseDetailSubscriptionProtocol) {
         self.init(
             setId: { try subscription.setId(id: $0) },
@@ -367,7 +367,7 @@ extension DetailQuery where Value == BridgeRelease {
     }
 }
 
-extension DetailQuery where Value == BridgeArtistDetail {
+extension KeyedDetailQuery where Id == String, Value == BridgeArtistDetail {
     init(_ subscription: any ArtistDetailSubscriptionProtocol) {
         self.init(
             setId: { try subscription.setId(id: $0) },
@@ -380,7 +380,7 @@ extension DetailQuery where Value == BridgeArtistDetail {
     }
 }
 
-extension DetailQuery where Value == BridgeComposerDetail {
+extension KeyedDetailQuery where Id == String, Value == BridgeComposerDetail {
     init(_ subscription: any ComposerDetailSubscriptionProtocol) {
         self.init(
             setId: { try subscription.setId(id: $0) },
@@ -393,7 +393,7 @@ extension DetailQuery where Value == BridgeComposerDetail {
     }
 }
 
-extension DetailQuery where Value == BridgeWorkDetail {
+extension KeyedDetailQuery where Id == String, Value == BridgeWorkDetail {
     init(_ subscription: any WorkDetailSubscriptionProtocol) {
         self.init(
             setId: { try subscription.setId(id: $0) },
@@ -408,7 +408,8 @@ extension DetailQuery where Value == BridgeWorkDetail {
 
 // The inspector's read exists in the desktop bindings only.
 #if os(macOS)
-    extension DetailQuery where Value == BridgeStorageInspector {
+    extension KeyedDetailQuery
+    where Id == String, Value == BridgeStorageInspector {
         init(_ subscription: any StorageInspectorSubscriptionProtocol) {
             self.init(
                 setId: { try subscription.setId(id: $0) },

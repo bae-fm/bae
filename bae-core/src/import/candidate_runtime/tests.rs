@@ -19,16 +19,18 @@ fn empty_categorized() -> CategorizedFiles {
     }
 }
 
-fn folder_candidate(path: &str, watched: &str) -> FolderCandidate {
+fn folder_candidate(key: &crate::import::CandidateKey, watched: &str) -> FolderCandidate {
+    let path = key.test_folder();
     FolderCandidate {
-        path: PathBuf::from(path),
-        file_root: PathBuf::from(path),
-        name: format!("Candidate {path}"),
+        relative_folder: crate::import::RelativeFolder::of(path.strip_prefix(watched).unwrap())
+            .unwrap(),
+        name: format!("Candidate {}", path.display()),
+        file_root: path.clone(),
+        path,
         files: empty_categorized(),
-        watched_folder_path: watched.to_string(),
+        watched_folder_path: PathBuf::from(watched),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: path.trim_start_matches('/').to_string(),
         grouping: None,
     }
 }
@@ -41,9 +43,9 @@ fn scanned(candidate: FolderCandidate) -> ImportEvent {
     })
 }
 
-fn progress(key: &str, percent: u8) -> ImportEvent {
+fn progress(key: &crate::import::CandidateKey, percent: u8) -> ImportEvent {
     ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         progress: ImportProgress::Progress {
             id: "rel1".to_string(),
             percent: Some(percent),
@@ -55,7 +57,7 @@ fn progress(key: &str, percent: u8) -> ImportEvent {
 
 /// Claim `key` for the import every [`progress`] reports on, and take it up
 /// as the worker does before it reports.
-async fn claim(runtime: &CandidateRuntime, key: &str) {
+async fn claim(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) {
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     runtime
         .move_import(key, "imp-1", Some(ImportStanding::Running))
@@ -115,29 +117,42 @@ pub(crate) fn manual_only() -> crate::identify::IdentifyState {
 /// Store `key` as a candidate the scan holds under `/watch` with `revision`
 /// of its file decisions, as the scan would, and return the files it is
 /// identified as.
-async fn scanned_at(runtime: &CandidateRuntime, key: &str, revision: u64) -> CandidateFiles {
+async fn scanned_at(
+    runtime: &CandidateRuntime,
+    key: &crate::import::CandidateKey,
+    revision: u64,
+) -> CandidateFiles {
     let files = CandidateFiles {
         content_hash: format!("hash:{key}"),
         file_edit_revision: revision,
     };
     runtime
         .execute_local_sql_for_test(&format!(
-            "INSERT OR IGNORE INTO watched_import_folders (path, position) VALUES ('/watch', 0);
+            "INSERT OR IGNORE INTO watched_import_folders (path, position)
+                 VALUES (CAST('/watch' AS BLOB), 0);
              INSERT OR IGNORE INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-                 VALUES ('/watch', 1, 'complete', 'local');
-             DELETE FROM scan_candidate WHERE path = '{key}';
+                 VALUES (CAST('/watch' AS BLOB), 1, 'complete', 'local');
+             DELETE FROM scan_candidate WHERE path = X'{key}';
              INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
-                 display_path, folder, file_root, scope, content_hash, file_edit_revision)
-                 VALUES ('/watch', '{key}', 1, 'valid', 'Candidate', '{display_path}', '{key}', '{key}',
-                     'recursive', '{hash}', {revision});",
+                 relative_folder, folder, file_root, scope, content_hash, file_edit_revision)
+                 VALUES (CAST('/watch' AS BLOB), X'{key}', 1, 'valid', 'Candidate', X'{relative}',
+                     X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
+            key = hex::encode(key.as_bytes()),
+            relative = hex::encode(
+                crate::import::RelativeFolder::of(key.test_folder().strip_prefix("/watch").unwrap())
+                    .unwrap()
+                    .as_bytes()
+            ),
             hash = files.content_hash,
-            display_path = key.trim_start_matches('/'),
         ))
         .await;
     files
 }
 
-async fn scanned_key(runtime: &CandidateRuntime, key: &str) -> CandidateFiles {
+async fn scanned_key(
+    runtime: &CandidateRuntime,
+    key: &crate::import::CandidateKey,
+) -> CandidateFiles {
     scanned_at(runtime, key, 0).await
 }
 
@@ -204,7 +219,7 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
 /// where it leaves the run written — the way the identify driver reports.
 async fn report(
     runtime: &CandidateRuntime,
-    key: &str,
+    key: &crate::import::CandidateKey,
     files: &CandidateFiles,
     run: crate::identify::IdentifyRunId,
     state: crate::identify::IdentifyState,
@@ -224,7 +239,7 @@ async fn report(
 /// What the table says `key`'s identification is.
 async fn identification(
     runtime: &CandidateRuntime,
-    key: &str,
+    key: &crate::import::CandidateKey,
 ) -> Option<crate::import::IdentificationStatus> {
     runtime.standing_facts(key).await.unwrap().identification
 }
@@ -249,9 +264,13 @@ fn extracted_signals() -> crate::signals::Signals {
 #[tokio::test]
 async fn import_progress_is_held_per_key_beside_its_claim() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
-    claim(&runtime, "/watch/a/rel2").await;
+    claim(
+        &runtime,
+        &crate::import::CandidateKey::test("/watch/a/rel2"),
+    )
+    .await;
 
     runtime.record_event(&progress(key, 42));
 
@@ -267,7 +286,7 @@ async fn import_progress_is_held_per_key_beside_its_claim() {
     );
     assert_eq!(
         runtime
-            .snapshot("/watch/a/rel2")
+            .snapshot(&crate::import::CandidateKey::test("/watch/a/rel2"))
             .await
             .unwrap()
             .and_then(|runtime| runtime.import),
@@ -283,7 +302,7 @@ async fn import_progress_is_held_per_key_beside_its_claim() {
 /// ended — so the key stops being in flight.
 #[tokio::test]
 async fn a_finished_import_leaves_nothing_in_flight() {
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let endings = [
         ImportProgress::Complete {
             id: "rel1".to_string(),
@@ -307,7 +326,7 @@ async fn a_finished_import_leaves_nothing_in_flight() {
 
         runtime.move_import(key, "imp-1", None).await.unwrap();
         runtime.record_event(&ImportEvent::ImportProgress {
-            candidate_key: key.to_string(),
+            candidate_key: key.clone(),
             progress: ending.clone(),
         });
         assert!(
@@ -322,10 +341,10 @@ async fn a_finished_import_leaves_nothing_in_flight() {
 #[tokio::test]
 async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -351,29 +370,42 @@ async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
 #[tokio::test]
 async fn a_late_reader_reads_every_running_key() {
     let runtime = CandidateRuntime::for_test().await;
-    claim(&runtime, "/watch/a/rel1").await;
-    runtime.record_event(&progress("/watch/a/rel1", 10));
-    claim(&runtime, "/watch/a/rel2").await;
+    claim(
+        &runtime,
+        &crate::import::CandidateKey::test("/watch/a/rel1"),
+    )
+    .await;
+    runtime.record_event(&progress(
+        &crate::import::CandidateKey::test("/watch/a/rel1"),
+        10,
+    ));
+    claim(
+        &runtime,
+        &crate::import::CandidateKey::test("/watch/a/rel2"),
+    )
+    .await;
 
     let running = runtime.snapshots().await.unwrap();
     assert_eq!(running.len(), 2);
     assert_eq!(
-        running["/watch/a/rel1"].import,
+        running[&crate::import::CandidateKey::test("/watch/a/rel1")].import,
         Some(ImportInFlight {
             step: ImportStep::Running(ImportPhase::MeasuringLoudness),
         })
     );
-    assert!(running["/watch/a/rel2"].import.is_some());
+    assert!(running[&crate::import::CandidateKey::test("/watch/a/rel2")]
+        .import
+        .is_some());
 }
 
 #[tokio::test]
 async fn a_preparing_step_is_the_step_it_reports() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
 
     runtime.record_event(&ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         progress: ImportProgress::Preparing {
             import_id: "imp-1".to_string(),
             step: PrepareStep::ValidatingSourceFiles,
@@ -398,11 +430,11 @@ async fn a_preparing_step_is_the_step_it_reports() {
 #[tokio::test]
 async fn an_admission_is_one_write_and_each_key_leaves_on_its_own() {
     let runtime = CandidateRuntime::for_test().await;
-    let first = "/watch/a/rel1";
-    let second = "/watch/a/rel2";
+    let first = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let marks = vec![
-        (first.to_string(), scanned_key(&runtime, first).await),
-        (second.to_string(), scanned_key(&runtime, second).await),
+        (first.clone(), scanned_key(&runtime, first).await),
+        (second.clone(), scanned_key(&runtime, second).await),
     ];
 
     runtime.admit(marks, Admission::Automatic).await.unwrap();
@@ -426,7 +458,7 @@ async fn an_admission_is_one_write_and_each_key_leaves_on_its_own() {
 #[tokio::test]
 async fn a_claim_survives_the_scan_reporting_the_key() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
     runtime.record_event(&progress(key, 42));
 
@@ -444,9 +476,9 @@ async fn a_claim_survives_the_scan_reporting_the_key() {
 #[tokio::test]
 async fn a_rescan_reporting_new_files_ends_the_key_s_work_and_search() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
-    let work = runtime.start_work(CandidateWork::Identify, key.to_string(), |token, _| token);
+    let work = runtime.start_work(CandidateWork::Identify, key.clone(), |token, _| token);
     runtime.start_search(
         key,
         CandidateSearch::started(search_query(), &every_source_on()),
@@ -471,10 +503,10 @@ async fn a_rescan_reporting_new_files_ends_the_key_s_work_and_search() {
 #[tokio::test]
 async fn extracted_signals_are_retained_without_a_runtime_entry() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
 
     runtime.record_event(&ImportEvent::SignalsUpdated {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(1),
         signals: extracted_signals(),
         artwork: crate::signals::ArtworkScan::Absent,
@@ -490,7 +522,7 @@ async fn extracted_signals_are_retained_without_a_runtime_entry() {
     // They describe this key's current files, so the scan dropping the key
     // drops them with it.
     runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateRemoved {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
     }));
     assert!(runtime.signals(key).is_none());
 }
@@ -500,10 +532,10 @@ async fn extracted_signals_are_retained_without_a_runtime_entry() {
 #[tokio::test]
 async fn a_terminal_state_moves_the_run_to_being_written() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
 
@@ -543,10 +575,10 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
 #[tokio::test]
 async fn a_run_s_end_ends_only_that_run() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(2), triangulating()).await;
@@ -571,10 +603,10 @@ async fn a_run_s_end_ends_only_that_run() {
 #[tokio::test]
 async fn a_write_ends_the_answer_it_ran_for_and_no_other() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -608,10 +640,10 @@ fn not_written(error: &str) -> SaveFailure {
 #[tokio::test]
 async fn a_failed_write_stands_until_the_next_run_starts() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -638,7 +670,7 @@ async fn a_failed_write_stands_until_the_next_run_starts() {
     );
 
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     report(&runtime, key, &files, run(2), triangulating()).await;
@@ -653,10 +685,10 @@ async fn a_failed_write_stands_until_the_next_run_starts() {
 #[tokio::test]
 async fn a_finished_answer_keeps_a_key_whose_import_is_running() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -681,10 +713,10 @@ async fn a_finished_answer_keeps_a_key_whose_import_is_running() {
 #[tokio::test]
 async fn a_cancel_ends_the_run_and_what_it_published() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -723,7 +755,10 @@ fn search_result(source: Catalog, release_id: &str) -> crate::import::search::Me
 }
 
 /// The search `key` holds, as its snapshot draws it.
-async fn search_of(runtime: &CandidateRuntime, key: &str) -> Option<CandidateSearch> {
+async fn search_of(
+    runtime: &CandidateRuntime,
+    key: &crate::import::CandidateKey,
+) -> Option<CandidateSearch> {
     runtime
         .snapshot(key)
         .await
@@ -736,7 +771,7 @@ async fn search_of(runtime: &CandidateRuntime, key: &str) -> Option<CandidateSea
 #[tokio::test]
 async fn two_landings_on_one_run_both_stand() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let run = runtime.start_search(
         key,
         CandidateSearch::started(search_query(), &every_source_on()),
@@ -772,7 +807,7 @@ async fn two_landings_on_one_run_both_stand() {
 #[tokio::test]
 async fn a_superseded_run_cannot_land() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let first = runtime.start_search(
         key,
         CandidateSearch::started(search_query(), &every_source_on()),
@@ -804,7 +839,7 @@ async fn a_superseded_run_cannot_land() {
 #[tokio::test]
 async fn a_cleared_search_cannot_land() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let run = runtime.start_search(
         key,
         CandidateSearch::started(search_query(), &every_source_on()),
@@ -830,7 +865,7 @@ async fn a_cleared_search_cannot_land() {
 #[tokio::test]
 async fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let run = runtime.start_search(
         key,
         CandidateSearch::started(search_query(), &every_source_on()),
@@ -876,7 +911,9 @@ async fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
         "a settled search has no source to re-ask"
     );
     assert!(
-        runtime.retry_search("/watch/a/rel2").is_none(),
+        runtime
+            .retry_search(&crate::import::CandidateKey::test("/watch/a/rel2"))
+            .is_none(),
         "a key with no search has none either"
     );
 }
@@ -886,7 +923,7 @@ async fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
 #[tokio::test]
 async fn switching_a_source_off_closes_its_part_of_every_live_search() {
     let runtime = CandidateRuntime::for_test().await;
-    let searching = "/watch/a/rel1";
+    let searching = &crate::import::CandidateKey::test("/watch/a/rel1");
     let run = runtime.start_search(
         searching,
         CandidateSearch::started(search_query(), &every_source_on()),
@@ -917,7 +954,7 @@ async fn switching_a_source_off_closes_its_part_of_every_live_search() {
 #[tokio::test]
 async fn a_landing_for_a_switched_off_source_goes_nowhere() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let run = runtime.start_search(
         key,
         CandidateSearch::started(search_query(), &every_source_on()),

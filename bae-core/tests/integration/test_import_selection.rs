@@ -35,7 +35,7 @@ async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
         std::fs::write(album.join(format!("01 Track {n}.flac")), &flac).unwrap();
     }
     services
-        .import_add_watched_folder(collection.to_string_lossy().into_owned())
+        .import_add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
     let list = services
@@ -101,7 +101,7 @@ async fn list_showing(
 }
 
 /// The keys the snapshot's page shows selected, top to bottom.
-fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<String> {
+fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<bae_core::import::CandidateKey> {
     snapshot
         .windows
         .iter()
@@ -116,7 +116,7 @@ fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<String> {
 }
 
 /// The candidate keys the snapshot's page shows, top to bottom.
-fn on_page(snapshot: &ImportListSnapshot) -> Vec<String> {
+fn on_page(snapshot: &ImportListSnapshot) -> Vec<bae_core::import::CandidateKey> {
     snapshot
         .windows
         .iter()
@@ -176,7 +176,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
         ..ImportListView::default()
     };
     let (list, shown) = list_showing(&services, not_looked_up, 3).await;
-    let picked: Vec<String> = on_page(&shown).into_iter().take(2).collect();
+    let picked: Vec<bae_core::import::CandidateKey> = on_page(&shown).into_iter().take(2).collect();
     let revision = list
         .change_selection(SelectionChange::Replace {
             keys: picked.clone(),
@@ -263,7 +263,10 @@ fn descending() -> ImportListView {
 }
 
 /// The candidate keys `view` shows, top to bottom.
-async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<String> {
+async fn shown_keys(
+    services: &AppServices,
+    view: ImportListView,
+) -> Vec<bae_core::import::CandidateKey> {
     let list = services
         .load_import_list(
             view,
@@ -292,7 +295,7 @@ async fn select_out_of_order(
     list: &ImportListSubscription,
     view: ImportListView,
     picks: &[usize],
-) -> Vec<String> {
+) -> Vec<bae_core::import::CandidateKey> {
     let shown = shown_keys(services, view).await;
     let revision = list
         .change_selection(SelectionChange::Toggle {
@@ -319,23 +322,24 @@ async fn reached_in_order(
     changes: &mut tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange>,
     count: usize,
     reached: impl Fn(&CandidateRuntimeSnapshot) -> bool,
-) -> Vec<String> {
-    let mut order: Vec<String> = Vec::new();
+) -> Vec<bae_core::import::CandidateKey> {
+    let mut order: Vec<bae_core::import::CandidateKey> = Vec::new();
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
         while order.len() < count {
-            let arrivals: Vec<String> = match changes.recv().await.expect("the runtime answers") {
-                CandidateRuntimeChange::Updated { key, runtime } => (reached(&runtime)
-                    && !order.contains(&key))
-                .then_some(key)
-                .into_iter()
-                .collect(),
-                CandidateRuntimeChange::Reset { runtimes } => runtimes
+            let arrivals: Vec<bae_core::import::CandidateKey> =
+                match changes.recv().await.expect("the runtime answers") {
+                    CandidateRuntimeChange::Updated { key, runtime } => (reached(&runtime)
+                        && !order.contains(&key))
+                    .then_some(key)
                     .into_iter()
-                    .filter(|(key, runtime)| reached(runtime) && !order.contains(key))
-                    .map(|(key, _)| key)
                     .collect(),
-                CandidateRuntimeChange::Removed { .. } => Vec::new(),
-            };
+                    CandidateRuntimeChange::Reset { runtimes } => runtimes
+                        .into_iter()
+                        .filter(|(key, runtime)| reached(runtime) && !order.contains(key))
+                        .map(|(key, _)| key)
+                        .collect(),
+                    CandidateRuntimeChange::Removed { .. } => Vec::new(),
+                };
             assert!(
                 arrivals.len() <= 1,
                 "one change brings one candidate at a time: {arrivals:?}"
@@ -453,7 +457,7 @@ async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
         ..ImportListView::default()
     };
     let (list, _) = list_showing(&services, skipped, 1).await;
-    let key = broken.to_string_lossy().into_owned();
+    let key = bae_core::import::CandidateKey::folder(&broken);
 
     let revision = list
         .change_selection(SelectionChange::Replace {

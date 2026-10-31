@@ -4,14 +4,6 @@ import Testing
 
 @testable import bae
 
-private func makeCandidate(_ key: String) -> Candidate {
-    Candidate(
-        reIdentifyKey: key,
-        releaseId: "existing-release",
-        displayName: "Candidate \(key)"
-    )
-}
-
 private func makeStatus(albumId: String) -> BridgeLibraryStatus {
     BridgeLibraryStatus(
         releaseId: "unused",
@@ -61,8 +53,8 @@ private func bridgeFiles(fileMetadataIdentity: String) -> BridgeCandidateFiles {
 }
 
 private func bridgeFolder(
-    folderPath: String,
-    watchedFolderPath: String,
+    folderPath: Data,
+    watchedFolderPath: Data,
     name: String,
     trackCount: UInt32 = 10,
     skipped: Bool = false,
@@ -70,6 +62,7 @@ private func bridgeFolder(
 ) -> BridgeFolderCandidate {
     BridgeFolderCandidate(
         parts: [],
+        candidateKey: folderPath,
         folderPath: folderPath,
         sourceFolderName: name,
         watchedFolderPath: watchedFolderPath,
@@ -82,8 +75,8 @@ private func bridgeFolder(
 
 /// A folder `Candidate` with the given scan flags.
 private func folderCandidate(
-    folderPath: String,
-    watchedFolderPath: String,
+    folderPath: Data,
+    watchedFolderPath: Data,
     name: String,
     skipped: Bool = false,
     isAdded: Bool = false
@@ -101,18 +94,18 @@ private func folderCandidate(
 
 // MARK: - Triage row builders
 
-/// An identified Pending row: linked, no import status. Shared with the
-/// paged list's tests.
+/// An identified Pending row for the folder at `path`: linked, no import
+/// status. Shared with the paged list's tests.
 func identifiedRow(
-    _ key: String,
+    _ path: String,
     title: String,
     metadataSummary: BridgeTriageMetadataSummary? = nil,
     cover: BridgeCoverImageSource? = nil
 ) -> BridgeTriageRow {
     BridgeTriageRow(
-        candidateKey: key,
+        candidateKey: Data(path.utf8),
         folderName: title,
-        watchedFolderPath: "/w",
+        watchedFolderPath: Data("/w".utf8),
         displayPath: title,
         actionable: true,
         placement: .pending,
@@ -129,49 +122,23 @@ func identifiedRow(
         importStatus: nil,
         upload: nil,
         metadataProvenance: .externalRelease(
-            record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(key)")
+            record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(path)")
         ),
         reading: metadataSummary == nil
             ? .unidentified
             : .identified(records: [
                 BridgeReleaseRecord(
                     catalog: .musicBrainz,
-                    url: "https://musicbrainz.org/release/rel-\(key)"
+                    url: "https://musicbrainz.org/release/rel-\(path)"
                 )
             ]),
         selected: false
     )
 }
 
-private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
-    BridgeTriageRow(
-        candidateKey: key,
-        folderName: title,
-        watchedFolderPath: "/w",
-        displayPath: title,
-        actionable: true,
-        placement: .skipped,
-        live: BridgeCandidateLiveState(
-            identifying: nil,
-            readingPick: false,
-            import: nil,
-            actions: [],
-            standing: .notLookedUp,
-            badge: nil
-        ),
-        metadataSummary: nil,
-        cover: nil,
-        importStatus: nil,
-        upload: nil,
-        metadataProvenance: nil,
-        reading: .unidentified,
-        selected: false
-    )
-}
-
 private func detail(
-    folderPath: String,
-    watchedFolderPath: String,
+    folderPath: Data,
+    watchedFolderPath: Data,
     name: String,
     skipped: Bool = false,
     resumedIdentifyState: BridgeIdentifyState = .idle,
@@ -233,16 +200,16 @@ struct ImportStoreCandidateDetailTests {
         let store = ImportStore()
 
         store.applyCandidateDetail(
-            key: "/w1/a",
+            key: Data("/w1/a".utf8),
             detail: detail(
-                folderPath: "/w1/a",
-                watchedFolderPath: "/w1",
+                folderPath: Data("/w1/a".utf8),
+                watchedFolderPath: Data("/w1".utf8),
                 name: "A",
                 resumedIdentifyState: .notFoundAnywhere(run: nil)
             )
         )
 
-        let read = try #require(store.selectedCandidates["/w1/a"])
+        let read = try #require(store.selectedCandidates[Data("/w1/a".utf8)])
         #expect(read.displayName == "A")
         // With no run live the resumed state is what the pane shows.
         #expect(read.resumedIdentifyState == .notFoundAnywhere(run: nil))
@@ -255,26 +222,26 @@ struct ImportStoreCandidateDetailTests {
     func keepsEditorState() throws {
         let store = ImportStore()
         var existing = folderCandidate(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
+            folderPath: Data("/w1/a".utf8),
+            watchedFolderPath: Data("/w1".utf8),
             name: "A"
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
-        store.selectedCandidates["/w1/a"] = existing
+        store.selectedCandidates[Data("/w1/a".utf8)] = existing
 
         // Same key, renamed and skipped, and the pane's stored session moved on.
         store.applyCandidateDetail(
-            key: "/w1/a",
+            key: Data("/w1/a".utf8),
             detail: detail(
-                folderPath: "/w1/a",
-                watchedFolderPath: "/w1",
+                folderPath: Data("/w1/a".utf8),
+                watchedFolderPath: Data("/w1".utf8),
                 name: "A-renamed",
                 skipped: true,
                 presentation: .findOnline
             )
         )
 
-        let merged = try #require(store.selectedCandidates["/w1/a"])
+        let merged = try #require(store.selectedCandidates[Data("/w1/a".utf8)])
         // The pane's in-memory work survives the re-read.
         #expect(merged.libraryStatuses["rel-1"] != nil)
         // The pane's session is the candidate's, so it comes with the read.
@@ -291,31 +258,31 @@ struct ImportStoreCandidateDetailTests {
     func aReadOnTheDraftMovesThePane() throws {
         let store = ImportStore()
         store.applyCandidateDetail(
-            key: "/w1/a",
+            key: Data("/w1/a".utf8),
             detail: detail(
-                folderPath: "/w1/a",
-                watchedFolderPath: "/w1",
+                folderPath: Data("/w1/a".utf8),
+                watchedFolderPath: Data("/w1".utf8),
                 name: "A",
                 presentation: .findOnline
             )
         )
         #expect(
-            try #require(store.selectedCandidates["/w1/a"])
+            try #require(store.selectedCandidates[Data("/w1/a".utf8)])
                 .metadataPresentation == .findOnline
         )
 
         store.applyCandidateDetail(
-            key: "/w1/a",
+            key: Data("/w1/a".utf8),
             detail: detail(
-                folderPath: "/w1/a",
-                watchedFolderPath: "/w1",
+                folderPath: Data("/w1/a".utf8),
+                watchedFolderPath: Data("/w1".utf8),
                 name: "A",
                 presentation: .draft
             )
         )
 
         #expect(
-            try #require(store.selectedCandidates["/w1/a"])
+            try #require(store.selectedCandidates[Data("/w1/a".utf8)])
                 .metadataPresentation == .draft
         )
     }
@@ -327,7 +294,8 @@ struct ImportStoreSidebarCoverTests {
     @Test("applied row covers remain after deselection")
     func appliedCoversSurviveDeselection() throws {
         let store = ImportStore()
-        let key = "/w/subject"
+        let path = "/w/subject"
+        let key = Data(path.utf8)
         let remoteCover = try #require(PreviewData.remoteCovers.last)
         let localArtwork = try #require(
             PreviewData.bridgeCandidateFiles.images.last
@@ -338,7 +306,7 @@ struct ImportStoreSidebarCoverTests {
         ]
         for choice in choices {
             let row = identifiedRow(
-                key,
+                path,
                 title: "Subject",
                 metadataSummary: BridgeTriageMetadataSummary(
                     albumTitle: "Applied Draft",
@@ -350,7 +318,7 @@ struct ImportStoreSidebarCoverTests {
                 key: key,
                 detail: detail(
                     folderPath: key,
-                    watchedFolderPath: "/w",
+                    watchedFolderPath: Data("/w".utf8),
                     name: "Subject",
                     cover: choice
                 )

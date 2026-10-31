@@ -9,26 +9,30 @@
 //! action runs in core over the selected keys that offer it.
 
 use super::triage::{CandidateActionBasis, SelectionMember, SelectionOffer, TriageRuntimeFacts};
+use super::CandidateKey;
 
 /// How a person changed the selection by pointing at rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SelectionChange {
     /// Select exactly these rows, and nothing else.
-    Replace { keys: Vec<String> },
+    Replace { keys: Vec<CandidateKey> },
     /// Add these rows and take those out, leaving the rest as it is.
     Toggle {
-        add: Vec<String>,
-        remove: Vec<String>,
+        add: Vec<CandidateKey>,
+        remove: Vec<CandidateKey>,
     },
     /// Add every row the list shows from `from` to `to`, both included.
-    Extend { from: String, to: String },
+    Extend {
+        from: CandidateKey,
+        to: CandidateKey,
+    },
 }
 
 /// One selected candidate as the tables place it: what its commands are
 /// decided from, and the name a report of a bulk action gives it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectedCandidate {
-    pub candidate_key: String,
+    pub candidate_key: CandidateKey,
     pub name: String,
     pub basis: CandidateActionBasis,
     /// What is running for it, as its standing says.
@@ -42,18 +46,18 @@ pub struct SelectedCandidate {
 pub struct SelectedRows {
     pub candidates: Vec<SelectedCandidate>,
     /// The keys of the selected folders that failed validation.
-    pub invalid: Vec<String>,
+    pub invalid: Vec<CandidateKey>,
 }
 
 /// The one selected row, when exactly one is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SingleSelection {
     Candidate {
-        key: String,
+        key: CandidateKey,
     },
     /// A folder that failed validation.
     InvalidCandidate {
-        key: String,
+        key: CandidateKey,
     },
 }
 

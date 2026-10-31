@@ -19,10 +19,10 @@ fn stored_release(audio: ScannedAudio) -> ScanItem {
             }],
             parts: Vec::new(),
         },
-        watched_folder_path: "/music".to_string(),
+        watched_folder_path: std::path::PathBuf::from("/music"),
         scope: ReleaseFileScope::Direct,
         file_edit_revision: 0,
-        display_path: "Album".to_string(),
+        relative_folder: crate::import::RelativeFolder::test("Album"),
         grouping: None,
     })
 }

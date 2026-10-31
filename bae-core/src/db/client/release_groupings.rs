@@ -18,7 +18,8 @@ use crate::import::folder_scanner::{
     InvalidCandidate, ProposedRole, ScanItem, SidecarFiles, SkippedFile,
 };
 use crate::import::grouping::GroupingBlock;
-use std::path::Path;
+use crate::import::CandidateKey;
+use std::path::{Path, PathBuf};
 
 /// A stored release, whether it may be worked on, and why not when it is a
 /// grouping's release that is blocked.
@@ -35,8 +36,8 @@ pub(super) struct StoredReleaseCandidate {
 pub struct GroupingChanges {
     pub written: Vec<ScanItem>,
     /// The keys of `written` that are new releases: only a combine makes one.
-    pub found: Vec<String>,
-    pub removed: Vec<String>,
+    pub found: Vec<CandidateKey>,
+    pub removed: Vec<CandidateKey>,
 }
 
 impl GroupingChanges {
@@ -56,12 +57,12 @@ pub(crate) enum GroupingFacts {
         decision: FolderReleaseDecision,
     },
     /// Releases the person read as one, by key, in play order.
-    Picked { members: Vec<String> },
+    Picked { members: Vec<CandidateKey> },
 }
 
 pub(super) fn load_candidate_on(
     sql: &(impl QueryOne + QueryRows),
-    key: &str,
+    key: &CandidateKey,
 ) -> Result<Option<StoredReleaseCandidate>, DbError> {
     let Some((root, stored)) = folder_scans::load_item_by_key(sql, key, RowSources::Any)? else {
         return Ok(None);
@@ -106,7 +107,7 @@ pub(super) fn skipped_on(
             .ok_or_else(|| DbError::Message(format!("release {grouping} has no grouping"))),
         None => Ok(sql.query_row(
             "SELECT EXISTS(SELECT 1 FROM skipped_import_candidates WHERE candidate_path = ?)",
-            [candidate.path.to_string_lossy()],
+            [coven::path_bytes(&candidate.path)],
             |row| row.get(0),
         )?),
     }
@@ -117,18 +118,19 @@ pub(super) fn skipped_on(
 /// (folders whose sidecar was just written or removed).
 pub(super) fn rebuild_groupings(
     sql: &SqlContext<'_, '_>,
-    touched: &[String],
-    sidecars: &[String],
+    touched: &[CandidateKey],
+    sidecars: &[PathBuf],
 ) -> Result<GroupingChanges, DbError> {
-    let groupings: Vec<String> = sql.query(
+    let touched = path_column::key_hex_list(touched.iter());
+    let groupings: Vec<CandidateKey> = sql.query(
         "SELECT grouping_key FROM release_grouping_member \
-         WHERE member_key IN (SELECT value FROM json_each(?)) \
+         WHERE member_key IN (SELECT unhex(value) FROM json_each(?)) \
          UNION SELECT key FROM release_grouping \
-         WHERE parent_folder IN (SELECT value FROM json_each(?)) \
+         WHERE parent_folder IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY 1",
         [
-            serde_json::to_string(touched).expect("release keys serialize as JSON"),
-            serde_json::to_string(sidecars).expect("folder text serializes as JSON"),
+            touched,
+            path_column::hex_list(sidecars.iter().map(PathBuf::as_path)),
         ],
         |row| row.get(0),
     )?;
@@ -142,8 +144,11 @@ pub(super) fn rebuild_groupings(
 /// Build and store the release of the grouping `key` from the releases it
 /// takes in, or record on the grouping why it cannot be built and leave its
 /// release as last built.
-fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChanges, DbError> {
-    let member_keys: Vec<String> = sql.query(
+fn rebuild_grouping(
+    sql: &SqlContext<'_, '_>,
+    key: &CandidateKey,
+) -> Result<GroupingChanges, DbError> {
+    let member_keys: Vec<CandidateKey> = sql.query(
         "SELECT member_key FROM release_grouping_member WHERE grouping_key = ? ORDER BY position",
         [key],
         |row| row.get(0),
@@ -176,7 +181,7 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
                         sql,
                         key,
                         &GroupingBlock::SourceGone {
-                            folder: member.clone(),
+                            folder: member.to_string(),
                         },
                     );
                 }
@@ -186,7 +191,7 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
                     sql,
                     key,
                     &GroupingBlock::SourceGone {
-                        folder: member.clone(),
+                        folder: member.to_string(),
                     },
                 )
             }
@@ -202,29 +207,27 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
     // blocked there.
     let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
         (
-            member.watched_folder_path.as_str(),
+            member.watched_folder_path.as_path(),
             member.file_root.as_path(),
         )
     }));
-    let sits_in_text = sits_in
-        .as_ref()
-        .map(|folder| folder.to_string_lossy().into_owned());
-    let (sat_in, was_reading): (Option<String>, bool) = sql.query_row(
+    let sits_in_bytes = sits_in.as_deref().map(coven::path_bytes);
+    let (sat_in, was_reading): (Option<Vec<u8>>, bool) = sql.query_row(
         "SELECT parent_folder, reads_parent_files FROM release_grouping WHERE key = ?",
         [key],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
     let mut changes = GroupingChanges::default();
-    if sat_in != sits_in_text {
+    if sat_in != sits_in_bytes {
         sql.execute(
             "UPDATE release_grouping SET parent_folder = ?, reads_parent_files = 0 WHERE key = ?",
-            params![sits_in_text, key],
+            params![sits_in_bytes, key],
         )?;
-        if let Some(left) = &sat_in {
-            changes.extend(rebuild_blocked_in(sql, key, Path::new(left))?);
+        if let Some(left) = sat_in.clone() {
+            changes.extend(rebuild_blocked_in(sql, key, &path_column::decode(left)?)?);
         }
     }
-    let reading = sat_in == sits_in_text && was_reading;
+    let reading = sat_in == sits_in_bytes && was_reading;
     let parent = match parent_files_on(sql, key, sits_in.as_deref(), reading)? {
         Ok(parent) => parent,
         Err(conflict) => {
@@ -273,6 +276,26 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
             files.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
             invalid(candidate, files)
         }
+        // Its folders' names show escaped, so two of its files can show one
+        // name, which a release can't hold (`InvalidReason::SameName`).
+        ParentFiles::None | ParentFiles::Files(_)
+            if crate::import::folder_scanner::shared_name(
+                candidate
+                    .files
+                    .files
+                    .iter()
+                    .map(|entry| entry.file.relative_path.as_str()),
+            )
+            .is_some() =>
+        {
+            let files = candidate
+                .files
+                .files
+                .iter()
+                .map(SkippedFile::of_release_file)
+                .collect();
+            invalid(candidate, files)
+        }
         ParentFiles::None | ParentFiles::Files(_) => {
             // Keyed by the release's own files; the decisions it took over
             // from its folders were stored that way in `combine_releases`.
@@ -315,13 +338,14 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
     let generation: i64 = sql
         .query_row(
             "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-            [&root],
+            [coven::path_bytes(&root)],
             |row| row.get(0),
         )
         .optional()?
         .ok_or_else(|| {
             DbError::Message(format!(
-                "{root} has not been read, so no release can be listed under it"
+                "{} has not been read, so no release can be listed under it",
+                coven::path_text(&root)
             ))
         })?;
     let written = folder_scans::write_entry(
@@ -348,7 +372,7 @@ fn invalid(candidate: FolderCandidate, files: Vec<SkippedFile>) -> ScanItem {
         path: candidate.path,
         name: candidate.name,
         watched_folder_path: candidate.watched_folder_path,
-        display_path: candidate.display_path,
+        relative_folder: candidate.relative_folder,
         grouping: candidate.grouping,
         files,
         tags: None,
@@ -376,7 +400,8 @@ impl ParentFiles {
 
 /// The other release reading the files of the folder a grouping sits in, by
 /// its name, found by the index of each folder's one reader.
-pub(super) const PARENT_FILES_READER: &str = "SELECT COALESCE(candidate.name, other.key) \
+pub(super) const PARENT_FILES_READER: &str =
+    "SELECT COALESCE(candidate.name, coven_path_text(other.key)) \
      FROM release_grouping AS other \
      LEFT JOIN scan_candidate AS candidate ON candidate.path = other.key \
      WHERE other.parent_folder = ?1 AND other.reads_parent_files = 1 AND other.key != ?2";
@@ -389,7 +414,7 @@ pub(super) const PARENT_FILES_READER: &str = "SELECT COALESCE(candidate.name, ot
 /// downloading are read by no release until the download ends.
 fn parent_files_on(
     sql: &(impl QueryOne + QueryRows),
-    key: &str,
+    key: &CandidateKey,
     folder: Option<&Path>,
     reading: bool,
 ) -> Result<Result<ParentFiles, GroupingBlock>, DbError> {
@@ -399,15 +424,12 @@ fn parent_files_on(
     let Some(sidecar) = folder_scans::load_sidecar(sql, folder)? else {
         return Ok(Ok(ParentFiles::None));
     };
-    let named = folder
-        .file_name()
-        .map_or_else(|| folder.to_string_lossy(), |name| name.to_string_lossy())
-        .into_owned();
+    let named = coven::path_text(folder.file_name().map_or(folder, Path::new));
     if !reading {
         let reader: Option<String> = sql
             .query_row(
                 PARENT_FILES_READER,
-                params![folder.to_string_lossy(), key],
+                params![coven::path_bytes(folder), key],
                 |row| row.get(0),
             )
             .optional()?;
@@ -419,7 +441,7 @@ fn parent_files_on(
         }
         let contested: bool = sql.query_row(
             "SELECT EXISTS(SELECT 1 FROM release_grouping WHERE parent_folder = ? AND key != ?)",
-            params![folder.to_string_lossy(), key],
+            params![coven::path_bytes(folder), key],
             |row| row.get(0),
         )?;
         if contested {
@@ -437,13 +459,13 @@ fn parent_files_on(
 /// that `key` no longer stands in the way of reading the folder's files.
 fn rebuild_blocked_in(
     sql: &SqlContext<'_, '_>,
-    key: &str,
+    key: &CandidateKey,
     folder: &Path,
 ) -> Result<GroupingChanges, DbError> {
-    let blocked: Vec<String> = sql.query(
+    let blocked: Vec<CandidateKey> = sql.query(
         "SELECT key FROM release_grouping \
          WHERE parent_folder = ? AND blocked IS NOT NULL AND key != ? ORDER BY key",
-        params![folder.to_string_lossy(), key],
+        params![coven::path_bytes(folder), key],
         |row| row.get(0),
     )?;
     let mut changes = GroupingChanges::default();
@@ -456,7 +478,7 @@ fn rebuild_blocked_in(
 /// Say why grouping `key`'s release cannot be worked on as it stands.
 fn blocked(
     sql: &SqlContext<'_, '_>,
-    key: &str,
+    key: &CandidateKey,
     block: &GroupingBlock,
 ) -> Result<GroupingChanges, DbError> {
     let (kind, subject, holder) = match block {
@@ -483,15 +505,18 @@ fn blocked(
 /// covering it.
 fn anchored_at(
     sql: &(impl QueryOne + QueryRows),
-    anchor: &str,
+    anchor: &Path,
 ) -> Result<FolderReleaseDecisionKey, DbError> {
-    let root = super::import_state::watched_folder_among_on(
-        sql,
-        std::path::Path::new(anchor).ancestors(),
-    )?
-    .ok_or_else(|| DbError::Message(format!("{anchor} is under no watched folder")))?;
+    let root = super::import_state::watched_folder_among_on(sql, anchor.ancestors())?.ok_or_else(
+        || {
+            DbError::Message(format!(
+                "{} is under no watched folder",
+                coven::path_text(anchor)
+            ))
+        },
+    )?;
     Ok(FolderReleaseDecisionKey {
-        relative_folder_path: super::import_state::relative_below(&root, anchor)?,
+        relative_folder: super::import_state::relative_below(&root, anchor)?,
         watched_folder_path: root,
     })
 }
@@ -499,7 +524,7 @@ fn anchored_at(
 /// Why grouping `key`'s release cannot be worked on, when something says so.
 pub(super) fn load_block_on(
     sql: &(impl QueryOne + QueryRows),
-    key: &str,
+    key: &CandidateKey,
 ) -> Result<Option<GroupingBlock>, DbError> {
     let columns: Option<(Option<String>, Option<String>, Option<String>)> = sql
         .query_row(
@@ -549,10 +574,10 @@ pub(super) fn block_of(
 impl Database {
     pub(crate) async fn set_grouping_skipped(
         &self,
-        key: &str,
+        key: &CandidateKey,
         skipped: bool,
     ) -> Result<bool, DbError> {
-        let key = key.to_string();
+        let key = key.clone();
         self.call(move |sql| {
             let changed = sql.execute(
                 "UPDATE release_grouping SET skipped = ? WHERE key = ? AND skipped != ?",
@@ -585,9 +610,9 @@ impl Database {
     /// grouping's release cannot be.
     pub(crate) async fn load_release_candidate(
         &self,
-        key: &str,
+        key: &CandidateKey,
     ) -> Result<Result<Option<FolderCandidate>, GroupingBlock>, DbError> {
-        let key = key.to_string();
+        let key = key.clone();
         self.read(move |sql| {
             let Some(stored) = load_candidate_on(&sql, &key)? else {
                 return Ok(Ok(None));
@@ -601,14 +626,17 @@ impl Database {
     }
 
     /// How the grouping `key` reads, or `None` when no grouping has that key.
-    pub(crate) async fn load_grouping(&self, key: &str) -> Result<Option<GroupingFacts>, DbError> {
-        let key = key.to_string();
+    pub(crate) async fn load_grouping(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<Option<GroupingFacts>, DbError> {
+        let key = key.clone();
         self.read(move |sql| {
-            let stored: Option<(Option<String>, bool)> = sql
+            let stored: Option<(Option<PathBuf>, bool)> = sql
                 .query_row(
                     "SELECT anchor_folder, combined FROM release_grouping WHERE key = ?",
                     [&key],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
+                    |row| Ok((path_column::get_optional(row, 0)?, row.get(1)?)),
                 )
                 .optional()?;
             let Some((anchor, combined)) = stored else {
@@ -644,7 +672,7 @@ impl Database {
     /// combined release already exists.
     pub(crate) async fn combine_releases(
         &self,
-        key: String,
+        key: CandidateKey,
         members: Vec<FolderCandidate>,
     ) -> Result<Result<GroupingChanges, GroupingBlock>, DbError> {
         if members.len() < 2 {
@@ -658,7 +686,7 @@ impl Database {
         // and fails if the store changed in between.
         let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
             (
-                member.watched_folder_path.as_str(),
+                member.watched_folder_path.as_path(),
                 member.file_root.as_path(),
             )
         }));
@@ -683,7 +711,7 @@ impl Database {
             }
             let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
                 (
-                    member.watched_folder_path.as_str(),
+                    member.watched_folder_path.as_path(),
                     member.file_root.as_path(),
                 )
             }));
@@ -720,7 +748,7 @@ impl Database {
                 )?;
                 if !inherited.is_empty() {
                     sql.execute(
-                        "INSERT INTO import_candidate_state (content_hash, folder_path) \
+                        "INSERT INTO import_candidate_state (content_hash, candidate_key) \
                          VALUES (?, ?)",
                         params![content_hash, key],
                     )?;
@@ -765,7 +793,7 @@ impl Database {
                         key,
                         position as i64,
                         member.key(),
-                        member.path.to_string_lossy()
+                        coven::path_bytes(&member.path)
                     ],
                 )?;
                 // A folder read into the combined release leaves the queue, and
@@ -805,21 +833,21 @@ impl Database {
     /// blocked in its folder changed.
     pub(crate) async fn separate_picked_grouping(
         &self,
-        key: &str,
+        key: &CandidateKey,
     ) -> Result<(Vec<ScanItem>, GroupingChanges), DbError> {
-        let key = key.to_string();
+        let key = key.clone();
         self.call(move |sql| {
-            let members: Vec<String> = sql.query(
+            let members: Vec<CandidateKey> = sql.query(
                 "SELECT member_key FROM release_grouping_member \
                  WHERE grouping_key = ? ORDER BY position",
                 [&key],
                 |row| row.get(0),
             )?;
-            let sat_in: Option<String> = sql
+            let sat_in: Option<PathBuf> = sql
                 .query_row(
                     "SELECT parent_folder FROM release_grouping WHERE key = ?",
                     [&key],
-                    |row| row.get(0),
+                    |row| path_column::get_optional(row, 0),
                 )
                 .optional()?
                 .flatten();
@@ -844,7 +872,7 @@ impl Database {
                 }
             }
             let regrouped = match sat_in {
-                Some(folder) => rebuild_blocked_in(sql, &key, Path::new(&folder))?,
+                Some(folder) => rebuild_blocked_in(sql, &key, &folder)?,
                 None => GroupingChanges::default(),
             };
             Ok((returned, regrouped))

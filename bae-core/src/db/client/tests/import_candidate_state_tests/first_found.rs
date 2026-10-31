@@ -2,11 +2,11 @@
 
 async fn write(
     db: &Database,
-    root: &str,
+    root: &std::path::Path,
     generation: u64,
     item: &crate::import::folder_scanner::ScanItem,
 ) -> crate::db::ScanItemWrite {
-    db.save_folder_scan_item(root, generation, item)
+    db.save_folder_scan_item(std::path::Path::new(root), generation, item)
         .await
         .unwrap()
         .expect("the scan's generation is current")
@@ -58,7 +58,7 @@ async fn a_fixed_folder_is_not_found_again() {
         path: candidate.path.clone(),
         name: candidate.name.clone(),
         watched_folder_path: root.clone(),
-        display_path: candidate.display_path.clone(),
+        relative_folder: candidate.relative_folder.clone(),
         grouping: None,
         files: vec![crate::import::folder_scanner::SkippedFile::empty_track(
             &candidate.path,
@@ -140,11 +140,11 @@ async fn a_grouping_is_found_when_combined_only() {
     }
     db.finish_folder_scan(&inner, generation, None).await.unwrap();
     let combined = db
-        .combine_releases("grouping:picked".to_string(), members)
+        .combine_releases(crate::import::CandidateKey::grouping("picked"), members)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(combined.found, vec!["grouping:picked".to_string()]);
+    assert_eq!(combined.found, vec![crate::import::CandidateKey::grouping("picked")]);
 
     db.remove_watched_import_folders(vec![inner.clone()], Some(music.clone()))
         .await

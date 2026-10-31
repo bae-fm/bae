@@ -53,9 +53,9 @@ impl Library {
             "INSERT INTO import_candidate_standing
                  (candidate_key, identification, content_hash, file_edit_revision,
                   save_failure_error)
-             VALUES ('{}', 'not_written', '{}', 0, '{error}');",
-            self.path(display_path),
-            hash(display_path),
+             VALUES ({}, 'not_written', '{}', 0, '{error}');",
+            self.sql(display_path),
+            hash(display_path)
         )
     }
 
@@ -66,9 +66,9 @@ impl Library {
             "INSERT INTO import_candidate_standing
                  (candidate_key, identification, content_hash, file_edit_revision, identify_run,
                   import_asked)
-             VALUES ('{}', 'reading_pick', '{}', 0, 1, 0);",
-            self.path(display_path),
-            hash(display_path),
+             VALUES ({}, 'reading_pick', '{}', 0, 1, 0);",
+            self.sql(display_path),
+            hash(display_path)
         )
     }
 }
@@ -410,7 +410,7 @@ async fn locating_a_candidate_ignores_the_pending_filter() {
         .await;
     let location = lib
         .db
-        .locate_import_candidate(list, &lib.path("Unidentified"))
+        .locate_import_candidate(list, &lib.key("Unidentified"))
         .await
         .unwrap()
         .expect("the candidate is found");
@@ -557,9 +557,9 @@ async fn running_work_decides_over_the_tables() {
     sql.push_str(&format!(
         "UPDATE import_candidate_standing SET identification = 'queued', content_hash = '{}',
              file_edit_revision = 0, admission = 'requested'
-         WHERE candidate_key = '{}';",
+         WHERE candidate_key = {};",
         hash("Importing"),
-        lib.path("Importing")
+        lib.sql("Importing")
     ));
     sql.push_str(&lib.reading_pick("Reading"));
     sql.push_str(&lib.not_written("Not Written", "disk full"));
@@ -683,8 +683,8 @@ async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
     sql.push_str(&lib.reading_pick("Reading"));
     sql.push_str(&lib.reading_pick("Asked"));
     sql.push_str(&format!(
-        "UPDATE import_candidate_standing SET import_asked = 1 WHERE candidate_key = '{}';",
-        lib.path("Asked")
+        "UPDATE import_candidate_standing SET import_asked = 1 WHERE candidate_key = {};",
+        lib.sql("Asked")
     ));
     lib.run(&sql).await;
     let read = lib.shown(view(TriageTab::Pending)).await;

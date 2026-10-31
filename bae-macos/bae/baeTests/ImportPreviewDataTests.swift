@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
@@ -145,7 +146,7 @@ struct ImportPreviewDataTests {
         ]
         for scene in scenes {
             let keys = scene.itemsByTab.values.flatMap { $0 }
-                .compactMap { item -> String? in
+                .compactMap { item -> Data? in
                     switch item {
                     case .candidate(_, let row, _): row.candidateKey
                     case .groupHeader, .invalid: nil

@@ -28,7 +28,11 @@ mod candidate_lookup {
             .get_candidate(&key)
             .await
             .expect("a scanned candidate resolves");
-        assert_eq!(found.common().source_folders, vec![key]);
+        assert_eq!(found.key(), key);
+        assert_eq!(
+            found.common().source_folders,
+            vec![coven::path_text(&fixture.root().join("Album"))]
+        );
     }
 
     /// Absence is not "no evidence yet" — it is a key that names nothing.
@@ -37,16 +41,28 @@ mod candidate_lookup {
         let fixture = automation_over().await;
         scan(&fixture, "Album").await;
 
+        let missing = candidate_key_name(&CandidateKey::folder(&fixture.root().join("Albmu")));
         let error = fixture
-            .get_candidate("/music/Albmu")
+            .get_candidate(&missing)
             .await
             .expect_err("a key naming nothing must not be answered");
         assert_eq!(error.kind(), "not_found");
         assert!(
-            error.message().contains("/music/Albmu"),
+            error.message().contains(&missing),
             "the error names the key that missed: {}",
             error.message()
         );
+    }
+
+    /// A name that is not the hex of a key's bytes names no key at all.
+    #[tokio::test]
+    async fn a_name_that_is_not_hex_is_refused() {
+        let fixture = automation_over().await;
+        let error = fixture
+            .get_candidate("/music/Album")
+            .await
+            .expect_err("a path is not a key's name");
+        assert_eq!(error.kind(), "validation");
     }
 
     /// A candidate whose identification hasn't run still resolves.

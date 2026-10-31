@@ -144,7 +144,7 @@ final class ImportListSlot {
     /// Navigate to the first candidate the identification count is still
     /// waiting on, as core finds it when asked. `nil` when nothing is.
     func revealFirstIdentifying() async throws
-        -> (candidateKey: String, position: Int)?
+        -> (candidateKey: Data, position: Int)?
     {
         guard let pages,
             let candidateKey = try await pages.firstIdentifyingCandidate(),
@@ -156,7 +156,7 @@ final class ImportListSlot {
     /// Navigate to the candidate's current authoritative placement, even when
     /// that placement has moved it out of the list presently on screen, and
     /// select it alone.
-    func revealCandidate(_ candidateKey: String) async throws -> Int? {
+    func revealCandidate(_ candidateKey: Data) async throws -> Int? {
         guard let pages,
             let location = try await pages.locateCandidate(candidateKey)
         else {
@@ -295,10 +295,10 @@ final class ImportListSlot {
                 setGroupFolded: { _, _ in },
                 setAllGroupsFolded: { _ in },
                 locateCandidate: { key in
-                    items.firstIndex { $0.id == "candidate:\(key)" }
+                    items.firstIndex { $0.selectionKey == key }
                         .map {
                             BridgeImportCandidateListLocation(
-                                stableKey: "candidate:\(key)",
+                                stableKey: items[$0].id,
                                 tab: tab,
                                 groupKey: nil,
                                 visiblePosition: UInt64($0)
@@ -407,7 +407,7 @@ extension ImportListSlot {
     /// reflects the write.
     func changeSelection(
         _ change: BridgeSelectionChange,
-        showing shown: Set<String>
+        showing shown: Set<Data>
     ) {
         let click = importStore.beginSelectionClick(shown)
         writeSelection { [importStore] selection in
@@ -424,7 +424,7 @@ extension ImportListSlot {
 
     /// Make `candidateKey` the whole selection, once the writes asked for
     /// before it have landed.
-    func selectOnly(_ candidateKey: String) async throws {
+    func selectOnly(_ candidateKey: Data) async throws {
         try await queueSelectionWrite {
             try await $0.change(.replace(keys: [candidateKey]))
         }

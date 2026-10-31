@@ -85,7 +85,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         &file_ids,
         &source_file_sizes,
         &[track],
-        "candidate",
+        &crate::import::CandidateKey::test("candidate"),
         "release-id",
         "import-id",
     )

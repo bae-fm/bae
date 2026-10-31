@@ -16,9 +16,9 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
                 file_edit_revision: stale.file_edit_revision,
                 metadata_revision: stale.metadata_revision,
             },
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &CandidateFileEdits::default(),
-            &[(pane_candidate_path(), files)],
+            &[(pane_candidate_key(), files)],
             stale.draft.clone(),
         )
         .await
@@ -32,7 +32,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
                 file_edit_revision: stale.file_edit_revision,
                 metadata_revision: stale.metadata_revision,
             },
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &crate::import::CandidateMetadataDraft {
                 draft: stale.draft,
                 provenance: stale.metadata_provenance,
@@ -78,7 +78,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
                 file_edit_revision: stale.file_edit_revision,
                 metadata_revision: stale.metadata_revision,
             },
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &crate::import::CandidateMetadataDraft {
                 draft: stale.draft,
                 provenance: stale.metadata_provenance,
@@ -114,7 +114,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
     let error = crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
             &root,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &as_read(&hash, 0),
             &CoverSelection::Local("cover.jpg".to_string()),
             None,
@@ -159,9 +159,9 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
                 file_edit_revision: stale.file_edit_revision,
                 metadata_revision: stale.metadata_revision,
             },
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &edits,
-            &[(pane_candidate_path(), settled)],
+            &[(pane_candidate_key(), settled)],
             stale.draft.clone(),
         )
         .await
@@ -193,7 +193,7 @@ async fn a_remote_cover_stored_without_its_bytes_is_refused_on_read() {
     crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &as_read(&hash, 0),
             &CoverSelection::Remote(
                 bae_catalogs::remote_image::RemoteImageSet::original(
@@ -264,7 +264,7 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &seed,
             Some(&release_pick("rel-1")),
         )
@@ -330,7 +330,7 @@ async fn every_draft_write_keeps_the_lists_draft_columns_current() {
     preparations
         .replace_metadata(
             &hash,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &metadata_draft("Album Title", "Artist Name"),
             Some(&release_pick("rel-1")),
         )
@@ -437,7 +437,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("rel-1")),
         )
@@ -471,7 +471,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("rel-1")),
         )
@@ -493,7 +493,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     crate::import::CandidatePreparations::new(db.clone())
         .set_track_edit_prepared(
             &host_root("/music"),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &crate::import::CandidateAsRead {
                 content_hash: hash.clone(),
                 file_edit_revision: preparation.file_edit_revision,
@@ -517,9 +517,9 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &edits,
-            &[(pane_candidate_path(), settled)],
+            &[(pane_candidate_key(), settled)],
             draft.clone(),
         )
         .await
@@ -557,7 +557,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &old_draft,
             Some(&release_pick("rel-1")),
         )
@@ -573,9 +573,9 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &file_edits,
-            &[(pane_candidate_path(), settled)],
+            &[(pane_candidate_key(), settled)],
             draft,
         )
         .await
@@ -607,7 +607,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let applied_revision = crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &new_draft,
             Some(&release_pick("rel-2")),
         )
@@ -655,7 +655,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let mut blank = crate::import::pane::blank_candidate_draft(&pane_candidate()).release_edit();
     blank.tracks.truncate(1);
     let cleared_revision = crate::import::CandidatePreparations::new(db.clone())
-        .replace_metadata(&hash, &pane_candidate_path(), &blank, None)
+        .replace_metadata(&hash, &pane_candidate_key(), &blank, None)
         .await
         .unwrap();
     let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
@@ -691,7 +691,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
         crate::import::CandidatePreparations::new(db.clone())
             .replace_metadata(
                 &hash,
-                &pane_candidate_path(),
+                &pane_candidate_key(),
                 &metadata_draft("Album", "Artist"),
                 Some(&release_pick("rel-1")),
             )
@@ -750,7 +750,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("rel-chosen")),
         )
@@ -765,7 +765,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
 file_edit_revision: 0,
-            folder_path: pane_candidate_path(),
+            candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals: settled_signals(),
             pick: Some(crate::db::VerdictPick {
@@ -811,7 +811,7 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
 file_edit_revision: 0,
-            folder_path: pane_candidate_path(),
+            candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals: settled_signals(),
             pick: Some(crate::db::VerdictPick {
@@ -836,7 +836,7 @@ file_edit_revision: 0,
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
 file_edit_revision: 0,
-            folder_path: pane_candidate_path(),
+            candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals: settled_signals(),
             pick: Some(crate::db::VerdictPick {

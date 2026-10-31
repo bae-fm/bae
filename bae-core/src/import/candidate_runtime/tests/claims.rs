@@ -3,7 +3,7 @@
 #[tokio::test]
 async fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     let claimed = runtime.snapshot(key).await.unwrap();
 
@@ -19,7 +19,7 @@ async fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
 #[tokio::test]
 async fn a_claim_is_refused_by_the_claim_the_table_holds() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
 
     let holding_nothing = runtime.over_the_same_library_for_test();
@@ -34,7 +34,7 @@ async fn a_claim_is_refused_by_the_claim_the_table_holds() {
 #[tokio::test]
 async fn a_claim_is_the_queued_step_until_the_worker_takes_it_up() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
 
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     assert_eq!(
@@ -56,12 +56,12 @@ async fn a_claim_is_the_queued_step_until_the_worker_takes_it_up() {
 #[tokio::test]
 async fn only_the_claiming_import_moves_its_claim() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
     runtime.record_event(&progress(key, 60));
     runtime.move_import(key, "imp-1", None).await.unwrap();
     runtime.record_event(&ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         progress: ImportProgress::Cancelled {
             import_id: "imp-1".to_string(),
         },
@@ -98,19 +98,19 @@ async fn only_the_claiming_import_moves_its_claim() {
 /// meanwhile.
 #[tokio::test]
 async fn an_import_outlives_its_candidate_leaving_the_scan() {
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let mut reshaped = folder_candidate(key, "/watch/a");
     reshaped.file_edit_revision = 1;
     let departures = [
         ImportEvent::Scan(ScanEvent::CandidateRemoved {
-            candidate_key: key.to_string(),
+            candidate_key: key.clone(),
         }),
         scanned(reshaped),
         ImportEvent::Scan(ScanEvent::InvalidCandidate(InvalidCandidate {
-            path: PathBuf::from(key),
+            path: key.test_folder(),
             name: "rel1".to_string(),
-            watched_folder_path: "/watch/a".to_string(),
-            display_path: "rel1".to_string(),
+            watched_folder_path: std::path::PathBuf::from("/watch/a"),
+            relative_folder: crate::import::RelativeFolder::test("rel1"),
             grouping: None,
             files: Vec::new(),
             tags: None,
@@ -134,7 +134,7 @@ async fn an_import_outlives_its_candidate_leaving_the_scan() {
 
         runtime.move_import(key, "imp-1", None).await.unwrap();
         runtime.record_event(&ImportEvent::ImportProgress {
-            candidate_key: key.to_string(),
+            candidate_key: key.clone(),
             progress: ImportProgress::Failed {
                 error: "the files changed".to_string(),
                 import_id: "imp-1".to_string(),
@@ -149,10 +149,10 @@ async fn an_import_outlives_its_candidate_leaving_the_scan() {
 #[tokio::test]
 async fn a_claim_that_ends_identification_ends_it_in_its_own_write() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), triangulating()).await;

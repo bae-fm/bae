@@ -199,7 +199,7 @@ async fn start_signals(
     handle.register_analyzer(analyzer);
     let run = handle.start(
         IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         folder_source(folder),
         CallPriority::Interactive,
     );
@@ -248,8 +248,8 @@ fn folder_source(folder: PathBuf) -> ExtractionSource {
     ExtractionSource::Candidate {
         candidate: crate::import::FolderCandidate {
             name: folder.file_name().unwrap().to_string_lossy().into_owned(),
-            display_path: folder.file_name().unwrap().to_string_lossy().into_owned(),
-            watched_folder_path: folder.to_string_lossy().into_owned(),
+            relative_folder: crate::import::RelativeFolder::root(),
+            watched_folder_path: folder.clone(),
             file_root: folder.clone(),
             path: folder,
             files,
@@ -639,7 +639,7 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
 
     let mut run = handle.start(
         IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         folder_source(folder),
         CallPriority::Interactive,
     );
@@ -674,7 +674,7 @@ FILE \"audio.flac\" WAVE\n  \
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.start(
         IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         folder_source(folder),
         CallPriority::Interactive,
     );
@@ -791,7 +791,7 @@ async fn a_settled_reading_is_kept_before_it_is_announced() {
     });
     let mut run = handle.start(
         IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         source,
         CallPriority::Interactive,
     );
@@ -820,7 +820,7 @@ async fn an_unchanged_folder_is_not_read_again() {
 
     let mut second_run = handle.start(
         IdentifyRunId::for_test(2),
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         folder_source(folder),
         CallPriority::Interactive,
     );

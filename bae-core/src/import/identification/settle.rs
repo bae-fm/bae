@@ -34,7 +34,7 @@ pub(super) enum Settled {
 pub(super) struct Finished {
     /// The identity of the job the answer settles.
     pub(super) identity: CandidateFiles,
-    pub(super) representative_key: String,
+    pub(super) representative_key: crate::import::CandidateKey,
     /// The run whose answer this is.
     pub(super) run: IdentifyRunId,
     pub(super) settled: Settled,
@@ -282,7 +282,7 @@ pub(super) async fn save(
     let row = NewImportCandidateVerdict {
         content_hash: candidate.files.content_hash(),
         file_edit_revision: candidate.file_edit_revision,
-        folder_path: candidate_key.clone(),
+        candidate_key: candidate_key.clone(),
         verdict: verdict.clone(),
         signals,
         pick,

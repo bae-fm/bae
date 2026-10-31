@@ -9,7 +9,7 @@ use super::CandidateAction;
 /// [`CandidateLiveState`](super::CandidateLiveState)'s.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectionMember {
-    pub candidate_key: String,
+    pub candidate_key: crate::import::CandidateKey,
     pub actions: Vec<CandidateAction>,
 }
 
@@ -41,7 +41,10 @@ impl SelectionPart {
 
 /// The keys `action` runs on over `members`: those that offer it, or every
 /// member for combining, which acts on the whole selection.
-pub fn keys_for(members: &[SelectionMember], action: CandidateAction) -> Vec<String> {
+pub fn keys_for(
+    members: &[SelectionMember],
+    action: CandidateAction,
+) -> Vec<crate::import::CandidateKey> {
     members
         .iter()
         .filter(|member| action == CandidateAction::Combine || member.actions.contains(&action))
@@ -93,7 +96,7 @@ mod tests {
 
     fn member(key: &str, actions: &[CandidateAction]) -> SelectionMember {
         SelectionMember {
-            candidate_key: key.to_string(),
+            candidate_key: crate::import::CandidateKey::test(key),
             actions: actions.to_vec(),
         }
     }
@@ -148,7 +151,10 @@ mod tests {
         assert_eq!(count(A::Import), Some(1));
         assert_eq!(count(A::Identify), Some(2));
         assert_eq!(count(A::Skip), None);
-        assert_eq!(keys_for(&members, A::Import), vec!["Album".to_string()]);
+        assert_eq!(
+            keys_for(&members, A::Import),
+            vec![crate::import::CandidateKey::test("Album")]
+        );
     }
 
     /// A part counts each of its rows: an action is offered for as many rows

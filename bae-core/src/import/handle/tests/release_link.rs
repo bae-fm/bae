@@ -5,7 +5,7 @@
 use super::*;
 use crate::import::{CandidateEditField, PendingStanding};
 
-async fn standing(handle: &ImportServiceHandle, key: &str) -> PendingStanding {
+async fn standing(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> PendingStanding {
     pane(handle, key)
         .await
         .live
@@ -26,7 +26,7 @@ fn linked_to(release_id: &str) -> crate::import::ReleaseLink {
 /// The fixture candidate, picked as `release_id`.
 pub(super) async fn picked_fixture(
     release_id: &str,
-) -> (ImportServiceHandle, TempDir, String) {
+) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey) {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     super::lookup_choices::seed_mb_release_with_catalog(
         handle.library_manager.providers(),

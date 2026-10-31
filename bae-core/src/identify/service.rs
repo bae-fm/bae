@@ -175,7 +175,7 @@ impl IdentifyServiceHandle {
     pub(crate) fn start(
         &self,
         run: IdentifyRunId,
-        key: String,
+        key: crate::import::CandidateKey,
         subject: RunSubject,
         priority: CallPriority,
         choices: LookupChoices,
@@ -227,7 +227,7 @@ impl IdentifyServiceHandle {
     /// Nothing in the app asks: the identification queue is the only thing
     /// that starts a candidate's run, and its own entry says what that run is
     /// doing. A test asks to check that from the outside.
-    pub fn is_running(&self, key: &str) -> bool {
+    pub fn is_running(&self, key: &crate::import::CandidateKey) -> bool {
         self.inner
             .candidates
             .is_working(CandidateWork::Identify, key)
@@ -236,13 +236,13 @@ impl IdentifyServiceHandle {
     /// Every key with a run in flight right now. What a change to the inputs
     /// every run reads — the library's provider list — has to act on: those
     /// runs answer the list as it was, and nothing else does.
-    pub fn running_keys(&self) -> Vec<String> {
+    pub fn running_keys(&self) -> Vec<crate::import::CandidateKey> {
         self.inner.candidates.working_keys(CandidateWork::Identify)
     }
 
     /// Cancel an in-flight identify. Drops the driver task on the next
     /// await point.
-    pub fn cancel(&self, key: &str) {
+    pub fn cancel(&self, key: &crate::import::CandidateKey) {
         self.inner
             .candidates
             .cancel_work(CandidateWork::Identify, key);
@@ -262,7 +262,7 @@ impl IdentifyServiceHandle {
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
-    key: String,
+    key: crate::import::CandidateKey,
     subject: RunSubject,
     // Whether this is still the key's current run, so a run a later start
     // superseded cannot deregister its successor.
@@ -351,7 +351,7 @@ async fn run_driver(
 struct Driver {
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
-    key: String,
+    key: crate::import::CandidateKey,
     subject: RunSubject,
     priority: CallPriority,
     /// Where the effects' answers come back to the driver loop.
@@ -417,7 +417,7 @@ impl Driver {
     /// forgotten once it no longer does, so a reader of both always finds it.
     async fn record(&self, state: &IdentifyState, standing: &mut RunStanding) {
         let candidates = &self.inner.candidates;
-        let (key, run) = (self.key.as_str(), self.run);
+        let (key, run) = (&self.key, self.run);
         let RunSubject::Candidate(files) = &self.subject else {
             match state {
                 IdentifyState::Idle => candidates.forget_run(key, run),
@@ -485,7 +485,7 @@ impl Driver {
     /// The run reached `answer`, which is now being written.
     async fn record_answer(&self, answer: &IdentifyState, standing: &mut RunStanding) {
         let candidates = &self.inner.candidates;
-        let (key, run) = (self.key.as_str(), self.run);
+        let (key, run) = (&self.key, self.run);
         match candidates
             .run_answered(key, run, answer.picks_unattended())
             .await

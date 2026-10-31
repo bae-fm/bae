@@ -21,7 +21,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .unwrap();
     // Combining takes the selection, not an order: core plays the folders in
     // key order and names the release after the first of them.
-    let mut ordered = vec![first_key.clone(), second_key.clone()];
+    let mut ordered = [first_key.clone(), second_key.clone()];
     ordered.sort();
     let leading = if ordered[0] == first_key {
         &first
@@ -35,12 +35,15 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     assert_eq!(
         handle.candidate_source_folders(&key).await.unwrap(),
         ordered
+            .iter()
+            .map(crate::import::CandidateKey::test_folder)
+            .collect::<Vec<_>>()
     );
     assert!(handle
         .get_release_candidate(&key)
         .await
         .unwrap()
-        .is_some_and(|candidate| candidate.grouping.as_deref() == Some(key.as_str())));
+        .is_some_and(|candidate| candidate.grouping.as_ref() == Some(&key)));
     assert!(handle
         .get_release_candidate(&first_key)
         .await
@@ -208,7 +211,7 @@ async fn separating_picked_folders_returns_them_as_they_were() {
     ];
     members.sort();
     assert_eq!(pending(&handle).await, vec![members[0].1.to_string()]);
-    let order: Vec<String> = members.into_iter().map(|(key, _)| key).collect();
+    let order: Vec<crate::import::CandidateKey> = members.into_iter().map(|(key, _)| key).collect();
     assert!(matches!(
         handle.library_manager.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Picked { members }) if members == order
@@ -252,8 +255,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root =
-        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap();
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     manager.add_watched_import_folder(&root).await.unwrap();
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
@@ -264,15 +266,9 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         pending(&handle).await,
         vec!["Artist/Live A".to_string(), "Artist/Live B".to_string()]
     );
-    let keys: Vec<String> = ["Live A", "Live B"]
+    let keys: Vec<crate::import::CandidateKey> = ["Live A", "Live B"]
         .iter()
-        .map(|live| {
-            PathBuf::from(&root)
-                .join("Artist")
-                .join(live)
-                .to_string_lossy()
-                .into_owned()
-        })
+        .map(|live| crate::import::CandidateKey::folder(&root.join("Artist").join(live)))
         .collect();
 
     let key = handle.combine_candidates(keys.clone()).await.unwrap();
@@ -281,7 +277,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         Some(crate::db::GroupingFacts::Anchored {
             folder: crate::import::FolderReleaseDecisionKey {
                 watched_folder_path: root.clone(),
-                relative_folder_path: "Artist".into(),
+                relative_folder: crate::import::RelativeFolder::test("Artist"),
             },
             decision: crate::import::FolderReleaseDecision::CombineAsOneRelease,
         })
@@ -320,21 +316,14 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root =
-        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap();
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     manager.add_watched_import_folder(&root).await.unwrap();
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
-    let key_of = |live: &str| {
-        PathBuf::from(&root)
-            .join("Artist")
-            .join(live)
-            .to_string_lossy()
-            .into_owned()
-    };
+    let key_of = |live: &str| crate::import::CandidateKey::folder(&root.join("Artist").join(live));
 
     // Live 3 stays out, so the pick is not every release under `Artist/`.
     let key = handle

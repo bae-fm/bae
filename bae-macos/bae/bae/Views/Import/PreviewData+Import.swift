@@ -5,8 +5,12 @@
 
     /// Preview fixtures for the Import flow.
     extension PreviewData {
+        /// The watched folder the import previews read from, as text.
+        static let importRootPath = "/Music/Downloads"
+
         static let importWatchedFolder = BridgeWatchedFolder(
-            path: "/Music/Downloads",
+            path: Data(importRootPath.utf8),
+            pathText: importRootPath,
             name: "Downloads"
         )
 
@@ -118,9 +122,10 @@
         static let folderCandidates: [Candidate] = [
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/Album Title One",
+                candidateKey: Data("/Music/Downloads/Album Title One".utf8),
+                folderPath: Data("/Music/Downloads/Album Title One".utf8),
                 sourceFolderName: "Album Title One",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 files: bridgeCandidateFiles,
                 trackCount: 9,
                 skipped: false,
@@ -128,9 +133,14 @@
             ),
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/Album Title Two [Label CAT-002]",
+                candidateKey: Data(
+                    "/Music/Downloads/Album Title Two [Label CAT-002]".utf8
+                ),
+                folderPath: Data(
+                    "/Music/Downloads/Album Title Two [Label CAT-002]".utf8
+                ),
                 sourceFolderName: "Album Title Two",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 files: bridgeCandidateFiles,
                 trackCount: 12,
                 // Skipped.
@@ -139,9 +149,10 @@
             ),
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/Compilation Vol. 3",
+                candidateKey: Data("/Music/Downloads/Compilation Vol. 3".utf8),
+                folderPath: Data("/Music/Downloads/Compilation Vol. 3".utf8),
                 sourceFolderName: "Compilation Vol. 3",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 files: bridgeCandidateFiles,
                 trackCount: 15,
                 skipped: false,
@@ -149,9 +160,10 @@
             ),
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/EP Release",
+                candidateKey: Data("/Music/Downloads/EP Release".utf8),
+                folderPath: Data("/Music/Downloads/EP Release".utf8),
                 sourceFolderName: "EP Release",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 files: bridgeCandidateFiles,
                 trackCount: 5,
                 skipped: false,
@@ -159,9 +171,10 @@
             ),
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/Live Recording 2023",
+                candidateKey: Data("/Music/Downloads/Live Recording 2023".utf8),
+                folderPath: Data("/Music/Downloads/Live Recording 2023".utf8),
                 sourceFolderName: "Live Recording 2023",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 files: bridgeCandidateFiles,
                 trackCount: 18,
                 // Already imported (content-hash match).
@@ -171,9 +184,10 @@
             // Two more, so Pending shows a group beside an ungrouped row.
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/Album Title Three",
+                candidateKey: Data("/Music/Downloads/Album Title Three".utf8),
+                folderPath: Data("/Music/Downloads/Album Title Three".utf8),
                 sourceFolderName: "Album Title Three",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 files: bridgeCandidateFiles,
                 trackCount: 11,
                 skipped: false,
@@ -181,9 +195,10 @@
             ),
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/Single Release",
+                candidateKey: Data("/Music/Downloads/Single Release".utf8),
+                folderPath: Data("/Music/Downloads/Single Release".utf8),
                 sourceFolderName: "Single Release",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 files: candidateFilesTracks,
                 trackCount: 2,
                 skipped: false,
@@ -197,10 +212,10 @@
         /// its folder's name to go by, and one with no audio at all.
         static let invalidCandidates: [BridgeInvalidCandidate] = [
             BridgeInvalidCandidate(
-                candidateKey: "/Music/Downloads/Half Copied",
-                folderPath: "/Music/Downloads/Half Copied",
+                candidateKey: Data("/Music/Downloads/Half Copied".utf8),
+                folderPath: Data("/Music/Downloads/Half Copied".utf8),
                 sourceFolderName: "Half Copied",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 displayPath: "Half Copied",
                 separable: false,
                 reason: .damagedAudio(count: 2),
@@ -211,10 +226,10 @@
                 cover: .local(file: previewArtFile("Front.png"))
             ),
             BridgeInvalidCandidate(
-                candidateKey: "/Music/Downloads/Broken Rip",
-                folderPath: "/Music/Downloads/Broken Rip",
+                candidateKey: Data("/Music/Downloads/Broken Rip".utf8),
+                folderPath: Data("/Music/Downloads/Broken Rip".utf8),
                 sourceFolderName: "Broken Rip",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 displayPath: "Broken Rip",
                 separable: false,
                 reason: .damagedAudio(count: 1),
@@ -222,10 +237,10 @@
                 cover: nil
             ),
             BridgeInvalidCandidate(
-                candidateKey: "/Music/Downloads/Documents Only",
-                folderPath: "/Music/Downloads/Documents Only",
+                candidateKey: Data("/Music/Downloads/Documents Only".utf8),
+                folderPath: Data("/Music/Downloads/Documents Only".utf8),
                 sourceFolderName: "Documents Only",
-                watchedFolderPath: "/Music/Downloads",
+                watchedFolderPath: Data("/Music/Downloads".utf8),
                 displayPath: "Documents Only",
                 separable: false,
                 reason: .noValidAudio,
@@ -236,12 +251,13 @@
 
         /// One of a skipped folder's files, as its pane lists it.
         private static func skippedFile(
-            folder: String,
+            folder: Data,
             name: String,
             size: UInt64,
             role: BridgeMappingRole
         ) -> BridgeMappingFile {
-            let path = URL(fileURLWithPath: "\(folder)/\(name)").pathBytes
+            let path = URL(filePathBytes: folder, isDirectory: true)
+                .appending(path: name).pathBytes
             return BridgeMappingFile(
                 fileId: name,
                 name: name,
@@ -339,13 +355,14 @@
         private static let releaseQueueRoot = "/Music/Incoming"
 
         static let releaseQueueWatchedFolder = BridgeWatchedFolder(
-            path: releaseQueueRoot,
+            path: Data(releaseQueueRoot.utf8),
+            pathText: releaseQueueRoot,
             name: "Incoming"
         )
 
         static let releaseQueueGroupKey = BridgeFolderReleaseDecisionKey(
-            watchedFolderPath: releaseQueueRoot,
-            relativeFolderPath: "Collection"
+            watchedFolderPath: Data(releaseQueueRoot.utf8),
+            relativeFolder: Data("Collection".utf8)
         )
 
         private static func releaseQueueRow(
@@ -354,9 +371,9 @@
             separable: Bool
         ) -> BridgeTriageRow {
             BridgeTriageRow(
-                candidateKey: "\(releaseQueueRoot)/\(displayPath)",
+                candidateKey: Data("\(releaseQueueRoot)/\(displayPath)".utf8),
                 folderName: name,
-                watchedFolderPath: releaseQueueRoot,
+                watchedFolderPath: Data(releaseQueueRoot.utf8),
                 displayPath: displayPath,
                 actionable: true,
                 placement: .pending,
@@ -405,9 +422,10 @@
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
                     parts: [],
+                    candidateKey: row.candidateKey,
                     folderPath: row.candidateKey,
                     sourceFolderName: row.folderName,
-                    watchedFolderPath: releaseQueueRoot,
+                    watchedFolderPath: Data(releaseQueueRoot.utf8),
                     files: candidateFilesTracks,
                     trackCount: 9,
                     skipped: false,
@@ -482,7 +500,7 @@
                 BridgeFolderScans(
                     statuses: [
                         BridgeWatchedFolderScanStatus(
-                            watchedFolderPath: releaseQueueRoot,
+                            watchedFolderPath: Data(releaseQueueRoot.utf8),
                             watchedFolderName: releaseQueueWatchedFolder.name,
                             status: .scanning(foundCount: 27),
                             onNetworkVolume: false
@@ -492,7 +510,7 @@
                         foundCount: 27,
                         folders: [
                             BridgeActiveFolderScan(
-                                watchedFolderPath: releaseQueueRoot,
+                                watchedFolderPath: Data(releaseQueueRoot.utf8),
                                 watchedFolderName: releaseQueueWatchedFolder
                                     .name,
                                 foundCount: 27

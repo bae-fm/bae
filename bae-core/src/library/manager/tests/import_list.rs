@@ -7,7 +7,10 @@
 /// that order, then D, written in that order — under a watched folder, each
 /// listed for the folder it was imported from.
 #[cfg(feature = "test-utils")]
-async fn done_with_two_uploading(manager: &TestManager, dir: &std::path::Path) -> Vec<(String, String)> {
+async fn done_with_two_uploading(
+    manager: &TestManager,
+    dir: &std::path::Path,
+) -> Vec<(String, crate::import::CandidateKey)> {
     connect_test_cloud(manager).await;
     let files: &[(&str, &[u8])] = &[("track.flac", b"track-bytes")];
     let a = insert_local_release_with_files(manager, &dir.join("a"), "A", files).await;
@@ -15,25 +18,28 @@ async fn done_with_two_uploading(manager: &TestManager, dir: &std::path::Path) -
     let b = insert_release_with_queued_uploads(manager, &dir.join("b"), "B", files).await;
     let d = insert_local_release_with_files(manager, &dir.join("d"), "D", files).await;
     let root = crate::import::watched_folder::host_root("/music");
+    let root_sql = format!("X'{}'", hex::encode(coven::path_bytes(&root)));
     let mut sql = format!(
-        "INSERT INTO watched_import_folders (path, position) VALUES ('{root}', 0);
+        "INSERT INTO watched_import_folders (path, position) VALUES ({root_sql}, 0);
          INSERT INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-         VALUES ('{root}', 1, 'complete', 'local');"
+         VALUES ({root_sql}, 1, 'complete', 'local');"
     );
     let mut keys = Vec::new();
     for (name, release) in [("A", &a), ("B", &b), ("C", &c), ("D", &d)] {
-        let path = std::path::Path::new(&root).join(name).to_string_lossy().into_owned();
+        let key = crate::import::CandidateKey::folder(&root.join(name));
+        let path = format!("X'{}'", hex::encode(key.as_bytes()));
+        let relative = format!("X'{}'", hex::encode(name.as_bytes()));
         sql.push_str(&format!(
             "INSERT INTO scan_candidate
-                 (watched_folder_path, path, generation, kind, name, display_path, folder,
+                 (watched_folder_path, path, generation, kind, name, relative_folder, folder,
                   file_root, scope, content_hash)
-             VALUES ('{root}', '{path}', 1, 'valid', '{name}', '{name}', '{path}', '{path}',
+             VALUES ({root_sql}, {path}, 1, 'valid', '{name}', {relative}, {path}, {path},
                      'direct', 'hash-{name}');
              INSERT INTO local_release_origin (release_id, content_hash)
              VALUES ('{id}', 'hash-{name}');",
             id = release.id,
         ));
-        keys.push((name.to_string(), path));
+        keys.push((name.to_string(), key));
     }
     manager
         .database

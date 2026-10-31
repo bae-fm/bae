@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Observation
 
 /// What every candidate has in flight, as core's runtime subscription last
@@ -22,19 +23,19 @@ final class CandidateRuntimes {
 
     /// The keys with something in flight; it changes only as one starts or
     /// ends.
-    private var keys: Set<String>
+    private var keys: Set<Data>
     @ObservationIgnored
-    private var values: [String: Value]
+    private var values: [Data: Value]
 
     /// Nothing in flight until the subscription says, or, for a preview, the
     /// runtimes `held`.
-    init(holding held: [String: BridgeCandidateRuntimeSnapshot] = [:]) {
+    init(holding held: [Data: BridgeCandidateRuntimeSnapshot] = [:]) {
         keys = Set(held.keys)
         values = held.mapValues(Value.init)
     }
 
     /// What is in flight for `key`; `nil` while nothing is.
-    func runtime(forKey key: String) -> BridgeCandidateRuntimeSnapshot? {
+    func runtime(forKey key: Data) -> BridgeCandidateRuntimeSnapshot? {
         guard keys.contains(key) else { return nil }
         return values[key]?.snapshot
     }
@@ -66,8 +67,7 @@ final class CandidateRuntimes {
         }
     }
 
-    private func set(_ runtime: BridgeCandidateRuntimeSnapshot, for key: String)
-    {
+    private func set(_ runtime: BridgeCandidateRuntimeSnapshot, for key: Data) {
         if let value = values[key] {
             value.snapshot = runtime
         }

@@ -14,7 +14,8 @@ pub(super) type RefreshCompletion = tokio::sync::oneshot::Sender<Result<(), Stri
 
 /// A caller waiting to hear which releases a folder reads as once a person's
 /// answer for it is stored.
-pub(super) type DecisionCompletion = tokio::sync::oneshot::Sender<Result<Vec<String>, String>>;
+pub(super) type DecisionCompletion =
+    tokio::sync::oneshot::Sender<Result<Vec<crate::import::CandidateKey>, String>>;
 
 /// Every watched root the coordinator has work in flight for, and the only way
 /// to start any of it.
@@ -50,7 +51,7 @@ pub(super) enum RootPass {
     /// candidates it gives.
     Decision(FolderReadingRequest),
     /// Folders directly under the root that changed on disk.
-    Folders(BTreeSet<String>),
+    Folders(BTreeSet<std::ffi::OsString>),
 }
 
 /// A person's answer for how one folder reads, and who hears the releases it
@@ -86,11 +87,11 @@ impl FolderReadingRequest {
 
     /// Tell whoever asked what became of it: the keys of the releases the
     /// folder now reads as, or why it was not stored.
-    pub(super) fn answer(self, result: Result<Vec<String>, String>) {
+    pub(super) fn answer(self, result: Result<Vec<crate::import::CandidateKey>, String>) {
         if self.completion.send(result).is_err() {
             debug!(
                 "folder decision caller for {} dropped before it was answered",
-                self.target.0.relative_folder_path
+                self.target.0.relative_folder.text()
             );
         }
     }
@@ -111,7 +112,7 @@ struct RootScanSchedule {
     readings: std::collections::VecDeque<FolderReadingRequest>,
     /// Folders that changed on disk while this pass ran, read once it and the
     /// queued readings are over.
-    changed: BTreeSet<String>,
+    changed: BTreeSet<std::ffi::OsString>,
 }
 
 /// What a root's next pass inherits from the one before it.
@@ -120,7 +121,7 @@ struct Queued {
     pending: bool,
     followup_waiters: Vec<RefreshCompletion>,
     readings: std::collections::VecDeque<FolderReadingRequest>,
-    changed: BTreeSet<String>,
+    changed: BTreeSet<std::ffi::OsString>,
 }
 
 struct RootRemovalSchedule {
@@ -262,7 +263,7 @@ impl ActiveRoots {
     pub(super) fn request_folders(
         &mut self,
         path: PathBuf,
-        folders: BTreeSet<String>,
+        folders: BTreeSet<std::ffi::OsString>,
         cause: RootScanCause,
     ) {
         if folders.is_empty() {
@@ -661,7 +662,7 @@ pub(super) enum RemovalOutcome {
         /// Held until the removal is announced, so nothing writes in between.
         commit: crate::import::FolderStateCommitGuard,
         /// Releases that left the queue, announced so work on them stops.
-        removed_keys: Vec<String>,
+        removed_keys: Vec<crate::import::CandidateKey>,
         /// Refresh callers of folders no longer watched.
         scan_waiters: Vec<(PathBuf, RefreshCompletion)>,
         callers: Vec<RefreshCompletion>,
@@ -680,7 +681,7 @@ pub(super) struct RootRemovalCompletion {
 enum RootRemovalResult {
     Removed {
         commit: crate::import::FolderStateCommitGuard,
-        removed_keys: Vec<String>,
+        removed_keys: Vec<crate::import::CandidateKey>,
     },
     Failed(String),
 }

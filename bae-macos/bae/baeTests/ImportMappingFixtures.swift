@@ -11,7 +11,7 @@ import Foundation
 /// tests exercise the pane's own reading of the mapping table rather than a
 /// convenience shape invented for them.
 enum MappingFixtures {
-    static let candidateKey = "/Music/Downloads/Walkthrough"
+    static let candidateKey = Data("/Music/Downloads/Walkthrough".utf8)
     static let releaseId = "rel-walkthrough"
     static let source: BridgeCatalog = .musicBrainz
     static let provenance: BridgeMetadataProvenance = .externalRelease(
@@ -400,7 +400,7 @@ extension MappingFixtures {
         metadataRevision: UInt64 = 1,
         failure: BridgeImportFailure? = nil,
         presentation: BridgeMetadataPresentation = .draft,
-        candidateKey key: String = MappingFixtures.candidateKey,
+        candidateKey key: Data = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough",
         audioIdentity: String = "empty-audio-files",
         records: [BridgeReleaseRecord] = []
@@ -456,15 +456,16 @@ extension MappingFixtures {
     }
 
     private static func sourceFolder(
-        key: String,
+        key: Data,
         name: String,
         audioIdentity: String
     ) -> BridgeFolderCandidate {
         BridgeFolderCandidate(
             parts: [],
+            candidateKey: key,
             folderPath: key,
             sourceFolderName: name,
-            watchedFolderPath: "/Music/Downloads",
+            watchedFolderPath: Data("/Music/Downloads".utf8),
             files: BridgeCandidateFiles(
                 fileMetadataIdentity: audioIdentity,
                 files: emptyFiles.files,

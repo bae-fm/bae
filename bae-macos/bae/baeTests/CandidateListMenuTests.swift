@@ -15,10 +15,14 @@ struct CandidateListMenuTests {
     ) -> CandidateListMenuState {
         CandidateListMenuState(
             watchedFolders: [
-                BridgeWatchedFolder(path: "/Imports", name: "Imports")
+                BridgeWatchedFolder(
+                    path: Data("/Imports".utf8),
+                    pathText: "/Imports",
+                    name: "Imports"
+                )
             ],
             refreshingFolders: [],
-            scanStatuses: ["/Imports": scanStatus],
+            scanStatuses: [Data("/Imports".utf8): scanStatus],
             networkFolders: [],
             hasGroups: false,
             sortOrder: .newestFirst,

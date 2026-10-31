@@ -37,6 +37,7 @@ impl From<McpConfig> for AutomationMcpConfig {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationWatchedFolder {
+    /// The folder's path, shown as text.
     pub path: String,
     pub name: String,
 }
@@ -144,9 +145,13 @@ impl AutomationCandidate {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCandidateCommon {
+    /// The hex of the candidate's key's bytes, which every candidate command
+    /// takes as `candidate_key`.
     pub key: String,
+    /// The folders it is read from, shown as text.
     pub source_folders: Vec<String>,
     pub name: String,
+    /// The watched folder it was scanned from, shown as text.
     pub watched_folder_path: String,
     pub skipped: bool,
     pub is_added: bool,
@@ -654,6 +659,7 @@ pub struct PathInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CandidateKeyInput {
+    /// A candidate's `key`, as the candidate list gives it.
     pub candidate_key: String,
 }
 

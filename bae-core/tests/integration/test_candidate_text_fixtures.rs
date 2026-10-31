@@ -210,7 +210,9 @@ async fn drive_fixture(
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));
     handle.register_analyzer(analyzer);
 
-    let key = format!("fixture:{}", fixture.name);
+    let key = bae_core::import::CandidateKey::from_bytes(
+        format!("fixture:{}", fixture.name).into_bytes(),
+    );
     let files = bae_core::import::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
         bae_core::import::ReleaseFileScope::Recursive,
@@ -223,8 +225,8 @@ async fn drive_fixture(
         ExtractionSource::Candidate {
             candidate: bae_core::import::FolderCandidate {
                 name: folder.file_name().unwrap().to_string_lossy().into_owned(),
-                display_path: folder.file_name().unwrap().to_string_lossy().into_owned(),
-                watched_folder_path: folder.to_string_lossy().into_owned(),
+                relative_folder: bae_core::import::RelativeFolder::root(),
+                watched_folder_path: folder.clone(),
                 file_root: folder.clone(),
                 path: folder,
                 files,

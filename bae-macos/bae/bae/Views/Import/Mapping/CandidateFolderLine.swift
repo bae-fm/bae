@@ -8,8 +8,9 @@ struct CandidateFolderLine: View {
     /// does not hold.
     let tab: BridgeTriageTab?
     let folderName: String
-    /// The paths the folder glyph reveals in Finder.
-    let folderPaths: [String]
+    /// The folders the glyph reveals in Finder, as coven's bytes for each
+    /// path.
+    let folderPaths: [Data]
     let onNavigateToPlacement: () -> Void
 
     static func label(for tab: BridgeTriageTab) -> String {
@@ -34,7 +35,7 @@ struct CandidateFolderLine: View {
             }
             Button {
                 for path in folderPaths {
-                    SystemActions.revealInFinder(path: path)
+                    SystemActions.revealInFinder(folder: path)
                 }
             } label: {
                 Image(systemName: "folder")
@@ -59,7 +60,7 @@ struct CandidateFolderLine: View {
             tab: .pending,
             folderName:
                 "2010 \u{2013} Blue Sky Boys 1939\u{2013}1940 (256 kbps)",
-            folderPaths: ["/Music/Blue Sky Boys"],
+            folderPaths: [Data("/Music/Blue Sky Boys".utf8)],
             onNavigateToPlacement: {}
         )
         .padding()

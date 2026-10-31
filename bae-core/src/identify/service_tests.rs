@@ -42,14 +42,15 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
 #[tokio::test]
 async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
     let (inner, _tmp) = setup_inner().await;
-    let token =
-        inner
-            .candidates
-            .start_work(CandidateWork::Identify, "k".to_string(), |token, _| token);
+    let token = inner.candidates.start_work(
+        CandidateWork::Identify,
+        crate::import::CandidateKey::test("k"),
+        |token, _| token,
+    );
 
     inner.event_tx.send(ImportEvent::Scan(
         crate::import::ScanEvent::CandidateRemoved {
-            candidate_key: "k".to_string(),
+            candidate_key: crate::import::CandidateKey::test("k"),
         },
     ));
 
@@ -58,7 +59,10 @@ async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
         "the removed candidate's run is cancelled"
     );
     assert!(
-        !inner.candidates.is_working(CandidateWork::Identify, "k"),
+        !inner.candidates.is_working(
+            CandidateWork::Identify,
+            &crate::import::CandidateKey::test("k")
+        ),
         "and no longer registered"
     );
 }
@@ -103,7 +107,7 @@ async fn await_state<T>(
                 ..
             } = event
             {
-                if candidate_key == "k" {
+                if candidate_key == crate::import::CandidateKey::test("k") {
                     if let Some(found) = wanted(&state) {
                         return Some(found);
                     }
@@ -125,7 +129,7 @@ fn reported_states(events: &mut UnboundedReceiver<ImportEvent>) -> Vec<IdentifyS
                 candidate_key,
                 state,
                 ..
-            } if candidate_key == "k" => Some(state),
+            } if candidate_key == crate::import::CandidateKey::test("k") => Some(state),
             _ => None,
         })
         .collect()
@@ -174,7 +178,7 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
     let (snapshots, watch) = tokio::sync::watch::channel(None);
     assert!(handle.start(
         handle.new_run(),
-        "k".to_string(),
+        crate::import::CandidateKey::test("k"),
         RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
@@ -194,7 +198,7 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
     );
     drivers_ended(&inner).await;
     assert!(
-        !handle.is_running("k"),
+        !handle.is_running(&crate::import::CandidateKey::test("k")),
         "the run that answered is not still in flight"
     );
 
@@ -224,7 +228,7 @@ async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() 
     snapshots.send_replace(Some(settled_snapshot()));
     assert!(handle.start(
         handle.new_run(),
-        "k".to_string(),
+        crate::import::CandidateKey::test("k"),
         RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
@@ -256,7 +260,7 @@ async fn an_extraction_ending_does_not_end_the_run() {
     let (snapshots, watch) = tokio::sync::watch::channel(None);
     assert!(handle.start(
         handle.new_run(),
-        "k".to_string(),
+        crate::import::CandidateKey::test("k"),
         RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
@@ -272,9 +276,12 @@ async fn an_extraction_ending_does_not_end_the_run() {
             .is_none(),
         "no verdict comes of an extraction that said nothing settled"
     );
-    assert!(handle.is_running("k"), "the run is still in flight");
+    assert!(
+        handle.is_running(&crate::import::CandidateKey::test("k")),
+        "the run is still in flight"
+    );
 
-    handle.cancel("k");
+    handle.cancel(&crate::import::CandidateKey::test("k"));
     drivers_ended(&inner).await;
     assert!(
         reported_states(&mut bus_rx)
@@ -297,18 +304,24 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
     let (_snapshots, watch) = tokio::sync::watch::channel(None);
     assert!(handle.start(
         handle.new_run(),
-        "k".to_string(),
+        crate::import::CandidateKey::test("k"),
         RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
         None,
         watch,
     ));
-    assert!(handle.is_running("k"), "the run is in flight");
-    assert_eq!(handle.running_keys(), vec!["k".to_string()]);
+    assert!(
+        handle.is_running(&crate::import::CandidateKey::test("k")),
+        "the run is in flight"
+    );
+    assert_eq!(
+        handle.running_keys(),
+        vec![crate::import::CandidateKey::test("k")]
+    );
 
     // No signals: the run sits in `Triangulating` until the cancel lands.
-    handle.cancel("k");
+    handle.cancel(&crate::import::CandidateKey::test("k"));
 
     drivers_ended(&inner).await;
     assert!(
@@ -395,7 +408,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     let driver = Driver {
         inner: inner.clone(),
         run: IdentifyRunId::for_test(1),
-        key: "k".to_string(),
+        key: crate::import::CandidateKey::test("k"),
         subject: RunSubject::Release,
         priority: CallPriority::Interactive,
         event_tx,

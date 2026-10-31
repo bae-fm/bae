@@ -48,7 +48,9 @@ class LatestStream<V : Any> private constructor(
         if (preview != null) {
             preview[key]
         } else {
-            fed?.latest(key)?.let { value -> checkNotNull(read(value)) { "a stream was fed $value" } }
+            fed?.latest(key.encodeToByteArray())?.let { value ->
+                checkNotNull(read(value)) { "a stream was fed $value" }
+            }
         }
 
     /**
@@ -63,7 +65,7 @@ class LatestStream<V : Any> private constructor(
     ) {
         val values = checkNotNull(preview) { "only a written stream is written" }
         val held = if (value == null) values.remove(key) else values.put(key, value)
-        if ((held == null) != (value == null)) activity.onKeysChanged(listOf(key))
+        if ((held == null) != (value == null)) activity.onKeysChanged(listOf(key.encodeToByteArray()))
     }
 
     /** Hold what [open] starts feeding, until the returned feed is cancelled. */
@@ -154,9 +156,12 @@ internal class KeyActivity : KeyActivityCallback {
         watchers[key]?.remove(changed)
     }
 
-    /** Post once to the main thread for the keys that started or stopped, for the Views watching them. */
-    override fun onKeysChanged(keys: List<String>) {
-        val watching = keys.flatMap { watchers[it]?.toList().orEmpty() }
+    /**
+     * Post once to the main thread for the keys that started or stopped, for the Views watching them. The
+     * bridge names a key by its bytes; every key this app watches is an id, whose bytes are its UTF-8.
+     */
+    override fun onKeysChanged(keys: List<ByteArray>) {
+        val watching = keys.flatMap { watchers[it.decodeToString()]?.toList().orEmpty() }
         if (watching.isEmpty()) return
         main.post { watching.forEach { it() } }
     }

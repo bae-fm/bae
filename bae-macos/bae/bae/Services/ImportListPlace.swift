@@ -1,5 +1,6 @@
 import BaeKit
 import CoreGraphics
+import Foundation
 
 /// Where the person is in the import list: the row on top of the table and
 /// how far the table is scrolled into it. The list slot holds it, so leaving
@@ -8,7 +9,7 @@ struct ImportListPlace: Equatable {
     /// The row on top, as far as the list had loaded it.
     enum Row: Equatable {
         /// A candidate's row, which core can say where it sits now.
-        case candidate(stableKey: String, candidateKey: String)
+        case candidate(stableKey: String, candidateKey: Data)
         /// A group header or a broken folder's row, found again while the
         /// list holds it.
         case entry(stableKey: String)

@@ -38,7 +38,7 @@ struct InvalidCandidateRow: View {
         .help(invalid.reason.localizedText)
         .contextMenu {
             Button("Reveal in Finder") {
-                SystemActions.revealInFinder(path: invalid.folderPath)
+                SystemActions.revealInFinder(folder: invalid.folderPath)
             }
             // An unreadable combined folder can only be separated from here.
             if invalid.separable {

@@ -8,9 +8,9 @@
 use super::*;
 
 /// A candidate ready to import into an album of its own.
-async fn importable(handle: &ImportServiceHandle, key: &str) {
+async fn importable(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     handle
-        .select_candidate_file_tags(key.to_string())
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     handle

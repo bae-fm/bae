@@ -87,7 +87,7 @@ fn twin_of(original: &FolderCandidate, name: &str) -> FolderCandidate {
     twin.path = folder.clone();
     twin.file_root = folder;
     twin.name = name.to_string();
-    twin.display_path = name.to_string();
+    twin.relative_folder = crate::import::RelativeFolder::test(name);
     assert_eq!(twin.files.content_hash(), original.files.content_hash());
     twin
 }
@@ -122,7 +122,7 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
     let (manager, tmp) = setup_test_manager().await;
     let (original, original_key, _) = picked_candidate(&manager, &tmp, "Album").await;
     let copy = twin_of(&original, "Copy");
-    let copy_key = copy.path.to_string_lossy().into_owned();
+    let copy_key = crate::import::CandidateKey::folder(&copy.path);
     rescan_all_into(&manager, &[original, copy]).await;
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
@@ -163,7 +163,7 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
 /// revision it stands at.
 async fn sheet_disc_of(
     handle: &ImportServiceHandle,
-    key: &str,
+    key: &crate::import::CandidateKey,
 ) -> (crate::import::folder_scanner::SheetDisc, u64) {
     let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
     let disc = candidate
@@ -189,9 +189,9 @@ async fn a_file_decision_settles_every_folder_holding_the_same_files() {
     )
     .unwrap();
     let copy = twin_of(&original, "Copy");
-    let copy_key = copy.path.to_string_lossy().into_owned();
+    let copy_key = crate::import::CandidateKey::folder(&copy.path);
     let mut other = twin_of(&original, "Other");
-    let other_key = other.path.to_string_lossy().into_owned();
+    let other_key = crate::import::CandidateKey::folder(&other.path);
     std::fs::write(other.path.join("Notes.txt"), "a file the others lack").unwrap();
     other.files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &other.path,

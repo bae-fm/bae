@@ -1,11 +1,12 @@
 //! Import domain operations for [`LibraryManager`].
 
 use super::*;
+use crate::import::CandidateKey;
 
 impl LibraryManager {
     pub(crate) async fn set_grouping_skipped(
         &self,
-        key: &str,
+        key: &CandidateKey,
         skipped: bool,
     ) -> Result<bool, LibraryError> {
         Ok(self.database.set_grouping_skipped(key, skipped).await?)
@@ -15,7 +16,7 @@ impl LibraryManager {
     /// grouping's release cannot be.
     pub(crate) async fn load_release_candidate(
         &self,
-        key: &str,
+        key: &CandidateKey,
     ) -> Result<
         Result<
             Option<crate::import::folder_scanner::FolderCandidate>,
@@ -30,7 +31,7 @@ impl LibraryManager {
     /// new grouping `key`.
     pub(crate) async fn combine_releases(
         &self,
-        key: String,
+        key: CandidateKey,
         members: Vec<crate::import::FolderCandidate>,
     ) -> Result<Result<crate::db::GroupingChanges, crate::import::GroupingBlock>, LibraryError>
     {
@@ -42,7 +43,7 @@ impl LibraryManager {
     /// the folder it read are free.
     pub(crate) async fn separate_picked_grouping(
         &self,
-        key: &str,
+        key: &CandidateKey,
     ) -> Result<
         (
             Vec<crate::import::folder_scanner::ScanItem>,
@@ -56,7 +57,7 @@ impl LibraryManager {
     /// How the grouping `key` reads, or `None` when no grouping has it.
     pub(crate) async fn load_grouping(
         &self,
-        key: &str,
+        key: &CandidateKey,
     ) -> Result<Option<crate::db::GroupingFacts>, LibraryError> {
         Ok(self.database.load_grouping(key).await?)
     }
@@ -108,7 +109,7 @@ impl LibraryManager {
     pub(crate) async fn locate_import_candidate(
         &self,
         list: crate::import::ImportListId,
-        candidate_key: &str,
+        candidate_key: &CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateListLocation>, LibraryError> {
         Ok(self
             .database
@@ -119,7 +120,7 @@ impl LibraryManager {
     pub(crate) async fn first_identifying_import_candidate(
         &self,
         list: crate::import::ImportListId,
-    ) -> Result<Option<String>, LibraryError> {
+    ) -> Result<Option<CandidateKey>, LibraryError> {
         Ok(self
             .database
             .first_identifying_import_candidate(list)
@@ -202,17 +203,19 @@ impl LibraryManager {
 
     pub(crate) fn subscribe_invalid_candidate(
         &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::import::InvalidCandidateDetail>>
-    {
+        initial: Option<CandidateKey>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<CandidateKey>,
+        Option<crate::import::InvalidCandidateDetail>,
+    > {
         self.database.subscribe_invalid_candidate(initial)
     }
 
     pub(crate) fn subscribe_import_candidate(
         &self,
-        initial: Option<String>,
+        initial: Option<CandidateKey>,
     ) -> coven::ReconfigurableLiveQuery<
-        Option<String>,
+        Option<CandidateKey>,
         Option<crate::import::ImportCandidateDetailProjection>,
     > {
         self.database.subscribe_import_candidate(initial)
@@ -256,7 +259,7 @@ impl LibraryManager {
 
     pub(crate) async fn load_import_candidate(
         &self,
-        key: &str,
+        key: &CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateDetailProjection>, LibraryError> {
         Ok(self.database.load_import_candidate(key).await?)
     }
@@ -322,21 +325,21 @@ impl LibraryManager {
     /// The watched folder that holds `path` inside it, not `path` itself.
     pub(crate) async fn watched_import_folder_above(
         &self,
-        path: &str,
-    ) -> Result<Option<String>, LibraryError> {
+        path: &Path,
+    ) -> Result<Option<PathBuf>, LibraryError> {
         Ok(self.database.watched_import_folder_above(path).await?)
     }
 
     /// The watched folders inside `path`, not `path` itself, in their order.
     pub(crate) async fn watched_import_folders_below(
         &self,
-        path: &str,
-    ) -> Result<Vec<String>, LibraryError> {
+        path: &Path,
+    ) -> Result<Vec<PathBuf>, LibraryError> {
         Ok(self.database.watched_import_folders_below(path).await?)
     }
 
     /// Whether `path`, spelled as the store keys it, is a watched folder.
-    pub(crate) async fn is_watched_import_folder(&self, path: &str) -> Result<bool, LibraryError> {
+    pub(crate) async fn is_watched_import_folder(&self, path: &Path) -> Result<bool, LibraryError> {
         Ok(self.database.is_watched_import_folder(path).await?)
     }
 
@@ -353,15 +356,15 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_skipped_import_candidates(
         &self,
-        watched_folder_path: &str,
-    ) -> Result<std::collections::HashSet<String>, LibraryError> {
+        watched_folder_path: &Path,
+    ) -> Result<std::collections::HashSet<crate::import::RelativeFolder>, LibraryError> {
         Ok(self
             .database
             .load_skipped_import_candidates(watched_folder_path)
             .await?)
     }
 
-    pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, LibraryError> {
+    pub async fn add_watched_import_folder(&self, path: &Path) -> Result<bool, LibraryError> {
         Ok(self.database.add_watched_import_folder(path).await?)
     }
 
@@ -369,9 +372,9 @@ impl LibraryManager {
     /// See [`crate::db::Database::remove_watched_import_folders`].
     pub async fn remove_watched_import_folders(
         &self,
-        roots: Vec<String>,
-        parent: Option<String>,
-    ) -> Result<Option<Vec<String>>, LibraryError> {
+        roots: Vec<PathBuf>,
+        parent: Option<PathBuf>,
+    ) -> Result<Option<Vec<CandidateKey>>, LibraryError> {
         Ok(self
             .database
             .remove_watched_import_folders(roots, parent)
@@ -380,7 +383,7 @@ impl LibraryManager {
 
     pub async fn set_import_candidate_skipped(
         &self,
-        candidate_path: &str,
+        candidate_path: &Path,
         skipped: bool,
     ) -> Result<bool, LibraryError> {
         Ok(self
@@ -391,7 +394,7 @@ impl LibraryManager {
 
     /// Open a new scan generation for `watched_folder_path`, recording the
     /// volume it is on.
-    pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, LibraryError> {
+    pub async fn begin_folder_scan(&self, watched_folder_path: &Path) -> Result<u64, LibraryError> {
         let volume =
             crate::import::volume::volume_kind(std::path::Path::new(watched_folder_path)).await;
         self.begin_folder_scan_on(watched_folder_path, volume).await
@@ -401,7 +404,7 @@ impl LibraryManager {
     /// volume the folder is on.
     pub(crate) async fn begin_folder_scan_on(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         volume: crate::import::VolumeKind,
     ) -> Result<u64, LibraryError> {
         Ok(self
@@ -412,8 +415,8 @@ impl LibraryManager {
 
     pub async fn record_folder_scan_directories(
         &self,
-        watched_folder_path: &str,
-        directories: &[(String, i64)],
+        watched_folder_path: &Path,
+        directories: &[(PathBuf, i64)],
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
@@ -423,8 +426,8 @@ impl LibraryManager {
 
     pub async fn load_folder_scan_directories(
         &self,
-        watched_folder_path: &str,
-    ) -> Result<Vec<(String, i64)>, LibraryError> {
+        watched_folder_path: &Path,
+    ) -> Result<Vec<(PathBuf, i64)>, LibraryError> {
         Ok(self
             .database
             .load_folder_scan_directories(watched_folder_path)
@@ -436,7 +439,7 @@ impl LibraryManager {
     /// commit lock.
     pub(crate) async fn save_folder_scan_items(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         generation: u64,
         items: Vec<crate::db::ScanItemToWrite>,
     ) -> Result<
@@ -522,7 +525,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn save_folder_scan_item(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
@@ -551,7 +554,7 @@ impl LibraryManager {
 
     pub async fn finish_folder_scan(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         generation: u64,
         error: Option<&str>,
     ) -> Result<Option<crate::db::FinishedScan>, LibraryError> {
@@ -570,7 +573,7 @@ impl LibraryManager {
 
     pub async fn load_folder_scan_items(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<Vec<crate::import::folder_scanner::ScanItem>, LibraryError> {
         Ok(self
             .database
@@ -582,7 +585,13 @@ impl LibraryManager {
         &self,
         content_hash: &str,
         file_edit_revision: u64,
-    ) -> Result<Vec<(String, crate::import::folder_scanner::CategorizedFiles)>, LibraryError> {
+    ) -> Result<
+        Vec<(
+            CandidateKey,
+            crate::import::folder_scanner::CategorizedFiles,
+        )>,
+        LibraryError,
+    > {
         Ok(self
             .database
             .load_releases_reading(content_hash, file_edit_revision)
@@ -591,15 +600,15 @@ impl LibraryManager {
 
     pub async fn load_folder_scan_item(
         &self,
-        entry_key: &str,
+        entry_key: &CandidateKey,
     ) -> Result<Option<crate::import::folder_scanner::ScanItem>, LibraryError> {
         Ok(self.database.load_folder_scan_item(entry_key).await?)
     }
 
     pub(crate) async fn load_candidate_file_tag_snapshot(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &Path,
+        candidate_path: &CandidateKey,
     ) -> Result<Option<crate::db::DbCandidateFileTagSnapshot>, LibraryError> {
         Ok(self
             .database
@@ -793,7 +802,7 @@ impl LibraryManager {
         content_hash: &str,
         edit_revision: u64,
         failure: &crate::import::ImportFailure,
-        candidate_key: &str,
+        candidate_key: &CandidateKey,
         import_id: &str,
     ) -> Result<(), LibraryError> {
         Ok(self
@@ -818,7 +827,7 @@ impl LibraryManager {
     /// track's tags through `tags`.
     pub(crate) async fn load_file_reads(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> Result<crate::import::folder_scanner::FileReads, LibraryError> {
         Ok(self
@@ -851,7 +860,7 @@ impl LibraryManager {
         &self,
         key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
         decision: crate::import::folder_scanner::FolderReleaseDecision,
-        grouping: &str,
+        grouping: &CandidateKey,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
@@ -863,7 +872,7 @@ impl LibraryManager {
     /// that has never been read.
     pub(crate) async fn current_folder_scan_generation(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<Option<u64>, LibraryError> {
         Ok(self
             .database
@@ -874,7 +883,7 @@ impl LibraryManager {
     /// Begin reading one folder of a watched root again.
     pub(crate) async fn begin_folder_reading(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<crate::db::FolderReadingStamp, LibraryError> {
         Ok(self
             .database
@@ -896,7 +905,7 @@ impl LibraryManager {
     pub(crate) async fn folder_reading_grouping(
         &self,
         folder: &crate::import::folder_scanner::FolderReleaseDecisionKey,
-    ) -> Result<Option<String>, LibraryError> {
+    ) -> Result<Option<CandidateKey>, LibraryError> {
         Ok(self.database.folder_reading_grouping(folder).await?)
     }
 
@@ -913,9 +922,9 @@ impl LibraryManager {
     /// The keys of the scanned releases at `folder` or below it.
     pub(crate) async fn scanned_release_keys_at_or_below(
         &self,
-        watched_folder_path: &str,
-        folder: &str,
-    ) -> Result<std::collections::BTreeSet<String>, LibraryError> {
+        watched_folder_path: &Path,
+        folder: &Path,
+    ) -> Result<std::collections::BTreeSet<CandidateKey>, LibraryError> {
         Ok(self
             .database
             .scanned_release_keys_at_or_below(watched_folder_path, folder)
@@ -924,7 +933,7 @@ impl LibraryManager {
 
     pub async fn load_folder_release_decisions(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<crate::import::folder_scanner::FolderReleaseDecisions, LibraryError> {
         Ok(self
             .database

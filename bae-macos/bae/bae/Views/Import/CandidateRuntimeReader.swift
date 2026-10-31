@@ -21,7 +21,7 @@ extension EnvironmentValues {
 /// One candidate's extracted signals, as extraction settles each of them.
 /// `key` routes it to the form reading that candidate.
 struct CandidateSignalsEvent {
-    let key: String
+    let key: Data
     let signals: Signals
 }
 
@@ -32,7 +32,7 @@ struct CandidateSignalsEvent {
 /// that key changes or as keys come and go; how far an import has got is not
 /// here but in the import percents' stream, which only a native bar reads.
 struct CandidateRuntimeReader<Content: View>: View {
-    let key: String
+    let key: Data
     @ViewBuilder
     let content: (BridgeCandidateRuntimeSnapshot?) -> Content
 
@@ -50,7 +50,7 @@ struct CandidateRuntimeReader<Content: View>: View {
 /// Subscribes first and reads second, so a form opened partway through a run
 /// starts with the pool the run has built rather than filling in from empty.
 struct CandidateSignalsReader<Content: View>: View {
-    let key: String
+    let key: Data
     @ViewBuilder
     let content: (Signals?) -> Content
 

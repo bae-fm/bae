@@ -6,12 +6,12 @@ import SwiftUI
 struct CandidateListMenuState {
     let watchedFolders: [BridgeWatchedFolder]
     /// Roots with a refresh in flight; their Refresh entry is disabled.
-    let refreshingFolders: Set<String>
+    let refreshingFolders: Set<Data>
     /// Each root's scan state, by path.
-    let scanStatuses: [String: BridgeFolderScanStatus]
+    let scanStatuses: [Data: BridgeFolderScanStatus]
     /// Roots on a network volume, which are checked on a schedule rather than
     /// reported the moment they change.
-    let networkFolders: Set<String>
+    let networkFolders: Set<Data>
     /// Whether the queue has folder groups; without any, Expand All and
     /// Collapse All are disabled.
     let hasGroups: Bool
@@ -42,7 +42,7 @@ struct CandidateListMenuActions {
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
     /// Stop watching `path`.
-    let onRemoveFolder: (_ path: String) -> Void
+    let onRemoveFolder: (_ path: Data) -> Void
 }
 
 /// The candidate list's menu: sort order, Found's filter, watched folders,
@@ -244,7 +244,7 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
         submenu.addItem(refresh)
         submenu.addItem(
             ActionMenuItem(title: String(localized: "Reveal in Finder")) {
-                SystemActions.revealInFinder(path: folder.path)
+                SystemActions.revealInFinder(folder: folder.path)
             }
         )
         submenu.addItem(.separator())

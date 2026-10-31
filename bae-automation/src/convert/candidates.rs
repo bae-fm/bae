@@ -16,8 +16,8 @@ use std::collections::HashMap;
 /// is the detail's with the running attempt's progress filled in.
 pub(crate) async fn automation_candidate_from_folder(
     folder: &ImportCandidateDetail,
-    runtime: &HashMap<String, CandidateRuntimeSnapshot>,
-    percents: &HashMap<String, u32>,
+    runtime: &HashMap<CandidateKey, CandidateRuntimeSnapshot>,
+    percents: &HashMap<CandidateKey, u32>,
     services: &bae_core::library::AppServices,
 ) -> Result<AutomationCandidate, AutomationError> {
     let candidate = &folder.candidate;
@@ -42,14 +42,14 @@ pub(crate) async fn automation_candidate_from_folder(
         .map_err(AutomationError::from)?;
     Ok(AutomationCandidate::Valid {
         common: automation_candidate_common(
-            candidate.key(),
+            &candidate.key(),
             candidate
                 .source_folders()
                 .iter()
-                .map(|path| path.to_string_lossy().into_owned())
+                .map(|path| coven::path_text(path))
                 .collect(),
             candidate.name.clone(),
-            candidate.watched_folder_path.clone(),
+            &candidate.watched_folder_path,
             folder.skipped,
             folder.is_added,
         ),
@@ -164,10 +164,10 @@ pub(crate) fn automation_candidate_from_invalid(
 ) -> AutomationCandidate {
     AutomationCandidate::Invalid {
         common: automation_candidate_common(
-            candidate.path.to_string_lossy().into_owned(),
-            vec![candidate.path.to_string_lossy().into_owned()],
+            &candidate.key(),
+            vec![coven::path_text(&candidate.path)],
             candidate.name.clone(),
-            candidate.watched_folder_path.clone(),
+            &candidate.watched_folder_path,
             true,
             false,
         ),
@@ -176,18 +176,18 @@ pub(crate) fn automation_candidate_from_invalid(
 }
 
 fn automation_candidate_common(
-    key: String,
+    key: &CandidateKey,
     source_folders: Vec<String>,
     name: String,
-    watched_folder_path: String,
+    watched_folder_path: &std::path::Path,
     skipped: bool,
     is_added: bool,
 ) -> AutomationCandidateCommon {
     AutomationCandidateCommon {
-        key,
+        key: candidate_key_name(key),
         source_folders,
         name,
-        watched_folder_path,
+        watched_folder_path: coven::path_text(watched_folder_path),
         skipped,
         is_added,
     }

@@ -31,7 +31,7 @@ impl ImportServiceHandle {
     pub(crate) fn start_identification(
         &self,
         run: crate::identify::IdentifyRunId,
-        key: String,
+        key: crate::import::CandidateKey,
         source: crate::signals::ExtractionSource,
         priority: bae_catalogs::rate_limiter::CallPriority,
         choices: crate::import::LookupChoices,
@@ -79,7 +79,7 @@ impl ImportServiceHandle {
     /// candidate still reads as identifying: whoever asked for it is told.
     pub(crate) async fn cancel_identification(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<(), crate::library::LibraryError> {
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
@@ -94,7 +94,7 @@ impl ImportServiceHandle {
     /// A decision about this candidate ended its identification inside the
     /// decision's own write: the run and the extraction feeding it stop, and
     /// what they published goes.
-    pub(crate) async fn identification_ended(&self, candidate_key: &str) {
+    pub(crate) async fn identification_ended(&self, candidate_key: &crate::import::CandidateKey) {
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
         self.runtime.identification_ended(candidate_key).await;
@@ -103,7 +103,7 @@ impl ImportServiceHandle {
     /// Stop only the extraction behind `key`, for a run that reached its
     /// answer and ended on its own. Ending the run here would tear down
     /// whatever has taken the key over since that answer landed.
-    pub(crate) fn cancel_candidate_extraction(&self, candidate_key: &str) {
+    pub(crate) fn cancel_candidate_extraction(&self, candidate_key: &crate::import::CandidateKey) {
         self.extraction.cancel(candidate_key);
     }
 
@@ -115,14 +115,14 @@ impl ImportServiceHandle {
     /// starts a candidate's run, and its own entry says what that run is doing.
     /// A test asks to check that from the outside.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn is_identifying(&self, key: &str) -> bool {
+    pub fn is_identifying(&self, key: &crate::import::CandidateKey) -> bool {
         self.identify.is_running(key)
     }
 
     /// Every key with a run in flight right now. What a change to the inputs
     /// every run reads — the library's provider list — has to act on: those
     /// runs answer the list as it was, and nothing else does.
-    pub(crate) fn identifying_keys(&self) -> Vec<String> {
+    pub(crate) fn identifying_keys(&self) -> Vec<crate::import::CandidateKey> {
         self.identify.running_keys()
     }
 
@@ -140,7 +140,7 @@ impl ImportServiceHandle {
     /// started yet.
     pub(crate) async fn admit_identification(
         &self,
-        candidates: Vec<(String, crate::import::CandidateFiles)>,
+        candidates: Vec<(crate::import::CandidateKey, crate::import::CandidateFiles)>,
         admission: crate::import::Admission,
     ) -> Result<(), crate::library::LibraryError> {
         Ok(self.runtime.admit(candidates, admission).await?)
@@ -149,7 +149,7 @@ impl ImportServiceHandle {
     /// This key is not waiting any more.
     pub(crate) async fn withdraw_identification(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<(), crate::library::LibraryError> {
         Ok(self.runtime.withdraw(candidate_key).await?)
     }
@@ -157,7 +157,7 @@ impl ImportServiceHandle {
     /// A terminal result `run` reached for `files` could not be committed.
     pub(crate) async fn fail_identification(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
         files: &crate::import::CandidateFiles,
         failure: crate::import::SaveFailure,
@@ -173,7 +173,7 @@ impl ImportServiceHandle {
     /// stored, so nothing imports.
     pub(crate) async fn end_identification_answer(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
     ) -> Result<(), crate::library::LibraryError> {
         let import_asked = self
@@ -190,7 +190,7 @@ impl ImportServiceHandle {
     /// run's answer stores beside its verdict.
     pub(crate) fn candidate_run_signals(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
     ) -> Option<crate::signals::Signals> {
         self.runtime.run_signals(candidate_key, run)
@@ -203,7 +203,10 @@ impl ImportServiceHandle {
     /// The read a form does once when it opens, after it has subscribed to
     /// the UI events, so a form opened partway through a run has the pool the
     /// run has built rather than an empty one.
-    pub fn candidate_signals(&self, key: &str) -> Option<crate::signals::Signals> {
+    pub fn candidate_signals(
+        &self,
+        key: &crate::import::CandidateKey,
+    ) -> Option<crate::signals::Signals> {
         self.runtime.signals(key)
     }
 }

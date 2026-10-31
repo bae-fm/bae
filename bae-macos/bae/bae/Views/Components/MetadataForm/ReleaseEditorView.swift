@@ -1,13 +1,6 @@
 import BaeKit
 import SwiftUI
 
-/// The candidate key a library release's catalog search runs under.
-enum ReIdentifyKey {
-    static func make(forReleaseId releaseId: String) -> String {
-        "reidentify:\(releaseId)"
-    }
-}
-
 /// The one release editor: a library release's cover, fields, album and
 /// tracks, with the catalog search that applies a release onto them, laid
 /// out as the import pane lays out a folder's draft. The library's Edit…
@@ -41,8 +34,9 @@ struct ReleaseEditorView: View {
     @Environment(SettingsNavigation.self)
     private var settingsNavigation
 
-    private var searchKey: String {
-        ReIdentifyKey.make(forReleaseId: session.releaseId)
+    /// The key core runs the release's catalog search under.
+    private var searchKey: Data {
+        bridgeReidentifyKey(releaseId: session.releaseId)
     }
 
     var body: some View {
@@ -181,7 +175,7 @@ struct ReleaseEditorView: View {
     /// Open the search and start identifying the release from its files.
     private func identifyAutomatically() {
         openSearch(.automatic)
-        importer.autoIdentifyRelease(searchKey, session.releaseId)
+        importer.autoIdentifyRelease(session.releaseId)
     }
 
     /// Open the search on `section`, starting nothing.
@@ -205,9 +199,9 @@ struct ReleaseEditorView: View {
         importStore.reIdentifyCandidates.removeValue(forKey: searchKey)
         let importer = importer
         let uiStore = uiStore
-        let key = searchKey
+        let releaseId = session.releaseId
         Task {
-            do { try await importer.endReleaseIdentification(key) }
+            do { try await importer.endReleaseIdentification(releaseId) }
             catch { uiStore.showError(error) }
         }
     }

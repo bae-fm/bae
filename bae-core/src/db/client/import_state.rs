@@ -45,8 +45,10 @@ use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
+use crate::import::{CandidateKey, RelativeFolder};
 use rows::{insert_provenance, load_states_rows_on};
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use verdict_rows::{delete_verdict, store_verdict};
 
 /// Move the pane inside a candidate write, without splitting the transaction.
@@ -91,8 +93,8 @@ pub(crate) fn insert_file_tags_draft(
 
 pub(super) fn require_current_candidate(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     content_hash: &str,
     expected_file_edit_revision: u64,
 ) -> Result<u64, DbError> {
@@ -100,7 +102,7 @@ pub(super) fn require_current_candidate(
         .query_row(
             "SELECT content_hash, generation, file_edit_revision \
              FROM scan_candidate WHERE watched_folder_path = ? AND path = ? AND kind = 'valid'",
-            params![watched_folder_path, candidate_path],
+            params![coven::path_bytes(watched_folder_path), candidate_path],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .optional()?;
@@ -121,19 +123,23 @@ pub(super) fn require_current_candidate(
     })
 }
 
-/// `folder`, a stored folder under the watched folder `root`, by its path
+/// `folder`, a stored folder under the watched folder `root`, as the folder
 /// below it.
-pub(super) fn relative_below(root: &str, folder: &str) -> Result<String, DbError> {
-    crate::import::watched_folder::candidate_relative_path(root, std::path::Path::new(folder))
+pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {
+    crate::import::watched_folder::candidate_relative_path(root, folder)
         .map_err(|error| DbError::Message(error.to_string()))
 }
 
 /// The watched folder covering `folder`. A decision about a folder is deleted
 /// with the watched folder covering it, so one stored outside every watched
 /// folder would never be deleted.
-pub(super) fn require_watched(sql: &SqlContext<'_, '_>, folder: &str) -> Result<String, DbError> {
-    watched_folder_among_on(sql, std::path::Path::new(folder).ancestors())?
-        .ok_or_else(|| DbError::Message(format!("{folder} is under no watched folder")))
+pub(super) fn require_watched(sql: &SqlContext<'_, '_>, folder: &Path) -> Result<PathBuf, DbError> {
+    watched_folder_among_on(sql, folder.ancestors())?.ok_or_else(|| {
+        DbError::Message(format!(
+            "{} is under no watched folder",
+            coven::path_text(folder)
+        ))
+    })
 }
 
 /// The watched folder among `folders`, each looked up by the watched
@@ -141,20 +147,14 @@ pub(super) fn require_watched(sql: &SqlContext<'_, '_>, folder: &str) -> Result<
 /// folder name at most one.
 pub(super) fn watched_folder_among_on<'a>(
     sql: &(impl QueryOne + QueryRows),
-    folders: impl Iterator<Item = &'a std::path::Path>,
-) -> Result<Option<String>, DbError> {
-    let folders = serde_json::Value::from(
-        folders
-            .map(|folder| folder.to_string_lossy().into_owned())
-            .collect::<Vec<_>>(),
-    )
-    .to_string();
+    folders: impl Iterator<Item = &'a Path>,
+) -> Result<Option<PathBuf>, DbError> {
     Ok(sql
         .query_row(
             "SELECT path FROM watched_import_folders \
-             WHERE path IN (SELECT value FROM json_each(?))",
-            [folders],
-            |row| row.get(0),
+             WHERE path IN (SELECT unhex(value) FROM json_each(?))",
+            [path_column::hex_list(folders)],
+            |row| path_column::get(row, 0),
         )
         .optional()?)
 }
@@ -182,14 +182,14 @@ impl Database {
         let roots = self.watched_import_roots().await?;
         for (index, root) in roots.iter().enumerate() {
             crate::import::watched_folder::validate_absolute_root(root)?;
-            if let Some(conflict) = roots[index + 1..].iter().find(|other| {
-                crate::import::watched_folder::paths_overlap(
-                    std::path::Path::new(root),
-                    std::path::Path::new(other),
-                )
-            }) {
+            if let Some(conflict) = roots[index + 1..]
+                .iter()
+                .find(|other| crate::import::watched_folder::paths_overlap(root, other))
+            {
                 return Err(DbError::Message(format!(
-                    "watched folders cannot overlap: {root} conflicts with {conflict}"
+                    "watched folders cannot overlap: {} conflicts with {}",
+                    coven::path_text(root),
+                    coven::path_text(conflict)
                 )));
             }
         }
@@ -205,17 +205,17 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn load_skipped_import_candidates(
         &self,
-        watched_folder_path: &str,
-    ) -> Result<HashSet<String>, DbError> {
+        watched_folder_path: &Path,
+    ) -> Result<HashSet<RelativeFolder>, DbError> {
         let (below_first, below_past) =
-            crate::import::folder_path::paths_below(watched_folder_path);
-        let paths = self
+            crate::import::relative_folder::paths_below(watched_folder_path);
+        let paths: Vec<PathBuf> = self
             .read(move |sql| {
                 Ok(sql.query(
                     "SELECT candidate_path FROM skipped_import_candidates \
                      WHERE candidate_path >= ? AND candidate_path < ?",
                     params![below_first, below_past],
-                    |row| row.get::<_, String>(0),
+                    |row| path_column::get(row, 0),
                 )?)
             })
             .await?;
@@ -229,8 +229,8 @@ impl Database {
 
     /// Whether `path`, spelled as the store keys it, is a watched folder,
     /// read by the watched folders' key.
-    pub async fn is_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
-        let path = path.to_string();
+    pub async fn is_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
+        let path = coven::path_bytes(path);
         self.read(move |sql| {
             Ok(sql.query_row(
                 "SELECT EXISTS (SELECT 1 FROM watched_import_folders WHERE path = ?)",
@@ -242,37 +242,38 @@ impl Database {
     }
 
     /// The watched folder that holds `path` inside it, not `path` itself.
-    pub async fn watched_import_folder_above(&self, path: &str) -> Result<Option<String>, DbError> {
-        let path = path.to_string();
-        self.read(move |sql| {
-            watched_folder_among_on(&sql, std::path::Path::new(&path).ancestors().skip(1))
-        })
-        .await
+    pub async fn watched_import_folder_above(
+        &self,
+        path: &Path,
+    ) -> Result<Option<PathBuf>, DbError> {
+        let path = path.to_path_buf();
+        self.read(move |sql| watched_folder_among_on(&sql, path.ancestors().skip(1)))
+            .await
     }
 
     /// The watched folders inside `path`, not `path` itself, in their order:
     /// those whose key lies in the range of paths below it.
-    pub async fn watched_import_folders_below(&self, path: &str) -> Result<Vec<String>, DbError> {
-        let (first, past) = crate::import::folder_path::paths_below(path);
-        let path = path.to_string();
+    pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {
+        let (first, past) = crate::import::relative_folder::paths_below(path);
+        let path = coven::path_bytes(path);
         self.read(move |sql| {
             Ok(sql.query(
                 "SELECT path FROM watched_import_folders \
                  WHERE path >= ? AND path < ? AND path <> ? ORDER BY position",
                 params![first, past, path],
-                |row| row.get(0),
+                |row| path_column::get(row, 0),
             )?)
         })
         .await
     }
 
     /// Every watched root, in the order they were added.
-    async fn watched_import_roots(&self) -> Result<Vec<String>, DbError> {
+    async fn watched_import_roots(&self) -> Result<Vec<PathBuf>, DbError> {
         self.read(move |sql| {
             Ok(sql.query(
                 "SELECT path FROM watched_import_folders ORDER BY position",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| path_column::get(row, 0),
             )?)
         })
         .await
@@ -285,30 +286,34 @@ impl Database {
     /// folders added at once cannot both pass. Already-watched is answered by
     /// a read first, since the store refuses a write that changes nothing; a
     /// folder watched in between fails the write.
-    pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
+    pub async fn add_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
         let path = crate::import::watched_folder::canonical_absolute_root(path)?;
         if self.is_watched_import_folder(&path).await? {
             return Ok(false);
         }
         self.call(move |sql| {
-            let roots: Vec<String> = sql.query(
+            let roots: Vec<PathBuf> = sql.query(
                 "SELECT path FROM watched_import_folders ORDER BY position",
                 [],
-                |row| row.get(0),
+                |row| path_column::get(row, 0),
             )?;
-            if roots.iter().any(|root| root == &path) {
+            if roots
+                .iter()
+                .any(|root| root.as_os_str() == path.as_os_str())
+            {
                 return Err(DbError::Message(format!(
-                    "watched folder {path} was added while this add was deciding"
+                    "watched folder {} was added while this add was deciding",
+                    coven::path_text(&path)
                 )));
             }
-            if let Some(conflict) = roots.iter().find(|root| {
-                crate::import::watched_folder::paths_overlap(
-                    std::path::Path::new(&path),
-                    std::path::Path::new(root),
-                )
-            }) {
+            if let Some(conflict) = roots
+                .iter()
+                .find(|root| crate::import::watched_folder::paths_overlap(&path, root))
+            {
                 return Err(DbError::Message(format!(
-                    "watched folders cannot overlap: {path} conflicts with {conflict}"
+                    "watched folders cannot overlap: {} conflicts with {}",
+                    coven::path_text(&path),
+                    coven::path_text(conflict)
                 )));
             }
             let position: i64 = sql.query_row(
@@ -318,7 +323,7 @@ impl Database {
             )?;
             sql.execute(
                 "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
-                params![path, position],
+                params![coven::path_bytes(&path), position],
             )?;
             Ok(true)
         })
@@ -330,14 +335,14 @@ impl Database {
     /// identification in the same write.
     pub async fn set_import_candidate_skipped(
         &self,
-        candidate_path: &str,
+        candidate_path: &Path,
         skipped: bool,
     ) -> Result<bool, DbError> {
         crate::import::watched_folder::validate_stored_folder(candidate_path)?;
-        let candidate_path = candidate_path.to_string();
+        let candidate_path = candidate_path.to_path_buf();
         // The store refuses a write that changes nothing, so read first.
         let stored = {
-            let candidate_path = candidate_path.clone();
+            let candidate_path = coven::path_bytes(&candidate_path);
             self.read(move |sql| {
                 Ok(sql
                     .query_row(
@@ -360,18 +365,18 @@ impl Database {
                 // its identification ends with the skip.
                 change_identification_on(
                     sql,
-                    &candidate_path,
+                    &CandidateKey::folder(&candidate_path),
                     &crate::import::candidate_runtime::IdentificationChange::Ended,
                 )?;
                 sql.execute(
                     "INSERT INTO skipped_import_candidates (candidate_path) VALUES (?) \
                      ON CONFLICT DO NOTHING",
-                    [candidate_path],
+                    [coven::path_bytes(&candidate_path)],
                 )?
             } else {
                 sql.execute(
                     "DELETE FROM skipped_import_candidates WHERE candidate_path = ?",
-                    [candidate_path],
+                    [coven::path_bytes(&candidate_path)],
                 )?
             };
             Ok(changed == 1)
@@ -388,10 +393,10 @@ impl Database {
         &self,
         key: &FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
-        grouping: &str,
+        grouping: &CandidateKey,
     ) -> Result<(), DbError> {
         let key = key.clone();
-        let grouping = grouping.to_string();
+        let grouping = grouping.clone();
         self.call(move |sql| {
             super::folder_scans::store_folder_reading(
                 sql,
@@ -431,12 +436,11 @@ impl Database {
     pub async fn folder_reading_grouping(
         &self,
         folder: &FolderReleaseDecisionKey,
-    ) -> Result<Option<String>, DbError> {
-        let anchor = crate::import::folder_path::folder_below(
+    ) -> Result<Option<CandidateKey>, DbError> {
+        let anchor = coven::path_bytes(&crate::import::relative_folder::folder_below(
             &folder.watched_folder_path,
-            &folder.relative_folder_path,
-        )
-        .map_err(|error| DbError::Message(error.to_string()))?;
+            &folder.relative_folder,
+        ));
         self.read(move |sql| {
             Ok(sql
                 .query_row(
@@ -458,16 +462,16 @@ impl Database {
         key: &FolderReleaseDecisionKey,
         decision: crate::import::folder_scanner::FolderReleaseDecision,
     ) -> Result<bool, DbError> {
-        let folder = crate::import::folder_path::folder_below(
+        let folder = crate::import::relative_folder::folder_below(
             &key.watched_folder_path,
-            &key.relative_folder_path,
-        )
-        .map_err(|error| DbError::Message(error.to_string()))?;
-        let root = key.watched_folder_path.clone();
+            &key.relative_folder,
+        );
+        let (below_first, below_past) = crate::import::relative_folder::paths_below(&folder);
+        let folder = coven::path_bytes(&folder);
+        let root = coven::path_bytes(&key.watched_folder_path);
         self.read(move |sql| match decision {
-            crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease => {
-                let (below_first, below_past) = crate::import::folder_path::paths_below(&folder);
-                Ok(sql.query_row(
+            crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease => Ok(sql
+                .query_row(
                     "SELECT COUNT(*) >= 2 FROM ( \
                          SELECT 1 FROM scan_candidate \
                          WHERE watched_folder_path = :root AND source_kind = 'folder' \
@@ -481,8 +485,7 @@ impl Database {
                         ":below_past": below_past,
                     },
                     |row| row.get(0),
-                )?)
-            }
+                )?),
             crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases => Ok(sql
                 .query_row(
                     "SELECT EXISTS (SELECT 1 FROM scan_candidate \
@@ -500,11 +503,14 @@ impl Database {
     /// folder index.
     pub async fn scanned_release_keys_at_or_below(
         &self,
-        watched_folder_path: &str,
-        folder: &str,
-    ) -> Result<std::collections::BTreeSet<String>, DbError> {
-        let (below_first, below_past) = crate::import::folder_path::paths_below(folder);
-        let (root, folder) = (watched_folder_path.to_string(), folder.to_string());
+        watched_folder_path: &Path,
+        folder: &Path,
+    ) -> Result<std::collections::BTreeSet<CandidateKey>, DbError> {
+        let (below_first, below_past) = crate::import::relative_folder::paths_below(folder);
+        let (root, folder) = (
+            coven::path_bytes(watched_folder_path),
+            coven::path_bytes(folder),
+        );
         self.read(move |sql| {
             Ok(sql
                 .query(
@@ -529,27 +535,27 @@ impl Database {
     /// Each stored folder reading below one watched root, by path below it.
     pub async fn load_folder_release_decisions(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<FolderReleaseDecisions, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
         let (below_first, below_past) =
-            crate::import::folder_path::paths_below(&watched_folder_path);
+            crate::import::relative_folder::paths_below(&watched_folder_path);
         self.read(move |sql| {
             let rows = sql.query(
                 "SELECT anchor_folder, combined, author, key FROM release_grouping \
                  WHERE anchor_folder = :root \
                     OR (anchor_folder >= :below_first AND anchor_folder < :below_past)",
                 rusqlite::named_params! {
-                    ":root": watched_folder_path,
+                    ":root": coven::path_bytes(&watched_folder_path),
                     ":below_first": below_first,
                     ":below_past": below_past,
                 },
                 |row| {
                     Ok((
-                        row.get::<_, String>(0)?,
+                        path_column::get(row, 0)?,
                         row.get::<_, bool>(1)?,
                         row.get::<_, String>(2)?,
-                        row.get::<_, String>(3)?,
+                        row.get::<_, CandidateKey>(3)?,
                     ))
                 },
             )?;
@@ -599,7 +605,13 @@ impl Database {
         &self,
         content_hash: &str,
         file_edit_revision: u64,
-    ) -> Result<Vec<(String, crate::import::folder_scanner::CategorizedFiles)>, DbError> {
+    ) -> Result<
+        Vec<(
+            CandidateKey,
+            crate::import::folder_scanner::CategorizedFiles,
+        )>,
+        DbError,
+    > {
         let content_hash = content_hash.to_string();
         let file_edit_revision = to_i64(file_edit_revision, "a file decision revision")?;
         self.read(move |sql| {
@@ -609,7 +621,7 @@ impl Database {
                    AND kind IN ('tentative', 'valid') \
                  ORDER BY watched_folder_path, path",
                 params![content_hash, file_edit_revision],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, CandidateKey>(0),
             )?;
             keys.into_iter()
                 .map(|key| {
@@ -714,7 +726,7 @@ pub(super) fn settle_scanned_candidates(
     content_hash: &str,
     expected_revision: i64,
     next_revision: i64,
-    settled_by_key: &HashMap<String, crate::import::folder_scanner::CategorizedFiles>,
+    settled_by_key: &HashMap<CandidateKey, crate::import::folder_scanner::CategorizedFiles>,
 ) -> Result<Vec<crate::import::folder_scanner::FolderCandidate>, DbError> {
     let scanned = sql.query(
         "SELECT watched_folder_path, path, source_kind, file_edit_revision FROM scan_candidate \
@@ -722,8 +734,8 @@ pub(super) fn settle_scanned_candidates(
         [content_hash],
         |row| {
             Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
+                path_column::get(row, 0)?,
+                row.get::<_, CandidateKey>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, i64>(3)?,
             ))
@@ -751,7 +763,7 @@ pub(super) fn settle_scanned_candidates(
                     folder_scans::read::load_file_tag_snapshot(sql, &watched_folder_path, &path)?;
                 sql.execute(
                     "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
-                    params![watched_folder_path, path],
+                    params![coven::path_bytes(&watched_folder_path), path],
                 )?;
                 folder_scans::insert_candidate_files(sql, &watched_folder_path, &path, settled)?;
                 if let Some(reading) = reading {
@@ -773,7 +785,12 @@ pub(super) fn settle_scanned_candidates(
         let changed = sql.execute(
             "UPDATE scan_candidate SET file_edit_revision = ? \
              WHERE watched_folder_path = ? AND path = ? AND file_edit_revision = ?",
-            params![next_revision, watched_folder_path, path, expected_revision],
+            params![
+                next_revision,
+                coven::path_bytes(&watched_folder_path),
+                path,
+                expected_revision
+            ],
         )?;
         if changed != 1 {
             return Err(DbError::Message(format!(
@@ -804,14 +821,14 @@ pub(super) fn settle_scanned_candidates(
         let missing: Vec<_> = settled_by_key
             .keys()
             .filter(|key| !updated_folders.contains(*key))
-            .cloned()
+            .map(CandidateKey::to_string)
             .collect();
         return Err(DbError::Message(format!(
             "candidate file decision could not update persisted scan entries: {}",
             missing.join(", ")
         )));
     }
-    let settled: Vec<String> = updated_folders.into_iter().collect();
+    let settled: Vec<CandidateKey> = updated_folders.into_iter().collect();
     let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, &[])?;
     updated_candidates.extend(regrouped.written.into_iter().filter_map(|item| match item {
         crate::import::folder_scanner::ScanItem::Valid(candidate) => Some(candidate),

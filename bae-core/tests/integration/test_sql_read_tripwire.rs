@@ -52,22 +52,35 @@ async fn pure_reads_use_the_read_connection() {
 
     db.clear_playback_state().await.unwrap();
     db.clear_playback_state().await.unwrap();
-    db.add_watched_import_folder(root).await.unwrap();
-    assert!(!db.add_watched_import_folder(root).await.unwrap());
+    db.add_watched_import_folder(std::path::Path::new(root))
+        .await
+        .unwrap();
+    assert!(!db
+        .add_watched_import_folder(std::path::Path::new(root))
+        .await
+        .unwrap());
     let album = std::path::Path::new(root).join("Album");
     let album = album.to_str().unwrap();
     let never_skipped = std::path::Path::new(root).join("Never Skipped");
-    db.set_import_candidate_skipped(album, true).await.unwrap();
-    assert!(!db.set_import_candidate_skipped(album, true).await.unwrap());
-    db.set_import_candidate_skipped(never_skipped.to_str().unwrap(), false)
+    db.set_import_candidate_skipped(std::path::Path::new(album), true)
+        .await
+        .unwrap();
+    assert!(!db
+        .set_import_candidate_skipped(std::path::Path::new(album), true)
+        .await
+        .unwrap());
+    db.set_import_candidate_skipped(&never_skipped, false)
         .await
         .unwrap();
     let generation = db
-        .begin_folder_scan(root, bae_core::import::VolumeKind::Local)
+        .begin_folder_scan(
+            std::path::Path::new(root),
+            bae_core::import::VolumeKind::Local,
+        )
         .await
         .unwrap();
     assert!(db
-        .finish_folder_scan(root, generation - 1, None)
+        .finish_folder_scan(std::path::Path::new(root), generation - 1, None)
         .await
         .unwrap()
         .is_none());
@@ -75,7 +88,9 @@ async fn pure_reads_use_the_read_connection() {
         .store_verdict(&bae_core::db::NewImportCandidateVerdict {
             content_hash: "hash-with-no-row".to_string(),
             file_edit_revision: 7,
-            folder_path: format!("{root}/Album"),
+            candidate_key: bae_core::import::CandidateKey::folder(
+                &std::path::Path::new(root).join("Album")
+            ),
             verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_core::signals::Signals {
                 origin: bae_core::signals::AudioOrigin::default(),
@@ -123,7 +138,10 @@ async fn pure_reads_use_the_read_connection() {
         .await
         .unwrap());
     assert!(db
-        .remove_watched_import_folders(vec!["/nothing/watches/this".to_string()], None)
+        .remove_watched_import_folders(
+            vec![std::path::PathBuf::from("/nothing/watches/this")],
+            None
+        )
         .await
         .unwrap()
         .is_none());

@@ -8,7 +8,7 @@
 async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
     let fixture = Fixture::new("settled-draft").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
     fixture
@@ -46,7 +46,7 @@ async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
 async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
     let fixture = Fixture::new("settled-asks").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.scan(1).await;
     fixture
         .archive("mb-settled-2", "rg-settled-2", &[0, 0])
@@ -90,7 +90,7 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
 async fn automatic_shows_a_stored_verdict_without_asking_again() {
     let fixture = Fixture::new("automatic-stored").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
     fixture
@@ -132,7 +132,7 @@ async fn automatic_shows_a_stored_verdict_without_asking_again() {
 async fn automatic_with_no_stored_verdict_owes_a_run() {
     let fixture = Fixture::new("automatic-first").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.scan(1).await;
 
     assert!(fixture.import.open_automatic(&key).await.unwrap());

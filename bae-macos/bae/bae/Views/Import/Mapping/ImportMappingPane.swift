@@ -40,7 +40,7 @@ struct ImportMappingPane: View {
     let onUnlink: () -> Void
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
-    let onNavigateToPlacement: (String) -> Void
+    let onNavigateToPlacement: (Data) -> Void
 
     /// The folder's mapping, as core reads it back for this candidate.
     private var mapping: BridgeMappingTable {

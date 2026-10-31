@@ -49,15 +49,15 @@ fn request_refresh(
 fn request_group_decision(
     harness: &CoordinatorHarness,
     root: &Path,
-) -> tokio::sync::oneshot::Receiver<Result<Vec<String>, String>> {
+) -> tokio::sync::oneshot::Receiver<Result<Vec<crate::import::CandidateKey>, String>> {
     let (completion, result) = tokio::sync::oneshot::channel();
     harness
         .commands
         .send(WatcherCommand::SetFolderReleaseDecision {
             target: (
                 crate::import::FolderReleaseDecisionKey {
-                    watched_folder_path: root.to_string_lossy().into_owned(),
-                    relative_folder_path: "Group".to_string(),
+                    watched_folder_path: root.to_path_buf(),
+                    relative_folder: crate::import::RelativeFolder::test("Group"),
                 },
                 crate::import::FolderReleaseDecision::CombineAsOneRelease,
             ),
@@ -83,7 +83,7 @@ async fn assert_next_pass_reads_only_a_later_change(harness: &CoordinatorHarness
     harness.scans.wait_for_count(index + 1).await;
     assert_eq!(
         harness.scans.folders(index),
-        Some(vec!["Later".to_string()]),
+        Some(vec!["Later".into()]),
         "a pass was owed before the later change"
     );
     harness.scans.complete(index);
@@ -402,7 +402,7 @@ async fn a_finished_write_under_a_watched_root_reads_its_folder_again() {
 
     harness.scans.wait_for_count(1).await;
     assert_eq!(harness.scans.path(0), root_path("/music"));
-    assert_eq!(harness.scans.folders(0), Some(vec!["Album".to_string()]));
+    assert_eq!(harness.scans.folders(0), Some(vec!["Album".into()]));
 
     harness.scans.complete(0);
     harness.shutdown().await;
@@ -430,7 +430,7 @@ async fn changes_during_a_folder_reading_are_read_once_afterwards() {
     harness.scans.wait_for_count(2).await;
     assert_eq!(
         harness.scans.folders(1),
-        Some(vec!["One".to_string(), "Two".to_string()])
+        Some(vec!["One".into(), "Two".into()])
     );
     harness.scans.complete(1);
     assert_next_pass_reads_only_a_later_change(&harness, 2).await;
@@ -486,7 +486,7 @@ async fn a_watch_that_lost_track_inside_one_folder_reads_only_that_folder() {
 
     harness.scans.wait_for_count(1).await;
     assert_eq!(harness.scans.path(0), root_path("/music"));
-    assert_eq!(harness.scans.folders(0), Some(vec!["Artist".to_string()]));
+    assert_eq!(harness.scans.folders(0), Some(vec!["Artist".into()]));
 
     harness.scans.complete(0);
     assert_next_pass_reads_only_a_later_change(&harness, 1).await;
@@ -550,7 +550,7 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
     assert_eq!(harness.scans.path(2), music);
     assert_eq!(
         harness.scans.folders(2),
-        Some(vec!["Folder 000".to_string()]),
+        Some(vec!["Folder 000".into()]),
         "no report was taken ahead of the pass end"
     );
     // Ended without telling the coordinator, so the reports still waiting
@@ -571,7 +571,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     std::fs::create_dir(&root).unwrap();
     service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -625,8 +625,8 @@ async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
     harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
     assert_eq!(
-        harness.scans.reading(1).map(|(key, _)| key.relative_folder_path),
-        Some("Group".to_string()),
+        harness.scans.reading(1).map(|(key, _)| key.relative_folder),
+        Some(crate::import::RelativeFolder::test("Group")),
         "the pass after the cancelled one is the folder reading"
     );
     // The reading is the fake pass's to answer now, and it has not.

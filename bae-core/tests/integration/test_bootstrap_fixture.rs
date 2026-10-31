@@ -118,15 +118,17 @@ fn a_library_opens_watching_its_fixtures_folders() {
     assert_eq!(
         watched
             .iter()
-            .map(|folder| folder.path.as_str())
+            .map(|folder| folder.path.as_path())
             .collect::<Vec<_>>(),
-        [music.as_str()]
+        [std::path::Path::new(&music)]
     );
     let candidate = app
         .runtime
         .block_on(
             app.services
-                .import_get_candidate(&format!("{music}/Album Folder")),
+                .import_get_candidate(&bae_core::import::CandidateKey::folder(
+                    &std::path::Path::new(&music).join("Album Folder"),
+                )),
         )
         .unwrap();
     assert!(candidate.is_some(), "the folder's candidate is listed");

@@ -45,10 +45,10 @@ async fn decision_never_beside_identifying(
         if !decided(&rows) {
             continue;
         }
-        let identifying: Vec<&str> = rows
+        let identifying: Vec<&crate::import::CandidateKey> = rows
             .iter()
             .filter(|(_, identifying)| *identifying)
-            .map(|(row, _)| row.candidate_key.as_str())
+            .map(|(row, _)| &row.candidate_key)
             .collect();
         assert!(
             identifying.is_empty(),
@@ -67,7 +67,7 @@ async fn decision_never_beside_identifying(
 }
 
 /// Put `key` mid-run: queued, then its run started.
-async fn identifying(handle: &ImportServiceHandle, key: &str) {
+async fn identifying(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     admit(handle, key).await;
     start_run(handle, key, crate::identify::IdentifyRunId::for_test(1)).await;
     assert!(handle.standing_facts_for_test(key).await.identifying());
@@ -256,7 +256,7 @@ async fn combining_ends_its_folders_identification_in_its_write() {
             deciding.combine_candidates(members).await.unwrap();
         },
         |rows| {
-            rows.iter().any(|(row, _)| row.candidate_key.starts_with("grouping:"))
+            rows.iter().any(|(row, _)| row.candidate_key.as_bytes().starts_with(b"grouping:"))
         },
     )
     .await;

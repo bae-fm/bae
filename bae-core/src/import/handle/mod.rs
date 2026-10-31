@@ -8,6 +8,7 @@ use crate::library::LibraryManager;
 use bae_catalogs::catalog::Catalog;
 use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
@@ -268,13 +269,13 @@ impl ImportEventBus {
 pub enum ImportEvent {
     Scan(ScanEvent),
     ImportProgress {
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         progress: ImportProgress,
     },
     /// An identify run's new state, in full; the signals toolbar shows a
     /// projection of it.
     IdentifyStateChanged {
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         /// The run this state belongs to. A settled run keeps reporting, so
         /// a consumer waiting on a later run of the candidate matches on this,
         /// not the key.
@@ -288,7 +289,7 @@ pub enum ImportEvent {
     /// classified text), sent on every change of the extraction, including an
     /// abort, which fails every signal.
     SignalsUpdated {
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         /// The identify run this snapshot was extracted for. Runs of one
         /// candidate share its key, so a run's verdict is stored beside only
         /// the snapshots that name that run.
@@ -379,11 +380,11 @@ pub enum ScanEvent {
     /// A candidate is gone: a rescan no longer finds it, or its watched folder
     /// was removed (one event per candidate).
     CandidateRemoved {
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     },
     /// A person skipped or unskipped a candidate.
     CandidateSkipChanged {
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         skipped: bool,
     },
     /// A person bound one of a candidate's track sheets to an audio file, or
@@ -396,7 +397,7 @@ pub enum ScanEvent {
     /// The candidate's metadata draft, its provenance, or its release link
     /// changed.
     CandidateMetadataChanged {
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     },
     FolderScanStatusChanged {
         status: WatchedFolderScanStatus,
@@ -418,7 +419,7 @@ pub(crate) enum WatcherCommand {
     /// were not.
     SetFolderReleaseDecision {
         target: (FolderReleaseDecisionKey, FolderReleaseDecision),
-        completion: tokio::sync::oneshot::Sender<Result<Vec<String>, String>>,
+        completion: tokio::sync::oneshot::Sender<Result<Vec<crate::import::CandidateKey>, String>>,
     },
     /// Stop watching `roots` and, given `parent` (the folder holding exactly
     /// them), watch it in their place. `completion` hears once the change is
@@ -445,7 +446,7 @@ impl ImportServiceHandle {
     /// release that cannot be fails with why.
     pub async fn get_release_candidate(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::import::ImportError>
     {
         self.library_manager
@@ -543,7 +544,11 @@ impl ImportServiceHandle {
     /// Claim a candidate the way committing an import does, for a test with no
     /// worker behind it.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str, import_id: &str) {
+    pub async fn claim_candidate_for_import_for_test(
+        &self,
+        candidate_key: &crate::import::CandidateKey,
+        import_id: &str,
+    ) {
         self.claim_candidate_for_import(candidate_key, import_id)
             .await;
     }
@@ -551,7 +556,11 @@ impl ImportServiceHandle {
     /// End an import's claim on a candidate the way the import's own ending
     /// does, for a test with no worker behind it.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn end_candidate_import_for_test(&self, candidate_key: &str, import_id: &str) {
+    pub async fn end_candidate_import_for_test(
+        &self,
+        candidate_key: &crate::import::CandidateKey,
+        import_id: &str,
+    ) {
         self.runtime
             .move_import(candidate_key, import_id, None)
             .await
@@ -563,7 +572,7 @@ impl ImportServiceHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn move_candidate_import_for_test(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         import_id: &str,
         standing: crate::import::ImportStanding,
     ) {
@@ -577,7 +586,10 @@ impl ImportServiceHandle {
     /// table and the runtime.
     pub async fn candidate_runtimes(
         &self,
-    ) -> Result<HashMap<String, CandidateRuntimeSnapshot>, crate::library::LibraryError> {
+    ) -> Result<
+        HashMap<crate::import::CandidateKey, CandidateRuntimeSnapshot>,
+        crate::library::LibraryError,
+    > {
         self.runtime.snapshots().await
     }
 
@@ -585,7 +597,7 @@ impl ImportServiceHandle {
     /// and the runtime.
     pub async fn candidate_runtime(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<Option<CandidateRuntimeSnapshot>, crate::library::LibraryError> {
         self.runtime.snapshot(key).await
     }
@@ -595,7 +607,7 @@ impl ImportServiceHandle {
     #[cfg(test)]
     pub(crate) async fn standing_facts_for_test(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> crate::import::TriageRuntimeFacts {
         self.runtime
             .standing_facts(key)
@@ -609,7 +621,7 @@ impl ImportServiceHandle {
     #[cfg(test)]
     pub(crate) async fn hold_answer_for_test(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
         answer: &crate::identify::IdentifyState,
     ) {
@@ -621,7 +633,7 @@ impl ImportServiceHandle {
         let files = crate::import::CandidateFiles::of(&candidate);
         self.runtime
             .admit(
-                vec![(key.to_string(), files.clone())],
+                vec![(key.clone(), files.clone())],
                 crate::import::Admission::Requested,
             )
             .await
@@ -643,7 +655,8 @@ impl ImportServiceHandle {
     /// Each running import's percent, by candidate key, now and as it moves.
     pub fn watch_import_percents(
         &self,
-    ) -> tokio::sync::watch::Receiver<std::collections::HashMap<String, u32>> {
+    ) -> tokio::sync::watch::Receiver<std::collections::HashMap<crate::import::CandidateKey, u32>>
+    {
         self.runtime.watch_import_percents()
     }
 
@@ -674,7 +687,7 @@ impl ImportServiceHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn candidate_pane(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::library::LibraryError> {
         Ok(self
             .library_manager
@@ -688,13 +701,13 @@ impl ImportServiceHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_candidate_pane(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> coven::ReconfigurableLiveQuery<
-        Option<String>,
+        Option<crate::import::CandidateKey>,
         Option<crate::import::ImportCandidateDetailProjection>,
     > {
         self.library_manager
-            .subscribe_import_candidate(Some(key.to_string()))
+            .subscribe_import_candidate(Some(key.clone()))
     }
 
     /// The import list for `view` as one window over every item, for a test
@@ -777,7 +790,7 @@ impl ImportServiceHandle {
     /// re-identified) answers with its runtime alone.
     pub async fn get_candidate(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateSnapshot>, crate::library::LibraryError> {
         let stored = self.library_manager.load_folder_scan_item(key).await?;
         let candidate = match stored {
@@ -819,7 +832,7 @@ impl ImportServiceHandle {
     /// refuses early.
     pub(super) async fn editable_candidate_for_commit(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError> {
         let candidate = self.get_release_candidate(key).await?.ok_or_else(|| {
             crate::import::ImportError::Internal {
@@ -837,7 +850,7 @@ impl ImportServiceHandle {
     /// it reflects.
     pub(crate) async fn candidate_standing(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
         candidate: &crate::import::folder_scanner::FolderCandidate,
     ) -> Result<crate::import::CandidateStanding, crate::library::LibraryError> {
         Ok(crate::import::CandidateStanding {
@@ -859,7 +872,7 @@ impl ImportServiceHandle {
     pub(super) async fn commit_lock_for_revision(
         &self,
         operation: &'static str,
-        key: &str,
+        key: &crate::import::CandidateKey,
         expected_content_hash: &str,
         expected_file_edit_revision: u64,
     ) -> Result<crate::import::FolderStateCommitGuard, crate::import::ImportError> {
@@ -879,7 +892,11 @@ impl ImportServiceHandle {
     /// [`Self::save_candidate_verdict_if_current`] holds across its check and
     /// write, so no verdict is stored for a claimed candidate.
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str, import_id: &str) {
+    pub(crate) async fn claim_candidate_for_import(
+        &self,
+        candidate_key: &crate::import::CandidateKey,
+        import_id: &str,
+    ) {
         let _commit = self
             .folder_state_commit
             .lock("claim a candidate for a test")
@@ -892,7 +909,7 @@ impl ImportServiceHandle {
 
     async fn release_import_claim(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) -> Result<(), crate::library::LibraryError> {
         let _commit = self

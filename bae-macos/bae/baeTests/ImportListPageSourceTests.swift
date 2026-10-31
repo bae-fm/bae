@@ -122,20 +122,20 @@ struct ImportListPageSourceTests {
         // these tests drive.
         func setAllGroupsFolded(folded _: Bool) async throws -> UInt64 { 0 }
         func locateCandidate(
-            candidateKey _: String
+            candidateKey _: Data
         ) async throws -> BridgeImportCandidateListLocation? { nil }
-        func firstIdentifyingCandidate() async throws -> String? { nil }
+        func firstIdentifyingCandidate() async throws -> Data? { nil }
         func changeSelection(
             change _: BridgeSelectionChange
         ) async throws -> UInt64 {
             0
         }
         func selectAll() async throws -> UInt64 { 0 }
-        func selectionSourceFolders() async throws -> [String] { [] }
-        func combineSelection() async throws -> String {
+        func selectionSourceFolders() async throws -> [Data] { [] }
+        func combineSelection() async throws -> Data {
             throw StubError.notImplemented
         }
-        func separateSelection() async throws -> [String] {
+        func separateSelection() async throws -> [Data] {
             throw StubError.notImplemented
         }
         func runSelectionAction(
@@ -210,7 +210,13 @@ struct ImportListPageSourceTests {
                     done: 0,
                     skipped: 0
                 ),
-                watchedFolders: [BridgeWatchedFolder(path: "/w", name: "w")],
+                watchedFolders: [
+                    BridgeWatchedFolder(
+                        path: Data("/w".utf8),
+                        pathText: "/w",
+                        name: "w"
+                    )
+                ],
                 hasGroups: false,
                 narrowed: nil,
                 narrowing: BridgeImportListNarrowing(
@@ -363,8 +369,8 @@ extension ImportListPageSourceTests {
         try await Wait.until({ subscription.requestedViews == [view] })
         try await pages.setGroupFolded(
             BridgeFolderReleaseDecisionKey(
-                watchedFolderPath: "/w",
-                relativeFolderPath: "Box"
+                watchedFolderPath: Data("/w".utf8),
+                relativeFolder: Data("Box".utf8)
             ),
             true
         )
@@ -696,7 +702,8 @@ extension ImportListPageSourceTests {
         )
     }
 
-    /// The keys the list holds at `positions`, resolved as a row does.
+    /// The keys the list holds at `positions`, resolved as a row does: each
+    /// fixture row shows its key as its path.
     @MainActor
     private func loadedKeys(
         _ list: PaginatedList<BridgeImportListItem>,
@@ -708,7 +715,7 @@ extension ImportListPageSourceTests {
                 let item = importStore.items[id]
             else { return nil }
             switch item {
-            case .candidate(_, let row, _): return row.candidateKey
+            case .candidate(_, let row, _): return row.displayPath
             case .groupHeader, .invalid: return nil
             }
         }

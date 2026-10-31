@@ -59,7 +59,7 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
         .store_verdict(&crate::db::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edit_revision,
-            folder_path: String::new(),
+            candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
             verdict: crate::identify::TerminalVerdict::Found {
                 findings: crate::identify::Findings {
                     matches: vec![offered("mb-pressing-1", 1996), offered("mb-pressing-2", 2004)],

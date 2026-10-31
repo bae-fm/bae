@@ -7,17 +7,20 @@ use crate::import::FolderReleaseDecisionKey;
 impl Library {
     /// A second watched folder, `root`, at `position`, with the settled
     /// release `name` directly in it.
-    fn second_root_release(&self, root: &str, position: i64, name: &str) -> String {
-        let path = super::super::super::folder_below(root, name)
-            .to_string_lossy()
-            .into_owned();
+    fn second_root_release(&self, root: &std::path::Path, position: i64, name: &str) -> String {
+        let path = super::super::sql_blob(&coven::path_bytes(&super::super::super::folder_below(
+            root, name,
+        )));
         format!(
             "{}INSERT INTO scan_candidate
-                 (watched_folder_path, path, generation, kind, name, display_path, folder,
+                 (watched_folder_path, path, generation, kind, name, relative_folder, folder,
                   file_root, scope, content_hash)
-             VALUES ('{root}', '{path}', 1, 'valid', '{name}', '{name}', '{path}', '{path}',
+             VALUES ({root_sql}, {path}, 1, 'valid', '{name}', {relative}, {path}, {path},
                      'direct', 'hash-{root}-{name}');",
-            self.watch(root, position)
+            self.watch(root, position),
+            root_sql = super::super::sql_blob(&coven::path_bytes(root)),
+            relative = super::super::sql_relative(name),
+            root = root.display(),
         )
     }
 
@@ -25,7 +28,7 @@ impl Library {
     pub(super) fn group_key(&self, name: &str) -> FolderReleaseDecisionKey {
         FolderReleaseDecisionKey {
             watched_folder_path: self.root.clone(),
-            relative_folder_path: name.to_string(),
+            relative_folder: crate::import::RelativeFolder::test(name),
         }
     }
 
@@ -450,7 +453,7 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
     let list = lib.open(view(TriageTab::Pending)).await;
     let location = lib
         .db
-        .locate_import_candidate(list, &lib.path("Single"))
+        .locate_import_candidate(list, &lib.key("Single"))
         .await
         .unwrap()
         .unwrap();
@@ -463,10 +466,12 @@ async fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
     let second = crate::import::watched_folder::host_root("/second");
     lib.run(&format!(
         "{}{}INSERT INTO folder_discovery (folder, first_seen_at, settled)
-             VALUES ('{}', 20, 1);",
+             VALUES ({}, 20, 1);",
         lib.dated(&[("Release 10", 10), ("Release 2", 10)]),
         lib.second_root_release(&second, 1, "Newest"),
-        super::super::super::folder_below(&second, "Newest").to_string_lossy(),
+        super::super::sql_blob(&coven::path_bytes(&super::super::super::folder_below(
+            &second, "Newest"
+        ))),
     ))
     .await;
     assert_eq!(
@@ -653,15 +658,17 @@ async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
         singles(true),
         "every folder between is settled"
     );
-    lib.run("DELETE FROM release_grouping WHERE key = 'reading Singles/Label';")
+    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles/Label' AS BLOB);")
         .await;
     assert_eq!(offers().await, singles(false), "Label is nearer again");
     lib.run(&lib.kept_apart("Singles")).await;
     assert_eq!(offers().await, singles(true), "Singles keeps them apart");
-    lib.run("UPDATE release_grouping SET combined = 1 WHERE key = 'reading Singles';")
-        .await;
+    lib.run(
+        "UPDATE release_grouping SET combined = 1 WHERE key = CAST('reading Singles' AS BLOB);",
+    )
+    .await;
     assert_eq!(offers().await, singles(false), "Singles is read as one");
-    lib.run("DELETE FROM release_grouping WHERE key = 'reading Singles';")
+    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles' AS BLOB);")
         .await;
     lib.run(&format!(
         "{}{}{}",
@@ -676,8 +683,8 @@ async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
         "a release on Done right below Singles is nearest to it"
     );
     lib.run(&format!(
-        "DELETE FROM scan_candidate WHERE path = '{}';",
-        lib.path("Singles/Loose")
+        "DELETE FROM scan_candidate WHERE path = {};",
+        lib.sql("Singles/Loose")
     ))
     .await;
     assert_eq!(offers().await, singles(false), "and gone, it is not");
@@ -703,8 +710,8 @@ impl Library {
     fn kept_apart(&self, display_path: &str) -> String {
         format!(
             "INSERT INTO release_grouping (key, anchor_folder, combined, author)
-             VALUES ('reading {display_path}', '{}', 0, 'user');",
-            self.path(display_path)
+             VALUES (CAST('reading {display_path}' AS BLOB), {}, 0, 'user');",
+            self.sql(display_path)
         )
     }
 }

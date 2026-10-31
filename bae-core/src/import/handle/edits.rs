@@ -10,8 +10,8 @@ use super::*;
 /// The candidate a pane edit of its draft is composed against: where the scan
 /// lists it, and the revisions it stood at when read.
 struct DraftEditBase {
-    watched_folder_path: String,
-    candidate_path: String,
+    watched_folder_path: std::path::PathBuf,
+    candidate_path: crate::import::CandidateKey,
     candidate: crate::import::CandidateAsRead,
 }
 
@@ -19,18 +19,18 @@ impl ImportServiceHandle {
     /// Record the cover the user chose for this candidate.
     pub async fn set_candidate_cover(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         cover: crate::import::CoverSelection,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move { this.set_candidate_cover_write(&candidate_key, cover).await })
             .await
     }
 
     async fn set_candidate_cover_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         cover: crate::import::CoverSelection,
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
@@ -80,11 +80,11 @@ impl ImportServiceHandle {
     /// the one its records name, or (`None`) leave it to its records.
     pub async fn set_candidate_album(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         album_id: Option<String>,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             let candidate = this.editable_candidate(&candidate_key).await?;
             let hash = candidate.files.content_hash();
@@ -106,11 +106,11 @@ impl ImportServiceHandle {
     /// Record one album-level field the user typed or chose.
     pub async fn set_candidate_edit_field(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         edit: crate::import::DraftFieldEdit,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.set_candidate_edit_field_write(&candidate_key, edit)
                 .await
@@ -120,7 +120,7 @@ impl ImportServiceHandle {
 
     async fn set_candidate_edit_field_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         edit: crate::import::DraftFieldEdit,
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
@@ -150,11 +150,11 @@ impl ImportServiceHandle {
     /// resolves them, so matching names never imply identity.
     pub async fn set_candidate_album_artists(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         assignments: Vec<crate::import::Credited>,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.set_candidate_album_artists_write(&candidate_key, assignments)
                 .await
@@ -164,7 +164,7 @@ impl ImportServiceHandle {
 
     async fn set_candidate_album_artists_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         assignments: Vec<crate::import::Credited>,
     ) -> Result<(), crate::import::ImportError> {
         let assignments = crate::import::Credited::normalized_list(assignments);
@@ -191,11 +191,11 @@ impl ImportServiceHandle {
     /// Record one mapping-table row's title and artists as the user left them.
     pub async fn set_candidate_track_edit(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         track: crate::import::RawTrackEdit,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.set_candidate_track_edit_write(&candidate_key, track)
                 .await
@@ -205,7 +205,7 @@ impl ImportServiceHandle {
 
     async fn set_candidate_track_edit_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         mut track: crate::import::RawTrackEdit,
     ) -> Result<(), crate::import::ImportError> {
         track.artist_assignments.normalize();
@@ -233,12 +233,12 @@ impl ImportServiceHandle {
     /// edit, preserving each row's title and audio mapping.
     pub async fn set_candidate_track_artists(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         track_ids: Vec<String>,
         assignments: crate::import::TrackArtistAssignments,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.set_candidate_track_artists_write(&candidate_key, track_ids, assignments)
                 .await
@@ -248,7 +248,7 @@ impl ImportServiceHandle {
 
     async fn set_candidate_track_artists_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         track_ids: Vec<String>,
         assignments: crate::import::TrackArtistAssignments,
     ) -> Result<(), crate::import::ImportError> {
@@ -277,7 +277,7 @@ impl ImportServiceHandle {
     /// for a key that names no editable folder.
     async fn editable_candidate(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError> {
         self.get_release_candidate(candidate_key)
             .await?
@@ -291,7 +291,7 @@ impl ImportServiceHandle {
     /// scan lists.
     async fn draft_edit_base(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<DraftEditBase, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();

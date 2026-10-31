@@ -149,13 +149,14 @@ impl TriageReading {
 /// One candidate's row.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageRow {
-    /// The candidate's folder path — the key every other import call takes.
-    pub candidate_key: String,
+    /// The candidate's key — the key every other import call takes.
+    pub candidate_key: crate::import::CandidateKey,
     /// The folder's name, which is the row's title while it has no draft.
     pub folder_name: String,
     /// The watched folder this candidate was scanned from
     /// (`WatchedFolder::path`).
-    pub watched_folder_path: String,
+    pub watched_folder_path: std::path::PathBuf,
+    /// The folder below the watched folder, as `coven::path_text` shows it.
     pub display_path: String,
     pub actionable: bool,
     pub placement: TriagePlacement,

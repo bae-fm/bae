@@ -23,7 +23,7 @@ fn discounted(number: &str) -> LookupChoiceEdit {
 /// each changed.
 async fn edit(
     handle: &ImportServiceHandle,
-    key: &str,
+    key: &crate::import::CandidateKey,
     edits: impl IntoIterator<Item = LookupChoiceEdit>,
 ) -> Vec<ChoiceChange> {
     let mut changes = Vec::new();
@@ -105,7 +105,7 @@ async fn two_quick_changes_both_land() {
 async fn lookup_choices_for_an_unknown_key_are_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .edit_candidate_lookup_choices("/nowhere/at/all", LookupChoiceEdit::ToggleDiscId)
+        .edit_candidate_lookup_choices(&crate::import::CandidateKey::test("/nowhere/at/all"), LookupChoiceEdit::ToggleDiscId)
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;
@@ -238,7 +238,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
         .store_verdict(&crate::db::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edit_revision,
-            folder_path: String::new(),
+            candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
             verdict: crate::identify::TerminalVerdict::ManualOnly {
                 track_count: 1,
                 ledger: None,
@@ -265,9 +265,9 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
     assert!(stored, "the settled signals land on the fixture candidate");
 }
 
-pub(super) async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
+pub(super) async fn pick(handle: &ImportServiceHandle, key: &crate::import::CandidateKey, release_id: &str) {
     handle
-        .select_candidate_release(key.to_string(), crate::import::PressingLink {
+        .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     release_id.to_string(),

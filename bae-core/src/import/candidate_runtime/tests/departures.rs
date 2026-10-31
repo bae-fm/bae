@@ -2,9 +2,9 @@
 // that work read files the candidate no longer has.
 
 /// Start extraction and an identify run on `key`, returning their tokens.
-fn start_both(runtime: &CandidateRuntime, key: &str) -> [tokio_util::sync::CancellationToken; 2] {
+fn start_both(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) -> [tokio_util::sync::CancellationToken; 2] {
     [CandidateWork::Extraction, CandidateWork::Identify]
-        .map(|work| runtime.start_work(work, key.to_string(), |token, _| token))
+        .map(|work| runtime.start_work(work, key.clone(), |token, _| token))
 }
 
 fn invalid(candidate: &FolderCandidate) -> ImportEvent {
@@ -12,7 +12,7 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
         path: candidate.path.clone(),
         name: "rel1".to_string(),
         watched_folder_path: candidate.watched_folder_path.clone(),
-        display_path: "rel1".to_string(),
+        relative_folder: crate::import::RelativeFolder::test("rel1"),
         grouping: candidate.grouping.clone(),
         files: Vec::new(),
         tags: None,
@@ -21,8 +21,8 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
 
 #[tokio::test]
 async fn a_candidate_leaving_or_reshaped_ends_its_work() {
-    for grouping in [None, Some("group-1".to_string())] {
-        let mut candidate = folder_candidate("/watch/a/rel1", "/watch/a");
+    for grouping in [None, Some(crate::import::CandidateKey::grouping("group-1"))] {
+        let mut candidate = folder_candidate(&crate::import::CandidateKey::test("/watch/a/rel1"), "/watch/a");
         candidate.grouping = grouping;
         let key = candidate.key();
         let mut reshaped = candidate.clone();
@@ -53,7 +53,7 @@ async fn a_candidate_leaving_or_reshaped_ends_its_work() {
             let runtime = CandidateRuntime::for_test().await;
             runtime.record_event(&scanned(candidate.clone()));
             let tokens = start_both(&runtime, &key);
-            let other = start_both(&runtime, "/watch/a/other");
+            let other = start_both(&runtime, &crate::import::CandidateKey::test("/watch/a/other"));
 
             runtime.record_event(&departure);
 

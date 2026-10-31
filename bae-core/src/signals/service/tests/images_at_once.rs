@@ -253,13 +253,13 @@ async fn passes_running_at_once_share_the_bound() {
     handle.register_analyzer(analyzer.clone());
     let mut first_run = handle.start(
         IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         folder_source(first),
         CallPriority::Interactive,
     );
     let mut second_run = handle.start(
         IdentifyRunId::for_test(2),
-        "cand-2".to_string(),
+        crate::import::CandidateKey::test("cand-2"),
         folder_source(second),
         CallPriority::Interactive,
     );

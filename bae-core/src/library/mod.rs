@@ -338,13 +338,13 @@ pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
         .function(
             "bae_folder_below",
             2,
-            coven::Determinism::Deterministic { version: 1 },
+            coven::Determinism::Deterministic { version: 2 },
             |arguments| folder_below_value(arguments.get(0)?, arguments.get(1)?),
         )
         .function(
             "bae_folder_relative",
             2,
-            coven::Determinism::Deterministic { version: 1 },
+            coven::Determinism::Deterministic { version: 2 },
             |arguments| folder_relative_value(arguments.get(0)?, arguments.get(1)?),
         )
 }
@@ -370,18 +370,35 @@ fn catalog_rank_value(catalog: String) -> rusqlite::Result<i64> {
     Ok(catalog.rank() as i64)
 }
 
-/// `bae_folder_below`: the absolute path of a `/`-separated folder below a
-/// watched folder, spelled as a scan spells it, which is how a stored
-/// reading names the folder it reads.
-fn folder_below_value(root: String, relative: String) -> rusqlite::Result<String> {
-    crate::import::folder_path::folder_below(&root, &relative)
-        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
+/// `bae_folder_below`: the absolute path's bytes of a folder below a watched
+/// folder, from the root's bytes and the folder's [`RelativeFolder`] bytes,
+/// spelled as a scan spells it, which is how a stored reading names the
+/// folder it reads. Takes BLOBs only: rusqlite refuses TEXT for a `Vec<u8>`,
+/// so a path bound as text fails rather than matching nothing.
+///
+/// [`RelativeFolder`]: crate::import::RelativeFolder
+fn folder_below_value(root: Vec<u8>, relative: Vec<u8>) -> rusqlite::Result<Vec<u8>> {
+    let root = coven::path_from_bytes(root)
+        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
+    let relative = crate::import::RelativeFolder::from_bytes(relative)
+        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
+    Ok(coven::path_bytes(
+        &crate::import::relative_folder::folder_below(&root, &relative),
+    ))
 }
 
-/// `bae_folder_relative`: the `/`-separated path of a folder below a watched
-/// folder, empty for the watched folder itself, NULL for one outside it.
-fn folder_relative_value(root: String, folder: String) -> rusqlite::Result<Option<String>> {
-    crate::import::folder_path::folder_relative_below(&root, &folder)
+/// `bae_folder_relative`: the [`RelativeFolder`] bytes of a folder below a
+/// watched folder, empty for the watched folder itself, NULL for one outside
+/// it. Takes BLOBs only, as `bae_folder_below` does.
+///
+/// [`RelativeFolder`]: crate::import::RelativeFolder
+fn folder_relative_value(root: Vec<u8>, folder: Vec<u8>) -> rusqlite::Result<Option<Vec<u8>>> {
+    let to_error =
+        |error: coven::PathBytesError| rusqlite::Error::UserFunctionError(Box::new(error));
+    let root = coven::path_from_bytes(root).map_err(to_error)?;
+    let folder = coven::path_from_bytes(folder).map_err(to_error)?;
+    crate::import::relative_folder::folder_relative_below(&root, &folder)
+        .map(|relative| relative.map(|relative| relative.as_bytes().to_vec()))
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
 }
 
@@ -425,6 +442,19 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
         folder_relative_value(context.get(0)?, context.get(1)?)
     })
     .expect("bae_folder_relative registers");
+    // coven registers `coven_path_text` on every connection it opens; this one
+    // shows a path's bytes the same way, through coven's exports.
+    conn.create_scalar_function("coven_path_text", 1, deterministic, |context| {
+        context
+            .get::<Option<Vec<u8>>>(0)?
+            .map(|bytes| {
+                coven::path_from_bytes(bytes)
+                    .map(|path| coven::path_text(&path))
+                    .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
+            })
+            .transpose()
+    })
+    .expect("coven_path_text registers");
     conn.create_collation(
         crate::migrations::NATURAL_ORDER,
         crate::migrations::natural_order,

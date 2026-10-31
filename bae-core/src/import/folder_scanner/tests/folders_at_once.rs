@@ -12,8 +12,8 @@ fn undated(folders: &[PathBuf]) -> Vec<FolderTimes> {
 
 /// One grouping key for every grouping a pass proposes, so two passes over
 /// the same folders say the same items.
-fn same_grouping_key() -> String {
-    "grouping:proposed".to_string()
+fn same_grouping_key() -> crate::import::CandidateKey {
+    crate::import::CandidateKey::grouping("proposed")
 }
 
 /// A pass over all of `root` through `reader`, with nothing stored.
@@ -85,7 +85,8 @@ fn top_level_folder_of_item(root: &Path, item: &ScanItem) -> String {
         ScanItem::Invalid(candidate) => top_level_folder_of(root, &candidate.path),
         ScanItem::Sidecar(sidecar) => top_level_folder_of(root, &sidecar.folder),
         ScanItem::Decided { key, .. } => key
-            .relative_folder_path
+            .relative_folder
+            .text()
             .split('/')
             .next()
             .expect("split yields at least one part")

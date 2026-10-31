@@ -19,6 +19,9 @@ bae-catalogs = { path = "../bae-catalogs" }
 # The pressing values its records carry.
 bae-types = { path = "../bae-types" }
 bae-mirror = { path = "../bae-mirror" }
+# The text that shows a path, and a candidate key's bytes as text.
+coven = { workspace = true }
+hex = "0.4"
 schemars = "1.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -29,7 +32,6 @@ bae-core = { path = "../bae-core", features = ["test-utils"] }
 bae-types = { path = "../bae-types", features = ["test-utils"] }
 bae-util = { path = "../bae-util" }
 bae-test-support = { path = "../bae-test-support" }
-coven = { workspace = true }
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 

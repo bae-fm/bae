@@ -62,7 +62,7 @@ async fn temp_db() -> (super::Database, tempfile::TempDir) {
 
 /// The folder at `name`, a `/`-separated path below `root`, spelled the way
 /// the scanner spells it on this host.
-fn folder_below(root: &str, name: &str) -> std::path::PathBuf {
+fn folder_below(root: &std::path::Path, name: &str) -> std::path::PathBuf {
     name.split('/')
         .fold(std::path::PathBuf::from(root), |folder, part| {
             folder.join(part)
@@ -72,7 +72,7 @@ fn folder_below(root: &str, name: &str) -> std::path::PathBuf {
 /// A scanned folder at `name` below watched root `root` holding `files`, as the
 /// scanner produces it for a folder whose file decisions nobody has edited.
 fn candidate_with(
-    root: &str,
+    root: &std::path::Path,
     name: &str,
     files: CategorizedFiles,
     scope: ReleaseFileScope,
@@ -83,17 +83,17 @@ fn candidate_with(
         file_root: path,
         name: name.to_string(),
         files,
-        watched_folder_path: root.to_string(),
+        watched_folder_path: std::path::PathBuf::from(root),
         scope,
         file_edit_revision: 0,
-        display_path: name.to_string(),
+        relative_folder: crate::import::RelativeFolder::test(name),
         grouping: None,
     }
 }
 
 /// `candidate_with` for the folder most import fixtures want: one bound FLAC,
 /// scanned recursively.
-fn candidate(root: &str, name: &str) -> FolderCandidate {
+fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
     candidate_with(
         root,
         name,
@@ -134,11 +134,10 @@ async fn empty_db() -> (super::Database, tempfile::TempDir) {
 }
 
 /// `empty_db` plus a watched-folder root that exists on disk.
-async fn watched_root() -> (super::Database, tempfile::TempDir, String) {
+async fn watched_root() -> (super::Database, tempfile::TempDir, std::path::PathBuf) {
     let (db, tmp) = empty_db().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir_all(&root).unwrap();
-    let root = root.to_str().unwrap().to_string();
     (db, tmp, root)
 }
 

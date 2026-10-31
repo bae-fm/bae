@@ -18,10 +18,10 @@ extension ImportListPages {
                 _ in
             },
         locateCandidate:
-            @escaping @Sendable (String) async throws
+            @escaping @Sendable (Data) async throws
             -> BridgeImportCandidateListLocation? = { _ in nil },
         firstIdentifyingCandidate:
-            @escaping @Sendable () async throws -> String? = { nil }
+            @escaping @Sendable () async throws -> Data? = { nil }
     ) -> ImportListPages {
         ImportListPages(
             source: source,
@@ -108,11 +108,11 @@ private final class AppliedViewResolver: @unchecked Sendable {
 private func candidateItem(_ index: Int) -> BridgeImportListItem {
     let key = candidateKey(index)
     return .candidate(
-        stableKey: "candidate:\(key)",
+        stableKey: candidateStableKey(key),
         row: BridgeTriageRow(
             candidateKey: key,
             folderName: "Release \(index)",
-            watchedFolderPath: "/library",
+            watchedFolderPath: Data("/library".utf8),
             displayPath: "Release \(index)",
             actionable: true,
             placement: .skipped,
@@ -136,8 +136,14 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
     )
 }
 
-private func candidateKey(_ index: Int) -> String {
-    "/library/release-\(index)"
+private func candidateKey(_ index: Int) -> Data {
+    Data("/library/release-\(index)".utf8)
+}
+
+/// A list key for the row of the folder `key` names, spelled the way core
+/// spells one: the key's bytes in hex.
+private func candidateStableKey(_ key: Data) -> String {
+    "candidate:" + key.map { String(format: "%02x", $0) }.joined()
 }
 
 /// The import tab picks its pane before drawing one, so a failed first page
@@ -227,7 +233,7 @@ struct ImportListSlotTests {
                     source: pageSource,
                     locateCandidate: { key in
                         BridgeImportCandidateListLocation(
-                            stableKey: "candidate:\(key)",
+                            stableKey: candidateStableKey(key),
                             tab: .pending,
                             groupKey: nil,
                             visiblePosition: 61
@@ -246,7 +252,7 @@ struct ImportListSlotTests {
         #expect(revealed?.position == 61)
         #expect(uiStore.importCandidateTab == .pending)
         #expect(uiStore.importCandidateFilterText.isEmpty)
-        #expect(slot.list?.idAt(61) == "candidate:\(target)")
+        #expect(slot.list?.idAt(61) == candidateStableKey(target))
     }
 
     @Test("nothing identifying reveals nothing")
@@ -305,9 +311,10 @@ struct ImportListSlotTests {
             }
         )
 
+        let album = Data("/music/Album".utf8)
         slot.changeSelection(
-            .toggle(add: ["/music/Album"], remove: []),
-            showing: ["/music/Album"]
+            .toggle(add: [album], remove: []),
+            showing: [album]
         )
         var entered = toggleEntered.stream.makeAsyncIterator()
         await entered.next()
@@ -325,8 +332,8 @@ struct ImportListSlotTests {
     func foldingAsksCoresList() async throws {
         let folds = CallLog<String>()
         let group = BridgeFolderReleaseDecisionKey(
-            watchedFolderPath: "/library",
-            relativeFolderPath: "Box"
+            watchedFolderPath: Data("/library".utf8),
+            relativeFolder: Data("Box".utf8)
         )
         let source = ImportListPreviewPageSource(items: [])
         let slot = ImportListSlot(
@@ -339,7 +346,10 @@ struct ImportListSlotTests {
                     setView: { _ in },
                     waitForView: { _ in },
                     setGroupFolded: { group, folded in
-                        folds.record("\(group.relativeFolderPath) \(folded)")
+                        let folder =
+                            String(bytes: group.relativeFolder, encoding: .utf8)
+                            ?? "not UTF-8"
+                        folds.record("\(folder) \(folded)")
                     },
                     setAllGroupsFolded: { folded in
                         folds.record("all \(folded)")
@@ -449,7 +459,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
                     },
                     locateCandidate: { key in
                         BridgeImportCandidateListLocation(
-                            stableKey: "candidate:\(key)",
+                            stableKey: candidateStableKey(key),
                             tab: .done,
                             groupKey: nil,
                             visiblePosition: 61
@@ -479,7 +489,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
         XCTAssertEqual(outcome.position, 61)
         XCTAssertEqual(
             slot.list?.idAt(61),
-            "candidate:\(targetKey)"
+            candidateStableKey(targetKey)
         )
     }
 }

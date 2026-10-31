@@ -120,7 +120,7 @@ async fn commit_import(
 #[tokio::test]
 async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     let (db, tmp) = super::temp_db().await;
-    let root = tmp.path().join("watch").to_string_lossy().into_owned();
+    let root = tmp.path().join("watch").to_path_buf();
     let candidate_path = std::path::PathBuf::from(&root).join("Album");
     let files = crate::import::folder_scanner::CategorizedFiles {
         files: vec![crate::import::folder_scanner::CandidateFile {
@@ -135,16 +135,16 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         }], parts: Vec::new(), 
     };
     let candidate = super::candidate_with(
-        &root,
+        std::path::Path::new(&root),
         "Album",
         files,
         crate::import::folder_scanner::ReleaseFileScope::Direct,
     );
     let content_hash = candidate.files.content_hash();
-    db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
+    let generation = db.begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(
-        &root,
+        std::path::Path::new(&root),
         generation,
         &crate::import::folder_scanner::ScanItem::Valid(candidate),
     )
@@ -164,7 +164,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     let error = db
         .finalize_import_atomic(
             crate::db::ImportCommitGuard::Candidate {
-                candidate_key: candidate_path.to_string_lossy().into_owned(),
+                candidate_key: crate::import::CandidateKey::folder(&candidate_path),
                 source: crate::import::release_candidate::CandidateSource {
                     path: candidate_path,
                     scope: crate::import::folder_scanner::ReleaseFileScope::Direct, parts: Vec::new(), 

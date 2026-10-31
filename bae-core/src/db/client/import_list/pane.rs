@@ -41,7 +41,7 @@ pub(super) struct CandidateDetailRows {
 /// clears a selection.
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
-    key: &str,
+    key: &crate::import::CandidateKey,
 ) -> Result<Option<CandidateDetailRows>, DbError> {
     let Some(listed) = sql
         .query_row(
@@ -100,7 +100,10 @@ pub(super) fn load_candidate_detail_on(
              FROM scan_candidate c JOIN import_candidate_state s \
                ON s.content_hash = c.content_hash \
              WHERE c.watched_folder_path = ? AND c.path = ?",
-        params![candidate.watched_folder_path, candidate.key()],
+        params![
+            coven::path_bytes(&candidate.watched_folder_path),
+            candidate.key()
+        ],
         |row| row.get::<_, i64>(0),
     )?;
     let metadata_revision = u64::try_from(metadata_revision).map_err(|error| {

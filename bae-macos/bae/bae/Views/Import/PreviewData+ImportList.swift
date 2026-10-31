@@ -76,7 +76,7 @@
             headerPosition: UInt64?
         ) -> BridgeImportListItem {
             .candidate(
-                stableKey: "candidate:\(row.candidateKey)",
+                stableKey: "candidate:\(hex(row.candidateKey))",
                 row: row,
                 headerPosition: headerPosition
             )
@@ -86,7 +86,7 @@
             _ candidate: BridgeInvalidCandidate
         ) -> BridgeImportListItem {
             .invalid(
-                stableKey: "invalid:\(candidate.folderPath)",
+                stableKey: "invalid:\(hex(candidate.folderPath))",
                 invalidCandidate: candidate,
                 selected: false,
                 isGroupMember: false
@@ -102,8 +102,7 @@
         ) -> BridgeImportListItem {
             .groupHeader(
                 stableKey:
-                    "group:\(key.watchedFolderPath.count)"
-                    + key.watchedFolderPath + key.relativeFolderPath,
+                    "group:\(hex(key.watchedFolderPath)):\(hex(key.relativeFolder))",
                 group: BridgeTriageGroup(
                     key: key,
                     name: name,
@@ -166,7 +165,7 @@
         /// candidate in `store` offers now, joined into the selection's offers.
         @MainActor
         static func importSelection(
-            of keys: [String],
+            of keys: [Data],
             in store: ImportStore
         ) -> ImportSelection {
             let members = keys.map { key in
@@ -185,6 +184,11 @@
                 )
             )
             return selection
+        }
+
+        /// `bytes` as lowercase hex, the way core spells bytes in a list key.
+        private static func hex(_ bytes: Data) -> String {
+            bytes.map { String(format: "%02x", $0) }.joined()
         }
     }
 #endif

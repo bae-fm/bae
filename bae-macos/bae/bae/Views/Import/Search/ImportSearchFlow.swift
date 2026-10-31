@@ -12,7 +12,7 @@ enum ImportSearchFlow {
     static func startSearch(
         importer: Importer,
         importStore: ImportStore,
-        key: String,
+        key: Data,
         form: CandidateSearchState
     ) {
         let query = searchQuery(from: form)

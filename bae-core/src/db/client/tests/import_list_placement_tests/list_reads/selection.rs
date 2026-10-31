@@ -8,7 +8,11 @@ use crate::import::CandidateAction;
 
 /// The keys `list`'s selection runs `action` over, in the list's order, with
 /// what is running for each.
-async fn keys_running(lib: &Library, list: ImportListId, action: CandidateAction) -> Vec<String> {
+async fn keys_running(
+    lib: &Library,
+    list: ImportListId,
+    action: CandidateAction,
+) -> Vec<crate::import::CandidateKey> {
     let selected = lib.db.load_import_list_selected(list).await.unwrap();
     keys_for(
         &crate::import::selection::members(&selected.candidates),
@@ -53,7 +57,7 @@ async fn a_selection_holds_only_rows_the_list_shows() {
         .select(
             list,
             SelectionChange::Replace {
-                keys: vec![lib.path("A"), lib.path("D"), lib.path("E")],
+                keys: vec![lib.key("A"), lib.key("D"), lib.key("E")],
             },
         )
         .await;
@@ -87,7 +91,7 @@ async fn a_selection_holds_only_rows_the_list_shows() {
     );
     assert_eq!(
         read.selection.single,
-        Some(SingleSelection::Candidate { key: lib.path("D") })
+        Some(SingleSelection::Candidate { key: lib.key("D") })
     );
     assert!(read.selection_revision > revision);
 
@@ -116,7 +120,7 @@ async fn a_row_moved_out_of_the_view_leaves_the_selection_in_its_write() {
     lib.select(
         list,
         SelectionChange::Replace {
-            keys: vec![lib.path("A"), lib.path("B")],
+            keys: vec![lib.key("A"), lib.key("B")],
         },
     )
     .await;
@@ -125,7 +129,7 @@ async fn a_row_moved_out_of_the_view_leaves_the_selection_in_its_write() {
     assert_eq!(read.selection.count, 1);
     assert_eq!(
         read.selection.single,
-        Some(SingleSelection::Candidate { key: lib.path("B") })
+        Some(SingleSelection::Candidate { key: lib.key("B") })
     );
     lib.run(&lib.draft("B", "Album")).await;
     assert_eq!(
@@ -170,8 +174,8 @@ async fn extending_selects_the_run_between_two_rows() {
     lib.select(
         list,
         SelectionChange::Extend {
-            from: lib.path("C"),
-            to: lib.path("Box/1"),
+            from: lib.key("C"),
+            to: lib.key("Box/1"),
         },
     )
     .await;
@@ -182,7 +186,7 @@ async fn extending_selects_the_run_between_two_rows() {
             .iter()
             .map(|candidate| candidate.candidate_key.clone())
             .collect::<Vec<_>>(),
-        [lib.path("Box/1"), lib.path("Box/2"), lib.path("C")],
+        [lib.key("Box/1"), lib.key("Box/2"), lib.key("C")],
         "the run in the list's order"
     );
     assert_eq!(
@@ -190,8 +194,8 @@ async fn extending_selects_the_run_between_two_rows() {
             .change_import_list_selection(
                 list,
                 SelectionChange::Extend {
-                    from: lib.path("A"),
-                    to: lib.path("Nowhere"),
+                    from: lib.key("A"),
+                    to: lib.key("Nowhere"),
                 },
             )
             .await
@@ -201,8 +205,8 @@ async fn extending_selects_the_run_between_two_rows() {
     lib.select(
         list,
         SelectionChange::Toggle {
-            add: vec![lib.path("A")],
-            remove: vec![lib.path("Box/2")],
+            add: vec![lib.key("A")],
+            remove: vec![lib.key("Box/2")],
         },
     )
     .await;
@@ -220,7 +224,7 @@ async fn the_selected_rows_come_in_the_list_s_order() {
     lib.select(
         list,
         SelectionChange::Toggle {
-            add: vec![lib.path("B"), lib.path("D"), lib.path("A")],
+            add: vec![lib.key("B"), lib.key("D"), lib.key("A")],
             remove: Vec::new(),
         },
     )
@@ -232,7 +236,7 @@ async fn the_selected_rows_come_in_the_list_s_order() {
             .iter()
             .map(|candidate| candidate.candidate_key.clone())
             .collect::<Vec<_>>(),
-        [lib.path("D"), lib.path("B"), lib.path("A")]
+        [lib.key("D"), lib.key("B"), lib.key("A")]
     );
     assert_eq!(selected.candidates[0].name, "D");
 }
@@ -250,7 +254,7 @@ async fn a_folder_that_failed_validation_is_selected_and_offers_nothing() {
     assert_eq!(
         read.selection.single,
         Some(SingleSelection::InvalidCandidate {
-            key: lib.path("Broken")
+            key: lib.key("Broken")
         })
     );
     assert!(read.selection.offers.is_empty());
@@ -276,7 +280,7 @@ async fn identify_is_offered_for_the_rows_no_lookup_is_stored_for() {
     lib.select(
         list,
         SelectionChange::Replace {
-            keys: vec![lib.path("A"), lib.path("C")],
+            keys: vec![lib.key("A"), lib.key("C")],
         },
     )
     .await;
@@ -284,7 +288,7 @@ async fn identify_is_offered_for_the_rows_no_lookup_is_stored_for() {
     lib.select(
         list,
         SelectionChange::Replace {
-            keys: vec![lib.path("A"), lib.path("B"), lib.path("D"), lib.path("E")],
+            keys: vec![lib.key("A"), lib.key("B"), lib.key("D"), lib.key("E")],
         },
     )
     .await;
@@ -326,7 +330,7 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     imported.sort();
     assert_eq!(
         imported,
-        [lib.path("Identified"), lib.path("Picked Among Several")],
+        [lib.key("Identified"), lib.key("Picked Among Several")],
         "selecting everything Identified shows takes every shown row and no hidden one"
     );
 
@@ -335,10 +339,10 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
         everything,
         SelectionChange::Replace {
             keys: vec![
-                lib.path("Identified"),
-                lib.path("Picked Among Several"),
-                lib.path("Several"),
-                lib.path("Tagged"),
+                lib.key("Identified"),
+                lib.key("Picked Among Several"),
+                lib.key("Several"),
+                lib.key("Tagged"),
             ],
         },
     )
@@ -348,9 +352,9 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     assert_eq!(
         imported,
         [
-            lib.path("Identified"),
-            lib.path("Picked Among Several"),
-            lib.path("Tagged")
+            lib.key("Identified"),
+            lib.key("Picked Among Several"),
+            lib.key("Tagged")
         ]
     );
     assert_eq!(
@@ -423,18 +427,18 @@ async fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
         .open(under(TriageTab::Pending, PendingFilter::NeedsYou))
         .await;
     lib.db.select_all_in_import_list(list).await.unwrap();
-    let sorted = |mut keys: Vec<String>| {
+    let sorted = |mut keys: Vec<crate::import::CandidateKey>| {
         keys.sort();
         keys
     };
     assert_eq!(
         sorted(keys_running(&lib, list, CandidateAction::Import).await),
-        [lib.path("Failed Import"), lib.path("Several Tagged")],
+        [lib.key("Failed Import"), lib.key("Several Tagged")],
         "a draft imports and a failed import imports again; no draft, no import"
     );
     assert_eq!(
         sorted(keys_running(&lib, list, CandidateAction::RetryIdentification).await),
-        [lib.path("Broke"), lib.path("Lookup Failed")]
+        [lib.key("Broke"), lib.key("Lookup Failed")]
     );
 }
 
@@ -464,7 +468,7 @@ async fn a_view_opens_at_its_first_selected_row() {
     lib.select(
         list,
         SelectionChange::Replace {
-            keys: vec![lib.path("Zed"), lib.path("Box/2")],
+            keys: vec![lib.key("Zed"), lib.key("Box/2")],
         },
     )
     .await;
@@ -529,13 +533,13 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
     lib.select(
         list,
         SelectionChange::Replace {
-            keys: vec![lib.path("Loose")],
+            keys: vec![lib.key("Loose")],
         },
     )
     .await;
     let group = crate::import::FolderReleaseDecisionKey {
         watched_folder_path: lib.root.clone(),
-        relative_folder_path: "Box".to_string(),
+        relative_folder: crate::import::RelativeFolder::test("Box"),
     };
     lib.db
         .set_import_list_group_folded(list, group, true)
@@ -564,7 +568,7 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
     assert_eq!(
         read.selection.single,
         Some(SingleSelection::Candidate {
-            key: lib.path("Loose")
+            key: lib.key("Loose")
         })
     );
 }
@@ -578,13 +582,13 @@ async fn a_release_gone_from_the_scan_leaves_the_selection() {
     lib.select(
         list,
         SelectionChange::Replace {
-            keys: vec![lib.path("A")],
+            keys: vec![lib.key("A")],
         },
     )
     .await;
     lib.run(&format!(
-        "DELETE FROM scan_candidate WHERE path = '{}';",
-        lib.path("A")
+        "DELETE FROM scan_candidate WHERE path = {};",
+        lib.sql("A")
     ))
     .await;
     assert_eq!(lib.read(list).await.selection.count, 0);

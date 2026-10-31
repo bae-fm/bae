@@ -7,8 +7,8 @@ import Foundation
 /// one of these; the app hands it the importer, and previews and tests run
 /// with the inert one.
 struct CandidateSessionWriter: Sendable {
-    let movePane: @Sendable (String, BridgePaneMove) async throws -> Void
-    let setSearchForm: @Sendable (String, BridgeSearchForm) async throws -> Void
+    let movePane: @Sendable (Data, BridgePaneMove) async throws -> Void
+    let setSearchForm: @Sendable (Data, BridgeSearchForm) async throws -> Void
     /// A failure no pane states is told to the person: a session write that
     /// failed, since the pane cannot show a state core never stored, or a pane
     /// command whose failure core could not store.
@@ -29,10 +29,10 @@ struct CandidateSessionWriter: Sendable {
 
     init(
         movePane:
-            @escaping @Sendable (String, BridgePaneMove) async throws ->
+            @escaping @Sendable (Data, BridgePaneMove) async throws ->
             Void,
         setSearchForm:
-            @escaping @Sendable (String, BridgeSearchForm) async throws -> Void,
+            @escaping @Sendable (Data, BridgeSearchForm) async throws -> Void,
         reportFailure: @escaping @MainActor @Sendable (Error) -> Void
     ) {
         self.movePane = movePane

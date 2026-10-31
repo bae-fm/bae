@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
@@ -274,11 +275,15 @@ struct UiStoreImportQueueInteractionTests {
     @Test("refresh state is set and cleared by root")
     func refreshStateIsPerRoot() {
         let store = UiStore()
-        store.setWatchedFolderRefreshing("/music/first", true)
-        store.setWatchedFolderRefreshing("/music/second", true)
-        store.setWatchedFolderRefreshing("/music/first", false)
+        store.setWatchedFolderRefreshing(Data("/music/first".utf8), true)
+        store.setWatchedFolderRefreshing(Data("/music/second".utf8), true)
+        store.setWatchedFolderRefreshing(Data("/music/first".utf8), false)
 
-        #expect(!store.refreshingWatchedFolders.contains("/music/first"))
-        #expect(store.refreshingWatchedFolders.contains("/music/second"))
+        #expect(
+            !store.refreshingWatchedFolders.contains(Data("/music/first".utf8))
+        )
+        #expect(
+            store.refreshingWatchedFolders.contains(Data("/music/second".utf8))
+        )
     }
 }

@@ -165,12 +165,12 @@ impl Database {
         content_hash: &str,
         edit_revision: u64,
         failure: &ImportFailure,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let failure = failure.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
         self.call(move |sql| {
             save_failure_on(sql, &content_hash, edit_revision, &failure)?;

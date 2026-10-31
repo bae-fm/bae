@@ -16,7 +16,7 @@ use crate::import::selection::{
     SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection,
 };
 use crate::import::triage::{selection_offers, SelectionPart};
-use crate::import::{PendingFilterEntry, TriageTabCounts};
+use crate::import::{CandidateKey, PendingFilterEntry, RelativeFolder, TriageTabCounts};
 
 /// Every tab's count, how many of Found's releases each filter entry holds,
 /// and whether Found has any group.
@@ -119,17 +119,17 @@ impl Listed {
 /// the kept releases outside the groups it folds shut, and the headers among
 /// its items of the groups holding a kept release.
 pub(super) const SEARCH_COUNTS: &str = "WITH kept AS MATERIALIZED ( \
-         SELECT m.watched_folder_path, m.group_name, m.folded FROM import_list_found AS f \
+         SELECT m.watched_folder_path, m.group_folder, m.folded FROM import_list_found AS f \
          CROSS JOIN import_list_matching AS m ON m.list_id = f.list_id AND m.entry = f.entry \
          WHERE f.list_id = :list) \
      SELECT (SELECT count(*) FROM kept), \
             (SELECT count(*) FROM kept WHERE NOT folded) \
             + (SELECT count(*) \
-               FROM (SELECT DISTINCT watched_folder_path, group_name FROM kept \
-                     WHERE group_name IS NOT NULL) AS g \
+               FROM (SELECT DISTINCT watched_folder_path, group_folder FROM kept \
+                     WHERE group_folder IS NOT NULL) AS g \
                CROSS JOIN import_list_item AS h \
                    ON h.list_id = :list AND h.watched_folder_path = g.watched_folder_path \
-                  AND h.item = 'group' AND h.key = g.group_name)";
+                  AND h.item = 'group' AND h.key = g.group_folder)";
 
 /// How many items the list holds — its releases its filters keep outside the
 /// groups it folds shut, and the header of each group holding one — and how
@@ -178,7 +178,7 @@ pub(super) fn listed(
                           THEN COALESCE((SELECT SUM(g.count) FROM import_list_collapsed AS c \
                                          JOIN import_list_group_entry_count AS g \
                                              ON g.watched_folder_path = c.watched_folder_path \
-                                            AND g.group_name = c.group_name \
+                                            AND g.group_folder = c.group_folder \
                                          WHERE c.list_id = v.id \
                                            AND (v.pending_filter = 'all' \
                                                 OR g.pending_entry = v.pending_filter)), 0) \
@@ -234,7 +234,7 @@ pub(super) fn selection(
                 BasisColumns::read(row, 1)?,
                 RuntimeFactColumns::read(row, 7)?,
                 row.get::<_, i64>(11)?,
-                row.get::<_, String>(12)?,
+                row.get::<_, CandidateKey>(12)?,
             ))
         },
     )?;
@@ -296,7 +296,7 @@ pub(super) fn selected(
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
+                row.get::<_, CandidateKey>(1)?,
                 row.get::<_, String>(2)?,
                 BasisColumns::read(row, 3)?,
                 RuntimeFactColumns::read(row, 9)?,
@@ -322,19 +322,19 @@ pub(super) fn selected(
 pub(super) fn locate(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
-    key: &str,
+    key: &CandidateKey,
 ) -> Result<Option<ImportCandidateListLocation>, DbError> {
     let row = super::list_row(sql, list)?;
-    let Some((root, tab, group_name)) = sql
+    let Some((root, tab, group_folder)) = sql
         .query_row(
-            "SELECT watched_folder_path, tab, group_name FROM import_list_placement \
+            "SELECT watched_folder_path, tab, group_folder FROM import_list_placement \
              WHERE key = ? AND item = 'candidate'",
             [key],
             |row| {
                 Ok((
-                    row.get::<_, String>(0)?,
+                    path_column::get(row, 0)?,
                     row.get::<_, String>(1)?,
-                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<RelativeFolder>>(2)?,
                 ))
             },
         )
@@ -343,9 +343,9 @@ pub(super) fn locate(
         return Ok(None);
     };
     let tab = tab_of(&tab)?;
-    let group = group_name.map(|name| crate::import::FolderReleaseDecisionKey {
+    let group = group_folder.map(|folder| crate::import::FolderReleaseDecisionKey {
         watched_folder_path: root,
-        relative_folder_path: name,
+        relative_folder: folder,
     });
     let position = Items::new(
         list,
@@ -369,7 +369,7 @@ pub(super) fn locate(
 pub(super) fn first_identifying(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
-) -> Result<Option<String>, DbError> {
+) -> Result<Option<CandidateKey>, DbError> {
     let row = super::list_row(sql, list)?;
     Ok(sql
         .query_row(
@@ -389,7 +389,7 @@ pub(super) fn first_identifying(
                 terms = sorted_terms(row.view.order, "p", "unit"),
             ),
             [],
-            |row| row.get::<_, String>(0),
+            |row| row.get::<_, CandidateKey>(0),
         )
         .optional()?)
 }

@@ -277,7 +277,7 @@ extension ImportView {
 
     private func selectCover(
         _ selection: BridgeCoverSelection,
-        forKey key: String
+        forKey key: Data
     ) {
         Task { @MainActor in
             do {

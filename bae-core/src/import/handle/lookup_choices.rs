@@ -16,11 +16,11 @@ impl ImportServiceHandle {
     /// the one before it left.
     pub async fn edit_candidate_lookup_choices(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         edit: LookupChoiceEdit,
     ) -> Result<ChoiceChange, crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.edit_candidate_lookup_choices_write(&candidate_key, edit)
                 .await
@@ -30,7 +30,7 @@ impl ImportServiceHandle {
 
     async fn edit_candidate_lookup_choices_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         edit: LookupChoiceEdit,
     ) -> Result<ChoiceChange, crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("store lookup choices").await;

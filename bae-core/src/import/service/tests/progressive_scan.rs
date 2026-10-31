@@ -103,7 +103,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
     }
     test.service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
     let (reader, mut entered) = HeldListing::new();

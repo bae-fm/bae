@@ -17,7 +17,7 @@ struct ImportCandidateSelectionTests {
                     foundCount: 179,
                     folders: [
                         BridgeActiveFolderScan(
-                            watchedFolderPath: "/imports/incoming",
+                            watchedFolderPath: Data("/imports/incoming".utf8),
                             watchedFolderName: "Incoming",
                             foundCount: 179
                         )

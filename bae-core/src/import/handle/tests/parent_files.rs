@@ -24,8 +24,7 @@ async fn album_of_discs(
         std::fs::copy(&fixture, album.join("00.flac")).unwrap();
     }
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    let root =
-        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap();
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     manager.add_watched_import_folder(&root).await.unwrap();
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
@@ -37,21 +36,21 @@ async fn album_of_discs(
         .load_folder_release_decisions(&root)
         .await
         .unwrap()
-        .get("Album")
+        .get(&crate::import::RelativeFolder::test("Album"))
         .cloned()
         .expect("the scan read the album folder");
     if reading.decision == crate::import::FolderReleaseDecision::CombineAsOneRelease {
         handle.separate_candidate(&reading.grouping).await.unwrap();
     }
-    (handle, PathBuf::from(root).join("Album"))
+    (handle, root.join("Album"))
 }
 
-fn key_of(folder: &Path) -> String {
-    folder.to_string_lossy().into_owned()
+fn key_of(folder: &Path) -> crate::import::CandidateKey {
+    crate::import::CandidateKey::folder(folder)
 }
 
 /// The relative paths of the files the release at `key` holds.
-async fn files_of(handle: &ImportServiceHandle, key: &str) -> Vec<String> {
+async fn files_of(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> Vec<String> {
     handle
         .get_release_candidate(key)
         .await

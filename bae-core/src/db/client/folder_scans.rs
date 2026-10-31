@@ -15,12 +15,15 @@ mod progress;
 pub(super) mod read;
 mod reading;
 mod sidecar;
+#[cfg(test)]
+mod snapshots;
 pub(super) mod write;
 
 use super::import_state::next_folder_scan_generation;
 use super::query::{QueryOne, QueryRows};
 use super::*;
 use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
+use crate::import::CandidateKey;
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
@@ -49,7 +52,7 @@ pub(super) use self::write::{delete_entry, insert_candidate_files};
 /// the releases groupings rebuilt without them.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FinishedScan {
-    pub pruned: Vec<String>,
+    pub pruned: Vec<CandidateKey>,
     pub regrouped: super::release_groupings::GroupingChanges,
 }
 
@@ -63,7 +66,7 @@ pub enum ScanItemWrite {
     /// The row was written, replacing the entries at `superseded_keys`;
     /// `regrouped` is the grouping releases rebuilt from what changed.
     Stored {
-        superseded_keys: Vec<String>,
+        superseded_keys: Vec<CandidateKey>,
         regrouped: super::release_groupings::GroupingChanges,
         /// See `EntryWrite::Stored`.
         found: bool,
@@ -77,7 +80,7 @@ impl ScanItemWrite {
     }
 
     /// The stored entries this write replaced. Empty when it wrote nothing.
-    pub fn superseded_keys(&self) -> &[String] {
+    pub fn superseded_keys(&self) -> &[CandidateKey] {
         match self {
             Self::Unchanged => &[],
             Self::Stored {
@@ -106,20 +109,21 @@ impl ScanItemWrite {
 /// cannot write over its successor.
 fn ensure_generation(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
 ) -> Result<(), DbError> {
     let current: Option<i64> = sql
         .query_row(
             "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-            [watched_folder_path],
+            [coven::path_bytes(watched_folder_path)],
             |row| row.get(0),
         )
         .optional()?;
     if current != Some(generation) {
         return Err(DbError::Message(format!(
-            "folder scan generation {generation} is no longer {watched_folder_path}'s: \
-             a newer scan took the root between the check and the write"
+            "folder scan generation {generation} is no longer {}'s: \
+             a newer scan took the root between the check and the write",
+            coven::path_text(watched_folder_path)
         )));
     }
     Ok(())
@@ -148,8 +152,8 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
 /// `false` means the candidate changed first and nothing was written.
 pub(super) fn replace_candidate_file_tag_snapshot_on(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
 ) -> Result<bool, DbError> {
     let expected_generation = generation_column(snapshot.scan_generation)?;
@@ -162,7 +166,7 @@ pub(super) fn replace_candidate_file_tag_snapshot_on(
          WHERE watched_folder_path = ? AND path = ? \
            AND generation = ? AND file_edit_revision = ?",
         params![
-            watched_folder_path,
+            coven::path_bytes(watched_folder_path),
             candidate_path,
             expected_generation,
             expected_file_edit_revision
@@ -176,7 +180,7 @@ pub(super) fn replace_candidate_file_tag_snapshot_on(
         "SELECT relative_path, size FROM scan_candidate_file \
          WHERE watched_folder_path = ? AND candidate_path = ? AND role = 'audio' \
          ORDER BY position",
-        params![watched_folder_path, candidate_path],
+        params![coven::path_bytes(watched_folder_path), candidate_path],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
     if audio_files.len() != snapshot.files.len()
@@ -213,11 +217,11 @@ impl Database {
     /// candidate never read from one whose reading is out of date.
     pub(crate) async fn load_candidate_file_tag_snapshot(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &Path,
+        candidate_path: &CandidateKey,
     ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
+        let candidate_path = candidate_path.clone();
         self.read(move |sql| {
             read::load_candidate_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
         })
@@ -228,12 +232,12 @@ impl Database {
     #[cfg(test)]
     pub(crate) async fn replace_candidate_file_tag_snapshot(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &Path,
+        candidate_path: &CandidateKey,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
     ) -> Result<bool, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
+        let candidate_path = candidate_path.clone();
         let snapshot = snapshot.clone();
         self.call(move |sql| {
             replace_candidate_file_tag_snapshot_on(
@@ -250,7 +254,7 @@ impl Database {
     /// whichever generation stands now.
     pub(crate) async fn current_folder_scan_generation(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<Option<u64>, DbError> {
         self.current_scan_generation(watched_folder_path)
             .await?
@@ -262,9 +266,9 @@ impl Database {
     /// root finds out without opening a write.
     async fn current_scan_generation(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<Option<i64>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = coven::path_bytes(watched_folder_path);
         self.read(move |sql| {
             Ok(sql
                 .query_row(
@@ -281,10 +285,10 @@ impl Database {
     /// volume the folder is on.
     pub async fn begin_folder_scan(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         volume: crate::import::VolumeKind,
     ) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = coven::path_bytes(watched_folder_path);
         let volume = volume.as_column();
         self.call(move |sql| {
             let generation = next_folder_scan_generation(sql)?;
@@ -310,11 +314,11 @@ impl Database {
     /// `generation` is no longer the root's.
     pub(crate) async fn save_folder_scan_items(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         generation: u64,
         items: Vec<ScanItemToWrite>,
     ) -> Result<Option<Vec<(ScanItem, ScanItemWrite)>>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
         let observed_at =
             chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
@@ -345,7 +349,7 @@ impl Database {
     #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn save_folder_scan_item(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         generation: u64,
         item: &ScanItem,
     ) -> Result<Option<ScanItemWrite>, DbError> {
@@ -369,10 +373,10 @@ impl Database {
     /// unchanged.
     pub async fn record_folder_scan_directories(
         &self,
-        watched_folder_path: &str,
-        directories: &[(String, i64)],
+        watched_folder_path: &Path,
+        directories: &[(PathBuf, i64)],
     ) -> Result<(), DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = coven::path_bytes(watched_folder_path);
         let directories = directories.to_vec();
         self.call(move |sql| {
             sql.execute(
@@ -383,7 +387,7 @@ impl Database {
                 sql.execute(
                     "INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at) \
                      VALUES (?, ?, ?)",
-                    params![watched_folder_path, path, modified_at],
+                    params![watched_folder_path, coven::path_bytes(path), modified_at],
                 )?;
             }
             Ok(())
@@ -394,15 +398,15 @@ impl Database {
     /// The directories and mtimes recorded for this root; empty when none are.
     pub async fn load_folder_scan_directories(
         &self,
-        watched_folder_path: &str,
-    ) -> Result<Vec<(String, i64)>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        watched_folder_path: &Path,
+    ) -> Result<Vec<(PathBuf, i64)>, DbError> {
+        let watched_folder_path = coven::path_bytes(watched_folder_path);
         self.read(move |sql| {
             Ok(sql.query(
                 "SELECT path, modified_at FROM folder_scan_directory \
                  WHERE watched_folder_path = ?",
                 [watched_folder_path],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                |row| Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?)),
             )?)
         })
         .await
@@ -414,11 +418,11 @@ impl Database {
     /// the root's.
     pub async fn finish_folder_scan(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         generation: u64,
         error: Option<&str>,
     ) -> Result<Option<FinishedScan>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
         let error = error.map(str::to_string);
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
@@ -430,7 +434,7 @@ impl Database {
                 sql.execute(
                     "UPDATE folder_scan_roots SET status = 'failed', error = ? \
                      WHERE watched_folder_path = ? AND generation = ?",
-                    params![error, watched_folder_path, generation],
+                    params![error, coven::path_bytes(&watched_folder_path), generation],
                 )?;
                 return Ok(Some(FinishedScan::default()));
             }
@@ -440,7 +444,7 @@ impl Database {
             sql.execute(
                 "UPDATE folder_scan_roots SET status = 'complete', error = NULL \
                  WHERE watched_folder_path = ? AND generation = ?",
-                params![watched_folder_path, generation],
+                params![coven::path_bytes(&watched_folder_path), generation],
             )?;
             let regrouped =
                 super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
@@ -449,19 +453,12 @@ impl Database {
         .await
     }
 
-    #[cfg(test)]
-    pub async fn load_folder_scan_snapshots(&self) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
-        self.read(move |sql| load_folder_scan_snapshots_on(&sql))
-            .process(|process| process())
-            .await
-    }
-
     /// Every stored entry under one watched root.
     pub async fn load_folder_scan_items(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<Vec<ScanItem>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
         self.read(move |sql| {
             load_folder_scan_items_on(&sql, &watched_folder_path, RowSources::Scanned)
         })
@@ -472,9 +469,9 @@ impl Database {
     /// The stored entry at `entry_key`, whichever root it is under.
     pub async fn load_folder_scan_item(
         &self,
-        entry_key: &str,
+        entry_key: &CandidateKey,
     ) -> Result<Option<ScanItem>, DbError> {
-        let entry_key = entry_key.to_string();
+        let entry_key = entry_key.clone();
         self.read(move |sql| read::load_item_by_key_rows(&sql, &entry_key, RowSources::Any))
             .process(|process| {
                 process
@@ -495,10 +492,10 @@ impl Database {
 /// read, and the reading that settles them does the replacing.
 fn superseded_keys(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    entry_key: &str,
+    watched_folder_path: &Path,
+    entry_key: &CandidateKey,
     item: &ScanItem,
-) -> Result<Vec<String>, DbError> {
+) -> Result<Vec<CandidateKey>, DbError> {
     let (ScanItem::Valid(_) | ScanItem::Invalid(_)) = item else {
         return Ok(Vec::new());
     };
@@ -539,7 +536,7 @@ pub(crate) enum ScanItemSeed {
 /// deleting the entries it supersedes. The caller has checked `generation`.
 fn write_scan_item(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     to_write: &ScanItemToWrite,
     observed_at: i64,
@@ -572,7 +569,7 @@ fn write_scan_item(
     };
     // A valid release takes its files from any sidecar holding them.
     let uncovered = sidecar::delete_sidecars_holding(sql, &to_write.item)?;
-    let touched: Vec<String> = std::iter::once(entry_key)
+    let touched: Vec<CandidateKey> = std::iter::once(entry_key)
         .chain(superseded_keys.iter().cloned())
         .collect();
     let regrouped = super::release_groupings::rebuild_groupings(sql, &touched, &uncovered)?;
@@ -612,7 +609,7 @@ pub(super) enum EntryWrite {
     Unchanged,
     Stored {
         /// The keys of the entries it replaced.
-        replaced: Vec<String>,
+        replaced: Vec<CandidateKey>,
         /// Whether it stored a valid release that is found, by the rule its
         /// [`EntrySource`] names.
         found: bool,
@@ -622,7 +619,7 @@ pub(super) enum EntryWrite {
 /// Write one entry under `generation`, inside the caller's transaction.
 pub(super) fn write_entry(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     to_write: &ScanItemToWrite,
     source: EntrySource,
@@ -766,11 +763,11 @@ pub(super) fn write_entry(
 
 pub(super) fn load_folder_scan_items_on(
     sql: &SqlReadContext<'_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<impl FnOnce() -> Result<Vec<ScanItem>, DbError> + Send + 'static, DbError> {
     let items = read::load_items(sql, watched_folder_path, sources)?;
-    let watched_folder_path = watched_folder_path.to_string();
+    let watched_folder_path = watched_folder_path.to_path_buf();
     Ok(move || {
         items()?
             .into_iter()
@@ -782,81 +779,18 @@ pub(super) fn load_folder_scan_items_on(
     })
 }
 
-#[cfg(test)]
-fn load_folder_scan_snapshots_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
-    let roots = sql.query(
-        "SELECT roots.watched_folder_path, roots.generation, roots.status, roots.error, \
-                COUNT(candidate.path) \
-         FROM folder_scan_roots AS roots \
-         LEFT JOIN scan_candidate AS candidate \
-           ON candidate.watched_folder_path = roots.watched_folder_path \
-          AND candidate.generation = roots.generation \
-         GROUP BY roots.watched_folder_path, roots.generation, roots.status, roots.error \
-         ORDER BY roots.watched_folder_path",
-        [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, i64>(4)?,
-            ))
-        },
-    )?;
-
-    let mut snapshots = Vec::with_capacity(roots.len());
-    for (watched_folder_path, generation, status, error, found_count) in roots {
-        let generation = u64::try_from(generation).map_err(|error| {
-            DbError::Message(format!(
-                "folder scan root {watched_folder_path} has a negative generation: {error}"
-            ))
-        })?;
-        let status = match (status.as_str(), error) {
-            ("scanning", None) => crate::import::FolderScanStatus::Scanning {
-                found_count: columns::to_u64(found_count, "current folder-scan candidate count")?,
-            },
-            ("complete", None) => crate::import::FolderScanStatus::Complete,
-            ("failed", Some(error)) => crate::import::FolderScanStatus::Failed { error },
-            (status, error) => {
-                return Err(DbError::Message(format!(
-                    "folder scan root {watched_folder_path} has invalid status {status:?} \
-                     and error {error:?}"
-                )))
-            }
-        };
-        let items = load_folder_scan_items_on(sql, &watched_folder_path, RowSources::Any)?;
-        snapshots.push((watched_folder_path, generation, status, items));
-    }
-    Ok(move || {
-        snapshots
-            .into_iter()
-            .map(|(watched_folder_path, generation, status, items)| {
-                Ok(DbFolderScanSnapshot {
-                    watched_folder_path,
-                    generation,
-                    status,
-                    items: items()?,
-                })
-            })
-            .collect()
-    })
-}
-
 pub(super) fn validate_scan_item_ownership(
-    watched_folder_path: &str,
-    entry_key: &str,
+    watched_folder_path: &Path,
+    entry_key: &CandidateKey,
     item: &ScanItem,
 ) -> Result<(), DbError> {
-    if item.persisted_key().as_deref() != Some(entry_key) {
+    if item.persisted_key().as_ref() != Some(entry_key) {
         return Err(DbError::Message(format!(
             "folder scan entry key {entry_key} does not match its item key {:?}",
             item.persisted_key()
         )));
     }
-    let root = Path::new(watched_folder_path);
+    let root = watched_folder_path;
     // A grouping's release is listed under its first member's watched folder
     // and may read folders under others; each release it takes in was checked
     // when stored.
@@ -869,22 +803,31 @@ pub(super) fn validate_scan_item_ownership(
     };
     let (item_root, item_path) = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => (
-            candidate.watched_folder_path.as_str(),
-            candidate.path.as_path(),
+            candidate.watched_folder_path.as_path(),
+            candidate.path.clone(),
         ),
         ScanItem::Invalid(candidate) => (
-            candidate.watched_folder_path.as_str(),
-            candidate.path.as_path(),
+            candidate.watched_folder_path.as_path(),
+            candidate.path.clone(),
         ),
-        ScanItem::Decided { key, .. } => (key.watched_folder_path.as_str(), Path::new(entry_key)),
+        ScanItem::Decided { key, .. } => (
+            key.watched_folder_path.as_path(),
+            crate::import::relative_folder::folder_below(
+                &key.watched_folder_path,
+                &key.relative_folder,
+            ),
+        ),
         ScanItem::Sidecar(sidecar) => (
-            sidecar.watched_folder_path.as_str(),
-            sidecar.folder.as_path(),
+            sidecar.watched_folder_path.as_path(),
+            sidecar.folder.clone(),
         ),
     };
-    if item_root != watched_folder_path || (!grouped && !item_path.starts_with(root)) {
+    if item_root.as_os_str() != watched_folder_path.as_os_str()
+        || (!grouped && !item_path.starts_with(root))
+    {
         return Err(DbError::Message(format!(
-            "folder scan entry {entry_key} does not belong to watched folder {watched_folder_path}"
+            "folder scan entry {entry_key} does not belong to watched folder {}",
+            coven::path_text(watched_folder_path)
         )));
     }
     match item {
@@ -921,13 +864,12 @@ pub(super) fn store_folder_reading(
     key: &FolderReleaseDecisionKey,
     decision: crate::import::folder_scanner::FolderReleaseDecision,
     author: crate::import::folder_scanner::FolderReleaseDecisionAuthor,
-    grouping: &str,
+    grouping: &CandidateKey,
 ) -> Result<(), DbError> {
-    crate::import::folder_path::validate_relative_path(&key.relative_folder_path)?;
-    if key.relative_folder_path.is_empty() {
+    if key.relative_folder.is_root() {
         return Err(DbError::Message(format!(
             "{} is never a release, so it has no reading to store",
-            key.watched_folder_path
+            coven::path_text(&key.watched_folder_path)
         )));
     }
     let author = match author {
@@ -938,17 +880,20 @@ pub(super) fn store_folder_reading(
         decision,
         crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease
     );
-    let anchor = crate::import::folder_path::folder_below(
+    let anchor = crate::import::relative_folder::folder_below(
         &key.watched_folder_path,
-        &key.relative_folder_path,
-    )?;
+        &key.relative_folder,
+    );
     let covering = super::import_state::require_watched(sql, &anchor)?;
-    if covering != key.watched_folder_path {
+    if covering.as_os_str() != key.watched_folder_path.as_os_str() {
         return Err(DbError::Message(format!(
-            "{anchor} is watched under {covering}, not {}",
-            key.watched_folder_path
+            "{} is watched under {}, not {}",
+            coven::path_text(&anchor),
+            coven::path_text(&covering),
+            coven::path_text(&key.watched_folder_path)
         )));
     }
+    let anchor = coven::path_bytes(&anchor);
     sql.execute(
         "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
          VALUES (?, ?, ?, ?) \
@@ -958,32 +903,31 @@ pub(super) fn store_folder_reading(
              OR release_grouping.author != 'user'",
         params![grouping, anchor, combined, author],
     )?;
-    let stored: String = sql.query_row(
+    let stored: CandidateKey = sql.query_row(
         "SELECT key FROM release_grouping WHERE anchor_folder = ?",
         [&anchor],
         |row| row.get(0),
     )?;
-    if stored != grouping {
+    if &stored != grouping {
         return Err(DbError::Message(format!(
             "{} is read as grouping {stored}, not {grouping}: the store changed after the \
              reading was taken",
-            key.relative_folder_path
+            key.relative_folder.text()
         )));
     }
     Ok(())
 }
 
 pub(super) fn validate_decision_key_ownership(
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     key: &FolderReleaseDecisionKey,
 ) -> Result<(), DbError> {
-    if key.watched_folder_path != watched_folder_path {
+    if key.watched_folder_path.as_os_str() != watched_folder_path.as_os_str() {
         return Err(DbError::Message(format!(
-            "folder release decision belongs to {} instead of {watched_folder_path}",
-            key.watched_folder_path
+            "folder release decision belongs to {} instead of {}",
+            coven::path_text(&key.watched_folder_path),
+            coven::path_text(watched_folder_path)
         )));
     }
-    Ok(crate::import::folder_path::validate_relative_path(
-        &key.relative_folder_path,
-    )?)
+    Ok(())
 }

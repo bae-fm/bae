@@ -13,44 +13,48 @@ impl ImportServiceHandle {
             }));
     }
 
-    /// Mark the candidate at `path` skipped or unskipped and announce the
-    /// change; a request that changes nothing writes nothing and sends no event.
+    /// Mark the candidate at `candidate_key` skipped or unskipped and
+    /// announce the change; a request that changes nothing writes nothing and
+    /// sends no event.
     ///
     /// Skipping ends the candidate's identification, since the person has set
     /// it aside.
     pub async fn set_candidate_skipped(
         &self,
-        path: String,
+        candidate_key: crate::import::CandidateKey,
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.set_candidate_skipped_write(path, skipped).await })
-            .await
+        self.committed(async move {
+            this.set_candidate_skipped_write(candidate_key, skipped)
+                .await
+        })
+        .await
     }
 
     async fn set_candidate_skipped_write(
         &self,
-        path: String,
+        candidate_key: crate::import::CandidateKey,
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("skip a candidate").await;
-        let Some(candidate) = self.get_release_candidate(&path).await? else {
+        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
-                detail: format!("{path} is not an actionable folder candidate"),
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
         if candidate.grouping.is_some() {
             if self
                 .library_manager
-                .set_grouping_skipped(&path, skipped)
+                .set_grouping_skipped(&candidate_key, skipped)
                 .await?
             {
                 if skipped {
-                    self.identification_ended(&path).await;
+                    self.identification_ended(&candidate_key).await;
                 }
                 self.event_tx
                     .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
-                        candidate_key: path,
+                        candidate_key,
                         skipped,
                     }));
             }
@@ -58,15 +62,15 @@ impl ImportServiceHandle {
         }
         let changed = self
             .library_manager
-            .set_import_candidate_skipped(&candidate.path.to_string_lossy(), skipped)
+            .set_import_candidate_skipped(&candidate.path, skipped)
             .await?;
         if changed {
             if skipped {
-                self.identification_ended(&path).await;
+                self.identification_ended(&candidate_key).await;
             }
             self.event_tx
                 .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
-                    candidate_key: path,
+                    candidate_key,
                     skipped,
                 }));
         }
@@ -80,7 +84,7 @@ impl ImportServiceHandle {
     /// offers a file that [`Self::set_sheet_binding`] would reject.
     pub async fn sheet_binding_options(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         sheet_file_id: String,
     ) -> Result<Vec<crate::import::folder_scanner::SheetReferenceOptions>, crate::import::ImportError>
     {
@@ -101,7 +105,7 @@ impl ImportServiceHandle {
     /// binding changes the folder's tracks.
     pub async fn set_sheet_binding(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         sheet_file_id: String,
         file_reference: String,
         audio_file_id: Option<String>,
@@ -121,7 +125,7 @@ impl ImportServiceHandle {
 
     async fn set_sheet_binding_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         sheet_file_id: String,
         file_reference: String,
         audio_file_id: Option<String>,
@@ -179,7 +183,7 @@ impl ImportServiceHandle {
     /// audio. Disc zero and numbers above `i32::MAX` are refused.
     pub async fn set_sheet_disc(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         sheet_file_id: String,
         disc: crate::import::folder_scanner::SheetDisc,
     ) -> Result<(), crate::import::ImportError> {
@@ -193,7 +197,7 @@ impl ImportServiceHandle {
 
     async fn set_sheet_disc_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         sheet_file_id: String,
         disc: crate::import::folder_scanner::SheetDisc,
     ) -> Result<(), crate::import::ImportError> {
@@ -335,7 +339,7 @@ impl ImportServiceHandle {
     /// draft.
     pub(super) async fn metadata_write_base(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<
         (
             crate::import::folder_scanner::FolderCandidate,
@@ -362,7 +366,7 @@ impl ImportServiceHandle {
     /// stays as it is.
     pub(super) async fn read_candidate_file_tags_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
@@ -422,7 +426,7 @@ impl ImportServiceHandle {
     /// from that release.
     pub(super) async fn pick_candidate_release_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         link: crate::import::PressingLink,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
@@ -520,7 +524,7 @@ impl ImportServiceHandle {
     /// the change.
     pub(crate) async fn clear_candidate_metadata(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
@@ -536,7 +540,7 @@ impl ImportServiceHandle {
 
     async fn clear_candidate_metadata_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
@@ -589,7 +593,7 @@ impl ImportServiceHandle {
     /// starts without it.
     pub(crate) async fn keep_candidate_draft(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move { this.keep_candidate_draft_write(candidate_key).await })
@@ -598,7 +602,7 @@ impl ImportServiceHandle {
 
     async fn keep_candidate_draft_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
@@ -634,7 +638,7 @@ impl ImportServiceHandle {
     /// Unlink the candidate from its release. The draft stays as it is.
     pub(crate) async fn unlink_candidate_release(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
@@ -649,7 +653,7 @@ impl ImportServiceHandle {
 
     async fn unlink_candidate_release_write(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
@@ -671,7 +675,7 @@ impl ImportServiceHandle {
             .await?)
     }
 
-    pub(crate) fn announce_metadata_changed(&self, candidate_key: String) {
+    pub(crate) fn announce_metadata_changed(&self, candidate_key: crate::import::CandidateKey) {
         self.event_tx
             .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
                 candidate_key,
@@ -685,7 +689,7 @@ impl ImportServiceHandle {
     /// (unreadable audio) fails with nothing written.
     async fn write_file_edits(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         files: crate::import::folder_scanner::CategorizedFiles,
         offered_revision: u64,
         decide: impl FnOnce(&mut crate::import::folder_scanner::CandidateFileEdits),
@@ -842,7 +846,7 @@ impl ImportServiceHandle {
     /// names no candidate that can be edited; callers word their own refusal.
     pub(super) async fn actionable_candidate_files(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<
         Option<(crate::import::folder_scanner::CategorizedFiles, u64)>,
         crate::import::ImportError,
@@ -857,7 +861,7 @@ impl ImportServiceHandle {
     /// that names no candidate.
     async fn folder_files_for_binding(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<(crate::import::folder_scanner::CategorizedFiles, u64), crate::import::ImportError>
     {
         self.actionable_candidate_files(candidate_key)

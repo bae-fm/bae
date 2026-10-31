@@ -147,7 +147,7 @@ pub struct CandidatePreparation {
     /// `CategorizedFiles::content_hash` — the row's identity.
     pub content_hash: String,
     /// Where the candidate was last seen on disk. Not identity — the hash is.
-    pub folder_path: String,
+    pub candidate_key: crate::import::CandidateKey,
     /// The person's decisions about the folder's files, and the revision
     /// every write against this file shape is checked against.
     pub file_edits: CandidateFileEdits,

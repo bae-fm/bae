@@ -10,7 +10,7 @@ struct ImportListEntryActions {
     /// Read every release below the header's folder as one.
     let onCombineFolder: (_ key: BridgeFolderReleaseDecisionKey) -> Void
     /// Read the release at `key` as the folders it is made of.
-    let onSeparate: (_ key: String) -> Void
+    let onSeparate: (_ key: Data) -> Void
     /// Open the release this device imported from a Done row's files.
     let onShowInLibrary: (_ release: BridgeImportedRelease) -> Void
     /// Run one action a row's menu offers, for the row or the selection.
@@ -161,7 +161,7 @@ struct ImportListGroupHeader: View {
 extension BridgeImportListItem {
     /// The candidate key selecting the row selects: `nil` for a group
     /// header, which is never selected.
-    var selectionKey: String? {
+    var selectionKey: Data? {
         switch self {
         case .groupHeader:
             nil

@@ -17,7 +17,7 @@ fn load_folder_scan_progress_on(
     for (watched_folder_path, status, error, volume, found_count) in
         sql.query(super::FOLDER_SCAN_PROGRESS, [], |row| {
             Ok((
-                row.get::<_, String>(0)?,
+                path_column::get(row, 0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, String>(3)?,
@@ -27,7 +27,8 @@ fn load_folder_scan_progress_on(
     {
         let volume = crate::import::VolumeKind::from_column(&volume).ok_or_else(|| {
             DbError::Message(format!(
-                "folder scan root {watched_folder_path} has invalid volume {volume:?}"
+                "folder scan root {} has invalid volume {volume:?}",
+                coven::path_text(&watched_folder_path)
             ))
         })?;
         let status = match (status.as_str(), error) {
@@ -38,8 +39,8 @@ fn load_folder_scan_progress_on(
             ("failed", Some(error)) => FolderScanStatus::Failed { error },
             (status, error) => {
                 return Err(DbError::Message(format!(
-                    "folder scan root {watched_folder_path} has invalid status {status:?} \
-                     and error {error:?}"
+                    "folder scan root {} has invalid status {status:?} and error {error:?}",
+                    coven::path_text(&watched_folder_path)
                 )))
             }
         };

@@ -178,8 +178,8 @@ struct ImportListSelectionTests {
         let changes = CallLog<BridgeSelectionChange>()
         let header = PreviewData.groupHeaderItem(
             key: BridgeFolderReleaseDecisionKey(
-                watchedFolderPath: "/library",
-                relativeFolderPath: "Group"
+                watchedFolderPath: Data("/library".utf8),
+                relativeFolder: Data("Group".utf8)
             ),
             name: "Group",
             entryCount: 1
@@ -279,8 +279,8 @@ struct ImportListSelectionTests {
     /// The header of a group, `Group`, under the library's folder.
     private static let groupHeader = PreviewData.groupHeaderItem(
         key: BridgeFolderReleaseDecisionKey(
-            watchedFolderPath: "/library",
-            relativeFolderPath: "Group"
+            watchedFolderPath: Data("/library".utf8),
+            relativeFolder: Data("Group".utf8)
         ),
         name: "Group",
         entryCount: 1

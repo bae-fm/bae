@@ -10,13 +10,14 @@ use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::{
     CandidateFile, FileRole, FolderCandidate, InvalidCandidate, ScanItem,
 };
+use crate::import::CandidateKey;
 
 /// Remove the entry at `key`: its candidate leaves the scan, and its
 /// identification ends with it.
 pub(crate) fn delete_entry(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    key: &str,
+    watched_folder_path: &Path,
+    key: &CandidateKey,
 ) -> Result<(), DbError> {
     delete_entry_row(sql, watched_folder_path, key)?;
     super::super::import_state::end_identification_unless_of_on(sql, key, None)
@@ -24,12 +25,12 @@ pub(crate) fn delete_entry(
 
 fn delete_entry_row(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    key: &str,
+    watched_folder_path: &Path,
+    key: &CandidateKey,
 ) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
-        params![watched_folder_path, key],
+        params![coven::path_bytes(watched_folder_path), key],
     )?;
     Ok(())
 }
@@ -49,13 +50,13 @@ pub(super) const ENTRY_ROW_TABLES: [&str; 5] = [
 /// its candidate's identification.
 pub(super) fn clear_entry_rows(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    key: &str,
+    watched_folder_path: &Path,
+    key: &CandidateKey,
 ) -> Result<(), DbError> {
     for table in ENTRY_ROW_TABLES {
         sql.execute(
             &format!("DELETE FROM {table} WHERE watched_folder_path = ? AND candidate_path = ?"),
-            params![watched_folder_path, key],
+            params![coven::path_bytes(watched_folder_path), key],
         )?;
     }
     Ok(())
@@ -65,7 +66,7 @@ pub(super) fn clear_entry_rows(
 /// stored under the same key, column for column.
 const OVER_STORED_ROW: &str = "ON CONFLICT (watched_folder_path, path) DO UPDATE SET \
      generation = excluded.generation, kind = excluded.kind, name = excluded.name, \
-     display_path = excluded.display_path, folder = excluded.folder, \
+     relative_folder = excluded.relative_folder, folder = excluded.folder, \
      file_root = excluded.file_root, scope = excluded.scope, \
      content_hash = excluded.content_hash, file_edit_revision = excluded.file_edit_revision, \
      grouping_key = excluded.grouping_key, source_kind = excluded.source_kind";
@@ -74,14 +75,14 @@ const OVER_STORED_ROW: &str = "ON CONFLICT (watched_folder_path, path) DO UPDATE
 /// transaction.
 pub(crate) fn replace_candidate_file_tag_snapshot(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
 ) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM scan_candidate_tag_snapshot \
          WHERE watched_folder_path = ? AND candidate_path = ?",
-        params![watched_folder_path, candidate_path],
+        params![coven::path_bytes(watched_folder_path), candidate_path],
     )?;
     let (cover_source, cover_content_type, cover_data) = match &snapshot.embedded_cover {
         Some(cover) => (
@@ -98,7 +99,7 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
               embedded_cover_data) \
          VALUES (?, ?, ?, ?, ?, ?, ?)",
         params![
-            watched_folder_path,
+            coven::path_bytes(watched_folder_path),
             candidate_path,
             to_i64(
                 snapshot.scan_generation,
@@ -123,7 +124,7 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
                   labels, copyrights, store) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
-                watched_folder_path,
+                coven::path_bytes(watched_folder_path),
                 candidate_path,
                 fact.observation.relative_path,
                 to_i64(fact.observation.size, "a file-tag observation's size")?,
@@ -157,19 +158,19 @@ fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError>
 /// return their keys.
 pub(super) fn prune_other_generations(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
-) -> Result<Vec<String>, DbError> {
-    let pruned: Vec<String> = sql.query(
+) -> Result<Vec<CandidateKey>, DbError> {
+    let pruned: Vec<CandidateKey> = sql.query(
         "SELECT path FROM scan_candidate \
          WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder' \
          ORDER BY path",
-        params![watched_folder_path, generation],
-        |row| row.get::<_, String>(0),
+        params![coven::path_bytes(watched_folder_path), generation],
+        |row| row.get::<_, CandidateKey>(0),
     )?;
     sql.execute(
         "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder'",
-        params![watched_folder_path, generation],
+        params![coven::path_bytes(watched_folder_path), generation],
     )?;
     // The candidates the pass did not find leave the scan, and their
     // identifications with them.
@@ -184,25 +185,25 @@ pub(super) fn prune_other_generations(
 /// files the reading was taken from, so the reading stays current with it.
 pub(crate) fn touch_candidate(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    path: &str,
+    watched_folder_path: &Path,
+    path: &CandidateKey,
     generation: i64,
 ) -> Result<(), DbError> {
     sql.execute(
         "UPDATE scan_candidate SET generation = ? WHERE watched_folder_path = ? AND path = ?",
-        params![generation, watched_folder_path, path],
+        params![generation, coven::path_bytes(watched_folder_path), path],
     )?;
     sql.execute(
         "UPDATE scan_candidate_tag_snapshot SET scan_generation = ? \
          WHERE watched_folder_path = ? AND candidate_path = ?",
-        params![generation, watched_folder_path, path],
+        params![generation, coven::path_bytes(watched_folder_path), path],
     )?;
     Ok(())
 }
 
 pub(super) fn insert_item(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     item: &ScanItem,
     file_metadata: Option<&crate::import::file_metadata_seed::FileMetadataSeed>,
@@ -245,7 +246,7 @@ pub(super) fn insert_item(
 
 fn insert_candidate(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     kind: &str,
     source_kind: &str,
@@ -285,7 +286,7 @@ fn insert_candidate(
 /// for a grouping's.
 pub(crate) fn insert_candidate_row(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     kind: &str,
     source_kind: &str,
@@ -295,20 +296,20 @@ pub(crate) fn insert_candidate_row(
     sql.execute(
         &format!(
             "INSERT INTO scan_candidate \
-                 (watched_folder_path, path, generation, kind, name, display_path, folder, \
+                 (watched_folder_path, path, generation, kind, name, relative_folder, folder, \
                   file_root, scope, content_hash, file_edit_revision, grouping_key, \
                   source_kind) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) {OVER_STORED_ROW}"
         ),
         params![
-            watched_folder_path,
+            coven::path_bytes(watched_folder_path),
             path,
             generation,
             kind,
             candidate.name,
-            candidate.display_path,
-            candidate.path.to_string_lossy(),
-            candidate.file_root.to_string_lossy(),
+            candidate.relative_folder,
+            coven::path_bytes(&candidate.path),
+            coven::path_bytes(&candidate.file_root),
             scope_text(candidate.scope),
             candidate.files.content_hash(),
             to_i64(
@@ -325,10 +326,10 @@ pub(crate) fn insert_candidate_row(
                  (watched_folder_path, candidate_path, position, folder, prefix) \
              VALUES (?, ?, ?, ?, ?)",
             params![
-                watched_folder_path,
+                coven::path_bytes(watched_folder_path),
                 path,
                 to_i64(position as u64, "a release part's position")?,
-                part.folder.to_string_lossy(),
+                coven::path_bytes(&part.folder),
                 part.prefix,
             ],
         )?;
@@ -350,27 +351,27 @@ pub(crate) enum CandidateStateSeed<'a> {
 /// lives while a watched folder covers one of those folders.
 pub(crate) fn ensure_candidate_state(
     sql: &SqlContext<'_, '_>,
-    path: &str,
+    path: &CandidateKey,
     folder: &std::path::Path,
     files: &crate::import::folder_scanner::CategorizedFiles,
     seed: CandidateStateSeed<'_>,
 ) -> Result<(), DbError> {
     let content_hash = files.content_hash();
     let created = sql.execute(
-        "INSERT INTO import_candidate_state (content_hash, folder_path) VALUES (?, ?) \
+        "INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES (?, ?) \
          ON CONFLICT (content_hash) DO NOTHING",
         params![content_hash, path],
     )? == 1;
     if !created {
         sql.execute(
-            "UPDATE import_candidate_state SET folder_path = ? WHERE content_hash = ?",
+            "UPDATE import_candidate_state SET candidate_key = ? WHERE content_hash = ?",
             params![path, content_hash],
         )?;
     }
     sql.execute(
         "INSERT INTO import_candidate_folder (content_hash, folder) \
          VALUES (?, ?) ON CONFLICT DO NOTHING",
-        params![content_hash, folder.to_string_lossy()],
+        params![content_hash, coven::path_bytes(folder)],
     )?;
     let has_draft = sql
         .query_row(
@@ -425,27 +426,27 @@ pub(crate) fn ensure_candidate_state(
 
 fn insert_invalid(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     source_kind: &str,
     candidate: &InvalidCandidate,
 ) -> Result<(), DbError> {
-    let folder = candidate.path.to_string_lossy();
+    let folder = coven::path_bytes(&candidate.path);
     let key = candidate.key();
     sql.execute(
         &format!(
             "INSERT INTO scan_candidate \
-                 (watched_folder_path, path, generation, kind, name, display_path, folder, \
+                 (watched_folder_path, path, generation, kind, name, relative_folder, folder, \
                   file_root, scope, content_hash, file_edit_revision, grouping_key, \
                   source_kind) \
              VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?) {OVER_STORED_ROW}"
         ),
         params![
-            watched_folder_path,
+            coven::path_bytes(watched_folder_path),
             key,
             generation,
             candidate.name,
-            candidate.display_path,
+            candidate.relative_folder,
             folder,
             folder,
             scope_text(if candidate.grouping.is_some() {
@@ -465,7 +466,7 @@ fn insert_invalid(
                   size, modified_at_ns, role, audio_damage) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
-                watched_folder_path,
+                coven::path_bytes(watched_folder_path),
                 key,
                 to_i64(position as u64, "a skipped file's position")?,
                 file.relative_path,
@@ -482,7 +483,12 @@ fn insert_invalid(
             "INSERT INTO scan_skipped_tags \
                  (watched_folder_path, candidate_path, album_title, artist) \
              VALUES (?, ?, ?, ?)",
-            params![watched_folder_path, key, tags.album_title, tags.artist],
+            params![
+                coven::path_bytes(watched_folder_path),
+                key,
+                tags.album_title,
+                tags.artist
+            ],
         )?;
     }
     Ok(())
@@ -494,8 +500,8 @@ fn insert_invalid(
 /// sheet's.
 pub(crate) fn insert_candidate_files(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     files: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Result<(), DbError> {
     for (position, file) in files.files.iter().enumerate() {
@@ -512,7 +518,7 @@ pub(crate) fn insert_candidate_files(
                       file_reference, audio_relative_path) \
                  VALUES (?, ?, ?, ?, ?, ?)",
                 params![
-                    watched_folder_path,
+                    coven::path_bytes(watched_folder_path),
                     candidate_path,
                     sheet.file.relative_path,
                     to_i64(position as u64, "a sheet audio file's position")?,
@@ -527,8 +533,8 @@ pub(crate) fn insert_candidate_files(
 
 fn insert_file(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     position: usize,
     file: &CandidateFile,
 ) -> Result<(), DbError> {
@@ -542,7 +548,7 @@ fn insert_file(
               sheet_binding_codec, sheet_disc, sheet_disc_number) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
-            watched_folder_path,
+            coven::path_bytes(watched_folder_path),
             candidate_path,
             file.file.relative_path,
             to_i64(position as u64, "a candidate file's position")?,
@@ -597,8 +603,8 @@ fn insert_file(
 
 fn insert_cue_sheet(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     sheet_relative_path: &str,
     sheet: &CueSheet,
 ) -> Result<(), DbError> {
@@ -608,7 +614,7 @@ fn insert_cue_sheet(
               catalog, date, ripper) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
-            watched_folder_path,
+            coven::path_bytes(watched_folder_path),
             candidate_path,
             sheet_relative_path,
             sheet.title,
@@ -631,7 +637,7 @@ fn insert_cue_sheet(
                   end_cue_frames, generated_pregap_frames) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
-                watched_folder_path,
+                coven::path_bytes(watched_folder_path),
                 candidate_path,
                 sheet_relative_path,
                 position,
@@ -659,7 +665,7 @@ fn insert_cue_sheet(
                       position, number, frames, file_reference) \
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
-                    watched_folder_path,
+                    coven::path_bytes(watched_folder_path),
                     candidate_path,
                     sheet_relative_path,
                     position,

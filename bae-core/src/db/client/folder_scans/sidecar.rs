@@ -14,6 +14,7 @@ use crate::import::folder_scanner::{
     CandidateFile, FileRole, FileVersion, FolderSidecar, ProposedRole, ScanItem, ScannedFile,
     SidecarFiles, SkippedFile,
 };
+use crate::import::CandidateKey;
 
 /// A sidecar as columns of a read over `scan_sidecar` aliased `sidecar`, its
 /// files riding on it as a JSON array in their order.
@@ -26,16 +27,16 @@ const SIDECAR_COLUMNS: &str = "sidecar.folder, sidecar.watched_folder_path, side
 
 /// One sidecar's [`SIDECAR_COLUMNS`] as SQLite hands them over.
 struct StoredSidecar {
-    folder: String,
-    watched_folder_path: String,
+    folder: PathBuf,
+    watched_folder_path: PathBuf,
     state: String,
     files: String,
 }
 
 fn read_stored_sidecar(row: &Row<'_>) -> rusqlite::Result<StoredSidecar> {
     Ok(StoredSidecar {
-        folder: row.get(0)?,
-        watched_folder_path: row.get(1)?,
+        folder: path_column::get(row, 0)?,
+        watched_folder_path: path_column::get(row, 1)?,
         state: row.get(2)?,
         files: row.get(3)?,
     })
@@ -58,14 +59,16 @@ impl StoredSidecar {
         let folder = self.folder;
         let rows: Vec<SidecarFileRow> = serde_json::from_str(&self.files).map_err(|error| {
             DbError::Message(format!(
-                "the sidecar files stored for {folder} do not read: {error}"
+                "the sidecar files stored for {} do not read: {error}",
+                coven::path_text(&folder)
             ))
         })?;
         let files = match self.state.as_str() {
             "downloading" => {
                 if !rows.is_empty() {
                     return Err(DbError::Message(format!(
-                        "the sidecar of {folder} is downloading and stores files"
+                        "the sidecar of {} is downloading and stores files",
+                        coven::path_text(&folder)
                     )));
                 }
                 SidecarFiles::Downloading
@@ -112,7 +115,7 @@ impl StoredSidecar {
         };
         Ok(FolderSidecar {
             watched_folder_path: self.watched_folder_path,
-            folder: PathBuf::from(folder),
+            folder,
             files,
         })
     }
@@ -125,7 +128,7 @@ pub(crate) fn load_sidecar(
 ) -> Result<Option<FolderSidecar>, DbError> {
     sql.query_row(
         &format!("SELECT {SIDECAR_COLUMNS} FROM scan_sidecar AS sidecar WHERE sidecar.folder = ?"),
-        [folder.to_string_lossy()],
+        [coven::path_bytes(folder)],
         read_stored_sidecar,
     )
     .optional()?
@@ -136,14 +139,14 @@ pub(crate) fn load_sidecar(
 /// Every sidecar stored under `watched_folder_path`, in folder order.
 pub(super) fn load_sidecars(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
 ) -> Result<Vec<FolderSidecar>, DbError> {
     sql.query(
         &format!(
             "SELECT {SIDECAR_COLUMNS} FROM scan_sidecar AS sidecar \
              WHERE sidecar.watched_folder_path = ? ORDER BY sidecar.folder"
         ),
-        [watched_folder_path],
+        [coven::path_bytes(watched_folder_path)],
         read_stored_sidecar,
     )?
     .into_iter()
@@ -157,21 +160,22 @@ pub(super) fn load_sidecars(
 /// generation.
 pub(super) fn write_sidecar(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     sidecar: &FolderSidecar,
 ) -> Result<ScanItemWrite, DbError> {
-    let root = Path::new(watched_folder_path);
-    if sidecar.watched_folder_path != watched_folder_path
+    let root = watched_folder_path;
+    if sidecar.watched_folder_path.as_os_str() != watched_folder_path.as_os_str()
         || sidecar.folder == root
         || !sidecar.folder.starts_with(root)
     {
         return Err(DbError::Message(format!(
-            "the sidecar of {} does not belong below watched folder {watched_folder_path}",
-            sidecar.folder.display()
+            "the sidecar of {} does not belong below watched folder {}",
+            coven::path_text(&sidecar.folder),
+            coven::path_text(watched_folder_path)
         )));
     }
-    let folder_text = sidecar.folder.to_string_lossy().into_owned();
+    let folder_text = coven::path_bytes(&sidecar.folder);
     if load_sidecar(sql, &sidecar.folder)?.as_ref() == Some(sidecar) {
         sql.execute(
             "UPDATE scan_sidecar SET generation = ? WHERE folder = ?",
@@ -200,7 +204,7 @@ pub(super) fn write_sidecar(
                         FileRole::Audio | FileRole::TrackSheet { .. } => {
                             return Err(DbError::Message(format!(
                                 "{} is a sidecar file read as a track or a sheet",
-                                entry.file.path.display()
+                                coven::path_text(&entry.file.path)
                             )))
                         }
                     },
@@ -215,7 +219,7 @@ pub(super) fn write_sidecar(
                 if matches!(file.role, ProposedRole::Audio | ProposedRole::Cue) {
                     return Err(DbError::Message(format!(
                         "{} is a sidecar file read as a track or a sheet",
-                        file.file.path.display()
+                        coven::path_text(&file.file.path)
                     )));
                 }
                 Ok(StoredSidecarFile {
@@ -231,7 +235,7 @@ pub(super) fn write_sidecar(
         SidecarFiles::Downloading => Vec::new(),
     };
     let paths = path_column::hex_list(files.iter().map(|entry| entry.path));
-    let superseded_keys: Vec<String> = sql.query(
+    let superseded_keys: Vec<CandidateKey> = sql.query(
         "SELECT DISTINCT file.candidate_path FROM scan_candidate_file AS file \
          JOIN scan_candidate AS candidate \
            ON candidate.watched_folder_path = file.watched_folder_path \
@@ -248,12 +252,12 @@ pub(super) fn write_sidecar(
     // A sidecar an earlier reading stored for another folder that held one
     // of these files — the folder above, before this one held audio below
     // it — is replaced the same way.
-    let touched: Vec<String> = sql.query(
+    let touched: Vec<PathBuf> = sql.query(
         "SELECT ? UNION SELECT folder FROM scan_sidecar_file \
          WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY 1",
         params![folder_text, paths],
-        |row| row.get(0),
+        |row| path_column::get(row, 0),
     )?;
     delete_sidecars_at(sql, &touched)?;
     let state = match &sidecar.files {
@@ -264,7 +268,12 @@ pub(super) fn write_sidecar(
     sql.execute(
         "INSERT INTO scan_sidecar (folder, watched_folder_path, generation, state) \
          VALUES (?, ?, ?, ?)",
-        params![folder_text, watched_folder_path, generation, state],
+        params![
+            folder_text,
+            coven::path_bytes(watched_folder_path),
+            generation,
+            state
+        ],
     )?;
     for (position, entry) in files.iter().enumerate() {
         sql.execute(
@@ -304,10 +313,10 @@ struct StoredSidecarFile<'a> {
 }
 
 /// Delete the sidecars stored for `folders`.
-fn delete_sidecars_at(sql: &SqlContext<'_, '_>, folders: &[String]) -> Result<(), DbError> {
+fn delete_sidecars_at(sql: &SqlContext<'_, '_>, folders: &[PathBuf]) -> Result<(), DbError> {
     sql.execute(
-        "DELETE FROM scan_sidecar WHERE folder IN (SELECT value FROM json_each(?))",
-        [serde_json::to_string(folders).expect("folder text serializes as JSON")],
+        "DELETE FROM scan_sidecar WHERE folder IN (SELECT unhex(value) FROM json_each(?))",
+        [path_column::hex_list(folders.iter().map(PathBuf::as_path))],
     )?;
     Ok(())
 }
@@ -317,11 +326,11 @@ fn delete_sidecars_at(sql: &SqlContext<'_, '_>, folders: &[String]) -> Result<()
 pub(super) fn delete_sidecars_holding(
     sql: &SqlContext<'_, '_>,
     item: &ScanItem,
-) -> Result<Vec<String>, DbError> {
+) -> Result<Vec<PathBuf>, DbError> {
     let ScanItem::Valid(candidate) = item else {
         return Ok(Vec::new());
     };
-    let held: Vec<String> = sql.query(
+    let held: Vec<PathBuf> = sql.query(
         "SELECT DISTINCT folder FROM scan_sidecar_file \
          WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY folder",
@@ -332,7 +341,7 @@ pub(super) fn delete_sidecars_holding(
                 .iter()
                 .map(|entry| entry.file.path.as_path()),
         )],
-        |row| row.get(0),
+        |row| path_column::get(row, 0),
     )?;
     delete_sidecars_at(sql, &held)?;
     Ok(held)
@@ -343,20 +352,20 @@ pub(super) fn delete_sidecars_holding(
 /// theirs.
 pub(super) fn prune_sidecars(
     sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     generation: i64,
     under: Option<&Path>,
-) -> Result<Vec<String>, DbError> {
-    let pruned: Vec<String> = match under {
+) -> Result<Vec<PathBuf>, DbError> {
+    let pruned: Vec<PathBuf> = match under {
         None => sql.query(
             "SELECT folder FROM scan_sidecar WHERE watched_folder_path = ? AND generation != ? \
              ORDER BY folder",
-            params![watched_folder_path, generation],
-            |row| row.get(0),
+            params![coven::path_bytes(watched_folder_path), generation],
+            |row| path_column::get(row, 0),
         )?,
         Some(under) => {
-            let under = under.to_string_lossy();
-            let (below_first, below_past) = crate::import::folder_path::paths_below(&under);
+            let (below_first, below_past) = crate::import::relative_folder::paths_below(under);
+            let under = coven::path_bytes(under);
             sql.query(
                 "SELECT folder FROM scan_sidecar \
                  WHERE (folder = :folder OR (folder >= :below_first AND folder < :below_past)) \
@@ -366,10 +375,10 @@ pub(super) fn prune_sidecars(
                     ":folder": under,
                     ":below_first": below_first,
                     ":below_past": below_past,
-                    ":root": watched_folder_path,
+                    ":root": coven::path_bytes(watched_folder_path),
                     ":generation": generation,
                 },
-                |row| row.get(0),
+                |row| path_column::get(row, 0),
             )?
         }
     };

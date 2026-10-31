@@ -20,10 +20,10 @@ async fn fail_writes_of(runtime: &CandidateRuntime, stage: &str) {
 #[tokio::test]
 async fn a_start_that_cannot_be_written_fails_and_leaves_the_table_as_it_was() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     let before = runtime.stored_standing_for_test(key).await;
@@ -48,11 +48,11 @@ async fn a_start_that_cannot_be_written_fails_and_leaves_the_table_as_it_was() {
 #[tokio::test]
 async fn an_admission_that_cannot_be_written_marks_nothing() {
     let runtime = CandidateRuntime::for_test().await;
-    let first = "/watch/a/rel1";
-    let second = "/watch/a/rel2";
+    let first = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let marks = vec![
-        (first.to_string(), scanned_key(&runtime, first).await),
-        (second.to_string(), scanned_key(&runtime, second).await),
+        (first.clone(), scanned_key(&runtime, first).await),
+        (second.clone(), scanned_key(&runtime, second).await),
     ];
     fail_writes_of(&runtime, "queued").await;
 

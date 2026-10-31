@@ -58,7 +58,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
 async fn a_session_write_for_an_unknown_key_is_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .move_candidate_pane("/nowhere/at/all", PaneMove::FindOnline)
+        .move_candidate_pane(&crate::import::CandidateKey::test("/nowhere/at/all"), PaneMove::FindOnline)
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;
@@ -115,7 +115,7 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
 async fn clearing_the_failure_of_a_key_with_no_candidate_is_nothing() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     handle
-        .clear_pane_failure("reidentify:release-1")
+        .clear_pane_failure(&crate::import::CandidateKey::reidentify("release-1"))
         .await
         .unwrap();
     shut_down(handle).await;

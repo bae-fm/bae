@@ -3,7 +3,7 @@
 use crate::import::IdentificationInFlight;
 
 /// What the runtime says identification is doing for `key`.
-async fn in_flight(runtime: &CandidateRuntime, key: &str) -> Option<IdentificationInFlight> {
+async fn in_flight(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) -> Option<IdentificationInFlight> {
     runtime
         .snapshot(key)
         .await
@@ -17,11 +17,11 @@ async fn in_flight(runtime: &CandidateRuntime, key: &str) -> Option<Identificati
 #[tokio::test]
 async fn a_queued_key_reads_as_queued_until_its_run_reports() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     assert_eq!(
@@ -52,16 +52,16 @@ async fn a_queued_key_reads_as_queued_until_its_run_reports() {
 #[tokio::test]
 async fn a_request_over_an_answer_being_written_waits_for_the_next_run() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
 
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     assert_eq!(
@@ -81,7 +81,7 @@ async fn a_request_over_an_answer_being_written_waits_for_the_next_run() {
 #[tokio::test]
 async fn a_re_identify_run_is_held_by_the_runtime_alone() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "reidentify:release-1";
+    let key = &crate::import::CandidateKey::reidentify("release-1");
 
     runtime.record_run_state(key, run(1), false, &triangulating());
     assert_eq!(

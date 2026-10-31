@@ -42,7 +42,7 @@ async fn picked_candidate(
     manager: &LibraryManager,
     tmp: &TempDir,
     folder_name: &str,
-) -> (FolderCandidate, String, String) {
+) -> (FolderCandidate, crate::import::CandidateKey, String) {
     let (candidate, key, hash) = unscanned_candidate(manager, tmp, folder_name).await;
     rescan_into(manager, candidate.clone()).await;
     (candidate, key, hash)
@@ -54,7 +54,7 @@ async fn unread_candidate(
     manager: &LibraryManager,
     tmp: &TempDir,
     folder_name: &str,
-) -> (FolderCandidate, String, String) {
+) -> (FolderCandidate, crate::import::CandidateKey, String) {
     let (candidate, key, hash) = unscanned_candidate(manager, tmp, folder_name).await;
     rescan_unread_into(manager, candidate.clone()).await;
     (candidate, key, hash)
@@ -96,7 +96,7 @@ async fn unscanned_candidate(
     manager: &LibraryManager,
     tmp: &TempDir,
     folder_name: &str,
-) -> (FolderCandidate, String, String) {
+) -> (FolderCandidate, crate::import::CandidateKey, String) {
     use crate::import::folder_scanner::{
         CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScannedFile,
     };
@@ -153,19 +153,19 @@ async fn unscanned_candidate(
             files,
             parts: Vec::new(),
         },
-        watched_folder_path: root.to_string_lossy().into_owned(),
+        watched_folder_path: root.clone(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: folder_name.to_string(),
+        relative_folder: crate::import::RelativeFolder::test(folder_name),
         grouping: None,
     };
 
     manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
 
-    let key = folder.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&folder);
     let hash = candidate.files.content_hash();
     (candidate, key, hash)
 }
@@ -199,7 +199,7 @@ struct StoredCandidate {
     manager: LibraryManager,
     candidate: FolderCandidate,
     /// The key the pane's controls address the candidate by.
-    key: String,
+    key: crate::import::CandidateKey,
     /// Held for its `Drop`: the watched root lives inside it.
     tmp: TempDir,
 }
@@ -253,7 +253,7 @@ async fn unread_stored_candidate() -> StoredCandidate {
 async fn started(
     manager: LibraryManager,
     candidate: FolderCandidate,
-    key: String,
+    key: crate::import::CandidateKey,
     tmp: TempDir,
 ) -> StoredCandidate {
     let handle = manager
@@ -272,14 +272,14 @@ async fn started(
 /// The handle, the key its controls address, and the hash its rows are stored
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
-async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
+async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
     pane_fixture_with(bae_util::http::Http::for_test()).await
 }
 
 /// [`pane_fixture`] whose requests go through `http`.
 async fn pane_fixture_with(
     http: bae_util::http::Http,
-) -> (ImportServiceHandle, TempDir, String, String) {
+) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
     let fixture = stored_candidate_with(http).await;
     let hash = fixture.candidate.files.content_hash();
     let handle = fixture.handle;
@@ -293,7 +293,7 @@ async fn pane_fixture_with(
     (handle, fixture.tmp, key, hash)
 }
 
-async fn pane(handle: &ImportServiceHandle, key: &str) -> crate::import::ImportCandidateDetail {
+async fn pane(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> crate::import::ImportCandidateDetail {
     handle
         .candidate_pane(key)
         .await
@@ -491,12 +491,12 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
 /// `reader`.
 async fn pick_file_tags(
     handle: &mut ImportServiceHandle,
-    key: &str,
+    key: &crate::import::CandidateKey,
     reader: std::sync::Arc<CountingFileTagReader>,
 ) -> Result<u64, crate::import::ImportError> {
     handle.file_tags = reader;
     handle
-        .select_candidate_file_tags(key.to_string())
+        .select_candidate_file_tags(key.clone())
         .await
 }
 
@@ -504,7 +504,7 @@ async fn pick_file_tags(
 async fn stored_tags(
     handle: &ImportServiceHandle,
     candidate: &crate::import::folder_scanner::FolderCandidate,
-    key: &str,
+    key: &crate::import::CandidateKey,
 ) -> Option<crate::import::file_tag_snapshot::FileTagSnapshot> {
     handle
         .library_manager
@@ -736,7 +736,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .await
         .unwrap()
         .snapshot;
-    let root = tmp.path().join("watched").to_string_lossy().into_owned();
+    let root = tmp.path().join("watched");
 
     let error = handle
         .preparations
@@ -803,7 +803,7 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
 #[tokio::test(flavor = "multi_thread")]
 async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
-    let root = tmp.path().join("watched").to_string_lossy().into_owned();
+    let root = tmp.path().join("watched");
     let before = handle
         .library_manager
         .load_candidate_file_tag_snapshot(&root, &key)

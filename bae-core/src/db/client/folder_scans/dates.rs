@@ -4,7 +4,7 @@ use crate::import::folder_scanner::FolderDate;
 /// What is known about when a folder was found, kept by its path on disk
 /// rather than with the scan row of whichever watched folder covers it.
 pub(super) struct FolderDiscovery {
-    folder: String,
+    folder: PathBuf,
     first_seen_at: i64,
     folder_date: Option<FolderDate>,
     /// Whether a scan had read the folder as a release or as broken before.
@@ -18,12 +18,12 @@ impl FolderDiscovery {
         observed: Option<FolderDate>,
         now: i64,
     ) -> Result<Self, DbError> {
-        let folder = folder.to_string_lossy().into_owned();
+        let folder = folder.to_path_buf();
         let stored = sql
             .query_row(
                 "SELECT first_seen_at, settled, source_date, source_date_kind \
                  FROM folder_discovery WHERE folder = ?",
-                [&folder],
+                [coven::path_bytes(&folder)],
                 |row| {
                     Ok((
                         row.get::<_, i64>(0)?,
@@ -44,7 +44,8 @@ impl FolderDiscovery {
                     (Some(at), Some("created")) => Some(FolderDate::Created(at)),
                     _ => {
                         return Err(DbError::Message(format!(
-                            "invalid stored folder date for {folder}"
+                            "invalid stored folder date for {}",
+                            coven::path_text(&folder)
                         )))
                     }
                 };
@@ -86,7 +87,7 @@ impl FolderDiscovery {
                 OR source_date IS NOT excluded.source_date \
                 OR source_date_kind IS NOT excluded.source_date_kind",
             params![
-                self.folder,
+                coven::path_bytes(&self.folder),
                 self.first_seen_at,
                 self.settled || settles,
                 date.map(|(at, _)| at),

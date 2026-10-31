@@ -12,7 +12,7 @@ import SwiftUI
 struct CandidateListMenu: View {
     let watchedFolders: [BridgeWatchedFolder]
     /// Roots with a refresh in flight; their Refresh entry is disabled.
-    let refreshingFolders: Set<String>
+    let refreshingFolders: Set<Data>
     /// Whether the queue has folder groups; without any, Expand All and
     /// Collapse All are disabled.
     let hasGroups: Bool
@@ -154,13 +154,13 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
             BridgeFolderScans(
                 statuses: [
                     BridgeWatchedFolderScanStatus(
-                        watchedFolderPath: "/Music/Rips",
+                        watchedFolderPath: Data("/Music/Rips".utf8),
                         watchedFolderName: "Rips",
                         status: .scanning(foundCount: 8),
                         onNetworkVolume: false
                     ),
                     BridgeWatchedFolderScanStatus(
-                        watchedFolderPath: "/Volumes/Vault",
+                        watchedFolderPath: Data("/Volumes/Vault".utf8),
                         watchedFolderName: "Vault",
                         status: .failed(
                             error: "The volume could not be reached."
@@ -174,8 +174,16 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
         return CandidateListMenu(
             watchedFolders: [
                 PreviewData.importWatchedFolder,
-                BridgeWatchedFolder(path: "/Music/Rips", name: "Rips"),
-                BridgeWatchedFolder(path: "/Volumes/Vault", name: "Vault"),
+                BridgeWatchedFolder(
+                    path: Data("/Music/Rips".utf8),
+                    pathText: "/Music/Rips",
+                    name: "Rips"
+                ),
+                BridgeWatchedFolder(
+                    path: Data("/Volumes/Vault".utf8),
+                    pathText: "/Volumes/Vault",
+                    name: "Vault"
+                ),
             ],
             refreshingFolders: [],
             hasGroups: true,

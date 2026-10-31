@@ -9,7 +9,7 @@ use crate::import::TriageTab;
 pub(super) struct ListRead {
     pub(super) view: ImportListView,
     pub(super) windows: crate::library::LibraryPageWindows,
-    pub(super) selected: Vec<String>,
+    pub(super) selected: Vec<crate::import::CandidateKey>,
 }
 
 /// The first fifty items of `tab`, nothing selected.

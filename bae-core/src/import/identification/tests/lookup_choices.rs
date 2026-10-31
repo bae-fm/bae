@@ -37,7 +37,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     fixture
         .import
         .edit_candidate_lookup_choices(
-            &dir.to_string_lossy(),
+            &crate::import::CandidateKey::folder(&dir),
             crate::import::LookupChoiceEdit::ToggleBarcode {
                 code: "0123456789012".to_string(),
             },

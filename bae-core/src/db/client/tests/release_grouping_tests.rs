@@ -17,6 +17,18 @@ async fn scanned(
     tempfile::TempDir,
     Vec<FolderCandidate>,
 ) {
+    let root = host_root("/music");
+    scanned_folders(names.iter().map(|name| candidate(&root, name)).collect()).await
+}
+
+/// `folders`, under the watched root `/music`, scanned to completion.
+async fn scanned_folders(
+    folders: Vec<FolderCandidate>,
+) -> (
+    super::super::Database,
+    tempfile::TempDir,
+    Vec<FolderCandidate>,
+) {
     let (db, temp) = empty_db().await;
     let root = host_root("/music");
     db.add_watched_import_folder(&root).await.unwrap();
@@ -25,8 +37,7 @@ async fn scanned(
         .await
         .unwrap();
     let mut candidates = Vec::new();
-    for name in names {
-        let mut folder = candidate(&root, name);
+    for mut folder in folders {
         // A file of its own per folder, so no two share a path on disk.
         for entry in &mut folder.files.files {
             entry.file.path = folder.path.join(&entry.file.relative_path);
@@ -43,7 +54,10 @@ async fn scanned(
     (db, temp, candidates)
 }
 
-async fn stored(db: &super::super::Database, key: &str) -> Option<ScanItem> {
+async fn stored(
+    db: &super::super::Database,
+    key: &crate::import::CandidateKey,
+) -> Option<ScanItem> {
     db.load_folder_scan_item(key).await.unwrap()
 }
 
@@ -54,11 +68,16 @@ async fn stored(db: &super::super::Database, key: &str) -> Option<ScanItem> {
 async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
     let (db, _temp, members) = scanned(&["Volume A", "Volume B"]).await;
     let root = host_root("/music");
-    db.combine_releases("grouping:test".into(), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
-    let Some(ScanItem::Valid(before)) = stored(&db, "grouping:test").await else {
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("test"),
+        members.clone(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let Some(ScanItem::Valid(before)) =
+        stored(&db, &crate::import::CandidateKey::grouping("test")).await
+    else {
         panic!("the grouping built its release");
     };
 
@@ -75,7 +94,9 @@ async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
         .unwrap();
     let rebuilt = write.regrouped().expect("the write stored the change");
     assert_eq!(rebuilt.written.len(), 1);
-    let Some(ScanItem::Valid(after)) = stored(&db, "grouping:test").await else {
+    let Some(ScanItem::Valid(after)) =
+        stored(&db, &crate::import::CandidateKey::grouping("test")).await
+    else {
         panic!("the grouping still has its release");
     };
     assert_ne!(after.files.content_hash(), before.files.content_hash());
@@ -92,10 +113,13 @@ async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
 async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
     let (db, _temp, members) = scanned(&["Volume A", "Volume B"]).await;
     let root = host_root("/music");
-    db.combine_releases("grouping:test".into(), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("test"),
+        members.clone(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
 
     let generation = db
         .begin_folder_scan(&root, crate::import::VolumeKind::Local)
@@ -109,13 +133,13 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
         .unwrap();
 
     let error = db
-        .load_release_candidate("grouping:test")
+        .load_release_candidate(&crate::import::CandidateKey::grouping("test"))
         .await
         .unwrap()
         .expect_err("a grouping missing a release cannot be worked on");
     assert!(error.to_string().contains("Volume B"), "{error}");
     let detail = db
-        .load_import_candidate("grouping:test")
+        .load_import_candidate(&crate::import::CandidateKey::grouping("test"))
         .await
         .unwrap()
         .expect("the release is still listed");
@@ -129,21 +153,71 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
         "a grouping that cannot be worked on is still read apart again"
     );
 
-    let (returned, _) = db.separate_picked_grouping("grouping:test").await.unwrap();
+    let (returned, _) = db
+        .separate_picked_grouping(&crate::import::CandidateKey::grouping("test"))
+        .await
+        .unwrap();
     assert_eq!(returned, vec![ScanItem::Valid(members[0].clone())]);
-    assert!(stored(&db, "grouping:test").await.is_none());
+    assert!(stored(&db, &crate::import::CandidateKey::grouping("test"))
+        .await
+        .is_none());
+}
+
+/// Two folders whose names show the same once escaped — a Latin-1 `Café`
+/// and a folder spelled `Caf\xE9` — combine into a release two of whose
+/// files show one name, which no release can hold: it is stored as one that
+/// cannot be imported, saying so.
+#[cfg(unix)]
+#[tokio::test]
+async fn folders_whose_names_show_the_same_combine_into_no_importable_release() {
+    use std::os::unix::ffi::OsStrExt;
+    let root = host_root("/music");
+    let named = |name: &std::ffi::OsStr| {
+        let name = std::path::Path::new(name);
+        let mut folder = candidate(&root, "Album");
+        folder.path = root.join(name);
+        folder.file_root = folder.path.clone();
+        folder.name = coven::path_text(name);
+        folder.relative_folder = crate::import::RelativeFolder::of(name).unwrap();
+        folder
+    };
+    let (db, _temp, members) = scanned_folders(vec![
+        named(std::ffi::OsStr::from_bytes(b"Caf\xE9")),
+        named(std::ffi::OsStr::from_bytes(b"Caf\\xE9")),
+    ])
+    .await;
+    let key = crate::import::CandidateKey::grouping("test");
+    db.combine_releases(key.clone(), members)
+        .await
+        .unwrap()
+        .unwrap();
+    let Some(ScanItem::Invalid(release)) = stored(&db, &key).await else {
+        panic!("the grouping's release cannot be imported");
+    };
+    assert_eq!(
+        release.reason(),
+        InvalidReason::SameName {
+            name: "Caf\\xE9/01.flac".to_string()
+        }
+    );
 }
 
 /// A folder already in one grouping cannot be taken into another.
 #[tokio::test]
 async fn a_release_is_taken_into_one_grouping_at_most() {
     let (db, _temp, members) = scanned(&["Volume A", "Volume B", "Volume C"]).await;
-    db.combine_releases("grouping:first".into(), members[..2].to_vec())
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("first"),
+        members[..2].to_vec(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
     assert!(db
-        .combine_releases("grouping:second".into(), members[1..].to_vec())
+        .combine_releases(
+            crate::import::CandidateKey::grouping("second"),
+            members[1..].to_vec()
+        )
         .await
         .is_err());
 }
@@ -219,7 +293,10 @@ async fn scan_in(db: &super::super::Database, item: ScanItem) -> crate::db::Scan
 
 /// The relative paths of the files the release at `key` holds, when it can be
 /// imported.
-async fn release_files(db: &super::super::Database, key: &str) -> Vec<String> {
+async fn release_files(
+    db: &super::super::Database,
+    key: &crate::import::CandidateKey,
+) -> Vec<String> {
     let Some(ScanItem::Valid(release)) = stored(db, key).await else {
         panic!("{key} is a release that can be imported");
     };
@@ -246,12 +323,15 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     .await;
     scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
 
-    db.combine_releases("grouping:discs".into(), members[..2].to_vec())
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("discs"),
+        members[..2].to_vec(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
     assert_eq!(
-        release_files(&db, "grouping:discs").await,
+        release_files(&db, &crate::import::CandidateKey::grouping("discs")).await,
         ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
     );
 
@@ -262,7 +342,7 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     .await;
     assert_eq!(write.regrouped().unwrap().written.len(), 1);
     assert_eq!(
-        release_files(&db, "grouping:discs").await,
+        release_files(&db, &crate::import::CandidateKey::grouping("discs")).await,
         [
             "booklet.pdf",
             "cover.jpg",
@@ -272,7 +352,10 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     );
 
     let error = db
-        .combine_releases("grouping:more".into(), members[2..4].to_vec())
+        .combine_releases(
+            crate::import::CandidateKey::grouping("more"),
+            members[2..4].to_vec(),
+        )
         .await
         .unwrap()
         .expect_err("the album's files already go with a release");
@@ -282,20 +365,20 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     );
 
     db.combine_releases(
-        "grouping:apart".into(),
+        crate::import::CandidateKey::grouping("apart"),
         vec![members[2].clone(), members[4].clone()],
     )
     .await
     .unwrap()
     .unwrap();
     assert_eq!(
-        release_files(&db, "grouping:apart").await,
+        release_files(&db, &crate::import::CandidateKey::grouping("apart")).await,
         ["Album/Disc 3/01.flac", "Other/Disc 1/01.flac"]
     );
 
     // A zero-byte track among the folder's files makes the release that
     // reads them one that cannot be imported, as a folder holding it would be.
-    let album = std::path::PathBuf::from(host_root("/music")).join("Album");
+    let album = host_root("/music").join("Album");
     let broken = FolderSidecar {
         files: SidecarFiles::Invalid(vec![SkippedFile {
             relative_path: "bonus.flac".into(),
@@ -311,7 +394,9 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
         ..sidecar_of("Album", &[])
     };
     scan_in(&db, ScanItem::Sidecar(broken)).await;
-    let Some(ScanItem::Invalid(invalid)) = stored(&db, "grouping:discs").await else {
+    let Some(ScanItem::Invalid(invalid)) =
+        stored(&db, &crate::import::CandidateKey::grouping("discs")).await
+    else {
         panic!("the release reading the broken files is invalid");
     };
     assert_eq!(invalid.reason(), InvalidReason::DamagedAudio { count: 1 });
@@ -332,10 +417,13 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
 async fn a_release_reading_the_folders_files_replaces_its_sidecar() {
     let (db, _temp, members) = scanned(&["Album/Disc 1", "Album/Disc 2"]).await;
     scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
-    db.combine_releases("grouping:discs".into(), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("discs"),
+        members.clone(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
 
     let album = super::candidate_with(
         &host_root("/music"),
@@ -346,21 +434,21 @@ async fn a_release_reading_the_folders_files_replaces_its_sidecar() {
     let write = scan_in(&db, ScanItem::Valid(album.clone())).await;
     assert_eq!(write.regrouped().unwrap().written.len(), 1);
     assert_eq!(
-        release_files(&db, "grouping:discs").await,
+        release_files(&db, &crate::import::CandidateKey::grouping("discs")).await,
         ["Disc 1/01.flac", "Disc 2/01.flac"]
     );
 
     let write = scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
     assert_eq!(write.superseded_keys(), [album.key()]);
     assert_eq!(
-        release_files(&db, "grouping:discs").await,
+        release_files(&db, &crate::import::CandidateKey::grouping("discs")).await,
         ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
     );
 }
 
 /// The files of a release at the album folder itself: one track and the cover.
 fn sidecar_owner_files() -> crate::import::folder_scanner::CategorizedFiles {
-    let folder = std::path::PathBuf::from(host_root("/music")).join("Album");
+    let folder = host_root("/music").join("Album");
     crate::import::folder_scanner::CategorizedFiles {
         files: vec![
             CandidateFile {
@@ -390,18 +478,26 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
     ])
     .await;
     scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
-    db.combine_releases("grouping:first".into(), members[..2].to_vec())
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("first"),
+        members[..2].to_vec(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
     // Each of these sits in a disc folder of its own, so none is shared.
-    db.combine_releases("grouping:second".into(), members[2..].to_vec())
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(!release_files(&db, "grouping:second")
-        .await
-        .contains(&"cover.jpg".to_string()));
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("second"),
+        members[2..].to_vec(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(
+        !release_files(&db, &crate::import::CandidateKey::grouping("second"))
+            .await
+            .contains(&"cover.jpg".to_string())
+    );
 
     // The disc folders gain files of their own, which the releases below them
     // take in: now both sit directly in the album folder.
@@ -411,7 +507,7 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
         scan_in(&db, ScanItem::Valid(lent)).await;
     }
     let error = db
-        .load_release_candidate("grouping:second")
+        .load_release_candidate(&crate::import::CandidateKey::grouping("second"))
         .await
         .unwrap()
         .expect_err("the album's files already go with the first release");
@@ -419,21 +515,28 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
         matches!(&error, GroupingBlock::FolderFilesTaken { folder, .. } if folder == "Album"),
         "{error}"
     );
-    assert!(release_files(&db, "grouping:first")
-        .await
-        .contains(&"cover.jpg".to_string()));
+    assert!(
+        release_files(&db, &crate::import::CandidateKey::grouping("first"))
+            .await
+            .contains(&"cover.jpg".to_string())
+    );
 
-    let (_, regrouped) = db.separate_picked_grouping("grouping:first").await.unwrap();
+    let (_, regrouped) = db
+        .separate_picked_grouping(&crate::import::CandidateKey::grouping("first"))
+        .await
+        .unwrap();
     assert_eq!(regrouped.written.len(), 1);
     assert!(db
-        .load_release_candidate("grouping:second")
+        .load_release_candidate(&crate::import::CandidateKey::grouping("second"))
         .await
         .unwrap()
         .unwrap()
         .is_some());
-    assert!(release_files(&db, "grouping:second")
-        .await
-        .contains(&"cover.jpg".to_string()));
+    assert!(
+        release_files(&db, &crate::import::CandidateKey::grouping("second"))
+            .await
+            .contains(&"cover.jpg".to_string())
+    );
 }
 
 /// Groupings sitting in a folder with no files of its own contend for
@@ -443,20 +546,29 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
 #[tokio::test]
 async fn groupings_contend_only_for_files_that_are_there() {
     let (db, _temp, members) = scanned(&["Box/CD1", "Box/CD2", "Box/CD3", "Box/CD4"]).await;
-    db.combine_releases("grouping:first".into(), members[..2].to_vec())
-        .await
-        .unwrap()
-        .unwrap();
-    db.combine_releases("grouping:second".into(), members[2..].to_vec())
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("first"),
+        members[..2].to_vec(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("second"),
+        members[2..].to_vec(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
 
     let write = scan_in(&db, ScanItem::Sidecar(sidecar_of("Box", &["cover.jpg"]))).await;
     assert!(write.regrouped().unwrap().written.is_empty());
-    for key in ["grouping:first", "grouping:second"] {
+    for key in [
+        crate::import::CandidateKey::grouping("first"),
+        crate::import::CandidateKey::grouping("second"),
+    ] {
         let error = db
-            .load_release_candidate(key)
+            .load_release_candidate(&key)
             .await
             .unwrap()
             .expect_err("the box's files would go with two releases");
@@ -468,10 +580,13 @@ async fn groupings_contend_only_for_files_that_are_there() {
         );
     }
 
-    let (_, regrouped) = db.separate_picked_grouping("grouping:first").await.unwrap();
+    let (_, regrouped) = db
+        .separate_picked_grouping(&crate::import::CandidateKey::grouping("first"))
+        .await
+        .unwrap();
     assert_eq!(regrouped.written.len(), 1);
     assert_eq!(
-        release_files(&db, "grouping:second").await,
+        release_files(&db, &crate::import::CandidateKey::grouping("second")).await,
         ["cover.jpg", "CD3/01.flac", "CD4/01.flac"]
     );
 }
@@ -481,10 +596,13 @@ async fn groupings_contend_only_for_files_that_are_there() {
 #[tokio::test]
 async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
     let (db, _temp, members) = scanned(&["Album/Disc 1", "Album/Disc 2"]).await;
-    db.combine_releases("grouping:discs".into(), members.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(
+        crate::import::CandidateKey::grouping("discs"),
+        members.clone(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
     scan_in(
         &db,
         ScanItem::Sidecar(FolderSidecar {
@@ -494,7 +612,7 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
     )
     .await;
     let error = db
-        .load_release_candidate("grouping:discs")
+        .load_release_candidate(&crate::import::CandidateKey::grouping("discs"))
         .await
         .unwrap()
         .expect_err("the album's files are not known yet");
@@ -507,7 +625,7 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
 
     scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
     assert_eq!(
-        release_files(&db, "grouping:discs").await,
+        release_files(&db, &crate::import::CandidateKey::grouping("discs")).await,
         ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
     );
 }
@@ -552,7 +670,7 @@ async fn reading_a_folder_again_prunes_only_its_own_sidecars() {
     let stamp = db.begin_folder_reading(&root).await.unwrap();
     db.commit_folder_reading(crate::db::FolderReadingCommit {
         watched_folder_path: root.clone(),
-        folder: "Album".to_string(),
+        folder: "Album".into(),
         stamp,
         decision: None,
         scanned_decisions: Vec::new(),
@@ -562,14 +680,9 @@ async fn reading_a_folder_again_prunes_only_its_own_sidecars() {
     .await
     .unwrap();
 
-    let folder = |name: &str| {
-        std::path::Path::new(&root)
-            .join(name)
-            .to_string_lossy()
-            .into_owned()
-    };
+    let folder = |name: &str| coven::path_text(&root.join(name));
     assert_eq!(
-        db.query_texts_for_test("SELECT folder FROM scan_sidecar ORDER BY folder")
+        db.query_texts_for_test("SELECT coven_path_text(folder) FROM scan_sidecar ORDER BY folder")
             .await
             .unwrap(),
         [folder("Album 2"), folder("Album0")]

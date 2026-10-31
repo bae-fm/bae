@@ -5,7 +5,13 @@ fn progress(
     event_tx: &crate::import::handle::ImportEventBus,
     total: Option<u64>,
 ) -> LoudnessProgress {
-    LoudnessProgress::new(event_tx, "test", "release-1", "import-1", total)
+    LoudnessProgress::new(
+        event_tx,
+        &crate::import::CandidateKey::test("test"),
+        "release-1",
+        "import-1",
+        total,
+    )
 }
 
 async fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
@@ -264,7 +270,7 @@ async fn measure(
         file_ids,
         source_file_sizes,
         tracks_to_files,
-        "cand",
+        &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
     )
@@ -299,7 +305,7 @@ async fn measure_failure(path: &std::path::Path, size: u64) -> crate::import::Im
         &file_ids,
         &source_file_sizes,
         &tracks,
-        "cand",
+        &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
     )
@@ -546,7 +552,7 @@ async fn peak_open_sources(
         file_ids,
         &source_file_sizes,
         tracks,
-        "cand",
+        &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
     )

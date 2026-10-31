@@ -244,9 +244,7 @@ impl ImportService {
                             let checked_root = root.clone();
                             tokio::spawn(async move {
                                 let recorded = manager
-                                    .load_folder_scan_directories(
-                                        &checked_root.to_string_lossy(),
-                                    )
+                                    .load_folder_scan_directories(&checked_root)
                                     .await;
                                 let recorded = match recorded {
                                     Ok(recorded) => recorded,
@@ -391,11 +389,16 @@ fn request_change(
 /// Whether `root` holds tracks of its own. A failed read answers yes, which
 /// reads the whole root: right either way.
 async fn holds_its_own_release(library_manager: &LibraryManager, root: &Path) -> bool {
-    let root_key = root.to_string_lossy();
-    match library_manager.load_folder_scan_item(&root_key).await {
+    match library_manager
+        .load_folder_scan_item(&crate::import::CandidateKey::folder(root))
+        .await
+    {
         Ok(item) => item.is_some(),
         Err(error) => {
-            warn!("could not read whether {root_key} holds a release of its own: {error}");
+            warn!(
+                "could not read whether {} holds a release of its own: {error}",
+                coven::path_text(root)
+            );
             true
         }
     }
@@ -416,7 +419,7 @@ async fn watched_roots(library_manager: &LibraryManager) -> Vec<PathBuf> {
     watched_folders(library_manager)
         .await
         .into_iter()
-        .map(|folder| PathBuf::from(folder.path))
+        .map(|folder| folder.path)
         .collect()
 }
 
@@ -425,7 +428,5 @@ async fn is_watched(
     library_manager: &LibraryManager,
     path: &Path,
 ) -> Result<bool, crate::library::LibraryError> {
-    library_manager
-        .is_watched_import_folder(&path.to_string_lossy())
-        .await
+    library_manager.is_watched_import_folder(path).await
 }

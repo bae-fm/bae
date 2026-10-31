@@ -48,7 +48,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
-            candidate_key: "second".to_string(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(b"second".to_vec()),
             ..support::folder_import(
                 &import_id,
                 source.path().to_path_buf(),

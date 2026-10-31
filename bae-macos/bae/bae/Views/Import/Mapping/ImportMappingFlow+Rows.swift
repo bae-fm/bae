@@ -9,7 +9,7 @@ extension ImportMappingFlow {
     /// at. A cancellation has no line and nothing to report.
     @MainActor
     static func editTrack(
-        key: String,
+        key: Data,
         track: BridgeRawTrackEdit,
         services: ImportMappingServices
     ) async {

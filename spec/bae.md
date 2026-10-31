@@ -588,14 +588,21 @@ two different things about one file fails the scan.
   text with each byte that isn't UTF-8 written as `\x` and two hex digits:
   `Caf\xE9.flac`. Its path is kept as the system's bytes wherever bae opens
   the file again: the scan's rows, and the original a local release plays
-  from (§4.2). A folder whose own name isn't valid UTF-8 fails the scan of
-  the watched folder it is in. Windows allows a name with an unpaired UTF-16
+  from (§4.2). Windows allows a name with an unpaired UTF-16
   surrogate, which escapes the same way; its import fails there, since a
   backslash separates folders on Windows (§4.4).
+- **A folder whose name isn't valid UTF-8** is read like any other. It is
+  known by its path as the system's bytes everywhere bae keys a folder: the
+  release it holds, the watched folder, its place below the watched folder,
+  the groups and nesting of the import list, and every decision about it
+  (skipped, read as one release, kept apart). Its name, and its place below
+  the watched folder, show escaped the same way: `Caf\xE9`, `Artist/Caf\xE9`.
 - **Two files that show one name**, such as a Latin-1 `Café.flac` and one
   spelled `Caf\xE9.flac`, can't both be in a release, which names each file
   once. A release that would hold both, including the files of a folder it
-  takes in, is listed as skipped, its reason naming the name.
+  takes in, is listed as skipped, its reason naming the name. So is a release
+  read from several folders two of whose names show the same, such as a
+  Latin-1 `Café` and a folder spelled `Caf\xE9`, each holding `01.flac`.
 - **A damaged image** — zero bytes, or bytes that don't decode as the picture
   its name says — doesn't skip the folder: the release is its audio. The image
   is never artwork, so it is never the cover, and it imports as plain bytes the
@@ -3012,6 +3019,15 @@ move into). The app makes a file URL from the bytes, and the bytes from a
 URL's file-system representation. Text that shows a path comes from core,
 escaped (§3.1).
 
+What the import queue is keyed by crosses as bytes the same way, so a folder
+whose name isn't valid Unicode is named apart from every other: a candidate's
+key (its folder's path, its grouping's key, or the key a library release's
+re-identify session runs under, which core gives the app for the release),
+a watched folder's path, and a folder below a watched folder (each name's
+bytes, joined by `/`). Each record that shows one carries the text that shows
+it beside it. A fast value's stream (§10.2) is keyed by bytes too: a file's,
+release's or track's id as UTF-8, or a candidate's key.
+
 ### 10.2 The handle and the host
 
 - **`BridgeHost`** is built once per process. It holds bae's directory, the
@@ -3307,6 +3323,13 @@ reads it again once.
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |
+
+Every folder path and candidate key in these tables, and in A.5 and A.7, is a
+BLOB: a path as coven's bytes for it, a folder below a watched folder as its
+names' bytes joined by `/` (empty for the watched folder), a candidate key as
+its folder's path bytes or `grouping:` and an id. SQL shows one with
+`coven_path_text`; ranges below a folder are compared as bytes, each bound
+cast back to a BLOB after `||`.
 
 ### A.5 Import candidates
 

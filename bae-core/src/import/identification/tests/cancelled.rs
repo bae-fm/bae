@@ -5,7 +5,7 @@
 
 /// Wait until nothing is identifying `key`: its queue mark, its run and its
 /// answer are all gone.
-async fn await_not_identifying(fixture: &Fixture, key: &str) {
+async fn await_not_identifying(fixture: &Fixture, key: &crate::import::CandidateKey) {
     tokio::time::timeout(Duration::from_secs(10), async {
         while fixture.identification_status(key).await.is_some() || fixture.import.is_identifying(key)
         {
@@ -50,7 +50,7 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
         .first_queued(&dirs)
         .await
         .expect("one candidate is over the cap and waiting");
-    let waiting_key = waiting.to_string_lossy().into_owned();
+    let waiting_key = crate::import::CandidateKey::folder(&waiting);
 
     fixture.identification().cancel(vec![waiting_key.clone()]).await.unwrap();
     await_not_identifying(&fixture, &waiting_key).await;
@@ -83,7 +83,7 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
 async fn a_cancelled_run_leaves_the_candidate_as_it_was_until_asked_again() {
     let fixture = Fixture::new("cancel-running").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
@@ -139,7 +139,7 @@ async fn cancelling_everything_empties_the_queue() {
         .expect("cancelling everything drains the pass")
         .unwrap();
     for dir in &dirs {
-        await_not_identifying(&fixture, &dir.to_string_lossy()).await;
+        await_not_identifying(&fixture, &crate::import::CandidateKey::folder(dir)).await;
     }
     fixture.provider.release();
     fixture.drain_automatic().await;
@@ -165,7 +165,7 @@ async fn cancelling_everything_empties_the_queue() {
 async fn a_cancelled_answer_is_not_written() {
     let fixture = Fixture::new("cancel-settling").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .provider
@@ -200,7 +200,7 @@ async fn a_cancelled_answer_is_not_written() {
 async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
     let fixture = Fixture::new("cancel-outside-queue").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Nothing found is queued, so the queue holds nothing for the key.
@@ -257,7 +257,7 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
         .first_queued(&dirs)
         .await
         .expect("one candidate is over the cap and waiting");
-    let key = waiting.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&waiting);
     assert_eq!(
         fixture
             .import

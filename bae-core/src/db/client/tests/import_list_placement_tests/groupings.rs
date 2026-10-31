@@ -9,23 +9,24 @@ impl Library {
     fn grouping(&self, display_path: &str) -> String {
         format!(
             "INSERT INTO release_grouping (key, anchor_folder, combined, author)
-             VALUES ('{}', NULL, 1, 'user');",
-            self.path(display_path)
+             VALUES ({}, NULL, 1, 'user');",
+            self.sql(display_path)
         )
     }
 
     /// The release the grouping at `display_path` builds, shown as its first
     /// folder, `first`.
     fn grouping_release(&self, display_path: &str, first: &str) -> String {
-        let key = self.path(display_path);
         format!(
             "INSERT INTO scan_candidate
-                 (watched_folder_path, path, generation, kind, name, display_path, folder,
+                 (watched_folder_path, path, generation, kind, name, relative_folder, folder,
                   file_root, scope, content_hash, grouping_key, source_kind)
-             VALUES ('{root}', '{key}', 1, 'valid', '{display_path}', '{display_path}',
-                     '{folder}', '{folder}', 'recursive', '{hash}', '{key}', 'grouping');",
-            root = self.root,
-            folder = self.path(first),
+             VALUES ({root}, {key}, 1, 'valid', '{display_path}', {relative},
+                     {folder}, {folder}, 'recursive', '{hash}', {key}, 'grouping');",
+            root = self.sql_root(),
+            key = self.sql(display_path),
+            relative = sql_relative(display_path),
+            folder = self.sql(first),
             hash = hash(display_path),
         )
     }
@@ -35,10 +36,10 @@ impl Library {
         format!(
             "INSERT INTO release_grouping_member
                  (grouping_key, position, member_key, member_folder)
-             VALUES ('{}', {position}, '{}', '{}');",
-            self.path(display_path),
-            self.path(member),
-            self.path(member)
+             VALUES ({}, {position}, {}, {});",
+            self.sql(display_path),
+            self.sql(member),
+            self.sql(member)
         )
     }
 }
@@ -71,16 +72,16 @@ async fn a_grouping_takes_its_folders_out_and_is_dated_by_the_earliest() {
     );
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE folder_discovery SET first_seen_at = 500 WHERE folder = '{}';",
-            lib.path("Disc 1")
+            "UPDATE folder_discovery SET first_seen_at = 500 WHERE folder = {};",
+            lib.sql("Disc 1")
         ))
         .await,
         moves([(lib.release("Discs"), Some(found("Discs").dated(200)))])
     );
     assert_eq!(
         lib.moved(&format!(
-            "DELETE FROM release_grouping_member WHERE member_key = '{}';",
-            lib.path("Disc 2")
+            "DELETE FROM release_grouping_member WHERE member_key = {};",
+            lib.sql("Disc 2")
         ))
         .await,
         moves([
@@ -103,7 +104,7 @@ async fn a_grouping_skips_and_blocks_its_release() {
         lib.grouping_release("Discs", "Disc 1")
     ))
     .await;
-    let grouping = |set: &str| format!("{set} WHERE key = '{}';", lib.path("Discs"));
+    let grouping = |set: &str| format!("{set} WHERE key = {};", lib.sql("Discs"));
     assert_eq!(
         lib.moved(&grouping("UPDATE release_grouping SET skipped = 1"))
             .await,
@@ -136,8 +137,8 @@ async fn undoing_a_grouping_gives_its_folders_back() {
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "DELETE FROM release_grouping WHERE key = '{}';",
-            lib.path("Discs")
+            "DELETE FROM release_grouping WHERE key = {};",
+            lib.sql("Discs")
         ))
         .await,
         moves([
@@ -155,9 +156,9 @@ async fn a_grouping_stored_after_its_release_places_it() {
     assert_eq!(
         lib.moved(&format!(
             "{}INSERT INTO release_grouping (key, anchor_folder, combined, author, skipped)
-             VALUES ('{}', NULL, 1, 'user', 1);",
+             VALUES ({}, NULL, 1, 'user', 1);",
             lib.grouping_release("Discs", "Disc 1"),
-            lib.path("Discs")
+            lib.sql("Discs")
         ))
         .await,
         moves([(lib.release("Discs"), Some(found("Discs").on("skipped")))])
@@ -179,8 +180,8 @@ async fn a_member_moved_to_another_folder_redates_its_grouping() {
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE release_grouping_member SET member_folder = '{}' WHERE position = 0;",
-            lib.path("Disc 2")
+            "UPDATE release_grouping_member SET member_folder = {} WHERE position = 0;",
+            lib.sql("Disc 2")
         ))
         .await,
         moves([(lib.release("Discs"), Some(found("Discs").dated(200)))])

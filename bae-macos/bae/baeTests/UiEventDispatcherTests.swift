@@ -440,7 +440,7 @@ private final class NoopKeyedValueStream: KeyedValueStream,
         super.init(unsafeFromHandle: handle)
     }
 
-    override func latest(key _: String) -> BridgeFastValue? {
+    override func latest(key _: Data) -> BridgeFastValue? {
         nil
     }
 

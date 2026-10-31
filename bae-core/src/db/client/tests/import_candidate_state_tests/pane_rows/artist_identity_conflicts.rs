@@ -156,7 +156,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             }
         }
         sql.execute(
-            "INSERT INTO import_candidate_state (content_hash, folder_path) VALUES (?, '/pending')",
+            "INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES (?, CAST('/pending' AS BLOB))",
             [&seed_pending_hash],
         )?;
         sql.execute(

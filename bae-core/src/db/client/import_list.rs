@@ -210,7 +210,7 @@ fn load_import_list_on(
         .query(
             "SELECT path FROM watched_import_folders ORDER BY position",
             [],
-            |row| row.get::<_, String>(0),
+            |row| path_column::get(row, 0),
         )?
         .into_iter()
         .map(WatchedFolder::from_path)
@@ -341,7 +341,7 @@ impl Database {
                     .window(&sql, &everything, &Places::new())?
                     .0
                     .into_iter()
-                    .map(|item| format!("{:?} {}", item.item, item.key))
+                    .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
                     .collect())
             };
             let other = match (row.filters_text, row.view.tab) {
@@ -355,10 +355,16 @@ impl Database {
                             terms = order::sorted_terms(row.view.order, "i", "unit"),
                         ),
                         [list.0],
-                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?)),
                     )?
                     .into_iter()
-                    .map(|(item, key)| Ok(format!("{:?} {key}", order::Item::of(&item)?)))
+                    .map(|(item, key)| {
+                        Ok(format!(
+                            "{:?} {}",
+                            order::Item::of(&item)?,
+                            hex::encode(key)
+                        ))
+                    })
                     .collect::<Result<_, DbError>>()?,
                 (false, _) => return Ok(None),
             };
@@ -384,9 +390,9 @@ impl Database {
     pub(crate) async fn locate_import_candidate(
         &self,
         list: ImportListId,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateListLocation>, DbError> {
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.read(move |sql| summary::locate(&sql, list, &candidate_key))
             .await
     }
@@ -397,7 +403,7 @@ impl Database {
     pub(crate) async fn first_identifying_import_candidate(
         &self,
         list: ImportListId,
-    ) -> Result<Option<String>, DbError> {
+    ) -> Result<Option<crate::import::CandidateKey>, DbError> {
         self.read(move |sql| summary::first_identifying(&sql, list))
             .await
     }
@@ -416,9 +422,11 @@ impl Database {
     /// selection.
     pub(crate) fn subscribe_import_candidate(
         &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<ImportCandidateDetailProjection>>
-    {
+        initial: Option<crate::import::CandidateKey>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::import::CandidateKey>,
+        Option<ImportCandidateDetailProjection>,
+    > {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, |key, sql| match key {
@@ -439,9 +447,11 @@ impl Database {
     /// as invalid is read whole: any other key is answered by its kind.
     pub(crate) fn subscribe_invalid_candidate(
         &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::import::InvalidCandidateDetail>>
-    {
+        initial: Option<crate::import::CandidateKey>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::import::CandidateKey>,
+        Option<crate::import::InvalidCandidateDetail>,
+    > {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, |key, sql| match key {
@@ -472,9 +482,9 @@ impl Database {
     /// One candidate as the pane reads it, once.
     pub(crate) async fn load_import_candidate(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
-        let key = key.to_string();
+        let key = key.clone();
         self.read(move |sql| pane::load_candidate_detail_on(&sql, &key))
             .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
             .await

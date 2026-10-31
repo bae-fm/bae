@@ -105,7 +105,7 @@ pub(crate) fn record_import_origin_on(
 /// when the scan no longer lists one there.
 fn load_committing_candidate(
     sql: &SqlContext<'_, '_>,
-    candidate_key: &str,
+    candidate_key: &crate::import::CandidateKey,
     expectation: &crate::import::service::ImportExpectation,
 ) -> Result<Option<CommittingCandidate>, DbError> {
     let Some(stored) = super::release_groupings::load_candidate_on(sql, candidate_key)? else {

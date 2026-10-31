@@ -1,4 +1,4 @@
-fn scanned_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
+fn scanned_candidate(root: &std::path::Path, name: &str) -> crate::import::folder_scanner::ScanItem {
     scanned_candidate_with_scope(
         root,
         name,
@@ -8,7 +8,7 @@ fn scanned_candidate(root: &str, name: &str) -> crate::import::folder_scanner::S
 
 /// A folder read as one release: one candidate at the folder's key over
 /// everything below it.
-fn combined_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
+fn combined_candidate(root: &std::path::Path, name: &str) -> crate::import::folder_scanner::ScanItem {
     scanned_candidate_with_scope(
         root,
         name,
@@ -17,7 +17,7 @@ fn combined_candidate(root: &str, name: &str) -> crate::import::folder_scanner::
 }
 
 fn scanned_candidate_with_scope(
-    root: &str,
+    root: &std::path::Path,
     name: &str,
     scope: crate::import::folder_scanner::ReleaseFileScope,
 ) -> crate::import::folder_scanner::ScanItem {
@@ -113,36 +113,36 @@ async fn imported_content_hash_lookup_uses_its_unique_index() {
 /// Store `folder` under `root` read as `decision`, yielding `items`.
 async fn commit_reading(
     db: &Database,
-    root: &str,
+    root: &std::path::Path,
     folder: &str,
     decision: crate::import::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::import::folder_scanner::ScanItem>,
 ) -> Result<crate::db::FolderReadingWrite, crate::db::DbError> {
-    let stamp = db.begin_folder_reading(root).await?;
+    let stamp = db.begin_folder_reading(std::path::Path::new(root)).await?;
     commit_reading_under(db, root, folder, decision, items, stamp).await
 }
 
 async fn commit_reading_under(
     db: &Database,
-    root: &str,
+    root: &std::path::Path,
     folder: &str,
     decision: crate::import::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::import::folder_scanner::ScanItem>,
     stamp: crate::db::FolderReadingStamp,
 ) -> Result<crate::db::FolderReadingWrite, crate::db::DbError> {
     db.commit_folder_reading(crate::db::FolderReadingCommit {
-        watched_folder_path: root.to_string(),
-        folder: folder.to_string(),
+        watched_folder_path: root.to_path_buf(),
+        folder: folder.into(),
         stamp,
         decision: Some((
             crate::import::folder_scanner::FolderReleaseDecisionKey {
-                watched_folder_path: root.to_string(),
-                relative_folder_path: folder.to_string(),
+                watched_folder_path: root.to_path_buf(),
+                relative_folder: crate::import::RelativeFolder::test(folder),
             },
             crate::import::folder_scanner::FolderReading {
                 decision,
                 author: crate::import::folder_scanner::FolderReleaseDecisionAuthor::User,
-                grouping: format!("grouping:{folder}"),
+                grouping: crate::import::CandidateKey::grouping(folder),
             },
         )),
         scanned_decisions: Vec::new(),
@@ -161,24 +161,24 @@ async fn commit_reading_under(
 
 /// Scan `root` holding `Box/CD1`, `Box/CD2` and `Other`, returning the scan's
 /// generation.
-async fn scanned_box_and_sibling(db: &Database, root: &str) -> u64 {
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+async fn scanned_box_and_sibling(db: &Database, root: &std::path::Path) -> u64 {
+    db.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
+    let generation = db.begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local).await.unwrap();
     for name in ["Box/CD1", "Box/CD2", "Other"] {
-        db.save_folder_scan_item(root, generation, &scanned_candidate(root, name))
+        db.save_folder_scan_item(std::path::Path::new(root), generation, &scanned_candidate(root, name))
             .await
             .unwrap()
             .expect("the scan generation is current");
     }
-    db.finish_folder_scan(root, generation, None)
+    db.finish_folder_scan(std::path::Path::new(root), generation, None)
         .await
         .unwrap()
         .expect("the scan generation is current");
     generation
 }
 
-async fn stored_keys(db: &Database, root: &str) -> Vec<String> {
-    let mut keys: Vec<String> = db
+async fn stored_keys(db: &Database, root: &std::path::Path) -> Vec<crate::import::CandidateKey> {
+    let mut keys: Vec<crate::import::CandidateKey> = db
         .load_folder_scan_items(root)
         .await
         .unwrap()
@@ -189,7 +189,7 @@ async fn stored_keys(db: &Database, root: &str) -> Vec<String> {
     keys
 }
 
-async fn row_generation(db: &Database, root: &str, name: &str) -> i64 {
+async fn row_generation(db: &Database, root: &std::path::Path, name: &str) -> i64 {
     let path = key_of(root, name);
     db.read(move |sql| {
         Ok(sql.query_row(
@@ -203,8 +203,8 @@ async fn row_generation(db: &Database, root: &str, name: &str) -> i64 {
 }
 
 /// Every entry a folder reading took out, replaced or pruned.
-fn removed_by(write: &crate::db::FolderReadingWrite) -> Vec<String> {
-    let mut removed: Vec<String> = write
+fn removed_by(write: &crate::db::FolderReadingWrite) -> Vec<crate::import::CandidateKey> {
+    let mut removed: Vec<crate::import::CandidateKey> = write
         .writes
         .iter()
         .flat_map(|(_, write)| write.superseded_keys().to_vec())
@@ -215,10 +215,8 @@ fn removed_by(write: &crate::db::FolderReadingWrite) -> Vec<String> {
     removed
 }
 
-fn key_of(root: &str, name: &str) -> String {
-    super::folder_below(root, name)
-        .to_string_lossy()
-        .into_owned()
+fn key_of(root: &std::path::Path, name: &str) -> crate::import::CandidateKey {
+    crate::import::CandidateKey::folder(&super::folder_below(root, name))
 }
 
 /// Each decision replaces the folder's entries in the same write that stores
@@ -250,7 +248,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         vec![key_of(root, "Box"), key_of(root, "Other")]
     );
     assert_eq!(
-        db.load_folder_release_decisions(root).await.unwrap().get("Box")
+        db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::CombineAsOneRelease, FolderReleaseDecisionAuthor::User))
     );
@@ -281,7 +279,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         ]
     );
     assert_eq!(
-        db.load_folder_release_decisions(root).await.unwrap().get("Box")
+        db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::KeepAsSeparateReleases, FolderReleaseDecisionAuthor::User))
     );
@@ -365,7 +363,7 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
     .err()
     .expect("a reading of a root that moved is refused");
     assert!(error.to_string().contains("changed while it was being read again"), "{error}");
-    assert!(db.load_folder_release_decisions(root).await.unwrap().get("Box").is_none());
+    assert!(db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box")).is_none());
     assert_eq!(db.load_folder_scan_snapshots().await.unwrap()[0].generation, moved);
     assert_eq!(
         stored_keys(&db, root).await,
@@ -400,7 +398,7 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
     )
     .await
     .is_err());
-    assert!(db.load_folder_release_decisions(root).await.unwrap().get("Box").is_none());
+    assert!(db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box")).is_none());
     assert_eq!(db.load_folder_scan_snapshots().await.unwrap()[0].generation, generation);
     assert_eq!(
         stored_keys(&db, root).await,
@@ -480,12 +478,13 @@ async fn watched_root_spellings_settle_on_one_row() {
 
     for spelling in spellings
         .iter()
-        .map(String::as_str)
-        .chain(URL_SPELLINGS.iter().copied())
+        .map(PathBuf::as_path)
+        .chain(URL_SPELLINGS.iter().map(std::path::Path::new))
     {
         assert!(
             !db.add_watched_import_folder(spelling).await.unwrap(),
-            "{spelling} is the folder already watched, not a new one"
+            "{} is the folder already watched, not a new one",
+            spelling.display()
         );
     }
     let paths: Vec<_> = db
@@ -504,7 +503,11 @@ async fn watched_root_spellings_settle_on_one_row() {
 async fn watched_root_rejects_a_path_climbing_out_of_itself() {
     let (db, _tmp) = empty_db().await;
     let path = host_root("/music/../rips");
-    assert!(db.add_watched_import_folder(&path).await.is_err(), "{path}");
+    assert!(
+        db.add_watched_import_folder(&path).await.is_err(),
+        "{}",
+        path.display()
+    );
 }
 
 #[tokio::test]
@@ -513,29 +516,22 @@ async fn corrupt_folder_keys_fail_when_loaded() {
     let root = host_root("/mounted/library");
     db.add_watched_import_folder(&root).await.unwrap();
     assert!(db
-        .set_import_candidate_skipped(&format!("{root}/a//b"), true)
-        .await
-        .is_err());
-    assert!(store_user_folder_decision(
-        &db,
-            &crate::import::folder_scanner::FolderReleaseDecisionKey {
-                watched_folder_path: root.clone(),
-                relative_folder_path: "a/./b".to_string(),
-            },
-            crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease,
+        .set_import_candidate_skipped(
+            std::path::Path::new(&format!("{}/a//b", root.display())),
+            true
         )
         .await
         .is_err());
-    let stored_root = root.clone();
+    let stored_root = root.display().to_string();
     db.call(move |conn| {
         conn.execute(
             "INSERT INTO skipped_import_candidates VALUES (?)",
-            [format!("{stored_root}/a//b")],
+            [format!("{stored_root}/a//b").into_bytes()],
         )?;
         conn.execute(
             "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-                 VALUES ('grouping:corrupt', ?, 1, 'user')",
-            [format!("{stored_root}/a/./b")],
+                 VALUES (CAST('grouping:corrupt' AS BLOB), ?, 1, 'user')",
+            [format!("{stored_root}/a/./b").into_bytes()],
         )?;
         Ok(())
     })
@@ -558,7 +554,7 @@ async fn overlapping_stored_roots_fail_to_load() {
     db.call(move |conn| {
         conn.execute(
             "INSERT INTO watched_import_folders (path, position) VALUES (?, 1)",
-            params![inner],
+            params![coven::path_bytes(&inner)],
         )?;
         Ok(())
     })
@@ -610,28 +606,28 @@ async fn a_disc_assignment_survives_a_relaunch() {
         &StoredCandidateEdits::none(),
     )
     .unwrap();
-    let root = folder.path().to_string_lossy().into_owned();
-    db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    let root = folder.path().to_path_buf();
+    db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
+    let generation = db.begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local).await.unwrap();
     let candidate = crate::import::folder_scanner::FolderCandidate {
         path: folder.path().to_path_buf(),
         file_root: folder.path().to_path_buf(),
         name: "Release".to_string(),
         files: scanned.clone(),
-        watched_folder_path: root.clone(),
+        watched_folder_path: std::path::PathBuf::from(&root),
         scope: crate::import::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: String::new(),
+        relative_folder: crate::import::RelativeFolder::root(),
         grouping: None,
     };
     db.save_folder_scan_item(
-        &root,
+        std::path::Path::new(&root),
         generation,
         &crate::import::folder_scanner::ScanItem::Valid(candidate),
     )
     .await
     .unwrap();
-    db.finish_folder_scan(&root, generation, None)
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
         .await
         .unwrap();
 
@@ -652,9 +648,9 @@ async fn a_disc_assignment_survives_a_relaunch() {
     draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
         &as_read(&hash, metadata_revision),
-        &folder.path().to_string_lossy(),
+        &crate::import::CandidateKey::folder(folder.path()),
         &candidate_edits,
-        &[(folder.path().to_string_lossy().into_owned(), settled)],
+        &[(crate::import::CandidateKey::folder(folder.path()), settled)],
         draft,
     )
     .await
@@ -856,8 +852,8 @@ async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
     let root = &host_root("/mounted/library");
     scanned_box_and_sibling(&db, root).await;
     let key = |folder: &str| FolderReleaseDecisionKey {
-        watched_folder_path: root.to_string(),
-        relative_folder_path: folder.to_string(),
+        watched_folder_path: root.clone(),
+        relative_folder: crate::import::RelativeFolder::test(folder),
     };
     let offered = |folder: &'static str, decision| {
         let db = db.clone();
@@ -871,7 +867,7 @@ async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
     // Read as one release, the folder's release is its grouping.
     let mut combined = combined_candidate(root, "Box");
     if let crate::import::folder_scanner::ScanItem::Valid(candidate) = &mut combined {
-        candidate.grouping = Some("grouping:Box".to_string());
+        candidate.grouping = Some(crate::import::CandidateKey::grouping("Box"));
     }
     commit_reading(
         &db,

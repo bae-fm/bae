@@ -136,13 +136,13 @@ fn concluding(mut row: NewImportCandidateVerdict, release_id: &str) -> NewImport
 
 fn new_candidate_row(
     content_hash: &str,
-    folder_path: &str,
+    folder_path: &Path,
     verdict: &TerminalVerdict,
 ) -> NewImportCandidateVerdict {
     NewImportCandidateVerdict {
         content_hash: content_hash.to_string(),
-file_edit_revision: 0,
-        folder_path: folder_path.to_string(),
+        file_edit_revision: 0,
+        candidate_key: crate::import::CandidateKey::folder(folder_path),
         verdict: verdict.clone(),
         signals: sample_signals(),
         pick: None,
@@ -164,7 +164,7 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
         &host_root("/music/Some Album"),
         &sample_verdict(),
     );
-    store_candidate_state(&db, &original, &row.folder_path).await;
+    store_candidate_state(&db, &original, &row.candidate_key.test_folder()).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -261,6 +261,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         assert_eq!(&candidate.content_hash(), content_hash);
         store_candidate_state(&db, &candidate, folder_path).await;
         let row = new_candidate_row(content_hash, folder_path, &sample_verdict());
+        let key = crate::import::CandidateKey::folder(folder_path);
         crate::import::CandidatePreparations::new(db.clone())
             .store_verdict(&row)
             .await
@@ -268,7 +269,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         crate::import::CandidatePreparations::new(db.clone())
             .replace_metadata(
                 content_hash,
-                folder_path,
+                &key,
                 &metadata_draft("Album", "Artist"),
                 Some(provenance),
             )
@@ -350,7 +351,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &host_root("/music/Album"),
+            &crate::import::CandidateKey::folder(&host_root("/music/Album")),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("mb-rel-chosen")),
         )
@@ -437,9 +438,9 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
-            &host_root("/music/Album"),
+            &crate::import::CandidateKey::folder(&host_root("/music/Album")),
             &edits,
-            &[(host_root("/music/Album"), candidate.clone())],
+            &[(crate::import::CandidateKey::folder(&host_root("/music/Album")), candidate.clone())],
             draft,
         )
         .await
@@ -456,7 +457,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
-            &host_root("/music/Album"),
+            &crate::import::CandidateKey::folder(&host_root("/music/Album")),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("mb-rel-chosen")),
         )
@@ -470,9 +471,9 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
                 file_edit_revision: 1,
                 metadata_revision,
             },
-            &host_root("/music/Album"),
+            &crate::import::CandidateKey::folder(&host_root("/music/Album")),
             &edits,
-            &[(host_root("/music/Album"), candidate.clone())],
+            &[(crate::import::CandidateKey::folder(&host_root("/music/Album")), candidate.clone())],
             draft,
         )
         .await
@@ -500,7 +501,7 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
         &host_root("/music/Old Location/Some Album"),
         &sample_verdict(),
     );
-    store_candidate_state(&db, &at_old_location, &row.folder_path).await;
+    store_candidate_state(&db, &at_old_location, &row.candidate_key.test_folder()).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -508,7 +509,7 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
 
     let mut at_new_location = at_old_location.clone();
     for entry in &mut at_new_location.files {
-        entry.file.path = PathBuf::from(host_root("/music/New Location/Some Album"))
+        entry.file.path = host_root("/music/New Location/Some Album")
             .join(&entry.file.relative_path);
     }
     assert_eq!(

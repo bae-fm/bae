@@ -9,6 +9,8 @@ pub(crate) mod assemble;
 #[cfg(desktop)]
 pub mod audio_layout;
 #[cfg(desktop)]
+pub mod candidate_key;
+#[cfg(desktop)]
 pub(crate) mod candidate_runtime;
 #[cfg(desktop)]
 pub mod candidate_search;
@@ -41,7 +43,6 @@ pub mod file_tag_mapper;
 pub(crate) mod file_tag_snapshot;
 #[cfg(desktop)]
 mod file_validation;
-pub(crate) mod folder_path;
 #[cfg(desktop)]
 pub mod folder_scanner;
 #[cfg(desktop)]
@@ -82,6 +83,7 @@ pub mod preparations;
 pub(crate) mod pressing_evidence;
 #[cfg(desktop)]
 pub mod probe;
+pub mod relative_folder;
 #[cfg(desktop)]
 pub mod release_candidate;
 #[cfg(desktop)]
@@ -251,6 +253,8 @@ impl ImportServices {
 }
 
 #[cfg(desktop)]
+pub use candidate_key::CandidateKey;
+#[cfg(desktop)]
 pub(crate) use candidate_runtime::CandidateWork;
 #[cfg(desktop)]
 pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange, RuntimeSnapshotsWatch};
@@ -309,6 +313,7 @@ pub use mapping::{
 pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 #[cfg(desktop)]
 pub use preparations::CandidatePreparations;
+pub use relative_folder::RelativeFolder;
 #[cfg(desktop)]
 pub use search::{SearchQuery, SourceFailure, SourceLookup};
 #[cfg(desktop)]

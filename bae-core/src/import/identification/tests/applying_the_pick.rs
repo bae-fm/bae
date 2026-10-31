@@ -23,7 +23,7 @@ fn cover_png() -> Vec<u8> {
 async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() {
     let fixture = Fixture::new("cover-fails").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     let mut release: serde_json::Value =
         serde_json::from_str(&release_json("mb-cover-1", "rg-cover-1", &[probed, 0]))

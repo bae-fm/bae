@@ -10,7 +10,7 @@ impl ImportServiceHandle {
     /// [`CandidateSession::moved`].
     pub async fn move_candidate_pane(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         pane_move: PaneMove,
     ) -> Result<(), crate::import::ImportError> {
         self.update_candidate_session(candidate_key, move |session| {
@@ -25,7 +25,7 @@ impl ImportServiceHandle {
     /// row and all — rather than asking again.
     pub async fn open_automatic(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<bool, crate::import::ImportError> {
         self.move_candidate_pane(candidate_key, PaneMove::Automatic)
             .await?;
@@ -61,7 +61,7 @@ impl ImportServiceHandle {
     /// The typed-search form as the person left it.
     pub async fn set_candidate_search_form(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         search: SearchForm,
     ) -> Result<(), crate::import::ImportError> {
         self.update_candidate_session(candidate_key, move |session| {
@@ -75,7 +75,7 @@ impl ImportServiceHandle {
     /// release being identified again — has no stored pane to clear.
     pub async fn clear_pane_failure(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<(), crate::import::ImportError> {
         if self
             .library_manager
@@ -96,7 +96,7 @@ impl ImportServiceHandle {
     /// could not be stored, or clearing the last one failed.
     pub async fn run_pane_command<T>(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         command: PaneCommand,
         run: impl std::future::Future<Output = Result<T, crate::import::ImportError>>,
     ) -> Result<PaneOutcome, crate::import::ImportError> {
@@ -128,11 +128,11 @@ impl ImportServiceHandle {
     /// so two writes in a row cannot lose one another's field.
     async fn update_candidate_session(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         change: impl FnOnce(&mut CandidateSession) + Send + 'static,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.update_candidate_session_write(&candidate_key, change)
                 .await
@@ -142,7 +142,7 @@ impl ImportServiceHandle {
 
     async fn update_candidate_session_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         change: impl FnOnce(&mut CandidateSession),
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("store a pane session").await;

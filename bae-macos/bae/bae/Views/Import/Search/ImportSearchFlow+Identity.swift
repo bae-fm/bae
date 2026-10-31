@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import os.log
 
 private let logger = Logger.bae("ImportSearchFlow")
@@ -14,7 +15,7 @@ extension ImportSearchFlow {
         importer: Importer,
         importStore: ImportStore,
         endEditing: @escaping @MainActor () async -> Void,
-        key: String,
+        key: Data,
         application: MetadataApplication
     ) {
         guard
@@ -23,7 +24,9 @@ extension ImportSearchFlow {
                 application: application
             )
         else {
-            logger.debug("Metadata application ignored for missing key: \(key)")
+            logger.debug(
+                "Metadata application ignored for missing key: \(bridgeCandidateKeyText(candidateKey: key))"
+            )
             return
         }
 
@@ -52,7 +55,7 @@ extension ImportSearchFlow {
     @MainActor
     private static func pick(
         _ application: MetadataApplication,
-        key: String,
+        key: Data,
         importer: Importer
     ) async throws -> BridgePaneOutcome {
         switch application {
@@ -71,7 +74,7 @@ extension ImportSearchFlow {
     private static func settle(
         _ result: Result<BridgePaneOutcome, Error>,
         application: MetadataApplication,
-        key: String,
+        key: Data,
         session: CandidateMetadataApplicationSession,
         importStore: ImportStore
     ) {
@@ -85,7 +88,9 @@ extension ImportSearchFlow {
                 error: nil
             )
         case .failure(is CancellationError):
-            logger.debug("Metadata application cancelled for key: \(key)")
+            logger.debug(
+                "Metadata application cancelled for key: \(bridgeCandidateKeyText(candidateKey: key))"
+            )
             importStore.metadataApplicationFailed(
                 key: key,
                 session: session,

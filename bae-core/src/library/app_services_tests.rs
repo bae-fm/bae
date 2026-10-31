@@ -279,32 +279,24 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
 async fn a_release_session_keeps_its_choices_in_core() {
     use crate::import::LookupChoiceEdit;
     let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
-    let key = "reidentify:release-1".to_string();
+    let key = crate::import::CandidateKey::reidentify("release-1");
     let release = "release-1".to_string();
 
+    services.edit_release_lookup_choices(release.clone(), LookupChoiceEdit::ToggleDiscId);
     services.edit_release_lookup_choices(
-        key.clone(),
-        release.clone(),
-        LookupChoiceEdit::ToggleDiscId,
-    );
-    services.edit_release_lookup_choices(
-        key.clone(),
         release.clone(),
         LookupChoiceEdit::ToggleCatalog {
             number: "WPCR-80001".to_string(),
         },
     );
-    services.identify_release_for_lookup(key.clone(), release);
+    services.identify_release_for_lookup(release.clone());
 
     let held = services.release_lookup_choices().get(&key).cloned();
     let held = held.expect("the session's choices are held");
     assert!(held.disc_id_excluded);
     assert_eq!(held.chosen_catalogs, vec!["WPCR-80001".to_string()]);
 
-    services
-        .end_release_identification(key.clone())
-        .await
-        .unwrap();
+    services.end_release_identification(&release).await.unwrap();
     assert!(services.release_lookup_choices().get(&key).is_none());
 }
 

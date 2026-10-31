@@ -38,8 +38,8 @@ async fn nested_releases_group_under_their_first_folder_by_the_newest() {
     );
     assert_eq!(
         lib.moved(&format!(
-            "DELETE FROM folder_discovery WHERE folder = '{}';",
-            lib.path("Artist/Late")
+            "DELETE FROM folder_discovery WHERE folder = {};",
+            lib.sql("Artist/Late")
         ))
         .await,
         moves([
@@ -72,8 +72,8 @@ async fn a_release_at_a_folder_groups_while_another_is_nested_below_it() {
     );
     assert_eq!(
         lib.moved(&format!(
-            "DELETE FROM scan_candidate WHERE path = '{}';",
-            lib.path("Box/Disc 1")
+            "DELETE FROM scan_candidate WHERE path = {};",
+            lib.sql("Box/Disc 1")
         ))
         .await,
         moves([
@@ -116,8 +116,8 @@ async fn a_member_leaving_found_leaves_its_group() {
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "INSERT INTO skipped_import_candidates (candidate_path) VALUES ('{}');",
-            lib.path("Artist/Late")
+            "INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});",
+            lib.sql("Artist/Late")
         ))
         .await,
         moves([
@@ -130,8 +130,8 @@ async fn a_member_leaving_found_leaves_its_group() {
     );
     assert_eq!(
         lib.moved(&format!(
-            "INSERT INTO skipped_import_candidates (candidate_path) VALUES ('{}');",
-            lib.path("Artist/Early")
+            "INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});",
+            lib.sql("Artist/Early")
         ))
         .await,
         moves([
@@ -156,8 +156,9 @@ async fn a_moved_release_changes_group() {
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE scan_candidate SET display_path = 'New/Album' WHERE path = '{}';",
-            lib.path("Old/Album")
+            "UPDATE scan_candidate SET relative_folder = {} WHERE path = {};",
+            sql_relative("New/Album"),
+            lib.sql("Old/Album")
         ))
         .await,
         moves([
@@ -182,17 +183,22 @@ async fn a_moved_release_changes_group() {
 fn a_member_costs_the_same_however_large_its_group() {
     let conn = crate::library::bare_library_connection();
     let root = crate::import::watched_folder::host_root("/music");
-    conn.execute_batch(&format!(
-        "INSERT INTO watched_import_folders (path, position) VALUES ('{root}', 0);
-         INSERT INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-         VALUES ('{root}', 1, 'scanning', 'local');"
-    ))
+    let root_bytes = coven::path_bytes(&root);
+    conn.execute(
+        "INSERT INTO watched_import_folders (path, position) VALUES (?1, 0)",
+        [&root_bytes],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO folder_scan_roots (watched_folder_path, generation, status, volume)
+         VALUES (?1, 1, 'scanning', 'local')",
+        [&root_bytes],
+    )
     .unwrap();
     let place = |n: i64| -> i32 {
         let display_path = format!("Collection/Album {n}");
-        let path = folder_below(&root, &display_path)
-            .to_string_lossy()
-            .into_owned();
+        let path = coven::path_bytes(&folder_below(&root, &display_path));
+        let relative = crate::import::RelativeFolder::test(&display_path);
         conn.execute(
             "INSERT INTO folder_discovery (folder, first_seen_at, settled) VALUES (?, ?, 1)",
             rusqlite::params![path, n],
@@ -201,17 +207,18 @@ fn a_member_costs_the_same_however_large_its_group() {
         let mut write = conn
             .prepare(
                 "INSERT INTO scan_candidate
-                     (watched_folder_path, path, generation, kind, name, display_path, folder,
-                      file_root, scope, content_hash)
-                 VALUES (?1, ?2, 1, 'valid', ?3, ?4, ?2, ?2, 'direct', ?2)",
+                     (watched_folder_path, path, generation, kind, name, relative_folder,
+                      folder, file_root, scope, content_hash)
+                 VALUES (?1, ?2, 1, 'valid', ?3, ?4, ?2, ?2, 'direct', ?5)",
             )
             .unwrap();
         write
             .execute(rusqlite::params![
-                root,
+                root_bytes,
                 path,
                 format!("Album {n}"),
-                display_path
+                relative,
+                hash(&display_path)
             ])
             .unwrap();
         write.get_status(rusqlite::StatementStatus::VmStep)
@@ -221,5 +228,35 @@ fn a_member_costs_the_same_however_large_its_group() {
     assert!(
         late < early * 3 / 2,
         "placing the 20th member took {early} steps, the 2,000th {late}"
+    );
+}
+
+/// A folder whose name isn't valid UTF-8 nests and groups by its bytes: the
+/// release below it joins its group, and the release at it joins too, both
+/// shown under the name's escape.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_folder_whose_name_is_not_utf8_nests_and_groups_by_its_bytes() {
+    use std::os::unix::ffi::OsStrExt;
+    let lib = Library::new().await;
+    let cafe = std::path::Path::new(std::ffi::OsStr::from_bytes(b"Caf\xE9"));
+    let disc = cafe.join("Disc 1");
+    assert_eq!(
+        lib.moved(&lib.scan_folder(cafe, "valid")).await,
+        moves([(lib.release_at(cafe), Some(found("Caf\\xE9")))])
+    );
+    assert_eq!(
+        lib.moved(&lib.scan_folder(&disc, "valid")).await,
+        moves([
+            (
+                lib.release_at(cafe),
+                Some(found("Caf\\xE9").grouped("Caf\\xE9"))
+            ),
+            (
+                lib.release_at(&disc),
+                Some(found("Caf\\xE9/Disc 1").grouped("Caf\\xE9"))
+            ),
+            (lib.group("Caf\\xE9"), Some(header("Caf\\xE9", None))),
+        ])
     );
 }

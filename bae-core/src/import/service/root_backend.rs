@@ -12,7 +12,7 @@ pub(super) trait RootRemovalBackend: Send + Sync {
         &self,
         roots: &[PathBuf],
         parent: Option<&Path>,
-    ) -> Result<Vec<String>, String>;
+    ) -> Result<Vec<crate::import::CandidateKey>, String>;
 }
 
 pub(super) struct ServiceRootRemovalBackend {
@@ -53,15 +53,9 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
         &self,
         roots: &[PathBuf],
         parent: Option<&Path>,
-    ) -> Result<Vec<String>, String> {
+    ) -> Result<Vec<crate::import::CandidateKey>, String> {
         self.library_manager
-            .remove_watched_import_folders(
-                roots
-                    .iter()
-                    .map(|root| root.to_string_lossy().into_owned())
-                    .collect(),
-                parent.map(|parent| parent.to_string_lossy().into_owned()),
-            )
+            .remove_watched_import_folders(roots.to_vec(), parent.map(Path::to_path_buf))
             .await
             .map_err(|error| error.to_string())?
             .ok_or_else(|| match parent {

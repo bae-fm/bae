@@ -16,7 +16,7 @@ pub(super) fn convert_ui_event(
         #[cfg(feature = "desktop")]
         UiEvent::CandidateSignalsUpdated { key, signals } => {
             Some(BridgeUiEvent::CandidateSignalsUpdated {
-                key,
+                key: key.into_bytes(),
                 signals: crate::types::BridgeSignals::from_core(signals),
             })
         }

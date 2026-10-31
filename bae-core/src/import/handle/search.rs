@@ -32,7 +32,11 @@ impl ImportServiceHandle {
     ///
     /// A search already running for this key is superseded — one search per
     /// candidate at a time, because the pane shows one result area.
-    pub fn start_candidate_search(&self, candidate_key: String, query: SearchQuery) {
+    pub fn start_candidate_search(
+        &self,
+        candidate_key: crate::import::CandidateKey,
+        query: SearchQuery,
+    ) {
         let search =
             CandidateSearch::started(query.clone(), &self.library_manager.metadata_sources());
         let sources = search.searching_sources();
@@ -44,7 +48,7 @@ impl ImportServiceHandle {
 
     /// Re-ask only the sources that failed, keeping what the others found. A
     /// no-op when the candidate has no search, or none of its sources failed.
-    pub fn retry_candidate_search(&self, candidate_key: String) {
+    pub fn retry_candidate_search(&self, candidate_key: crate::import::CandidateKey) {
         let Some((query, sources, run)) = self.runtime.retry_search(&candidate_key) else {
             debug!("retry_candidate_search: {candidate_key} has no source to re-ask");
             return;
@@ -56,7 +60,7 @@ impl ImportServiceHandle {
 
     /// Drop a candidate's search: its lookups stop mattering and the result
     /// area goes back to the identify verdict.
-    pub fn clear_candidate_search(&self, candidate_key: String) {
+    pub fn clear_candidate_search(&self, candidate_key: crate::import::CandidateKey) {
         self.runtime.clear_search(&candidate_key);
     }
 
@@ -74,7 +78,7 @@ impl ImportServiceHandle {
     /// publishes what it leaves behind, so a superseded run writes nothing.
     fn spawn_source_search(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         query: SearchQuery,
         source: Catalog,
         run: u64,
@@ -99,7 +103,7 @@ impl ImportServiceHandle {
     /// read to be.
     pub(super) async fn land_picked(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
     ) {
@@ -185,7 +189,7 @@ impl ImportServiceHandle {
 
     async fn candidate_covers(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<RemoteCoverGallery, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(key).await? else {
             return Err(crate::import::ImportError::Internal {
@@ -300,7 +304,7 @@ impl ImportServiceHandle {
     /// path.
     pub(super) async fn release_for_pick(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
     ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
@@ -333,7 +337,7 @@ impl ImportServiceHandle {
     /// stored.
     async fn is_settled_lead(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         release: &crate::import::MetadataRef,
     ) -> Result<bool, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
@@ -381,7 +385,7 @@ impl ImportServiceHandle {
     /// can answer a candidate a person has already answered.
     pub async fn select_candidate_release(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         link: crate::import::PressingLink,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
@@ -401,7 +405,7 @@ impl ImportServiceHandle {
     /// identification the candidate had going.
     pub async fn select_candidate_file_tags(
         &self,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {

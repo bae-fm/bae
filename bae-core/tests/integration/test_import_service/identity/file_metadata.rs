@@ -83,13 +83,13 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     fs::create_dir_all(&album_dir).unwrap();
     copy_cue_flac_fixture(&album_dir);
 
-    let candidate_key = album_dir.to_string_lossy().into_owned();
+    let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
     f.handle
-        .add_watched_folder(candidate_key.clone())
+        .add_watched_folder(album_dir.to_path_buf())
         .await
         .unwrap();
     f.handle
-        .refresh_watched_folder(candidate_key.clone())
+        .refresh_watched_folder(album_dir.to_path_buf())
         .await
         .unwrap();
     // The draft the folder's own tags seeded at discovery — what the pane
@@ -136,7 +136,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: "cue".to_string(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(b"cue".to_vec()),
             ..support::folder_import(&import_id, album_dir, support::DraftSource::FileTags)
         })
         .await
@@ -335,7 +335,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: "identified".to_string(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(b"identified".to_vec()),
             ..support::folder_import(
                 &import_id,
                 identified_dir,
@@ -366,7 +366,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     let import_id2 = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: "file-tags".to_string(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(b"file-tags".to_vec()),
             ..support::folder_import(&import_id2, file_tags_dir, support::DraftSource::FileTags)
         })
         .await
@@ -492,13 +492,13 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     // for the projection to read, so the folder name is the album title.
     generate_album_files(&album_dir, &["01.flac", "02.flac"]);
 
-    let candidate_key = album_dir.to_string_lossy().into_owned();
+    let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
     f.handle
-        .add_watched_folder(candidate_key.clone())
+        .add_watched_folder(album_dir.to_path_buf())
         .await
         .unwrap();
     f.handle
-        .refresh_watched_folder(candidate_key.clone())
+        .refresh_watched_folder(album_dir.to_path_buf())
         .await
         .unwrap();
     f.handle

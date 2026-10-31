@@ -61,10 +61,10 @@ fn seed_mb_release_with_works(
     );
 }
 
-async fn pick_mb(handle: &ImportServiceHandle, key: &str, release_id: &str) {
+async fn pick_mb(handle: &ImportServiceHandle, key: &crate::import::CandidateKey, release_id: &str) {
     handle
         .select_candidate_release(
-            key.to_string(),
+            key.clone(),
             crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,

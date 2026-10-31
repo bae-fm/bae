@@ -18,8 +18,8 @@ struct ImportStoreScanFailureTests {
         _ error: String
     ) -> BridgeWatchedFolderScanStatus {
         BridgeWatchedFolderScanStatus(
-            watchedFolderPath: path,
-            watchedFolderName: "Rips",
+            watchedFolderPath: Data(path.utf8),
+            watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
             status: .failed(error: error),
             onNetworkVolume: false
         )
@@ -29,8 +29,8 @@ struct ImportStoreScanFailureTests {
         -> BridgeWatchedFolderScanStatus
     {
         BridgeWatchedFolderScanStatus(
-            watchedFolderPath: path,
-            watchedFolderName: "Rips",
+            watchedFolderPath: Data(path.utf8),
+            watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
             status: .complete,
             onNetworkVolume: false
         )
@@ -44,14 +44,14 @@ struct ImportStoreScanFailureTests {
     func firstDeliveryReportsAnAlreadyFailedRoot() {
         let store = ImportStore()
         var raised: [(String, String)] = []
-        store.onScanFailure = { path, detail in raised.append((path, detail)) }
+        store.onScanFailure = { name, detail in raised.append((name, detail)) }
 
         store.applyFolderScans(
             Self.scans([Self.failed("/Media", "no such column")])
         )
 
         #expect(raised.count == 1)
-        #expect(raised.first?.0 == "/Media")
+        #expect(raised.first?.0 == "Media")
         #expect(raised.first?.1 == "no such column")
     }
 
@@ -63,7 +63,7 @@ struct ImportStoreScanFailureTests {
     func repeatedDeliveriesReportOnlyNewFailures() {
         let store = ImportStore()
         var raised: [(String, String)] = []
-        store.onScanFailure = { path, detail in raised.append((path, detail)) }
+        store.onScanFailure = { name, detail in raised.append((name, detail)) }
 
         store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
         // A delivery that says the same thing, then one that adds a root so
@@ -88,7 +88,7 @@ struct ImportStoreScanFailureTests {
     func aRecoveredRootReportsItsNextBreak() {
         let store = ImportStore()
         var raised: [(String, String)] = []
-        store.onScanFailure = { path, detail in raised.append((path, detail)) }
+        store.onScanFailure = { name, detail in raised.append((name, detail)) }
 
         store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
         store.applyFolderScans(Self.scans([Self.complete("/Media")]))
@@ -132,20 +132,20 @@ struct ImportListPageSourceFailureTests {
         ) async throws -> UInt64 { 0 }
         func setAllGroupsFolded(folded _: Bool) async throws -> UInt64 { 0 }
         func locateCandidate(
-            candidateKey _: String
+            candidateKey _: Data
         ) async throws -> BridgeImportCandidateListLocation? { nil }
-        func firstIdentifyingCandidate() async throws -> String? { nil }
+        func firstIdentifyingCandidate() async throws -> Data? { nil }
         func changeSelection(
             change _: BridgeSelectionChange
         ) async throws -> UInt64 {
             0
         }
         func selectAll() async throws -> UInt64 { 0 }
-        func selectionSourceFolders() async throws -> [String] { [] }
-        func combineSelection() async throws -> String {
+        func selectionSourceFolders() async throws -> [Data] { [] }
+        func combineSelection() async throws -> Data {
             throw StubError.notImplemented
         }
-        func separateSelection() async throws -> [String] {
+        func separateSelection() async throws -> [Data] {
             throw StubError.notImplemented
         }
         func runSelectionAction(

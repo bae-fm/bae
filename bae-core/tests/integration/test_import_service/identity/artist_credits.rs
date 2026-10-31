@@ -230,7 +230,7 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
 
 /// The one live query an open import pane reads its candidate through.
 type PaneQuery = coven::ReconfigurableLiveQuery<
-    Option<String>,
+    Option<bae_core::import::CandidateKey>,
     Option<bae_core::import::ImportCandidateDetailProjection>,
 >;
 
@@ -240,12 +240,12 @@ async fn open_tagged_pane(
     f: &ImportFixture,
     dir: &std::path::Path,
 ) -> (
-    String,
+    bae_core::import::CandidateKey,
     PaneQuery,
 ) {
-    let key = dir.to_string_lossy().into_owned();
-    f.handle.add_watched_folder(key.clone()).await.unwrap();
-    f.handle.refresh_watched_folder(key.clone()).await.unwrap();
+    let key = bae_core::import::CandidateKey::folder(dir);
+    f.handle.add_watched_folder(dir.to_path_buf()).await.unwrap();
+    f.handle.refresh_watched_folder(dir.to_path_buf()).await.unwrap();
     f.handle
         .select_candidate_file_tags(key.clone())
         .await

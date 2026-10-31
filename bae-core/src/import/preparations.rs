@@ -48,7 +48,7 @@ impl CandidatePreparations {
     pub(crate) async fn store_run_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
     ) -> Result<Option<crate::import::candidate_runtime::IdentificationMove>, LibraryError> {
         let Some((prep, expected, extras)) = self.verdict_save(verdict).await? else {
@@ -57,7 +57,7 @@ impl CandidatePreparations {
         Ok(
             match self
                 .database
-                .save_run_verdict(prep, expected, extras, candidate_key.to_string(), run)
+                .save_run_verdict(prep, expected, extras, candidate_key.clone(), run)
                 .await?
             {
                 crate::db::RunVerdictSaved::Landed(ended) => Some(ended),
@@ -114,7 +114,7 @@ impl CandidatePreparations {
             metadata_revision: prep.metadata_revision,
             scanned: None,
         };
-        prep.folder_path = verdict.folder_path.clone();
+        prep.candidate_key = verdict.candidate_key.clone();
         prep.identification = Some(DbCandidateIdentifyResult {
             verdict: verdict.verdict.clone(),
             identified_at: self.database.now(),
@@ -169,9 +169,12 @@ impl CandidatePreparations {
     pub(crate) async fn store_file_decisions(
         &self,
         read: &CandidateAsRead,
-        folder_path: &str,
+        candidate_key: &crate::import::CandidateKey,
         edits: &CandidateFileEdits,
-        settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
+        settled_candidates: &[(
+            crate::import::CandidateKey,
+            crate::import::folder_scanner::CategorizedFiles,
+        )],
         draft: crate::import::CandidateDraft,
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
         let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
@@ -192,7 +195,7 @@ impl CandidatePreparations {
             metadata_revision: read.metadata_revision,
             scanned: None,
         };
-        prep.folder_path = folder_path.to_string();
+        prep.candidate_key = candidate_key.clone();
         prep.file_edits = edits.clone();
         prep.file_edits.revision = next_revision;
         // Identification and signals described the prior audio shape. The
@@ -226,7 +229,7 @@ impl CandidatePreparations {
     pub async fn replace_metadata(
         &self,
         content_hash: &str,
-        folder_path: &str,
+        candidate_key: &crate::import::CandidateKey,
         draft: &crate::import::RawReleaseEdit,
         provenance: Option<&crate::import::MetadataProvenance>,
     ) -> Result<u64, LibraryError> {
@@ -247,7 +250,7 @@ impl CandidatePreparations {
             cover_options: Vec::new(),
             assets: crate::import::CandidatePreparedAssets::default(),
         };
-        self.apply_metadata(prep, None, folder_path, metadata, None)
+        self.apply_metadata(prep, None, candidate_key, metadata, None)
             .await
     }
 
@@ -289,17 +292,17 @@ impl CandidatePreparations {
 
     pub async fn apply_source(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
-        folder_path: &str,
+        candidate_key: &crate::import::CandidateKey,
         metadata: &crate::import::CandidateMetadataDraft,
     ) -> Result<u64, LibraryError> {
         let prep = self.loaded_at(read).await?;
         let scanned = ScannedCandidateKey {
-            watched_folder_path: watched_folder_path.to_string(),
-            candidate_path: folder_path.to_string(),
+            watched_folder_path: watched_folder_path.to_path_buf(),
+            candidate_path: candidate_key.clone(),
         };
-        self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
+        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None)
             .await
     }
 
@@ -312,9 +315,9 @@ impl CandidatePreparations {
     /// run's result already stands. The read and the write share this load.
     pub(crate) async fn apply_pick(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
-        folder_path: &str,
+        candidate_key: &crate::import::CandidateKey,
         link: &crate::import::PressingLink,
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
@@ -322,8 +325,8 @@ impl CandidatePreparations {
         let mut prep = self.loaded_at(read).await?;
         prep.link = Some(crate::import::ReleaseLink::Pressing(link.clone()));
         let scanned = ScannedCandidateKey {
-            watched_folder_path: watched_folder_path.to_string(),
-            candidate_path: folder_path.to_string(),
+            watched_folder_path: watched_folder_path.to_path_buf(),
+            candidate_path: candidate_key.clone(),
         };
         // A pick answers the folder, so the person keeping their own draft
         // over the verdict stands no more.
@@ -337,7 +340,7 @@ impl CandidatePreparations {
                 })
             }
         }
-        self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
+        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None)
             .await
     }
 
@@ -349,9 +352,9 @@ impl CandidatePreparations {
     /// from there.
     pub(crate) async fn apply_shared_album(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
-        folder_path: &str,
+        candidate_key: &crate::import::CandidateKey,
         link: &crate::import::AlbumLink,
         draft: crate::import::CandidateDraft,
     ) -> Result<u64, LibraryError> {
@@ -369,12 +372,12 @@ impl CandidatePreparations {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
             scanned: Some(ScannedCandidateKey {
-                watched_folder_path: watched_folder_path.to_string(),
-                candidate_path: folder_path.to_string(),
+                watched_folder_path: watched_folder_path.to_path_buf(),
+                candidate_path: candidate_key.clone(),
             }),
         };
         prep.link = Some(crate::import::ReleaseLink::Album(link.clone()));
-        prep.folder_path = folder_path.to_string();
+        prep.candidate_key = candidate_key.clone();
         prep.author = MetadataAuthor::Person;
         prep.metadata.draft = draft;
         // An album is no pressing: no release's covers are offered for it.
@@ -458,8 +461,8 @@ impl CandidatePreparations {
     /// candidate shape.
     pub(crate) async fn apply_file_metadata(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &std::path::Path,
+        candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
         draft: &crate::import::CandidateDraft,
@@ -467,8 +470,8 @@ impl CandidatePreparations {
     ) -> Result<u64, LibraryError> {
         let prep = self.loaded_at(read).await?;
         let scanned = ScannedCandidateKey {
-            watched_folder_path: watched_folder_path.to_string(),
-            candidate_path: candidate_path.to_string(),
+            watched_folder_path: watched_folder_path.to_path_buf(),
+            candidate_path: candidate_path.clone(),
         };
         let metadata = crate::import::CandidateMetadataDraft {
             draft: draft.clone(),
@@ -512,7 +515,7 @@ impl CandidatePreparations {
         &self,
         mut prep: CandidatePreparation,
         scanned: Option<ScannedCandidateKey>,
-        folder_path: &str,
+        candidate_key: &crate::import::CandidateKey,
         mut metadata: crate::import::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
     ) -> Result<u64, LibraryError> {
@@ -522,7 +525,7 @@ impl CandidatePreparations {
             metadata_revision: prep.metadata_revision,
             scanned,
         };
-        prep.folder_path = folder_path.to_string();
+        prep.candidate_key = candidate_key.clone();
         prep.author = MetadataAuthor::Person;
         prep.metadata = metadata;
         prep.metadata_revision += 1;

@@ -178,7 +178,7 @@ impl FileReads {
                     return Err(FolderScanError::Other(format!(
                         "{} is a folder reading, which is stored as a decision, not as a scan \
                          entry",
-                        key.relative_folder_path
+                        key.relative_folder.text()
                     )))
                 }
             }

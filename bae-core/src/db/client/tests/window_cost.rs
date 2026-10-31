@@ -441,9 +441,14 @@ pub(super) async fn grow_import_list(
         .unwrap()
         .to_string();
     let started = Instant::now();
-    db.add_watched_import_folder(&root).await.unwrap();
+    db.add_watched_import_folder(std::path::Path::new(&root))
+        .await
+        .unwrap();
     let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .begin_folder_scan(
+            std::path::Path::new(&root),
+            crate::import::VolumeKind::Local,
+        )
         .await
         .unwrap();
     for i in start..end {
@@ -452,9 +457,9 @@ pub(super) async fn grow_import_list(
             (i * 7) % 100,
             (i * 16807) % 999_983
         );
-        let candidate = super::candidate(&root, &name);
+        let candidate = super::candidate(std::path::Path::new(&root), &name);
         db.save_folder_scan_item(
-            &root,
+            std::path::Path::new(&root),
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(candidate),
         )
@@ -462,7 +467,7 @@ pub(super) async fn grow_import_list(
         .unwrap()
         .unwrap();
     }
-    db.finish_folder_scan(&root, generation, None)
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
         .await
         .unwrap()
         .unwrap();

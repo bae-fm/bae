@@ -3,17 +3,34 @@ use super::super::*;
 /// A folder the user watches for imports — one candidate-list group.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeWatchedFolder {
-    /// Absolute path of the watched folder.
-    pub path: String,
-    /// Final path component — the group header label.
+    /// The watched folder's absolute path, as coven's bytes for it: what
+    /// every call naming the folder takes back.
+    pub path: Vec<u8>,
+    /// The whole path, shown as text (`coven::path_text`).
+    pub path_text: String,
+    /// Final path component, shown as text — the group header label.
     pub name: String,
 }
 
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeWatchedFolder = bae_core::import::WatchedFolder,
-    from_core: pub fn,
-    fields: { path, name },
+#[cfg(feature = "desktop")]
+impl BridgeWatchedFolder {
+    pub fn from_core(folder: bae_core::import::WatchedFolder) -> Self {
+        let bae_core::import::WatchedFolder { path, name } = folder;
+        Self {
+            path: coven::path_bytes(&path),
+            path_text: coven::path_text(&path),
+            name,
+        }
+    }
+}
+
+/// The text that shows a candidate key, as a log line names it: a folder's
+/// escaped path (`coven::path_text`), or a grouping's or re-identify
+/// session's key. It names nothing back to core.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_candidate_key_text(candidate_key: Vec<u8>) -> String {
+    bae_core::import::CandidateKey::from_bytes(candidate_key).to_string()
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

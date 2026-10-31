@@ -29,11 +29,11 @@ struct Job {
 enum JobState {
     Waiting,
     Running {
-        representative: String,
+        representative: crate::import::CandidateKey,
         run: IdentifyRunId,
     },
     Settling {
-        representative: String,
+        representative: crate::import::CandidateKey,
         run: IdentifyRunId,
         /// Tells the settle to give its answer up before it writes.
         abandon: CancellationToken,
@@ -61,13 +61,13 @@ impl Job {
         }
     }
 
-    fn holds(&self, key: &str) -> bool {
+    fn holds(&self, key: &crate::import::CandidateKey) -> bool {
         self.members
             .iter()
-            .any(|member| member.candidate.key() == key)
+            .any(|member| member.candidate.key() == *key)
     }
 
-    fn keys(&self) -> Vec<String> {
+    fn keys(&self) -> Vec<crate::import::CandidateKey> {
         self.members
             .iter()
             .map(|member| member.candidate.key())
@@ -85,7 +85,7 @@ impl Job {
     }
 
     /// The member whose run is answering this job, while one is running.
-    fn running_representative(&self) -> Option<String> {
+    fn running_representative(&self) -> Option<crate::import::CandidateKey> {
         match &self.state {
             JobState::Running { representative, .. } => Some(representative.clone()),
             JobState::Waiting | JobState::Settling { .. } => None,
@@ -93,7 +93,7 @@ impl Job {
     }
 
     /// Every member with the files it is identified as.
-    fn marks(&self) -> Vec<(String, CandidateFiles)> {
+    fn marks(&self) -> Vec<(crate::import::CandidateKey, CandidateFiles)> {
         self.members
             .iter()
             .map(|member| {
@@ -136,7 +136,7 @@ pub(super) struct Queue {
 }
 
 impl Queue {
-    fn index_of_key(&self, key: &str) -> Option<usize> {
+    fn index_of_key(&self, key: &crate::import::CandidateKey) -> Option<usize> {
         self.jobs.iter().position(|job| job.holds(key))
     }
 
@@ -145,12 +145,12 @@ impl Queue {
     }
 
     /// How the queue holds `key`, if it does.
-    fn held(&self, key: &str) -> Option<Held> {
+    fn held(&self, key: &crate::import::CandidateKey) -> Option<Held> {
         let job = &self.jobs[self.index_of_key(key)?];
         let member = job
             .members
             .iter()
-            .find(|member| member.candidate.key() == key)
+            .find(|member| member.candidate.key() == *key)
             .expect("the located job holds the key");
         let running = match &job.state {
             JobState::Waiting => false,
@@ -257,7 +257,7 @@ impl Queue {
 
     /// Remove `key` from whatever job holds it, ending the run it was
     /// answering for, and leave its mark to the caller.
-    async fn take_out(&mut self, context: &Context, key: &str) {
+    async fn take_out(&mut self, context: &Context, key: &crate::import::CandidateKey) {
         let Some(index) = self.index_of_key(key) else {
             return;
         };
@@ -265,7 +265,7 @@ impl Queue {
         let position = job
             .members
             .iter()
-            .position(|member| member.candidate.key() == key)
+            .position(|member| member.candidate.key() == *key)
             .expect("the located job holds the key");
         job.members.remove(position);
         // A settling job keeps its answer: the write ends itself either way.
@@ -291,7 +291,7 @@ impl Queue {
     }
 
     /// Take `key` off the queue and off its waiting mark.
-    async fn withdraw(&mut self, context: &Context, key: &str) {
+    async fn withdraw(&mut self, context: &Context, key: &crate::import::CandidateKey) {
         self.take_out(context, key).await;
         withdraw(context, key).await;
     }
@@ -306,7 +306,7 @@ impl Queue {
     async fn cancel(
         &mut self,
         context: &Context,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<(), crate::library::LibraryError> {
         let Some(index) = self.index_of_key(key) else {
             return context.import.cancel_identification(key).await;
@@ -393,7 +393,7 @@ impl Queue {
 
     /// The running job whose representative is `key` on `run`; a superseded
     /// run matches none.
-    fn running_job(&self, key: &str, run: IdentifyRunId) -> Option<usize> {
+    fn running_job(&self, key: &crate::import::CandidateKey, run: IdentifyRunId) -> Option<usize> {
         self.jobs.iter().position(|job| {
             matches!(
                 &job.state,
@@ -407,7 +407,7 @@ impl Queue {
     fn settling_job(
         &self,
         identity: &CandidateFiles,
-        key: &str,
+        key: &crate::import::CandidateKey,
         run: IdentifyRunId,
     ) -> Option<usize> {
         self.jobs.iter().position(|job| {
@@ -447,7 +447,7 @@ fn first_failure(
 }
 
 /// End `key`'s identification: its run stops, and its standing says so.
-async fn cancel(context: &Context, key: &str) {
+async fn cancel(context: &Context, key: &crate::import::CandidateKey) {
     record(
         context,
         &format!("end {key}'s identification"),
@@ -456,7 +456,7 @@ async fn cancel(context: &Context, key: &str) {
 }
 
 /// Take `key` off its waiting mark.
-pub(super) async fn withdraw(context: &Context, key: &str) {
+pub(super) async fn withdraw(context: &Context, key: &crate::import::CandidateKey) {
     record(
         context,
         &format!("take {key} off the identification queue"),
@@ -530,7 +530,7 @@ pub(super) async fn run(
                         }
                     }
                     Command::CancelAll { done } => {
-                        let keys: Vec<String> = queue.jobs.iter().flat_map(Job::keys).collect();
+                        let keys: Vec<crate::import::CandidateKey> = queue.jobs.iter().flat_map(Job::keys).collect();
                         let mut cancelled = Ok(());
                         for key in &keys {
                             first_failure(&mut cancelled, queue.cancel(context, key).await);
@@ -591,7 +591,7 @@ pub(super) async fn admit(
 }
 
 /// A person asked for this candidate to be identified now.
-async fn request(context: &Context, queue: &mut Queue, candidate_key: String) {
+async fn request(context: &Context, queue: &mut Queue, candidate_key: crate::import::CandidateKey) {
     let Some(candidate) = answerable_candidate(context, &candidate_key).await else {
         warn!("identification: cannot identify {candidate_key}: no answer can be stored for it");
         return;

@@ -3,6 +3,7 @@
 //! change.
 
 use super::{CandidateRuntime, Revisions, RuntimeView};
+use crate::import::CandidateKey;
 use crate::signals::Signals;
 use tokio::sync::watch;
 
@@ -10,7 +11,7 @@ use tokio::sync::watch;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum RuntimeValue {
     Signals {
-        key: String,
+        key: CandidateKey,
         signals: Signals,
     },
     /// How many of the running batch of identifications have ended, of how

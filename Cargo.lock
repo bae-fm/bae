@@ -754,6 +754,7 @@ dependencies = [
  "bae-types",
  "bae-util",
  "coven",
+ "hex",
  "schemars",
  "serde",
  "serde_json",

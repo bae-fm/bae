@@ -223,7 +223,7 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
-        } if key.relative_folder_path == "Group"
+        } if key.relative_folder == crate::import::RelativeFolder::test("Group")
     )));
     assert!(
         scan.says_while_held(|item| matches!(item, ScanItem::Valid(_))),
@@ -259,7 +259,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
-        } if key.relative_folder_path == "Group"
+        } if key.relative_folder == crate::import::RelativeFolder::test("Group")
     )));
 
     scan.finish();
@@ -285,7 +285,7 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
     let mut candidates = HashMap::new();
     for item in &items {
         if let ScanItem::Valid(candidate) = item {
-            candidates.insert(candidate.display_path.as_str(), candidate);
+            candidates.insert(candidate.relative_folder.text(), candidate);
         }
     }
     // Years are not disc numbers: an album folder per year is several
@@ -316,7 +316,7 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
         )]),
     );
     assert!(separate.iter().any(
-        |item| matches!(item, ScanItem::Valid(candidate) if candidate.display_path == "Solo Artist/1973 - Box/CD1")
+        |item| matches!(item, ScanItem::Valid(candidate) if candidate.relative_folder.text() == "Solo Artist/1973 - Box/CD1")
     ));
 }
 
@@ -406,7 +406,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
-        } if key.relative_folder_path == "Collection/Release Wrapper"
+        } if key.relative_folder == crate::import::RelativeFolder::test("Collection/Release Wrapper")
     )));
 
     let combined = read_by_the_scan
@@ -477,7 +477,7 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
-        } if key.relative_folder_path == "Collection/Release Wrapper"
+        } if key.relative_folder == crate::import::RelativeFolder::test("Collection/Release Wrapper")
     )));
     let releases: Vec<_> = items
         .iter()
@@ -521,7 +521,7 @@ fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
                 key,
                 decision: FolderReleaseDecision::KeepAsSeparateReleases,
                 ..
-            } if key.relative_folder_path == "Group/Artist"
+            } if key.relative_folder == crate::import::RelativeFolder::test("Group/Artist")
         )));
 }
 
@@ -616,12 +616,12 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
-        } if key.relative_folder_path == "Collection/Release Wrapper"
+        } if key.relative_folder == crate::import::RelativeFolder::test("Collection/Release Wrapper")
     )));
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
@@ -648,17 +648,17 @@ fn a_part_with_no_number_makes_it_several_releases() {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
-        } if key.relative_folder_path == "Collection/Release Wrapper"
+        } if key.relative_folder == crate::import::RelativeFolder::test("Collection/Release Wrapper")
     )));
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
-    assert!(releases.contains(&"Collection/Release Wrapper/Release 01"));
-    assert!(releases.contains(&"Collection/Release Wrapper/Bonus"));
+    assert!(releases.contains(&"Collection/Release Wrapper/Release 01".to_string()));
+    assert!(releases.contains(&"Collection/Release Wrapper/Bonus".to_string()));
 }
 
 /// An album folder whose only subfolder is artwork yields one release, so
@@ -683,7 +683,7 @@ fn a_folder_that_yields_one_release_decides_nothing() {
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
@@ -716,7 +716,7 @@ fn a_numbered_box_inside_a_collection_is_one_release() {
     let mut paths: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
@@ -764,7 +764,7 @@ fn two_walks_of_one_tree_produce_the_same_items() {
                     decision,
                     grouping,
                 } => Some((
-                    key.relative_folder_path,
+                    key.relative_folder,
                     FolderReading {
                         decision,
                         author: FolderReleaseDecisionAuthor::Heuristic,
@@ -810,7 +810,7 @@ fn a_wrapper_over_one_folder_of_releases_asks_nothing() {
     let mut releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();

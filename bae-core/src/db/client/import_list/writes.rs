@@ -6,7 +6,7 @@
 use super::order::{order_column, tab_column, Shown};
 use super::*;
 use crate::import::selection::SelectionChange;
-use crate::import::FolderReleaseDecisionKey;
+use crate::import::{CandidateKey, FolderReleaseDecisionKey};
 use crate::library::LibraryPageWindow;
 
 /// What a change to a selection came to.
@@ -71,16 +71,16 @@ fn opened_at(sql: &SqlContext<'_, '_>, list: ImportListId) -> Result<u64, DbErro
 fn select_shown(
     sql: &SqlContext<'_, '_>,
     list: ImportListId,
-    keys: &[String],
+    keys: &[CandidateKey],
 ) -> Result<(), DbError> {
     sql.execute(
         "INSERT INTO import_list_selection (list_id, key) \
          SELECT shown.list_id, shown.key FROM json_each(:keys) AS w \
-         JOIN import_list_shown AS shown ON shown.key = w.value \
+         JOIN import_list_shown AS shown ON shown.key = unhex(w.value) \
          WHERE shown.list_id = :list \
          ON CONFLICT (list_id, key) DO NOTHING",
         named_params! {
-            ":keys": serde_json::Value::from(keys.to_vec()).to_string(),
+            ":keys": path_column::key_hex_list(keys.iter()),
             ":list": list.0,
         },
     )?;
@@ -183,23 +183,23 @@ impl Database {
         self.call(move |sql| {
             let changed = match folded {
                 true => sql.execute(
-                    "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_name) \
+                    "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \
                      SELECT ?, watched_folder_path, key FROM import_list_placement \
                      WHERE watched_folder_path = ? AND item = 'group' AND key = ? \
-                     ON CONFLICT (list_id, watched_folder_path, group_name) DO NOTHING",
+                     ON CONFLICT (list_id, watched_folder_path, group_folder) DO NOTHING",
                     params![
                         list.0,
-                        group.watched_folder_path,
-                        group.relative_folder_path
+                        coven::path_bytes(&group.watched_folder_path),
+                        group.relative_folder
                     ],
                 )?,
                 false => sql.execute(
                     "DELETE FROM import_list_collapsed \
-                     WHERE list_id = ? AND watched_folder_path = ? AND group_name = ?",
+                     WHERE list_id = ? AND watched_folder_path = ? AND group_folder = ?",
                     params![
                         list.0,
-                        group.watched_folder_path,
-                        group.relative_folder_path
+                        coven::path_bytes(&group.watched_folder_path),
+                        group.relative_folder
                     ],
                 )?,
             };
@@ -221,10 +221,10 @@ impl Database {
         self.call(move |sql| {
             let changed = match folded {
                 true => sql.execute(
-                    "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_name) \
+                    "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \
                      SELECT ?, watched_folder_path, key FROM import_list_placement \
                      WHERE item = 'group' \
-                     ON CONFLICT (list_id, watched_folder_path, group_name) DO NOTHING",
+                     ON CONFLICT (list_id, watched_folder_path, group_folder) DO NOTHING",
                     [list.0],
                 )?,
                 false => sql.execute(
@@ -252,16 +252,16 @@ impl Database {
                 SelectionChange::Replace { keys } => {
                     sql.execute(
                         "DELETE FROM import_list_selection \
-                         WHERE list_id = ? AND key NOT IN (SELECT value FROM json_each(?))",
-                        params![list.0, serde_json::Value::from(keys.clone()).to_string()],
+                         WHERE list_id = ? AND key NOT IN (SELECT unhex(value) FROM json_each(?))",
+                        params![list.0, path_column::key_hex_list(keys.iter())],
                     )?;
                     select_shown(sql, list, &keys)?;
                 }
                 SelectionChange::Toggle { add, remove } => {
                     sql.execute(
                         "DELETE FROM import_list_selection \
-                         WHERE list_id = ? AND key IN (SELECT value FROM json_each(?))",
-                        params![list.0, serde_json::Value::from(remove).to_string()],
+                         WHERE list_id = ? AND key IN (SELECT unhex(value) FROM json_each(?))",
+                        params![list.0, path_column::key_hex_list(remove.iter())],
                     )?;
                     select_shown(sql, list, &add)?;
                 }

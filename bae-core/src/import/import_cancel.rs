@@ -89,7 +89,7 @@ pub(crate) enum ImportRunEnd<T> {
 /// import that followed it.
 #[derive(Clone, Default)]
 pub(crate) struct ImportCancels {
-    entries: Arc<Mutex<HashMap<String, Entry>>>,
+    entries: Arc<Mutex<HashMap<crate::import::CandidateKey, Entry>>>,
     /// Holds every run after it starts, until a test lets it through — so a
     /// test cancels an import that is genuinely running.
     #[cfg(test)]
@@ -99,9 +99,9 @@ pub(crate) struct ImportCancels {
 impl ImportCancels {
     /// An import of `candidate_key` was claimed and is on its way to the
     /// worker.
-    pub(crate) fn register(&self, candidate_key: &str, import_id: &str) {
+    pub(crate) fn register(&self, candidate_key: &crate::import::CandidateKey, import_id: &str) {
         self.entries.lock().unwrap().insert(
-            candidate_key.to_string(),
+            candidate_key.clone(),
             Entry {
                 import_id: import_id.to_string(),
                 stage: Stage::Waiting,
@@ -111,7 +111,7 @@ impl ImportCancels {
     }
 
     /// The import `import_id` of `candidate_key` never reached the worker.
-    pub(crate) fn forget(&self, candidate_key: &str, import_id: &str) {
+    pub(crate) fn forget(&self, candidate_key: &crate::import::CandidateKey, import_id: &str) {
         let mut entries = self.entries.lock().unwrap();
         if entries
             .get(candidate_key)
@@ -126,7 +126,7 @@ impl ImportCancels {
     /// cancelled before it begins writing. Its entry ends with it.
     pub(crate) async fn run<T>(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         import_id: &str,
         work: impl std::future::Future<Output = Result<T, ImportStop>>,
     ) -> ImportRunEnd<T> {
@@ -171,7 +171,7 @@ impl ImportCancels {
     /// was cancelled first; after this, a cancel is.
     pub(crate) fn begin_writing(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) -> Result<(), ImportStop> {
         let mut entries = self.entries.lock().unwrap();
@@ -184,7 +184,7 @@ impl ImportCancels {
         }
     }
 
-    pub(crate) fn cancel(&self, candidate_key: &str) -> CancelOutcome {
+    pub(crate) fn cancel(&self, candidate_key: &crate::import::CandidateKey) -> CancelOutcome {
         let mut entries = self.entries.lock().unwrap();
         let Some(entry) = entries.get(candidate_key) else {
             return CancelOutcome::NotImporting;
@@ -210,8 +210,9 @@ impl ImportCancels {
     /// Cancel every import that is not already writing, and report the
     /// waiting ones by candidate key and import id — whoever cancelled them
     /// says they ended.
-    pub(crate) fn cancel_all(&self) -> Vec<(String, String)> {
-        let keys: Vec<String> = self.entries.lock().unwrap().keys().cloned().collect();
+    pub(crate) fn cancel_all(&self) -> Vec<(crate::import::CandidateKey, String)> {
+        let keys: Vec<crate::import::CandidateKey> =
+            self.entries.lock().unwrap().keys().cloned().collect();
         keys.into_iter()
             .filter_map(|key| match self.cancel(&key) {
                 CancelOutcome::CancelledWaiting { import_id } => Some((key, import_id)),
@@ -243,56 +244,76 @@ mod tests {
     #[tokio::test]
     async fn a_waiting_import_cancelled_never_runs() {
         let cancels = ImportCancels::default();
-        cancels.register("Album", "import-1");
+        cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
 
         assert_eq!(
-            cancels.cancel("Album"),
+            cancels.cancel(&crate::import::CandidateKey::test("Album")),
             CancelOutcome::CancelledWaiting {
                 import_id: "import-1".to_string()
             }
         );
         let end = cancels
-            .run("Album", "import-1", async {
-                panic!("a cancelled import never runs")
-            })
+            .run(
+                &crate::import::CandidateKey::test("Album"),
+                "import-1",
+                async { panic!("a cancelled import never runs") },
+            )
             .await;
         assert!(matches!(end, ImportRunEnd::<()>::CancelledWaiting));
-        assert_eq!(cancels.cancel("Album"), CancelOutcome::NotImporting);
+        assert_eq!(
+            cancels.cancel(&crate::import::CandidateKey::test("Album")),
+            CancelOutcome::NotImporting
+        );
     }
 
     #[tokio::test]
     async fn a_running_import_cancelled_is_dropped_before_it_writes() {
         let cancels = ImportCancels::default();
-        cancels.register("Album", "import-1");
+        cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
         let (started_tx, started) = tokio::sync::oneshot::channel();
         let run = {
             let cancels = cancels.clone();
             tokio::spawn(async move {
                 cancels
-                    .run("Album", "import-1", async {
-                        started_tx.send(()).unwrap();
-                        std::future::pending::<Result<(), ImportStop>>().await
-                    })
+                    .run(
+                        &crate::import::CandidateKey::test("Album"),
+                        "import-1",
+                        async {
+                            started_tx.send(()).unwrap();
+                            std::future::pending::<Result<(), ImportStop>>().await
+                        },
+                    )
                     .await
             })
         };
         started.await.unwrap();
 
-        assert_eq!(cancels.cancel("Album"), CancelOutcome::CancelledRunning);
+        assert_eq!(
+            cancels.cancel(&crate::import::CandidateKey::test("Album")),
+            CancelOutcome::CancelledRunning
+        );
         assert!(matches!(run.await.unwrap(), ImportRunEnd::CancelledRunning));
-        assert_eq!(cancels.cancel("Album"), CancelOutcome::NotImporting);
+        assert_eq!(
+            cancels.cancel(&crate::import::CandidateKey::test("Album")),
+            CancelOutcome::NotImporting
+        );
     }
 
     #[tokio::test]
     async fn an_import_writing_its_release_is_not_cancelled() {
         let cancels = ImportCancels::default();
-        cancels.register("Album", "import-1");
+        cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
         let writing = cancels.clone();
         let end = cancels
-            .run("Album", "import-1", async move {
-                writing.begin_writing("Album", "import-1")?;
-                Ok(writing.cancel("Album"))
-            })
+            .run(
+                &crate::import::CandidateKey::test("Album"),
+                "import-1",
+                async move {
+                    writing
+                        .begin_writing(&crate::import::CandidateKey::test("Album"), "import-1")?;
+                    Ok(writing.cancel(&crate::import::CandidateKey::test("Album")))
+                },
+            )
             .await;
 
         assert!(matches!(end, ImportRunEnd::Ran(Ok(CancelOutcome::Writing))));
@@ -301,18 +322,21 @@ mod tests {
     #[test]
     fn a_cancelled_import_cannot_begin_writing() {
         let cancels = ImportCancels::default();
-        cancels.register("Album", "import-1");
+        cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
         cancels
             .entries
             .lock()
             .unwrap()
-            .get_mut("Album")
+            .get_mut(&crate::import::CandidateKey::test("Album"))
             .unwrap()
             .stage = Stage::Running;
 
-        assert_eq!(cancels.cancel("Album"), CancelOutcome::CancelledRunning);
+        assert_eq!(
+            cancels.cancel(&crate::import::CandidateKey::test("Album")),
+            CancelOutcome::CancelledRunning
+        );
         assert!(matches!(
-            cancels.begin_writing("Album", "import-1"),
+            cancels.begin_writing(&crate::import::CandidateKey::test("Album"), "import-1"),
             Err(ImportStop::Cancelled)
         ));
     }
@@ -322,13 +346,17 @@ mod tests {
     #[tokio::test]
     async fn a_run_refused_its_write_ends_cancelled() {
         let cancels = ImportCancels::default();
-        cancels.register("Album", "import-1");
+        cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
         let writing = cancels.clone();
         let end = cancels
-            .run("Album", "import-1", async move {
-                writing.cancel("Album");
-                writing.begin_writing("Album", "import-1")
-            })
+            .run(
+                &crate::import::CandidateKey::test("Album"),
+                "import-1",
+                async move {
+                    writing.cancel(&crate::import::CandidateKey::test("Album"));
+                    writing.begin_writing(&crate::import::CandidateKey::test("Album"), "import-1")
+                },
+            )
             .await;
 
         assert!(matches!(end, ImportRunEnd::CancelledRunning));
@@ -337,31 +365,37 @@ mod tests {
     #[test]
     fn cancelling_everything_spares_only_what_is_writing() {
         let cancels = ImportCancels::default();
-        cancels.register("Album 1", "import-1");
-        cancels.register("Album 2", "import-2");
-        cancels.register("Album 3", "import-3");
+        cancels.register(&crate::import::CandidateKey::test("Album 1"), "import-1");
+        cancels.register(&crate::import::CandidateKey::test("Album 2"), "import-2");
+        cancels.register(&crate::import::CandidateKey::test("Album 3"), "import-3");
         cancels
             .entries
             .lock()
             .unwrap()
-            .get_mut("Album 2")
+            .get_mut(&crate::import::CandidateKey::test("Album 2"))
             .unwrap()
             .stage = Stage::Running;
         cancels
             .entries
             .lock()
             .unwrap()
-            .get_mut("Album 3")
+            .get_mut(&crate::import::CandidateKey::test("Album 3"))
             .unwrap()
             .stage = Stage::Writing;
 
         assert_eq!(
             cancels.cancel_all(),
-            vec![("Album 1".to_string(), "import-1".to_string())]
+            vec![(
+                crate::import::CandidateKey::test("Album 1"),
+                "import-1".to_string()
+            )]
         );
-        assert_eq!(cancels.cancel("Album 3"), CancelOutcome::Writing);
+        assert_eq!(
+            cancels.cancel(&crate::import::CandidateKey::test("Album 3")),
+            CancelOutcome::Writing
+        );
         assert!(matches!(
-            cancels.begin_writing("Album 2", "import-2"),
+            cancels.begin_writing(&crate::import::CandidateKey::test("Album 2"), "import-2"),
             Err(ImportStop::Cancelled)
         ));
     }
@@ -372,23 +406,31 @@ mod tests {
     #[tokio::test]
     async fn a_command_cancelled_while_waiting_leaves_the_next_import_alone() {
         let cancels = ImportCancels::default();
-        cancels.register("Album", "import-1");
-        cancels.cancel("Album");
-        cancels.register("Album", "import-2");
+        cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
+        cancels.cancel(&crate::import::CandidateKey::test("Album"));
+        cancels.register(&crate::import::CandidateKey::test("Album"), "import-2");
 
         let end = cancels
-            .run("Album", "import-1", async {
-                panic!("the cancelled command never runs")
-            })
+            .run(
+                &crate::import::CandidateKey::test("Album"),
+                "import-1",
+                async { panic!("the cancelled command never runs") },
+            )
             .await;
         assert!(matches!(end, ImportRunEnd::<()>::CancelledWaiting));
         assert!(matches!(
-            cancels.begin_writing("Album", "import-1"),
+            cancels.begin_writing(&crate::import::CandidateKey::test("Album"), "import-1"),
             Err(ImportStop::Cancelled)
         ));
-        cancels.forget("Album", "import-1");
+        cancels.forget(&crate::import::CandidateKey::test("Album"), "import-1");
 
-        let end = cancels.run("Album", "import-2", async { Ok("ran") }).await;
+        let end = cancels
+            .run(
+                &crate::import::CandidateKey::test("Album"),
+                "import-2",
+                async { Ok("ran") },
+            )
+            .await;
         assert!(matches!(end, ImportRunEnd::Ran(Ok("ran"))));
     }
 }

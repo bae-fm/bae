@@ -68,7 +68,7 @@ async fn import_progress_names_every_operation_before_loudness() {
     let mut events = f.handle.every_event();
 
     let album_dir = f.temp_path().join("album");
-    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
+    let expected_candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
     fs::create_dir_all(&album_dir).unwrap();
     generate_tagged_album_files(
         &album_dir,
@@ -441,7 +441,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     let mut event_rx = f.handle.every_event();
 
     let album_dir = f.temp_path().join("album");
-    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
+    let expected_candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(
         &album_dir,

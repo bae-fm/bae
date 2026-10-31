@@ -39,7 +39,7 @@ impl ImportService {
         phase: ImportPhase,
     ) -> crate::import::handle::ImportEvent {
         crate::import::handle::ImportEvent::ImportProgress {
-            candidate_key: run.candidate_key.to_string(),
+            candidate_key: run.candidate_key.clone(),
             progress: ImportProgress::Progress {
                 id: id.to_string(),
                 percent,

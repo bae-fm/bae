@@ -40,29 +40,37 @@ impl Item {
 }
 
 /// One item of a list, by its placement row's key, and the group it is
-/// listed under: a header's own, a member's group, or none.
+/// listed under: a header's own, a member's group, or none. Each is the bytes
+/// its column holds — the watched folder's path, a release's `CandidateKey`
+/// or a header's `RelativeFolder`, and the group's `RelativeFolder` — which
+/// the window's reads look its rows up by.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct ItemKey {
-    pub(super) watched_folder_path: String,
+    pub(super) watched_folder_path: Vec<u8>,
     pub(super) item: Item,
-    pub(super) key: String,
-    pub(super) group_name: Option<String>,
+    pub(super) key: Vec<u8>,
+    pub(super) group_folder: Option<Vec<u8>>,
 }
 
-type ItemKeyColumns = (String, String, String, Option<String>);
+type ItemKeyColumns = (Vec<u8>, String, Vec<u8>, Option<Vec<u8>>);
 
 impl ItemKey {
     fn read(row: &Row<'_>) -> rusqlite::Result<ItemKeyColumns> {
         Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
     }
 
-    fn of((watched_folder_path, item, key, group_name): ItemKeyColumns) -> Result<Self, DbError> {
+    fn of((watched_folder_path, item, key, group_folder): ItemKeyColumns) -> Result<Self, DbError> {
         Ok(Self {
             watched_folder_path,
             item: Item::of(&item)?,
             key,
-            group_name,
+            group_folder,
         })
+    }
+
+    /// The key as text for the log.
+    pub(super) fn shown(&self) -> String {
+        crate::import::CandidateKey::from_bytes(self.key.clone()).to_string()
     }
 }
 
@@ -271,10 +279,10 @@ fn unit_order(order: ImportListOrder, head: &str, row: &str) -> ListOrder {
 pub(super) fn unit_join(t: &str, u: &str) -> String {
     format!(
         "JOIN import_list_placement AS {u} ON {u}.entry = CASE \
-             WHEN {t}.item <> 'group' AND {t}.group_name IS NOT NULL \
+             WHEN {t}.item <> 'group' AND {t}.group_folder IS NOT NULL \
              THEN (SELECT header.entry FROM import_list_placement AS header \
                    WHERE header.watched_folder_path = {t}.watched_folder_path \
-                     AND header.item = 'group' AND header.key = {t}.group_name) \
+                     AND header.item = 'group' AND header.key = {t}.group_folder) \
              ELSE {t}.entry END"
     )
 }
@@ -297,10 +305,10 @@ pub(super) fn sorted_terms(order: ImportListOrder, t: &str, u: &str) -> String {
 fn run(order: ImportListOrder, (rows, members): (&str, &str), seek: &Seek) -> String {
     let (unfolded, grouped) = (unit_order(order, "p", "p"), unit_order(order, "h", "m"));
     format!(
-        "SELECT p.watched_folder_path, p.item, p.key, p.group_name, {unfolded_keys} \
-         FROM {rows} AND (p.item = 'group' OR p.group_name IS NULL) AND {unfolded_condition} \
+        "SELECT p.watched_folder_path, p.item, p.key, p.group_folder, {unfolded_keys} \
+         FROM {rows} AND (p.item = 'group' OR p.group_folder IS NULL) AND {unfolded_condition} \
          UNION ALL \
-         SELECT m.watched_folder_path, m.item, m.key, m.group_name, {grouped_keys} \
+         SELECT m.watched_folder_path, m.item, m.key, m.group_folder, {grouped_keys} \
          FROM {members} AND {grouped_condition}",
         unfolded_keys = unfolded.key_columns(),
         unfolded_condition = unfolded.condition(seek),
@@ -325,8 +333,9 @@ pub(super) fn uploading_cte() -> String {
     )
 }
 
-/// Where the headers of a list's groups sit, by watched folder and group.
-pub(super) type HeaderPlaces = std::collections::BTreeMap<(String, String), u64>;
+/// Where the headers of a list's groups sit, by watched folder and group, as
+/// their bytes.
+pub(super) type HeaderPlaces = std::collections::BTreeMap<(Vec<u8>, Vec<u8>), u64>;
 
 /// Which rows a stream of a list's items runs over.
 #[derive(Debug, Clone, Copy)]
@@ -419,12 +428,12 @@ impl<'a> Items<'a> {
             Shown::Revealing { .. } => (
                 "import_list_placement AS i",
                 "i.tab = :tab \
-                 AND (i.item = 'group' OR i.group_name IS NULL \
-                      OR (i.watched_folder_path IS :opened_root AND i.group_name IS :opened_group) \
+                 AND (i.item = 'group' OR i.group_folder IS NULL \
+                      OR (i.watched_folder_path IS :opened_root AND i.group_folder IS :opened_group) \
                       OR NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
                                      WHERE c.list_id = :list \
                                        AND c.watched_folder_path = i.watched_folder_path \
-                                       AND c.group_name = i.group_name))",
+                                       AND c.group_folder = i.group_folder))",
             ),
         }
     }
@@ -444,7 +453,7 @@ impl<'a> Items<'a> {
                 "import_list_judged AS h \
                  CROSS JOIN import_list_item AS m \
                      ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
-                    AND m.group_name = h.key AND m.item <> 'group' \
+                    AND m.group_folder = h.key AND m.item <> 'group' \
                  WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded",
             )),
             Shown::Revealing { .. } => Some((
@@ -452,13 +461,13 @@ impl<'a> Items<'a> {
                 "import_list_placement AS h \
                  CROSS JOIN import_list_placement AS m \
                      ON m.watched_folder_path = h.watched_folder_path \
-                    AND m.group_name = h.key AND m.item <> 'group' \
+                    AND m.group_folder = h.key AND m.item <> 'group' \
                  WHERE h.tab = :tab AND h.item = 'group' \
                    AND ((h.watched_folder_path IS :opened_root AND h.key IS :opened_group) \
                         OR NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
                                        WHERE c.list_id = :list \
                                          AND c.watched_folder_path = h.watched_folder_path \
-                                         AND c.group_name = h.key))",
+                                         AND c.group_folder = h.key))",
             )),
             Shown::Found => None,
         }
@@ -523,8 +532,8 @@ impl<'a> Items<'a> {
             Shown::Revealing {
                 opened: Some(opened),
             } => (
-                Some(opened.watched_folder_path.as_str()),
-                Some(opened.relative_folder_path.as_str()),
+                Some(coven::path_bytes(&opened.watched_folder_path)),
+                Some(opened.relative_folder.as_bytes().to_vec()),
             ),
             Shown::Revealing { opened: None } | Shown::View | Shown::Found => (None, None),
         };
@@ -587,7 +596,7 @@ impl<'a> Items<'a> {
         let PartSql { with, from, .. } = self.part(part);
         let order = self.part_order(part);
         format!(
-            "{with} SELECT i.watched_folder_path, i.item, i.key, i.group_name, {keys} \
+            "{with} SELECT i.watched_folder_path, i.item, i.key, i.group_folder, {keys} \
              FROM {from} AND {condition} \
              ORDER BY {ordering} LIMIT :limit OFFSET :offset",
             keys = order.key_columns(),
@@ -781,15 +790,15 @@ impl<'a> Items<'a> {
         keys: &[ItemKey],
         headers: &mut HeaderPlaces,
     ) -> Result<Vec<Option<u64>>, DbError> {
-        let mut leading: Option<(&str, &str, u64)> = None;
+        let mut leading: Option<(&[u8], &[u8], u64)> = None;
         let mut positions = Vec::with_capacity(keys.len());
         for (index, key) in (0_u64..).zip(keys) {
-            let Some(group) = key.group_name.as_deref() else {
+            let Some(group) = key.group_folder.as_deref() else {
                 positions.push(None);
                 continue;
             };
-            let root = key.watched_folder_path.as_str();
-            let group_key = (root.to_string(), group.to_string());
+            let root = key.watched_folder_path.as_slice();
+            let group_key = (root.to_vec(), group.to_vec());
             if key.item == Item::Group {
                 leading = Some((root, group, offset + index));
                 headers.insert(group_key, offset + index);
@@ -809,8 +818,9 @@ impl<'a> Items<'a> {
                     )?
                     .ok_or_else(|| {
                         DbError::Message(format!(
-                            "the header of the group {group} listing {} is not in the list",
-                            key.key
+                            "the header of the group {} listing {} is not in the list",
+                            hex::encode(group),
+                            key.shown()
                         ))
                     })?,
             };
@@ -888,9 +898,9 @@ impl<'a> Items<'a> {
     pub(super) fn position_of(
         &self,
         sql: &(impl QueryOne + QueryRows),
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<Option<u64>, DbError> {
-        self.position_where(sql, "s.item <> 'group' AND s.key = :key", &[(":key", &key)])
+        self.position_where(sql, "s.item <> 'group' AND s.key = :key", &[(":key", key)])
     }
 }
 

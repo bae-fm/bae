@@ -1,7 +1,8 @@
 /// One folder of a release read from several, in play order.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeReleasePart {
-    pub folder_path: String,
+    /// The folder, as coven's bytes for its path.
+    pub folder_path: Vec<u8>,
     pub name: String,
 }
 
@@ -9,7 +10,7 @@ pub struct BridgeReleasePart {
 impl BridgeReleasePart {
     pub(crate) fn from_core(part: &bae_core::import::ReleasePart) -> Self {
         Self {
-            folder_path: part.folder.to_string_lossy().into_owned(),
+            folder_path: coven::path_bytes(&part.folder),
             name: part.name(),
         }
     }

@@ -53,7 +53,7 @@ use format_prep::resolve_file_content_type;
 #[derive(Clone, Copy)]
 pub(super) struct ImportRun<'a> {
     pub(super) import_id: &'a str,
-    pub(super) candidate_key: &'a str,
+    pub(super) candidate_key: &'a crate::import::CandidateKey,
 }
 
 /// The files one import writes and the track rows bound to their audio, both
@@ -154,7 +154,7 @@ impl ImportExpectation {
     /// through the commit.
     pub(crate) fn verify(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         source: &crate::import::release_candidate::CandidateSource,
         current: Option<&crate::import::preparation::CommittingCandidate>,
     ) -> Result<(), String> {
@@ -312,7 +312,7 @@ enum RootChange {
     WholeRoot,
     /// These folders directly under the root, and nothing else. Empty when no
     /// change reaches anything a scan reads.
-    Folders(std::collections::BTreeSet<String>),
+    Folders(std::collections::BTreeSet<std::ffi::OsString>),
 }
 
 /// [`root_change`] on a blocking thread: its stats can take as long as a
@@ -363,7 +363,7 @@ fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> R
             return RootChange::WholeRoot;
         }
         let entry = root.join(first);
-        let folder = || coven::path_text(Path::new(first));
+        let folder = || first.to_os_string();
         match std::fs::symlink_metadata(&entry).map(|_| entry.is_dir()) {
             Ok(true) => {
                 folders.insert(folder());
@@ -390,7 +390,7 @@ fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> R
 /// When the root's own mtime moved, the folders that came or went are found by
 /// listing it against the record, and a root with audio directly in it names
 /// itself, since the record cannot tell which of its files moved.
-fn network_changes(root: &Path, recorded: &[(String, i64)]) -> Option<Vec<PathBuf>> {
+fn network_changes(root: &Path, recorded: &[(PathBuf, i64)]) -> Option<Vec<PathBuf>> {
     let moved = changed_directories(recorded)?;
     let mut changes = Vec::new();
     for directory in moved {
@@ -428,7 +428,7 @@ fn network_changes(root: &Path, recorded: &[(String, i64)]) -> Option<Vec<PathBu
         }
         let known: HashSet<PathBuf> = recorded
             .iter()
-            .map(|(path, _)| PathBuf::from(path))
+            .map(|(path, _)| path.clone())
             .filter(|path| path.parent() == Some(root))
             .collect();
         changes.extend(present.symmetric_difference(&known).cloned());
@@ -461,7 +461,7 @@ fn roots_for_watch_error(error_paths: &[PathBuf], roots: &[PathBuf]) -> Vec<Path
 type FolderWalkOutcome = (
     Result<(), crate::import::folder_scanner::FolderScanError>,
     HashSet<PathBuf>,
-    Option<Vec<(String, i64)>>,
+    Option<Vec<(PathBuf, i64)>>,
 );
 
 type FolderWalk = tokio::task::JoinHandle<FolderWalkOutcome>;
@@ -556,7 +556,7 @@ fn spawn_folder_reading(
         if let Err(error) = &result {
             warn!(
                 "folder decision for {} under {} was not stored: {error}",
-                target.0.relative_folder_path,
+                target.0.relative_folder.text(),
                 path.display()
             );
         }
@@ -572,7 +572,7 @@ fn spawn_folder_reading(
 fn spawn_changed_folders(
     id: u64,
     path: PathBuf,
-    folders: std::collections::BTreeSet<String>,
+    folders: std::collections::BTreeSet<std::ffi::OsString>,
     scan: ScanServices,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
 ) -> RootScanTask {

@@ -11,7 +11,7 @@ use super::*;
 struct DiscogsPick {
     handle: ImportServiceHandle,
     _tmp: TempDir,
-    key: String,
+    key: crate::import::CandidateKey,
     images: bae_test_support::RemoteImageHost,
     album_artist_id: String,
     track_artist_id: String,

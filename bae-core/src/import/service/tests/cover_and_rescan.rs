@@ -113,10 +113,10 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         std::fs::write(folder.join("01.flac"), flac()).unwrap();
         write_test_jpeg(&folder.join("front.jpg"));
         let root_text = root.to_string_lossy().into_owned();
-        let key = folder.to_string_lossy().into_owned();
+        let key = crate::import::CandidateKey::folder(&folder);
         test.service
             .library_manager
-            .add_watched_import_folder(&root_text)
+            .add_watched_import_folder(std::path::Path::new(&root_text))
             .await
             .unwrap();
         let (scan, _) = test.scan_with(
@@ -137,7 +137,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             &test.service,
             &test.preparations,
             &hash,
-            &root_text,
+            std::path::Path::new(&root_text),
             &key,
             "Cover Album",
         )
@@ -152,7 +152,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         let revision = test
             .preparations
             .apply_source(
-                &root_text,
+                std::path::Path::new(&root_text),
                 &crate::import::CandidateAsRead {
                     content_hash: hash.clone(),
                     file_edit_revision: candidate.file_edit_revision,
@@ -172,7 +172,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         let snapshot = test
             .service
             .library_manager
-            .load_candidate_file_tag_snapshot(&root_text, &key)
+            .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
             .await
             .unwrap()
             .unwrap()
@@ -243,10 +243,10 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     std::fs::create_dir_all(&folder).unwrap();
     std::fs::write(folder.join("01.flac"), flac()).unwrap();
     let root_text = root.to_string_lossy().into_owned();
-    let key = folder.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&folder);
     test.service
         .library_manager
-        .add_watched_import_folder(&root_text)
+        .add_watched_import_folder(std::path::Path::new(&root_text))
         .await
         .unwrap();
     let (scan, _) = test.scan();
@@ -264,7 +264,7 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
         &test.service,
         &test.preparations,
         &hash,
-        &root_text,
+        std::path::Path::new(&root_text),
         &key,
         "Album Title",
     )
@@ -272,7 +272,7 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     let reading = async || {
         test.service
             .library_manager
-            .load_candidate_file_tag_snapshot(&root_text, &key)
+            .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
             .await
             .unwrap()
             .unwrap()
@@ -367,28 +367,28 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     let watched_folder_path = folder.to_string_lossy().into_owned();
     service
         .library_manager
-        .add_watched_import_folder(&watched_folder_path)
+        .add_watched_import_folder(std::path::Path::new(&watched_folder_path))
         .await
         .unwrap();
     let generation = service
         .library_manager
-        .begin_folder_scan(&watched_folder_path)
+        .begin_folder_scan(std::path::Path::new(&watched_folder_path))
         .await
         .unwrap();
     service
         .library_manager
         .save_folder_scan_item(
-            &watched_folder_path,
+            std::path::Path::new(&watched_folder_path),
             generation,
             &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
                 path: folder.clone(),
                 file_root: folder.clone(),
                 name: "Candidate".to_string(),
                 files,
-                watched_folder_path: watched_folder_path.clone(),
+                watched_folder_path: std::path::PathBuf::from(&watched_folder_path),
                 scope: crate::import::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
-                display_path: "Candidate".to_string(),
+                relative_folder: crate::import::RelativeFolder::test("Candidate"),
                 grouping: None,
             }),
         )
@@ -397,22 +397,22 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .expect("the stored scan generation is current");
     service
         .library_manager
-        .finish_folder_scan(&watched_folder_path, generation, None)
+        .finish_folder_scan(std::path::Path::new(&watched_folder_path), generation, None)
         .await
         .unwrap();
     let metadata_revision = prepare_named_candidate(
         &service,
         &preparations,
         &expected_content_hash,
-        &watched_folder_path,
-        &folder.to_string_lossy(),
+        std::path::Path::new(&watched_folder_path),
+        &crate::import::CandidateKey::folder(&folder),
         "Candidate",
     )
     .await;
     preparations
         .set_prepared_cover(
-            &watched_folder_path,
-            &folder.to_string_lossy(),
+            std::path::Path::new(&watched_folder_path),
+            &crate::import::CandidateKey::folder(&folder),
             &crate::import::CandidateAsRead {
                 content_hash: expected_content_hash.clone(),
                 file_edit_revision: 0,
@@ -425,7 +425,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .unwrap();
     let file_tag_snapshot = service
         .library_manager
-        .load_candidate_file_tag_snapshot(&watched_folder_path, &folder.to_string_lossy())
+        .load_candidate_file_tag_snapshot(std::path::Path::new(&watched_folder_path), &crate::import::CandidateKey::folder(&folder))
         .await
         .unwrap()
         .expect("the candidate is stored")
@@ -433,11 +433,11 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     let audio_path = folder.join("01.flac");
     let opens_before = bae_audio::test_reads::probes(&audio_path);
 
-    service.queue_import_for_test(&folder.to_string_lossy(), "import-1").await;
+    service.queue_import_for_test(&crate::import::CandidateKey::folder(&folder), "import-1").await;
     let result = service
         .prepare_and_run_folder_import(
             "import-1".to_string(),
-            folder.to_string_lossy().into_owned(),
+            crate::import::CandidateKey::folder(&folder),
             crate::import::release_candidate::CandidateSource {
                 path: folder,
                 scope: crate::import::folder_scanner::ReleaseFileScope::Recursive, parts: Vec::new(), 
@@ -502,24 +502,24 @@ async fn rescan_seeded_root(
     let service = &test.service;
     service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(root)
         .await
         .unwrap();
     let generation = service
         .library_manager
-        .begin_folder_scan(&root.to_string_lossy())
+        .begin_folder_scan(root)
         .await
         .unwrap();
     service
         .library_manager
         .save_folder_scan_item(
-            &root.to_string_lossy(),
+            root,
             generation,
             &ScanItem::Invalid(crate::import::InvalidCandidate {
                 path: root.join("old-key"),
                 name: "Old Candidate".to_string(),
-                watched_folder_path: root.to_string_lossy().into_owned(),
-                display_path: "old-key".to_string(),
+                watched_folder_path: root.to_path_buf(),
+                relative_folder: crate::import::RelativeFolder::test("old-key"),
                 grouping: None,
                 files: Vec::new(),
                 tags: None,
@@ -539,7 +539,7 @@ async fn rescan_seeded_root(
 async fn stored_invalid_candidates(service: &ImportService, root: &Path) -> usize {
     service
         .library_manager
-        .load_folder_scan_items(&root.to_string_lossy())
+        .load_folder_scan_items(root)
         .await
         .unwrap()
         .into_iter()
@@ -686,7 +686,7 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     }
     test.service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
 
@@ -760,7 +760,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     let root_text = root.to_string_lossy().into_owned();
     test.service
         .library_manager
-        .add_watched_import_folder(&root_text)
+        .add_watched_import_folder(std::path::Path::new(&root_text))
         .await
         .unwrap();
 
@@ -778,7 +778,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     // are opened once between them.
     assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
 
-    let key = album.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&album);
     let detail = test
         .service
         .library_manager
@@ -806,7 +806,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     let snapshot = test
         .service
         .library_manager
-        .load_candidate_file_tag_snapshot(&root_text, &key)
+        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
         .await
         .unwrap()
         .expect("the candidate has a snapshot")
@@ -821,7 +821,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     assert!(test
         .service
         .library_manager
-        .load_candidate_file_tag_snapshot(&root_text, &key)
+        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
         .await
         .unwrap()
         .expect("the candidate is still stored")
@@ -856,7 +856,7 @@ async fn a_pass_records_the_directories_it_read() {
     std::fs::write(album.join("01.flac"), flac()).unwrap();
     test.service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
 
@@ -866,18 +866,14 @@ async fn a_pass_records_the_directories_it_read() {
     let recorded = test
         .service
         .library_manager
-        .load_folder_scan_directories(&root.to_string_lossy())
+        .load_folder_scan_directories(&root)
         .await
         .unwrap();
-    let mut paths: Vec<&str> = recorded.iter().map(|(path, _)| path.as_str()).collect();
+    let mut paths: Vec<&Path> = recorded.iter().map(|(path, _)| path.as_path()).collect();
     paths.sort_unstable();
     assert_eq!(
         paths,
-        vec![
-            root.to_string_lossy().as_ref(),
-            album.to_string_lossy().as_ref(),
-            album.join("Artwork").to_string_lossy().as_ref(),
-        ]
+        vec![root.as_path(), album.as_path(), album.join("Artwork").as_path()]
         .into_iter()
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
@@ -919,7 +915,7 @@ fn announced_candidates(
             | crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateDiscovered {
                 candidate,
                 ..
-            }) => announced.push(candidate.display_path),
+            }) => announced.push(candidate.relative_folder.text()),
             crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
                 candidate_key,
             }) => announced.push(format!("removed {candidate_key}")),

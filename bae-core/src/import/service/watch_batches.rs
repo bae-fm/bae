@@ -97,7 +97,10 @@ impl WatchedRoot {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Gathering {
     /// One folder directly under a watched root.
-    Folder { root: PathBuf, folder: String },
+    Folder {
+        root: PathBuf,
+        folder: std::ffi::OsString,
+    },
     /// A whole watched root: the root itself changed, or the watch lost track
     /// of changes somewhere that takes in all of it.
     Root(PathBuf),
@@ -152,7 +155,7 @@ impl WatchBatches {
                     relative
                         .components()
                         .next()
-                        .map(|first| first.as_os_str().to_string_lossy().into_owned())
+                        .map(|first| first.as_os_str().to_os_string())
                 }) {
                     Some(folder) => Gathering::Folder {
                         root: root.path.clone(),

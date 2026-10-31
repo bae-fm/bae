@@ -12,7 +12,7 @@ struct ReleaseSelectionFailureTests {
     @Test("A release selection failure is not a candidate-wide error")
     func failureDoesNotBecomePaneError() throws {
         let store = ImportStore()
-        let key = "reidentify:release"
+        let key = bridgeReidentifyKey(releaseId: "release")
         store.reIdentifyCandidates[key] = Candidate(
             reIdentifyKey: key,
             releaseId: "release",

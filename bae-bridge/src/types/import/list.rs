@@ -61,7 +61,7 @@ pub enum BridgeImportListItem {
     GroupHeader {
         stable_key: String,
         group: BridgeTriageGroup,
-        watched_folder_path: String,
+        watched_folder_path: Vec<u8>,
         expanded: bool,
         /// How many entries the group holds in this tab, after the filter.
         entry_count: u32,
@@ -162,7 +162,7 @@ pub struct BridgeFolderScanActivity {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeActiveFolderScan {
-    pub watched_folder_path: String,
+    pub watched_folder_path: Vec<u8>,
     pub watched_folder_name: String,
     pub found_count: u64,
 }

@@ -142,7 +142,7 @@ impl ImportListSubscription {
     /// group opened. `None` when the list lists no such candidate.
     pub async fn locate_candidate(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateListLocation>, ImportListSubscriptionError> {
         Ok(self
             .manager
@@ -156,7 +156,7 @@ impl ImportListSubscription {
     /// a row.
     pub async fn first_identifying_candidate(
         &self,
-    ) -> Result<Option<String>, ImportListSubscriptionError> {
+    ) -> Result<Option<crate::import::CandidateKey>, ImportListSubscriptionError> {
         Ok(self
             .manager
             .first_identifying_import_candidate(self.list)

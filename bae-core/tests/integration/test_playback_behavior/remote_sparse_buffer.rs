@@ -21,7 +21,7 @@ impl RemoteMultiWindowPlayback {
         let import_handle = start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle.send_command(ImportCommand {
-            candidate_key: name.into(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(name.as_bytes().to_vec()),
             destination: ImportDestination::Remote { pin: false },
             ..support::folder_import(&import_id, album_dir.clone(), support::discogs_release(release_key))
         }).await?;

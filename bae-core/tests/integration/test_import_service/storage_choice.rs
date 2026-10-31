@@ -21,18 +21,18 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
                 track_number: 1,
             }],
         );
-        keys.push(album.to_string_lossy().into_owned());
+        keys.push(bae_core::import::CandidateKey::folder(&album));
     }
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
     // The scan reads both folders at once, so either can be found first.
-    let mut unfound: std::collections::HashSet<&str> = keys.iter().map(String::as_str).collect();
+    let mut unfound: std::collections::HashSet<&bae_core::import::CandidateKey> = keys.iter().collect();
     wait_for_scan_event(&mut scan_rx, "both albums", |event| {
         if let ScanEvent::FolderCandidate { candidate: c, .. } = event {
-            unfound.remove(c.path.to_string_lossy().as_ref());
+            unfound.remove(&bae_core::import::CandidateKey::folder(&c.path));
         }
         unfound.is_empty()
     })
@@ -89,7 +89,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
 }
 
 /// Start `key`'s import and return its first `Complete` or `RemoteUploadQueued`.
-async fn import_outcome(f: &ImportFixture, key: &str) -> bae_core::import::ImportProgress {
+async fn import_outcome(f: &ImportFixture, key: &bae_core::import::CandidateKey) -> bae_core::import::ImportProgress {
     let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     match support::wait_for_import_end(&mut progress_rx).await {

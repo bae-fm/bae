@@ -4,13 +4,17 @@ use std::collections::BTreeSet;
 forward! { async this => {
     /// Record the person's answer to the candidate's artist conflict.
     fn choose_candidate_artist_identity(
-        candidate_key: String,
+        candidate_key: Vec<u8>,
         metadata_revision: u64,
         choice: crate::types::BridgeArtistIdentityConflictChoice,
     ) -> crate::types::BridgePaneOutcome {
         Ok(crate::types::BridgePaneOutcome::from_core(
             this.services
-                .pane_choose_artist_identity(&candidate_key, metadata_revision, choice.into_core())
+                .pane_choose_artist_identity(
+                    &candidate_key.into(),
+                    metadata_revision,
+                    choice.into_core(),
+                )
                 .await?,
         ))
     }
@@ -65,9 +69,9 @@ impl AppHandle {
     /// does once when it opens, after it has subscribed to the UI events. `None`
     /// before the first snapshot, and for a run that settled in an earlier
     /// session: what that run stored is on the candidate's row instead.
-    pub fn candidate_signals(&self, candidate_key: String) -> Option<crate::types::BridgeSignals> {
+    pub fn candidate_signals(&self, candidate_key: Vec<u8>) -> Option<crate::types::BridgeSignals> {
         self.services
-            .candidate_signals(&candidate_key)
+            .candidate_signals(&candidate_key.into())
             .map(crate::types::BridgeSignals::from_core)
     }
 
@@ -153,7 +157,7 @@ impl ImportListSubscription {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
             self.inner
-                .set_group_folded(group.into_core(), folded)
+                .set_group_folded(group.into_core()?, folded)
                 .await
                 .map_err(list_error)
         })
@@ -180,13 +184,13 @@ impl ImportListSubscription {
     /// placement; absent when the list lists no such candidate.
     pub async fn locate_candidate(
         self: std::sync::Arc<Self>,
-        candidate_key: String,
+        candidate_key: Vec<u8>,
     ) -> Result<Option<crate::types::BridgeImportCandidateListLocation>, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
             Ok(self
                 .inner
-                .locate_candidate(&candidate_key)
+                .locate_candidate(&candidate_key.into())
                 .await
                 .map_err(list_error)?
                 .map(crate::types::BridgeImportCandidateListLocation::from_core))
@@ -197,13 +201,15 @@ impl ImportListSubscription {
     /// The first candidate still being identified, in the list's order.
     pub async fn first_identifying_candidate(
         self: std::sync::Arc<Self>,
-    ) -> Result<Option<String>, BridgeError> {
+    ) -> Result<Option<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
-            self.inner
+            Ok(self
+                .inner
                 .first_identifying_candidate()
                 .await
-                .map_err(list_error)
+                .map_err(list_error)?
+                .map(bae_core::import::CandidateKey::into_bytes))
         })
         .await
     }
@@ -248,23 +254,28 @@ impl ImportListSubscription {
         .await
     }
 
-    /// The folders of every selected candidate.
+    /// The folders of every selected candidate, as coven's bytes for each
+    /// path.
     pub async fn selection_source_folders(
         self: std::sync::Arc<Self>,
-    ) -> Result<Vec<String>, BridgeError> {
+    ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
-            self.services
+            Ok(self
+                .services
                 .import_selection_source_folders(&self.inner.selected().await.map_err(list_error)?)
                 .await
-                .map_err(BridgeError::from)
+                .map_err(BridgeError::from)?
+                .iter()
+                .map(|folder| coven::path_bytes(folder))
+                .collect())
         })
         .await
     }
 
     /// Read every selected candidate as one release, select it, and answer
     /// with its key.
-    pub async fn combine_selection(self: std::sync::Arc<Self>) -> Result<String, BridgeError> {
+    pub async fn combine_selection(self: std::sync::Arc<Self>) -> Result<Vec<u8>, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
             let key = self
@@ -278,7 +289,7 @@ impl ImportListSubscription {
                 })
                 .await
                 .map_err(list_error)?;
-            Ok(key)
+            Ok(key.into_bytes())
         })
         .await
     }
@@ -287,7 +298,7 @@ impl ImportListSubscription {
     /// them, and answer with their keys.
     pub async fn separate_selection(
         self: std::sync::Arc<Self>,
-    ) -> Result<Vec<String>, BridgeError> {
+    ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
             let keys = self
@@ -301,7 +312,10 @@ impl ImportListSubscription {
                 })
                 .await
                 .map_err(list_error)?;
-            Ok(keys)
+            Ok(keys
+                .into_iter()
+                .map(bae_core::import::CandidateKey::into_bytes)
+                .collect())
         })
         .await
     }
@@ -346,7 +360,7 @@ impl ImportListSubscription {
             Ok(failures
                 .into_iter()
                 .map(|failure| crate::types::BridgeSelectionActionFailure {
-                    candidate_key: failure.candidate_key,
+                    candidate_key: failure.candidate_key.into_bytes(),
                     name: failure.name,
                     error: BridgeError::from(failure.error),
                 })

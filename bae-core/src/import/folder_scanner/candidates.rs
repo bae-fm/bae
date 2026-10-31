@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::{CandidateKey, RelativeFolder};
 
 /// Why a folder that looks like a release (it holds audio) can't be imported,
 /// as its skipped files say. The UI localizes the typed variant for the
@@ -161,20 +162,21 @@ pub struct SkippedTags {
 /// validation. It can't be imported, so it carries no identify state — only
 /// what the scan read of its files, to surface it under the Skipped tab with
 /// its reason and let the person look in.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct InvalidCandidate {
     /// Root path of the folder that failed validation — for a grouping, the
     /// folder the grouping reads as one release.
     pub path: PathBuf,
-    /// Display name (derived from folder name).
+    /// Display name: the folder's name as `coven::path_text` shows it.
     pub name: String,
     /// Absolute path of the watched folder this was scanned from — the
     /// candidate-list group it belongs to. Equal to the scan root.
-    pub watched_folder_path: String,
-    pub display_path: String,
+    pub watched_folder_path: PathBuf,
+    /// The folder below the watched folder the list shows it as.
+    pub relative_folder: RelativeFolder,
     /// The grouping this row reads several folders as, when it is one. The
     /// row's key is then the grouping's, not the folder's.
-    pub grouping: Option<String>,
+    pub grouping: Option<CandidateKey>,
     /// Every file it holds, in name order, as the scan read it; the damaged
     /// ones are why it failed.
     pub files: Vec<SkippedFile>,
@@ -217,10 +219,10 @@ impl InvalidCandidate {
 #[cfg(desktop)]
 impl InvalidCandidate {
     /// The key this row is stored and addressed under.
-    pub fn key(&self) -> String {
+    pub fn key(&self) -> CandidateKey {
         self.grouping
             .clone()
-            .unwrap_or_else(|| self.path.to_string_lossy().into_owned())
+            .unwrap_or_else(|| CandidateKey::folder(&self.path))
     }
 }
 
@@ -231,7 +233,7 @@ impl InvalidCandidate {
 /// merely found again: a walk of an untouched folder produces items equal to
 /// the ones already stored, and equal items are written and announced to
 /// nobody.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ScanItem {
     /// A release approximation completed before its enclosing folder's reading
     /// was known. It is visible scan progress, but identification must wait for
@@ -246,7 +248,7 @@ pub enum ScanItem {
     Decided {
         key: FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
-        grouping: String,
+        grouping: CandidateKey,
     },
     /// The files under a folder that none of the releases read there owns.
     Sidecar(FolderSidecar),
@@ -263,9 +265,9 @@ pub enum ScanItem {
 /// so nothing is ever read as its own. Which folder's files a grouping reads
 /// is one rule for every grouping (see `shared_parent`): a folder read as one
 /// release by the scan and releases picked together read the same files.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FolderSidecar {
-    pub watched_folder_path: String,
+    pub watched_folder_path: PathBuf,
     /// The folder, absolute. Each file's relative path is below it.
     pub folder: PathBuf,
     pub files: SidecarFiles,
@@ -295,7 +297,7 @@ impl ScanItem {
     /// The durable scan entry this item is, or `None` for an item that is not
     /// one — the folder reading the scan decided, which is stored as a decision
     /// rather than as a scan entry.
-    pub(crate) fn persisted_key(&self) -> Option<String> {
+    pub(crate) fn persisted_key(&self) -> Option<CandidateKey> {
         match self {
             Self::Discovered(candidate) | Self::Valid(candidate) => Some(candidate.key()),
             Self::Invalid(candidate) => Some(candidate.key()),
@@ -328,12 +330,15 @@ impl ScanItem {
         }
     }
 
-    /// The root-relative path the list shows for this entry, or `None` for a
-    /// folder reading, which the list shows on the entries it settles.
-    pub(crate) fn display_path(&self) -> Option<&str> {
+    /// The folder below the watched root the list shows this entry as, or
+    /// `None` for a folder reading, which the list shows on the entries it
+    /// settles.
+    pub(crate) fn relative_folder(&self) -> Option<&RelativeFolder> {
         match self {
-            Self::Discovered(candidate) | Self::Valid(candidate) => Some(&candidate.display_path),
-            Self::Invalid(candidate) => Some(&candidate.display_path),
+            Self::Discovered(candidate) | Self::Valid(candidate) => {
+                Some(&candidate.relative_folder)
+            }
+            Self::Invalid(candidate) => Some(&candidate.relative_folder),
             Self::Decided { .. } | Self::Sidecar(_) => None,
         }
     }
@@ -350,13 +355,12 @@ pub enum ReleaseFileScope {
 }
 
 /// The stable address of one folder-boundary decision.
-#[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FolderReleaseDecisionKey {
-    pub watched_folder_path: String,
-    /// `/`-separated path below the watched root. Empty names the root.
-    pub relative_folder_path: String,
+    pub watched_folder_path: PathBuf,
+    /// The folder below the watched root; [`RelativeFolder::root`] names the
+    /// root.
+    pub relative_folder: RelativeFolder,
 }
 
 /// How a folder holding several releases' worth of audio is read.
@@ -545,64 +549,64 @@ pub(crate) struct Coverage {
 pub struct FolderReading {
     pub decision: FolderReleaseDecision,
     pub author: FolderReleaseDecisionAuthor,
-    pub grouping: String,
+    pub grouping: CandidateKey,
 }
 
 /// How each folder under one watched root reads, loaded before its scan
-/// begins, by the folder's root-relative path.
+/// begins, by the folder below the root.
 #[derive(Debug, Clone, Default)]
-pub struct FolderReleaseDecisions(HashMap<String, FolderReading>);
+pub struct FolderReleaseDecisions(HashMap<RelativeFolder, FolderReading>);
 
 impl FolderReleaseDecisions {
-    pub fn new(readings: HashMap<String, FolderReading>) -> Self {
+    pub fn new(readings: HashMap<RelativeFolder, FolderReading>) -> Self {
         Self(readings)
     }
 
-    /// How the folder at `relative_folder_path` reads, if anything is stored.
-    pub(crate) fn get(&self, relative_folder_path: &str) -> Option<&FolderReading> {
-        self.0.get(relative_folder_path)
+    /// How the folder at `relative_folder` reads, if anything is stored.
+    pub(crate) fn get(&self, relative_folder: &RelativeFolder) -> Option<&FolderReading> {
+        self.0.get(relative_folder)
     }
 
-    /// Every folder's reading, by its root-relative path.
+    /// Every folder's reading, by the folder below the root.
     #[cfg(test)]
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&String, &FolderReading)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&RelativeFolder, &FolderReading)> {
         self.0.iter()
     }
 
-    /// Read `relative_folder_path` as `reading`, whatever was stored for it —
-    /// the reading a decision about to be stored gives.
+    /// Read `relative_folder` as `reading`, whatever was stored for it — the
+    /// reading a decision about to be stored gives.
     #[cfg(desktop)]
-    pub(crate) fn insert(&mut self, relative_folder_path: String, reading: FolderReading) {
-        self.0.insert(relative_folder_path, reading);
+    pub(crate) fn insert(&mut self, relative_folder: RelativeFolder, reading: FolderReading) {
+        self.0.insert(relative_folder, reading);
     }
 }
 
 /// A folder candidate detected during filesystem scanning.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FolderCandidate {
     /// Root path of this release
     pub path: PathBuf,
     /// Root passed to the import revalidation walk. It differs from `path`
     /// when audio-free single-child wrappers were collapsed into this row.
     pub file_root: PathBuf,
-    /// Display name (derived from folder name)
+    /// Display name: the folder's name as `coven::path_text` shows it.
     pub name: String,
     /// Pre-categorized files for this release
     pub files: CategorizedFiles,
     /// Absolute path of the watched folder this candidate was scanned from —
     /// the candidate-list group it belongs to. Equal to the scan root. The
     /// group's display name comes from the watched-folder list, not here.
-    pub watched_folder_path: String,
+    pub watched_folder_path: PathBuf,
     /// The exact file ownership rule used to build `files`.
     pub scope: ReleaseFileScope,
     /// Revision of the stored file decisions applied to `files`.
     pub file_edit_revision: u64,
-    /// Root-relative path for the queue subtitle, with `/` separators.
-    pub display_path: String,
+    /// The folder below the watched root the queue shows it as.
+    pub relative_folder: RelativeFolder,
     /// The grouping this release reads several folders as, when it is one —
     /// the folders themselves are [`CategorizedFiles::parts`]. The release's
     /// key is then the grouping's, not the folder's.
-    pub grouping: Option<String>,
+    pub grouping: Option<CandidateKey>,
 }
 
 impl FolderCandidate {
@@ -612,10 +616,10 @@ impl FolderCandidate {
 
     /// The key this release is stored and addressed under: its grouping's, or
     /// its folder's.
-    pub fn key(&self) -> String {
+    pub fn key(&self) -> CandidateKey {
         self.grouping
             .clone()
-            .unwrap_or_else(|| self.path.to_string_lossy().into_owned())
+            .unwrap_or_else(|| CandidateKey::folder(&self.path))
     }
 
     /// The folders on disk this release is read from.

@@ -38,7 +38,7 @@ fn sequence(projection: &ImportListProjection) -> Vec<String> {
             ImportListItem::GroupHeader { group, .. } => format!("group {}", group.name),
             ImportListItem::Candidate { row, .. } => format!("candidate {}", row.display_path),
             ImportListItem::Invalid { candidate, .. } => {
-                format!("invalid {}", candidate.display_path)
+                format!("invalid {}", candidate.relative_folder.text())
             }
         })
         .collect()
@@ -157,8 +157,8 @@ impl Library {
     /// The person's skip of the release at `display_path`.
     fn skip(&self, display_path: &str) -> String {
         format!(
-            "INSERT INTO skipped_import_candidates (candidate_path) VALUES ('{}');",
-            self.path(display_path)
+            "INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});",
+            self.sql(display_path)
         )
     }
 
@@ -173,9 +173,9 @@ impl Library {
             "INSERT INTO import_candidate_standing
                  (candidate_key, identification, content_hash, file_edit_revision, admission,
                   identify_run)
-             VALUES ('{}', '{stage}', '{}', 0, {admission}, {run});",
-            self.path(display_path),
-            hash(display_path),
+             VALUES ({}, '{stage}', '{}', 0, {admission}, {run});",
+            self.sql(display_path),
+            hash(display_path)
         )
     }
 
@@ -184,8 +184,8 @@ impl Library {
     fn importing(&self, display_path: &str, stage: &str) -> String {
         format!(
             "INSERT INTO import_candidate_standing (candidate_key, import, import_id)
-             VALUES ('{}', '{stage}', 'import-{display_path}');",
-            self.path(display_path),
+             VALUES ({}, '{stage}', 'import-{display_path}');",
+            self.sql(display_path)
         )
     }
 

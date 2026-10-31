@@ -40,12 +40,10 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
     for release in releases {
         write_disc(&root.join(release), 1);
     }
-    let root = PathBuf::from(
-        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap(),
-    );
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     test.service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
     let (scan, _events) = test.scan();
@@ -55,8 +53,8 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
 
 fn folder_key(root: &Path, relative: &str) -> crate::import::FolderReleaseDecisionKey {
     crate::import::FolderReleaseDecisionKey {
-        watched_folder_path: root.to_string_lossy().into_owned(),
-        relative_folder_path: relative.to_string(),
+        watched_folder_path: root.to_path_buf(),
+        relative_folder: crate::import::RelativeFolder::test(relative),
     }
 }
 
@@ -129,17 +127,17 @@ async fn a_folders_release_keeps_its_key_across_readings() {
     let manager = &test.service.library_manager;
     let grouping_of = || async {
         manager
-            .load_folder_release_decisions(&root.to_string_lossy())
+            .load_folder_release_decisions(&root)
             .await
             .unwrap()
-            .get("Album")
+            .get(&crate::import::RelativeFolder::test("Album"))
             .map(|reading| reading.grouping.clone())
             .expect("the scan read the album's discs as one")
     };
     let key = grouping_of().await;
     let stored_release = || async {
         manager
-            .load_folder_scan_items(&root.to_string_lossy())
+            .load_folder_scan_items(&root)
             .await
             .unwrap()
             .into_iter()
@@ -177,12 +175,10 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
         write_disc(&root.join(disc), 2);
     }
     std::fs::write(root.join("Album/notes.txt"), "notes").unwrap();
-    let root = PathBuf::from(
-        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap(),
-    );
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     test.service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
     let (scan, _events) = test.scan();
@@ -190,7 +186,7 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
     let release = test
         .service
         .library_manager
-        .load_folder_scan_items(&root.to_string_lossy())
+        .load_folder_scan_items(&root)
         .await
         .unwrap()
         .into_iter()

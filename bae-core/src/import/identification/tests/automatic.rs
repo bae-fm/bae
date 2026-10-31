@@ -38,7 +38,7 @@ async fn only_a_release_found_while_automatic_is_on_is_identified_on_its_own() {
 async fn a_release_found_after_its_key_was_removed_is_queued() {
     let fixture = Fixture::new("found-after-removal").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
@@ -72,7 +72,7 @@ async fn a_release_found_after_its_key_was_removed_is_queued() {
 async fn a_found_release_whose_key_is_then_removed_is_not_identified() {
     let fixture = Fixture::new("removed-after-found").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.manager.set_identify_automatically(false).await.unwrap();
@@ -125,7 +125,7 @@ async fn turning_automatic_identification_on_queues_no_candidate_already_found()
 async fn a_rescan_queues_no_candidate_it_had_found() {
     let fixture = Fixture::new("rescan-queues-nothing").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
@@ -198,7 +198,7 @@ async fn a_relaunch_queues_no_candidate_the_library_stored() {
     );
     assert!(fixture.identified_for(&dir).await.is_none());
     assert!(
-        import.candidate_runtime(&dir.to_string_lossy()).await.unwrap().is_none(),
+        import.candidate_runtime(&crate::import::CandidateKey::folder(&dir)).await.unwrap().is_none(),
         "nothing is waiting either"
     );
     identification.stop();
@@ -254,7 +254,7 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture
         .import
-        .add_watched_folder(inner.to_string_lossy().into_owned())
+        .add_watched_folder(inner.clone())
         .await
         .unwrap();
     fixture.read_root(&fixture.import, &inner).await;
@@ -265,7 +265,7 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
     std::fs::write(new.join("notes.txt"), "a candidate of its own").unwrap();
     fixture
         .import
-        .add_watched_folder(fixture.root.to_string_lossy().into_owned())
+        .add_watched_folder(fixture.root.clone())
         .await
         .unwrap();
     // Answered once the parent's read, which follows the takeover, is over.
@@ -292,7 +292,7 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
 /// Two releases under `folder`, each with a file of its own, scanned with the
 /// setting off and read as one release by the person. Returns the parts and
 /// the combined release's key.
-async fn combined_parts(fixture: &Fixture, folder: &str) -> (Vec<PathBuf>, String) {
+async fn combined_parts(fixture: &Fixture, folder: &str) -> (Vec<PathBuf>, crate::import::CandidateKey) {
     let parts: Vec<PathBuf> = ["Side A", "Side B"]
         .iter()
         .map(|side| {
@@ -309,7 +309,7 @@ async fn combined_parts(fixture: &Fixture, folder: &str) -> (Vec<PathBuf>, Strin
         .combine_candidates(
             parts
                 .iter()
-                .map(|dir| dir.to_string_lossy().into_owned())
+                .map(|dir| crate::import::CandidateKey::folder(dir))
                 .collect(),
         )
         .await
@@ -375,12 +375,15 @@ async fn separating_picked_releases_queues_them_only_while_the_setting_is_on() {
             .combine_candidates(
                 picked
                     .iter()
-                    .map(|dir| dir.to_string_lossy().into_owned())
+                    .map(|dir| crate::import::CandidateKey::folder(dir))
                     .collect(),
             )
             .await
             .unwrap();
-        assert!(combined.starts_with("grouping:"), "{combined} is a picked grouping");
+        assert!(
+            combined.as_bytes().starts_with(b"grouping:"),
+            "{combined} is a picked grouping"
+        );
         fixture.manager.set_identify_automatically(automatic).await.unwrap();
 
         fixture.import.separate_candidate(&combined).await.unwrap();

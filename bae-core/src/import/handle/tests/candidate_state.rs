@@ -55,7 +55,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 
     let mut events = import_handle.every_event();
     import_handle
-        .add_watched_folder(root.to_string_lossy().to_string())
+        .add_watched_folder(root.clone())
         .await
         .unwrap();
 
@@ -70,7 +70,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     })
     .await
     .expect("timed out waiting for the folder candidate");
-    let key = candidate_path.to_string_lossy().to_string();
+    let key = crate::import::CandidateKey::folder(&candidate_path);
     tokio::time::timeout(
         HANG_GUARD,
         import_handle.wait_for_list(crate::import::ImportListView::default(), |projection| {
@@ -107,7 +107,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .cancelled_for_test(&key)
         .expect("the extraction is in flight");
     import_handle
-        .remove_watched_folder(root.to_string_lossy().to_string())
+        .remove_watched_folder(root.clone())
         .await
         .unwrap();
     // Let the reads under way finish only once the removal has reached the
@@ -148,9 +148,9 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 #[tokio::test]
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     let (manager, _temp) = setup_test_manager().await;
-    let root = PathBuf::from(crate::import::watched_folder::host_root("/music"));
+    let root = crate::import::watched_folder::host_root("/music");
     manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
     let handle = manager
@@ -161,12 +161,12 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     // list offers.
     let folder = root.join("Collection").join("Album");
     let generation = manager
-        .begin_folder_scan(&root.to_string_lossy())
+        .begin_folder_scan(&root)
         .await
         .unwrap();
     manager
         .save_folder_scan_item(
-            &root.to_string_lossy(),
+            &root,
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(
                 crate::import::folder_scanner::FolderCandidate {
@@ -176,10 +176,10 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
                     files: crate::import::folder_scanner::CategorizedFiles {
                         files: Vec::new(), parts: Vec::new(), 
                     },
-                    watched_folder_path: root.to_string_lossy().into_owned(),
+                    watched_folder_path: root.clone(),
                     scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
                     file_edit_revision: 0,
-                    display_path: "Collection/Album".to_string(),
+                    relative_folder: crate::import::RelativeFolder::test("Collection/Album"),
                     grouping: None,
                 },
             ),
@@ -188,8 +188,8 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .unwrap()
         .expect("the scan generation is current");
     let key = FolderReleaseDecisionKey {
-        watched_folder_path: root.to_string_lossy().into_owned(),
-        relative_folder_path: "Collection".to_string(),
+        watched_folder_path: root.clone(),
+        relative_folder: crate::import::RelativeFolder::test("Collection"),
     };
 
     let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
@@ -201,7 +201,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         })
         .unwrap();
 
-    let removal = handle.remove_watched_folder(root.to_string_lossy().into_owned());
+    let removal = handle.remove_watched_folder(root.clone());
     let (decision, removal) =
         tokio::time::timeout(HANG_GUARD, async { tokio::join!(decision_result, removal) })
             .await

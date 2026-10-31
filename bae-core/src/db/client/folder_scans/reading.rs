@@ -4,6 +4,8 @@
 
 use super::*;
 use crate::import::folder_scanner::{FolderReading, FolderReleaseDecisionKey};
+use std::ffi::OsString;
+use std::path::Component;
 
 /// Where the root stood when one folder's reading was taken, and the
 /// generation that reading is stored under.
@@ -18,9 +20,9 @@ pub(crate) struct FolderReadingStamp {
 
 /// One folder's new reading, ready to store.
 pub(crate) struct FolderReadingCommit {
-    pub(crate) watched_folder_path: String,
-    /// The folder directly under the root that was read again.
-    pub(crate) folder: String,
+    pub(crate) watched_folder_path: PathBuf,
+    /// The name of the folder directly under the root that was read again.
+    pub(crate) folder: OsString,
     pub(crate) stamp: FolderReadingStamp,
     /// The person's answer, when that is why the folder was read again.
     pub(crate) decision: Option<(FolderReleaseDecisionKey, FolderReading)>,
@@ -30,7 +32,7 @@ pub(crate) struct FolderReadingCommit {
     pub(crate) items: Vec<ScanItemToWrite>,
     /// Every directory in the folder with its mtime, or `None` when one could
     /// not be read, which clears the root's record.
-    pub(crate) directories: Option<Vec<(String, i64)>>,
+    pub(crate) directories: Option<Vec<(PathBuf, i64)>>,
 }
 
 /// What storing one folder's reading did.
@@ -38,7 +40,7 @@ pub(crate) struct FolderReadingWrite {
     /// Each entry, with what its write did, in the order they were written.
     pub(crate) writes: Vec<(ScanItem, ScanItemWrite)>,
     /// Entries under the folder the new reading no longer yields.
-    pub(crate) pruned: Vec<String>,
+    pub(crate) pruned: Vec<CandidateKey>,
     /// Releases groupings rebuilt without the pruned entries.
     pub(crate) regrouped: super::super::release_groupings::GroupingChanges,
 }
@@ -49,21 +51,21 @@ impl Database {
     /// read has no reading to change.
     pub(crate) async fn begin_folder_reading(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
     ) -> Result<FolderReadingStamp, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
         self.call(move |sql| {
             let read_under: Option<i64> = sql
                 .query_row(
                     "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                    [&watched_folder_path],
+                    [coven::path_bytes(&watched_folder_path)],
                     |row| row.get(0),
                 )
                 .optional()?;
             let Some(read_under) = read_under else {
                 return Err(DbError::Message(format!(
-                    "{watched_folder_path} has not been read, so none of its folders can be \
-                     read again"
+                    "{} has not been read, so none of its folders can be read again",
+                    coven::path_text(&watched_folder_path)
                 )));
             };
             let generation = next_folder_scan_generation(sql)?;
@@ -92,22 +94,31 @@ impl Database {
             items,
             directories,
         } = commit;
-        crate::import::folder_path::validate_relative_path(&folder)?;
-        if folder.contains('/') {
+        let mut names = Path::new(&folder).components();
+        let one_name = matches!(
+            (names.next(), names.next()),
+            (Some(Component::Normal(name)), None) if name == folder.as_os_str()
+        );
+        if !one_name {
             return Err(DbError::Message(format!(
-                "{folder} is not a folder directly under {watched_folder_path}"
+                "{} is not a folder directly under {}",
+                coven::path_text(Path::new(&folder)),
+                coven::path_text(&watched_folder_path)
             )));
         }
-        let folder_path = Path::new(&watched_folder_path).join(&folder);
+        let folder_path = watched_folder_path.join(&folder);
         for (key, _) in decision.iter().chain(scanned_decisions.iter()) {
             validate_decision_key_ownership(&watched_folder_path, key)?;
-            if !Path::new(&key.watched_folder_path)
-                .join(&key.relative_folder_path)
-                .starts_with(&folder_path)
+            if !crate::import::relative_folder::folder_below(
+                &key.watched_folder_path,
+                &key.relative_folder,
+            )
+            .starts_with(&folder_path)
             {
                 return Err(DbError::Message(format!(
-                    "folder release decision for {} is outside {folder}",
-                    key.relative_folder_path
+                    "folder release decision for {} is outside {}",
+                    key.relative_folder.text(),
+                    coven::path_text(&folder_path)
                 )));
             }
         }
@@ -119,8 +130,9 @@ impl Database {
             })?;
             if !coverage.folder.starts_with(&folder_path) {
                 return Err(DbError::Message(format!(
-                    "folder scan entry at {} is outside {folder}",
-                    coverage.folder.display()
+                    "folder scan entry at {} is outside {}",
+                    coven::path_text(&coverage.folder),
+                    coven::path_text(&folder_path)
                 )));
             }
         }
@@ -129,10 +141,11 @@ impl Database {
         let observed_at =
             chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
         self.call(move |sql| {
+            let root = coven::path_bytes(&watched_folder_path);
             let current: Option<i64> = sql
                 .query_row(
                     "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                    [&watched_folder_path],
+                    [&root],
                     |row| row.get(0),
                 )
                 .optional()?;
@@ -140,7 +153,7 @@ impl Database {
                 return Err(DbError::Message(format!(
                     "{} changed while it was being read again: the root's entries were \
                      written after the reading began",
-                    folder_path.display()
+                    coven::path_text(&folder_path)
                 )));
             }
             for (key, reading) in decision.iter().chain(scanned_decisions.iter()) {
@@ -154,7 +167,7 @@ impl Database {
             }
             sql.execute(
                 "UPDATE folder_scan_roots SET generation = ? WHERE watched_folder_path = ?",
-                params![generation, watched_folder_path],
+                params![generation, root],
             )?;
             let finding = match decision {
                 Some(_) => Finding::Decision,
@@ -172,9 +185,10 @@ impl Database {
                 )?;
                 writes.push((item.item, write));
             }
-            let folder_text = folder_path.to_string_lossy().into_owned();
-            let (below_first, below_past) = crate::import::folder_path::paths_below(&folder_text);
-            let pruned: Vec<String> = sql.query(
+            let folder_bytes = coven::path_bytes(&folder_path);
+            let (below_first, below_past) =
+                crate::import::relative_folder::paths_below(&folder_path);
+            let pruned: Vec<CandidateKey> = sql.query(
                 "SELECT path FROM scan_candidate \
                  WHERE watched_folder_path = :root AND generation != :generation \
                    AND source_kind = 'folder' \
@@ -182,13 +196,13 @@ impl Database {
                         OR (folder >= :below_first AND folder < :below_past)) \
                  ORDER BY path",
                 rusqlite::named_params! {
-                    ":root": watched_folder_path,
+                    ":root": root,
                     ":generation": generation,
-                    ":folder": folder_text,
+                    ":folder": folder_bytes,
                     ":below_first": below_first,
                     ":below_past": below_past,
                 },
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, CandidateKey>(0),
             )?;
             for key in &pruned {
                 delete_entry(sql, &watched_folder_path, key)?;
@@ -207,30 +221,31 @@ impl Database {
                            AND (path = :folder \
                                 OR (path >= :below_first AND path < :below_past))",
                         rusqlite::named_params! {
-                            ":root": watched_folder_path,
-                            ":folder": folder_text,
+                            ":root": root,
+                            ":folder": folder_bytes,
                             ":below_first": below_first,
                             ":below_past": below_past,
                         },
                     )?;
                     for (path, modified_at) in directories {
-                        if !Path::new(path).starts_with(&folder_path) {
+                        if !path.starts_with(&folder_path) {
                             return Err(DbError::Message(format!(
-                                "recorded directory {path} is outside {}",
-                                folder_path.display()
+                                "recorded directory {} is outside {}",
+                                coven::path_text(path),
+                                coven::path_text(&folder_path)
                             )));
                         }
                         sql.execute(
                             "INSERT INTO folder_scan_directory \
                                  (watched_folder_path, path, modified_at) VALUES (?, ?, ?)",
-                            params![watched_folder_path, path, modified_at],
+                            params![root, coven::path_bytes(path), modified_at],
                         )?;
                     }
                 }
                 None => {
                     sql.execute(
                         "DELETE FROM folder_scan_directory WHERE watched_folder_path = ?",
-                        [&watched_folder_path],
+                        [&root],
                     )?;
                 }
             }

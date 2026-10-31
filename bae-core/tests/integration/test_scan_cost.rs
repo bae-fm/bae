@@ -81,7 +81,7 @@ async fn scan(
 ) -> (Vec<Duration>, Duration) {
     let start = Instant::now();
     services
-        .import_add_watched_folder(root.to_string_lossy().into_owned())
+        .import_add_watched_folder(root.to_path_buf())
         .await
         .unwrap();
     let mut announced = Vec::new();

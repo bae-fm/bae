@@ -8,7 +8,7 @@ use bae_catalogs::remote_image::{RemoteCover, RemoteImageSet};
 /// The persisted owner whose external identities supply a cover gallery.
 pub enum CoverTarget {
     Release(String),
-    Candidate(String),
+    Candidate(crate::import::CandidateKey),
 }
 
 /// Whether an owner names an external release, and the artwork it offers.

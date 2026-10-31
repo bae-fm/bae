@@ -21,68 +21,67 @@ struct LibraryStatusQuery: Sendable {
 }
 
 private struct ImportOperations: Sendable {
-    let candidateSourceFolders: @Sendable (String) async throws -> [String]
+    let candidateSourceFolders: @Sendable (Data) async throws -> [Data]
     let combineFolder:
-        @Sendable (BridgeFolderReleaseDecisionKey) async throws -> String
-    let separateCandidate: @Sendable (String) async throws -> Void
-    let addWatchedFolder: @Sendable (String) async throws -> Void
-    let removeWatchedFolder: @Sendable (String) async throws -> Void
-    let refreshWatchedFolder: @Sendable (String) async throws -> Void
+        @Sendable (BridgeFolderReleaseDecisionKey) async throws -> Data
+    let separateCandidate: @Sendable (Data) async throws -> Void
+    let addWatchedFolder: @Sendable (Data) async throws -> Void
+    let removeWatchedFolder: @Sendable (Data) async throws -> Void
+    let refreshWatchedFolder: @Sendable (Data) async throws -> Void
     let setSheetBinding:
-        @Sendable (String, String, String, String?) async throws -> Void
+        @Sendable (Data, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
-        @Sendable (String, BridgePressingLink) async throws ->
+        @Sendable (Data, BridgePressingLink) async throws ->
             BridgePaneOutcome
     let applyCandidateFileMetadata:
-        @Sendable (String) async throws -> BridgePaneOutcome
-    let keepCandidateDraft: @Sendable (String) async throws -> BridgePaneOutcome
+        @Sendable (Data) async throws -> BridgePaneOutcome
+    let keepCandidateDraft: @Sendable (Data) async throws -> BridgePaneOutcome
     let linkCandidateSharedAlbum:
-        @Sendable (String) async throws -> BridgePaneOutcome
+        @Sendable (Data) async throws -> BridgePaneOutcome
     let unlinkCandidateRelease:
-        @Sendable (String) async throws -> BridgePaneOutcome
-    let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
+        @Sendable (Data) async throws -> BridgePaneOutcome
+    let clearCandidateMetadata: @Sendable (Data) async throws -> UInt64
     let setSheetDisc:
-        @Sendable (String, String, BridgeSheetDisc) async throws -> Void
-    let autoIdentifyRelease: @Sendable (String, String) -> Void
+        @Sendable (Data, String, BridgeSheetDisc) async throws -> Void
+    let autoIdentifyRelease: @Sendable (String) -> Void
     let editReleaseLookupChoices:
-        @Sendable (String, String, BridgeLookupChoiceEdit) -> Void
+        @Sendable (String, BridgeLookupChoiceEdit) -> Void
     let endReleaseIdentification: @Sendable (String) async throws -> Void
     let startCandidateSearch:
-        @Sendable (String, BridgeSearchQuery) async throws -> Void
-    let retryCandidateSearch: @Sendable (String) -> Void
+        @Sendable (Data, BridgeSearchQuery) async throws -> Void
+    let retryCandidateSearch: @Sendable (Data) -> Void
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
     let editCandidateLookupChoices:
-        @Sendable (String, BridgeLookupChoiceEdit) async throws ->
+        @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome
-    let rerunIdentifyForCandidate: @Sendable (String) -> Void
+    let rerunIdentifyForCandidate: @Sendable (Data) -> Void
     let cancelAllIdentification: @Sendable () async throws -> Void
-    let cancelCandidateIdentification: @Sendable (String) async throws -> Void
+    let cancelCandidateIdentification: @Sendable (Data) async throws -> Void
     let cancelAllImports: @Sendable () -> Void
-    let moveCandidatePane:
-        @Sendable (String, BridgePaneMove) async throws -> Void
-    let identifyAutomatically: @Sendable (String) async throws -> Void
+    let moveCandidatePane: @Sendable (Data, BridgePaneMove) async throws -> Void
+    let identifyAutomatically: @Sendable (Data) async throws -> Void
     let setCandidateSearchForm:
-        @Sendable (String, BridgeSearchForm) async throws -> Void
+        @Sendable (Data, BridgeSearchForm) async throws -> Void
     let setCandidateCover:
-        @Sendable (String, BridgeCoverSelection) async throws -> Void
+        @Sendable (Data, BridgeCoverSelection) async throws -> Void
     let setCandidateEditField:
-        @Sendable (String, BridgeCandidateEditField, String) async throws ->
+        @Sendable (Data, BridgeCandidateEditField, String) async throws ->
             Void
     let setCandidateLabels:
-        @Sendable (String, [BridgeRawLabelEdit]) async throws -> Void
-    let setCandidateBarcodes: @Sendable (String, [String]) async throws -> Void
-    let setCandidateAlbum: @Sendable (String, String?) async throws -> Void
+        @Sendable (Data, [BridgeRawLabelEdit]) async throws -> Void
+    let setCandidateBarcodes: @Sendable (Data, [String]) async throws -> Void
+    let setCandidateAlbum: @Sendable (Data, String?) async throws -> Void
     let searchAlbums: @Sendable (String) async throws -> [BridgeAlbumChoice]
     let setCandidatePressingFact:
-        @Sendable (String, BridgePressingFactEdit) async throws -> Void
+        @Sendable (Data, BridgePressingFactEdit) async throws -> Void
     let setCandidateAlbumArtists:
-        @Sendable (String, [BridgeCredited]) async throws -> Void
+        @Sendable (Data, [BridgeCredited]) async throws -> Void
     let setCandidateTrackEdit:
-        @Sendable (String, BridgeRawTrackEdit) async throws -> Void
-    let candidateSignals: @Sendable (String) -> Signals?
-    let startImport: @Sendable (String) async throws -> BridgePaneOutcome
+        @Sendable (Data, BridgeRawTrackEdit) async throws -> Void
+    let candidateSignals: @Sendable (Data) -> Signals?
+    let startImport: @Sendable (Data) async throws -> BridgePaneOutcome
     let chooseCandidateArtistIdentity:
-        @Sendable (String, UInt64, BridgeArtistIdentityConflictChoice)
+        @Sendable (Data, UInt64, BridgeArtistIdentityConflictChoice)
             async throws -> BridgePaneOutcome
     let setIdentifyAutomatically:
         @MainActor @Sendable (Bool) async throws -> Void
@@ -154,17 +153,13 @@ extension ImportOperations {
                 )
             },
             autoIdentifyRelease: {
-                handle.autoIdentifyRelease(candidateKey: $0, releaseId: $1)
+                handle.autoIdentifyRelease(releaseId: $0)
             },
             editReleaseLookupChoices: {
-                handle.editReleaseLookupChoices(
-                    candidateKey: $0,
-                    releaseId: $1,
-                    edit: $2
-                )
+                handle.editReleaseLookupChoices(releaseId: $0, edit: $1)
             },
             endReleaseIdentification: {
-                try await handle.endReleaseIdentification(candidateKey: $0)
+                try await handle.endReleaseIdentification(releaseId: $0)
             },
             startCandidateSearch: {
                 try await handle.startCandidateSearch(
@@ -308,125 +303,124 @@ final class Importer: Sendable, Observable {
 
     init(
         candidateSourceFolders:
-            @escaping @Sendable (String) async throws -> [String] = { _ in
+            @escaping @Sendable (Data) async throws -> [Data] = { _ in
                 throw StubError.notImplemented
             },
         combineFolder:
             @escaping @Sendable (BridgeFolderReleaseDecisionKey) async throws
-            -> String = { _ in throw StubError.notImplemented },
-        separateCandidate: @escaping @Sendable (String) async throws -> Void =
+            -> Data = { _ in throw StubError.notImplemented },
+        separateCandidate: @escaping @Sendable (Data) async throws -> Void =
             { _ in throw StubError.notImplemented },
-        addWatchedFolder: @escaping @Sendable (String) async throws -> Void = {
+        addWatchedFolder: @escaping @Sendable (Data) async throws -> Void = {
             _ in
         },
-        removeWatchedFolder: @escaping @Sendable (String) async throws -> Void =
+        removeWatchedFolder: @escaping @Sendable (Data) async throws -> Void =
             {
                 _ in
             },
         refreshWatchedFolder:
-            @escaping @Sendable (String) async throws -> Void = { _ in },
+            @escaping @Sendable (Data) async throws -> Void = { _ in },
         setSheetBinding:
-            @escaping @Sendable (String, String, String, String?) async throws
+            @escaping @Sendable (Data, String, String, String?) async throws
             -> Void =
             { _, _, _, _ in },
         applyCandidateExternalMetadata:
-            @escaping @Sendable (String, BridgePressingLink)
+            @escaping @Sendable (Data, BridgePressingLink)
             async throws -> BridgePaneOutcome = { _, _ in
                 throw StubError.notImplemented
             },
         applyCandidateFileMetadata:
-            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+            @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
         keepCandidateDraft:
-            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+            @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
         linkCandidateSharedAlbum:
-            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+            @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
         unlinkCandidateRelease:
-            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+            @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
         clearCandidateMetadata:
-            @escaping @Sendable (String) async throws -> UInt64 = { _ in
+            @escaping @Sendable (Data) async throws -> UInt64 = { _ in
                 throw StubError.notImplemented
             },
         setSheetDisc:
-            @escaping @Sendable (String, String, BridgeSheetDisc) async throws
+            @escaping @Sendable (Data, String, BridgeSheetDisc) async throws
             -> Void = { _, _, _ in },
-        autoIdentifyRelease: @escaping @Sendable (String, String) -> Void = {
-            _,
-            _ in
-        },
+        autoIdentifyRelease: @escaping @Sendable (String) -> Void = { _ in },
         editReleaseLookupChoices:
-            @escaping @Sendable (String, String, BridgeLookupChoiceEdit) ->
-            Void = { _, _, _ in },
+            @escaping @Sendable (String, BridgeLookupChoiceEdit) -> Void = {
+                _,
+                _ in
+            },
         endReleaseIdentification:
             @escaping @Sendable (String) async throws -> Void = { _ in },
         startCandidateSearch:
-            @escaping @Sendable (String, BridgeSearchQuery) async throws ->
+            @escaping @Sendable (Data, BridgeSearchQuery) async throws ->
             Void = { _, _ in },
-        retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
+        retryCandidateSearch: @escaping @Sendable (Data) -> Void = { _ in },
         subscribeLibraryStatuses:
             @escaping @Sendable () -> LibraryStatusQuery = { .inert },
         editCandidateLookupChoices:
-            @escaping @Sendable (String, BridgeLookupChoiceEdit) async throws ->
+            @escaping @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome = { _, _ in .done },
         rerunIdentifyForCandidate:
-            @escaping @Sendable (String) -> Void = { _ in },
+            @escaping @Sendable (Data) -> Void = { _ in },
         cancelAllIdentification:
             @escaping @Sendable () async throws -> Void = {},
         cancelCandidateIdentification:
-            @escaping @Sendable (String) async throws -> Void = { _ in },
+            @escaping @Sendable (Data) async throws -> Void = { _ in },
         cancelAllImports: @escaping @Sendable () -> Void = {},
         moveCandidatePane:
-            @escaping @Sendable (String, BridgePaneMove) async throws -> Void =
+            @escaping @Sendable (Data, BridgePaneMove) async throws -> Void =
             {
                 _,
                 _ in
             },
         identifyAutomatically:
-            @escaping @Sendable (String) async throws -> Void = { _ in },
+            @escaping @Sendable (Data) async throws -> Void = { _ in },
         setCandidateSearchForm:
-            @escaping @Sendable (String, BridgeSearchForm) async throws -> Void =
+            @escaping @Sendable (Data, BridgeSearchForm) async throws -> Void =
             {
                 _,
                 _ in
             },
         setCandidateCover:
-            @escaping @Sendable (String, BridgeCoverSelection) async throws ->
+            @escaping @Sendable (Data, BridgeCoverSelection) async throws ->
             Void = { _, _ in },
         setCandidateEditField:
-            @escaping @Sendable (String, BridgeCandidateEditField, String)
+            @escaping @Sendable (Data, BridgeCandidateEditField, String)
             async throws -> Void = { _, _, _ in },
         setCandidateLabels:
-            @escaping @Sendable (String, [BridgeRawLabelEdit]) async throws
+            @escaping @Sendable (Data, [BridgeRawLabelEdit]) async throws
             -> Void = { _, _ in },
         setCandidateBarcodes:
-            @escaping @Sendable (String, [String]) async throws
+            @escaping @Sendable (Data, [String]) async throws
             -> Void = { _, _ in },
         setCandidateAlbum:
-            @escaping @Sendable (String, String?) async throws
+            @escaping @Sendable (Data, String?) async throws
             -> Void = { _, _ in },
         searchAlbums:
             @escaping @Sendable (String) async throws
             -> [BridgeAlbumChoice] = { _ in [] },
         setCandidatePressingFact:
-            @escaping @Sendable (String, BridgePressingFactEdit) async throws
+            @escaping @Sendable (Data, BridgePressingFactEdit) async throws
             -> Void = { _, _ in },
         setCandidateAlbumArtists:
-            @escaping @Sendable (String, [BridgeCredited]) async throws
+            @escaping @Sendable (Data, [BridgeCredited]) async throws
             -> Void = { _, _ in },
         setCandidateTrackEdit:
-            @escaping @Sendable (String, BridgeRawTrackEdit) async throws ->
+            @escaping @Sendable (Data, BridgeRawTrackEdit) async throws ->
             Void = { _, _ in },
-        candidateSignals: @escaping @Sendable (String) -> Signals? = { _ in nil
+        candidateSignals: @escaping @Sendable (Data) -> Signals? = { _ in nil
         },
         startImport:
-            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+            @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in .done
             },
         setIdentifyAutomatically:
@@ -503,36 +497,36 @@ final class Importer: Sendable, Observable {
 }
 
 extension Importer {
-    func candidateSourceFolders(_ key: String) async throws -> [String] {
+    func candidateSourceFolders(_ key: Data) async throws -> [Data] {
         try await operations.candidateSourceFolders(key)
     }
 
     func combineFolder(
         _ key: BridgeFolderReleaseDecisionKey
-    ) async throws -> String {
+    ) async throws -> Data {
         try await operations.combineFolder(key)
     }
 
-    func separateCandidate(_ key: String) async throws {
+    func separateCandidate(_ key: Data) async throws {
         try await operations.separateCandidate(key)
     }
 
     /// Take in the folder at `path`: watch it, or read again the watched
     /// folder that covers it.
-    func addWatchedFolder(_ path: String) async throws {
+    func addWatchedFolder(_ path: Data) async throws {
         try await operations.addWatchedFolder(path)
     }
 
-    func removeWatchedFolder(_ path: String) async throws {
+    func removeWatchedFolder(_ path: Data) async throws {
         try await operations.removeWatchedFolder(path)
     }
 
-    func refreshWatchedFolder(_ path: String) async throws {
+    func refreshWatchedFolder(_ path: Data) async throws {
         try await operations.refreshWatchedFolder(path)
     }
 
     func setSheetBinding(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ sheetFileId: String,
         _ fileReference: String,
         _ audioFileId: String?
@@ -548,7 +542,7 @@ extension Importer {
     /// Link the candidate to the release a pick names, claiming every source
     /// that pick carried, and read its draft from it.
     func applyCandidateExternalMetadata(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         link: BridgePressingLink
     ) async throws -> BridgePaneOutcome {
         try await operations.applyCandidateExternalMetadata(
@@ -559,7 +553,7 @@ extension Importer {
 
     /// Read the candidate's files' own tags into its draft, a pane command:
     /// its failure is stated on the pane.
-    func applyCandidateFileMetadata(_ candidateKey: String) async throws
+    func applyCandidateFileMetadata(_ candidateKey: Data) async throws
         -> BridgePaneOutcome
     {
         try await operations.applyCandidateFileMetadata(candidateKey)
@@ -567,7 +561,7 @@ extension Importer {
 
     /// Keep the candidate's own draft over what its lookup offered, a pane
     /// command that goes back to the draft; its failure is stated on the pane.
-    func keepCandidateDraft(_ candidateKey: String) async throws
+    func keepCandidateDraft(_ candidateKey: Data) async throws
         -> BridgePaneOutcome
     {
         try await operations.keepCandidateDraft(candidateKey)
@@ -577,7 +571,7 @@ extension Importer {
     /// of, its pressing unknown, taking what they agree on into its draft — a
     /// pane command that goes back to the draft; its failure is stated on the
     /// pane.
-    func linkCandidateSharedAlbum(_ candidateKey: String) async throws
+    func linkCandidateSharedAlbum(_ candidateKey: Data) async throws
         -> BridgePaneOutcome
     {
         try await operations.linkCandidateSharedAlbum(candidateKey)
@@ -585,18 +579,18 @@ extension Importer {
 
     /// Unlink the candidate from its release, a pane command whose failure is
     /// stated on the pane. The draft stays as it is.
-    func unlinkCandidateRelease(_ candidateKey: String) async throws
+    func unlinkCandidateRelease(_ candidateKey: Data) async throws
         -> BridgePaneOutcome
     {
         try await operations.unlinkCandidateRelease(candidateKey)
     }
 
-    func clearCandidateMetadata(_ candidateKey: String) async throws -> UInt64 {
+    func clearCandidateMetadata(_ candidateKey: Data) async throws -> UInt64 {
         try await operations.clearCandidateMetadata(candidateKey)
     }
 
     func setSheetDisc(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ sheetFileId: String,
         _ disc: BridgeSheetDisc
     ) async throws {
@@ -605,38 +599,37 @@ extension Importer {
 
     /// Re-identify a library release, asking about what core holds for this
     /// session.
-    func autoIdentifyRelease(_ candidateKey: String, _ releaseId: String) {
-        operations.autoIdentifyRelease(candidateKey, releaseId)
+    func autoIdentifyRelease(_ releaseId: String) {
+        operations.autoIdentifyRelease(releaseId)
     }
 
     /// Make one change to what a library release's session asks about; core
     /// identifies it again from the changed choices.
     func editReleaseLookupChoices(
-        _ candidateKey: String,
         _ releaseId: String,
         _ edit: BridgeLookupChoiceEdit
     ) {
-        operations.editReleaseLookupChoices(candidateKey, releaseId, edit)
+        operations.editReleaseLookupChoices(releaseId, edit)
     }
 
     /// End a library release's re-identify session: its identification stops
     /// and core forgets what it asked about.
-    func endReleaseIdentification(_ candidateKey: String) async throws {
-        try await operations.endReleaseIdentification(candidateKey)
+    func endReleaseIdentification(_ releaseId: String) async throws {
+        try await operations.endReleaseIdentification(releaseId)
     }
 
     /// Submit a candidate's typed search: every configured provider is asked
     /// at once and each answer lands on the candidate's runtime, which the
     /// pane already watches. Clears the failure the pane states.
     func startCandidateSearch(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ query: BridgeSearchQuery
     ) async throws {
         try await operations.startCandidateSearch(candidateKey, query)
     }
 
     /// Re-ask only the providers whose part of the search failed.
-    func retryCandidateSearch(_ candidateKey: String) {
+    func retryCandidateSearch(_ candidateKey: Data) {
         operations.retryCandidateSearch(candidateKey)
     }
 
@@ -648,7 +641,7 @@ extension Importer {
     /// Make one change to what a candidate's identification asks about; core
     /// applies it to the choices it holds and starts the run that reads them.
     func editCandidateLookupChoices(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ edit: BridgeLookupChoiceEdit
     ) async throws -> BridgePaneOutcome {
         try await operations.editCandidateLookupChoices(candidateKey, edit)
@@ -661,7 +654,7 @@ extension Importer {
     /// Re-asking the providers that failed is this same command: every lookup
     /// goes out again, and core's response cache answers the ones that had
     /// already succeeded.
-    func rerunIdentifyForCandidate(_ candidateKey: String) {
+    func rerunIdentifyForCandidate(_ candidateKey: Data) {
         operations.rerunIdentifyForCandidate(candidateKey)
     }
 
@@ -673,7 +666,7 @@ extension Importer {
     /// Stop identifying one candidate — take it off the identification
     /// queue, ending its run if one started — storing nothing, and put its
     /// pane back on the draft.
-    func cancelCandidateIdentification(_ candidateKey: String) async throws {
+    func cancelCandidateIdentification(_ candidateKey: Data) async throws {
         try await operations.cancelCandidateIdentification(candidateKey)
     }
 
@@ -685,7 +678,7 @@ extension Importer {
     /// Move the candidate's pane as the person asked; core moves it by the
     /// rule it moves every pane by.
     func moveCandidatePane(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ paneMove: BridgePaneMove
     ) async throws {
         try await operations.moveCandidatePane(candidateKey, paneMove)
@@ -693,13 +686,13 @@ extension Importer {
 
     /// Show identification's results: the stored verdict as it stood when
     /// there is one, a run started when there is none.
-    func identifyAutomatically(_ candidateKey: String) async throws {
+    func identifyAutomatically(_ candidateKey: Data) async throws {
         try await operations.identifyAutomatically(candidateKey)
     }
 
     /// Record the typed-search form as the person left it.
     func setCandidateSearchForm(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ search: BridgeSearchForm
     ) async throws {
         try await operations.setCandidateSearchForm(candidateKey, search)
@@ -707,7 +700,7 @@ extension Importer {
 
     /// Record the cover this candidate commits with.
     func setCandidateCover(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ cover: BridgeCoverSelection
     ) async throws {
         try await operations.setCandidateCover(candidateKey, cover)
@@ -715,7 +708,7 @@ extension Importer {
 
     /// Record one album-level metadata field as the user left it.
     func setCandidateEditField(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ field: BridgeCandidateEditField,
         _ value: String
     ) async throws {
@@ -724,7 +717,7 @@ extension Importer {
 
     /// Record this candidate's label rows as the user left them.
     func setCandidateLabels(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ labels: [BridgeRawLabelEdit]
     ) async throws {
         try await operations.setCandidateLabels(candidateKey, labels)
@@ -733,7 +726,7 @@ extension Importer {
     /// Pick the library album this candidate joins, or (`nil`) leave it to
     /// the album its release names.
     func setCandidateAlbum(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ albumId: String?
     ) async throws {
         try await operations.setCandidateAlbum(candidateKey, albumId)
@@ -746,7 +739,7 @@ extension Importer {
 
     /// Record this candidate's barcode rows as the person left them.
     func setCandidateBarcodes(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ barcodes: [String]
     ) async throws {
         try await operations.setCandidateBarcodes(candidateKey, barcodes)
@@ -754,7 +747,7 @@ extension Importer {
 
     /// Record one choice of what this candidate's pressing is.
     func setCandidatePressingFact(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ fact: BridgePressingFactEdit
     ) async throws {
         try await operations.setCandidatePressingFact(candidateKey, fact)
@@ -762,7 +755,7 @@ extension Importer {
 
     /// Replace the ordered album artists this candidate commits with.
     func setCandidateAlbumArtists(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ assignments: [BridgeCredited]
     ) async throws {
         try await operations.setCandidateAlbumArtists(candidateKey, assignments)
@@ -770,20 +763,20 @@ extension Importer {
 
     /// Record one mapping-table row as the user left it.
     func setCandidateTrackEdit(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         _ track: BridgeRawTrackEdit
     ) async throws {
         try await operations.setCandidateTrackEdit(candidateKey, track)
     }
 
     /// Commit a candidate from what core stores for it, a pane command.
-    func startImport(_ candidateKey: String) async throws -> BridgePaneOutcome {
+    func startImport(_ candidateKey: Data) async throws -> BridgePaneOutcome {
         try await operations.startImport(candidateKey)
     }
 
     /// Record the person's answer to the candidate's artist conflict.
     func chooseCandidateArtistIdentity(
-        _ candidateKey: String,
+        _ candidateKey: Data,
         metadataRevision: UInt64,
         choice: BridgeArtistIdentityConflictChoice
     ) async throws -> BridgePaneOutcome {
@@ -840,7 +833,7 @@ extension Importer {
 extension Importer {
     /// The signals extraction has found for one key so far — the read a form
     /// does once when it opens, after it has subscribed to the changes.
-    func candidateSignals(_ candidateKey: String) -> Signals? {
+    func candidateSignals(_ candidateKey: Data) -> Signals? {
         operations.candidateSignals(candidateKey)
     }
 }

@@ -1,5 +1,5 @@
 /// A tentative candidate at `name` below `root`.
-fn tentative_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
+fn tentative_candidate(root: &std::path::Path, name: &str) -> crate::import::folder_scanner::ScanItem {
     match scanned_candidate(root, name) {
         crate::import::folder_scanner::ScanItem::Valid(candidate) => {
             crate::import::folder_scanner::ScanItem::Discovered(candidate)
@@ -12,14 +12,14 @@ fn tentative_candidate(root: &str, name: &str) -> crate::import::folder_scanner:
 /// write.
 async fn save_in_turn(
     db: &Database,
-    root: &str,
+    root: &std::path::Path,
     items: &[crate::import::folder_scanner::ScanItem],
 ) -> Vec<crate::db::ScanItemWrite> {
-    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    let generation = db.begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local).await.unwrap();
     let mut writes = Vec::new();
     for item in items {
         writes.push(
-            db.save_folder_scan_item(root, generation, item)
+            db.save_folder_scan_item(std::path::Path::new(root), generation, item)
                 .await
                 .unwrap()
                 .expect("the scan generation is current"),

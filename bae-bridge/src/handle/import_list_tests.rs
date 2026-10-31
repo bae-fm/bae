@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 /// The candidate keys the snapshot's page shows, and those it shows selected,
 /// top to bottom.
-fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<String>, Vec<String>) {
+fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
     let shown: Vec<_> = snapshot
         .windows
         .iter()
@@ -62,15 +62,9 @@ fn separating_the_selection_selects_the_releases_it_returns() {
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
     let music = std::fs::canonicalize(&music).unwrap();
-    let parts: Vec<String> = ["Part A", "Part B"]
+    let parts: Vec<Vec<u8>> = ["Part A", "Part B"]
         .iter()
-        .map(|part| {
-            music
-                .join("Collection")
-                .join(part)
-                .to_string_lossy()
-                .into_owned()
-        })
+        .map(|part| coven::path_bytes(&music.join("Collection").join(part)))
         .collect();
     handle.runtime.block_on(async {
         // Nothing but the test acts on the candidates: a run going would hold
@@ -82,7 +76,7 @@ fn separating_the_selection_selects_the_releases_it_returns() {
             .unwrap();
         handle
             .services
-            .import_add_watched_folder(music.to_string_lossy().into_owned())
+            .import_add_watched_folder(music.clone())
             .await
             .unwrap();
     });
@@ -139,12 +133,12 @@ fn separating_the_selection_selects_the_releases_it_returns() {
 
 /// Every batch of keys a stream says started or stopped.
 #[derive(Default)]
-struct HeardKeys(std::sync::Mutex<Vec<Vec<String>>>);
+struct HeardKeys(std::sync::Mutex<Vec<Vec<Vec<u8>>>>);
 
 struct Activity(Arc<HeardKeys>);
 
 impl crate::types::KeyActivityCallback for Activity {
-    fn on_keys_changed(&self, keys: Vec<String>) {
+    fn on_keys_changed(&self, keys: Vec<Vec<u8>>) {
         self.0 .0.lock().unwrap().push(keys);
     }
 }
@@ -162,7 +156,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     std::fs::create_dir_all(&folder).unwrap();
     std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     let music = std::fs::canonicalize(&music).unwrap();
-    let key = music.join("Album").to_string_lossy().into_owned();
+    let key = coven::path_bytes(&music.join("Album"));
     handle.runtime.block_on(async {
         handle
             .services
@@ -171,7 +165,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
             .unwrap();
         handle
             .services
-            .import_add_watched_folder(music.to_string_lossy().into_owned())
+            .import_add_watched_folder(music.clone())
             .await
             .unwrap();
     });
@@ -214,10 +208,10 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         .unwrap();
     assert_eq!(
         std::mem::take(&mut *read.0.lock().unwrap()),
-        vec![vec![String::new()], vec![String::new()]],
+        vec![vec![Vec::<u8>::new()], vec![Vec::new()]],
         "the action's progress came and went"
     );
-    assert_eq!(progress.latest(String::new()), None);
+    assert_eq!(progress.latest(Vec::new()), None);
 
     progress.cancel();
     handle
@@ -231,7 +225,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         read.0.lock().unwrap().is_empty(),
         "a cancelled stream hears no later action"
     );
-    assert_eq!(progress.latest(String::new()), None);
+    assert_eq!(progress.latest(Vec::new()), None);
     handle
         .runtime
         .block_on(list.clone().cancel())

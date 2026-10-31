@@ -10,7 +10,7 @@
 /// reported under, and the error the ending one failed with, if it failed.
 async fn await_import_ending(
     events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
-    key: &str,
+    key: &crate::import::CandidateKey,
 ) -> (std::collections::BTreeSet<String>, Option<String>) {
     let mut ids = std::collections::BTreeSet::new();
     tokio::time::timeout(Duration::from_secs(30), async {
@@ -23,7 +23,7 @@ async fn await_import_ending(
             else {
                 continue;
             };
-            if candidate_key != key {
+            if candidate_key != key.clone() {
                 continue;
             }
             match progress {
@@ -58,7 +58,7 @@ async fn await_import_ending(
 async fn assert_no_import(
     fixture: &Fixture,
     events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
-    key: &str,
+    key: &crate::import::CandidateKey,
     after: &str,
 ) {
     let import = fixture.import.clone();
@@ -72,7 +72,7 @@ async fn assert_no_import(
         } = event
         {
             assert_ne!(
-                candidate_key, key,
+                &candidate_key, key,
                 "nothing imports {key} after {after}, got {progress:?}"
             );
         }
@@ -122,7 +122,7 @@ async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_onc
     let fixture = Fixture::importing("auto-importable").await;
     fixture.manager.set_import_when_identified(true).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-auto", "rg-auto", 2);
     fixture.scan(1).await;
     let mut events = fixture.import.every_event();
@@ -147,7 +147,7 @@ async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_onc
 async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_imports_nothing() {
     let fixture = Fixture::new("auto-import-setting-off").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-setting-off", "rg-setting-off", 2);
     fixture.scan(1).await;
     let mut events = fixture.import.every_event();
@@ -172,7 +172,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
             barcode: PAIRED_BARCODE.to_string(),
         }));
     let dir = fixture.barcode_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route(
         "/release?",
         200,
@@ -201,7 +201,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
     let fixture = Fixture::importing("auto-import-medium").await;
     fixture.manager.set_import_when_identified(true).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     let mut answer: serde_json::Value =
         serde_json::from_str(&discid_json("mb-vinyl", "rg-vinyl", &[probed, 0]))
@@ -242,7 +242,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
 async fn a_candidate_auto_importable_before_the_setting_was_on_is_not_imported() {
     let fixture = Fixture::new("auto-import-earlier").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.identify_ready(&dir, "mb-earlier", "rg-earlier").await;
     let mut events = fixture.import.every_event();
 
@@ -261,7 +261,7 @@ async fn a_run_a_person_asked_for_imports_its_candidate_with_identifying_automat
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.manager.set_import_when_identified(true).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-requested", "rg-requested", 2);
     fixture.scan(1).await;
     let mut events = fixture.import.every_event();
@@ -279,7 +279,7 @@ async fn a_run_a_person_asked_for_with_the_setting_off_imports_nothing() {
     let fixture = Fixture::new("auto-import-requested-setting-off").await;
     fixture.manager.set_identify_automatically(false).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-requested-off", "rg-requested-off", 2);
     fixture.scan(1).await;
     let mut events = fixture.import.every_event();
@@ -307,7 +307,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.manager.set_import_when_identified(true).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .provider
@@ -376,7 +376,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
 async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import() {
     let fixture = Fixture::new("auto-import-refused").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.identify_ready(&dir, "mb-refused", "rg-refused").await;
     // A remote cover whose stored bytes are gone is a broken candidate no
     // import starts from.
@@ -436,7 +436,7 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
 async fn an_automatic_import_behind_another_import_records_no_failure() {
     let fixture = Fixture::new("auto-import-behind").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.identify_ready(&dir, "mb-behind", "rg-behind").await;
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
 

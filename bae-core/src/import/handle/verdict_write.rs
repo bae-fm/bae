@@ -33,12 +33,12 @@ impl ImportServiceHandle {
     /// never in between, where it would be lost.
     pub(crate) async fn save_candidate_verdict_if_current(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<VerdictWrite, crate::library::LibraryError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         let row = row.clone();
         self.committed(async move {
             let _commit = this
@@ -88,7 +88,7 @@ impl ImportServiceHandle {
     /// candidate to be imported once the answer stored its pick.
     async fn save_candidate_verdict_if_current_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         row: &crate::db::NewImportCandidateVerdict,
         run: crate::identify::IdentifyRunId,
     ) -> Result<Option<bool>, crate::library::LibraryError> {
@@ -120,7 +120,7 @@ impl ImportServiceHandle {
     /// stored, actionable candidate whose standing is answerable.
     pub(crate) async fn answerable_candidate(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::library::LibraryError>
     {
         let Some(candidate) = self.get_release_candidate(key).await? else {

@@ -74,7 +74,7 @@ struct LibraryNavigationRequest {
 /// mounted. `candidateKey` is the row scrolled to and selected alone once it
 /// is there. `seq` lets a repeat request run again.
 struct PendingImportCandidateReveal {
-    let candidateKey: String
+    let candidateKey: Data
     let seq: Int
 }
 
@@ -128,7 +128,7 @@ class UiStore: @unchecked Sendable {
     var importCandidateFilterText: String = ""
     var importCandidatePendingFilter: BridgePendingFilter = .all
 
-    private(set) var refreshingWatchedFolders: Set<String> = []
+    private(set) var refreshingWatchedFolders: Set<Data> = []
 
     // ── Find online notices ─────────────────────────────────────────────
 
@@ -196,7 +196,7 @@ class UiStore: @unchecked Sendable {
 
     /// Go to the import tab with `candidateKey` selected alone, scrolled to
     /// wherever the list places it.
-    func navigateToImportCandidate(_ candidateKey: String) {
+    func navigateToImportCandidate(_ candidateKey: Data) {
         activeSection = .importing
         importCandidateRevealSeq += 1
         pendingImportCandidateReveal = PendingImportCandidateReveal(
@@ -313,7 +313,7 @@ class UiStore: @unchecked Sendable {
         importCandidatePendingFilter = filter
     }
 
-    func setWatchedFolderRefreshing(_ path: String, _ refreshing: Bool) {
+    func setWatchedFolderRefreshing(_ path: Data, _ refreshing: Bool) {
         if refreshing {
             refreshingWatchedFolders.insert(path)
         }

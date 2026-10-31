@@ -258,20 +258,20 @@ extension ImportCandidateTablePlaceTests {
         return Int(clipView.bounds.minY / ImportCandidateTableLayout.rowHeight)
     }
 
-    private static func candidateKey(_ index: Int) -> String {
+    private static func folderPath(_ index: Int) -> String {
         "/library/release-\(index)"
     }
 
     private static func stableKey(_ index: Int) -> String {
-        "candidate:\(candidateKey(index))"
+        candidateItem(index).id
     }
 
     private static func candidateItem(_ index: Int) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
-                candidateKey: candidateKey(index),
+                candidateKey: Data(folderPath(index).utf8),
                 folderName: "Release \(index)",
-                watchedFolderPath: "/library",
+                watchedFolderPath: Data("/library".utf8),
                 displayPath: "Release \(index)",
                 actionable: true,
                 placement: .skipped,

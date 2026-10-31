@@ -705,7 +705,7 @@ pub struct CueAnalyzedAudioFile {
 #[cfg(desktop)]
 pub struct ImportCommand {
     pub import_id: String,
-    pub candidate_key: String,
+    pub candidate_key: crate::import::CandidateKey,
     pub source: super::release_candidate::CandidateSource,
     #[cfg(any(test, feature = "test-utils"))]
     pub selected_cover: Option<CoverSelection>,

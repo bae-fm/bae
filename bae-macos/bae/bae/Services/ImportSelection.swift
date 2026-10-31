@@ -20,9 +20,9 @@ struct ImportSelectionOperations: Sendable {
     /// change.
     let change: @Sendable (BridgeSelectionChange) async throws -> UInt64
     let selectAll: @Sendable () async throws -> Void
-    let sourceFolders: @Sendable () async throws -> [String]
-    let combine: @Sendable () async throws -> String
-    let separate: @Sendable () async throws -> [String]
+    let sourceFolders: @Sendable () async throws -> [Data]
+    let combine: @Sendable () async throws -> Data
+    let separate: @Sendable () async throws -> [Data]
     /// A new stream for one action's progress: unfed until `run` feeds it
     /// from the list it runs on.
     let progressStream:
@@ -139,19 +139,19 @@ final class ImportSelection {
         try await operations.selectAll()
     }
 
-    func sourceFolders() async throws -> [String] {
+    func sourceFolders() async throws -> [Data] {
         try await operations.sourceFolders()
     }
 
     /// Read every selected folder as one release, which core selects.
-    func combine() async throws -> String {
+    func combine() async throws -> Data {
         try await operations.combine()
     }
 
     /// Read the one selected release as the releases it is made of, which
     /// core selects.
     @discardableResult
-    func separate() async throws -> [String] {
+    func separate() async throws -> [Data] {
         try await operations.separate()
     }
 
@@ -197,7 +197,7 @@ final class ImportSelection {
         }
         let reported = failures.compactMap { failure -> DisplayError? in
             importSelectionLogger.error(
-                "\(String(describing: action)) failed for \(failure.candidateKey): \(String(reflecting: failure.error))"
+                "\(String(describing: action)) failed for \(bridgeCandidateKeyText(candidateKey: failure.candidateKey)): \(String(reflecting: failure.error))"
             )
             return DisplayError(failure.error)?.addingContext(failure.name)
         }

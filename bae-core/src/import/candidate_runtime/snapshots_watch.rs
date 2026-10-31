@@ -38,12 +38,10 @@ impl RuntimeSnapshotsWatch {
                 .since(*seen)
                 .map(|key| match view.snapshots.get(key) {
                     Some(runtime) => CandidateRuntimeChange::Updated {
-                        key: key.to_string(),
+                        key: key.clone(),
                         runtime: runtime.clone(),
                     },
-                    None => CandidateRuntimeChange::Removed {
-                        key: key.to_string(),
-                    },
+                    None => CandidateRuntimeChange::Removed { key: key.clone() },
                 })
                 .collect();
             *seen = view.changes.sequence();

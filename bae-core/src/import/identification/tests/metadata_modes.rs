@@ -47,7 +47,7 @@ async fn a_file_tags_draft_is_still_run() {
         if reset_by_hand {
             fixture
                 .import
-                .select_candidate_file_tags(dir.to_string_lossy().into_owned())
+                .select_candidate_file_tags(crate::import::CandidateKey::folder(&dir))
                 .await
                 .unwrap();
         }
@@ -94,7 +94,7 @@ async fn a_file_tags_draft_is_still_run() {
 async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone() {
     let fixture = Fixture::new("pick-is-a-result").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
     // Nothing is routed: a run would have to look the disc ID up.
@@ -163,7 +163,7 @@ async fn a_draft_write_leaves_the_result_and_starts_no_run() {
     for name in ["clear-metadata", "reset-to-tags"] {
         let fixture = Fixture::new(name).await;
         let dir = fixture.disc_id_candidate("Candidate");
-        let key = dir.to_string_lossy().into_owned();
+        let key = crate::import::CandidateKey::folder(&dir);
         let probed = fixture.probed_total_ms(&dir);
         fixture.provider.route(
             "/discid/",
@@ -263,7 +263,7 @@ async fn changed_files_retire_the_result_and_wait_for_a_person() {
 async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
     let fixture = Fixture::new("disable-lets-queued-finish").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/discid/",

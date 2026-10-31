@@ -27,14 +27,14 @@ extension BridgeAudioDamage {
 
 extension BridgeSingleSelection {
     /// The selected candidate's key, when the one selected row is one.
-    var candidateKey: String? {
+    var candidateKey: Data? {
         guard case .candidate(let key) = self else { return nil }
         return key
     }
 
     /// The selected folder's key, when the one selected row failed
     /// validation.
-    var invalidCandidateKey: String? {
+    var invalidCandidateKey: Data? {
         guard case .invalidCandidate(let key) = self else { return nil }
         return key
     }

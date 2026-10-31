@@ -1,8 +1,32 @@
-mirror_struct! {
-    crate::types::BridgeFolderReleaseDecisionKey = bae_core::import::FolderReleaseDecisionKey,
-    from_core: pub(super) fn,
-    into_core: pub(super) fn,
-    fields: { watched_folder_path, relative_folder_path },
+impl crate::types::BridgeFolderReleaseDecisionKey {
+    pub(super) fn from_core(key: bae_core::import::FolderReleaseDecisionKey) -> Self {
+        let bae_core::import::FolderReleaseDecisionKey {
+            watched_folder_path,
+            relative_folder,
+        } = key;
+        Self {
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
+            relative_folder: relative_folder.as_bytes().to_vec(),
+        }
+    }
+
+    /// The folder the app names. Only bytes no folder here has, which core
+    /// never gave the app, fail.
+    pub(super) fn into_core(
+        self,
+    ) -> Result<bae_core::import::FolderReleaseDecisionKey, crate::types::BridgeError> {
+        let Self {
+            watched_folder_path,
+            relative_folder,
+        } = self;
+        Ok(bae_core::import::FolderReleaseDecisionKey {
+            watched_folder_path: crate::path_bytes::path_from_app(watched_folder_path)?,
+            relative_folder: bae_core::import::RelativeFolder::from_bytes(relative_folder)
+                .map_err(|error| {
+                    crate::types::BridgeError::internal(format!("a folder from the app: {error}"))
+                })?,
+        })
+    }
 }
 
 mirror_enum! {
@@ -11,15 +35,21 @@ mirror_enum! {
     variants: { Scanning { found_count }, Complete, Failed { error } },
 }
 
-mirror_struct! {
-    crate::types::BridgeWatchedFolderScanStatus = bae_core::import::WatchedFolderScanStatus,
-    from_core: pub(super) fn,
-    fields: {
-        watched_folder_path,
-        watched_folder_name,
-        on_network_volume,
-        status: (crate::types::BridgeFolderScanStatus),
-    },
+impl crate::types::BridgeWatchedFolderScanStatus {
+    pub(super) fn from_core(status: bae_core::import::WatchedFolderScanStatus) -> Self {
+        let bae_core::import::WatchedFolderScanStatus {
+            watched_folder_path,
+            watched_folder_name,
+            on_network_volume,
+            status,
+        } = status;
+        Self {
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
+            watched_folder_name,
+            on_network_volume,
+            status: crate::types::BridgeFolderScanStatus::from_core(status),
+        }
+    }
 }
 
 impl crate::types::BridgeFolderCandidate {
@@ -36,9 +66,10 @@ impl crate::types::BridgeFolderCandidate {
                 .iter()
                 .map(crate::types::BridgeReleasePart::from_core)
                 .collect(),
-            folder_path: candidate.key(),
+            candidate_key: candidate.key().into_bytes(),
+            folder_path: coven::path_bytes(&candidate.path),
             source_folder_name: candidate.name.clone(),
-            watched_folder_path: candidate.watched_folder_path.clone(),
+            watched_folder_path: coven::path_bytes(&candidate.watched_folder_path),
             files: crate::types::BridgeCandidateFiles::from_core(candidate.files),
             track_count,
             skipped,
@@ -58,17 +89,17 @@ impl crate::types::BridgeInvalidCandidate {
             path,
             name,
             watched_folder_path,
-            display_path,
+            relative_folder,
             grouping,
             files: _,
             tags,
         } = candidate;
         crate::types::BridgeInvalidCandidate {
-            candidate_key,
-            folder_path: path.to_string_lossy().to_string(),
+            candidate_key: candidate_key.into_bytes(),
+            folder_path: coven::path_bytes(&path),
             source_folder_name: name,
-            watched_folder_path,
-            display_path,
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
+            display_path: relative_folder.text(),
             separable: grouping.is_some(),
             reason,
             tags: tags.map(crate::types::BridgeSkippedTags::from_core),
@@ -141,15 +172,17 @@ impl crate::types::BridgeCandidateRuntimeChange {
     pub(super) fn from_core(change: bae_core::import::CandidateRuntimeChange) -> Self {
         match change {
             bae_core::import::CandidateRuntimeChange::Updated { key, runtime } => Self::Updated {
-                key,
+                key: key.into_bytes(),
                 runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
             },
-            bae_core::import::CandidateRuntimeChange::Removed { key } => Self::Removed { key },
+            bae_core::import::CandidateRuntimeChange::Removed { key } => Self::Removed {
+                key: key.into_bytes(),
+            },
             bae_core::import::CandidateRuntimeChange::Reset { runtimes } => Self::Reset {
                 runtimes: runtimes
                     .into_iter()
                     .map(|(key, runtime)| crate::types::BridgeKeyedCandidateRuntime {
-                        key,
+                        key: key.into_bytes(),
                         runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
                     })
                     .collect(),
@@ -222,9 +255,9 @@ impl crate::types::BridgeTriageRow {
             selected,
         } = row;
         crate::types::BridgeTriageRow {
-            candidate_key,
+            candidate_key: candidate_key.into_bytes(),
             folder_name,
-            watched_folder_path,
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
             display_path,
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
@@ -486,7 +519,7 @@ impl crate::types::BridgeImportListItem {
                     name: group.name,
                     combinable: group.combinable,
                 },
-                watched_folder_path,
+                watched_folder_path: coven::path_bytes(&watched_folder_path),
                 expanded,
                 entry_count,
             },
@@ -519,10 +552,19 @@ mirror_struct! {
     fields: { pending, done, skipped },
 }
 
-mirror_struct! {
-    crate::types::BridgeActiveFolderScan = bae_core::import::ActiveFolderScan,
-    from_core: fn,
-    fields: { watched_folder_path, watched_folder_name, found_count },
+impl crate::types::BridgeActiveFolderScan {
+    fn from_core(scan: bae_core::import::ActiveFolderScan) -> Self {
+        let bae_core::import::ActiveFolderScan {
+            watched_folder_path,
+            watched_folder_name,
+            found_count,
+        } = scan;
+        Self {
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
+            watched_folder_name,
+            found_count,
+        }
+    }
 }
 
 mirror_struct! {
@@ -777,8 +819,8 @@ mirror_enum! {
     crate::types::BridgeSelectionChange = bae_core::import::selection::SelectionChange,
     into_core: pub(super) fn,
     variants: {
-        Replace { keys },
-        Toggle { add, remove },
-        Extend { from, to },
+        Replace { keys: (each into) },
+        Toggle { add: (each into), remove: (each into) },
+        Extend { from: (into), to: (into) },
     },
 }

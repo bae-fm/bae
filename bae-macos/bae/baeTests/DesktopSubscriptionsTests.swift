@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
@@ -8,17 +9,21 @@ import Testing
 struct DesktopSubscriptionsTests {
     @Test("one read follows the one selected candidate, and ends without one")
     func oneReadFollowsTheSingleSelection() async throws {
-        let feed = DetailFeed<BridgeImportCandidateDetail>()
+        let feed = KeyedDetailFeed<BridgeImportCandidateDetail, Data>()
         let observation = ImportSelectionObservation(
             open: { feed.query() },
             importStore: ImportStore(),
             uiStore: UiStore()
         )
 
-        observation.selectionChanged(single: "candidate-a")
-        observation.selectionChanged(single: "candidate-b")
+        observation.selectionChanged(single: Data("candidate-a".utf8))
+        observation.selectionChanged(single: Data("candidate-b".utf8))
         #expect(feed.opened == 1)
-        #expect(feed.requested == ["candidate-a", "candidate-b"])
+        #expect(
+            feed.requested == [
+                Data("candidate-a".utf8), Data("candidate-b".utf8),
+            ]
+        )
 
         observation.selectionChanged(single: nil)
         try await Wait.until { feed.isCancelled(read: 0) }
@@ -31,7 +36,7 @@ struct DesktopSubscriptionsTests {
     @Test("the same selected candidate again keeps the pane's candidate")
     func theSameSelectionAgainKeepsThePane() async throws {
         let key = MappingFixtures.candidateKey
-        let feed = DetailFeed<BridgeImportCandidateDetail>()
+        let feed = KeyedDetailFeed<BridgeImportCandidateDetail, Data>()
         let store = ImportStore()
         let observation = ImportSelectionObservation(
             open: { feed.query() },
@@ -55,7 +60,7 @@ struct DesktopSubscriptionsTests {
     @Test("a folder that is gone cancels the pick made on it")
     func aGoneFolderCancelsThePick() async throws {
         let key = MappingFixtures.candidateKey
-        let feed = DetailFeed<BridgeImportCandidateDetail>()
+        let feed = KeyedDetailFeed<BridgeImportCandidateDetail, Data>()
         let store = ImportStore()
         let observation = ImportSelectionObservation(
             open: { feed.query() },

@@ -5,9 +5,9 @@
 // identification count with it. An import's claim outlives it.
 
 /// Put the candidate at `key` with `files` on the identification queue.
-async fn admitted(db: &Database, key: &str, files: crate::import::CandidateFiles) {
+async fn admitted(db: &Database, key: &crate::import::CandidateKey, files: crate::import::CandidateFiles) {
     db.change_candidate_identifications(vec![(
-        key.to_string(),
+        key.clone(),
         crate::import::candidate_runtime::IdentificationChange::Admit {
             files,
             admission: crate::import::Admission::Automatic,
@@ -26,7 +26,7 @@ async fn admitted(db: &Database, key: &str, files: crate::import::CandidateFiles
 
 /// The candidate at `key` stands with no identification, and the batch it
 /// was counted in is over.
-async fn assert_identification_ended(db: &Database, key: &str) {
+async fn assert_identification_ended(db: &Database, key: &crate::import::CandidateKey) {
     assert_eq!(
         db.load_candidate_standing(key).await.unwrap().identification,
         None,
@@ -36,9 +36,9 @@ async fn assert_identification_ended(db: &Database, key: &str) {
 }
 
 /// The pane candidate's key and files, stored and admitted.
-async fn admitted_pane_candidate(db: &Database) -> (String, crate::import::CandidateFiles) {
+async fn admitted_pane_candidate(db: &Database) -> (crate::import::CandidateKey, crate::import::CandidateFiles) {
     let (_, hash) = stored_pane_candidate(db).await;
-    let key = pane_candidate_path();
+    let key = pane_candidate_key();
     let files = crate::import::CandidateFiles {
         content_hash: hash,
         file_edit_revision: 0,
@@ -96,7 +96,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_identification() {
 async fn a_file_decision_ends_its_candidate_s_identification() {
     let (db, _tmp) = empty_db().await;
     let (files, hash) = stored_pane_candidate(&db).await;
-    let key = pane_candidate_path();
+    let key = pane_candidate_key();
     admitted(
         &db,
         &key,
@@ -146,7 +146,7 @@ async fn separating_a_picked_grouping_ends_its_release_s_identification() {
         members.push(folder);
     }
     db.finish_folder_scan(&root, generation, None).await.unwrap();
-    let key = "grouping:picked".to_string();
+    let key = crate::import::CandidateKey::grouping("picked");
     db.combine_releases(key.clone(), members).await.unwrap().unwrap();
     let release = db
         .load_release_candidate(&key)

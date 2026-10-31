@@ -42,14 +42,14 @@ extension ImportView {
         candidate: Candidate,
         operation: @escaping @MainActor () async throws -> BridgePaneOutcome
     ) {
-        candidateMutationTasks[candidate.key]?.cancel()
-        candidateMutationTasks[candidate.key] = Task { @MainActor in
+        candidateMutationTasks[.candidate(candidate.key)]?.cancel()
+        candidateMutationTasks[.candidate(candidate.key)] = Task { @MainActor in
             do {
                 _ = try await operation()
             }
             catch is CancellationError {
                 importConfirmLogger.debug(
-                    "candidate command cancelled for \(candidate.key)"
+                    "candidate command cancelled for \(bridgeCandidateKeyText(candidateKey: candidate.key))"
                 )
             }
             catch {

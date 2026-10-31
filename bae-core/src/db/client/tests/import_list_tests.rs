@@ -23,7 +23,7 @@ mod skipped;
 use list_read::request;
 
 /// One scanned candidate under a fresh watched root.
-async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
+async fn scanned(db: &Database, root: &std::path::Path, name: &str) -> FolderCandidate {
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db
         .begin_folder_scan(root, crate::import::VolumeKind::Local)
@@ -101,7 +101,7 @@ async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: Term
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
             file_edit_revision: 0,
-            folder_path: candidate.path.to_string_lossy().into_owned(),
+            candidate_key: candidate.key(),
             verdict,
             signals: crate::signals::Signals {
                 origin: crate::signals::AudioOrigin::default(),
@@ -172,7 +172,10 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
 /// Each candidate row of one read, by key, with where it stands on Found.
 fn standings(
     projection: &crate::import::ImportListProjection,
-) -> Vec<(String, Option<crate::import::PendingStanding>)> {
+) -> Vec<(
+    crate::import::CandidateKey,
+    Option<crate::import::PendingStanding>,
+)> {
     projection
         .windows
         .iter()
@@ -214,7 +217,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &candidate.files.content_hash(),
-            &candidate.path.to_string_lossy(),
+            &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
                 record: crate::import::MetadataRef::new(
@@ -268,7 +271,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &candidate.files.content_hash(),
-            &candidate.path.to_string_lossy(),
+            &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
                 record: crate::import::MetadataRef::new(
@@ -312,7 +315,7 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     assert_eq!(
         standings(&projection),
         vec![(
-            candidate.path.to_string_lossy().into_owned(),
+            candidate.key(),
             Some(crate::import::PendingStanding::LookupError)
         )]
     );
@@ -343,7 +346,7 @@ async fn an_error_verdict_reads_back_as_an_error_with_its_text() {
     assert_eq!(
         standings(&projection),
         vec![(
-            candidate.path.to_string_lossy().into_owned(),
+            candidate.key(),
             Some(crate::import::PendingStanding::Error { failure })
         )]
     );
@@ -392,7 +395,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
             file_edit_revision: 0,
-            folder_path: candidate.path.to_string_lossy().into_owned(),
+            candidate_key: candidate.key(),
             verdict: stored.clone(),
             signals: crate::signals::Signals {
                 origin: crate::signals::AudioOrigin {
@@ -424,7 +427,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         stored
     );
     let pane = db
-        .load_import_candidate(&candidate.path.to_string_lossy())
+        .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
         .expect("the scanned candidate reads back")
@@ -437,7 +440,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         }
     );
     let detail = db
-        .load_import_candidate(&candidate.path.to_string_lossy())
+        .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
         .expect("the candidate reads back");
@@ -480,7 +483,7 @@ async fn the_detail_resumes_the_stored_verdict() {
     save_verdict(&db, &candidate, "mb-verdict").await;
 
     let detail = db
-        .load_import_candidate(&candidate.path.to_string_lossy())
+        .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
         .expect("the scanned candidate reads back");
@@ -535,7 +538,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
     save_verdict_with_ledger(&db, &candidate, "mb-verdict", Some(ledger.clone())).await;
 
     let detail = db
-        .load_import_candidate(&candidate.path.to_string_lossy())
+        .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
         .expect("the scanned candidate reads back");
@@ -562,12 +565,15 @@ async fn a_verdict_from_another_revision_does_not_resume() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
-    let key = candidate.path.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&candidate.path);
     let edited = key.clone();
     exec(
         &db,
-        "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = ?1",
-        &[&edited],
+        &format!(
+            "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = X'{}'",
+            hex::encode(edited.as_bytes())
+        ),
+        &[],
     )
     .await;
 
@@ -597,7 +603,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         file: ScannedFile::new(
-            PathBuf::from(format!("{root}/Album/cover.jpg")),
+            root.join("Album").join("cover.jpg"),
             "cover.jpg".to_string(),
             500,
             1,
@@ -606,7 +612,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     });
     candidate.files.files.push(CandidateFile {
         file: ScannedFile::new(
-            PathBuf::from(format!("{root}/Album/folder.jpg")),
+            root.join("Album").join("folder.jpg"),
             "folder.jpg".to_string(),
             600,
             1,
@@ -660,7 +666,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         row.cover,
         Some(crate::import::CoverImageSource::Local {
             file: FileVersion {
-                path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+                path: root.join("Album").join("cover.jpg"),
                 size: 500,
                 modified_at_ns: 1,
             },
@@ -695,7 +701,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
             file: FileVersion {
-                path: PathBuf::from(format!("{root}/Album/folder.jpg")),
+                path: root.join("Album").join("folder.jpg"),
                 size: 600,
                 modified_at_ns: 1,
             },
@@ -706,7 +712,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &content_hash,
-            &candidate.path.to_string_lossy(),
+            &crate::import::CandidateKey::folder(&candidate.path),
             &crate::import::pane::blank_candidate_draft(&candidate.files).release_edit(),
             None,
         )
@@ -731,7 +737,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
             file: FileVersion {
-                path: PathBuf::from(format!("{root}/Album/folder.jpg")),
+                path: root.join("Album").join("folder.jpg"),
                 size: 600,
                 modified_at_ns: 1,
             },
@@ -753,7 +759,7 @@ async fn the_scan_stores_the_folders_own_cover() {
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         file: ScannedFile::new(
-            PathBuf::from(format!("{root}/Album/cover.jpg")),
+            root.join("Album").join("cover.jpg"),
             "cover.jpg".to_string(),
             500,
             1,
@@ -777,7 +783,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         ))
     );
     let detail = db
-        .load_import_candidate(&candidate.path.to_string_lossy())
+        .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
         .expect("the candidate reads back");
@@ -797,7 +803,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         row.cover,
         Some(crate::import::CoverImageSource::Local {
             file: FileVersion {
-                path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+                path: root.join("Album").join("cover.jpg"),
                 size: 500,
                 modified_at_ns: 1,
             },
@@ -822,7 +828,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
             file: FileVersion {
-                path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+                path: root.join("Album").join("cover.jpg"),
                 size: 500,
                 modified_at_ns: 1,
             },
@@ -864,7 +870,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
     crate::import::CandidatePreparations::new(db.clone())
         .apply_file_metadata(
             &root,
-            &candidate.path.to_string_lossy(),
+            &candidate.key(),
             &crate::import::CandidateAsRead {
                 content_hash: hash.clone(),
                 file_edit_revision: 0,
@@ -890,7 +896,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         row.cover,
         Some(crate::import::CoverImageSource::Embedded {
             source: FileVersion {
-                path: PathBuf::from(format!("{root}/Album/01.flac")),
+                path: root.join("Album").join("01.flac"),
                 size: 1_000,
                 modified_at_ns: 5,
             },
@@ -899,7 +905,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         "the bytes carry the version of the file the snapshot read them from"
     );
     let detail = db
-        .load_import_candidate(&candidate.path.to_string_lossy())
+        .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
         .expect("the candidate reads back");
@@ -907,7 +913,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         detail.cover.map(|cover| cover.image),
         Some(crate::import::CoverImageSource::Embedded {
             source: FileVersion {
-                path: PathBuf::from(format!("{root}/Album/01.flac")),
+                path: root.join("Album").join("01.flac"),
                 size: 1_000,
                 modified_at_ns: 5,
             },

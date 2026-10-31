@@ -11,7 +11,7 @@ use crate::import::ImportError;
 /// One selected candidate a bulk action could not run on, and why.
 #[derive(Debug)]
 pub struct SelectionActionFailure {
-    pub candidate_key: String,
+    pub candidate_key: crate::import::CandidateKey,
     pub name: String,
     pub error: ImportError,
 }
@@ -22,7 +22,7 @@ impl AppServices {
     pub async fn import_selection_source_folders(
         &self,
         selected: &SelectedRows,
-    ) -> Result<Vec<String>, ImportError> {
+    ) -> Result<Vec<std::path::PathBuf>, ImportError> {
         let mut folders = Vec::new();
         for candidate in &selected.candidates {
             folders.extend(
@@ -37,7 +37,7 @@ impl AppServices {
     pub async fn combine_import_selection(
         &self,
         selected: &SelectedRows,
-    ) -> Result<String, ImportError> {
+    ) -> Result<crate::import::CandidateKey, ImportError> {
         self.import_combine_candidates(
             selected
                 .candidates
@@ -54,7 +54,7 @@ impl AppServices {
     pub async fn separate_import_selection(
         &self,
         selected: &SelectedRows,
-    ) -> Result<Vec<String>, ImportError> {
+    ) -> Result<Vec<crate::import::CandidateKey>, ImportError> {
         match (selected.candidates.as_slice(), selected.invalid.as_slice()) {
             ([only], []) => self.import_separate_candidate(&only.candidate_key).await,
             _ => Err(ImportError::Internal {
@@ -82,10 +82,10 @@ impl AppServices {
         let members = crate::import::selection::members(selected);
         let keys = keys_for(&members, action);
         let total = keys.len() as u64;
-        let name_of = |key: &str| {
+        let name_of = |key: &crate::import::CandidateKey| {
             selected
                 .iter()
-                .find(|candidate| candidate.candidate_key == key)
+                .find(|candidate| &candidate.candidate_key == key)
                 .map_or_else(|| key.to_string(), |candidate| candidate.name.clone())
         };
         let mut failures = Vec::new();
@@ -114,7 +114,7 @@ impl AppServices {
     async fn run_on_candidate(
         &self,
         action: CandidateAction,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Result<(), ImportError> {
         match action {
             CandidateAction::Import => self.import_selected(key).await.map(|_| ()),
@@ -122,29 +122,23 @@ impl AppServices {
             // candidate afresh, and the response cache answers what had
             // succeeded.
             CandidateAction::Identify | CandidateAction::RetryIdentification => {
-                self.rerun_identify(key.to_string());
+                self.rerun_identify(key.clone());
                 Ok(())
             }
             CandidateAction::CancelImport => self.import_cancel(key).await,
             CandidateAction::ResetToFileMetadata => self
-                .import_select_candidate_file_tags(key.to_string())
+                .import_select_candidate_file_tags(key.clone())
                 .await
                 .map(|_| ()),
             CandidateAction::ClearMetadata => self
-                .import_clear_candidate_metadata(key.to_string())
+                .import_clear_candidate_metadata(key.clone())
                 .await
                 .map(|_| ()),
             // A bulk action reports only what it failed on; the releases a
             // separation returns join the list unselected.
             CandidateAction::Separate => self.import_separate_candidate(key).await.map(|_| ()),
-            CandidateAction::Skip => {
-                self.import_set_candidate_skipped(key.to_string(), true)
-                    .await
-            }
-            CandidateAction::Restore => {
-                self.import_set_candidate_skipped(key.to_string(), false)
-                    .await
-            }
+            CandidateAction::Skip => self.import_set_candidate_skipped(key.clone(), true).await,
+            CandidateAction::Restore => self.import_set_candidate_skipped(key.clone(), false).await,
             // Cancelling runs, combining and showing folders act on the whole
             // selection at once.
             CandidateAction::CancelIdentification

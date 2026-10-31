@@ -62,7 +62,7 @@ impl StandingColumns {
     /// The standing these columns hold for `key`. The table's checks hold
     /// every column a stage needs, so one missing is a row the checks let
     /// through, which is refused here as broken.
-    fn standing(self, key: &str) -> Result<StoredStanding, DbError> {
+    fn standing(self, key: &CandidateKey) -> Result<StoredStanding, DbError> {
         let broken = |what: &str| DbError::Message(format!("the standing of {key} {what}"));
         let identification = match self.identification.as_deref() {
             None => None,
@@ -175,7 +175,7 @@ impl RuntimeFactColumns {
     }
 
     /// What these columns say is running for `key`'s candidate.
-    pub(crate) fn facts(&self, key: &str) -> Result<TriageRuntimeFacts, DbError> {
+    pub(crate) fn facts(&self, key: &CandidateKey) -> Result<TriageRuntimeFacts, DbError> {
         use crate::import::IdentificationStatus as S;
         let broken = |what: &str| DbError::Message(format!("the standing of {key} {what}"));
         let error = || {
@@ -218,11 +218,16 @@ impl RuntimeFactColumns {
 /// no entry has nothing running.
 pub(crate) fn load_standings_on(
     sql: &SqlReadContext<'_>,
-) -> Result<HashMap<String, StoredStanding>, DbError> {
+) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
     sql.query(
         &format!("SELECT candidate_key, {COLUMNS} FROM import_candidate_standing"),
         [],
-        |row| Ok((row.get::<_, String>(0)?, StandingColumns::read(row, 1)?)),
+        |row| {
+            Ok((
+                row.get::<_, CandidateKey>(0)?,
+                StandingColumns::read(row, 1)?,
+            ))
+        },
     )?
     .into_iter()
     .map(|(key, columns)| {
@@ -236,7 +241,7 @@ pub(crate) fn load_standings_on(
 /// one; nothing running when it has no row.
 pub(crate) fn load_standing_on(
     sql: &impl super::super::query::QueryOne,
-    candidate_key: &str,
+    candidate_key: &CandidateKey,
 ) -> Result<StoredStanding, DbError> {
     let columns = sql
         .query_row(
@@ -274,7 +279,7 @@ fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
 /// Every candidate's standing and the two counts, read together.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct StandingsRead {
-    pub(crate) standings: HashMap<String, StoredStanding>,
+    pub(crate) standings: HashMap<CandidateKey, StoredStanding>,
     pub(crate) identification_progress: (u32, u32),
     pub(crate) imports_in_flight: u32,
 }
@@ -292,7 +297,7 @@ fn load_standings_read_on(sql: &SqlReadContext<'_>) -> Result<StandingsRead, DbE
 /// with, `None` for a write that leaves the scan without it.
 pub(crate) fn end_identification_unless_of_on(
     sql: &SqlContext<'_, '_>,
-    candidate_key: &str,
+    candidate_key: &CandidateKey,
     held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
     change_identification_on(
@@ -310,7 +315,7 @@ pub(crate) fn end_identification_unless_of_on(
 /// over once every identification it admitted has ended.
 fn count_on(
     sql: &SqlContext<'_, '_>,
-    candidate_key: &str,
+    candidate_key: &CandidateKey,
     moved: &IdentificationMove,
 ) -> Result<(), DbError> {
     let was = Identifying::of(moved.before.as_ref());
@@ -339,7 +344,7 @@ fn count_on(
 /// is running for it.
 fn write_on(
     sql: &SqlContext<'_, '_>,
-    candidate_key: &str,
+    candidate_key: &CandidateKey,
     standing: &StoredStanding,
 ) -> Result<(), DbError> {
     if standing == &StoredStanding::default() {
@@ -439,7 +444,7 @@ fn write_on(
 /// caller's write.
 pub(crate) fn change_identification_on(
     sql: &SqlContext<'_, '_>,
-    candidate_key: &str,
+    candidate_key: &CandidateKey,
     change: &IdentificationChange,
 ) -> Result<IdentificationMove, DbError> {
     let mut standing = load_standing_on(sql, candidate_key)?;
@@ -458,7 +463,7 @@ pub(crate) fn change_identification_on(
 /// when an import already owns it: one import of a candidate at a time.
 fn claim_import_on(
     sql: &SqlContext<'_, '_>,
-    candidate_key: &str,
+    candidate_key: &CandidateKey,
     import_id: &str,
 ) -> Result<bool, DbError> {
     let mut standing = load_standing_on(sql, candidate_key)?;
@@ -478,7 +483,7 @@ fn claim_import_on(
 /// not own it: only the import holding a claim moves or ends it.
 pub(crate) fn move_import_on(
     sql: &SqlContext<'_, '_>,
-    candidate_key: &str,
+    candidate_key: &CandidateKey,
     import_id: &str,
     next: Option<ImportStanding>,
 ) -> Result<(), DbError> {
@@ -526,16 +531,16 @@ impl Database {
     /// Where every candidate something is running for stands, by key.
     pub(crate) async fn load_candidate_standings(
         &self,
-    ) -> Result<HashMap<String, StoredStanding>, DbError> {
+    ) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
         self.read(|sql| load_standings_on(&sql)).await
     }
 
     /// Where `candidate_key` stands.
     pub(crate) async fn load_candidate_standing(
         &self,
-        candidate_key: &str,
+        candidate_key: &CandidateKey,
     ) -> Result<StoredStanding, DbError> {
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.read(move |sql| load_standing_on(&sql, &candidate_key))
             .await
     }
@@ -557,8 +562,8 @@ impl Database {
     /// Apply each change to its candidate's identification, in one write.
     pub(crate) async fn change_candidate_identifications(
         &self,
-        changes: Vec<(String, IdentificationChange)>,
-    ) -> Result<Vec<(String, IdentificationMove)>, DbError> {
+        changes: Vec<(CandidateKey, IdentificationChange)>,
+    ) -> Result<Vec<(CandidateKey, IdentificationMove)>, DbError> {
         self.call(move |sql| {
             changes
                 .into_iter()
@@ -575,11 +580,11 @@ impl Database {
     /// `identification` to the candidate's identification in the same write.
     pub(crate) async fn claim_candidate_import(
         &self,
-        candidate_key: &str,
+        candidate_key: &CandidateKey,
         import_id: &str,
         identification: Option<IdentificationChange>,
     ) -> Result<ImportClaim, DbError> {
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
         self.call(move |sql| {
             if !claim_import_on(sql, &candidate_key, &import_id)? {
@@ -597,11 +602,11 @@ impl Database {
     /// its end with `None`.
     pub(crate) async fn move_candidate_import(
         &self,
-        candidate_key: &str,
+        candidate_key: &CandidateKey,
         import_id: &str,
         next: Option<ImportStanding>,
     ) -> Result<(), DbError> {
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
         self.call(move |sql| move_import_on(sql, &candidate_key, &import_id, next))
             .await

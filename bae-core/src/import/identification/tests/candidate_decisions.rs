@@ -22,7 +22,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     fixture
         .import
         .set_sheet_disc(
-            dir.to_string_lossy().into_owned(),
+            crate::import::CandidateKey::folder(&dir),
             "Test Album.cue".to_string(),
             crate::import::folder_scanner::SheetDisc::Ignored,
         )
@@ -61,7 +61,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     fixture
         .import
         .set_sheet_disc(
-            dir.to_string_lossy().into_owned(),
+            crate::import::CandidateKey::folder(&dir),
             "Test Album.cue".into(),
             crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
         )
@@ -99,7 +99,7 @@ async fn a_claimed_candidate_refuses_sheet_decisions() {
     fixture
         .store_settled_verdict(&dir, "mb-claimed-1", "rg-claimed-1",)
         .await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
     for result in [
@@ -142,7 +142,7 @@ async fn a_cleared_sheet_can_be_bound_again() {
     fixture
         .store_settled_verdict(&dir, "mb-rebind-1", "rg-rebind-1",)
         .await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
 
     fixture
         .import
@@ -221,7 +221,7 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let before = fixture
         .manager
         .load_import_candidate_preparation(&hash)

@@ -46,7 +46,7 @@ impl IdentificationHandle {
     /// Identify this candidate now with a fresh run, whatever is stored or
     /// running. The queue marks it waiting as it takes the request: the queue
     /// is the one writer of that mark.
-    pub fn rerun_identify(&self, candidate_key: String) {
+    pub fn rerun_identify(&self, candidate_key: crate::import::CandidateKey) {
         if self.token.is_cancelled() {
             return;
         }
@@ -64,7 +64,7 @@ impl IdentificationHandle {
     /// not be written.
     pub async fn cancel(
         &self,
-        candidate_keys: Vec<String>,
+        candidate_keys: Vec<crate::import::CandidateKey>,
     ) -> Result<(), crate::library::LibraryError> {
         let (done, cancelled) = tokio::sync::oneshot::channel();
         self.send_cancel(Command::Cancel {

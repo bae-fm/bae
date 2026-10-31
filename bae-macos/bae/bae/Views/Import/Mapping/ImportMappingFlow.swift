@@ -59,7 +59,7 @@ enum ImportMappingFlow {
     /// first, so nothing here decides whether the read is worth applying.
     @MainActor
     static func resetToFileMetadata(
-        key: String,
+        key: Data,
         services: ImportMappingServices
     ) {
         ImportSearchFlow.applyMetadata(
@@ -73,7 +73,7 @@ enum ImportMappingFlow {
 
     @MainActor
     static func clearMetadata(
-        key: String,
+        key: Data,
         services: ImportMappingServices
     ) {
         replaceMetadata(services: services) {
@@ -84,7 +84,7 @@ enum ImportMappingFlow {
     /// Unlink the candidate from its release, a pane command: its failure is
     /// stated on the pane, from what core stored. The draft stays as it is.
     @MainActor
-    static func unlink(key: String, services: ImportMappingServices) {
+    static func unlink(key: Data, services: ImportMappingServices) {
         Task { @MainActor in
             await services.endEditing()
             do { _ = try await services.importer.unlinkCandidateRelease(key) }
@@ -120,7 +120,7 @@ enum ImportMappingFlow {
 extension ImportMappingFlow {
     @MainActor
     static func actions(
-        key: String,
+        key: Data,
         services: ImportMappingServices
     ) -> ImportMappingActions {
         ImportMappingActions(
@@ -164,7 +164,7 @@ extension ImportMappingFlow {
 
     @MainActor
     private static func bindingAction(
-        key: String,
+        key: Data,
         services: ImportMappingServices
     ) -> (String, String, String?) -> Void {
         { sheetFileId, fileReference, audioFileId in
@@ -182,7 +182,7 @@ extension ImportMappingFlow {
 
     @MainActor
     private static func discAction(
-        key: String,
+        key: Data,
         services: ImportMappingServices
     ) -> (String, BridgeSheetDisc) -> Void {
         { sheetFileId, disc in
@@ -204,7 +204,7 @@ extension ImportMappingFlow {
     /// afterwards, which is why core drops their row edits with the binding.
     @MainActor
     static func bindSheet(
-        key: String,
+        key: Data,
         sheetFileId: String,
         fileReference: String,
         audioFileId: String?,
@@ -243,7 +243,7 @@ extension ImportMappingFlow {
     /// the tracklist. Re-shapes the tracklist exactly as a binding does.
     @MainActor
     static func setSheetDisc(
-        key: String,
+        key: Data,
         sheetFileId: String,
         disc: BridgeSheetDisc,
         services: ImportMappingServices

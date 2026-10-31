@@ -5292,7 +5292,7 @@ nb = "Hvilken plate i utgivelsen oppføringene i dette arket hører til"
 fi = "Mille julkaisun levylle tämän arkin merkinnät kuuluvat"
 
 [messages."ui.import.folder.scan_failed"]
-comment = "Alert headline when reading a watched folder fails; {folder} is the folder's path. The failure's own untranslated text is shown beneath it."
+comment = "Alert headline when reading a watched folder fails; {folder} is the folder's name. The failure's own untranslated text is shown beneath it."
 args = { folder = "Str" }
 value = "Couldn't scan {folder}"
 

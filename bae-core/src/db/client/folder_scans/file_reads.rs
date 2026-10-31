@@ -6,6 +6,7 @@ use super::read::{load_items, RowSources, StoredFileTags, FILE_TAG_COLUMNS};
 use super::*;
 use crate::import::file_tag_snapshot::{FileTagReader, FileTagSnapshot, FileTags};
 use crate::import::folder_scanner::{Coverage, FileReads, FileVersion};
+use crate::import::CandidateKey;
 use std::sync::Arc;
 
 impl Database {
@@ -16,10 +17,10 @@ impl Database {
     /// read.
     pub(crate) async fn load_file_reads(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         tags: Arc<dyn FileTagReader>,
     ) -> Result<FileReads, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
         self.read(move |sql| {
             let items = load_items(&sql, &watched_folder_path, RowSources::Scanned)?;
             let sidecars = load_sidecars(&sql, &watched_folder_path)?;
@@ -44,23 +45,23 @@ impl Database {
     /// path below that folder.
     pub(crate) async fn load_stored_file_tag_reading(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &Path,
+        candidate_path: &CandidateKey,
         file_root: &Path,
     ) -> Result<Option<FileTagSnapshot>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let file_root = file_root.to_string_lossy().into_owned();
+        let watched_folder_path = watched_folder_path.to_path_buf();
+        let candidate_path = candidate_path.clone();
+        let file_root = coven::path_bytes(file_root);
         self.read(move |sql| {
-            let stored_root: Option<String> = sql
+            let stored_root: Option<Vec<u8>> = sql
                 .query_row(
                     "SELECT file_root FROM scan_candidate \
                      WHERE watched_folder_path = ? AND path = ?",
-                    params![watched_folder_path, candidate_path],
+                    params![coven::path_bytes(&watched_folder_path), candidate_path],
                     |row| row.get(0),
                 )
                 .optional()?;
-            if stored_root.as_deref() != Some(file_root.as_str()) {
+            if stored_root.as_ref() != Some(&file_root) {
                 return Ok(None);
             }
             read::load_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
@@ -72,10 +73,10 @@ impl Database {
     /// reads any of the files `coverage` reads.
     pub(crate) async fn settled_entry_reads(
         &self,
-        watched_folder_path: &str,
+        watched_folder_path: &Path,
         coverage: &Coverage,
     ) -> Result<bool, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
+        let watched_folder_path = watched_folder_path.to_path_buf();
         let coverage = coverage.clone();
         self.read(move |sql| {
             Ok(!read::entries_reading(
@@ -94,7 +95,7 @@ impl Database {
 /// version of the track it was read from.
 fn load_root_file_tags(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
 ) -> Result<Vec<(FileVersion, FileTags)>, DbError> {
     let rows = sql.query(
         &format!(
@@ -109,7 +110,7 @@ fn load_root_file_tags(
                 AND candidate.path = tags.candidate_path \
              WHERE tags.watched_folder_path = ? AND candidate.source_kind = 'folder'"
         ),
-        [watched_folder_path],
+        [coven::path_bytes(watched_folder_path)],
         |row| Ok((row.get::<_, Vec<u8>>(0)?, StoredFileTags::of_row(row, 1)?)),
     )?;
     rows.into_iter()

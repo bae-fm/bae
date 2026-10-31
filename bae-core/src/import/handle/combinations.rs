@@ -4,11 +4,14 @@
 
 use super::*;
 use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey, ScanItem};
-use crate::import::ImportError;
+use crate::import::{CandidateKey, ImportError};
 
 impl ImportServiceHandle {
     /// The folders on disk the release at `key` is read from.
-    pub async fn candidate_source_folders(&self, key: &str) -> Result<Vec<String>, ImportError> {
+    pub async fn candidate_source_folders(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<Vec<std::path::PathBuf>, ImportError> {
         let detail = self
             .library_manager
             .load_import_candidate(key)
@@ -16,25 +19,26 @@ impl ImportServiceHandle {
             .ok_or_else(|| ImportError::Internal {
                 detail: format!("{key} is no longer a candidate"),
             })?;
-        Ok(detail
-            .candidate
-            .source_folders()
-            .into_iter()
-            .map(|path| path.to_string_lossy().into_owned())
-            .collect())
+        Ok(detail.candidate.source_folders())
     }
 
     /// Read the releases at `keys` as one, in key order and named after the
     /// first, and return the new release's key. When they are every release
     /// below one folder, that folder is read as one release, so a release
     /// appearing there later joins it.
-    pub async fn combine_candidates(&self, keys: Vec<String>) -> Result<String, ImportError> {
+    pub async fn combine_candidates(
+        &self,
+        keys: Vec<CandidateKey>,
+    ) -> Result<CandidateKey, ImportError> {
         let this = self.clone();
         self.committed(async move { this.combine_candidates_write(keys).await })
             .await
     }
 
-    async fn combine_candidates_write(&self, mut keys: Vec<String>) -> Result<String, ImportError> {
+    async fn combine_candidates_write(
+        &self,
+        mut keys: Vec<CandidateKey>,
+    ) -> Result<CandidateKey, ImportError> {
         keys.sort();
         keys.dedup();
         if keys.len() < 2 {
@@ -71,7 +75,7 @@ impl ImportServiceHandle {
         if let Some(folder) = self.folder_holding_exactly(&members).await? {
             return self.combine_folder(folder).await;
         }
-        let key = format!("grouping:{}", self.library_manager.new_id());
+        let key = CandidateKey::grouping(&self.library_manager.new_id());
         let _commit = self.folder_state_commit.lock("combine releases").await;
         let regrouped = self
             .library_manager
@@ -110,26 +114,23 @@ impl ImportServiceHandle {
                 }
             }
         }
-        let root_path = std::path::Path::new(root);
-        if folder == root_path || !folder.starts_with(root_path) {
+        if &folder == root || !folder.starts_with(root) {
             return Ok(None);
         }
-        let selected: std::collections::BTreeSet<String> = members
+        let selected: std::collections::BTreeSet<CandidateKey> = members
             .iter()
             .map(crate::import::FolderCandidate::key)
             .collect();
         let below = self
             .library_manager
-            .scanned_release_keys_at_or_below(root, &folder.to_string_lossy())
+            .scanned_release_keys_at_or_below(root, &folder)
             .await?;
         if below != selected {
             return Ok(None);
         }
         Ok(Some(FolderReleaseDecisionKey {
             watched_folder_path: root.clone(),
-            relative_folder_path: crate::import::watched_folder::candidate_relative_path(
-                root, &folder,
-            )?,
+            relative_folder: crate::import::watched_folder::candidate_relative_path(root, &folder)?,
         }))
     }
 
@@ -138,7 +139,7 @@ impl ImportServiceHandle {
     pub async fn combine_folder(
         &self,
         folder: FolderReleaseDecisionKey,
-    ) -> Result<String, ImportError> {
+    ) -> Result<CandidateKey, ImportError> {
         self.set_folder_release_decision(
             folder.clone(),
             FolderReleaseDecision::CombineAsOneRelease,
@@ -150,21 +151,27 @@ impl ImportServiceHandle {
             .ok_or_else(|| ImportError::Internal {
                 detail: format!(
                     "{} was combined but no grouping is stored for it",
-                    folder.relative_folder_path
+                    folder.relative_folder.text()
                 ),
             })
     }
 
     /// Read the release at `key` as the releases it is made of, and answer
     /// with their keys in path order.
-    pub async fn separate_candidate(&self, key: &str) -> Result<Vec<String>, ImportError> {
+    pub async fn separate_candidate(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<Vec<CandidateKey>, ImportError> {
         let this = self.clone();
-        let key = key.to_string();
+        let key = key.clone();
         self.committed(async move { this.separate_candidate_write(&key).await })
             .await
     }
 
-    async fn separate_candidate_write(&self, key: &str) -> Result<Vec<String>, ImportError> {
+    async fn separate_candidate_write(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<Vec<CandidateKey>, ImportError> {
         {
             let _commit = self
                 .folder_state_commit
@@ -191,7 +198,7 @@ impl ImportServiceHandle {
                 self.identification_ended(key).await;
                 self.event_tx
                     .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                        candidate_key: key.into(),
+                        candidate_key: key.clone(),
                     }));
                 for item in returned {
                     let event = match item {
@@ -250,7 +257,10 @@ impl ImportServiceHandle {
     /// Refuse to combine or separate a release an import owns or that is
     /// waiting for or running an identification, read from its standing
     /// under the commit lock the caller holds.
-    async fn ensure_combination_idle(&self, key: &str) -> Result<(), ImportError> {
+    async fn ensure_combination_idle(
+        &self,
+        key: &crate::import::CandidateKey,
+    ) -> Result<(), ImportError> {
         let facts = self
             .runtime
             .standing_facts(key)

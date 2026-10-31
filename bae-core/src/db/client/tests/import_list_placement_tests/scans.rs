@@ -23,8 +23,8 @@ async fn a_tentative_release_is_not_placed_until_it_settles() {
     );
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE scan_candidate SET kind = 'valid' WHERE path = '{}';",
-            lib.path("Album")
+            "UPDATE scan_candidate SET kind = 'valid' WHERE path = {};",
+            lib.sql("Album")
         ))
         .await,
         moves([(lib.release("Album"), Some(found("Album")))])
@@ -37,8 +37,8 @@ async fn a_removed_release_leaves_the_list() {
     lib.run(&lib.scan("Album")).await;
     assert_eq!(
         lib.moved(&format!(
-            "DELETE FROM scan_candidate WHERE path = '{}';",
-            lib.path("Album")
+            "DELETE FROM scan_candidate WHERE path = {};",
+            lib.sql("Album")
         ))
         .await,
         moves([(lib.release("Album"), None)])
@@ -53,8 +53,8 @@ async fn restamping_a_release_moves_nothing() {
     lib.run(&lib.scan("Album")).await;
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE scan_candidate SET generation = 2, name = name WHERE path = '{}';",
-            lib.path("Album")
+            "UPDATE scan_candidate SET generation = 2, name = name WHERE path = {};",
+            lib.sql("Album")
         ))
         .await,
         moves([])
@@ -68,8 +68,8 @@ async fn a_release_with_no_draft_shows_its_folders_new_name() {
     lib.run(&lib.scan("Album")).await;
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE scan_candidate SET name = 'Renamed' WHERE path = '{}';",
-            lib.path("Album")
+            "UPDATE scan_candidate SET name = 'Renamed' WHERE path = {};",
+            lib.sql("Album")
         ))
         .await,
         moves([(
@@ -90,17 +90,17 @@ async fn a_folder_that_failed_validation_shows_what_its_tags_call_it() {
     );
     let tags = |set: &str| {
         format!(
-            "{set} WHERE watched_folder_path = '{}' AND candidate_path = '{}';",
-            lib.root,
-            lib.path("Broken")
+            "{set} WHERE watched_folder_path = {} AND candidate_path = {};",
+            lib.sql_root(),
+            lib.sql("Broken")
         )
     };
     assert_eq!(
         lib.moved(&format!(
             "INSERT INTO scan_skipped_tags (watched_folder_path, candidate_path, album_title, artist)
-             VALUES ('{}', '{}', 'Tagged Album', NULL);",
-            lib.root,
-            lib.path("Broken")
+             VALUES ({}, {}, 'Tagged Album', NULL);",
+            lib.sql_root(),
+            lib.sql("Broken")
         ))
         .await,
         moves([(
@@ -134,7 +134,7 @@ async fn a_release_is_dated_by_its_folder() {
         lib.moved(&lib.discovered("Album", 100)).await,
         moves([(lib.release("Album"), Some(found("Album").dated(100)))])
     );
-    let discovery = |set: &str| format!("{set} WHERE folder = '{}';", lib.path("Album"));
+    let discovery = |set: &str| format!("{set} WHERE folder = {};", lib.sql("Album"));
     assert_eq!(
         lib.moved(&discovery(
             "UPDATE folder_discovery SET source_date = 50, source_date_kind = 'created'"
@@ -166,8 +166,8 @@ async fn reordering_the_watched_folders_moves_every_row_under_them() {
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE watched_import_folders SET position = 3 WHERE path = '{}';",
-            lib.root
+            "UPDATE watched_import_folders SET position = 3 WHERE path = {};",
+            lib.sql_root()
         ))
         .await,
         moves([
@@ -191,8 +191,8 @@ async fn a_skipped_folder_is_listed_on_skipped() {
     let lib = Library::new().await;
     lib.run(&lib.scan("Album")).await;
     let skip = format!(
-        "INSERT INTO skipped_import_candidates (candidate_path) VALUES ('{}');",
-        lib.path("Album")
+        "INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});",
+        lib.sql("Album")
     );
     assert_eq!(
         lib.moved(&skip).await,
@@ -200,8 +200,8 @@ async fn a_skipped_folder_is_listed_on_skipped() {
     );
     assert_eq!(
         lib.moved(&format!(
-            "DELETE FROM skipped_import_candidates WHERE candidate_path = '{}';",
-            lib.path("Album")
+            "DELETE FROM skipped_import_candidates WHERE candidate_path = {};",
+            lib.sql("Album")
         ))
         .await,
         moves([(lib.release("Album"), Some(found("Album")))])
@@ -221,8 +221,8 @@ async fn unwatching_a_folder_takes_its_rows_out() {
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "DELETE FROM watched_import_folders WHERE path = '{}';",
-            lib.root
+            "DELETE FROM watched_import_folders WHERE path = {};",
+            lib.sql_root()
         ))
         .await,
         moves([
@@ -238,16 +238,16 @@ async fn unwatching_a_folder_takes_its_rows_out() {
 async fn a_skip_moved_to_another_folder_moves_both_releases() {
     let lib = Library::new().await;
     lib.run(&format!(
-        "{}{}INSERT INTO skipped_import_candidates (candidate_path) VALUES ('{}');",
+        "{}{}INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});",
         lib.scan("First"),
         lib.scan("Second"),
-        lib.path("First")
+        lib.sql("First")
     ))
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE skipped_import_candidates SET candidate_path = '{}';",
-            lib.path("Second")
+            "UPDATE skipped_import_candidates SET candidate_path = {};",
+            lib.sql("Second")
         ))
         .await,
         moves([

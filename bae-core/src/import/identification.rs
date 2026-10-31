@@ -64,11 +64,13 @@ struct Context {
 /// What the handle asks the queue's loop for.
 enum Command {
     /// A person asked for this candidate to be identified now.
-    Request { candidate_key: String },
+    Request {
+        candidate_key: crate::import::CandidateKey,
+    },
     /// A person cancelled these candidates' identification. `done` hears
     /// once the jobs are gone, or the first ending that could not be written.
     Cancel {
-        candidate_keys: Vec<String>,
+        candidate_keys: Vec<crate::import::CandidateKey>,
         done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
     },
     /// A person cancelled every identification the queue holds.

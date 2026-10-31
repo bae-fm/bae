@@ -64,8 +64,8 @@ extension ImportListPinnedHeaderTests {
         [
             PreviewData.groupHeaderItem(
                 key: BridgeFolderReleaseDecisionKey(
-                    watchedFolderPath: "/library",
-                    relativeFolderPath: "Group"
+                    watchedFolderPath: Data("/library".utf8),
+                    relativeFolder: Data("Group".utf8)
                 ),
                 name: "Group",
                 entryCount: 79
@@ -87,9 +87,9 @@ extension ImportListPinnedHeaderTests {
     ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
-                candidateKey: "/library/Group/Release \(index)",
+                candidateKey: Data("/library/Group/Release \(index)".utf8),
                 folderName: "Release \(index)",
-                watchedFolderPath: "/library",
+                watchedFolderPath: Data("/library".utf8),
                 displayPath: "Group/Release \(index)",
                 actionable: true,
                 placement: .pending,

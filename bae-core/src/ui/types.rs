@@ -225,7 +225,7 @@ pub enum UiEvent {
     /// that candidate's form.
     #[cfg(desktop)]
     CandidateSignalsUpdated {
-        key: String,
+        key: crate::import::CandidateKey,
         signals: crate::signals::Signals,
     },
     /// How far the identifications running right now have got: how many have

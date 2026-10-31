@@ -7,8 +7,8 @@ import Foundation
 /// because the tests are the only thing that reads a write back — the app
 /// writes through the importer and reads the candidate core hands back.
 enum CandidateSessionWrite: Equatable, Sendable {
-    case paneMove(key: String, move: BridgePaneMove)
-    case searchForm(key: String, form: BridgeSearchForm)
+    case paneMove(key: Data, move: BridgePaneMove)
+    case searchForm(key: Data, form: BridgeSearchForm)
     /// A failure no pane states, told to the person.
     case reportedFailure(String)
 }
@@ -43,7 +43,7 @@ final class SessionWriteRecorder: @unchecked Sendable {
     }
 
     /// The pane moves the store asked core for, for `key`, in order.
-    func paneMoves(forKey key: String) -> [BridgePaneMove] {
+    func paneMoves(forKey key: Data) -> [BridgePaneMove] {
         lock.withLock {
             writes.compactMap { write in
                 if case .paneMove(let written, let move) = write,

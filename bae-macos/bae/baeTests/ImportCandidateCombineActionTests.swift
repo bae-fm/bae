@@ -18,7 +18,7 @@ struct ImportCandidateCombineActionTests {
             selection: ImportSelection(
                 operations: .stub(combine: {
                     combined.record(())
-                    return "grouping-new"
+                    return Data("grouping-new".utf8)
                 })
             ),
             uiStore: uiStore
@@ -27,7 +27,8 @@ struct ImportCandidateCombineActionTests {
 
         #expect(combined.all.count == 1)
         #expect(
-            uiStore.pendingImportCandidateReveal?.candidateKey == "grouping-new"
+            uiStore.pendingImportCandidateReveal?.candidateKey
+                == Data("grouping-new".utf8)
         )
         #expect(uiStore.lastError == nil)
     }

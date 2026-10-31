@@ -401,8 +401,8 @@ async fn record_identity_conflict(device: &TestDevice, discogs_artist: &str, mb_
     device
         .database()
         .execute_local_sql_for_test(&format!(
-            "INSERT INTO import_candidate_state (content_hash, folder_path) \
-                 VALUES ('conflict', '/Album');
+            "INSERT INTO import_candidate_state (content_hash, candidate_key) \
+                 VALUES ('conflict', CAST('/Album' AS BLOB));
              INSERT INTO import_candidate_failure (content_hash, error, failed_at) \
                  VALUES ('conflict', 'artist identity', '2026-01-01T00:00:00Z');
              INSERT INTO import_candidate_artist_identity_conflict \
@@ -421,8 +421,8 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
     device
         .database()
         .execute_local_sql_for_test(&format!(
-            "INSERT INTO import_candidate_state (content_hash, folder_path) \
-                 VALUES ('draft', '/Album');
+            "INSERT INTO import_candidate_state (content_hash, candidate_key) \
+                 VALUES ('draft', CAST('/Album' AS BLOB));
              INSERT INTO import_candidate_edit \
                  (content_hash, album_title, album_year, year, labels, \
                   author, draft_blank, draft_valid) \

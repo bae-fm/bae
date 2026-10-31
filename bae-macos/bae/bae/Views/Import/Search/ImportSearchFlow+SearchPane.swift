@@ -17,7 +17,7 @@ extension ImportSearchFlow {
     /// row renders selected.
     struct SearchPaneInput {
         let candidate: Candidate
-        let key: String
+        let key: Data
         let selectedReleaseId: String?
         /// What is in flight for this key: the run whose verdict and ledger
         /// the pane shows. `nil` when nothing is running for it.
@@ -182,7 +182,7 @@ extension ImportSearchFlow {
     ) {
         switch input.candidate.source {
         case .releaseReIdentify(let releaseId):
-            services.importer.autoIdentifyRelease(input.key, releaseId)
+            services.importer.autoIdentifyRelease(releaseId)
         case .folder:
             services.importer.rerunIdentifyForCandidate(input.key)
         }
@@ -204,7 +204,7 @@ extension ImportSearchFlow {
         let importStore = services.importStore
         switch input.candidate.source {
         case .releaseReIdentify(let releaseId):
-            services.importer.editReleaseLookupChoices(key, releaseId, edit)
+            services.importer.editReleaseLookupChoices(releaseId, edit)
         case .folder:
             // Core states a failure on the pane; one it could not store is
             // told here.

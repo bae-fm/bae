@@ -10,23 +10,21 @@ fn write_albums(root: &Path, folders: &[&str]) {
 }
 
 /// The readings a scan of `root` decides for itself, by folder.
-fn decided(items: &[ScanItem]) -> Vec<(&str, FolderReleaseDecision)> {
+fn decided(items: &[ScanItem]) -> Vec<(String, FolderReleaseDecision)> {
     items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Decided { key, decision, .. } => {
-                Some((key.relative_folder_path.as_str(), *decision))
-            }
+            ScanItem::Decided { key, decision, .. } => Some((key.relative_folder.text(), *decision)),
             _ => None,
         })
         .collect()
 }
 
-fn valid_paths(items: &[ScanItem]) -> Vec<&str> {
+fn valid_paths(items: &[ScanItem]) -> Vec<String> {
     let mut paths: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
@@ -55,7 +53,10 @@ fn numbered_folders_of_albums_are_separate_releases() {
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
 
     assert!(
-        decided(&items).contains(&(collection, FolderReleaseDecision::KeepAsSeparateReleases)),
+        decided(&items).contains(&(
+            collection.to_string(),
+            FolderReleaseDecision::KeepAsSeparateReleases
+        )),
         "{:?}",
         decided(&items)
     );
@@ -86,7 +87,7 @@ fn twelve_numbered_discs_are_one_release() {
 
     assert_eq!(
         decided(&items),
-        vec![("Box Set", FolderReleaseDecision::CombineAsOneRelease)]
+        vec![("Box Set".to_string(), FolderReleaseDecision::CombineAsOneRelease)]
     );
     assert_eq!(valid_paths(&items), vec!["Box Set"]);
     let release = items
@@ -111,7 +112,7 @@ fn discs_whose_tracks_sit_one_folder_down_are_one_release() {
 
     assert_eq!(
         decided(&items),
-        vec![("Box Set", FolderReleaseDecision::CombineAsOneRelease)]
+        vec![("Box Set".to_string(), FolderReleaseDecision::CombineAsOneRelease)]
     );
     assert_eq!(valid_paths(&items), vec!["Box Set"]);
     let release = items

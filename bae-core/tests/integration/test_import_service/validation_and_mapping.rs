@@ -146,11 +146,11 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let album_dir = collection.join("two-credit");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
-    let candidate_key = album_dir.to_string_lossy().into_owned();
+    let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
     wait_for_scan_event(
@@ -248,11 +248,11 @@ async fn pick_release_for_folder(
     collection: &Path,
     album_dir: &Path,
     mb_id: &str,
-) -> (String, bae_core::import::ImportCandidateDetail) {
-    let candidate_key = album_dir.to_string_lossy().into_owned();
+) -> (bae_core::import::CandidateKey, bae_core::import::ImportCandidateDetail) {
+    let candidate_key = bae_core::import::CandidateKey::folder(album_dir);
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
     let expected = album_dir.to_path_buf();
@@ -281,7 +281,7 @@ async fn pick_release_for_folder(
 }
 
 /// Scan in a folder of `track_count` audio files and return its candidate key.
-async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> String {
+async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> bae_core::import::CandidateKey {
     let collection = f.temp_path().join("collection");
     let album_dir = collection.join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -292,7 +292,7 @@ async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> String {
     );
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
     let expected = album_dir.clone();
@@ -300,17 +300,17 @@ async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> String {
         matches!(event, ScanEvent::FolderCandidate { candidate, .. } if candidate.path == expected)
     })
     .await;
-    album_dir.to_string_lossy().into_owned()
+    bae_core::import::CandidateKey::folder(&album_dir)
 }
 
 /// A person's pick of MusicBrainz release `mb_id` for the candidate.
 async fn pick_release(
     f: &ImportFixture,
-    candidate_key: &str,
+    candidate_key: &bae_core::import::CandidateKey,
     mb_id: &str,
 ) -> Result<u64, bae_core::import::ImportError> {
     f.handle
-        .select_candidate_release(candidate_key.to_string(), pressing_link(mb_id))
+        .select_candidate_release(candidate_key.clone(), pressing_link(mb_id))
         .await
 }
 
@@ -323,7 +323,7 @@ fn pressing_link(mb_id: &str) -> bae_core::import::PressingLink {
 
 async fn candidate_pane(
     f: &ImportFixture,
-    candidate_key: &str,
+    candidate_key: &bae_core::import::CandidateKey,
 ) -> bae_core::import::ImportCandidateDetail {
     f.handle
         .candidate_pane(candidate_key)

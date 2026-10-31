@@ -8,7 +8,7 @@
 /// Each candidate row a snapshot's page holds, with its live state, by key.
 fn page_rows(
     snapshot: &crate::import::ImportListSnapshot,
-) -> BTreeMap<String, (crate::import::TriageRow, crate::import::CandidateLiveState)> {
+) -> BTreeMap<crate::import::CandidateKey, (crate::import::TriageRow, crate::import::CandidateLiveState)> {
     snapshot
         .windows
         .iter()
@@ -34,7 +34,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
         .await
         .unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-standing", "rg-standing", 2);
     fixture.scan(1).await;
 
@@ -78,7 +78,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
 async fn an_import_reads_as_importing_until_its_release_is_written() {
     let fixture = Fixture::importing("standing-import-to-done").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture
         .identify_ready(&dir, "mb-standing-import", "rg-standing-import")
         .await;
@@ -142,7 +142,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
     let fixture = Fixture::new("standings-cleared-on-open").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
-    let running = dir.to_string_lossy().into_owned();
+    let running = crate::import::CandidateKey::folder(&dir);
     let files = crate::import::CandidateFiles {
         content_hash: fixture.content_hash(&dir),
         file_edit_revision: 0,
@@ -170,13 +170,13 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         .unwrap();
     fixture
         .database
-        .claim_candidate_import("/watched/Writing", "import-1", None)
+        .claim_candidate_import(&crate::import::CandidateKey::test("/watched/Writing"), "import-1", None)
         .await
         .unwrap();
     fixture
         .database
         .move_candidate_import(
-            "/watched/Writing",
+            &crate::import::CandidateKey::test("/watched/Writing"),
             "import-1",
             Some(crate::import::ImportStanding::Writing),
         )
@@ -208,7 +208,7 @@ async fn a_folder_removed_and_found_again_starts_with_no_standing() {
         .await
         .unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.scan(1).await;
     let files = crate::import::CandidateFiles {
         content_hash: fixture.content_hash(&dir),

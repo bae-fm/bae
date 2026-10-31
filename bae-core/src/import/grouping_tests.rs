@@ -4,7 +4,7 @@ use crate::import::watched_folder::host_root;
 
 /// A folder of two FLAC tracks at `relative` under the watched root `root`.
 fn folder_at(root: &str, relative: &str) -> FolderCandidate {
-    let path = PathBuf::from(host_root(root)).join(relative);
+    let path = host_root(root).join(relative);
     let name = path.file_name().unwrap().to_string_lossy().into_owned();
     FolderCandidate {
         path: path.clone(),
@@ -13,7 +13,7 @@ fn folder_at(root: &str, relative: &str) -> FolderCandidate {
         watched_folder_path: host_root(root),
         scope: ReleaseFileScope::Direct,
         file_edit_revision: 0,
-        display_path: relative.into(),
+        relative_folder: crate::import::RelativeFolder::test(relative),
         grouping: None,
         files: CategorizedFiles {
             files: ["01.flac", "02.flac"]
@@ -36,7 +36,7 @@ fn composed(members: &[FolderCandidate]) -> FolderCandidate {
         .map(|member| (member.clone(), CandidateFileEdits::default()))
         .collect();
     let (mut release, inherited) = compose(
-        "grouping:test",
+        &crate::import::CandidateKey::grouping("test"),
         &members[0].0.watched_folder_path,
         &members,
         &[],
@@ -75,12 +75,9 @@ fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
     ];
     let release = composed(&members);
 
-    assert_eq!(
-        release.path,
-        PathBuf::from(host_root("/music")).join("Artist/Album")
-    );
-    assert_eq!(release.display_path, "Artist/Album/Disc 1");
-    assert_eq!(release.key(), "grouping:test");
+    assert_eq!(release.path, host_root("/music").join("Artist/Album"));
+    assert_eq!(release.relative_folder.text(), "Artist/Album/Disc 1");
+    assert_eq!(release.key(), crate::import::CandidateKey::grouping("test"));
     assert_eq!(
         release
             .files
@@ -149,7 +146,7 @@ fn folders_under_different_roots_take_their_position_and_name() {
 fn rejects_duplicate_members_and_overlapping_files() {
     let first = folder_at("/music", "Volume A");
     assert!(compose(
-        "grouping:test",
+        &crate::import::CandidateKey::grouping("test"),
         &host_root("/music"),
         &plain(&[first.clone(), first.clone()]),
         &[]
@@ -158,7 +155,7 @@ fn rejects_duplicate_members_and_overlapping_files() {
     let mut second = folder_at("/music", "Volume B");
     second.files.files[0] = first.files.files[0].clone();
     assert!(compose(
-        "grouping:test",
+        &crate::import::CandidateKey::grouping("test"),
         &host_root("/music"),
         &plain(&[first, second]),
         &[]
@@ -279,8 +276,13 @@ fn a_members_file_decisions_carry_into_the_release() {
             CandidateFileEdits::default(),
         ),
     ];
-    let (mut release, inherited) =
-        compose("grouping:test", &host_root("/music"), &members, &[]).unwrap();
+    let (mut release, inherited) = compose(
+        &crate::import::CandidateKey::grouping("test"),
+        &host_root("/music"),
+        &members,
+        &[],
+    )
+    .unwrap();
     release
         .files
         .apply_candidate_file_edits(&inherited)
@@ -318,7 +320,7 @@ fn sheets_take_discs_within_their_folders_run() {
 fn parent_of(members: &[FolderCandidate]) -> Option<PathBuf> {
     shared_parent(members.iter().map(|member| {
         (
-            member.watched_folder_path.as_str(),
+            member.watched_folder_path.as_path(),
             member.file_root.as_path(),
         )
     }))
@@ -330,7 +332,7 @@ fn parent_of(members: &[FolderCandidate]) -> Option<PathBuf> {
 /// folders, or directly in the watched folder.
 #[test]
 fn releases_sit_in_one_folder_only_when_each_is_directly_in_it() {
-    let album = PathBuf::from(host_root("/music")).join("Artist/Album");
+    let album = host_root("/music").join("Artist/Album");
     let disc = |relative: &str| folder_at("/music", relative);
     assert_eq!(
         parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Album/Disc 2")]),
@@ -373,7 +375,7 @@ fn releases_sit_in_one_folder_only_when_each_is_directly_in_it() {
 /// the discs under theirs; files from anywhere else are refused.
 #[test]
 fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
-    let album = PathBuf::from(host_root("/music")).join("Album");
+    let album = host_root("/music").join("Album");
     let cover = CandidateFile {
         file: ScannedFile::new(album.join("cover.jpg"), "cover.jpg".into(), 10, 1),
         role: FileRole::Artwork,
@@ -383,7 +385,7 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
         folder_at("/music", "Album/Disc 2"),
     ]);
     let (release, _) = compose(
-        "grouping:test",
+        &crate::import::CandidateKey::grouping("test"),
         &host_root("/music"),
         &members,
         std::slice::from_ref(&cover),
@@ -412,7 +414,7 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
         folder_at("/music", "Other/Disc 2"),
     ]);
     assert!(compose(
-        "grouping:test",
+        &crate::import::CandidateKey::grouping("test"),
         &host_root("/music"),
         &apart,
         std::slice::from_ref(&cover)
@@ -420,7 +422,7 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
     .is_err());
     let elsewhere = CandidateFile {
         file: ScannedFile::new(
-            PathBuf::from(host_root("/music")).join("Other/cover.jpg"),
+            host_root("/music").join("Other/cover.jpg"),
             "cover.jpg".into(),
             10,
             1,
@@ -428,7 +430,7 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
         ..cover
     };
     assert!(compose(
-        "grouping:test",
+        &crate::import::CandidateKey::grouping("test"),
         &host_root("/music"),
         &members,
         &[elsewhere]

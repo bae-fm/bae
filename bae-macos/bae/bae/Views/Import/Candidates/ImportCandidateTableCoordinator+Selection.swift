@@ -47,7 +47,7 @@ extension ImportCandidateTableCoordinator {
     }
 
     /// Highlight the loaded rows `keys` names, and no other.
-    func highlight(_ keys: Set<String>) {
+    func highlight(_ keys: Set<Data>) {
         guard let tableView else { return }
         let rows = rows(selecting: keys)
         guard rows != tableView.selectedRowIndexes else { return }
@@ -55,7 +55,7 @@ extension ImportCandidateTableCoordinator {
     }
 
     /// The positions of the loaded rows whose candidates `keys` names.
-    private func rows(selecting keys: Set<String>) -> IndexSet {
+    private func rows(selecting keys: Set<Data>) -> IndexSet {
         var rows = IndexSet()
         guard !keys.isEmpty else { return rows }
         for (position, stableKey) in list.loadedEntries

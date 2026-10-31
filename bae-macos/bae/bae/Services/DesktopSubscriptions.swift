@@ -46,13 +46,14 @@ private final class FolderScansSink: FolderScansCallback, @unchecked Sendable {
 /// here: the pane several open reads core's selection summary instead.
 @MainActor
 final class ImportSelectionObservation {
-    private let open: () -> DetailQuery<BridgeImportCandidateDetail>
+    private let open: () -> KeyedDetailQuery<BridgeImportCandidateDetail, Data>
     private let importStore: ImportStore
     private let uiStore: UiStore
-    private var reader: DetailReader<BridgeImportCandidateDetail>?
+    private var reader: KeyedDetailReader<BridgeImportCandidateDetail, Data>?
 
     init(
-        open: @escaping () -> DetailQuery<BridgeImportCandidateDetail>,
+        open:
+            @escaping () -> KeyedDetailQuery<BridgeImportCandidateDetail, Data>,
         importStore: ImportStore,
         uiStore: UiStore
     ) {
@@ -69,11 +70,11 @@ final class ImportSelectionObservation {
         self.init(
             open: {
                 let subscription = appHandle.subscribeImportCandidate()
-                return DetailQuery(
+                return KeyedDetailQuery(
                     setId: { try subscription.setId(id: $0) },
                     next: {
                         let snapshot = try await subscription.next()
-                        return DetailDelivery(
+                        return KeyedDetailDelivery(
                             id: snapshot.id,
                             value: snapshot.value
                         )
@@ -87,7 +88,7 @@ final class ImportSelectionObservation {
     }
 
     /// Read `single`, the one selected candidate, or nothing.
-    func selectionChanged(single: String?) {
+    func selectionChanged(single: Data?) {
         guard single != reader?.id else { return }
         if let previous = reader?.id {
             importStore.selectedCandidates.removeValue(forKey: previous)
@@ -102,19 +103,22 @@ final class ImportSelectionObservation {
         reader.show(single)
     }
 
-    private func makeReader() -> DetailReader<BridgeImportCandidateDetail> {
-        DetailReader(
+    private func makeReader() -> KeyedDetailReader<
+        BridgeImportCandidateDetail, Data
+    > {
+        KeyedDetailReader(
             open: open,
             onValue: { [weak self] key, detail in
                 self?.deliver(detail, key: key)
             },
             onError: { [weak self] _, error in
                 self?.uiStore.showError(error)
-            }
+            },
+            idText: { bridgeCandidateKeyText(candidateKey: $0) }
         )
     }
 
-    private func deliver(_ detail: BridgeImportCandidateDetail?, key: String) {
+    private func deliver(_ detail: BridgeImportCandidateDetail?, key: Data) {
         guard let detail else {
             // The key names no scanned folder any more: a pick made on it has
             // nothing left to claim, and core took it out of the selection in
@@ -131,13 +135,14 @@ final class ImportSelectionObservation {
 /// here.
 @MainActor
 final class InvalidCandidateSelectionObservation {
-    private let open: () -> DetailQuery<BridgeInvalidCandidateDetail>
+    private let open: () -> KeyedDetailQuery<BridgeInvalidCandidateDetail, Data>
     private let importStore: ImportStore
     private let uiStore: UiStore
-    private var reader: DetailReader<BridgeInvalidCandidateDetail>?
+    private var reader: KeyedDetailReader<BridgeInvalidCandidateDetail, Data>?
 
     init(
-        open: @escaping () -> DetailQuery<BridgeInvalidCandidateDetail>,
+        open:
+            @escaping () -> KeyedDetailQuery<BridgeInvalidCandidateDetail, Data>,
         importStore: ImportStore,
         uiStore: UiStore
     ) {
@@ -154,11 +159,11 @@ final class InvalidCandidateSelectionObservation {
         self.init(
             open: {
                 let subscription = appHandle.subscribeInvalidCandidate()
-                return DetailQuery(
+                return KeyedDetailQuery(
                     setId: { try subscription.setId(id: $0) },
                     next: {
                         let snapshot = try await subscription.next()
-                        return DetailDelivery(
+                        return KeyedDetailDelivery(
                             id: snapshot.id,
                             value: snapshot.value
                         )
@@ -173,7 +178,7 @@ final class InvalidCandidateSelectionObservation {
 
     /// Read `key`, the one selected folder that failed validation, or
     /// nothing.
-    func selectionChanged(key: String?) {
+    func selectionChanged(key: Data?) {
         guard key != reader?.id else { return }
         if let previous = reader?.id {
             importStore.selectedInvalidCandidates.removeValue(forKey: previous)
@@ -185,7 +190,7 @@ final class InvalidCandidateSelectionObservation {
         }
         let reader =
             reader
-            ?? DetailReader(
+            ?? KeyedDetailReader(
                 open: open,
                 onValue: { [weak self] key, detail in
                     // A key whose folder no longer fails reads nothing; the
@@ -194,7 +199,8 @@ final class InvalidCandidateSelectionObservation {
                 },
                 onError: { [weak self] _, error in
                     self?.uiStore.showError(error)
-                }
+                },
+                idText: { bridgeCandidateKeyText(candidateKey: $0) }
             )
         self.reader = reader
         reader.show(key)
@@ -308,8 +314,8 @@ final class DesktopSubscriptions {
     /// with the untranslated fault as its detail.
     private static func scanFailureAlert(
         on uiStore: UiStore
-    ) -> (_ watchedFolderPath: String, _ detail: String) -> Void {
-        { [uiStore] watchedFolderPath, detail in
+    ) -> (_ watchedFolderName: String, _ detail: String) -> Void {
+        { [uiStore] watchedFolderName, detail in
             uiStore.showError(
                 DisplayError(
                     line: String(
@@ -319,7 +325,7 @@ final class DesktopSubscriptions {
                             bundle: .main,
                             comment: ""
                         ),
-                        watchedFolderPath
+                        watchedFolderName
                     ),
                     detail: detail
                 )

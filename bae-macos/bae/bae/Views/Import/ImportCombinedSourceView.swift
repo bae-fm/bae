@@ -16,7 +16,7 @@ struct ImportCombinedSourceView: View {
             Menu("Source folders") {
                 ForEach(parts, id: \.folderPath) { part in
                     Button(part.name) {
-                        SystemActions.revealInFinder(path: part.folderPath)
+                        SystemActions.revealInFinder(folder: part.folderPath)
                     }
                 }
             }

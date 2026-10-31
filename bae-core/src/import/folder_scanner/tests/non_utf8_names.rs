@@ -1,14 +1,14 @@
-// ── Files whose names aren't UTF-8 ──────────────────────────────────────────
+// ── Names that aren't UTF-8 ─────────────────────────────────────────────────
 //
 // Only Linux takes such a name: macOS and Windows store names as Unicode.
 
-/// The Latin-1 spelling of `Café` followed by `extension`: a name that isn't
+/// The Latin-1 spelling of `Café` followed by `rest`: a name that isn't
 /// UTF-8.
 #[cfg(target_os = "linux")]
-fn latin1_name(extension: &str) -> std::ffi::OsString {
+fn latin1_name(rest: &str) -> std::ffi::OsString {
     use std::os::unix::ffi::OsStringExt;
-    let mut name = b"Caf\xE9.".to_vec();
-    name.extend_from_slice(extension.as_bytes());
+    let mut name = b"Caf\xE9".to_vec();
+    name.extend_from_slice(rest.as_bytes());
     std::ffi::OsString::from_vec(name)
 }
 
@@ -18,7 +18,7 @@ fn latin1_name(extension: &str) -> std::ffi::OsString {
 #[test]
 fn a_file_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
     let (tmp, album) = album_dir();
-    let track = album.join(latin1_name("flac"));
+    let track = album.join(latin1_name(".flac"));
     std::fs::write(&track, fake_flac()).unwrap();
 
     let candidates = scan_valid(tmp.path());
@@ -43,7 +43,7 @@ fn a_file_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
 fn two_files_showing_one_name_skip_their_folder() {
     let (tmp, album) = album_dir();
     std::fs::write(album.join(r"Caf\xE9.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join(latin1_name("flac")), fake_flac()).unwrap();
+    std::fs::write(album.join(latin1_name(".flac")), fake_flac()).unwrap();
 
     let items = scan_items(tmp.path());
 
@@ -62,7 +62,7 @@ fn two_files_showing_one_name_skip_their_folder() {
         .map(|file| file.file.path.clone())
         .collect();
     paths.sort();
-    let mut expected = [album.join(r"Caf\xE9.flac"), album.join(latin1_name("flac"))];
+    let mut expected = [album.join(r"Caf\xE9.flac"), album.join(latin1_name(".flac"))];
     expected.sort();
     assert_eq!(paths, expected);
     assert!(invalid
@@ -78,7 +78,7 @@ fn two_files_showing_one_name_skip_their_folder() {
 fn two_files_showing_one_name_make_the_sidecar_invalid() {
     let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
     std::fs::write(album.join(r"Caf\xE9.txt"), "one").unwrap();
-    std::fs::write(album.join(latin1_name("txt")), "two").unwrap();
+    std::fs::write(album.join(latin1_name(".txt")), "two").unwrap();
 
     let found = sidecars(
         &root,
@@ -104,4 +104,32 @@ fn two_files_showing_one_name_make_the_sidecar_invalid() {
             name: r"Caf\xE9.txt".to_string()
         }
     );
+}
+
+/// A folder whose name isn't UTF-8 is read like any other: the scan lists the
+/// release in it, keyed by its path as it is, its name and its place below the
+/// watched folder shown escaped and stored as the name's bytes.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_folder_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Artist").join(latin1_name(""));
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+
+    let candidates = scan_valid(tmp.path());
+
+    let [candidate] = candidates.as_slice() else {
+        panic!("one release: {candidates:?}");
+    };
+    assert_eq!(candidate.path, album);
+    assert_eq!(candidate.key(), crate::import::CandidateKey::folder(&album));
+    assert_eq!(candidate.name, r"Caf\xE9");
+    assert_eq!(candidate.relative_folder.as_bytes(), b"Artist/Caf\xE9");
+    assert_eq!(candidate.relative_folder.text(), r"Artist/Caf\xE9");
+    let [entry] = candidate.files.files.as_slice() else {
+        panic!("one file: {:?}", candidate.files.files);
+    };
+    assert_eq!(entry.file.path, album.join("01.flac"));
+    assert_eq!(entry.file.relative_path, "01.flac");
 }

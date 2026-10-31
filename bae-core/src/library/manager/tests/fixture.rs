@@ -216,7 +216,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
     use crate::import::PendingStanding;
     use crate::library::FixtureCandidateState as State;
     let (manager, temp_dir) = setup_test_manager().await;
-    let root = temp_dir.path().join("watched").to_string_lossy().into_owned();
+    let root = temp_dir.path().join("watched").to_path_buf();
     let states = [
         ("Not Looked Up", State::NotLookedUp),
         ("Needs You", State::NeedsYou),
@@ -229,7 +229,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
     let fixture = crate::library::LibraryFixture {
         albums: Vec::new(),
         watched_folders: vec![crate::library::FixtureWatchedFolder {
-            path: root.clone(),
+            path: root.display().to_string(),
             candidates: states
                 .iter()
                 .map(|(folder, state)| fixture_candidate(folder, *state))
@@ -282,9 +282,9 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             .summary
             .watched_folders
             .iter()
-            .map(|folder| folder.path.as_str())
+            .map(|folder| folder.path.as_path())
             .collect::<Vec<_>>(),
-        [root.as_str()]
+        [root.as_path()]
     );
     let scans = manager.load_folder_scan_progress().await.unwrap();
     assert_eq!(scans.activity, None, "no folder reads as being read");

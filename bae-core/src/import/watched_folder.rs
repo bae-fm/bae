@@ -1,26 +1,29 @@
 //! Watched folders, and the rules a watched root or folder path must meet
 //! before it is stored or compared.
 
-use super::folder_path::{validate_relative_path, WatchedPathError};
-use std::path::{Component, Path};
+use super::relative_folder::{RelativeFolder, WatchedPathError};
+use std::path::{Component, Path, PathBuf};
 use tracing::warn;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WatchedFolder {
-    pub path: String,
+    pub path: PathBuf,
+    /// The text that shows the folder: its last name's escape
+    /// (`coven::path_text`), or the whole path's for a root.
     pub name: String,
 }
 
 impl WatchedFolder {
-    pub(crate) fn from_path(path: String) -> Self {
-        let name = match Path::new(&path).file_name().and_then(|name| name.to_str()) {
-            Some(name) => name.to_string(),
+    pub(crate) fn from_path(path: PathBuf) -> Self {
+        let name = match path.file_name() {
+            Some(name) => coven::path_text(Path::new(name)),
             None => {
                 warn!(
-                    "watched folder {path:?} has no usable final path component; \
-                     using the full path as its group name"
+                    "watched folder {} has no final path component; \
+                     using the full path as its group name",
+                    coven::path_text(&path)
                 );
-                path.clone()
+                coven::path_text(&path)
             }
         };
         Self { path, name }
@@ -35,11 +38,11 @@ impl From<WatchedPathError> for crate::import::ImportError {
 
 /// The one spelling of `path` this device stores for the folder it names.
 ///
-/// Stored roots and folders are compared as strings, so each folder needs one
-/// spelling however it arrived (a picker, a `file://` drop or `bae://import`
-/// link, which on Windows gives `C:/Music`, or typed with a trailing
-/// separator). Rejoining the path's [`Component`]s uses the host's separator,
-/// collapses repeated ones, and drops `.` and trailing separators.
+/// Stored roots and folders are compared by their bytes, so each folder needs
+/// one spelling however it arrived (a picker, a `file://` drop or
+/// `bae://import` link, which on Windows gives `C:/Music`, or typed with a
+/// trailing separator). Rejoining the path's [`Component`]s uses the host's
+/// separator, collapses repeated ones, and drops `.` and trailing separators.
 ///
 /// Refused rather than rewritten:
 ///
@@ -48,68 +51,63 @@ impl From<WatchedPathError> for crate::import::ImportError {
 /// - A path that is not absolute by the host's rule. On Windows `\music` is
 ///   relative to the current drive, so the same text can name different
 ///   folders.
-pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, WatchedPathError> {
-    let refuse = |reason: &str| Err(WatchedPathError(format!("watched folder {reason}: {path}")));
-    if Path::new(path)
+pub(crate) fn canonical_absolute_root(path: &Path) -> Result<PathBuf, WatchedPathError> {
+    let refuse = |reason: &str| {
+        Err(WatchedPathError(format!(
+            "watched folder {reason}: {}",
+            coven::path_text(path)
+        )))
+    };
+    if path
         .components()
         .any(|component| matches!(component, Component::ParentDir))
     {
         return refuse("must not contain `..`");
     }
-    let canonical: std::path::PathBuf = Path::new(path).components().collect();
+    let canonical: PathBuf = path.components().collect();
     if !canonical.is_absolute() {
         return refuse("must be an absolute path");
     }
-    // Built from a `&str`, so the lossy conversion never substitutes characters.
-    Ok(canonical.to_string_lossy().into_owned())
+    Ok(canonical)
 }
 
-/// Refuse a stored root that is not in canonical form: it is corrupt, and
-/// rewriting it would orphan the rows keyed by it.
-pub(crate) fn validate_absolute_root(path: &str) -> Result<(), WatchedPathError> {
+/// Refuse a stored path that is not in canonical form: rows are keyed by its
+/// bytes, so it is corrupt, and rewriting it would orphan them. Compares the
+/// spellings, not the components, which `Path`'s equality compares: it calls
+/// `/a/b/` and `/a/b` equal.
+fn validate_canonical(path: &Path, what: &str) -> Result<(), WatchedPathError> {
     let canonical = canonical_absolute_root(path)?;
-    if canonical != path {
+    if canonical.as_os_str() != path.as_os_str() {
         return Err(WatchedPathError(format!(
-            "stored watched folder is not its canonical spelling {canonical}: {path}"
+            "stored {what} is not its canonical spelling {}: {}",
+            coven::path_text(&canonical),
+            coven::path_text(path)
         )));
     }
     Ok(())
 }
 
+/// Refuse a stored root that is not in canonical form.
+pub(crate) fn validate_absolute_root(path: &Path) -> Result<(), WatchedPathError> {
+    validate_canonical(path, "watched folder")
+}
+
+/// The folder `candidate_path` is below the watched folder at
+/// `watched_folder_path`.
 pub(crate) fn candidate_relative_path(
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     candidate_path: &Path,
-) -> Result<String, crate::import::ImportError> {
+) -> Result<RelativeFolder, crate::import::ImportError> {
     let relative = candidate_path
         .strip_prefix(watched_folder_path)
         .map_err(|error| crate::import::ImportError::WatchedFolder {
             detail: format!(
-                "{} is outside watched folder {watched_folder_path}: {error}",
-                candidate_path.display()
+                "{} is outside watched folder {}: {error}",
+                coven::path_text(candidate_path),
+                coven::path_text(watched_folder_path)
             ),
         })?;
-    let components: Result<Vec<_>, _> = relative
-        .components()
-        .map(|component| match component {
-            Component::Normal(value) => value.to_str().map(str::to_string).ok_or_else(|| {
-                crate::import::ImportError::WatchedFolder {
-                    detail: format!(
-                        "candidate path is not valid Unicode: {}",
-                        candidate_path.display()
-                    ),
-                }
-            }),
-            _ => Err(crate::import::ImportError::WatchedFolder {
-                detail: format!(
-                    "candidate path is not normalized below its watched folder: {}",
-                    candidate_path.display()
-                ),
-            }),
-        })
-        .collect();
-    let relative = components?.join("/");
-    validate_relative_path(&relative)?;
-    Ok(relative)
+    Ok(RelativeFolder::of(relative)?)
 }
 
 pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
@@ -118,14 +116,8 @@ pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
 
 /// Refuse a stored folder path that is not in canonical form: folder
 /// decisions are keyed by the canonical path, so it is corrupt.
-pub(crate) fn validate_stored_folder(path: &str) -> Result<(), WatchedPathError> {
-    let canonical = canonical_absolute_root(path)?;
-    if canonical != path {
-        return Err(WatchedPathError(format!(
-            "stored folder is not its canonical spelling {canonical}: {path}"
-        )));
-    }
-    Ok(())
+pub(crate) fn validate_stored_folder(path: &Path) -> Result<(), WatchedPathError> {
+    validate_canonical(path, "folder")
 }
 
 /// `posix` as an absolute path on the running host (a `C:` prefix and `\` on
@@ -134,14 +126,14 @@ pub(crate) fn validate_stored_folder(path: &str) -> Result<(), WatchedPathError>
 /// Only the rooting changes: a trailing or doubled separator, `.`, or `..`
 /// stays in place, so tests of those spellings still exercise them.
 #[cfg(test)]
-pub(crate) fn host_root(posix: &str) -> String {
+pub(crate) fn host_root(posix: &str) -> PathBuf {
     #[cfg(windows)]
     {
-        format!("C:{}", posix.replace('/', "\\"))
+        PathBuf::from(format!("C:{}", posix.replace('/', "\\")))
     }
     #[cfg(not(windows))]
     {
-        posix.to_string()
+        PathBuf::from(posix)
     }
 }
 
@@ -151,7 +143,7 @@ mod tests {
 
     #[test]
     fn root_path_uses_the_full_path_as_name() {
-        let folder = WatchedFolder::from_path("/".to_string());
+        let folder = WatchedFolder::from_path(PathBuf::from("/"));
         assert_eq!(folder.name, "/");
     }
 
@@ -176,13 +168,14 @@ mod tests {
 
         for spelling in spellings
             .iter()
-            .map(String::as_str)
-            .chain(URL_SPELLINGS.iter().copied())
+            .map(PathBuf::as_path)
+            .chain(URL_SPELLINGS.iter().map(Path::new))
         {
             assert_eq!(
-                canonical_absolute_root(spelling).unwrap(),
-                canonical,
-                "{spelling}"
+                canonical_absolute_root(spelling).unwrap().as_os_str(),
+                canonical.as_os_str(),
+                "{}",
+                spelling.display()
             );
         }
     }
@@ -193,7 +186,7 @@ mod tests {
     #[test]
     fn a_drive_relative_root_is_refused() {
         for rooted in ["/music/rips", r"\music\rips"] {
-            let error = canonical_absolute_root(rooted).unwrap_err();
+            let error = canonical_absolute_root(Path::new(rooted)).unwrap_err();
             assert!(error.to_string().contains("absolute"), "{rooted}: {error}");
         }
     }
@@ -208,7 +201,9 @@ mod tests {
             (r"\\?\C:\Music", r"\\?\C:\Music"),
         ] {
             assert_eq!(
-                canonical_absolute_root(written).unwrap(),
+                canonical_absolute_root(Path::new(written))
+                    .unwrap()
+                    .as_os_str(),
                 stored,
                 "{written}"
             );
@@ -234,17 +229,19 @@ mod tests {
 
         for written in spellings
             .iter()
-            .map(String::as_str)
-            .chain(URL_SPELLINGS.iter().copied())
-            .chain(SHARE_ROOTS.iter().copied())
+            .map(PathBuf::as_path)
+            .chain(URL_SPELLINGS.iter().map(Path::new))
+            .chain(SHARE_ROOTS.iter().map(Path::new))
         {
             let stored = canonical_absolute_root(written).unwrap();
             assert_eq!(
-                canonical_absolute_root(&stored).unwrap(),
-                stored,
-                "{written}"
+                canonical_absolute_root(&stored).unwrap().as_os_str(),
+                stored.as_os_str(),
+                "{}",
+                written.display()
             );
-            validate_absolute_root(&stored).unwrap_or_else(|e| panic!("{written}: {e}"));
+            validate_absolute_root(&stored)
+                .unwrap_or_else(|e| panic!("{}: {e}", written.display()));
         }
     }
 
@@ -256,12 +253,12 @@ mod tests {
         assert!(error.to_string().contains(".."), "{error}");
     }
 
+    /// A stored root spelled with a trailing separator names the same
+    /// components as its canonical spelling, but not the same bytes, so the
+    /// rows keyed by it would miss: it is refused.
     #[test]
-    fn relative_paths_have_one_canonical_spelling() {
-        for invalid in ["a//b", "a/./b", "a/../b", "/a"] {
-            assert!(validate_relative_path(invalid).is_err(), "{invalid}");
-        }
-        assert!(validate_relative_path("").is_ok());
-        assert!(validate_relative_path("a/b").is_ok());
+    fn a_stored_root_with_a_trailing_separator_is_refused() {
+        let error = validate_absolute_root(&host_root("/music/rips/")).unwrap_err();
+        assert!(error.to_string().contains("canonical"), "{error}");
     }
 }

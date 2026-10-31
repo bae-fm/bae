@@ -5,7 +5,7 @@ use super::*;
 /// are inert: a refused mutation stores nothing.
 async fn assert_every_mutation_refused(
     handle: &ImportServiceHandle,
-    key: &str,
+    key: &crate::import::CandidateKey,
     album_title: &str,
     track: crate::import::RawTrackEdit,
     cover: crate::import::CoverSelection,
@@ -56,13 +56,13 @@ async fn assert_every_mutation_refused(
     refused(handle.set_candidate_cover(key, cover).await.map(drop));
     refused(
         handle
-            .select_candidate_file_tags(key.to_string())
+            .select_candidate_file_tags(key.clone())
             .await
             .map(drop),
     );
     refused(
         handle
-            .clear_candidate_metadata(key.to_string())
+            .clear_candidate_metadata(key.clone())
             .await
             .map(drop),
     );

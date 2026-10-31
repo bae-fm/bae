@@ -26,10 +26,7 @@ where
     let names: Vec<String> = directories
         .iter()
         .map(|directory| {
-            directory.file_name().map_or_else(
-                || directory.to_string_lossy().into_owned(),
-                |name| name.to_string_lossy().into_owned(),
-            )
+            coven::path_text(directory.file_name().map_or(directory.as_path(), Path::new))
         })
         .collect();
     let mut releases = usize::from(holds_audio_directly);

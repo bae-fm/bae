@@ -12,6 +12,7 @@ use crate::db::{DbError, ImportClaim};
 use crate::identify::IdentifyRunId;
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::import::triage::{ImportStanding, TriageRuntimeFacts};
+use crate::import::CandidateKey;
 
 /// What a run identifies: a folder candidate's files, whose standing the
 /// table holds, or a library release, which has none.
@@ -24,14 +25,14 @@ pub(crate) enum RunSubject {
 impl CandidateRuntime {
     async fn change_identifications(
         &self,
-        changes: Vec<(String, IdentificationChange)>,
-    ) -> Result<Vec<(String, IdentificationMove)>, DbError> {
+        changes: Vec<(CandidateKey, IdentificationChange)>,
+    ) -> Result<Vec<(CandidateKey, IdentificationMove)>, DbError> {
         let moved = self
             .database
             .change_candidate_identifications(changes)
             .await?;
         #[cfg(any(test, feature = "test-utils"))]
-        self.tell_every_change(moved.iter().map(|(key, _)| key.as_str()))
+        self.tell_every_change(moved.iter().map(|(key, _)| key))
             .await;
         Ok(moved)
     }
@@ -39,7 +40,7 @@ impl CandidateRuntime {
     /// Tell the test readers of every change what each of `keys` reads as
     /// now, and of every count what the count reads as when it moved.
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) async fn tell_every_change(&self, keys: impl Iterator<Item = &str>) {
+    pub(crate) async fn tell_every_change(&self, keys: impl Iterator<Item = &CandidateKey>) {
         let count = self
             .identification_progress()
             .await
@@ -66,12 +67,10 @@ impl CandidateRuntime {
                 .expect("a test reads back the standing it just wrote")
             {
                 Some(runtime) => super::CandidateRuntimeChange::Updated {
-                    key: key.to_string(),
+                    key: key.clone(),
                     runtime,
                 },
-                None => super::CandidateRuntimeChange::Removed {
-                    key: key.to_string(),
-                },
+                None => super::CandidateRuntimeChange::Removed { key: key.clone() },
             };
             self.every_change
                 .lock()
@@ -82,11 +81,11 @@ impl CandidateRuntime {
 
     async fn change_identification(
         &self,
-        key: &str,
+        key: &CandidateKey,
         change: IdentificationChange,
     ) -> Result<IdentificationMove, DbError> {
         let (_, moved) = self
-            .change_identifications(vec![(key.to_string(), change)])
+            .change_identifications(vec![(key.clone(), change)])
             .await?
             .pop()
             .expect("one change makes one move");
@@ -97,7 +96,7 @@ impl CandidateRuntime {
     /// so the count opens at its total.
     pub(crate) async fn admit(
         &self,
-        candidates: Vec<(String, CandidateFiles)>,
+        candidates: Vec<(CandidateKey, CandidateFiles)>,
         admission: Admission,
     ) -> Result<(), DbError> {
         if candidates.is_empty() {
@@ -115,7 +114,7 @@ impl CandidateRuntime {
 
     /// This key is not waiting any more: nothing came of the admission that
     /// put it there.
-    pub(crate) async fn withdraw(&self, key: &str) -> Result<(), DbError> {
+    pub(crate) async fn withdraw(&self, key: &CandidateKey) -> Result<(), DbError> {
         self.change_identification(key, IdentificationChange::Withdraw)
             .await?;
         Ok(())
@@ -125,7 +124,7 @@ impl CandidateRuntime {
     /// waiting for it any more, and the run's reports are no standing's.
     pub(crate) async fn run_started(
         &self,
-        key: &str,
+        key: &CandidateKey,
         files: &CandidateFiles,
         run: IdentifyRunId,
     ) -> Result<bool, DbError> {
@@ -147,7 +146,7 @@ impl CandidateRuntime {
     /// the key's standing is not that run's any more.
     pub(crate) async fn run_answered(
         &self,
-        key: &str,
+        key: &CandidateKey,
         run: IdentifyRunId,
         reads_pick: bool,
     ) -> Result<bool, DbError> {
@@ -159,7 +158,11 @@ impl CandidateRuntime {
 
     /// `run` ended without an answer. What it published goes once the table
     /// no longer names it.
-    pub(crate) async fn run_ended(&self, key: &str, run: IdentifyRunId) -> Result<(), DbError> {
+    pub(crate) async fn run_ended(
+        &self,
+        key: &CandidateKey,
+        run: IdentifyRunId,
+    ) -> Result<(), DbError> {
         self.change_identification(key, IdentificationChange::RunEnded { run })
             .await?;
         self.forget_run(key, run);
@@ -170,7 +173,7 @@ impl CandidateRuntime {
     /// found: whatever run or answer its standing holds ends, and what every
     /// run of it published goes. A library release's re-identify run, which
     /// holds no standing, ends the same way when its sheet closes.
-    pub(crate) async fn cancel_identification(&self, key: &str) -> Result<(), DbError> {
+    pub(crate) async fn cancel_identification(&self, key: &CandidateKey) -> Result<(), DbError> {
         self.change_identification(key, IdentificationChange::Cancelled)
             .await?;
         self.forget_runs(key);
@@ -182,7 +185,7 @@ impl CandidateRuntime {
     /// answer stored its pick.
     pub(crate) async fn end_identification_answer(
         &self,
-        key: &str,
+        key: &CandidateKey,
         run: IdentifyRunId,
     ) -> Result<bool, DbError> {
         let moved = self
@@ -197,7 +200,7 @@ impl CandidateRuntime {
     /// the candidate to be imported once the answer stored its pick.
     pub(crate) async fn answer_ended_by_verdict(
         &self,
-        key: &str,
+        key: &CandidateKey,
         run: IdentifyRunId,
         moved: IdentificationMove,
     ) -> bool {
@@ -210,7 +213,7 @@ impl CandidateRuntime {
     /// A person's decision about `key`, or an import taking it, ended its
     /// identification inside the decision's own write: its work stops being
     /// drawn.
-    pub(crate) async fn identification_ended(&self, key: &str) {
+    pub(crate) async fn identification_ended(&self, key: &CandidateKey) {
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;
         self.forget_runs(key);
@@ -227,7 +230,7 @@ impl CandidateRuntime {
     /// bae's own failure, so it is logged as one.
     pub(crate) async fn fail_identification(
         &self,
-        key: &str,
+        key: &CandidateKey,
         run: IdentifyRunId,
         files: &CandidateFiles,
         failure: SaveFailure,
@@ -253,7 +256,7 @@ impl CandidateRuntime {
     /// stores the release it picks unattended, which is still being read.
     /// `false`, asking nothing, when no answer that picks unattended is held
     /// for the key.
-    pub(crate) async fn ask_import_once_stored(&self, key: &str) -> Result<bool, DbError> {
+    pub(crate) async fn ask_import_once_stored(&self, key: &CandidateKey) -> Result<bool, DbError> {
         let moved = self
             .change_identification(key, IdentificationChange::ImportAsked)
             .await?;
@@ -271,7 +274,7 @@ impl CandidateRuntime {
     /// same write: once claimed, it is not identification's to answer.
     pub(crate) async fn claim_for_import(
         &self,
-        key: &str,
+        key: &CandidateKey,
         import_id: &str,
         ending_identification: bool,
     ) -> Result<(), crate::import::ImportError> {
@@ -303,7 +306,7 @@ impl CandidateRuntime {
     /// import does not own the key.
     pub(crate) async fn move_import(
         &self,
-        key: &str,
+        key: &CandidateKey,
         import_id: &str,
         next: Option<ImportStanding>,
     ) -> Result<(), DbError> {
@@ -316,7 +319,7 @@ impl CandidateRuntime {
     }
 
     /// Whether an import owns `key`, read from its claim.
-    pub(crate) async fn import_claimed(&self, key: &str) -> Result<bool, DbError> {
+    pub(crate) async fn import_claimed(&self, key: &CandidateKey) -> Result<bool, DbError> {
         Ok(self
             .database
             .load_candidate_standing(key)
@@ -326,7 +329,10 @@ impl CandidateRuntime {
     }
 
     /// Where `key` stands, as its row reads it.
-    pub(crate) async fn standing_facts(&self, key: &str) -> Result<TriageRuntimeFacts, DbError> {
+    pub(crate) async fn standing_facts(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<TriageRuntimeFacts, DbError> {
         Ok(self.database.load_candidate_standing(key).await?.facts())
     }
 }

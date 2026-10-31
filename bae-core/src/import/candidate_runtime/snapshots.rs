@@ -13,13 +13,14 @@ use crate::import::candidates::{
     CandidateRuntimeSnapshot, IdentificationRuntime, ImportInFlight, SavingAnswer,
 };
 use crate::import::triage::ImportStanding;
+use crate::import::CandidateKey;
 use crate::library::LibraryError;
 use std::collections::HashMap;
 
 /// `key`'s snapshot from its stored standing and what the runtime holds for
 /// it; `None` when neither has anything.
 fn compose(
-    key: &str,
+    key: &CandidateKey,
     stored: Option<&StoredStanding>,
     held: Option<&CandidateRuntimeState>,
 ) -> Option<CandidateRuntimeSnapshot> {
@@ -76,7 +77,7 @@ fn compose_percent(
 /// A folder candidate's identification as the table holds it, with the
 /// state its run last published.
 fn stored_identification(
-    key: &str,
+    key: &CandidateKey,
     stage: &IdentificationStage,
     held: Option<&CandidateRuntimeState>,
 ) -> Option<IdentificationRuntime> {
@@ -143,10 +144,10 @@ impl CandidateRuntime {
     /// Every key's snapshot from `stored`, with what the runtime holds now.
     fn compose_all(
         &self,
-        stored: &HashMap<String, StoredStanding>,
-    ) -> HashMap<String, CandidateRuntimeSnapshot> {
+        stored: &HashMap<CandidateKey, StoredStanding>,
+    ) -> HashMap<CandidateKey, CandidateRuntimeSnapshot> {
         let inner = self.inner.lock().unwrap();
-        let keys: std::collections::HashSet<&String> =
+        let keys: std::collections::HashSet<&CandidateKey> =
             stored.keys().chain(inner.runtime.keys()).collect();
         keys.into_iter()
             .filter_map(|key| {
@@ -160,7 +161,7 @@ impl CandidateRuntime {
     /// runtime; `None` when nothing is.
     pub(crate) async fn snapshot(
         &self,
-        key: &str,
+        key: &CandidateKey,
     ) -> Result<Option<CandidateRuntimeSnapshot>, LibraryError> {
         let stored = self.database.load_candidate_standing(key).await?;
         let inner = self.inner.lock().unwrap();
@@ -171,7 +172,7 @@ impl CandidateRuntime {
     /// the runtime.
     pub(crate) async fn snapshots(
         &self,
-    ) -> Result<HashMap<String, CandidateRuntimeSnapshot>, LibraryError> {
+    ) -> Result<HashMap<CandidateKey, CandidateRuntimeSnapshot>, LibraryError> {
         let stored = self.database.load_candidate_standings().await?;
         Ok(self.compose_all(&stored))
     }
@@ -179,7 +180,7 @@ impl CandidateRuntime {
     /// What is in flight for `key` as the live read last read the table, with
     /// what the runtime holds now, for a test.
     #[cfg(test)]
-    pub(crate) fn latest_snapshot(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
+    pub(crate) fn latest_snapshot(&self, key: &CandidateKey) -> Option<CandidateRuntimeSnapshot> {
         self.view.borrow().snapshots.get(key).cloned()
     }
 
@@ -191,14 +192,16 @@ impl CandidateRuntime {
     }
 
     /// Each key's import percent, now and as it moves.
-    pub fn watch_import_percents(&self) -> tokio::sync::watch::Receiver<HashMap<String, u32>> {
+    pub fn watch_import_percents(
+        &self,
+    ) -> tokio::sync::watch::Receiver<HashMap<CandidateKey, u32>> {
         self.percents.subscribe()
     }
 
     /// Compose `key` again from its standing as the table was last read and
     /// what the runtime holds for it now, and tell the view's readers if that
     /// changed it, and the percents' readers if its percent moved.
-    pub(super) fn recompose(&self, key: &str) {
+    pub(super) fn recompose(&self, key: &CandidateKey) {
         let mut percent = None;
         self.view.send_if_modified(|view| {
             let inner = self.inner.lock().unwrap();
@@ -216,7 +219,7 @@ impl CandidateRuntime {
     fn recompose_percents(&self) {
         let view = self.view.borrow();
         let inner = self.inner.lock().unwrap();
-        let next: HashMap<String, u32> = view
+        let next: HashMap<CandidateKey, u32> = view
             .stored
             .iter()
             .filter_map(|(key, stored)| {
@@ -265,7 +268,7 @@ impl CandidateRuntime {
 /// what the runtime holds beside it, kept key by key.
 #[derive(Debug, Default)]
 pub(crate) struct RuntimeView {
-    pub(crate) snapshots: HashMap<String, CandidateRuntimeSnapshot>,
+    pub(crate) snapshots: HashMap<CandidateKey, CandidateRuntimeSnapshot>,
     /// How far the batch of identifications in flight has got: ended of
     /// admitted; `(0, 0)` is none.
     pub(crate) identification_progress: (u32, u32),
@@ -274,7 +277,7 @@ pub(crate) struct RuntimeView {
     /// Which keys' snapshots changed, so a reader reads only those.
     pub(crate) changes: ChangeLog,
     /// Each key's standing as the table was last read.
-    stored: HashMap<String, StoredStanding>,
+    stored: HashMap<CandidateKey, StoredStanding>,
 }
 
 impl RuntimeView {
@@ -284,13 +287,13 @@ impl RuntimeView {
     fn take_read(
         &mut self,
         read: crate::db::StandingsRead,
-        compose: impl Fn(&str, Option<&StoredStanding>) -> Option<CandidateRuntimeSnapshot>,
+        compose: impl Fn(&CandidateKey, Option<&StoredStanding>) -> Option<CandidateRuntimeSnapshot>,
     ) -> bool {
         let mut changed = read.identification_progress != self.identification_progress
             || read.imports_in_flight != self.importing;
         self.identification_progress = read.identification_progress;
         self.importing = read.imports_in_flight;
-        let moved: Vec<String> = self
+        let moved: Vec<CandidateKey> = self
             .stored
             .keys()
             .filter(|key| !read.standings.contains_key(*key))
@@ -311,13 +314,13 @@ impl RuntimeView {
     }
 
     /// Show `next` as `key`'s snapshot; whether that changed it.
-    fn show(&mut self, key: &str, next: Option<CandidateRuntimeSnapshot>) -> bool {
+    fn show(&mut self, key: &CandidateKey, next: Option<CandidateRuntimeSnapshot>) -> bool {
         if self.snapshots.get(key) == next.as_ref() {
             return false;
         }
         match next {
             Some(next) => {
-                self.snapshots.insert(key.to_string(), next);
+                self.snapshots.insert(key.clone(), next);
             }
             None => {
                 self.snapshots.remove(key);
@@ -329,9 +332,13 @@ impl RuntimeView {
 }
 
 /// Show `next` as `key`'s percent; whether that moved it.
-fn show_percent(percents: &mut HashMap<String, u32>, key: &str, next: Option<u32>) -> bool {
+fn show_percent(
+    percents: &mut HashMap<CandidateKey, u32>,
+    key: &CandidateKey,
+    next: Option<u32>,
+) -> bool {
     let previous = match next {
-        Some(next) => percents.insert(key.to_string(), next),
+        Some(next) => percents.insert(key.clone(), next),
         None => percents.remove(key),
     };
     previous != next
@@ -387,7 +394,7 @@ mod tests {
         crate::db::StandingsRead {
             standings: standings
                 .into_iter()
-                .map(|(key, standing)| (key.to_string(), standing))
+                .map(|(key, standing)| (crate::import::CandidateKey::test(key), standing))
                 .collect(),
             identification_progress: (0, 0),
             imports_in_flight,
@@ -399,8 +406,8 @@ mod tests {
     #[test]
     fn a_read_composes_only_the_keys_it_moved() {
         let composed = RefCell::new(Vec::new());
-        let compose_one = |key: &str, stored: Option<&StoredStanding>| {
-            composed.borrow_mut().push(key.to_string());
+        let compose_one = |key: &CandidateKey, stored: Option<&StoredStanding>| {
+            composed.borrow_mut().push(key.clone());
             compose(key, stored, None)
         };
         let mut view = RuntimeView::default();
@@ -417,9 +424,16 @@ mod tests {
         composed.borrow_mut().clear();
 
         assert!(view.take_read(read(vec![("a", importing("imp-a"))], 1), compose_one));
-        assert_eq!(*composed.borrow(), ["b"], "only the key the read moved");
-        assert_eq!(view.changes.since(seen).collect::<Vec<_>>(), ["b"]);
-        assert!(!view.snapshots.contains_key("b"));
+        let b = crate::import::CandidateKey::test("b");
+        assert_eq!(
+            *composed.borrow(),
+            std::slice::from_ref(&b),
+            "only the key the read moved"
+        );
+        assert_eq!(view.changes.since(seen).collect::<Vec<_>>(), [&b]);
+        assert!(!view
+            .snapshots
+            .contains_key(&crate::import::CandidateKey::test("b")));
         assert_eq!(view.importing, 1);
 
         composed.borrow_mut().clear();

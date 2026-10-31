@@ -338,7 +338,7 @@ fn extracted_signals_cross_with_their_key() {
 
     let crossed =
         super::ui_events::convert_ui_event(bae_core::ui::UiEvent::CandidateSignalsUpdated {
-            key: "reidentify:release-1".to_string(),
+            key: bae_core::import::CandidateKey::reidentify("release-1"),
             signals,
         })
         .expect("a desktop bridge carries the import stream");
@@ -346,7 +346,7 @@ fn extracted_signals_cross_with_their_key() {
     let crate::types::BridgeUiEvent::CandidateSignalsUpdated { key, signals } = crossed else {
         panic!("expected the signals event, got {crossed:?}");
     };
-    assert_eq!(key, "reidentify:release-1");
+    assert_eq!(key, b"reidentify:release-1");
     let crate::types::BridgeTextSignal::Settled {
         catalogs,
         free_text,
@@ -650,20 +650,20 @@ mod candidate_runtime {
         NothingOfTheSort,
     }
 
-    fn says_about(change: &BridgeCandidateRuntimeChange, key: &str) -> SaysAbout {
+    fn says_about(change: &BridgeCandidateRuntimeChange, key: &[u8]) -> SaysAbout {
         match change {
             BridgeCandidateRuntimeChange::Updated {
                 key: changed,
                 runtime,
-            } if changed == key => SaysAbout::InFlight(Box::new(runtime.clone())),
-            BridgeCandidateRuntimeChange::Removed { key: changed } if changed == key => {
+            } if changed.as_slice() == key => SaysAbout::InFlight(Box::new(runtime.clone())),
+            BridgeCandidateRuntimeChange::Removed { key: changed } if changed.as_slice() == key => {
                 SaysAbout::Gone
             }
             BridgeCandidateRuntimeChange::Updated { .. }
             | BridgeCandidateRuntimeChange::Removed { .. } => SaysAbout::NothingOfTheSort,
             BridgeCandidateRuntimeChange::Reset { runtimes } => runtimes
                 .iter()
-                .find(|entry| entry.key == key)
+                .find(|entry| entry.key.as_slice() == key)
                 .map_or(SaysAbout::Gone, |entry| {
                     SaysAbout::InFlight(Box::new(entry.runtime.clone()))
                 }),
@@ -675,7 +675,7 @@ mod candidate_runtime {
     fn wait_in_flight(
         handle: &Arc<super::super::AppHandle>,
         receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
-        key: &str,
+        key: &[u8],
     ) -> crate::types::BridgeCandidateRuntimeSnapshot {
         drain_until(handle, receiver, key, |said| match said {
             SaysAbout::InFlight(runtime) => Some(*runtime),
@@ -689,7 +689,7 @@ mod candidate_runtime {
     fn wait_gone(
         handle: &Arc<super::super::AppHandle>,
         receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
-        key: &str,
+        key: &[u8],
     ) {
         drain_until(handle, receiver, key, |said| match said {
             SaysAbout::Gone => Some(()),
@@ -701,7 +701,7 @@ mod candidate_runtime {
     fn drain_until<T>(
         handle: &Arc<super::super::AppHandle>,
         receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
-        key: &str,
+        key: &[u8],
         settled: impl Fn(SaysAbout) -> Option<T>,
     ) -> Option<T> {
         handle
@@ -725,7 +725,7 @@ mod candidate_runtime {
     #[test]
     fn a_reset_that_omits_the_key_says_the_key_is_gone() {
         let (handle, _root) = fresh_bridge_handle("candidate-runtime-reset");
-        let key = "/watch/Album Title".to_string();
+        let key = b"/watch/Album Title".to_vec();
         let running = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
             bae_core::import::CandidateRuntimeSnapshot {
                 identification: None,
@@ -743,7 +743,7 @@ mod candidate_runtime {
         changes
             .send(BridgeCandidateRuntimeChange::Reset {
                 runtimes: vec![crate::types::BridgeKeyedCandidateRuntime {
-                    key: "/watch/Someone Else".to_string(),
+                    key: b"/watch/Someone Else".to_vec(),
                     runtime: running.clone(),
                 }],
             })
@@ -766,13 +766,13 @@ mod candidate_runtime {
     #[test]
     fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
         let (handle, _root) = fresh_bridge_handle("candidate-runtime-claim");
-        let key = "/watch/Album Title".to_string();
+        let key = b"/watch/Album Title".to_vec();
         let (_watching, mut watching_changes) = subscribe(&handle);
 
         handle.runtime.block_on(
             handle
                 .services
-                .claim_candidate_for_import_for_test(&key, "import-1"),
+                .claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
         );
 
         let claimed = wait_in_flight(&handle, &mut watching_changes, &key);
@@ -803,12 +803,12 @@ mod candidate_runtime {
         handle.runtime.block_on(
             handle
                 .services
-                .end_candidate_import_for_test(&key, "import-1"),
+                .end_candidate_import_for_test(&key.clone().into(), "import-1"),
         );
         handle
             .services
             .import_emit_event_for_test(bae_core::import::ImportEvent::ImportProgress {
-                candidate_key: key.clone(),
+                candidate_key: key.clone().into(),
                 progress: bae_core::import::ImportProgress::Failed {
                     error: "no space left".to_string(),
                     import_id: "import-1".to_string(),

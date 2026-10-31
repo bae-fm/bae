@@ -57,7 +57,10 @@ impl BasisColumns {
     /// What the commands of the release at `key` are decided from. The
     /// table's checks hold every column a release needs, so one missing is a
     /// row the checks let through, which is refused here as broken.
-    pub(super) fn basis(&self, key: &str) -> Result<CandidateActionBasis, DbError> {
+    pub(super) fn basis(
+        &self,
+        key: &crate::import::CandidateKey,
+    ) -> Result<CandidateActionBasis, DbError> {
         let column = |column: Option<bool>| {
             column
                 .ok_or_else(|| DbError::Message(format!("the placement of {key} is no release's")))
@@ -112,7 +115,10 @@ impl ListedColumns {
     /// Where the list places the release at `key`. The table's checks hold
     /// every column a state needs, so one missing is a row the checks let
     /// through, which is refused here as broken.
-    pub(super) fn listed(self, key: &str) -> Result<ListedRelease, DbError> {
+    pub(super) fn listed(
+        self,
+        key: &crate::import::CandidateKey,
+    ) -> Result<ListedRelease, DbError> {
         let broken = |what: &str| DbError::Message(format!("the placement of {key} {what}"));
         let pressings = || {
             self.reason_pressings

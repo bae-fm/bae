@@ -2,13 +2,13 @@
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverTarget {
     Release { release_id: String },
-    Candidate { candidate_key: String },
+    Candidate { candidate_key: Vec<u8> },
 }
 
 mirror_enum! {
     BridgeCoverTarget = bae_core::import::cover_art::CoverTarget,
     into_core: pub(crate) fn,
-    variants: { Release(release_id), Candidate(candidate_key) },
+    variants: { Release(release_id), Candidate(candidate_key: (into)) },
 }
 
 /// A missing external identity is distinct from a linked release with no art.

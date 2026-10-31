@@ -9,7 +9,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
 
     // The settled verdict wrote the pick; nothing is routed, so everything
     // below is served from what identification archived.
@@ -113,7 +113,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
 
     // Identification settled on one release; the user searched and picked
     // another, whose documents the search archived.
@@ -217,7 +217,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
 
     fixture
         .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
@@ -275,7 +275,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
         release_json("mb-own-1", "rg-own-1", &[probed, 0]),
     );
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
 
     fixture.drain_automatic().await;
 
@@ -314,7 +314,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
 /// The list's row for one candidate, over the tabs that present a candidate's
 /// own reading — which of them it lands in is not what these tests are about.
 /// Done presents the library release instead.
-async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
+async fn queue_row(fixture: &Fixture, key: &crate::import::CandidateKey) -> crate::import::TriageRow {
     queue_item(fixture, key).await.0
 }
 
@@ -322,7 +322,7 @@ async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
 /// finds it.
 async fn queue_item(
     fixture: &Fixture,
-    key: &str,
+    key: &crate::import::CandidateKey,
 ) -> (crate::import::TriageRow, crate::import::CandidateLiveState) {
     for tab in [
         crate::import::TriageTab::Pending,
@@ -339,7 +339,7 @@ async fn queue_item(
             .flat_map(|window| &window.items)
             .find_map(|item| match item {
                 crate::import::ImportListItem::Candidate { row, live, .. }
-                    if row.candidate_key == key =>
+                    if row.candidate_key == key.clone() =>
                 {
                     Some((row.clone(), live.clone()))
                 }
@@ -436,12 +436,12 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     let fixture = Fixture::new("torn-down-writer").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let run = IdentifyRunId::for_test(1);
     let row = NewImportCandidateVerdict {
         content_hash: fixture.content_hash(&dir),
         file_edit_revision: 0,
-        folder_path: key.clone(),
+        candidate_key: key.clone(),
         verdict: multi_match_verdict(&["mb-torn-1", "mb-torn-2"], "rg-torn-1"),
         signals: settled_signals(),
         pick: None,
@@ -532,7 +532,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
 
     fixture.provider.route(
         "/release/mb-stated-1?",

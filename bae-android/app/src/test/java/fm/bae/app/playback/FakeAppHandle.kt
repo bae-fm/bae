@@ -763,7 +763,7 @@ internal open class FakeAppHandle(
 
 /** A stream nothing feeds, which holds nothing. */
 internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
-    override fun latest(key: String): BridgeFastValue? = null
+    override fun latest(key: ByteArray): BridgeFastValue? = null
 
     override fun cancel() = Unit
 }

@@ -47,7 +47,8 @@
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
                     parts: [],
-                    folderPath: "\(importWatchedFolder.path)/\(path)",
+                    candidateKey: Data("\(importRootPath)/\(path)".utf8),
+                    folderPath: Data("\(importRootPath)/\(path)".utf8),
                     sourceFolderName: name,
                     watchedFolderPath: importWatchedFolder.path,
                     files: bridgeCandidateFiles,
@@ -178,8 +179,12 @@
         private static let importTabGroupedReadyCandidate = paneCandidate(
             folder: BridgeFolderCandidate(
                 parts: [],
-                folderPath:
-                    "\(importWatchedFolder.path)/Artist Collection/Album Title Nine",
+                candidateKey: Data(
+                    "\(importRootPath)/Artist Collection/Album Title Nine".utf8
+                ),
+                folderPath: Data(
+                    "\(importRootPath)/Artist Collection/Album Title Nine".utf8
+                ),
                 sourceFolderName: "Album Title Nine",
                 watchedFolderPath: importWatchedFolder.path,
                 files: bridgeCandidateFiles,
@@ -564,7 +569,7 @@
 
         private static let importTabGroupKey = BridgeFolderReleaseDecisionKey(
             watchedFolderPath: importWatchedFolder.path,
-            relativeFolderPath: "Artist Collection"
+            relativeFolder: Data("Artist Collection".utf8)
         )
 
         @MainActor
@@ -653,7 +658,7 @@
 
         /// Every row the tab holds, on any tab, by candidate key.
         @MainActor
-        private static func importTabRowsByKey() -> [String: BridgeTriageRow] {
+        private static func importTabRowsByKey() -> [Data: BridgeTriageRow] {
             let rows =
                 importTabPendingRows + triageGroupedRows + importTabDoneRows
                 + [triageRowSkipped]
@@ -664,7 +669,7 @@
         }
 
         /// The failed folder check the pane states for a preview candidate.
-        static let importTabFolderChecks: [String: BridgeFolderCheck] = [
+        static let importTabFolderChecks: [Data: BridgeFolderCheck] = [
             importTabNoTracklistCandidate.key: .sourceTracksUnknown
         ]
 

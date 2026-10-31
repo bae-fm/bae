@@ -9,7 +9,7 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     let hash = candidate.content_hash();
     let verdict = sample_verdict();
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
@@ -20,7 +20,10 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     let loaded_row = loaded
         .get(&hash)
         .expect("row present under its content hash");
-    assert_eq!(loaded_row.folder_path, host_root("/music/Some Album"));
+    assert_eq!(
+        loaded_row.candidate_key,
+        crate::import::CandidateKey::folder(&host_root("/music/Some Album"))
+    );
     let identify = loaded_row
         .identify
         .as_ref()
@@ -167,7 +170,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         ledger: None,
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -235,7 +238,7 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
     ];
     let mut row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());
     row.signals.text_pool = pool.clone();
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
@@ -271,7 +274,7 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
         ledger: Some(sample_ledger()),
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -299,7 +302,7 @@ async fn an_error_verdict_round_trips_its_failure() {
     };
     let verdict = TerminalVerdict::Error { failure };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
         .await
@@ -328,7 +331,7 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
         ledger: None,
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)
@@ -374,7 +377,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         ledger: Some(sample_ledger()),
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
-    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&row)

@@ -37,7 +37,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &candidate.files.content_hash(),
-            &candidate.path.to_string_lossy(),
+            &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
                 record: crate::import::MetadataRef::new(
@@ -83,7 +83,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
     );
 
     let detail = db
-        .load_import_candidate(&candidate.path.to_string_lossy())
+        .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
         .unwrap()
         .expect("the scanned candidate has a pane")

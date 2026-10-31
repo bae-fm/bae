@@ -9,27 +9,39 @@ use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::import::triage::ImportStanding;
 
 /// Store `key` as a candidate the scan holds with `files`, as the scan would.
-async fn scanned(db: &super::super::Database, key: &str, files: &CandidateFiles) {
+async fn scanned(
+    db: &super::super::Database,
+    key: &crate::import::CandidateKey,
+    files: &CandidateFiles,
+) {
     exec_batch(
         db,
         &format!(
-            "INSERT OR IGNORE INTO watched_import_folders (path, position) VALUES ('/music', 0);
+            "INSERT OR IGNORE INTO watched_import_folders (path, position)
+                 VALUES (CAST('/music' AS BLOB), 0);
              INSERT OR IGNORE INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-                 VALUES ('/music', 1, 'complete', 'local');
-             DELETE FROM scan_candidate WHERE path = '{key}';
+                 VALUES (CAST('/music' AS BLOB), 1, 'complete', 'local');
+             DELETE FROM scan_candidate WHERE path = X'{key}';
              INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
-                 display_path, folder, file_root, scope, content_hash, file_edit_revision)
-                 VALUES ('/music', '{key}', 1, 'valid', 'Album', '{display_path}', '{key}', '{key}',
-                     'recursive', '{hash}', {revision});",
+                 relative_folder, folder, file_root, scope, content_hash, file_edit_revision)
+                 VALUES (CAST('/music' AS BLOB), X'{key}', 1, 'valid', 'Album', X'{relative}',
+                     X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
+            key = hex::encode(key.as_bytes()),
+            relative = hex::encode(
+                crate::import::RelativeFolder::of(
+                    key.test_folder().strip_prefix("/music").unwrap()
+                )
+                .unwrap()
+                .as_bytes()
+            ),
             hash = files.content_hash,
             revision = files.file_edit_revision,
-            display_path = key.trim_start_matches('/'),
         ),
     )
     .await;
 }
 
-fn files_of(key: &str) -> CandidateFiles {
+fn files_of(key: &crate::import::CandidateKey) -> CandidateFiles {
     CandidateFiles {
         content_hash: format!("hash:{key}"),
         file_edit_revision: 0,
@@ -41,9 +53,13 @@ fn run(number: u64) -> IdentifyRunId {
 }
 
 /// Apply `changes` to `key` one write each.
-async fn change(db: &super::super::Database, key: &str, changes: Vec<IdentificationChange>) {
+async fn change(
+    db: &super::super::Database,
+    key: &crate::import::CandidateKey,
+    changes: Vec<IdentificationChange>,
+) {
     for change in changes {
-        db.change_candidate_identifications(vec![(key.to_string(), change)])
+        db.change_candidate_identifications(vec![(key.clone(), change)])
             .await
             .unwrap();
     }
@@ -55,11 +71,11 @@ async fn change(db: &super::super::Database, key: &str, changes: Vec<Identificat
 async fn every_standing_reads_back_as_written() {
     let (db, _tmp) = empty_db().await;
     let admit = |key: &str| IdentificationChange::Admit {
-        files: files_of(key),
+        files: files_of(&crate::import::CandidateKey::test(key)),
         admission: Admission::Requested,
     };
     let start = |key: &str| IdentificationChange::RunStarted {
-        files: files_of(key),
+        files: files_of(&crate::import::CandidateKey::test(key)),
         run: run(1),
     };
     let answer = |reads_pick| IdentificationChange::RunAnswered {
@@ -67,7 +83,7 @@ async fn every_standing_reads_back_as_written() {
         reads_pick,
     };
     let fail = |key: &str, failure| IdentificationChange::AnswerFailed {
-        files: files_of(key),
+        files: files_of(&crate::import::CandidateKey::test(key)),
         run: run(1),
         failure,
     };
@@ -128,6 +144,7 @@ async fn every_standing_reads_back_as_written() {
         ),
     ];
     for (key, changes, stage) in cases {
+        let key = &crate::import::CandidateKey::test(key);
         scanned(&db, key, &files_of(key)).await;
         change(&db, key, changes).await;
         assert_eq!(
@@ -143,7 +160,7 @@ async fn every_standing_reads_back_as_written() {
         );
     }
 
-    let key = "/music/Import";
+    let key = &crate::import::CandidateKey::test("/music/Import");
     db.claim_candidate_import(key, "import-1", None)
         .await
         .unwrap();
@@ -173,7 +190,7 @@ async fn every_standing_reads_back_as_written() {
 #[tokio::test]
 async fn nothing_running_removes_the_row() {
     let (db, _tmp) = empty_db().await;
-    let key = "/music/Album";
+    let key = &crate::import::CandidateKey::test("/music/Album");
     scanned(&db, key, &files_of(key)).await;
     change(
         &db,
@@ -212,7 +229,7 @@ async fn nothing_running_removes_the_row() {
 #[tokio::test]
 async fn a_claim_while_another_stands_is_refused_whole() {
     let (db, _tmp) = empty_db().await;
-    let key = "/music/Album";
+    let key = &crate::import::CandidateKey::test("/music/Album");
     scanned(&db, key, &files_of(key)).await;
     change(
         &db,
@@ -248,6 +265,7 @@ async fn a_claim_while_another_stands_is_refused_whole() {
 async fn clearing_removes_every_standing() {
     let (db, _tmp) = empty_db().await;
     for key in ["/music/One", "/music/Two"] {
+        let key = &crate::import::CandidateKey::test(key);
         scanned(&db, key, &files_of(key)).await;
         change(
             &db,
@@ -259,9 +277,13 @@ async fn clearing_removes_every_standing() {
         )
         .await;
     }
-    db.claim_candidate_import("/music/Two", "import-1", None)
-        .await
-        .unwrap();
+    db.claim_candidate_import(
+        &crate::import::CandidateKey::test("/music/Two"),
+        "import-1",
+        None,
+    )
+    .await
+    .unwrap();
     db.clear_candidate_standings().await.unwrap();
 
     assert!(db.load_candidate_standings().await.unwrap().is_empty());
@@ -284,6 +306,7 @@ async fn imports_in_flight(db: &super::super::Database) -> u32 {
 async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     let (db, _tmp) = empty_db().await;
     for key in ["/music/One", "/music/Two", "/music/Three"] {
+        let key = &crate::import::CandidateKey::test(key);
         scanned(&db, key, &files_of(key)).await;
         change(
             &db,
@@ -297,19 +320,35 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     }
     assert_eq!(imports_in_flight(&db).await, 0);
 
-    db.claim_candidate_import("/music/One", "import-1", None)
-        .await
-        .unwrap();
-    db.claim_candidate_import("/music/Two", "import-2", None)
-        .await
-        .unwrap();
-    db.move_candidate_import("/music/Two", "import-2", Some(ImportStanding::Writing))
-        .await
-        .unwrap();
+    db.claim_candidate_import(
+        &crate::import::CandidateKey::test("/music/One"),
+        "import-1",
+        None,
+    )
+    .await
+    .unwrap();
+    db.claim_candidate_import(
+        &crate::import::CandidateKey::test("/music/Two"),
+        "import-2",
+        None,
+    )
+    .await
+    .unwrap();
+    db.move_candidate_import(
+        &crate::import::CandidateKey::test("/music/Two"),
+        "import-2",
+        Some(ImportStanding::Writing),
+    )
+    .await
+    .unwrap();
     assert_eq!(imports_in_flight(&db).await, 2);
 
-    db.move_candidate_import("/music/One", "import-1", None)
-        .await
-        .unwrap();
+    db.move_candidate_import(
+        &crate::import::CandidateKey::test("/music/One"),
+        "import-1",
+        None,
+    )
+    .await
+    .unwrap();
     assert_eq!(imports_in_flight(&db).await, 1);
 }

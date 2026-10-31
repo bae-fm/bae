@@ -363,20 +363,23 @@ struct ReleaseDetailTests {
 /// A detail read the test drives: it records every id it is pointed at and
 /// every read opened, and hands each read's `next` whatever the test emits
 /// on it.
-final class DetailFeed<Value: Sendable>: @unchecked Sendable {
+final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
+    @unchecked Sendable
+{
     private final class Read: @unchecked Sendable {
-        var pending: [Result<DetailDelivery<Value>, any Error>] = []
-        var waiter: CheckedContinuation<DetailDelivery<Value>, any Error>?
+        var pending: [Result<KeyedDetailDelivery<Value, Id>, any Error>] = []
+        var waiter:
+            CheckedContinuation<KeyedDetailDelivery<Value, Id>, any Error>?
         var cancelled = false
         var asks = 0
     }
 
     private let lock = NSLock()
     private var reads: [Read] = []
-    private var ids: [String?] = []
+    private var ids: [Id?] = []
 
     var opened: Int { lock.withLock { reads.count } }
-    var requested: [String?] { lock.withLock { ids } }
+    var requested: [Id?] { lock.withLock { ids } }
 
     func isCancelled(read index: Int) -> Bool {
         lock.withLock { reads[index].cancelled }
@@ -390,22 +393,23 @@ final class DetailFeed<Value: Sendable>: @unchecked Sendable {
         lock.withLock { reads[index].asks }
     }
 
-    func query() -> DetailQuery<Value> {
+    func query() -> KeyedDetailQuery<Value, Id> {
         let read = Read()
         lock.withLock { reads.append(read) }
-        return DetailQuery(
+        return KeyedDetailQuery(
             setId: { [self] id in lock.withLock { ids.append(id) } },
             next: { [self] in
                 try await withCheckedThrowingContinuation { continuation in
-                    let ready: Result<DetailDelivery<Value>, any Error>? =
-                        lock.withLock {
-                            read.asks += 1
-                            if read.pending.isEmpty {
-                                read.waiter = continuation
-                                return nil
+                    let ready:
+                        Result<KeyedDetailDelivery<Value, Id>, any Error>? =
+                            lock.withLock {
+                                read.asks += 1
+                                if read.pending.isEmpty {
+                                    read.waiter = continuation
+                                    return nil
+                                }
+                                return read.pending.removeFirst()
                             }
-                            return read.pending.removeFirst()
-                        }
                     if let ready { continuation.resume(with: ready) }
                 }
             },
@@ -421,8 +425,11 @@ final class DetailFeed<Value: Sendable>: @unchecked Sendable {
         )
     }
 
-    func emit(read index: Int = 0, id: String, value: Value?) {
-        deliver(read: index, .success(DetailDelivery(id: id, value: value)))
+    func emit(read index: Int = 0, id: Id, value: Value?) {
+        deliver(
+            read: index,
+            .success(KeyedDetailDelivery(id: id, value: value))
+        )
     }
 
     func emitError(read index: Int = 0) {
@@ -439,18 +446,19 @@ final class DetailFeed<Value: Sendable>: @unchecked Sendable {
 
     private func deliver(
         read index: Int,
-        _ result: Result<DetailDelivery<Value>, any Error>
+        _ result: Result<KeyedDetailDelivery<Value, Id>, any Error>
     ) {
-        let waiter: CheckedContinuation<DetailDelivery<Value>, any Error>? =
-            lock.withLock {
-                let read = reads[index]
-                if let waiter = read.waiter {
-                    read.waiter = nil
-                    return waiter
+        let waiter:
+            CheckedContinuation<KeyedDetailDelivery<Value, Id>, any Error>? =
+                lock.withLock {
+                    let read = reads[index]
+                    if let waiter = read.waiter {
+                        read.waiter = nil
+                        return waiter
+                    }
+                    read.pending.append(result)
+                    return nil
                 }
-                read.pending.append(result)
-                return nil
-            }
         waiter?.resume(with: result)
     }
 }
@@ -583,3 +591,6 @@ struct DetailReaderTests {
         )
     }
 }
+
+/// A feed of a read whose items are named by text ids.
+typealias DetailFeed<Value: Sendable> = KeyedDetailFeed<Value, String>

@@ -188,7 +188,10 @@ impl AppServices {
     #[cfg(desktop)]
     pub fn subscribe_invalid_candidate(
         &self,
-    ) -> crate::library::DetailSubscription<crate::import::InvalidCandidateDetail> {
+    ) -> crate::library::DetailSubscription<
+        crate::import::InvalidCandidateDetail,
+        crate::import::CandidateKey,
+    > {
         let manager = self.inner.manager.clone();
         detail_read(
             manager.clone(),
@@ -217,18 +220,19 @@ impl AppServices {
 /// A detail read with nothing to merge: the query `open` makes for the id
 /// set first, each value resolved for the id it was read for. A new id points
 /// the same query at it.
-fn detail_read<Projection, Value>(
+fn detail_read<Projection, Value, Id>(
     manager: LibraryManager,
-    open: impl FnOnce(Option<String>) -> coven::ReconfigurableLiveQuery<Option<String>, Projection>
+    open: impl FnOnce(Option<Id>) -> coven::ReconfigurableLiveQuery<Option<Id>, Projection>
         + Send
         + 'static,
     resolve: impl Fn(Projection) -> Option<Value> + Send + 'static,
-) -> crate::library::DetailSubscription<Value>
+) -> crate::library::DetailSubscription<Value, Id>
 where
     Projection: Clone + PartialEq + Send + 'static,
     Value: Send + 'static,
+    Id: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
 {
-    let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
+    let (id_tx, mut ids) = tokio::sync::watch::channel(None::<Id>);
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let task = crate::library::CancellationToken::new();
     manager

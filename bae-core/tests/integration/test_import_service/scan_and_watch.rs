@@ -14,7 +14,7 @@ async fn folder_scan_produces_candidates() {
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
 
@@ -49,16 +49,16 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     let album1 = collection.join("Artist - First Album");
     fs::create_dir_all(&album1).unwrap();
     generate_album_files(&album1, &["01 Track.flac"]);
-    let album1_key = album1.to_string_lossy().into_owned();
+    let album1_key = bae_core::import::CandidateKey::folder(&album1);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
 
     let first = scan_batch_until(&mut scan_rx, "the first album's candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album1_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if bae_core::import::CandidateKey::folder(&c.path) == album1_key)
     })
     .await;
     assert!(
@@ -74,11 +74,11 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     let album2 = collection.join("Artist - Second Album");
     fs::create_dir_all(&album2).unwrap();
     generate_album_files(&album2, &["01 Track.flac"]);
-    let album2_key = album2.to_string_lossy().into_owned();
+    let album2_key = bae_core::import::CandidateKey::folder(&album2);
     f.handle.scan_watched_folders().unwrap();
 
     let second = scan_batch_until(&mut scan_rx, "the newly-added folder's candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album2_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if bae_core::import::CandidateKey::folder(&c.path) == album2_key)
     })
     .await;
     assert!(
@@ -101,8 +101,8 @@ async fn watcher_reconciles_added_and_removed_candidates() {
 }
 
 struct ScanBatch {
-    added: Vec<String>,
-    removed: Vec<String>,
+    added: Vec<bae_core::import::CandidateKey>,
+    removed: Vec<bae_core::import::CandidateKey>,
 }
 
 /// Read scan events until one matching `done` arrives, collecting the
@@ -118,7 +118,7 @@ async fn scan_batch_until(
         let finished = done(&event);
         match &event {
             ScanEvent::FolderCandidate { candidate: c, .. } => {
-                added.push(c.path.to_string_lossy().into_owned())
+                added.push(bae_core::import::CandidateKey::folder(&c.path))
             }
             ScanEvent::CandidateRemoved { candidate_key } => removed.push(candidate_key.clone()),
             _ => {}
@@ -204,17 +204,17 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     let album = collection.join("Artist - Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &["01 Track.flac"]);
-    let album_key = album.to_string_lossy().into_owned();
-    let collection_key = collection.to_string_lossy().into_owned();
+    let album_key = bae_core::import::CandidateKey::folder(&album);
+    let collection_key = collection.clone();
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection_key.clone())
+        .add_watched_folder(collection_key.to_path_buf())
         .await
         .unwrap();
 
     let batch = scan_batch_until(&mut scan_rx, "the album candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if bae_core::import::CandidateKey::folder(&c.path) == album_key)
     })
     .await;
     assert!(
@@ -241,8 +241,8 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     // can find it.
     let other = f.temp_path().join("Other");
     fs::create_dir_all(&other).unwrap();
-    let other_key = other.to_string_lossy().into_owned();
-    f.handle.add_watched_folder(other_key.clone()).await.unwrap();
+    let other_key = other.clone();
+    f.handle.add_watched_folder(other_key.to_path_buf()).await.unwrap();
     wait_for_scan_event(&mut scan_rx, "the still-watched folder's first read", |event| {
         matches!(
             event,
@@ -254,7 +254,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     .await;
 
     f.handle
-        .remove_watched_folder(collection_key.clone())
+        .remove_watched_folder(collection_key.to_path_buf())
         .await
         .unwrap();
 
@@ -294,9 +294,9 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     let sentinel = other.join("Artist - Third Album");
     fs::create_dir_all(&sentinel).unwrap();
     generate_album_files(&sentinel, &["01 Track.flac"]);
-    let sentinel_key = sentinel.to_string_lossy().into_owned();
+    let sentinel_key = bae_core::import::CandidateKey::folder(&sentinel);
     let after_unwatch = scan_batch_until(&mut scan_rx, "the still-watched folder's candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(sentinel_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if bae_core::import::CandidateKey::folder(&c.path) == sentinel_key)
     })
     .await;
     assert_eq!(
@@ -312,10 +312,10 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
     let f = ImportFixture::new().await;
 
     let missing = f.temp_path().join("does-not-exist");
-    let missing_key = missing.to_string_lossy().into_owned();
+    let missing_key = missing.clone();
 
     f.handle
-        .add_watched_folder(missing_key.clone())
+        .add_watched_folder(missing_key.to_path_buf())
         .await
         .unwrap();
     wait_for_folder_scans(
@@ -345,16 +345,16 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     let album = root.join("Artist - Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &["01 Track.flac"]);
-    let root_key = root.to_string_lossy().into_owned();
+    let root_key = root.to_path_buf();
 
-    let invalid_folder = format!("{root_key}/a/./b");
+    let invalid_folder = format!("{}/a/./b", root_key.display());
     f.db.execute_local_sql_for_test(&format!(
         "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-         VALUES ('grouping:corrupt', '{}', 1, 'user')",
-        invalid_folder.replace('\'', "''"),
+         VALUES (CAST('grouping:corrupt' AS BLOB), X'{}', 1, 'user')",
+        hex::encode(invalid_folder.as_bytes()),
     )).await.unwrap();
     let mut events = f.handle.every_scan_event_for_test();
-    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     let error = support::next_matching(&mut events, HANG_GUARD, |event| {
         match event {
             ScanEvent::FolderScanStatusChanged { status } if status.watched_folder_path == root_key => {
@@ -382,9 +382,9 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     let album = root.join("Artist - Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &["01 Track.flac"]);
-    let root_key = root.to_string_lossy().into_owned();
+    let root_key = root.to_path_buf();
 
-    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     wait_for_folder_scans(&f, "the first scan of the added root", |scans| {
         scans.statuses.iter().any(|status| {
             status.watched_folder_path == root_key
@@ -394,7 +394,7 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     .await;
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
-    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     wait_for_scan_event(
         &mut scan_rx,
         "the re-added root is scanned again",
@@ -424,9 +424,9 @@ async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
     let album = root.join("Artist - Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &["01 Track.flac"]);
-    let root_key = root.to_string_lossy().into_owned();
+    let root_key = root.to_path_buf();
 
-    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     wait_for_folder_scans(&f, "the first scan of the added root", |scans| {
         scans.statuses.iter().any(|status| {
             status.watched_folder_path == root_key
@@ -437,7 +437,7 @@ async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(album.to_string_lossy().into_owned())
+        .add_watched_folder(album.to_path_buf())
         .await
         .unwrap();
     wait_for_scan_event(
@@ -469,17 +469,12 @@ fn album_dir(f: &ImportFixture, relative: &str) -> std::path::PathBuf {
     dir
 }
 
-fn path_string(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
-}
-
 /// Wait until every one of `roots` has been read to the end.
 async fn wait_for_reads(f: &ImportFixture, what: &str, roots: &[&Path]) {
-    let roots: Vec<String> = roots.iter().map(|root| path_string(root)).collect();
     wait_for_folder_scans(f, what, |scans| {
         roots.iter().all(|root| {
             scans.statuses.iter().any(|status| {
-                &status.watched_folder_path == root
+                status.watched_folder_path == *root
                     && matches!(status.status, bae_core::import::FolderScanStatus::Complete)
             })
         })
@@ -490,13 +485,13 @@ async fn wait_for_reads(f: &ImportFixture, what: &str, roots: &[&Path]) {
 /// The stored candidate at `path`, as a scanned folder.
 async fn scanned_folder(
     f: &ImportFixture,
-    path: &str,
+    key: &bae_core::import::CandidateKey,
 ) -> (bae_core::import::FolderCandidate, bool) {
-    match f.handle.get_candidate(path).await.unwrap() {
+    match f.handle.get_candidate(key).await.unwrap() {
         Some(bae_core::import::ImportCandidateSnapshot::Folder {
             candidate, skipped, ..
         }) => (candidate, skipped),
-        other => panic!("{path} is a scanned folder: {other:?}"),
+        other => panic!("{key} is a scanned folder: {other:?}"),
     }
 }
 
@@ -513,39 +508,39 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
     let picked = album_dir(&f, "Music/Artist/Album 2");
     album_dir(&f, "Music/Other Artist/Box/Album A");
     album_dir(&f, "Music/Other Artist/Box/Album B");
-    f.handle.add_watched_folder(path_string(&artist)).await.unwrap();
-    f.handle.add_watched_folder(path_string(&other)).await.unwrap();
+    f.handle.add_watched_folder(artist.clone()).await.unwrap();
+    f.handle.add_watched_folder(other.clone()).await.unwrap();
     wait_for_reads(&f, "the inner folders are read", &[&artist, &other]).await;
 
     f.handle
-        .set_candidate_skipped(path_string(&skipped), true)
+        .set_candidate_skipped(bae_core::import::CandidateKey::folder(&skipped), true)
         .await
         .unwrap();
     f.handle
-        .select_candidate_file_tags(path_string(&picked))
+        .select_candidate_file_tags(bae_core::import::CandidateKey::folder(&picked))
         .await
         .unwrap();
     let combined = f
         .handle
         .combine_folder(bae_core::import::FolderReleaseDecisionKey {
-            watched_folder_path: path_string(&other),
-            relative_folder_path: "Box".to_string(),
+            watched_folder_path: other.clone(),
+            relative_folder: bae_core::import::RelativeFolder::of(Path::new("Box")).unwrap(),
         })
         .await
         .unwrap();
-    let picked_hash = scanned_folder(&f, &path_string(&picked))
+    let picked_hash = scanned_folder(&f, &bae_core::import::CandidateKey::folder(&picked))
         .await
         .0
         .files
         .content_hash();
 
     f.handle
-        .add_watched_folder(path_string(&music))
+        .add_watched_folder(music.clone())
         .await
         .expect("the folder takes over the ones inside it");
     wait_for_reads(&f, "the folder that took over is read", &[&music]).await;
 
-    let watched: Vec<String> = f
+    let watched: Vec<std::path::PathBuf> = f
         .handle
         .watched_folders()
         .await
@@ -553,14 +548,14 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
         .into_iter()
         .map(|folder| folder.path)
         .collect();
-    assert_eq!(watched, vec![path_string(&music)]);
-    let (album, is_skipped) = scanned_folder(&f, &path_string(&skipped)).await;
-    assert_eq!(album.watched_folder_path, path_string(&music));
+    assert_eq!(watched, vec![music.clone()]);
+    let (album, is_skipped) = scanned_folder(&f, &bae_core::import::CandidateKey::folder(&skipped)).await;
+    assert_eq!(album.watched_folder_path, music);
     assert!(is_skipped, "the skip stays");
     let (release, _) = scanned_folder(&f, &combined).await;
     assert_eq!(
         release.watched_folder_path,
-        path_string(&music),
+        music,
         "the box is still read as one release, under the same key"
     );
     let state = f
@@ -584,27 +579,27 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     let f = ImportFixture::new().await;
     let artist = f.temp_path().join("Music/Artist");
     let album = album_dir(&f, "Music/Artist/Album");
-    f.handle.add_watched_folder(path_string(&artist)).await.unwrap();
+    f.handle.add_watched_folder(artist.clone()).await.unwrap();
     wait_for_reads(&f, "the folder is read", &[&artist]).await;
     f.handle
-        .set_candidate_skipped(path_string(&album), true)
+        .set_candidate_skipped(bae_core::import::CandidateKey::folder(&album), true)
         .await
         .unwrap();
 
     f.handle
-        .remove_watched_folder(path_string(&artist))
+        .remove_watched_folder(artist.clone())
         .await
         .unwrap();
     assert!(f
         .library_manager
-        .load_skipped_import_candidates(&path_string(&artist))
+        .load_skipped_import_candidates(&artist)
         .await
         .unwrap()
         .is_empty());
-    f.handle.add_watched_folder(path_string(&artist)).await.unwrap();
+    f.handle.add_watched_folder(artist.clone()).await.unwrap();
     wait_for_reads(&f, "the folder is read again", &[&artist]).await;
 
-    let (_, is_skipped) = scanned_folder(&f, &path_string(&album)).await;
+    let (_, is_skipped) = scanned_folder(&f, &bae_core::import::CandidateKey::folder(&album)).await;
     assert!(!is_skipped, "the skip went with the folder");
 }
 
@@ -619,17 +614,17 @@ async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates
     let album = root.join("Artist - Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &["01 Track.flac"]);
-    let root_key = root.to_string_lossy().into_owned();
-    let album_key = album.to_string_lossy().into_owned();
-    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    let root_key = root.to_path_buf();
+    let album_key = bae_core::import::CandidateKey::folder(&album);
+    f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     f.handle
-        .refresh_watched_folder(root_key.clone())
+        .refresh_watched_folder(root_key.to_path_buf())
         .await
         .unwrap();
 
     fs::remove_dir_all(&root).unwrap();
     f.handle
-        .refresh_watched_folder(root_key.clone())
+        .refresh_watched_folder(root_key.to_path_buf())
         .await
         .expect("the refresh ran; what it found is the folder's status");
     let scans = wait_for_folder_scans(&f, "the failed refresh leaves its status", |scans| {
@@ -670,15 +665,15 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     let album = collection.join("Artist - Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &["01 Track.flac"]);
-    let album_key = album.to_string_lossy().into_owned();
+    let album_key = bae_core::import::CandidateKey::folder(&album);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
     let batch = scan_batch_until(&mut scan_rx, "the album candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if bae_core::import::CandidateKey::folder(&c.path) == album_key)
     })
     .await;
     assert!(batch.added.contains(&album_key));
@@ -689,7 +684,7 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
         } else {
             bae_core::import::TriageTab::Pending
         };
-        let key = album.to_string_lossy().into_owned();
+        let key = bae_core::import::CandidateKey::folder(album);
         wait_for_tab(f, "the candidate's skip flag", tab, |projection| {
             candidate_rows(projection)
                 .iter()
@@ -770,11 +765,11 @@ async fn a_done_row_follows_its_folder_and_its_release() {
             track_number: 1,
         }],
     );
-    let album_key = album.to_string_lossy().into_owned();
-    let collection_key = collection.to_string_lossy().into_owned();
+    let album_key = bae_core::import::CandidateKey::folder(&album);
+    let collection_key = collection.clone();
 
     f.handle
-        .add_watched_folder(collection_key.clone())
+        .add_watched_folder(collection_key.to_path_buf())
         .await
         .unwrap();
     wait_for_candidates(&f, "the scanned candidate", |projection| {
@@ -821,9 +816,9 @@ async fn a_done_row_follows_its_folder_and_its_release() {
 
     let renamed = collection.join("Renamed Album");
     fs::rename(&album, &renamed).unwrap();
-    let renamed_key = renamed.to_string_lossy().into_owned();
+    let renamed_key = bae_core::import::CandidateKey::folder(&renamed);
     f.handle
-        .refresh_watched_folder(collection_key.clone())
+        .refresh_watched_folder(collection_key.to_path_buf())
         .await
         .unwrap();
     let moved = done_row(&f, "the renamed folder", &renamed_key).await;
@@ -842,14 +837,14 @@ async fn a_done_row_follows_its_folder_and_its_release() {
 }
 
 /// The Done row for `key`, once one read of the Done tab holds it.
-async fn done_row(f: &ImportFixture, what: &str, key: &str) -> bae_core::import::TriageRow {
+async fn done_row(f: &ImportFixture, what: &str, key: &bae_core::import::CandidateKey) -> bae_core::import::TriageRow {
     let done = wait_for_tab(f, what, bae_core::import::TriageTab::Done, |list| {
-        candidate_rows(list).iter().any(|row| row.candidate_key == key)
+        candidate_rows(list).iter().any(|row| row.candidate_key == key.clone())
     })
     .await;
     candidate_rows(&done)
         .into_iter()
-        .find(|row| row.candidate_key == key)
+        .find(|row| row.candidate_key == key.clone())
         .cloned()
         .unwrap()
 }
@@ -879,7 +874,7 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
                 track_number: 1,
             }],
         );
-        keys.push(album.to_string_lossy().into_owned());
+        keys.push(bae_core::import::CandidateKey::folder(&album));
     }
     // A copy that keeps the modification times hashes like the original.
     let original = collection.join("Artist - First");
@@ -899,10 +894,10 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
             )
             .unwrap();
     }
-    let copy_key = copy.to_string_lossy().into_owned();
+    let copy_key = bae_core::import::CandidateKey::folder(&copy);
 
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection.to_path_buf())
         .await
         .unwrap();
     wait_for_candidates(&f, "every scanned candidate", |projection| {
@@ -923,10 +918,10 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
         candidate_rows(list).len() == 4
     })
     .await;
-    let imported_release = |key: &str| {
+    let imported_release = |key: &bae_core::import::CandidateKey| {
         let row = candidate_rows(&done)
             .into_iter()
-            .find(|row| row.candidate_key == key)
+            .find(|row| row.candidate_key == *key)
             .unwrap_or_else(|| panic!("{key} is Done"));
         match &row.import_status {
             Some(bae_core::import::TriageImportStatus::Complete { release }) => {

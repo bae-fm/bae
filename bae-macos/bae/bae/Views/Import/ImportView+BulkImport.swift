@@ -23,7 +23,7 @@ extension ImportView {
         }
         // One run over the selection at a time; the pane shows it running.
         guard !importSelection.isRunning else { return }
-        let taskKey = "selection-action"
+        let taskKey = ImportTaskKey.selectionAction
         candidateMutationTasks[taskKey]?.cancel()
         candidateMutationTasks[taskKey] = Task {
             defer { candidateMutationTasks[taskKey] = nil }
@@ -58,14 +58,14 @@ extension ImportView {
 
     /// Show every selected folder in Finder.
     private func revealSelectionSources() {
-        let taskKey = "reveal-selection"
+        let taskKey = ImportTaskKey.revealSelection
         candidateMutationTasks[taskKey]?.cancel()
         candidateMutationTasks[taskKey] = Task {
             defer { candidateMutationTasks[taskKey] = nil }
             do {
                 let paths = try await importSelection.sourceFolders()
                 try Task.checkCancellation()
-                for path in paths { SystemActions.revealInFinder(path: path) }
+                for path in paths { SystemActions.revealInFinder(folder: path) }
             }
             catch is CancellationError {}
             catch { uiStore.showError(error) }

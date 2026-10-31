@@ -42,7 +42,7 @@ impl Fixture {
     /// only takes progress from the import holding the key.
     pub(super) async fn claim(&self, key: &str) {
         self.services
-            .claim_candidate_for_import_for_test(key, IMPORT_ID)
+            .claim_candidate_for_import_for_test(&candidate_key_named(key).unwrap(), IMPORT_ID)
             .await;
     }
 
@@ -53,10 +53,10 @@ impl Fixture {
     }
 
     /// The watched root under the temporary directory, created if missing.
-    pub(super) fn root(&self) -> String {
+    pub(super) fn root(&self) -> PathBuf {
         let root = self.tmp.path().join("watched");
         std::fs::create_dir_all(&root).expect("the watched root exists");
-        root.to_string_lossy().into_owned()
+        root
     }
 }
 
@@ -101,22 +101,22 @@ async fn watched_folder_tool_reads_current_store_rows() {
         let folders = response["watched_folders"].as_array().unwrap();
         assert_eq!(folders.len(), usize::from(watched));
         if watched {
-            assert_eq!(folders[0]["path"], root);
+            assert_eq!(folders[0]["path"], coven::path_text(&root));
             assert_eq!(folders[0]["name"], "watched");
         }
     }
 }
 
-fn candidate(root: &str, name: &str) -> FolderCandidate {
+fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
     FolderCandidate {
-        path: PathBuf::from(format!("{root}/{name}")),
-        file_root: PathBuf::from(format!("{root}/{name}")),
+        path: root.join(name),
+        file_root: root.join(name),
         name: name.to_string(),
         files: CategorizedFiles {
             files: vec![CandidateFile {
                 file: {
                     let mut file = ScannedFile::new(
-                        PathBuf::from(format!("{root}/{name}/01.flac")),
+                        root.join(name).join("01.flac"),
                         "01.flac".to_string(),
                         1_000,
                         0,
@@ -138,27 +138,36 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
             }],
             parts: Vec::new(),
         },
-        watched_folder_path: root.to_string(),
+        watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: name.to_string(),
+        relative_folder: bae_core::import::RelativeFolder::of(std::path::Path::new(name)).unwrap(),
         grouping: None,
     }
 }
 
 /// Store a scan of the watched root holding only the candidate `name`, and
-/// return its key (the candidate's path).
+/// return the key automation names it by.
 pub(super) async fn scan(fixture: &Fixture, name: &str) -> String {
     let root = fixture.root();
     write_scan(fixture, &root, |items| {
         items.push(ScanItem::Valid(candidate(&root, name)))
     })
     .await;
-    format!("{root}/{name}")
+    key_of(&root, name)
+}
+
+/// The key automation names the candidate at `name` below `root` by.
+fn key_of(root: &std::path::Path, name: &str) -> String {
+    candidate_key_name(&CandidateKey::folder(&root.join(name)))
 }
 
 /// Watch `root` and store one complete scan of it.
-async fn write_scan(fixture: &Fixture, root: &str, build: impl FnOnce(&mut Vec<ScanItem>)) {
+async fn write_scan(
+    fixture: &Fixture,
+    root: &std::path::Path,
+    build: impl FnOnce(&mut Vec<ScanItem>),
+) {
     let manager = &fixture.manager;
     manager
         .add_watched_import_folder(root)
@@ -191,7 +200,7 @@ const IMPORT_ID: &str = "import-1";
 
 fn importing(key: &str, percent: u8) -> ImportEvent {
     ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
+        candidate_key: candidate_key_named(key).unwrap(),
         progress: ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: Some(percent),
@@ -207,13 +216,14 @@ fn importing(key: &str, percent: u8) -> ImportEvent {
 async fn runtime_only_entries_are_not_candidates() {
     let fixture = automation_over().await;
     let key = scan(&fixture, "A").await;
-    fixture.claim("reidentify:release-1").await;
-    fixture.record(importing("reidentify:release-1", 1));
+    let reidentify = candidate_key_name(&CandidateKey::reidentify("release-1"));
+    fixture.claim(&reidentify).await;
+    fixture.record(importing(&reidentify, 1));
 
     assert_eq!(keys(&fixture.list_candidates().await), vec![key.as_str()]);
     assert_eq!(
         fixture
-            .get_candidate("reidentify:release-1")
+            .get_candidate(&reidentify)
             .await
             .expect_err("a re-identify run is not an import candidate")
             .kind(),
@@ -233,7 +243,7 @@ async fn the_tables_are_the_answer() {
     })
     .await;
 
-    fixture.skip(&format!("{root}/A")).await;
+    fixture.skip(&key_of(&root, "A")).await;
     write_scan(&fixture, &root, |items| {
         items.push(ScanItem::Valid(candidate(&root, "A")))
     })
@@ -241,10 +251,10 @@ async fn the_tables_are_the_answer() {
 
     assert_eq!(
         keys(&fixture.list_candidates().await),
-        vec![format!("{root}/A").as_str()]
+        vec![key_of(&root, "A").as_str()]
     );
     let candidate = fixture
-        .get_candidate(&format!("{root}/A"))
+        .get_candidate(&key_of(&root, "A"))
         .await
         .expect("still scanned");
     assert!(
@@ -253,7 +263,7 @@ async fn the_tables_are_the_answer() {
     );
     assert_eq!(
         fixture
-            .get_candidate(&format!("{root}/B"))
+            .get_candidate(&key_of(&root, "B"))
             .await
             .expect_err("a candidate the scan dropped is gone")
             .kind(),
@@ -270,7 +280,11 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
     // The worker takes the import up, then reports how far it has got.
     fixture
         .services
-        .move_candidate_import_for_test(&key, IMPORT_ID, bae_core::import::ImportStanding::Running)
+        .move_candidate_import_for_test(
+            &candidate_key_named(&key).unwrap(),
+            IMPORT_ID,
+            bae_core::import::ImportStanding::Running,
+        )
         .await;
     fixture.record(importing(&key, 42));
 

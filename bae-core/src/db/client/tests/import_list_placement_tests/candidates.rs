@@ -33,8 +33,8 @@ async fn the_draft_shows_while_its_state_is_current() {
     );
     assert_eq!(
         lib.moved(&format!(
-            "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = '{}';",
-            lib.path("Album")
+            "UPDATE scan_candidate SET file_edit_revision = 1 WHERE path = {};",
+            lib.sql("Album")
         ))
         .await,
         moves([(
@@ -239,7 +239,7 @@ async fn an_imported_release_is_done_dated_by_its_release() {
     let lib = Library::new().await;
     lib.run(&format!(
         "{}{}{}
-         INSERT INTO skipped_import_candidates (candidate_path) VALUES ('{}');
+         INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});
          INSERT INTO albums (id, title, is_compilation, created_at)
          VALUES ('{ALBUM_A}', 'Album Title', 0, '2026-01-01T00:00:00Z');
          INSERT INTO releases (id, album_id, created_at, album_order)
@@ -247,7 +247,7 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         lib.scan("Album"),
         lib.discovered("Album", 100),
         lib.state("Album"),
-        lib.path("Album")
+        lib.sql("Album")
     ))
     .await;
     let imported_at = 1_767_225_600_000;
@@ -307,13 +307,13 @@ async fn what_is_running_decides_a_found_releases_state() {
         lib.verdict("Album", "not_found", None)
     ))
     .await;
-    let key = lib.path("Album");
-    let standing = |set: &str| format!("{set} WHERE candidate_key = '{key}';");
+    let key = lib.sql("Album");
+    let standing = |set: &str| format!("{set} WHERE candidate_key = {key};");
     let now = |state: &str| moves([(lib.release("Album"), Some(found("Album").state(state)))]);
     assert_eq!(
         lib.moved(&format!(
             "INSERT INTO import_candidate_standing (candidate_key, import, import_id)
-             VALUES ('{key}', 'queued', 'import-1');"
+             VALUES ({key}, 'queued', 'import-1');"
         ))
         .await,
         now("importing")
@@ -360,13 +360,13 @@ async fn what_is_running_decides_a_found_releases_state() {
     );
     // Off Found nothing running is a state.
     lib.run(&format!(
-        "INSERT INTO skipped_import_candidates (candidate_path) VALUES ('{key}');"
+        "INSERT INTO skipped_import_candidates (candidate_path) VALUES ({key});"
     ))
     .await;
     assert_eq!(
         lib.moved(&format!(
             "INSERT INTO import_candidate_standing (candidate_key, import, import_id)
-             VALUES ('{key}', 'queued', 'import-1');"
+             VALUES ({key}, 'queued', 'import-1');"
         ))
         .await,
         moves([])
@@ -481,10 +481,10 @@ async fn a_row_moved_to_other_files_moves_both_releases() {
 async fn a_draft_stored_written_shows_at_once() {
     let lib = Library::new().await;
     lib.run(&format!(
-        "{}INSERT INTO import_candidate_state (content_hash, folder_path) VALUES ('{}', '{}');",
+        "{}INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES ('{}', {});",
         lib.scan("Album"),
         hash("Album"),
-        lib.path("Album")
+        lib.sql("Album")
     ))
     .await;
     assert_eq!(

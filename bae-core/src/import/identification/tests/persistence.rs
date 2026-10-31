@@ -65,10 +65,10 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
             }],
             parts: Vec::new(),
         },
-        watched_folder_path: "/".to_string(),
+        watched_folder_path: std::path::PathBuf::from("/"),
         scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: path.trim_start_matches('/').to_string(),
+        relative_folder: crate::import::RelativeFolder::test(path.trim_start_matches('/')),
         grouping: None,
     }
 }
@@ -139,11 +139,11 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     let fixture = Fixture::new("verdict-refused-when-claimed").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let row = || NewImportCandidateVerdict {
         content_hash: fixture.content_hash(&dir),
         file_edit_revision: 0,
-        folder_path: key.clone(),
+        candidate_key: key.clone(),
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(),
         pick: None,
@@ -190,7 +190,7 @@ async fn restating_a_file_decision_changes_nothing() {
     fixture
         .store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1",)
         .await;
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let mut events = fixture.import.every_event();
 
     // The sheet already carves disc one and already binds its own container.

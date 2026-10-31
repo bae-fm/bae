@@ -79,7 +79,7 @@ class ImportStore {
     /// Rebuilt from each delivery, so a root that reads cleanly again — or
     /// stops being watched — leaves, and its next break is news.
     @ObservationIgnored
-    private var reportedScanFailures: [String: String] = [:]
+    private var reportedScanFailures: [Data: String] = [:]
 
     /// Called for each watched root whose scan has newly failed, with the
     /// folder's path and the untranslated fault. Set by whoever owns an error
@@ -93,7 +93,7 @@ class ImportStore {
     /// existed, is in the first delivery.
     @ObservationIgnored
     var onScanFailure:
-        ((_ watchedFolderPath: String, _ detail: String) -> Void)?
+        ((_ watchedFolderName: String, _ detail: String) -> Void)?
 
     /// Take a delivered summary, unless it is the one already held.
     func applySummary(_ next: BridgeImportQueueSummary) {
@@ -123,12 +123,12 @@ class ImportStore {
     }
 
     private func reportNewScanFailures() {
-        var current: [String: String] = [:]
+        var current: [Data: String] = [:]
         for status in folderScans.statuses {
             guard case .failed(let detail) = status.status else { continue }
             current[status.watchedFolderPath] = detail
             if reportedScanFailures[status.watchedFolderPath] != detail {
-                onScanFailure?(status.watchedFolderPath, detail)
+                onScanFailure?(status.watchedFolderName, detail)
             }
         }
         reportedScanFailures = current
@@ -137,11 +137,11 @@ class ImportStore {
     /// The selected rows' folders, read by key. A selection opens one
     /// subscription per key; the key leaves when its read says the folder is
     /// gone.
-    var selectedCandidates: OrderedDictionary<String, Candidate> = [:]
+    var selectedCandidates: OrderedDictionary<Data, Candidate> = [:]
     /// The selected folder that failed validation, as the pane looking into
     /// it reads it, by key; the key leaves when the selection moves off it or
     /// its read says the folder no longer fails.
-    var selectedInvalidCandidates: [String: BridgeInvalidCandidateDetail] = [:]
+    var selectedInvalidCandidates: [Data: BridgeInvalidCandidateDetail] = [:]
     /// Where a folder candidate's session writes go: core stores them with
     /// the candidate and the next detail carries them back. A re-identify
     /// session has no stored candidate, so its session stays in memory here.
@@ -152,7 +152,7 @@ class ImportStore {
     /// opened its search.
     /// Keyed by `reidentify:{releaseId}` so identify events route the same
     /// way folder events do. The sheet inserts on open and removes on dismiss.
-    var reIdentifyCandidates: OrderedDictionary<String, Candidate> = [:]
+    var reIdentifyCandidates: OrderedDictionary<Data, Candidate> = [:]
 
     /// The folders being watched for imports, in add order.
     var watchedFolders: [BridgeWatchedFolder] {
@@ -201,7 +201,7 @@ class ImportStore {
     /// Look up a candidate by key across both source dicts. Used when the
     /// caller doesn't know (or doesn't care about) the candidate's source —
     /// the shared search/confirmation flow.
-    func candidate(forKey key: String) -> Candidate? {
+    func candidate(forKey key: Data) -> Candidate? {
         selectedCandidates[key] ?? reIdentifyCandidates[key]
     }
 
@@ -227,11 +227,11 @@ class ImportStore {
     /// be selected too; core holds the whole selection. Kept as the rows land
     /// rather than worked out on each read: the table reads it on every
     /// update.
-    private(set) var selectedLoadedKeys: Set<String> = []
+    private(set) var selectedLoadedKeys: Set<Data> = []
 
     private func updateSelectedLoadedKeys() {
         let next = Set(
-            items.values.compactMap { item -> String? in
+            items.values.compactMap { item -> Data? in
                 switch item {
                 case .candidate(_, let row, _):
                     row.selected ? row.candidateKey : nil
@@ -251,13 +251,13 @@ class ImportStore {
     /// from a click until core's list reflects the write it made, when they
     /// are the click's. The rows core delivers in that time were read before
     /// the write, and showing them would put back the rows the click replaced.
-    var shownSelectedKeys: Set<String> {
+    var shownSelectedKeys: Set<Data> {
         pendingClick?.keys ?? selectedLoadedKeys
     }
 
     /// Show `keys` as the selection until the write this click makes is
     /// reflected, and return the click to report that write against.
-    func beginSelectionClick(_ keys: Set<String>) -> UInt64 {
+    func beginSelectionClick(_ keys: Set<Data>) -> UInt64 {
         clickCount += 1
         pendingClick = PendingSelectionClick(
             id: clickCount,
@@ -338,12 +338,12 @@ class ImportStore {
     /// pressing. An entry ends when its own task ends, and is cancelled only
     /// when the candidate stops being a scanned folder or its audio changes
     /// underneath it.
-    private var picks: [String: Pick] = [:]
+    private var picks: [Data: Pick] = [:]
 
     /// One selected candidate, as its own read describes it, keeping whatever
     /// work the session has done on it.
     func applyCandidateDetail(
-        key: String,
+        key: Data,
         detail: BridgeImportCandidateDetail
     ) {
         var incoming = Candidate(detail: detail)
@@ -360,7 +360,7 @@ class ImportStore {
 
     /// The read one candidate's pick has in flight.
     func metadataApplicationSession(
-        forKey key: String
+        forKey key: Data
     ) -> CandidateMetadataApplicationSession? {
         guard case .applying(let session) = picks[key]?.state
         else { return nil }
@@ -368,13 +368,13 @@ class ImportStore {
     }
 
     /// Whether a metadata source is being read into this candidate's draft.
-    func isApplyingMetadata(forKey key: String) -> Bool {
+    func isApplyingMetadata(forKey key: Data) -> Bool {
         metadataApplicationSession(forKey: key) != nil
     }
 
     /// The release this candidate's pick is waiting on — the row that carries
     /// the spinner while it is read.
-    func loadingReleaseId(forKey key: String) -> String? {
+    func loadingReleaseId(forKey key: Data) -> String? {
         guard
             case .pick(let link) =
                 metadataApplicationSession(forKey: key)?.application
@@ -384,7 +384,7 @@ class ImportStore {
 
     /// How this candidate's last pick failed, on the pressing it was about.
     func releaseSelectionFailure(
-        forKey key: String
+        forKey key: Data
     ) -> ReleaseSelectionFailure? {
         guard case .failed(let failure) = picks[key]?.state
         else { return nil }
@@ -395,7 +395,7 @@ class ImportStore {
     /// pick drops the older session, and dropping that session cancels the
     /// read it had running.
     func beginMetadataApplication(
-        key: String,
+        key: Data,
         application: MetadataApplication
     ) -> CandidateMetadataApplicationSession? {
         guard let candidate = candidate(forKey: key) else { return nil }
@@ -413,7 +413,7 @@ class ImportStore {
     /// the draft. Written through core rather than in memory, so the candidate
     /// is where the pick left it whether or not anyone was watching.
     func metadataApplicationSucceeded(
-        key: String,
+        key: Data,
         session: CandidateMetadataApplicationSession
     ) {
         guard metadataApplicationSession(forKey: key) === session else {
@@ -428,7 +428,7 @@ class ImportStore {
     /// catalog release that failed to load says so on its own row; any other
     /// failure is the pane's to state, or was told already, and the pick ends.
     func metadataApplicationFailed(
-        key: String,
+        key: Data,
         session: CandidateMetadataApplicationSession,
         error: DisplayError?
     ) {
@@ -452,14 +452,14 @@ class ImportStore {
     /// Drop this candidate's pick, cancelling the read it has in flight: the
     /// folder it claimed is gone, or is no longer the folder it was made
     /// about.
-    func cancelMetadataApplication(forKey key: String) {
+    func cancelMetadataApplication(forKey key: Data) {
         picks.removeValue(forKey: key)
     }
 }
 
 extension ImportStore {
     private func mutateSelectedCandidate(
-        key: String,
+        key: Data,
         _ mutate: (inout Candidate) -> Void
     ) {
         if var candidate = selectedCandidates[key] {
@@ -469,7 +469,7 @@ extension ImportStore {
     }
 
     private func mutateReIdentifyCandidate(
-        key: String,
+        key: Data,
         _ mutate: (inout Candidate) -> Void
     ) {
         if var candidate = reIdentifyCandidates[key] {
@@ -479,10 +479,10 @@ extension ImportStore {
     }
 
     func mutateCandidate(
-        forKey key: String,
+        forKey key: Data,
         _ mutate: (inout Candidate) -> Void
     ) {
-        if key.hasPrefix("reidentify:") {
+        if reIdentifyCandidates[key] != nil {
             mutateReIdentifyCandidate(key: key, mutate)
         }
         else {
@@ -494,8 +494,8 @@ extension ImportStore {
     /// the rule it moves every pane by, and the next detail carries it back.
     /// A re-identify session has no pane to move: the release editor opens
     /// and leaves its search page itself.
-    func movePane(_ paneMove: BridgePaneMove, forKey key: String) {
-        guard !key.hasPrefix("reidentify:") else { return }
+    func movePane(_ paneMove: BridgePaneMove, forKey key: Data) {
+        guard reIdentifyCandidates[key] == nil else { return }
         let writer = sessionWriter
         Task {
             do {
@@ -503,7 +503,7 @@ extension ImportStore {
             }
             catch {
                 importStoreLogger.error(
-                    "pane move for \(key) failed: \(String(describing: error))"
+                    "pane move for \(bridgeCandidateKeyText(candidateKey: key)) failed: \(String(describing: error))"
                 )
                 await writer.reportFailure(error)
             }
@@ -511,7 +511,7 @@ extension ImportStore {
     }
 
     /// The typed-search form as the person left it.
-    func commitSearchForm(_ form: CandidateSearchState, forKey key: String) {
+    func commitSearchForm(_ form: CandidateSearchState, forKey key: Data) {
         updateSession(
             forKey: key,
             memory: { $0.search = form },
@@ -533,12 +533,12 @@ extension ImportStore {
     /// that fails is told to the person rather than left as a pane state the
     /// store never saw.
     private func updateSession(
-        forKey key: String,
+        forKey key: Data,
         memory: @escaping (inout CandidateSessionState) -> Void,
         stored write:
             @escaping @Sendable (CandidateSessionWriter) async throws -> Void
     ) {
-        if key.hasPrefix("reidentify:") {
+        if reIdentifyCandidates[key] != nil {
             mutateReIdentifyCandidate(key: key) { memory(&$0.session) }
             return
         }
@@ -549,7 +549,7 @@ extension ImportStore {
             }
             catch {
                 importStoreLogger.error(
-                    "session write for \(key) failed: \(String(describing: error))"
+                    "session write for \(bridgeCandidateKeyText(candidateKey: key)) failed: \(String(describing: error))"
                 )
                 await writer.reportFailure(error)
             }
@@ -563,7 +563,7 @@ extension ImportStore {
     @MainActor
     func refreshLibraryStatusSubscriptions(
         importer: Importer,
-        key: String,
+        key: Data,
         desired: Set<BridgeLibraryCheck>
     ) {
         guard let candidate = candidate(forKey: key) else { return }
@@ -604,7 +604,7 @@ extension ImportStore {
         }
         catch {
             importStoreLogger.error(
-                "library status checks for \(key) were not requested: \(String(describing: error))"
+                "library status checks for \(bridgeCandidateKeyText(candidateKey: key)) were not requested: \(String(describing: error))"
             )
         }
     }
@@ -614,6 +614,6 @@ extension ImportStore {
 /// the selection revision its write made once core has said.
 private struct PendingSelectionClick {
     let id: UInt64
-    let keys: Set<String>
+    let keys: Set<Data>
     var revision: UInt64?
 }

@@ -1,4 +1,6 @@
 use super::*;
+use crate::import::CandidateKey;
+use std::path::{Path, PathBuf};
 
 impl Database {
     /// Stop watching `roots` in one write, watching `parent` in their place
@@ -14,9 +16,9 @@ impl Database {
     /// inside the write.
     pub async fn remove_watched_import_folders(
         &self,
-        roots: Vec<String>,
-        parent: Option<String>,
-    ) -> Result<Option<Vec<String>>, DbError> {
+        roots: Vec<PathBuf>,
+        parent: Option<PathBuf>,
+    ) -> Result<Option<Vec<CandidateKey>>, DbError> {
         // Spelled the way the add keyed them.
         let roots = roots
             .iter()
@@ -31,37 +33,44 @@ impl Database {
             ));
         }
         let watched = self.watched_import_roots().await?;
-        if roots.iter().all(|root| !watched.contains(root))
+        if roots.iter().all(|root| !is_among(&watched, root))
             && parent
                 .as_ref()
-                .is_none_or(|parent| watched.contains(parent))
+                .is_none_or(|parent| is_among(&watched, parent))
         {
             return Ok(None);
         }
         self.call(move |sql| {
-            let watched: Vec<String> = sql.query(
+            let watched: Vec<PathBuf> = sql.query(
                 "SELECT path FROM watched_import_folders ORDER BY position",
                 [],
-                |row| row.get(0),
+                |row| path_column::get(row, 0),
             )?;
-            if let Some(root) = roots.iter().find(|root| !watched.contains(root)) {
-                return Err(DbError::Message(format!("{root} is not a watched folder")));
+            if let Some(root) = roots.iter().find(|root| !is_among(&watched, root)) {
+                return Err(DbError::Message(format!(
+                    "{} is not a watched folder",
+                    coven::path_text(root)
+                )));
             }
             if let Some(parent) = &parent {
                 watch_in_place_of(sql, &watched, parent, &roots)?;
             }
-            let mut removed: Vec<String> = Vec::new();
+            let mut removed: Vec<CandidateKey> = Vec::new();
             for root in &roots {
+                let root_bytes = coven::path_bytes(root);
                 removed.extend(sql.query(
                     "SELECT path FROM scan_candidate WHERE watched_folder_path = ?",
-                    [root],
-                    |row| row.get::<_, String>(0),
+                    [&root_bytes],
+                    |row| row.get::<_, CandidateKey>(0),
                 )?);
-                let deleted =
-                    sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [root])?;
+                let deleted = sql.execute(
+                    "DELETE FROM watched_import_folders WHERE path = ?",
+                    [&root_bytes],
+                )?;
                 if deleted != 1 {
                     return Err(DbError::Message(format!(
-                        "removing watched folder {root} changed {deleted} rows; expected one"
+                        "removing watched folder {} changed {deleted} rows; expected one",
+                        coven::path_text(root)
                     )));
                 }
             }
@@ -81,34 +90,55 @@ impl Database {
     }
 }
 
+/// Whether `path` is among the stored `roots`, spelled as they are keyed.
+fn is_among(roots: &[PathBuf], path: &Path) -> bool {
+    roots
+        .iter()
+        .any(|root| root.as_os_str() == path.as_os_str())
+}
+
 /// Watch `parent` in place of `roots`, which must be exactly the watched
 /// folders inside it, with nothing watching it or a folder holding it.
 fn watch_in_place_of(
     sql: &SqlContext<'_, '_>,
-    watched: &[String],
-    parent: &str,
-    roots: &[String],
+    watched: &[PathBuf],
+    parent: &Path,
+    roots: &[PathBuf],
 ) -> Result<(), DbError> {
-    let parent_path = std::path::Path::new(parent);
-    if let Some(holder) = watched
-        .iter()
-        .find(|root| parent_path.starts_with(std::path::Path::new(root.as_str())))
-    {
+    if let Some(holder) = watched.iter().find(|root| parent.starts_with(root)) {
         return Err(DbError::Message(format!(
-            "watching {parent} in place of the folders inside it: {holder} already watches it"
+            "watching {} in place of the folders inside it: {} already watches it",
+            coven::path_text(parent),
+            coven::path_text(holder)
         )));
     }
-    let mut inside: Vec<&String> = watched
+    fn spelled(mut folders: Vec<&PathBuf>) -> Vec<&PathBuf> {
+        folders.sort_by_key(|folder| coven::path_bytes(folder));
+        folders
+    }
+    let inside = spelled(
+        watched
+            .iter()
+            .filter(|root| root.starts_with(parent))
+            .collect(),
+    );
+    let expected = spelled(roots.iter().collect());
+    if !inside
         .iter()
-        .filter(|root| std::path::Path::new(root.as_str()).starts_with(parent_path))
-        .collect();
-    inside.sort();
-    let mut expected: Vec<&String> = roots.iter().collect();
-    expected.sort();
-    if inside != expected {
+        .map(|folder| folder.as_os_str())
+        .eq(expected.iter().map(|folder| folder.as_os_str()))
+    {
+        let shown = |folders: &[&PathBuf]| {
+            folders
+                .iter()
+                .map(|folder| coven::path_text(folder))
+                .collect::<Vec<_>>()
+        };
         return Err(DbError::Message(format!(
-            "watching {parent} in place of the folders inside it: they are {inside:?}, \
-             not {expected:?}"
+            "watching {} in place of the folders inside it: they are {:?}, not {:?}",
+            coven::path_text(parent),
+            shown(&inside),
+            shown(&expected)
         )));
     }
     let position: i64 = sql.query_row(
@@ -118,7 +148,7 @@ fn watch_in_place_of(
     )?;
     sql.execute(
         "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
-        params![parent, position],
+        params![coven::path_bytes(parent), position],
     )?;
     Ok(())
 }
@@ -129,11 +159,12 @@ fn watch_in_place_of(
 /// by the range of folders at or below each root, on its folder index.
 fn forget_folders_under(
     sql: &SqlContext<'_, '_>,
-    roots: &[String],
-) -> Result<Vec<String>, DbError> {
+    roots: &[PathBuf],
+) -> Result<Vec<CandidateKey>, DbError> {
     let mut removed = Vec::new();
     for root in roots {
-        let (below_first, below_past) = crate::import::folder_path::paths_below(root);
+        let (below_first, below_past) = crate::import::relative_folder::paths_below(root);
+        let root = coven::path_bytes(root);
         let under = |column: &str| {
             format!("({column} = :root OR ({column} >= :below_first AND {column} < :below_past))")
         };
@@ -153,7 +184,7 @@ fn forget_folders_under(
         }
         // A grouping goes with its anchor folder or any folder it takes a
         // release from.
-        let groupings: Vec<(String, bool)> = sql.query(
+        let groupings: Vec<(CandidateKey, bool)> = sql.query(
             &format!(
                 "SELECT grouping.key, \
                         EXISTS (SELECT 1 FROM scan_candidate WHERE path = grouping.key) \

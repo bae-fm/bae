@@ -171,7 +171,7 @@ impl FakeProvider {
 /// The id of the next run of `key` whose reported state `accept` answers.
 async fn await_run_state(
     events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
-    key: &str,
+    key: &crate::import::CandidateKey,
     accept: impl Fn(IdentifyRunId, &IdentifyState) -> bool,
 ) -> IdentifyRunId {
     tokio::time::timeout(Duration::from_secs(20), async {
@@ -186,7 +186,7 @@ async fn await_run_state(
                     run,
                     state,
                     ..
-                } if candidate_key == key && accept(run, &state) => return run,
+                } if candidate_key == key.clone() && accept(run, &state) => return run,
                 _ => continue,
             }
         }
@@ -461,7 +461,7 @@ impl Fixture {
     /// point every release it found has been handed to automatic
     /// identification — and the list holds `expected` candidates.
     async fn scan(&self, expected: usize) {
-        let root = self.root.to_string_lossy().into_owned();
+        let root = self.root.to_path_buf();
         self.import.add_watched_folder(root).await.unwrap();
         self.rescan(&self.import, expected).await;
     }
@@ -478,7 +478,7 @@ impl Fixture {
     /// read is over.
     async fn read_root(&self, import: &ImportServiceHandle, root: &Path) {
         import
-            .refresh_watched_folder(root.to_string_lossy().into_owned())
+            .refresh_watched_folder(root.to_path_buf())
             .await
             .unwrap();
     }
@@ -501,12 +501,12 @@ impl Fixture {
     /// Ask to identify `dir`, as a person does.
     fn start_explicit_lookup(&self, dir: &Path) {
         self.identification()
-            .rerun_identify(dir.to_string_lossy().into_owned());
+            .rerun_identify(crate::import::CandidateKey::folder(dir));
     }
 
     /// Ask to identify `dir` and wait until its run is registered.
     async fn start_explicit_lookup_and_await_run(&self, dir: &Path) {
-        let key = dir.to_string_lossy().into_owned();
+        let key = crate::import::CandidateKey::folder(dir);
         self.start_explicit_lookup(dir);
         tokio::time::timeout(Duration::from_secs(10), async {
             while !self.import.is_identifying(&key) {
@@ -569,7 +569,7 @@ impl Fixture {
     /// Where the queue has `key`, as the runtime publishes it.
     async fn identification_status(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
     ) -> Option<crate::import::IdentificationStatus> {
         self.import
             .standing_facts_for_test(key)
@@ -580,7 +580,9 @@ impl Fixture {
     /// The first of `dirs` the queue holds waiting.
     async fn first_queued(&self, dirs: &[PathBuf]) -> Option<PathBuf> {
         for dir in dirs {
-            if self.identification_status(&dir.to_string_lossy()).await
+            if self
+                .identification_status(&crate::import::CandidateKey::folder(dir))
+                .await
                 == Some(crate::import::IdentificationStatus::Queued)
             {
                 return Some(dir.clone());
@@ -621,7 +623,7 @@ impl Fixture {
     /// One candidate's pane as it reads back from the tables.
     async fn pane(&self, dir: &Path) -> Option<crate::import::ImportCandidateDetail> {
         self.manager
-            .load_import_candidate(&dir.to_string_lossy())
+            .load_import_candidate(&crate::import::CandidateKey::folder(dir))
             .await
             .unwrap()
             .map(crate::import::ImportCandidateDetailProjection::resolve)
@@ -749,7 +751,7 @@ impl Fixture {
     ) {
         let candidate = self
             .import
-            .answerable_candidate(&dir.to_string_lossy())
+            .answerable_candidate(&crate::import::CandidateKey::folder(dir))
             .await
             .expect("the candidate state is readable")
             .expect("the scanned candidate is answerable");
@@ -813,12 +815,12 @@ impl Fixture {
         let wrote = self
             .import
             .save_candidate_verdict_if_current(
-                &dir.to_string_lossy(),
+                &crate::import::CandidateKey::folder(dir),
                 IdentifyRunId::for_test(1),
                 &NewImportCandidateVerdict {
                     content_hash: self.content_hash(dir),
                     file_edit_revision: 0,
-                    folder_path: dir.to_string_lossy().into_owned(),
+                    candidate_key: crate::import::CandidateKey::folder(dir),
                     verdict,
                     // A disc ID naming its log, for the evidence chip.
                     signals: Signals {

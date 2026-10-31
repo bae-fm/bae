@@ -61,13 +61,11 @@ impl DecisionFixture {
             write_disc(&root.join("Artist").join("Album").join(disc), tracks);
         }
         write_disc(&root.join("Other").join("Record"), 1);
-        let root = PathBuf::from(
-            crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy())
-                .unwrap(),
-        );
+        let root = crate::import::watched_folder::canonical_absolute_root(&root)
+                .unwrap();
         test.service
             .library_manager
-            .add_watched_import_folder(&root.to_string_lossy())
+            .add_watched_import_folder(&root)
             .await
             .unwrap();
         let listing = Arc::new(RecordingListing::default());
@@ -91,19 +89,19 @@ impl DecisionFixture {
 
     fn album_key(&self) -> crate::import::FolderReleaseDecisionKey {
         crate::import::FolderReleaseDecisionKey {
-            watched_folder_path: self.root.to_string_lossy().into_owned(),
-            relative_folder_path: "Artist/Album".to_string(),
+            watched_folder_path: self.root.clone(),
+            relative_folder: crate::import::RelativeFolder::test("Artist/Album"),
         }
     }
 
     async fn stored_paths(&self) -> Vec<String> {
         let mut paths: Vec<String> = self
             .manager()
-            .load_folder_scan_items(&self.root.to_string_lossy())
+            .load_folder_scan_items(&self.root)
             .await
             .unwrap()
             .iter()
-            .filter_map(|item| item.display_path().map(str::to_string))
+            .filter_map(|item| item.relative_folder().map(crate::import::RelativeFolder::text))
             .collect();
         paths.sort();
         paths
@@ -213,7 +211,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     let other = fixture.root.join("Other").join("Record");
     let sibling_before = fixture
         .manager()
-        .load_folder_scan_item(&other.to_string_lossy())
+        .load_folder_scan_item(&crate::import::CandidateKey::folder(&other))
         .await
         .unwrap();
 
@@ -236,10 +234,10 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     assert_eq!(
         fixture
             .manager()
-            .load_folder_release_decisions(&fixture.root.to_string_lossy())
+            .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
-            .get("Artist/Album")
+            .get(&crate::import::RelativeFolder::test("Artist/Album"))
             .map(|reading| (reading.decision, reading.author)),
         Some((
             crate::import::FolderReleaseDecision::KeepAsSeparateReleases,
@@ -255,7 +253,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     assert_eq!(
         fixture
             .manager()
-            .load_folder_scan_item(&other.to_string_lossy())
+            .load_folder_scan_item(&crate::import::CandidateKey::folder(&other))
             .await
             .unwrap(),
         sibling_before,
@@ -305,10 +303,10 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     let before = fixture.stored_paths().await;
     let decisions_before = fixture
         .manager()
-        .load_folder_release_decisions(&fixture.root.to_string_lossy())
+        .load_folder_release_decisions(&fixture.root)
         .await
         .unwrap()
-        .get("Artist/Album")
+        .get(&crate::import::RelativeFolder::test("Artist/Album"))
         .cloned();
 
     // Hold the commit lock, so the reading waits at it with its walk done,
@@ -340,7 +338,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     .expect("the reading started walking");
     fixture
         .manager()
-        .begin_folder_scan(&fixture.root.to_string_lossy())
+        .begin_folder_scan(&fixture.root)
         .await
         .unwrap();
     drop(held);
@@ -354,10 +352,10 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     assert_eq!(
         fixture
             .manager()
-            .load_folder_release_decisions(&fixture.root.to_string_lossy())
+            .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
-            .get("Artist/Album")
+            .get(&crate::import::RelativeFolder::test("Artist/Album"))
             .cloned(),
         decisions_before
     );
@@ -372,7 +370,7 @@ fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
     write_disc(&root.join("Artist").join("Album"), 1);
     std::fs::write(root.join("notes.txt"), b"notes").unwrap();
     let folders = |names: &[&str]| {
-        RootChange::Folders(names.iter().map(|name| name.to_string()).collect())
+        RootChange::Folders(names.iter().map(std::ffi::OsString::from).collect())
     };
     let change = |paths: &[PathBuf], holds: bool| {
         let paths: Vec<&Path> = paths.iter().map(PathBuf::as_path).collect();
@@ -424,7 +422,7 @@ async fn the_network_check_names_the_folders_that_moved() {
     let root = &fixture.root;
     let recorded = fixture
         .manager()
-        .load_folder_scan_directories(&root.to_string_lossy())
+        .load_folder_scan_directories(root)
         .await
         .unwrap();
     assert_eq!(network_changes(root, &recorded), Some(Vec::new()));
@@ -437,8 +435,9 @@ async fn the_network_check_names_the_folders_that_moved() {
     assert_eq!(
         root_change(root, &changes, false),
         RootChange::Folders(
-            ["Artist".to_string(), "New".to_string()]
+            ["Artist", "New"]
                 .into_iter()
+                .map(std::ffi::OsString::from)
                 .collect()
         )
     );
@@ -454,13 +453,13 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     let album = root.join("Artist").join("Album");
     let album_before = fixture
         .manager()
-        .load_folder_scan_item(&album.to_string_lossy())
+        .load_folder_scan_item(&crate::import::CandidateKey::folder(&album))
         .await
         .unwrap();
 
     write_disc(&root.join("Other").join("Record"), 2);
     write_disc(&root.join("New").join("Record"), 1);
-    let folders = ["New".to_string(), "Other".to_string()].into_iter().collect();
+    let folders = ["New", "Other"].into_iter().map(std::ffi::OsString::from).collect();
     ImportService::read_changed_folders(
         root,
         &folders,
@@ -479,7 +478,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     );
     let other = fixture
         .manager()
-        .load_folder_scan_item(&root.join("Other").join("Record").to_string_lossy())
+        .load_folder_scan_item(&crate::import::CandidateKey::folder(&root.join("Other").join("Record")))
         .await
         .unwrap();
     let Some(ScanItem::Valid(other)) = other else {
@@ -496,7 +495,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     assert_eq!(
         fixture
             .manager()
-            .load_folder_scan_item(&album.to_string_lossy())
+            .load_folder_scan_item(&crate::import::CandidateKey::folder(&album))
             .await
             .unwrap(),
         album_before,
@@ -506,7 +505,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     std::fs::remove_dir_all(root.join("New")).unwrap();
     ImportService::read_changed_folders(
         root,
-        &["New".to_string()].into_iter().collect(),
+        &[std::ffi::OsString::from("New")].into_iter().collect(),
         &fixture.scan.services,
         &fixture.scan.cancellation,
     )

@@ -1,5 +1,6 @@
 #if DEBUG
     import BaeKit
+    import Foundation
     import SwiftUI
 
     /// The named UI scenes captured for the cross-platform screenshot gallery.
@@ -92,7 +93,7 @@
             scene: ImportPreviewFixture,
             tab: BridgeTriageTab,
             collapsePendingGroup: Bool,
-            refreshingWatchedFolderPath: String?
+            refreshingWatchedFolderPath: Data?
         ) -> some View {
             let uiStore = UiStore()
             uiStore.setImportCandidateTab(tab)

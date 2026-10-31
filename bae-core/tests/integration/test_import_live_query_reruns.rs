@@ -16,7 +16,8 @@ use bae_core::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
 };
 use bae_core::import::{
-    FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
+    CandidateKey, FolderCandidate, ImportListOrder, ImportListView, RelativeFolder,
+    ReleaseFileScope, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryPageWindow};
 use std::path::Path;
@@ -30,8 +31,8 @@ const WRITES: u64 = 1_000;
 const SETTLE: Duration = Duration::from_secs(60);
 
 /// The folder `name` below `root`, holding one FLAC of `size` bytes.
-fn folder(root: &str, name: &str, size: u64) -> ScanItem {
-    let path = Path::new(root).join(name);
+fn folder(root: &Path, name: &str, size: u64) -> ScanItem {
+    let path = root.join(name);
     let mut file = ScannedFile::new(path.join("01.flac"), "01.flac".to_string(), size, 1);
     file.source_audio = Some(ScannedAudio {
         content_type: bae_util::content_type::ContentType::Flac,
@@ -55,10 +56,10 @@ fn folder(root: &str, name: &str, size: u64) -> ScanItem {
             }],
             parts: Vec::new(),
         },
-        watched_folder_path: root.to_string(),
+        watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: name.to_string(),
+        relative_folder: RelativeFolder::of(Path::new(name)).unwrap(),
         grouping: None,
     })
 }
@@ -111,7 +112,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     manager.set_identify_automatically(false).await.unwrap();
     let services = AppServices::for_test(manager).await.unwrap();
 
-    let root = temp.path().join("watched").to_string_lossy().into_owned();
+    let root = temp.path().join("watched");
     db.add_watched_import_folder(&root).await.unwrap();
     let generation = db
         .begin_folder_scan(&root, bae_core::import::VolumeKind::Local)
@@ -121,7 +122,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let ScanItem::Valid(seed_candidate) = &seed else {
         unreachable!("the folder is valid")
     };
-    let key = seed_candidate.path.to_string_lossy().into_owned();
+    let key = CandidateKey::folder(&seed_candidate.path);
     db.save_folder_scan_item(&root, generation, &seed)
         .await
         .unwrap();
@@ -213,7 +214,9 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     // show closes them: once the pane shows it, it has run for everything
     // the scan wrote before it. Its runs, less the one that showed that
     // write, are the scan's.
-    db.set_import_candidate_skipped(&key, true).await.unwrap();
+    db.set_import_candidate_skipped(&seed_candidate.path, true)
+        .await
+        .unwrap();
     settle(&mut pane_seen, "the pane", |skipped| *skipped == Some(true)).await;
     let pane_counted = Counted::of(&pane_runs).since(pane_before);
     let pane_counted = Counted {

@@ -25,10 +25,10 @@ async fn a_cleared_binding_survives_a_relaunch() {
         12,
         "the unique same-stem audio is bound automatically"
     );
-    let root = folder.path().to_string_lossy().into_owned();
-    db.add_watched_import_folder(&root).await.unwrap();
+    let root = folder.path().to_path_buf();
+    db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
     let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
         .await
         .unwrap();
     let candidate = crate::import::folder_scanner::FolderCandidate {
@@ -36,20 +36,20 @@ async fn a_cleared_binding_survives_a_relaunch() {
         file_root: folder.path().to_path_buf(),
         name: "Release".to_string(),
         files: scanned.clone(),
-        watched_folder_path: root.clone(),
+        watched_folder_path: std::path::PathBuf::from(&root),
         scope: crate::import::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        display_path: String::new(),
+        relative_folder: crate::import::RelativeFolder::root(),
         grouping: None,
     };
     db.save_folder_scan_item(
-        &root,
+        std::path::Path::new(&root),
         generation,
         &crate::import::folder_scanner::ScanItem::Valid(candidate),
     )
     .await
     .unwrap();
-    db.finish_folder_scan(&root, generation, None)
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
         .await
         .unwrap();
 
@@ -73,9 +73,9 @@ async fn a_cleared_binding_survives_a_relaunch() {
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
-            &folder.path().to_string_lossy(),
+            &crate::import::CandidateKey::folder(folder.path()),
             &candidate_edits,
-            &[(folder.path().to_string_lossy().into_owned(), settled)],
+            &[(crate::import::CandidateKey::folder(folder.path()), settled)],
             draft,
         )
         .await
@@ -153,12 +153,12 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     .unwrap();
     assert_eq!(proposed.track_count(), 12);
     let hash = proposed.content_hash();
-    store_candidate_state(&db, &proposed, &folder.path().to_string_lossy()).await;
+    store_candidate_state(&db, &proposed, folder.path()).await;
 
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&new_candidate_row(
             &hash,
-            &folder.path().to_string_lossy(),
+            folder.path(),
             &sample_verdict(),
         ))
         .await
@@ -187,7 +187,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
             ..Default::default()
         })
         .unwrap();
-    let folder_path = folder.path().to_string_lossy().into_owned();
+    let folder_path = crate::import::CandidateKey::folder(folder.path());
     let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
     draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
     crate::import::CandidatePreparations::new(db.clone())
@@ -250,7 +250,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
     let other = host_root("/other/library");
     let key = FolderReleaseDecisionKey {
         watched_folder_path: host_root("/mounted/library"),
-        relative_folder_path: "Collection/Release Wrapper".to_string(),
+        relative_folder: crate::import::RelativeFolder::test("Collection/Release Wrapper"),
     };
     db.add_watched_import_folder(&key.watched_folder_path)
         .await
@@ -267,7 +267,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         &db,
         &FolderReleaseDecisionKey {
             watched_folder_path: other,
-            relative_folder_path: key.relative_folder_path.clone(),
+            relative_folder: key.relative_folder.clone(),
         },
         FolderReleaseDecision::KeepAsSeparateReleases,
     )
@@ -280,7 +280,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         .unwrap();
     assert_eq!(
         decisions
-            .get(&key.relative_folder_path)
+            .get(&key.relative_folder)
             .map(|reading| (reading.decision, reading.author)),
         Some((
             FolderReleaseDecision::CombineAsOneRelease,
@@ -317,30 +317,30 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
         &StoredCandidateEdits::none(),
     )
     .unwrap();
-    let root = folder.path().to_string_lossy().into_owned();
-    db.add_watched_import_folder(&root).await.unwrap();
+    let root = folder.path().to_path_buf();
+    db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
     let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
         .await
         .unwrap();
     db.save_folder_scan_item(
-        &root,
+        std::path::Path::new(&root),
         generation,
         &ScanItem::Valid(FolderCandidate {
             path: folder.path().to_path_buf(),
             file_root: folder.path().to_path_buf(),
             name: "Release".to_string(),
             files: scanned,
-            watched_folder_path: root.clone(),
+            watched_folder_path: std::path::PathBuf::from(&root),
             scope: crate::import::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            display_path: String::new(),
+            relative_folder: crate::import::RelativeFolder::root(),
             grouping: None,
         }),
     )
     .await
     .unwrap();
-    db.finish_folder_scan(&root, generation, None)
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
         .await
         .unwrap();
 
@@ -395,30 +395,30 @@ async fn a_timing_refusal_survives_a_relaunch() {
         }],
     };
     assert_eq!(scanned.track_sheets().next().unwrap().binding, &refused);
-    let root = folder.path().to_string_lossy().into_owned();
-    db.add_watched_import_folder(&root).await.unwrap();
+    let root = folder.path().to_path_buf();
+    db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
     let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
         .await
         .unwrap();
     db.save_folder_scan_item(
-        &root,
+        std::path::Path::new(&root),
         generation,
         &ScanItem::Valid(FolderCandidate {
             path: folder.path().to_path_buf(),
             file_root: folder.path().to_path_buf(),
             name: "Release".to_string(),
             files: scanned,
-            watched_folder_path: root.clone(),
+            watched_folder_path: std::path::PathBuf::from(&root),
             scope: crate::import::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            display_path: String::new(),
+            relative_folder: crate::import::RelativeFolder::root(),
             grouping: None,
         }),
     )
     .await
     .unwrap();
-    db.finish_folder_scan(&root, generation, None)
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
         .await
         .unwrap();
 

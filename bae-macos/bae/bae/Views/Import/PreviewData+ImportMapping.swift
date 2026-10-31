@@ -362,7 +362,8 @@
         ) -> BridgeFolderCandidate {
             BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/\(name)",
+                candidateKey: Data("/Music/Downloads/\(name)".utf8),
+                folderPath: Data("/Music/Downloads/\(name)".utf8),
                 sourceFolderName: name,
                 watchedFolderPath: importWatchedFolder.path,
                 files: files,
@@ -621,7 +622,8 @@
         static let moreTracksMappingCandidate: Candidate = paneCandidate(
             folder: BridgeFolderCandidate(
                 parts: [],
-                folderPath: "/Music/Downloads/Partial Album",
+                candidateKey: Data("/Music/Downloads/Partial Album".utf8),
+                folderPath: Data("/Music/Downloads/Partial Album".utf8),
                 sourceFolderName: "Partial Album",
                 watchedFolderPath: importWatchedFolder.path,
                 files: moreTracksCandidateFiles,

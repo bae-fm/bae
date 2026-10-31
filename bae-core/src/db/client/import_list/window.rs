@@ -26,8 +26,12 @@ use crate::import::list::{ImportListItem, ListedRelease};
 use crate::import::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
-use crate::import::{CoverSelection, FolderReleaseDecisionKey, PressingLink, ReleaseLink};
+use crate::import::{
+    CandidateKey, CoverSelection, FolderReleaseDecisionKey, PressingLink, RelativeFolder,
+    ReleaseLink,
+};
 use crate::library::UploadProgress;
+use std::path::{Path, PathBuf};
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
 /// each release with the position of the header `header_positions` lists it
@@ -48,7 +52,8 @@ pub(super) fn materialise(
             let missing = || {
                 DbError::Message(format!(
                     "the list's {:?} at {} vanished while its window was read",
-                    key.item, key.key
+                    key.item,
+                    key.shown()
                 ))
             };
             if key.item == Item::Group {
@@ -81,7 +86,13 @@ fn header_rows(
         .iter()
         .enumerate()
         .filter(|(_, key)| key.item == Item::Group)
-        .map(|(position, key)| serde_json::json!([position, key.watched_folder_path, key.key]))
+        .map(|(position, key)| {
+            serde_json::json!([
+                position,
+                hex::encode(&key.watched_folder_path),
+                hex::encode(&key.key)
+            ])
+        })
         .collect();
     if heads.is_empty() {
         return Ok(Vec::new());
@@ -90,27 +101,28 @@ fn header_rows(
         true => {
             "(SELECT count(*) FROM import_list_matching AS m \
               WHERE m.list_id = :list AND m.watched_folder_path = h.root \
-                AND m.group_name = h.name)"
+                AND m.group_folder = h.folder)"
         }
         false => {
             "(SELECT COALESCE(SUM(g.count), 0) FROM import_list_view AS v \
               JOIN import_list_group_entry_count AS g \
                   ON v.pending_filter = 'all' OR g.pending_entry = v.pending_filter \
-              WHERE v.id = :list AND g.watched_folder_path = h.root AND g.group_name = h.name)"
+              WHERE v.id = :list AND g.watched_folder_path = h.root AND g.group_folder = h.folder)"
         }
     };
     let rows = sql.query(
         &format!(
-            "WITH heads (position, root, name) AS ( \
-                 SELECT value ->> 0, value ->> 1, value ->> 2 FROM json_each(:heads)) \
-             SELECT h.position, h.root, h.name, \
+            "WITH heads (position, root, folder) AS ( \
+                 SELECT value ->> 0, unhex(value ->> 1), unhex(value ->> 2) \
+                 FROM json_each(:heads)) \
+             SELECT h.position, h.root, h.folder, p.group_name, \
                     NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
                                 WHERE c.list_id = :list AND c.watched_folder_path = h.root \
-                                  AND c.group_name = h.name) AS expanded, \
+                                  AND c.group_folder = h.folder) AS expanded, \
                     {entry_count} AS entry_count, p.combinable \
              FROM heads AS h \
              JOIN import_list_placement AS p \
-                 ON p.watched_folder_path = h.root AND p.item = 'group' AND p.key = h.name \
+                 ON p.watched_folder_path = h.root AND p.item = 'group' AND p.key = h.folder \
              ORDER BY h.position"
         ),
         named_params! {
@@ -120,27 +132,36 @@ fn header_rows(
         |row| {
             Ok((
                 row.get::<_, usize>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, bool>(3)?,
-                row.get::<_, i64>(4)?,
-                row.get::<_, bool>(5)?,
+                path_column::get(row, 1)?,
+                row.get::<_, RelativeFolder>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, bool>(4)?,
+                row.get::<_, i64>(5)?,
+                row.get::<_, bool>(6)?,
             ))
         },
     )?;
     rows.into_iter()
         .map(
-            |(position, root, name, expanded, entry_count, combinable)| {
+            |(position, root, folder, name, expanded, entry_count, combinable): (
+                usize,
+                PathBuf,
+                RelativeFolder,
+                String,
+                bool,
+                i64,
+                bool,
+            )| {
                 let header = ImportListItem::GroupHeader {
                     group: TriageGroup {
                         key: FolderReleaseDecisionKey {
                             watched_folder_path: root.clone(),
-                            relative_folder_path: name.clone(),
+                            relative_folder: folder,
                         },
-                        name: name.clone(),
+                        name,
                         combinable,
                     },
-                    watched_folder_path: root.clone(),
+                    watched_folder_path: root,
                     expanded,
                     entry_count: to_u32(entry_count, "a group's entry count")?,
                 };
@@ -155,8 +176,8 @@ fn header_rows(
 struct ReleaseRows {
     /// Where in the window the release is.
     position: usize,
-    watched_folder_path: String,
-    key: String,
+    watched_folder_path: PathBuf,
+    key: CandidateKey,
     display_path: String,
     /// What the row shows: its draft's title and artists while it shows its
     /// draft, else nothing past its folder's name.
@@ -192,7 +213,7 @@ fn release_rows(
         .iter()
         .enumerate()
         .filter(|(_, key)| key.item != Item::Group)
-        .map(|(position, key)| serde_json::json!([position, key.key]))
+        .map(|(position, key)| serde_json::json!([position, hex::encode(&key.key)]))
         .collect();
     if keys.is_empty() {
         return Ok(Vec::new());
@@ -211,7 +232,8 @@ fn release_rows(
                     w.value ->> 0 AS window_position, {PROVENANCE_COLUMNS}, \
                     {RELEASE_LINK_COLUMNS}, {cover} \
              FROM json_each(:keys) AS w \
-             JOIN import_list_placement AS p ON p.key = w.value ->> 1 AND p.item <> 'group' \
+             JOIN import_list_placement AS p \
+                 ON p.key = unhex(w.value ->> 1) AND p.item <> 'group' \
              JOIN scan_candidate AS c \
                  ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
              LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
@@ -244,7 +266,7 @@ fn release_rows(
             let failed: bool = row.get("failed")?;
             let release = ReleaseRows {
                 position: row.get("window_position")?,
-                watched_folder_path: row.get(0)?,
+                watched_folder_path: path_column::get(row, 0)?,
                 key: row.get(1)?,
                 display_path: row.get(2)?,
                 summary,
@@ -447,8 +469,8 @@ impl LinkedRows {
 /// The image the row of the candidate at `candidate_path` draws for `cover`.
 fn row_cover_source(
     sql: &SqlReadContext<'_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     cover: &CoverSelection,
 ) -> Result<crate::import::CoverImageSource, DbError> {
     match cover {
@@ -469,8 +491,8 @@ fn row_cover_source(
 /// The version of one of the candidate's files that its scan read.
 fn scanned_file_version(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     file_id: &str,
 ) -> Result<FileVersion, DbError> {
     let (path, size, modified_at_ns) = sql
@@ -478,7 +500,11 @@ fn scanned_file_version(
             "SELECT absolute_path, size, modified_at_ns FROM scan_candidate_file \
              WHERE watched_folder_path = ? AND candidate_path = ? \
                AND relative_path = ?",
-            params![watched_folder_path, candidate_path, file_id],
+            params![
+                coven::path_bytes(watched_folder_path),
+                candidate_path,
+                file_id
+            ],
             |row| {
                 Ok((
                     row.get::<_, Vec<u8>>(0)?,
@@ -505,8 +531,8 @@ fn scanned_file_version(
 /// snapshot read them from.
 pub(super) fn stored_embedded_cover(
     sql: &SqlReadContext<'_>,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
     source_file_id: &str,
 ) -> Result<(FileVersion, Vec<u8>), DbError> {
     type CoverColumns = (
@@ -531,7 +557,7 @@ pub(super) fn stored_embedded_cover(
               AND files.relative_path = :source \
              WHERE snapshot.watched_folder_path = :root AND snapshot.candidate_path = :path",
             rusqlite::named_params! {
-                ":root": watched_folder_path,
+                ":root": coven::path_bytes(watched_folder_path),
                 ":path": candidate_path,
                 ":source": source_file_id,
             },

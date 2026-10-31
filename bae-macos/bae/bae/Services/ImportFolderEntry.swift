@@ -42,7 +42,7 @@ struct ImportFolderEntry {
         uiStore.navigateToImport()
         return Task {
             do {
-                try await importer.addWatchedFolder(url.path)
+                try await importer.addWatchedFolder(url.pathBytes)
             }
             catch {
                 report(error)

@@ -16,11 +16,12 @@ mod artist_identity_conflicts;
 fn pane_candidate() -> CategorizedFiles {
     track_files_candidate(&[("01 Track.flac", 111), ("CDImage.flac", 222)])
 }
-fn pane_candidate_path() -> String {
-    PathBuf::from(host_root("/music"))
-        .join("Album")
-        .to_string_lossy()
-        .into_owned()
+fn pane_candidate_path() -> PathBuf {
+    host_root("/music").join("Album")
+}
+
+fn pane_candidate_key() -> crate::import::CandidateKey {
+    crate::import::CandidateKey::folder(&pane_candidate_path())
 }
 
 fn settled_signals() -> Signals {
@@ -44,7 +45,7 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
 file_edit_revision: 0,
-            folder_path: pane_candidate_path(),
+            candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals,
             pick: None,
@@ -104,29 +105,26 @@ async fn stored_pane_candidate(db: &Database) -> (CategorizedFiles, String) {
 async fn store_candidate_state(
     db: &Database,
     files: &CategorizedFiles,
-    folder_path: &str,
+    folder_path: &Path,
 ) -> String {
-    let path = PathBuf::from(folder_path);
-    let root = path
+    let root = folder_path
         .parent()
-        .expect("the candidate fixture has a watched root")
-        .to_string_lossy()
-        .into_owned();
-    let name = path
+        .expect("the candidate fixture has a watched root");
+    let name = folder_path
         .file_name()
         .expect("the candidate fixture has a folder name")
-        .to_string_lossy()
-        .into_owned();
+        .to_str()
+        .expect("the candidate fixture's folder name is text");
     let item = crate::import::folder_scanner::ScanItem::Valid(super::candidate_with(
-        &root,
-        &name,
+        root,
+        name,
         files.clone(),
         crate::import::folder_scanner::ReleaseFileScope::Direct,
     ));
     let hash = files.content_hash();
-    db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    db.save_folder_scan_item(&root, generation, &item)
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(root, generation, &item)
         .await
         .unwrap()
         .expect("the current scan accepts the candidate");
@@ -385,7 +383,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             .store_verdict(&NewImportCandidateVerdict {
                 content_hash: hash.to_string(),
 file_edit_revision: 0,
-                folder_path: pane_candidate_path(),
+                candidate_key: pane_candidate_key(),
                 verdict: sample_verdict(),
                 signals: scanning,
                 pick: None,
@@ -473,7 +471,7 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     .await
     .unwrap();
 
-    let key = pane_candidate_path();
+    let key = pane_candidate_key();
     db.claim_candidate_import(&key, "import-1", None).await.unwrap();
     db.move_candidate_import(&key, "import-1", Some(crate::import::ImportStanding::Running))
         .await
@@ -502,7 +500,7 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
 async fn the_pane_s_import_status_says_where_the_import_stands() {
     let (db, _tmp) = empty_db().await;
     stored_pane_candidate(&db).await;
-    let key = pane_candidate_path();
+    let key = pane_candidate_key();
 
     db.claim_candidate_import(&key, "import-1", None).await.unwrap();
     for standing in [
@@ -628,7 +626,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &as_read(&hash, 0),
             &cover,
             Some(&image),
@@ -659,7 +657,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &as_read(&hash, 0),
             &cover,
             None,
@@ -697,7 +695,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &as_read(&hash, 0),
             &current_cover,
             Some(&current_image),
@@ -716,7 +714,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
             &host_root("/music"),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &as_read(&hash, 0),
             &stale_cover,
             Some(&stale_image),
@@ -787,7 +785,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
         .apply_source(
             &host_root("/music"),
             &as_read(&hash, 0),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &crate::import::CandidateMetadataDraft {
                 draft: draft.clone(),
                 provenance: Some(release_pick("release-with-role")),
@@ -821,7 +819,7 @@ async fn a_stated_length_past_sqlites_range_fails_the_save() {
         .apply_source(
             &host_root("/music"),
             &as_read(&hash, 0),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &crate::import::CandidateMetadataDraft {
                 draft,
                 provenance: Some(release_pick("release-1")),
@@ -869,7 +867,7 @@ async fn an_applied_releases_cover_options_are_stored_with_the_draft() {
         .apply_source(
             &host_root("/music"),
             &as_read(&hash, 0),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Release Title", "Artist Name"),
                 provenance: Some(release_pick("release-1")),
@@ -889,7 +887,7 @@ async fn an_applied_releases_cover_options_are_stored_with_the_draft() {
         .apply_source(
             &host_root("/music"),
             &as_read(&hash, revision),
-            &pane_candidate_path(),
+            &pane_candidate_key(),
             &crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Typed Title", "Artist Name"),
                 provenance: None,

@@ -20,7 +20,7 @@ import os
 public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     private enum Backing {
         case unfed
-        case preview([String: Value])
+        case preview([Data: Value])
         case fed(KeyedValueStream)
     }
 
@@ -34,12 +34,12 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     fileprivate let activity = KeyActivity()
     private let read: @Sendable (BridgeFastValue) -> Value?
     private let backing: OSAllocatedUnfairLock<Backing>
-    private let holds = OSAllocatedUnfairLock<[String: Hold]>(
+    private let holds = OSAllocatedUnfairLock<[Data: Hold]>(
         initialState: [:]
     )
 
     private init(
-        holding values: [String: Value],
+        holding values: [Data: Value],
         written: Bool = false,
         read: @escaping @Sendable (BridgeFastValue) -> Value?
     ) {
@@ -51,13 +51,25 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     }
 
     /// One key of the stream, for the native view that draws it.
-    public func source(for key: String) -> LatestSource<Value> {
+    public func source(for key: Data) -> LatestSource<Value> {
         LatestSource(stream: self, key: key)
+    }
+
+    /// The key a file's, release's or track's id names, as its UTF-8 bytes.
+    public func source(for key: String) -> LatestSource<Value> {
+        source(for: Data(key.utf8))
+    }
+
+    /// Values a preview holds under text ids, under each id's UTF-8 bytes.
+    fileprivate static func keyed(_ values: [String: Value]) -> [Data: Value] {
+        Dictionary(
+            uniqueKeysWithValues: values.map { (Data($0.key.utf8), $0.value) }
+        )
     }
 
     /// The key's latest value: one the app holds in front of it while it
     /// stands, else the key's own.
-    fileprivate func latest(for key: String) -> Value? {
+    fileprivate func latest(for key: Data) -> Value? {
         let own = own(for: key)
         return holds.withLock { holds in
             guard let hold = holds[key] else { return own }
@@ -71,14 +83,14 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     /// values does not leave it `standing`; a key holding none drops it.
     fileprivate func hold(
         _ value: Value,
-        for key: String,
+        for key: Data,
         while standing: @escaping @Sendable (Value) -> Bool
     ) {
         holds.withLock { $0[key] = Hold(value: value, stands: standing) }
     }
 
     /// What the key's feed, or the preview, holds for it.
-    fileprivate func own(for key: String) -> Value? {
+    fileprivate func own(for key: Data) -> Value? {
         switch backing.withLockUnchecked({ $0 }) {
         case .unfed:
             return nil
@@ -127,10 +139,15 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         /// Set `key`'s value; a stream that holds one value holds it under
         /// `""`.
         public func set(_ value: Value, for key: String = "") {
+            set(value, for: Data(key.utf8))
+        }
+
+        public func set(_ value: Value, for key: Data) {
             stream.write(key) { $0[key] = value }
         }
 
         public func remove(_ key: String = "") {
+            let key = Data(key.utf8)
             stream.write(key) { $0.removeValue(forKey: key) }
         }
     }
@@ -144,8 +161,8 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         }
 
         fileprivate func write(
-            _ key: String,
-            _ change: (inout [String: Value]) -> Void
+            _ key: Data,
+            _ change: (inout [Data: Value]) -> Void
         ) {
             let started = backing.withLockUnchecked { backing in
                 guard case .preview(var values) = backing else {
@@ -182,7 +199,7 @@ public final class LatestFeed: Sendable {
 }
 
 /// The key a stream that holds one value holds it under.
-private let onlyKey = ""
+private let onlyKey = Data()
 
 extension LatestStream where Value == BridgeReleaseUploadTransfer {
     /// Each release's upload transfer, by release id; a preview's holds
@@ -190,7 +207,7 @@ extension LatestStream where Value == BridgeReleaseUploadTransfer {
     public static func releaseUploads(holding values: [String: Value] = [:])
         -> LatestStream
     {
-        LatestStream(holding: values) {
+        LatestStream(holding: keyed(values)) {
             if case .releaseUpload(let transfer) = $0 {
                 transfer
             }
@@ -249,7 +266,7 @@ extension LatestStream where Value == Double {
     public static func fileShares(holding values: [String: Value] = [:])
         -> LatestStream
     {
-        LatestStream(holding: values) {
+        LatestStream(holding: keyed(values)) {
             if case .fileShare(let fraction) = $0 {
                 fraction
             }
@@ -276,7 +293,7 @@ extension LatestStream where Value == BridgeDownloadTransferProgress {
     public static func downloads(holding values: [String: Value] = [:])
         -> LatestStream
     {
-        LatestStream(holding: values) {
+        LatestStream(holding: keyed(values)) {
             if case .download(let progress) = $0 {
                 progress
             }
@@ -298,7 +315,7 @@ extension LatestStream where Value == UInt8 {
     public static func exportPercents(holding values: [String: Value] = [:])
         -> LatestStream
     {
-        LatestStream(holding: values) {
+        LatestStream(holding: keyed(values)) {
             if case .exportPercent(let percent) = $0 {
                 percent
             }
@@ -319,7 +336,7 @@ extension LatestStream where Value == UInt8 {
 extension LatestStream where Value == UInt32 {
     /// How far through its step each running import is, by candidate key;
     /// a preview's holds `values` and nothing feeds it.
-    public static func importPercents(holding values: [String: Value] = [:])
+    public static func importPercents(holding values: [Data: Value] = [:])
         -> LatestStream
     {
         LatestStream(holding: values) {
@@ -378,7 +395,7 @@ extension LatestStream where Value == BridgeTrackPosition {
     public static func trackPositions(holding values: [String: Value] = [:])
         -> LatestStream
     {
-        LatestStream(holding: values) {
+        LatestStream(holding: keyed(values)) {
             if case .trackPosition(let position) = $0 {
                 position
             }
@@ -397,7 +414,7 @@ extension LatestStream where Value == BridgeTrackPosition {
     /// made there, until a position of a later applied seek arrives, for
     /// every view drawing that track. Nothing while the key holds no
     /// position of a known length.
-    fileprivate func holdSeek(_ key: String, at progress: Double) {
+    fileprivate func holdSeek(_ key: Data, at progress: Double) {
         guard let current = own(for: key),
             let durationMs = current.durationMs
         else {
@@ -453,7 +470,7 @@ extension LatestStream where Value == BridgePreviewPosition {
 /// draws it. Only `FrameFollowing` reads its value.
 public struct LatestSource<Value: Sendable & Equatable>: Sendable {
     fileprivate let stream: LatestStream<Value>
-    fileprivate let key: String
+    fileprivate let key: Data
 
     fileprivate var latest: Value? { stream.latest(for: key) }
 
@@ -467,19 +484,19 @@ public struct LatestSource<Value: Sendable & Equatable>: Sendable {
 /// watching each on the main thread. A value moving tells nothing.
 private final class KeyActivity: KeyActivityCallback, Sendable {
     struct Watch: Hashable, Sendable {
-        let key: String
+        let key: Data
         let id: Int
     }
 
     private struct Watchers {
-        var byKey: [String: [Int: @MainActor @Sendable () -> Void]] = [:]
+        var byKey: [Data: [Int: @MainActor @Sendable () -> Void]] = [:]
         var nextId = 0
     }
 
     private let watchers = OSAllocatedUnfairLock(initialState: Watchers())
 
     func watch(
-        _ key: String,
+        _ key: Data,
         _ changed: @escaping @MainActor @Sendable () -> Void
     ) -> Watch {
         watchers.withLock { watchers in
@@ -501,7 +518,7 @@ private final class KeyActivity: KeyActivityCallback, Sendable {
 
     /// Hop to the main thread once for the keys that started or stopped,
     /// for the views watching them.
-    func onKeysChanged(keys: [String]) {
+    func onKeysChanged(keys: [Data]) {
         let watching = watchers.withLock { watchers in
             keys.flatMap { (watchers.byKey[$0] ?? [:]).values }
         }

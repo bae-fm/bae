@@ -14,7 +14,7 @@ use tempfile::TempDir;
 /// A `/`-spelled watched root in the host's spelling, since a watched root must
 /// be absolute by the OS's own rule.
 fn root_path(posix: &str) -> PathBuf {
-    PathBuf::from(host_root(posix))
+    host_root(posix)
 }
 
 /// A worker for a test, with the candidate-preparations writer over the same
@@ -74,7 +74,7 @@ impl ImportService {
     /// Queue `import_id` of the candidate at `key` as asking for an import
     /// does — its claim on the candidate and its cancel — for a test that runs
     /// the worker's steps itself.
-    async fn queue_import_for_test(&self, key: &str, import_id: &str) {
+    async fn queue_import_for_test(&self, key: &crate::import::CandidateKey, import_id: &str) {
         self.runtime
             .claim_for_import(key, import_id, false)
             .await
@@ -87,8 +87,8 @@ async fn prepare_named_candidate(
     service: &ImportService,
     preparations: &crate::import::CandidatePreparations,
     content_hash: &str,
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &std::path::Path,
+    candidate_path: &crate::import::CandidateKey,
     album_title: &str,
 ) -> u64 {
     let preparation = service
@@ -130,7 +130,7 @@ async fn store_scanned_candidate(
     test: &TestService,
     folder: &Path,
     name: &str,
-) -> (String, super::ImportExpectation) {
+) -> (crate::import::CandidateKey, super::ImportExpectation) {
     let service = &test.service;
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
@@ -139,31 +139,31 @@ async fn store_scanned_candidate(
     )
     .unwrap();
     let content_hash = files.content_hash();
-    let candidate_key = folder.to_string_lossy().into_owned();
+    let candidate_key = crate::import::CandidateKey::folder(folder);
     service
         .library_manager
-        .add_watched_import_folder(&candidate_key)
+        .add_watched_import_folder(folder)
         .await
         .unwrap();
     let generation = service
         .library_manager
-        .begin_folder_scan(&candidate_key)
+        .begin_folder_scan(folder)
         .await
         .unwrap();
     service
         .library_manager
         .save_folder_scan_item(
-            &candidate_key,
+            folder,
             generation,
             &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
                 path: folder.to_path_buf(),
                 file_root: folder.to_path_buf(),
                 name: name.to_string(),
                 files,
-                watched_folder_path: candidate_key.clone(),
+                watched_folder_path: folder.to_path_buf(),
                 scope: crate::import::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
-                display_path: name.to_string(),
+                relative_folder: crate::import::RelativeFolder::test(name),
                 grouping: None,
             }),
         )
@@ -172,21 +172,21 @@ async fn store_scanned_candidate(
         .expect("the stored scan generation is current");
     service
         .library_manager
-        .finish_folder_scan(&candidate_key, generation, None)
+        .finish_folder_scan(folder, generation, None)
         .await
         .unwrap();
     let metadata_revision = prepare_named_candidate(
         service,
         &test.preparations,
         &content_hash,
+        folder,
         &candidate_key,
-        &folder.to_string_lossy(),
         name,
     )
     .await;
     let file_tag_snapshot = service
         .library_manager
-        .load_candidate_file_tag_snapshot(&candidate_key, &candidate_key)
+        .load_candidate_file_tag_snapshot(folder, &candidate_key)
         .await
         .unwrap()
         .expect("the candidate is stored")
@@ -218,7 +218,7 @@ struct FakeStartedScan {
     /// The folder decision this pass stores, with the caller it answers.
     reading: Option<FolderReadingRequest>,
     /// The folders this pass reads again because they changed on disk.
-    folders: Option<std::collections::BTreeSet<String>>,
+    folders: Option<std::collections::BTreeSet<std::ffi::OsString>>,
     cancellation: crate::import::folder_scanner::ScanCancellation,
     /// Ends the pass's task, then tells the coordinator the pass is over.
     completion: Option<(
@@ -319,7 +319,7 @@ impl FakeScanStarter {
     }
 
     /// The changed folders the pass at `index` reads again, if it is one.
-    fn folders(&self, index: usize) -> Option<Vec<String>> {
+    fn folders(&self, index: usize) -> Option<Vec<std::ffi::OsString>> {
         self.scans.lock().unwrap()[index]
             .folders
             .as_ref()
@@ -389,7 +389,7 @@ impl RootRemovalBackend for FakeRemovalBackend {
         &self,
         _roots: &[PathBuf],
         _parent: Option<&Path>,
-    ) -> Result<Vec<String>, String> {
+    ) -> Result<Vec<crate::import::CandidateKey>, String> {
         self.calls.lock().unwrap().push("remove");
         match self.remove_error.lock().unwrap().clone() {
             Some(error) => Err(error),
@@ -417,7 +417,7 @@ impl CoordinatorHarness {
     /// `roots` are `/`-spelled; each is registered in the host's spelling, as
     /// [`root_path`] gives it.
     async fn with_roots(roots: &[&str]) -> Self {
-        let roots: Vec<String> = roots.iter().map(|root| host_root(root)).collect();
+        let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
         let TestService {
             service,
             preparations,
@@ -426,7 +426,7 @@ impl CoordinatorHarness {
         for root in &roots {
             service
                 .library_manager
-                .add_watched_import_folder(root)
+                .add_watched_import_folder(std::path::Path::new(root))
                 .await
                 .unwrap();
         }
@@ -436,19 +436,19 @@ impl CoordinatorHarness {
             let root_path = PathBuf::from(root);
             let generation = service
                 .library_manager
-                .begin_folder_scan(root)
+                .begin_folder_scan(std::path::Path::new(root))
                 .await
                 .unwrap();
             service
                 .library_manager
                 .save_folder_scan_item(
-                    root,
+                    std::path::Path::new(root),
                     generation,
                     &ScanItem::Invalid(crate::import::InvalidCandidate {
                         path: root_path.join("Group/Release"),
                         name: "Release".to_string(),
-                        watched_folder_path: root.clone(),
-                        display_path: "Group/Release".to_string(),
+                        watched_folder_path: std::path::PathBuf::from(&root),
+                        relative_folder: crate::import::RelativeFolder::test("Group/Release"),
                         grouping: None,
                         files: Vec::new(),
                         tags: None,

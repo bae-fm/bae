@@ -47,11 +47,9 @@ where
             return Err(FolderScanError::NotADirectory { path: root });
         }
     }
-    let watched_folder_path = root.to_string_lossy().into_owned();
     let walk = Walk::new(
         ScanRoot {
             root: &root,
-            watched_folder_path: &watched_folder_path,
             stored: readings.stored,
             cancellation,
             reads,

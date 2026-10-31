@@ -31,9 +31,9 @@ import Foundation
                 Void
         private let foldAll: @Sendable (Bool) async throws -> Void
         private let locate:
-            @Sendable (String) async throws ->
+            @Sendable (Data) async throws ->
                 BridgeImportCandidateListLocation?
-        private let firstIdentifying: @Sendable () async throws -> String?
+        private let firstIdentifying: @Sendable () async throws -> Data?
 
         public init(
             source: any PageSource<BridgeImportListItem>,
@@ -45,10 +45,10 @@ import Foundation
                 async throws -> Void,
             setAllGroupsFolded: @escaping @Sendable (Bool) async throws -> Void,
             locateCandidate:
-                @escaping @Sendable (String) async throws
+                @escaping @Sendable (Data) async throws
                 -> BridgeImportCandidateListLocation?,
             firstIdentifyingCandidate:
-                @escaping @Sendable () async throws -> String?
+                @escaping @Sendable () async throws -> Data?
         ) {
             self.source = source
             applyView = setView
@@ -89,14 +89,14 @@ import Foundation
         /// Where the candidate sits once revealed at its current placement:
         /// its tab, with the filters cleared and its group opened. `nil` when
         /// the list lists no such candidate.
-        public func locateCandidate(_ candidateKey: String) async throws
+        public func locateCandidate(_ candidateKey: Data) async throws
             -> BridgeImportCandidateListLocation?
         {
             try await locate(candidateKey)
         }
 
         /// The first candidate still being identified, in the list's order.
-        public func firstIdentifyingCandidate() async throws -> String? {
+        public func firstIdentifyingCandidate() async throws -> Data? {
             try await firstIdentifying()
         }
     }

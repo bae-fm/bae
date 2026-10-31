@@ -20,6 +20,8 @@ use super::*;
 use crate::import::folder_scanner::{
     FolderReleaseDecision, FolderReleaseDecisionAuthor, FolderReleaseDecisionKey,
 };
+use crate::import::CandidateKey;
+use std::ffi::{OsStr, OsString};
 
 impl ImportService {
     /// Store `target` together with the candidates its folder reads as under
@@ -30,28 +32,31 @@ impl ImportService {
         target: &(FolderReleaseDecisionKey, FolderReleaseDecision),
         scan: &ScanServices,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<Vec<String>, crate::import::ImportError> {
-        let root_key = root.to_string_lossy().into_owned();
+    ) -> Result<Vec<CandidateKey>, crate::import::ImportError> {
         let (key, _) = target;
-        if key.watched_folder_path != root_key {
+        if key.watched_folder_path.as_os_str() != root.as_os_str() {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
-                    "folder decision for {} was sent to {root_key}",
-                    key.watched_folder_path
+                    "folder decision for {} was sent to {}",
+                    coven::path_text(&key.watched_folder_path),
+                    coven::path_text(root)
                 ),
             });
         }
-        let Some(folder) = key
-            .relative_folder_path
-            .split('/')
-            .next()
-            .filter(|folder| !folder.is_empty())
-            .map(str::to_string)
+        let decided = crate::import::relative_folder::folder_below(root, &key.relative_folder);
+        let Some(std::path::Component::Normal(folder)) = decided
+            .strip_prefix(root)
+            .ok()
+            .and_then(|below| below.components().next())
         else {
             return Err(crate::import::ImportError::Watch {
-                detail: format!("{root_key} is never a release, so it has no reading to change"),
+                detail: format!(
+                    "{} is never a release, so it has no reading to change",
+                    coven::path_text(root)
+                ),
             });
         };
+        let folder = folder.to_os_string();
         if !scan
             .services
             .library_manager
@@ -61,13 +66,12 @@ impl ImportService {
             return Err(crate::import::ImportError::Watch {
                 detail: format!(
                     "{} is not a current release boundary",
-                    key.relative_folder_path
+                    key.relative_folder.text()
                 ),
             });
         }
         let stored =
             Self::read_folder_again(root, &folder, Some(target), scan, cancellation).await?;
-        let decided = root.join(&key.relative_folder_path);
         Ok(crate::import::list::release_keys_in_path_order(
             stored.iter().filter(|item| match item {
                 ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
@@ -87,7 +91,7 @@ impl ImportService {
     /// each one's write stands on its own.
     pub(super) async fn read_changed_folders(
         root: &Path,
-        folders: &std::collections::BTreeSet<String>,
+        folders: &std::collections::BTreeSet<OsString>,
         scan: &ScanServices,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
     ) {
@@ -102,12 +106,15 @@ impl ImportService {
             if cancellation.is_cancelled() {
                 return;
             }
-            let message = format!("{folder} could not be read again: {error}");
-            warn!("{}: {message}", root.display());
+            let message = format!(
+                "{} could not be read again: {error}",
+                coven::path_text(Path::new(folder))
+            );
+            warn!("{}: {message}", coven::path_text(root));
             match scan
                 .services
                 .library_manager
-                .current_folder_scan_generation(&root.to_string_lossy())
+                .current_folder_scan_generation(root)
                 .await
             {
                 Ok(Some(generation)) => {
@@ -146,7 +153,7 @@ impl ImportService {
     /// cannot be read is not a root whose folders all went away.
     async fn read_folder_again(
         root: &Path,
-        folder: &str,
+        folder: &OsStr,
         decision: Option<&(FolderReleaseDecisionKey, FolderReleaseDecision)>,
         scan: &ScanServices,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
@@ -154,17 +161,14 @@ impl ImportService {
         let started = std::time::Instant::now();
         let services = &scan.services;
         let library_manager = &services.library_manager;
-        let root_key = root.to_string_lossy().into_owned();
-        let stamp = library_manager.begin_folder_reading(&root_key).await?;
+        let stamp = library_manager.begin_folder_reading(root).await?;
         let stored_edits = library_manager.load_stored_candidate_edits().await?;
-        let mut decisions = library_manager
-            .load_folder_release_decisions(&root_key)
-            .await?;
+        let mut decisions = library_manager.load_folder_release_decisions(root).await?;
         // The person's answer reads the folder under the grouping it already
         // has, when it has one: the release it reads as keeps its key.
         let decision = decision.map(|(key, decision)| {
             let grouping = decisions
-                .get(&key.relative_folder_path)
+                .get(&key.relative_folder)
                 .map(|stored| stored.grouping.clone())
                 .unwrap_or_else(|| new_grouping_key(services.ids.as_ref()));
             let reading = crate::import::folder_scanner::FolderReading {
@@ -172,12 +176,12 @@ impl ImportService {
                 author: FolderReleaseDecisionAuthor::User,
                 grouping,
             };
-            decisions.insert(key.relative_folder_path.clone(), reading.clone());
+            decisions.insert(key.relative_folder.clone(), reading.clone());
             (key.clone(), reading)
         });
         let reads = Arc::new(
             library_manager
-                .load_file_reads(&root_key, services.file_tags.clone())
+                .load_file_reads(root, services.file_tags.clone())
                 .await?,
         );
         let walk_reads = reads.clone();
@@ -270,7 +274,10 @@ impl ImportService {
         let locked_at = started.elapsed();
         if cancellation.is_cancelled() {
             return Err(crate::import::ImportError::Internal {
-                detail: format!("reading {folder} again was cancelled before it was stored"),
+                detail: format!(
+                    "reading {} again was cancelled before it was stored",
+                    coven::path_text(Path::new(folder))
+                ),
             });
         }
         // The walk read each candidate with the file decisions stored then. One
@@ -288,7 +295,7 @@ impl ImportService {
                     detail: format!(
                         "{} changed while its folder was being read again: its file decisions \
                          were edited",
-                        candidate.display_path
+                        candidate.relative_folder.text()
                     ),
                 });
             }
@@ -299,8 +306,8 @@ impl ImportService {
             regrouped,
         } = library_manager
             .commit_folder_reading(crate::db::FolderReadingCommit {
-                watched_folder_path: root_key,
-                folder: folder.to_string(),
+                watched_folder_path: root.to_path_buf(),
+                folder: folder.to_os_string(),
                 stamp,
                 decision: decision.clone(),
                 scanned_decisions,
@@ -313,7 +320,7 @@ impl ImportService {
         // reading was known, then settled — so each key is stored as its last
         // write left it.
         let mut stored: Vec<ScanItem> = Vec::new();
-        let mut stored_at: HashMap<String, usize> = HashMap::new();
+        let mut stored_at: HashMap<CandidateKey, usize> = HashMap::new();
         for (item, _) in &writes {
             let Some(key) = item.persisted_key() else {
                 continue;
@@ -344,15 +351,17 @@ impl ImportService {
         }
         Self::announce_regrouped(&regrouped, services).await?;
         debug!(
-            "{folder} under {} read again{} in {:?}: read in {read_at:?}, dates and tags by \
+            "{} under {} read again{} in {:?}: read in {read_at:?}, dates and tags by \
              {prepared_at:?}, commit lock by {locked_at:?}, stored by {committed_at:?}; \
              {changed} entries written, {unchanged} unchanged, pruned {pruned:?}",
-            root.display(),
+            coven::path_text(Path::new(folder)),
+            coven::path_text(root),
             decision
                 .as_ref()
                 .map(|(key, reading)| format!(
                     " as {:?} for {}",
-                    reading.decision, key.relative_folder_path
+                    reading.decision,
+                    key.relative_folder.text()
                 ))
                 .unwrap_or_default(),
             started.elapsed(),
@@ -367,7 +376,7 @@ impl ImportService {
 /// nothing to conclude from.
 struct TopLevelReading {
     items: Vec<ScanItem>,
-    directory_mtimes: Option<Vec<(String, i64)>>,
+    directory_mtimes: Option<Vec<(PathBuf, i64)>>,
 }
 
 /// Read `folder` under `root` on the calling thread, keeping the watch on
@@ -422,7 +431,7 @@ fn read_top_level_folder(
             |directory| {
                 match (directory_mtimes.as_mut(), directory_modified_at(&directory)) {
                     (Some(recorded), Some(modified_at)) => {
-                        recorded.push((directory.to_string_lossy().into_owned(), modified_at))
+                        recorded.push((directory.clone(), modified_at))
                     }
                     (Some(_), None) => directory_mtimes = None,
                     (None, _) => {}
@@ -460,6 +469,6 @@ fn read_top_level_folder(
 
 /// A key for a grouping the store has not seen: the key the release it reads
 /// as is addressed by from here on.
-pub(super) fn new_grouping_key(ids: &dyn coven::IdSource) -> String {
-    format!("grouping:{}", ids.new_id())
+pub(super) fn new_grouping_key(ids: &dyn coven::IdSource) -> CandidateKey {
+    CandidateKey::grouping(&ids.new_id().to_string())
 }

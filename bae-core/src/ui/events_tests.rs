@@ -58,7 +58,10 @@ fn extracted(catalog: &str) -> crate::signals::Signals {
 }
 
 /// Wait for the runtime recorder to take a key's snapshot in, or give up.
-async fn recorded(services: &AppServices, key: &str) -> crate::signals::Signals {
+async fn recorded(
+    services: &AppServices,
+    key: &crate::import::CandidateKey,
+) -> crate::signals::Signals {
     tokio::time::timeout(Duration::from_secs(5), async {
         loop {
             if let Some(signals) = services.candidate_signals(key) {
@@ -76,7 +79,10 @@ fn catalog_of(signals: &crate::signals::Signals) -> &str {
 }
 
 /// Wait for the subscriber to hear a signals event for `key`, or give up.
-async fn signals_for(events: &mut UiEvents, key: &str) -> crate::signals::Signals {
+async fn signals_for(
+    events: &mut UiEvents,
+    key: &crate::import::CandidateKey,
+) -> crate::signals::Signals {
     let deadline = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
             let heard = events.next().await.expect("the UI events are still told");
@@ -86,7 +92,7 @@ async fn signals_for(events: &mut UiEvents, key: &str) -> crate::signals::Signal
                     signals,
                 } = event
                 {
-                    if delivered == key {
+                    if delivered == key.clone() {
                         return signals;
                     }
                 }
@@ -103,21 +109,21 @@ async fn extracted_signals_reach_a_subscriber_by_key_and_read_back_for_that_key(
     let (services, _temp) = services().await;
     let mut events = services.subscribe_ui_events();
 
-    let key = "reidentify:release-1";
+    let key = &crate::import::CandidateKey::reidentify("release-1");
     assert!(
         services.candidate_signals(key).is_none(),
         "nothing has been extracted for the key yet"
     );
 
     services.import_emit_event_for_test(ImportEvent::SignalsUpdated {
-        candidate_key: "/watch/other".to_string(),
+        candidate_key: crate::import::CandidateKey::test("/watch/other"),
         run: crate::identify::IdentifyRunId::for_test(1),
         signals: extracted("OTHER-1"),
         artwork: crate::signals::ArtworkScan::Absent,
         priority: CallPriority::Background,
     });
     services.import_emit_event_for_test(ImportEvent::SignalsUpdated {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(2),
         signals: extracted("CAT-1"),
         artwork: crate::signals::ArtworkScan::Absent,
@@ -130,7 +136,13 @@ async fn extracted_signals_reach_a_subscriber_by_key_and_read_back_for_that_key(
     // The recorder runs on its own task, so wait for its write.
     assert_eq!(catalog_of(&recorded(&services, key).await), "CAT-1");
     assert_eq!(
-        catalog_of(&recorded(&services, "/watch/other").await),
+        catalog_of(
+            &recorded(
+                &services,
+                &crate::import::CandidateKey::test("/watch/other")
+            )
+            .await
+        ),
         "OTHER-1"
     );
 }
@@ -141,9 +153,9 @@ async fn extracted_signals_reach_a_subscriber_by_key_and_read_back_for_that_key(
 async fn a_late_subscriber_reads_the_import_values_as_they_stand() {
     let (services, _temp) = services().await;
     let mut early = services.subscribe_ui_events();
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     services.import_emit_event_for_test(ImportEvent::SignalsUpdated {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         run: crate::identify::IdentifyRunId::for_test(1),
         signals: extracted("CAT-1"),
         artwork: crate::signals::ArtworkScan::Absent,

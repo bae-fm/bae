@@ -13,7 +13,7 @@ pub(super) async fn handle_events(
     settling: &mut JoinSet<Finished>,
     events: Vec<ImportEvent>,
 ) {
-    let mut found: Vec<String> = Vec::new();
+    let mut found: Vec<crate::import::CandidateKey> = Vec::new();
     for event in events {
         match event {
             ImportEvent::Scan(ScanEvent::FolderCandidate {
@@ -38,7 +38,7 @@ pub(super) async fn handle_events(
 }
 
 /// The candidate `event` is about, when it names one.
-fn subject(event: &ImportEvent) -> Option<String> {
+fn subject(event: &ImportEvent) -> Option<crate::import::CandidateKey> {
     match event {
         ImportEvent::ImportProgress { candidate_key, .. }
         | ImportEvent::IdentifyStateChanged { candidate_key, .. }
@@ -64,7 +64,11 @@ fn subject(event: &ImportEvent) -> Option<String> {
 
 /// Queue the releases at `keys`, then follow each as any announced candidate
 /// is followed.
-async fn admit_found_releases(context: &Context, queue: &mut Queue, keys: Vec<String>) {
+async fn admit_found_releases(
+    context: &Context,
+    queue: &mut Queue,
+    keys: Vec<crate::import::CandidateKey>,
+) {
     if keys.is_empty() {
         return;
     }
@@ -131,7 +135,7 @@ async fn advance(
     queue: &mut Queue,
     settle_token: &CancellationToken,
     settling: &mut JoinSet<Finished>,
-    key: &str,
+    key: &crate::import::CandidateKey,
     run: IdentifyRunId,
     state: IdentifyState,
 ) {
@@ -153,14 +157,14 @@ async fn advance(
     let candidate = job
         .members
         .iter()
-        .find(|member| member.candidate.key() == key)
+        .find(|member| member.candidate.key() == *key)
         .map(|member| member.candidate.clone())
         .expect("a job's running representative is one of its members");
     // The run ended on its own; only its extraction may still be working.
     context.import.cancel_candidate_extraction(key);
     let settle_token = settle_token.child_token();
     job.state = JobState::Settling {
-        representative: key.to_string(),
+        representative: key.clone(),
         run,
         abandon: settle_token.clone(),
     };
@@ -287,7 +291,7 @@ pub(super) async fn finish(
 async fn import_when_identified(
     context: &Context,
     config: &watch::Receiver<crate::config::Config>,
-    key: &str,
+    key: &crate::import::CandidateKey,
     import_asked: bool,
 ) {
     if !import_asked && !config.borrow().prefs.identification.import_when_identified {
@@ -312,7 +316,7 @@ async fn import_when_identified(
 /// when the runtime recorded the change, and its ending takes the key off
 /// the queue; an answer already being written is refused for files the
 /// candidate no longer has.
-async fn follow(context: &Context, queue: &mut Queue, key: &str) {
+async fn follow(context: &Context, queue: &mut Queue, key: &crate::import::CandidateKey) {
     let Some(held) = queue.held(key) else {
         return;
     };

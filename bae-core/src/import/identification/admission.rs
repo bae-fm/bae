@@ -6,7 +6,11 @@ use super::*;
 /// Put the found releases at `keys` on the queue as one automatic admission,
 /// except those that cannot be answered and those whose files already have a
 /// stored result, such as a folder renamed after it was identified.
-pub(super) async fn admit_found(context: &Context, queue: &mut Queue, keys: Vec<String>) {
+pub(super) async fn admit_found(
+    context: &Context,
+    queue: &mut Queue,
+    keys: Vec<crate::import::CandidateKey>,
+) {
     let mut admitted = Vec::with_capacity(keys.len());
     for key in keys {
         let Some(candidate) = answerable_candidate(context, &key).await else {
@@ -38,7 +42,10 @@ pub(super) async fn admit_found(context: &Context, queue: &mut Queue, keys: Vec<
 /// The candidate at `key` if an answer can still be stored for it: not set
 /// aside, imported, or claimed by an import. The same read the verdict write
 /// makes.
-pub(super) async fn answerable_candidate(context: &Context, key: &str) -> Option<FolderCandidate> {
+pub(super) async fn answerable_candidate(
+    context: &Context,
+    key: &crate::import::CandidateKey,
+) -> Option<FolderCandidate> {
     match context.import.answerable_candidate(key).await {
         Ok(candidate) => candidate,
         Err(error) => {

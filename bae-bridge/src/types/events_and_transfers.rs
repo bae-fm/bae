@@ -37,7 +37,10 @@ pub enum BridgeUiEvent {
     /// A candidate's extracted text pools as extraction settles them, for the
     /// search pane's autocomplete and scanning indicator.
     #[cfg(feature = "desktop")]
-    CandidateSignalsUpdated { key: String, signals: BridgeSignals },
+    CandidateSignalsUpdated {
+        key: Vec<u8>,
+        signals: BridgeSignals,
+    },
     /// How many running identifications have ended, out of how many; `(0, 0)`
     /// is none. A view must not derive `total` from its filtered rows.
     #[cfg(feature = "desktop")]
@@ -183,7 +186,7 @@ pub enum BridgeFastValue {
 pub trait KeyActivityCallback: Send + Sync {
     /// These keys started or stopped holding a value; `latest` says which.
     /// Called on the thread that writes the stream.
-    fn on_keys_changed(&self, keys: Vec<String>);
+    fn on_keys_changed(&self, keys: Vec<Vec<u8>>);
 }
 
 /// A stream's read failing. The stream holds nothing until a read succeeds

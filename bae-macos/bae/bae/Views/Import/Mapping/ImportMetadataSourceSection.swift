@@ -84,7 +84,7 @@ struct ImportMetadataSourceSection: View {
 /// write, with what is in flight for it: the run whose state it shows while
 /// one is live, and the search's answers.
 private struct ImportOnlineMetadataBrowser: View {
-    let candidateKey: String
+    let candidateKey: Data
     let endEditing: @MainActor () async -> Void
     let onMovePane: (BridgePaneMove) -> Void
 

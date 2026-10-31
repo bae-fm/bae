@@ -43,12 +43,12 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     };
     let generation = inner.candidates.start_work(
         CandidateWork::Extraction,
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         |_, generation| generation,
     );
     let extraction = RunningExtraction {
         run: IdentifyRunId::for_test(1),
-        key: "cand-1".to_string(),
+        key: crate::import::CandidateKey::test("cand-1"),
         generation,
         priority: CallPriority::Interactive,
         snapshots: watch::channel(None).0,

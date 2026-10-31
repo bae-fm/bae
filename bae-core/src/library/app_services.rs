@@ -67,8 +67,9 @@ struct AppServicesInner {
     /// session's candidate key. A release has no candidate row to store them
     /// on, so they are held here from the session's first run to its end.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    release_lookup_choices:
-        std::sync::Mutex<std::collections::HashMap<String, crate::import::LookupChoices>>,
+    release_lookup_choices: std::sync::Mutex<
+        std::collections::HashMap<crate::import::CandidateKey, crate::import::LookupChoices>,
+    >,
 }
 
 impl Drop for AppServicesInner {

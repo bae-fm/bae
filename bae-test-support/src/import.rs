@@ -149,7 +149,7 @@ pub fn folder_import(
 ) -> bae_core::import::ImportCommand {
     draft_source.onto(bae_core::import::ImportCommand {
         import_id: import_id.to_string(),
-        candidate_key: "test".to_string(),
+        candidate_key: bae_core::import::CandidateKey::from_bytes(b"test".to_vec()),
         source: bae_core::import::release_candidate::CandidateSource {
             path: folder.into(),
             scope: bae_core::import::ReleaseFileScope::Recursive,
@@ -177,7 +177,9 @@ async fn send_folder_import_and_wait(
         start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
     import_handle
         .send_command(bae_core::import::ImportCommand {
-            candidate_key: candidate_key.to_string(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(
+                candidate_key.as_bytes().to_vec(),
+            ),
             ..folder_import(&import_id, album_dir, discogs_release(release_id_key))
         })
         .await

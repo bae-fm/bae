@@ -33,10 +33,11 @@ async fn store_user_folder_decision(
     decision: crate::import::folder_scanner::FolderReleaseDecision,
 ) -> Result<(), crate::db::DbError> {
     let key = key.clone();
-    let grouping = format!(
-        "grouping:{}/{}",
-        key.watched_folder_path, key.relative_folder_path
-    );
+    let grouping = crate::import::CandidateKey::grouping(&format!(
+        "{}/{}",
+        key.watched_folder_path.display(),
+        key.relative_folder.text()
+    ));
     db.call(move |sql| {
         crate::db::client::folder_scans::store_folder_reading(
             sql,

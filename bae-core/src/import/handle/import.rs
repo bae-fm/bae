@@ -81,7 +81,7 @@ impl ImportServiceHandle {
     /// reading is kept.
     pub(super) async fn read_file_tag_snapshot(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> Result<FileTagSnapshotRead, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
@@ -89,7 +89,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let watched_folder_path = candidate.watched_folder_path.to_string();
+        let watched_folder_path = candidate.watched_folder_path.clone();
         let Some(stored) = self
             .library_manager
             .load_candidate_file_tag_snapshot(&watched_folder_path, candidate_key)
@@ -140,10 +140,10 @@ impl ImportServiceHandle {
     /// unattended, which the import then waits for.
     pub async fn start_import(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<ImportStart, crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.start_import_write(&candidate_key, ImportRequest::Candidate)
                 .await
@@ -156,10 +156,10 @@ impl ImportServiceHandle {
     /// picked unattended.
     pub async fn import_selected(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<ImportStart, crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             this.start_import_write(&candidate_key, ImportRequest::Selection)
                 .await
@@ -172,10 +172,10 @@ impl ImportServiceHandle {
     /// the candidate's failed import.
     pub(crate) async fn import_identified(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<ImportStart, crate::import::ImportError> {
         let this = self.clone();
-        let candidate_key = candidate_key.to_string();
+        let candidate_key = candidate_key.clone();
         self.committed(async move {
             let started = this
                 .start_import_write(&candidate_key, ImportRequest::Candidate)
@@ -192,7 +192,11 @@ impl ImportServiceHandle {
     }
 
     /// Record a refused start as `candidate_key`'s failed import.
-    async fn record_failed_start(&self, candidate_key: &str, error: &crate::import::ImportError) {
+    async fn record_failed_start(
+        &self,
+        candidate_key: &crate::import::CandidateKey,
+        error: &crate::import::ImportError,
+    ) {
         let candidate = match self.get_release_candidate(candidate_key).await {
             Ok(Some(candidate)) => candidate,
             Ok(None) => {
@@ -225,7 +229,7 @@ impl ImportServiceHandle {
 
     async fn start_import_write(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         request: ImportRequest,
     ) -> Result<ImportStart, crate::import::ImportError> {
         let commit = self.folder_state_commit.lock("start an import").await;
@@ -348,7 +352,7 @@ impl ImportServiceHandle {
         };
         let command = ImportCommand {
             import_id: import_id.clone(),
-            candidate_key: candidate_key.to_string(),
+            candidate_key: candidate_key.clone(),
             source: candidate.source(),
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
@@ -381,12 +385,12 @@ impl ImportServiceHandle {
     /// Store the person's artist answer while this candidate is editable.
     pub async fn choose_candidate_artist_identity(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         metadata_revision: u64,
         choice: crate::import::ArtistIdentityConflictChoice,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        let key = candidate_key.to_string();
+        let key = candidate_key.clone();
         self.committed(async move {
             let _commit = this
                 .folder_state_commit
@@ -490,40 +494,39 @@ impl ImportServiceHandle {
                 scope,
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )?;
-        let candidate_key =
-            crate::import::watched_folder::canonical_absolute_root(&folder.to_string_lossy())?;
-        let candidate_name = folder
-            .file_name()
-            .and_then(|name| name.to_str())
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!(
-                    "test import folder has no UTF-8 directory name: {}",
-                    folder.display()
-                ),
-            })?
-            .to_string();
+        let watched_folder = crate::import::watched_folder::canonical_absolute_root(&folder)?;
+        let candidate_key = crate::import::CandidateKey::folder(&watched_folder);
+        let candidate_name =
+            coven::path_text(std::path::Path::new(folder.file_name().ok_or_else(
+                || crate::import::ImportError::Internal {
+                    detail: format!(
+                        "test import folder has no directory name: {}",
+                        coven::path_text(&folder)
+                    ),
+                },
+            )?));
         self.library_manager
-            .add_watched_import_folder(&candidate_key)
+            .add_watched_import_folder(&watched_folder)
             .await?;
         let generation = self
             .library_manager
-            .begin_folder_scan(&candidate_key)
+            .begin_folder_scan(&watched_folder)
             .await?;
         let candidate = crate::import::folder_scanner::FolderCandidate {
-            path: folder.clone(),
-            file_root: folder,
+            path: watched_folder.clone(),
+            file_root: watched_folder.clone(),
             name: candidate_name,
             files: categorized.clone(),
-            watched_folder_path: candidate_key.clone(),
+            watched_folder_path: watched_folder.clone(),
             scope,
             file_edit_revision: 0,
-            display_path: String::new(),
+            relative_folder: crate::import::RelativeFolder::root(),
             grouping: None,
         };
         if self
             .library_manager
             .save_folder_scan_item(
-                &candidate_key,
+                &watched_folder,
                 generation,
                 &crate::import::folder_scanner::ScanItem::Valid(candidate.clone()),
             )
@@ -536,7 +539,7 @@ impl ImportServiceHandle {
         }
         if self
             .library_manager
-            .finish_folder_scan(&candidate_key, generation, None)
+            .finish_folder_scan(&watched_folder, generation, None)
             .await?
             .is_none()
         {
@@ -718,7 +721,7 @@ impl ImportServiceHandle {
     /// writing its release finishes, and that is the error.
     pub async fn cancel_import(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
     ) -> Result<(), crate::import::ImportError> {
         match self.import_cancels.cancel(candidate_key) {
             CancelOutcome::NotImporting | CancelOutcome::CancelledRunning => Ok(()),
@@ -760,7 +763,7 @@ impl ImportServiceHandle {
     /// skips it, so it never will.
     async fn end_cancelled_import(
         &self,
-        candidate_key: &str,
+        candidate_key: &crate::import::CandidateKey,
         import_id: String,
     ) -> Result<(), crate::import::ImportError> {
         info!("Import of {candidate_key} was cancelled before it started");
@@ -769,7 +772,7 @@ impl ImportServiceHandle {
             .await
             .map_err(crate::library::LibraryError::from)?;
         self.event_tx.send(ImportEvent::ImportProgress {
-            candidate_key: candidate_key.to_string(),
+            candidate_key: candidate_key.clone(),
             progress: ImportProgress::Cancelled { import_id },
         });
         Ok(())

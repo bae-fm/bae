@@ -4,11 +4,13 @@ import Foundation
 // MARK: - CandidateSource
 
 /// Source-specific data for a candidate. Folder candidates carry the watched
-/// folder they were scanned from; re-identify candidates carry the existing
-/// library release id.
+/// folder they were scanned from and their own folder, each as coven's bytes
+/// for its path; re-identify candidates carry the existing library release
+/// id.
 enum CandidateSource: Equatable {
     case folder(
-        watchedFolderPath: String
+        watchedFolderPath: Data,
+        folderPath: Data
     )
     case releaseReIdentify(releaseId: String)
 }
@@ -281,8 +283,10 @@ enum LookupToggle: Equatable {
 /// the user works through identification and import.
 struct Candidate: Equatable, Identifiable {
     let source: CandidateSource
-    /// Stable key — the folder path. Used as the dictionary key.
-    let key: String
+    /// The key core names the candidate by: its folder's path bytes, or
+    /// its grouping's or re-identify session's key. Used as the dictionary
+    /// key.
+    let key: Data
     let displayName: String
 
     /// Dynamic — mutated by the import-candidate projection or by views.
@@ -323,7 +327,7 @@ struct Candidate: Equatable, Identifiable {
     /// The last command this pane ran, when it failed.
     var error: String? { session.failure?.line }
 
-    var id: String {
+    var id: Data {
         key
     }
 
@@ -333,16 +337,23 @@ struct Candidate: Equatable, Identifiable {
     /// Where this candidate's import stands for the pane: running now, or
     /// what the last one left.
     var importStatus: BridgeCandidateImportStatus? { detail?.importStatus }
-    var sourceFolderPaths: [String] {
-        if !parts.isEmpty { return parts.map(\.folderPath) }
-        return [key]
+    /// Each folder's path, as coven's bytes for it; none for a library
+    /// release being identified again.
+    var sourceFolderPaths: [Data] {
+        switch source {
+        case .folder(_, let folderPath):
+            parts.isEmpty ? [folderPath] : parts.map(\.folderPath)
+        case .releaseReIdentify:
+            []
+        }
     }
 
     init(bridge: BridgeFolderCandidate) {
         source = .folder(
-            watchedFolderPath: bridge.watchedFolderPath
+            watchedFolderPath: bridge.watchedFolderPath,
+            folderPath: bridge.folderPath
         )
-        key = bridge.folderPath
+        key = bridge.candidateKey
         displayName = bridge.sourceFolderName
         files = bridge.files
     }
@@ -379,7 +390,7 @@ struct Candidate: Equatable, Identifiable {
     /// signal under the same key, which is how the existing `ImportSearchPane`
     /// UI renders unchanged.
     init(
-        reIdentifyKey: String,
+        reIdentifyKey: Data,
         releaseId: String,
         displayName: String
     ) {

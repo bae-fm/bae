@@ -162,7 +162,7 @@ fn days_later(db: &Database, days: i64) -> Database {
 }
 
 /// One completed scan of `root` finding `folders`.
-async fn scan(db: &Database, root: &str, folders: &[&FolderCandidate]) {
+async fn scan(db: &Database, root: &std::path::Path, folders: &[&FolderCandidate]) {
     let generation = db
         .begin_folder_scan(root, crate::import::VolumeKind::Local)
         .await
@@ -209,7 +209,7 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
     let joined = days_later(&db, 3);
     joined
         .combine_releases(
-            "grouping:joined".into(),
+            crate::import::CandidateKey::grouping("joined"),
             vec![older.clone(), newest.clone()],
         )
         .await
@@ -219,13 +219,19 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
         listed(joined.clone(), ImportListOrder::NewestFirst).await,
         [
             (key(&middle), "Middle".to_string()),
-            ("grouping:joined".to_string(), "Older".to_string()),
+            (
+                crate::import::CandidateKey::grouping("joined"),
+                "Older".to_string()
+            ),
         ]
     );
     assert_eq!(
         listed(joined.clone(), ImportListOrder::OldestFirst).await,
         [
-            ("grouping:joined".to_string(), "Older".to_string()),
+            (
+                crate::import::CandidateKey::grouping("joined"),
+                "Older".to_string()
+            ),
             (key(&middle), "Middle".to_string()),
         ]
     );
@@ -233,7 +239,7 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
     let discovered: Vec<String> = joined
         .read(|sql| {
             Ok(sql.query(
-                "SELECT folder FROM folder_discovery ORDER BY folder",
+                "SELECT coven_path_text(folder) FROM folder_discovery ORDER BY folder",
                 [],
                 |row| row.get(0),
             )?)
@@ -242,7 +248,7 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
         .unwrap();
     let mut scanned: Vec<String> = [&older, &middle, &newest]
         .iter()
-        .map(|folder| folder.path.to_string_lossy().into_owned())
+        .map(|folder| coven::path_text(&folder.path))
         .collect();
     scanned.sort();
     assert_eq!(discovered, scanned);

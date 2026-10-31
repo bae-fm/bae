@@ -114,7 +114,7 @@ pub(crate) fn directory_modified_at(path: &Path) -> Option<i64> {
 /// set is a root nothing was recorded for, which is not an answer at all, and
 /// the caller walks.
 pub(crate) fn changed_directories(
-    directories: &[(String, i64)],
+    directories: &[(std::path::PathBuf, i64)],
 ) -> Option<Vec<std::path::PathBuf>> {
     if directories.is_empty() {
         return None;
@@ -122,8 +122,8 @@ pub(crate) fn changed_directories(
     Some(
         directories
             .iter()
-            .filter(|(path, recorded)| directory_modified_at(Path::new(path)) != Some(*recorded))
-            .map(|(path, _)| std::path::PathBuf::from(path))
+            .filter(|(path, recorded)| directory_modified_at(path) != Some(*recorded))
+            .map(|(path, _)| path.clone())
             .collect(),
     )
 }
@@ -285,7 +285,7 @@ mod tests {
 
         let recorded = |path: &std::path::Path| {
             vec![(
-                path.to_string_lossy().into_owned(),
+                path.to_path_buf(),
                 directory_modified_at(path).expect("a directory that is there has an mtime"),
             )]
         };
@@ -299,12 +299,12 @@ mod tests {
         );
         let gone = temp.path().join("Gone");
         assert_eq!(
-            changed_directories(&[(gone.to_string_lossy().into_owned(), 0)]),
+            changed_directories(&[(gone.clone(), 0)]),
             Some(vec![gone]),
             "a directory that is gone is a change"
         );
         assert_eq!(
-            changed_directories(&[(album.to_string_lossy().into_owned(), 1)]),
+            changed_directories(&[(album.clone(), 1)]),
             Some(vec![album]),
             "an mtime that does not match is a change"
         );

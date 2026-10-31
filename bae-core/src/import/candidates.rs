@@ -51,7 +51,7 @@ impl CandidateStanding {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WatchedFolderScanStatus {
-    pub watched_folder_path: String,
+    pub watched_folder_path: std::path::PathBuf,
     pub watched_folder_name: String,
     pub status: FolderScanStatus,
     /// Whether this folder lives on a volume served over the network, which

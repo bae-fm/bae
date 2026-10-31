@@ -95,7 +95,7 @@ pub struct ImportListRequest {
 pub enum ImportListItem {
     GroupHeader {
         group: TriageGroup,
-        watched_folder_path: String,
+        watched_folder_path: std::path::PathBuf,
         expanded: bool,
         /// How many entries the group holds in this tab, after the filter.
         entry_count: u32,
@@ -127,25 +127,29 @@ pub enum ImportListItem {
 }
 
 /// The stable key of a candidate's item, whichever tab places it.
-pub(crate) fn candidate_stable_key(candidate_key: &str) -> String {
-    format!("candidate:{candidate_key}")
+pub(crate) fn candidate_stable_key(candidate_key: &crate::import::CandidateKey) -> String {
+    format!("candidate:{}", hex::encode(candidate_key.as_bytes()))
 }
 
 impl ImportListItem {
-    /// Stable identity for one item. Variant prefixes keep a candidate, a
-    /// boundary and a group header at the same folder from sharing view state;
-    /// the length prefix makes a two-component key unambiguous.
+    /// Stable identity for one item, from the bytes that key it, so two
+    /// folders whose names show alike stay apart. Variant prefixes keep a
+    /// candidate, a boundary and a group header at the same folder from
+    /// sharing view state; hex holds no `:`, so a two-part key is
+    /// unambiguous.
     pub fn stable_key(&self) -> String {
         match self {
             Self::GroupHeader { group, .. } => format!(
-                "group:{}{}{}",
-                group.key.watched_folder_path.len(),
-                group.key.watched_folder_path,
-                group.key.relative_folder_path
+                "group:{}:{}",
+                hex::encode(coven::path_bytes(&group.key.watched_folder_path)),
+                hex::encode(group.key.relative_folder.as_bytes())
             ),
             Self::Candidate { row, .. } => candidate_stable_key(&row.candidate_key),
             Self::Invalid { candidate, .. } => {
-                format!("invalid:{}", candidate.path.display())
+                format!(
+                    "invalid:{}",
+                    hex::encode(coven::path_bytes(&candidate.path))
+                )
             }
         }
     }
@@ -256,7 +260,7 @@ pub struct FolderScanActivity {
 /// One root in [`FolderScanActivity`], in watched-folder order.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ActiveFolderScan {
-    pub watched_folder_path: String,
+    pub watched_folder_path: std::path::PathBuf,
     pub watched_folder_name: String,
     pub found_count: u64,
 }

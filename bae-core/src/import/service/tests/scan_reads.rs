@@ -14,12 +14,10 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
             tracks.push(path);
         }
     }
-    let root = PathBuf::from(
-        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap(),
-    );
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     test.service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
 
@@ -29,7 +27,7 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
     let releases: Vec<usize> = test
         .service
         .library_manager
-        .load_folder_scan_items(&root.to_string_lossy())
+        .load_folder_scan_items(&root)
         .await
         .unwrap()
         .into_iter()
@@ -120,12 +118,10 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
         "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
     )
     .unwrap();
-    let root = PathBuf::from(
-        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap(),
-    );
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     test.service
         .library_manager
-        .add_watched_import_folder(&root.to_string_lossy())
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
     ReadableFiles {
@@ -162,7 +158,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         tags.clone(),
         Arc::new(crate::import::folder_scanner::OsDirectoryReader),
     );
-    let root_key = files.root.to_string_lossy().into_owned();
+    let root_key = files.root.to_path_buf();
     scan.rescan(&files.root).await.unwrap();
     let first = files.reads(&tags);
     for (path, read, count) in &first {
@@ -173,7 +169,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let stored = test
         .service
         .library_manager
-        .load_folder_scan_items(&root_key)
+        .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap();
     assert!(
@@ -185,7 +181,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let reading = test
         .service
         .library_manager
-        .load_candidate_file_tag_snapshot(&root_key, &files.album.to_string_lossy())
+        .load_candidate_file_tag_snapshot(&root_key, &crate::import::CandidateKey::folder(&files.album))
         .await
         .unwrap()
         .unwrap()
@@ -198,7 +194,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     assert_eq!(
         test.service
             .library_manager
-            .load_folder_scan_items(&root_key)
+            .load_folder_scan_items(std::path::Path::new(&root_key))
             .await
             .unwrap(),
         stored,
@@ -207,7 +203,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let reread = test
         .service
         .library_manager
-        .load_candidate_file_tag_snapshot(&root_key, &files.album.to_string_lossy())
+        .load_candidate_file_tag_snapshot(&root_key, &crate::import::CandidateKey::folder(&files.album))
         .await
         .unwrap()
         .unwrap()
@@ -231,13 +227,11 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
             std::fs::write(folder.join(format!("0{n}.flac")), flac()).unwrap();
         }
     }
-    let root = PathBuf::from(
-        crate::import::watched_folder::canonical_absolute_root(&watched.to_string_lossy()).unwrap(),
-    );
-    let root_key = root.to_string_lossy().into_owned();
+    let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
+    let root_key = root.to_path_buf();
     test.service
         .library_manager
-        .add_watched_import_folder(&root_key)
+        .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
     let tracks: Vec<PathBuf> = ["Disc 1/01", "Disc 1/02", "Disc 2/01", "Disc 2/02"]
@@ -259,7 +253,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     let stored = test
         .service
         .library_manager
-        .load_folder_scan_items(&root_key)
+        .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap();
     let releases: Vec<usize> = stored
@@ -279,7 +273,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     assert_eq!(
         test.service
             .library_manager
-            .load_folder_scan_items(&root_key)
+            .load_folder_scan_items(std::path::Path::new(&root_key))
             .await
             .unwrap(),
         stored,
@@ -333,8 +327,8 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         tags.clone(),
         Arc::new(crate::import::folder_scanner::OsDirectoryReader),
     );
-    let root_key = files.root.to_string_lossy().into_owned();
-    let album_key = files.album.to_string_lossy().into_owned();
+    let root_key = files.root.to_path_buf();
+    let album_key = crate::import::CandidateKey::folder(&files.album);
     scan.rescan(&files.root).await.unwrap();
     let reading = test
         .service
@@ -395,13 +389,11 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
             .set_times(std::fs::FileTimes::new().set_modified(modified))
             .unwrap();
     }
-    let root = PathBuf::from(
-        crate::import::watched_folder::canonical_absolute_root(&watched.to_string_lossy()).unwrap(),
-    );
-    let root_key = root.to_string_lossy().into_owned();
+    let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
+    let root_key = root.to_path_buf();
     test.service
         .library_manager
-        .add_watched_import_folder(&root_key)
+        .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
     let tags = Arc::new(CountingTagReader::default());
@@ -415,7 +407,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
         let stored = test
             .service
             .library_manager
-            .load_candidate_file_tag_snapshot(&root_key, &root.join(folder).to_string_lossy())
+            .load_candidate_file_tag_snapshot(&root_key, &crate::import::CandidateKey::folder(&root.join(folder)))
             .await
             .unwrap()
             .unwrap();
@@ -472,13 +464,11 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     }
     let picture_path = test.temp.path().join("picture.jpg");
     write_test_jpeg(&picture_path);
-    let root = PathBuf::from(
-        crate::import::watched_folder::canonical_absolute_root(&watched.to_string_lossy()).unwrap(),
-    );
-    let root_key = root.to_string_lossy().into_owned();
+    let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
+    let root_key = root.to_path_buf();
     test.service
         .library_manager
-        .add_watched_import_folder(&root_key)
+        .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
     let tags = Arc::new(EmbeddingTagReader {
@@ -498,7 +488,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     let release = test
         .service
         .library_manager
-        .load_folder_scan_items(&root_key)
+        .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap()
         .into_iter()
@@ -511,7 +501,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     let reading = test
         .service
         .library_manager
-        .load_candidate_file_tag_snapshot(&root_key, &release.key())
+        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_key), &release.key())
         .await
         .unwrap()
         .unwrap()

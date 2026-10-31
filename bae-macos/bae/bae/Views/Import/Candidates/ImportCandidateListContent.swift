@@ -90,12 +90,12 @@ struct ImportCandidateListContent: View {
     let listSlot: ImportListSlot
     let onAddFolder: () -> Void
     /// Stop watching `path`.
-    let onRemoveFolder: (_ path: String) -> Void
+    let onRemoveFolder: (_ path: Data) -> Void
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
     /// Read every release below the header's folder as one.
     let onCombineFolder: (_ key: BridgeFolderReleaseDecisionKey) -> Void
     /// Read the release at `key` as the folders it is made of.
-    let onSeparate: (_ key: String) -> Void
+    let onSeparate: (_ key: Data) -> Void
     /// Open the release this device imported from a Done row's files.
     let onShowInLibrary: (_ release: BridgeImportedRelease) -> Void
     /// Run one action a row's menu offers, for the row or the selection.

@@ -11,7 +11,7 @@ use crate::import::{ImportListSubscription, ImportListView, PendingFilter};
 /// snapshot carried.
 struct LiveList {
     list: ImportListSubscription,
-    shown: Option<Vec<String>>,
+    shown: Option<Vec<crate::import::CandidateKey>>,
     entries: Vec<crate::import::PendingFilterEntry>,
 }
 
@@ -31,8 +31,8 @@ impl LiveList {
 
     /// Wait until the list shows exactly `expected`; at once when it already
     /// does, since a change that moves no row delivers nothing.
-    async fn shows(&mut self, expected: &[&str]) {
-        let wanted: Vec<String> = expected.iter().map(|key| key.to_string()).collect();
+    async fn shows(&mut self, expected: &[&crate::import::CandidateKey]) {
+        let wanted: Vec<crate::import::CandidateKey> = expected.iter().map(|key| (*key).clone()).collect();
         let reached = tokio::time::timeout(HANG_GUARD, async {
             while self.shown.as_ref() != Some(&wanted) {
                 self.next().await;
@@ -195,7 +195,7 @@ async fn the_entry_counts_follow_what_is_running() {
 /// A watched root holding two stored candidates, each with its draft read
 /// from its own tags, and the list under All through a window that holds the
 /// first item alone: the key on that page, and the key off it.
-async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubscription, String, String) {
+async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubscription, crate::import::CandidateKey, crate::import::CandidateKey) {
     let (manager, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
     let (first, first_key, _) = unscanned_candidate(&manager, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&manager, &tmp, "Other Record").await;
@@ -232,12 +232,12 @@ async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubsc
         )
         .await;
     let snapshot = delivered(&list).await;
-    let on_page: Vec<String> = snapshot
+    let on_page: Vec<crate::import::CandidateKey> = snapshot
         .windows
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(candidate_key)
-        .map(str::to_string)
+        .cloned()
         .collect();
     assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
     let entries = &snapshot.pending_filter_entries;
@@ -250,7 +250,7 @@ async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubsc
 }
 
 /// The candidate whose row `item` is.
-fn candidate_key(item: &crate::import::ImportListItem) -> Option<&str> {
+fn candidate_key(item: &crate::import::ImportListItem) -> Option<&crate::import::CandidateKey> {
     match item {
         crate::import::ImportListItem::Candidate { row, .. } => Some(&row.candidate_key),
         crate::import::ImportListItem::GroupHeader { .. }
@@ -293,7 +293,7 @@ async fn a_run_off_the_page_delivers_its_count() {
             .flat_map(|window| &window.items)
             .filter_map(candidate_key)
             .collect::<Vec<_>>(),
-        vec![on_page.as_str()],
+        vec![&on_page],
         "the page holds the same row"
     );
     shut_down(handle).await;

@@ -20,9 +20,9 @@ impl Library {
     fn tagged(&self, display_path: &str, album_title: &str) -> String {
         format!(
             "INSERT INTO scan_skipped_tags (watched_folder_path, candidate_path, album_title)
-             VALUES ('{}', '{}', '{album_title}');",
-            self.root,
-            self.path(display_path)
+             VALUES ({}, {}, '{album_title}');",
+            self.sql_root(),
+            self.sql(display_path)
         )
     }
 
@@ -527,21 +527,21 @@ async fn the_first_identifying_candidate_follows_the_queue_order() {
     };
     assert_eq!(
         first(view(TriageTab::Pending)).await,
-        Some(lib.path("Release 2"))
+        Some(lib.key("Release 2"))
     );
     let filtered = ImportListView {
         filter_text: "Release 1".to_string(),
         ..view(TriageTab::Pending)
     };
-    assert_eq!(first(filtered).await, Some(lib.path("Release 2")));
+    assert_eq!(first(filtered).await, Some(lib.key("Release 2")));
     assert_eq!(
         first(view(TriageTab::Done)).await,
-        Some(lib.path("Release 2"))
+        Some(lib.key("Release 2"))
     );
     lib.run(&lib.identifying("Release 1", "queued")).await;
     assert_eq!(
         first(view(TriageTab::Pending)).await,
-        Some(lib.path("Release 1"))
+        Some(lib.key("Release 1"))
     );
     lib.run("DELETE FROM import_candidate_standing;").await;
     assert_eq!(first(view(TriageTab::Pending)).await, None);
@@ -564,7 +564,7 @@ async fn the_first_identifying_candidate_of_a_group_is_its_first_member() {
             .first_identifying_import_candidate(list)
             .await
             .unwrap(),
-        Some(lib.path("Group/Release 1"))
+        Some(lib.key("Group/Release 1"))
     );
 }
 
@@ -589,7 +589,7 @@ async fn candidate_location_opens_only_its_group() {
         .await;
     let fold = |group: &str| crate::import::FolderReleaseDecisionKey {
         watched_folder_path: lib.root.clone(),
-        relative_folder_path: group.to_string(),
+        relative_folder: crate::import::RelativeFolder::test(group),
     };
     lib.db
         .set_import_list_groups_folded(list, true)
@@ -597,7 +597,7 @@ async fn candidate_location_opens_only_its_group() {
         .unwrap();
     let location = lib
         .db
-        .locate_import_candidate(list, &lib.path("Target/Release 1"))
+        .locate_import_candidate(list, &lib.key("Target/Release 1"))
         .await
         .unwrap()
         .expect("the candidate is in Pending");
@@ -605,7 +605,7 @@ async fn candidate_location_opens_only_its_group() {
     assert_eq!(location.group_key, Some(fold("Target")));
     assert_eq!(
         location.stable_key,
-        format!("candidate:{}", lib.path("Target/Release 1"))
+        crate::import::list::candidate_stable_key(&lib.key("Target/Release 1"))
     );
     assert_eq!(location.visible_position, 2);
 }
@@ -622,7 +622,7 @@ async fn candidate_location_follows_an_import_from_pending_to_done() {
     let list = lib.open(view(TriageTab::Pending)).await;
     let location = lib
         .db
-        .locate_import_candidate(list, &lib.path("Release"))
+        .locate_import_candidate(list, &lib.key("Release"))
         .await
         .unwrap()
         .expect("the imported candidate is in Done");
@@ -631,7 +631,7 @@ async fn candidate_location_follows_an_import_from_pending_to_done() {
     assert_eq!(location.visible_position, 0);
     assert_eq!(
         lib.db
-            .locate_import_candidate(list, &lib.path("Nowhere"))
+            .locate_import_candidate(list, &lib.key("Nowhere"))
             .await
             .unwrap(),
         None

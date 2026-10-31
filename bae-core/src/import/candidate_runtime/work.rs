@@ -7,6 +7,7 @@
 //! evict its successor.
 
 use super::CandidateRuntime;
+use crate::import::CandidateKey;
 use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;
 
@@ -21,7 +22,7 @@ pub(crate) enum CandidateWork {
 /// under one lock so a generation and its entry advance together.
 #[derive(Default)]
 pub(super) struct WorkInFlight {
-    running: HashMap<(CandidateWork, String), (u64, CancellationToken)>,
+    running: HashMap<(CandidateWork, CandidateKey), (u64, CancellationToken)>,
     next_generation: u64,
 }
 
@@ -31,7 +32,7 @@ impl CandidateRuntime {
     pub(crate) fn start_work<T>(
         &self,
         work: CandidateWork,
-        key: String,
+        key: CandidateKey,
         construct: impl FnOnce(CancellationToken, u64) -> T,
     ) -> T {
         let token = CancellationToken::new();
@@ -54,34 +55,34 @@ impl CandidateRuntime {
     pub(crate) fn while_work_current<R>(
         &self,
         work: CandidateWork,
-        key: &str,
+        key: &CandidateKey,
         generation: u64,
         emit: impl FnOnce() -> R,
     ) -> Option<R> {
         let state = self.work.lock().unwrap();
-        match state.running.get(&(work, key.to_string())) {
+        match state.running.get(&(work, key.clone())) {
             Some((current, _)) if *current == generation => Some(emit()),
             _ => None,
         }
     }
 
     /// Cancel `key`'s `work`.
-    pub(crate) fn cancel_work(&self, work: CandidateWork, key: &str) {
+    pub(crate) fn cancel_work(&self, work: CandidateWork, key: &CandidateKey) {
         let entry = self
             .work
             .lock()
             .unwrap()
             .running
-            .remove(&(work, key.to_string()));
+            .remove(&(work, key.clone()));
         if let Some((_, token)) = entry {
             token.cancel();
         }
     }
 
     /// Remove `key`'s `work` only while it is still `generation`.
-    pub(crate) fn release_work(&self, work: CandidateWork, key: &str, generation: u64) {
+    pub(crate) fn release_work(&self, work: CandidateWork, key: &CandidateKey, generation: u64) {
         let mut state = self.work.lock().unwrap();
-        let entry = (work, key.to_string());
+        let entry = (work, key.clone());
         if state
             .running
             .get(&entry)
@@ -91,16 +92,16 @@ impl CandidateRuntime {
         }
     }
 
-    pub(crate) fn is_working(&self, work: CandidateWork, key: &str) -> bool {
+    pub(crate) fn is_working(&self, work: CandidateWork, key: &CandidateKey) -> bool {
         self.work
             .lock()
             .unwrap()
             .running
-            .contains_key(&(work, key.to_string()))
+            .contains_key(&(work, key.clone()))
     }
 
     /// Every key with `work` in flight.
-    pub(crate) fn working_keys(&self, work: CandidateWork) -> Vec<String> {
+    pub(crate) fn working_keys(&self, work: CandidateWork) -> Vec<CandidateKey> {
         self.work
             .lock()
             .unwrap()
@@ -112,12 +113,12 @@ impl CandidateRuntime {
     }
 
     /// End every kind of work in flight for `key`.
-    pub(super) fn end_work(&self, key: &str) {
+    pub(super) fn end_work(&self, key: &CandidateKey) {
         let ended: Vec<CancellationToken> = {
             let mut state = self.work.lock().unwrap();
             [CandidateWork::Extraction, CandidateWork::Identify]
                 .into_iter()
-                .filter_map(|work| state.running.remove(&(work, key.to_string())))
+                .filter_map(|work| state.running.remove(&(work, key.clone())))
                 .map(|(_, token)| token)
                 .collect()
         };
@@ -131,13 +132,13 @@ impl CandidateRuntime {
     pub(crate) fn work_cancelled_for_test(
         &self,
         work: CandidateWork,
-        key: &str,
+        key: &CandidateKey,
     ) -> Option<impl std::future::Future<Output = ()> + Send + 'static> {
         self.work
             .lock()
             .unwrap()
             .running
-            .get(&(work, key.to_string()))
+            .get(&(work, key.clone()))
             .map(|(_, token)| token.clone().cancelled_owned())
     }
 }
@@ -151,14 +152,16 @@ mod tests {
     #[tokio::test]
     async fn starting_a_key_again_advances_the_generation_and_cancels_the_last() {
         let runtime = CandidateRuntime::for_test().await;
-        let (first, first_generation) =
-            runtime.start_work(WORK, "cand".to_string(), |token, generation| {
-                (token, generation)
-            });
-        let (second, second_generation) =
-            runtime.start_work(WORK, "cand".to_string(), |token, generation| {
-                (token, generation)
-            });
+        let (first, first_generation) = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("cand"),
+            |token, generation| (token, generation),
+        );
+        let (second, second_generation) = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("cand"),
+            |token, generation| (token, generation),
+        );
 
         assert!(second_generation > first_generation);
         assert!(first.is_cancelled());
@@ -168,36 +171,74 @@ mod tests {
     #[tokio::test]
     async fn generations_are_unique_across_keys_and_kinds() {
         let runtime = CandidateRuntime::for_test().await;
-        let a = runtime.start_work(WORK, "a".to_string(), |_, generation| generation);
-        let b = runtime.start_work(WORK, "b".to_string(), |_, generation| generation);
-        let c = runtime.start_work(CandidateWork::Identify, "a".to_string(), |_, generation| {
-            generation
-        });
+        let a = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("a"),
+            |_, generation| generation,
+        );
+        let b = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("b"),
+            |_, generation| generation,
+        );
+        let c = runtime.start_work(
+            CandidateWork::Identify,
+            crate::import::CandidateKey::test("a"),
+            |_, generation| generation,
+        );
         assert!(a != b && b != c && a != c);
     }
 
     #[tokio::test]
     async fn only_the_current_generation_emits() {
         let runtime = CandidateRuntime::for_test().await;
-        let stale = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
+        let stale = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("cand"),
+            |_, generation| generation,
+        );
         assert_eq!(
-            runtime.while_work_current(WORK, "cand", stale, || "sent"),
+            runtime.while_work_current(
+                WORK,
+                &crate::import::CandidateKey::test("cand"),
+                stale,
+                || "sent"
+            ),
             Some("sent")
         );
 
-        let live = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
+        let live = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("cand"),
+            |_, generation| generation,
+        );
         assert_eq!(
-            runtime.while_work_current(WORK, "cand", stale, || "sent"),
+            runtime.while_work_current(
+                WORK,
+                &crate::import::CandidateKey::test("cand"),
+                stale,
+                || "sent"
+            ),
             None
         );
         assert_eq!(
-            runtime.while_work_current(WORK, "cand", live, || "sent"),
+            runtime.while_work_current(
+                WORK,
+                &crate::import::CandidateKey::test("cand"),
+                live,
+                || "sent"
+            ),
             Some("sent")
         );
 
-        runtime.cancel_work(WORK, "cand");
+        runtime.cancel_work(WORK, &crate::import::CandidateKey::test("cand"));
         assert_eq!(
-            runtime.while_work_current(WORK, "cand", live, || "sent"),
+            runtime.while_work_current(
+                WORK,
+                &crate::import::CandidateKey::test("cand"),
+                live,
+                || "sent"
+            ),
             None
         );
     }
@@ -205,38 +246,51 @@ mod tests {
     #[tokio::test]
     async fn a_release_removes_only_the_current_generation() {
         let runtime = CandidateRuntime::for_test().await;
-        let stale = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
-        let (live, live_generation) =
-            runtime.start_work(WORK, "cand".to_string(), |token, generation| {
-                (token, generation)
-            });
+        let stale = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("cand"),
+            |_, generation| generation,
+        );
+        let (live, live_generation) = runtime.start_work(
+            WORK,
+            crate::import::CandidateKey::test("cand"),
+            |token, generation| (token, generation),
+        );
 
-        runtime.release_work(WORK, "cand", stale);
-        assert!(runtime.is_working(WORK, "cand"));
+        runtime.release_work(WORK, &crate::import::CandidateKey::test("cand"), stale);
+        assert!(runtime.is_working(WORK, &crate::import::CandidateKey::test("cand")));
         assert!(!live.is_cancelled());
 
-        runtime.release_work(WORK, "cand", live_generation);
-        assert!(!runtime.is_working(WORK, "cand"));
+        runtime.release_work(
+            WORK,
+            &crate::import::CandidateKey::test("cand"),
+            live_generation,
+        );
+        assert!(!runtime.is_working(WORK, &crate::import::CandidateKey::test("cand")));
     }
 
     #[tokio::test]
     async fn a_removal_or_rebind_ends_every_kind_of_work_for_its_key_alone() {
         let runtime = CandidateRuntime::for_test().await;
-        let extraction =
-            runtime.start_work(CandidateWork::Extraction, "gone".to_string(), |token, _| {
-                token
-            });
-        let identify =
-            runtime.start_work(CandidateWork::Identify, "gone".to_string(), |token, _| {
-                token
-            });
-        let other = runtime.start_work(CandidateWork::Identify, "kept".to_string(), |token, _| {
-            token
-        });
+        let extraction = runtime.start_work(
+            CandidateWork::Extraction,
+            crate::import::CandidateKey::test("gone"),
+            |token, _| token,
+        );
+        let identify = runtime.start_work(
+            CandidateWork::Identify,
+            crate::import::CandidateKey::test("gone"),
+            |token, _| token,
+        );
+        let other = runtime.start_work(
+            CandidateWork::Identify,
+            crate::import::CandidateKey::test("kept"),
+            |token, _| token,
+        );
 
         runtime.record_event(&crate::import::ImportEvent::Scan(
             crate::import::ScanEvent::CandidateRemoved {
-                candidate_key: "gone".to_string(),
+                candidate_key: crate::import::CandidateKey::test("gone"),
             },
         ));
 
@@ -244,7 +298,7 @@ mod tests {
         assert!(!other.is_cancelled());
         assert_eq!(
             runtime.working_keys(CandidateWork::Identify),
-            vec!["kept".to_string()]
+            vec![crate::import::CandidateKey::test("kept")]
         );
     }
 }

@@ -3,11 +3,11 @@
 // Each wakes when the runtime or the table changes and reads what it draws,
 // so however many changes land before it looks, it reads where they left off.
 
-fn signals_event(key: &str, text: &str) -> ImportEvent {
+fn signals_event(key: &crate::import::CandidateKey, text: &str) -> ImportEvent {
     let mut signals = extracted_signals();
     signals.track_titles = vec![text.to_string()];
     ImportEvent::SignalsUpdated {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         run: IdentifyRunId::for_test(1),
         signals,
         artwork: crate::signals::ArtworkScan::Absent,
@@ -19,13 +19,13 @@ fn signals_event(key: &str, text: &str) -> ImportEvent {
 /// reaches the view queued, then running as a later read of the table says;
 /// a reader taking the view before that is told the move later, as if
 /// whatever it waits for had moved the key.
-async fn wait_until_running(runtime: &CandidateRuntime, keys: &[&str]) {
+async fn wait_until_running(runtime: &CandidateRuntime, keys: &[&crate::import::CandidateKey]) {
     runtime
         .watch_view()
         .wait_for(|view| {
             keys.iter().all(|key| {
                 view.snapshots
-                    .get(*key)
+                    .get(key)
                     .and_then(|snapshot| snapshot.import.as_ref())
                     .map(|import| import.step)
                     == Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles))
@@ -44,8 +44,8 @@ fn keep_current(runtime: &CandidateRuntime) -> tokio::task::JoinHandle<()> {
 async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
     let runtime = CandidateRuntime::for_test().await;
     let live = keep_current(&runtime);
-    claim(&runtime, "/watch/a/rel1").await;
-    claim(&runtime, "/watch/a/rel2").await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1")).await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
     let mut view = runtime.watch_view();
     view.wait_for(|view| view.snapshots.len() == 2)
         .await
@@ -58,14 +58,14 @@ async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
         [CandidateRuntimeChange::Reset { runtimes }] if runtimes.len() == 2
     ));
 
-    runtime.record_event(&progress("/watch/a/rel1", 40));
-    runtime.move_import("/watch/a/rel2", "imp-1", None).await.unwrap();
+    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 40));
+    runtime.move_import(&crate::import::CandidateKey::test("/watch/a/rel2"), "imp-1", None).await.unwrap();
     let mut changed = Vec::new();
     while !(changed.iter().any(|change| {
-        matches!(change, CandidateRuntimeChange::Removed { key } if key == "/watch/a/rel2")
+        matches!(change, CandidateRuntimeChange::Removed { key } if key == &crate::import::CandidateKey::test("/watch/a/rel2"))
     }) && changed.iter().any(|change| {
         matches!(change, CandidateRuntimeChange::Updated { key, runtime }
-            if key == "/watch/a/rel1"
+            if key == &crate::import::CandidateKey::test("/watch/a/rel1")
                 && runtime.import.as_ref().map(|import| import.step)
                     == Some(ImportStep::Running(ImportPhase::MeasuringLoudness)))
     })) {
@@ -80,19 +80,19 @@ async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
 async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
     let runtime = CandidateRuntime::for_test().await;
     let live = keep_current(&runtime);
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     let mut watch = RuntimeSnapshotsWatch::of(&runtime);
     watch.next().await.expect("the runtime is there");
 
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     let queued = loop {
         let changes = watch.next().await.expect("the runtime is there");
         if let Some(runtime) = changes.into_iter().find_map(|change| match change {
-            CandidateRuntimeChange::Updated { key: changed, runtime } if changed == key => {
+            CandidateRuntimeChange::Updated { key: changed, runtime } if changed == key.clone() => {
                 Some(runtime)
             }
             _ => None,
@@ -119,7 +119,7 @@ async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
         let changes = watch.next().await.expect("the runtime is there");
         if let Some(runtime) = changes.into_iter().find_map(|change| match change {
             CandidateRuntimeChange::Updated { key: changed, runtime }
-                if changed == key
+                if changed == key.clone()
                     && matches!(runtime.identification, Some(IdentificationRuntime::Running(_))) =>
             {
                 Some(runtime)
@@ -141,18 +141,18 @@ async fn a_values_reader_reads_the_counts_and_signals_as_they_stand() {
     let runtime = CandidateRuntime::for_test().await;
     let live = keep_current(&runtime);
     let mut watch = RuntimeValuesWatch::of(&runtime);
-    let first = "/watch/a/rel1";
-    let second = "/watch/a/rel2";
+    let first = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let marks = vec![
-        (first.to_string(), scanned_key(&runtime, first).await),
-        (second.to_string(), scanned_key(&runtime, second).await),
+        (first.clone(), scanned_key(&runtime, first).await),
+        (second.clone(), scanned_key(&runtime, second).await),
     ];
 
     runtime.admit(marks, Admission::Automatic).await.unwrap();
     runtime.withdraw(first).await.unwrap();
-    claim(&runtime, "/watch/a/rel3").await;
-    runtime.record_event(&signals_event("/watch/a/rel3", "first"));
-    runtime.record_event(&signals_event("/watch/a/rel3", "last"));
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel3")).await;
+    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel3"), "first"));
+    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel3"), "last"));
 
     let mut changed = Vec::new();
     while !(changed.contains(&RuntimeValue::ImportsInFlight { count: 1 })
@@ -176,8 +176,8 @@ async fn a_values_reader_is_told_only_the_key_whose_signals_moved() {
     let runtime = CandidateRuntime::for_test().await;
     let live = keep_current(&runtime);
     let mut watch = RuntimeValuesWatch::of(&runtime);
-    runtime.record_event(&signals_event("/watch/a/rel1", "first"));
-    runtime.record_event(&signals_event("/watch/a/rel2", "first"));
+    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel1"), "first"));
+    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel2"), "first"));
     let mut told = Vec::new();
     while told.len() < 2 {
         told.extend(
@@ -190,13 +190,13 @@ async fn a_values_reader_is_told_only_the_key_whose_signals_moved() {
         );
     }
 
-    runtime.record_event(&signals_event("/watch/a/rel2", "second"));
+    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel2"), "second"));
     let next = watch.next().await.expect("the runtime is there");
     assert!(
         matches!(
             next.as_slice(),
             [RuntimeValue::Signals { key, signals }]
-                if key == "/watch/a/rel2" && signals.track_titles == ["second"]
+                if key == &crate::import::CandidateKey::test("/watch/a/rel2") && signals.track_titles == ["second"]
         ),
         "{next:?}"
     );
@@ -208,19 +208,19 @@ async fn a_values_reader_is_told_only_the_key_whose_signals_moved() {
 async fn a_snapshots_reader_is_told_only_the_key_that_moved() {
     let runtime = CandidateRuntime::for_test().await;
     let live = keep_current(&runtime);
-    claim(&runtime, "/watch/a/rel1").await;
-    claim(&runtime, "/watch/a/rel2").await;
-    wait_until_running(&runtime, &["/watch/a/rel1", "/watch/a/rel2"]).await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1")).await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
+    wait_until_running(&runtime, &[&crate::import::CandidateKey::test("/watch/a/rel1"), &crate::import::CandidateKey::test("/watch/a/rel2")]).await;
     let mut watch = RuntimeSnapshotsWatch::of(&runtime);
     watch.next().await.expect("the runtime is there");
 
-    runtime.record_event(&progress("/watch/a/rel1", 40));
+    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 40));
     let next = watch.next().await.expect("the runtime is there");
     assert!(
         matches!(
             next.as_slice(),
             [CandidateRuntimeChange::Updated { key, runtime }]
-                if key == "/watch/a/rel1"
+                if key == &crate::import::CandidateKey::test("/watch/a/rel1")
                     && runtime.import.as_ref().map(|import| import.step)
                         == Some(ImportStep::Running(ImportPhase::MeasuringLoudness))
         ),
@@ -236,25 +236,25 @@ async fn a_snapshots_reader_is_told_only_the_key_that_moved() {
 async fn an_import_percent_moves_the_percents_not_the_snapshots() {
     let runtime = CandidateRuntime::for_test().await;
     let live = keep_current(&runtime);
-    claim(&runtime, "/watch/a/rel1").await;
-    claim(&runtime, "/watch/a/rel2").await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1")).await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
     let mut percents = runtime.watch_import_percents();
-    wait_until_running(&runtime, &["/watch/a/rel1", "/watch/a/rel2"]).await;
-    runtime.record_event(&progress("/watch/a/rel1", 40));
+    wait_until_running(&runtime, &[&crate::import::CandidateKey::test("/watch/a/rel1"), &crate::import::CandidateKey::test("/watch/a/rel2")]).await;
+    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 40));
     percents
-        .wait_for(|percents| percents.get("/watch/a/rel1") == Some(&40))
+        .wait_for(|percents| percents.get(&crate::import::CandidateKey::test("/watch/a/rel1")) == Some(&40))
         .await
         .unwrap();
     let mut watch = RuntimeSnapshotsWatch::of(&runtime);
     watch.next().await.expect("the runtime is there");
 
-    runtime.record_event(&progress("/watch/a/rel1", 41));
+    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 41));
     percents
-        .wait_for(|percents| percents.get("/watch/a/rel1") == Some(&41))
+        .wait_for(|percents| percents.get(&crate::import::CandidateKey::test("/watch/a/rel1")) == Some(&41))
         .await
         .unwrap();
     assert!(
-        !percents.borrow().contains_key("/watch/a/rel2"),
+        !percents.borrow().contains_key(&crate::import::CandidateKey::test("/watch/a/rel2")),
         "a claim no report moved has no percent"
     );
     assert!(
@@ -264,9 +264,9 @@ async fn an_import_percent_moves_the_percents_not_the_snapshots() {
         "a percent at the same step tells the snapshot stream nothing"
     );
 
-    runtime.move_import("/watch/a/rel1", "imp-1", None).await.unwrap();
+    runtime.move_import(&crate::import::CandidateKey::test("/watch/a/rel1"), "imp-1", None).await.unwrap();
     percents
-        .wait_for(|percents| !percents.contains_key("/watch/a/rel1"))
+        .wait_for(|percents| !percents.contains_key(&crate::import::CandidateKey::test("/watch/a/rel1")))
         .await
         .unwrap();
     live.abort();

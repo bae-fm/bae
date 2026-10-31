@@ -11,7 +11,7 @@ use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
 use crate::types::{BridgeFastValue, KeyActivityCallback, StreamFailureCallback};
 
 /// The key of a stream that holds one value.
-const ONLY_KEY: &str = "";
+const ONLY_KEY: &[u8] = b"";
 
 impl AppHandle {
     /// Run `feed` writing a new stream as the library's work, and hand back
@@ -46,10 +46,10 @@ fn write_release_changes<Progress>(
                 release_id,
                 progress,
             } => writer.set(release_id, value(progress)),
-            ReleaseTransferChange::Removed { release_id } => writer.remove(&release_id),
+            ReleaseTransferChange::Removed { release_id } => writer.remove(release_id.as_bytes()),
             ReleaseTransferChange::Reset(all) => writer.reset(
                 all.into_iter()
-                    .map(|(release_id, progress)| (release_id, value(progress)))
+                    .map(|(release_id, progress)| (release_id.into_bytes(), value(progress)))
                     .collect(),
             ),
         }
@@ -76,11 +76,11 @@ fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_core::library::Fil
             FileTransferChange::Updated { file, fraction } => {
                 writer.set(file.to_string(), share(fraction))
             }
-            FileTransferChange::Removed { file } => writer.remove(&file.to_string()),
+            FileTransferChange::Removed { file } => writer.remove(file.to_string().as_bytes()),
             FileTransferChange::Reset(files) => writer.reset(
                 files
                     .into_iter()
-                    .map(|(file, fraction)| (file.to_string(), share(fraction)))
+                    .map(|(file, fraction)| (file.to_string().into_bytes(), share(fraction)))
                     .collect(),
             ),
         }
@@ -118,13 +118,17 @@ impl AppHandle {
                             release_id,
                             transfer,
                         } => writer.set(release_id, upload(transfer)),
-                        OutboxTransferChange::Removed { release_id } => writer.remove(&release_id),
+                        OutboxTransferChange::Removed { release_id } => {
+                            writer.remove(release_id.as_bytes())
+                        }
                         // The total is its own stream.
                         OutboxTransferChange::TotalUpdated(_) => {}
                         OutboxTransferChange::Reset(all) => writer.reset(
                             all.releases
                                 .into_iter()
-                                .map(|(release_id, transfer)| (release_id, upload(transfer)))
+                                .map(|(release_id, transfer)| {
+                                    (release_id.into_bytes(), upload(transfer))
+                                })
                                 .collect(),
                         ),
                     }
@@ -146,7 +150,7 @@ impl AppHandle {
             let mut total = services.watch_outbox_total_transfer();
             while let Some(transfer) = total.next().await {
                 match transfer.map(upload_total) {
-                    Ok(Some(total)) => writer.set(ONLY_KEY.to_string(), total),
+                    Ok(Some(total)) => writer.set(ONLY_KEY, total),
                     Ok(None) => writer.remove(ONLY_KEY),
                     Err(error) => {
                         writer.remove(ONLY_KEY);
@@ -227,13 +231,13 @@ impl AppHandle {
 /// key, or nothing.
 fn track_positions(
     positions: &bae_core::playback::PlaybackPositions,
-) -> HashMap<String, BridgeFastValue> {
+) -> HashMap<Vec<u8>, BridgeFastValue> {
     positions
         .library
         .clone()
         .map(|position| {
             (
-                position.track_id.clone(),
+                position.track_id.clone().into_bytes(),
                 BridgeFastValue::TrackPosition {
                     position: crate::types::BridgeTrackPosition::from_core(
                         position,
@@ -261,7 +265,7 @@ impl AppHandle {
                 let preview = positions.borrow_and_update().preview.clone();
                 match preview {
                     Some(position) => writer.set(
-                        ONLY_KEY.to_string(),
+                        ONLY_KEY,
                         BridgeFastValue::PreviewPosition {
                             position: crate::types::BridgePreviewPosition::from_core(position),
                         },
@@ -284,12 +288,12 @@ impl AppHandle {
         self.feed(activity, move |services, writer| async move {
             let mut percents = services.watch_import_percents();
             loop {
-                let held: HashMap<String, BridgeFastValue> = percents
+                let held: HashMap<Vec<u8>, BridgeFastValue> = percents
                     .borrow_and_update()
                     .iter()
                     .map(|(key, percent)| {
                         (
-                            key.clone(),
+                            key.as_bytes().to_vec(),
                             BridgeFastValue::ImportPercent { percent: *percent },
                         )
                     })

@@ -20,7 +20,7 @@ private final class Recorder {
 
     var bindCalls: [BindingCall] = []
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
-    var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
+    var trackEdits: [(key: Data, track: BridgeRawTrackEdit)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
     var externalMetadata: [BridgePressingLink] = []
     var fileTagsApplications = 0

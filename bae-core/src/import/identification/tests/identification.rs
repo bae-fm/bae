@@ -34,8 +34,8 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
 
     let row = fixture.stored_for(&dir).await.expect("a verdict is stored");
     assert_eq!(
-        row.folder_path,
-        dir.to_string_lossy(),
+        row.candidate_key,
+        crate::import::CandidateKey::folder(&dir),
         "the row names where the candidate was last seen"
     );
     let identify = identify_result(&row);
@@ -55,7 +55,7 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
 async fn a_planned_candidate_is_queued_before_its_driver_reports() {
     let fixture = Fixture::new("queued-before-driver").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
@@ -94,10 +94,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     let fixture = Fixture::new("shared-job-status").await;
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
-    let keys = [
-        first.to_string_lossy().into_owned(),
-        second.to_string_lossy().into_owned(),
-    ];
+    let keys = [crate::import::CandidateKey::folder(&first), crate::import::CandidateKey::folder(&second)];
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;
@@ -195,7 +192,7 @@ async fn a_stored_verdict_is_not_re_fetched() {
     assert!(
         fixture
             .import
-            .answerable_candidate(&renamed.to_string_lossy())
+            .answerable_candidate(&crate::import::CandidateKey::folder(&renamed))
             .await
             .unwrap()
             .is_some(),
@@ -427,7 +424,7 @@ async fn a_skipped_candidate_is_not_identified() {
     fixture.scan(1).await;
     fixture
         .import
-        .set_candidate_skipped(dir.to_string_lossy().into_owned(), true)
+        .set_candidate_skipped(crate::import::CandidateKey::folder(&dir), true)
         .await
         .unwrap();
 

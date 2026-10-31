@@ -38,7 +38,10 @@ pub(super) fn through(
     }
 }
 
-pub(super) fn scan_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
+pub(super) fn scan_candidate(
+    root: &std::path::Path,
+    name: &str,
+) -> crate::import::folder_scanner::ScanItem {
     crate::import::folder_scanner::ScanItem::Valid(super::candidate(root, name))
 }
 
@@ -58,7 +61,7 @@ pub(super) fn candidate_names(projection: &crate::import::ImportListProjection) 
 /// return it.
 async fn scanned(
     db: &Database,
-    root: &str,
+    root: &std::path::Path,
     name: &str,
 ) -> crate::import::folder_scanner::FolderCandidate {
     let item = scan_candidate(root, name);
@@ -67,13 +70,15 @@ async fn scanned(
     };
     let candidate = candidate.clone();
     let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local)
         .await
         .unwrap();
-    db.save_folder_scan_item(root, generation, &item)
+    db.save_folder_scan_item(std::path::Path::new(root), generation, &item)
         .await
         .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
+    db.finish_folder_scan(std::path::Path::new(root), generation, None)
+        .await
+        .unwrap();
     candidate
 }
 
@@ -295,7 +300,7 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
     db.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
     let key = candidate.key();
-    let detail = |db: Database, key: String| async move {
+    let detail = |db: Database, key: crate::import::CandidateKey| async move {
         db.load_import_candidate(&key)
             .await
             .unwrap()
@@ -399,11 +404,14 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
 
     // What a walk records about the directories it read: the list projects
     // candidates, and never reads this.
+    let root_bytes = hex::encode(coven::path_bytes(root));
     exec(
         &db,
-        "INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at) \
-         VALUES (?1, ?1, 1234)",
-        &[root.as_str()],
+        &format!(
+            "INSERT INTO folder_scan_directory (watched_folder_path, path, modified_at) \
+             VALUES (X'{root_bytes}', X'{root_bytes}', 1234)"
+        ),
+        &[],
     )
     .await;
 
@@ -431,7 +439,7 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
         let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
             unreachable!("the fixture builds a valid candidate");
         };
-        keys.push(candidate.path.to_string_lossy().into_owned());
+        keys.push(candidate.key());
         db.save_folder_scan_item(root, generation, &item)
             .await
             .unwrap();
@@ -453,7 +461,7 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     for (key, name) in keys.iter().zip(["first", "second"]) {
         requests.set(Some(key.clone())).unwrap();
         let read = live.next().await.expect("the query stays open");
-        assert_eq!(read.request.as_deref(), Some(key.as_str()));
+        assert_eq!(read.request.as_ref(), Some(key));
         let detail = read.result.unwrap().expect("the candidate reads");
         assert_eq!(detail.candidate.name, name);
     }

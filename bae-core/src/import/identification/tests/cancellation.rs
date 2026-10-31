@@ -28,8 +28,8 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;
 
-    let picked_key = picked.to_string_lossy().into_owned();
-    let other_key = other.to_string_lossy().into_owned();
+    let picked_key = crate::import::CandidateKey::folder(&picked);
+    let other_key = crate::import::CandidateKey::folder(&other);
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let mut events = fixture.import.every_event();
@@ -98,7 +98,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 async fn skipping_a_candidate_ends_its_run_and_unskipping_queues_nothing() {
     let fixture = Fixture::new("skip-ends-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
@@ -153,7 +153,7 @@ async fn skipping_a_candidate_ends_its_run_and_unskipping_queues_nothing() {
 async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() {
     let fixture = Fixture::new("clear-ends-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
@@ -203,7 +203,7 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
 async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
     let fixture = Fixture::new("clear-requeues").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/discid/",
@@ -255,7 +255,7 @@ async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
 async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() {
     let fixture = Fixture::new("decision-then-request").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/discid/",
@@ -331,7 +331,7 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
 async fn starting_an_import_ends_the_candidates_run() {
     let fixture = Fixture::new("import-ends-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
@@ -371,7 +371,7 @@ async fn starting_an_import_ends_the_candidates_run() {
 async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     let fixture = Fixture::new("disable-during-settle").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/discid/",

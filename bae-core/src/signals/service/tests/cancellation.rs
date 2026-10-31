@@ -8,7 +8,7 @@ use super::*;
 fn start(handle: &ExtractionServiceHandle, folder: PathBuf) -> crate::signals::ExtractionWatch {
     handle.start(
         IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
+        crate::import::CandidateKey::test("cand-1"),
         folder_source(folder),
         CallPriority::Interactive,
     )
@@ -54,7 +54,7 @@ async fn cancelled_ocr_run_does_not_settle() {
     let mut watch = start(&handle, folder);
 
     ocr_entered(entries).await;
-    handle.cancel("cand-1");
+    handle.cancel(&crate::import::CandidateKey::test("cand-1"));
     gate.open();
     run_ended(&mut watch).await;
 
@@ -94,10 +94,10 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
 
     ocr_entered(entries).await;
     let cancelled = handle
-        .cancelled_for_test("cand-1")
+        .cancelled_for_test(&crate::import::CandidateKey::test("cand-1"))
         .expect("the extraction is in flight");
     tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-        candidate_key: "cand-1".to_string(),
+        candidate_key: crate::import::CandidateKey::test("cand-1"),
     }));
     tokio::time::timeout(Duration::ZERO, cancelled)
         .await
@@ -136,7 +136,7 @@ async fn a_cancelled_pass_waiting_for_a_read_starts_none() {
             .acquire_many_owned(IMAGES_IN_FLIGHT as u32)
             .await
             .unwrap();
-        let key = format!("cand-{attempt}");
+        let key = crate::import::CandidateKey::test(&format!("cand-{attempt}"));
         let mut watch = handle.start(
             IdentifyRunId::for_test(1),
             key.clone(),

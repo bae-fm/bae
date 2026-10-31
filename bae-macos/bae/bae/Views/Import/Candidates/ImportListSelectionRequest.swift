@@ -38,17 +38,17 @@ struct ImportListSelectionRequest {
     /// The rows the table has selected now.
     let current: IndexSet
     /// The loaded rows shown selected now.
-    let shown: Set<String>
+    let shown: Set<Data>
     let gesture: SelectionGesture
     /// The row the pointer pressed, for a click.
     let target: Int?
     /// The row the last gesture without Shift landed on, which a Shift
     /// gesture extends from when the run it proposes starts at a row whose
     /// page has gone.
-    let anchor: String?
+    let anchor: Data?
     /// The candidate key the row at a position selects: `nil` for a group
     /// header and for a row whose page has not landed.
-    let key: (Int) -> String?
+    let key: (Int) -> Data?
 
     /// What the proposal asks of core's selection.
     enum Answer: Equatable {
@@ -61,8 +61,8 @@ struct ImportListSelectionRequest {
         /// reflects it, and extend from `anchor` next.
         case change(
             BridgeSelectionChange,
-            shown: Set<String>,
-            anchor: String?
+            shown: Set<Data>,
+            anchor: Data?
         )
     }
 
@@ -76,7 +76,7 @@ struct ImportListSelectionRequest {
             // Sent even when the rows shown selected are the ones proposed:
             // core's selection may hold rows past the loaded pages too.
             return .change(
-                .replace(keys: proposedKeys.sorted()),
+                .replace(keys: proposedKeys.inByteOrder),
                 shown: proposedKeys,
                 anchor: target.flatMap(key)
                     ?? (proposedKeys.count == 1 ? proposedKeys.first : anchor)
@@ -86,7 +86,7 @@ struct ImportListSelectionRequest {
             let remove = shown.subtracting(proposedKeys)
             guard !add.isEmpty || !remove.isEmpty else { return .unchanged }
             return .change(
-                .toggle(add: add.sorted(), remove: remove.sorted()),
+                .toggle(add: add.inByteOrder, remove: remove.inByteOrder),
                 shown: proposedKeys,
                 anchor: target.flatMap(key) ?? anchor
             )
@@ -98,13 +98,13 @@ struct ImportListSelectionRequest {
     /// A Shift gesture: the run it adds goes to core by its two ends, and
     /// core selects every row between them, loaded or not. One that only
     /// shrinks the selection takes out what it drops.
-    private func extended(_ proposedKeys: Set<String>) -> Answer {
+    private func extended(_ proposedKeys: Set<Data>) -> Answer {
         let added = proposed.subtracting(current)
         guard let first = added.first, let last = added.last else {
             let remove = shown.subtracting(proposedKeys)
             guard !remove.isEmpty else { return .unchanged }
             return .change(
-                .toggle(add: [], remove: remove.sorted()),
+                .toggle(add: [], remove: remove.inByteOrder),
                 shown: proposedKeys,
                 anchor: anchor
             )
@@ -127,11 +127,19 @@ struct ImportListSelectionRequest {
     }
 
     /// The first row from `start` towards `end` that selects a candidate.
-    private func firstKey(from start: Int, to end: Int) -> String? {
+    private func firstKey(from start: Int, to end: Int) -> Data? {
         let step = start <= end ? 1 : -1
         return stride(from: start, through: end, by: step)
             .lazy
             .compactMap(key)
             .first
+    }
+}
+
+extension Set<Data> {
+    /// The keys in the order of their bytes, so the same keys always cross in
+    /// one order.
+    fileprivate var inByteOrder: [Data] {
+        sorted { $0.lexicographicallyPrecedes($1) }
     }
 }

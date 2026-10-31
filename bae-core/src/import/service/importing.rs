@@ -231,7 +231,7 @@ impl ImportService {
     pub(super) async fn prepare_and_run_folder_import(
         &self,
         import_id: String,
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         source: crate::import::release_candidate::CandidateSource,
         expectation: ImportExpectation,
         destination: ImportDestination,
@@ -619,7 +619,7 @@ impl ImportService {
             // resulting content identity opaque to bae.
             let bytes_read_before_file = bytes_read;
             let event_tx = self.event_tx.clone();
-            let candidate_key_for_progress = candidate_key.to_string();
+            let candidate_key_for_progress = candidate_key.clone();
             let release_id_for_progress = db_release.id.clone();
             let import_id_for_progress = import_id.to_string();
             let reported_percent = Arc::new(std::sync::atomic::AtomicU8::new(last_release_percent));
@@ -857,7 +857,7 @@ impl ImportService {
             .map_err(crate::import::ImportError::from)?;
 
         let commit_guard = crate::db::ImportCommitGuard::Candidate {
-            candidate_key: candidate_key.to_string(),
+            candidate_key: candidate_key.clone(),
             source: committed.source,
             expectation: committed.expectation,
             import_id: import_id.to_string(),
@@ -908,7 +908,7 @@ impl ImportService {
         };
         self.event_tx
             .send(crate::import::handle::ImportEvent::ImportProgress {
-                candidate_key: candidate_key.to_string(),
+                candidate_key: candidate_key.clone(),
                 progress,
             });
 

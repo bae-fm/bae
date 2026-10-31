@@ -1,5 +1,6 @@
 //! The one shape a host receives values core sends many times a second in:
-//! a `KeyedValueStream`, keyed by file, release or track.
+//! a `KeyedValueStream`, keyed by bytes: a file's, release's or track's id
+//! as UTF-8, or a candidate's key, which need not be text.
 //!
 //! A host never receives such a value in a callback, a record field or a
 //! subscription value. An `AppHandle` `feed_*` call starts writing one
@@ -25,7 +26,7 @@ pub(crate) struct StreamValues {
 /// What a stream holds: each key's value until the stream is cancelled,
 /// and nothing from then on.
 enum Held {
-    Open(HashMap<String, BridgeFastValue>),
+    Open(HashMap<Vec<u8>, BridgeFastValue>),
     Cancelled,
 }
 
@@ -37,7 +38,7 @@ impl StreamValues {
         })
     }
 
-    fn latest(&self, key: &str) -> Option<BridgeFastValue> {
+    fn latest(&self, key: &[u8]) -> Option<BridgeFastValue> {
         match &*self.held.lock().unwrap() {
             Held::Open(values) => values.get(key).cloned(),
             Held::Cancelled => None,
@@ -46,7 +47,7 @@ impl StreamValues {
 
     /// Change the values, then tell the keys `change` says started or
     /// stopped holding one. A cancelled stream takes no change.
-    fn write(&self, change: impl FnOnce(&mut HashMap<String, BridgeFastValue>) -> Vec<String>) {
+    fn write(&self, change: impl FnOnce(&mut HashMap<Vec<u8>, BridgeFastValue>) -> Vec<Vec<u8>>) {
         let started_or_stopped = match &mut *self.held.lock().unwrap() {
             Held::Open(values) => change(values),
             Held::Cancelled => Vec::new(),
@@ -61,7 +62,7 @@ impl StreamValues {
     fn cancel(&self) {
         let stopped = match std::mem::replace(&mut *self.held.lock().unwrap(), Held::Cancelled) {
             Held::Open(values) => {
-                let mut keys: Vec<String> = values.into_keys().collect();
+                let mut keys: Vec<Vec<u8>> = values.into_keys().collect();
                 keys.sort();
                 keys
             }
@@ -92,7 +93,7 @@ impl KeyedValueStream {
 #[uniffi::export]
 impl KeyedValueStream {
     /// The key's latest value; `None` while the stream names none for it.
-    pub fn latest(&self, key: String) -> Option<BridgeFastValue> {
+    pub fn latest(&self, key: Vec<u8>) -> Option<BridgeFastValue> {
         self.values.latest(&key)
     }
 
@@ -122,7 +123,8 @@ impl StreamWriter {
     }
 
     /// The stream names `key` with `value`.
-    pub(crate) fn set(&self, key: String, value: BridgeFastValue) {
+    pub(crate) fn set(&self, key: impl Into<Vec<u8>>, value: BridgeFastValue) {
+        let key = key.into();
         self.values
             .write(|values| match values.insert(key.clone(), value) {
                 None => vec![key],
@@ -131,17 +133,17 @@ impl StreamWriter {
     }
 
     /// The stream stopped naming `key`.
-    pub(crate) fn remove(&self, key: &str) {
+    pub(crate) fn remove(&self, key: &[u8]) {
         self.values.write(|values| match values.remove(key) {
-            Some(_) => vec![key.to_string()],
+            Some(_) => vec![key.to_vec()],
             None => vec![],
         });
     }
 
     /// The stream names every key in `all`, and none other.
-    pub(crate) fn reset(&self, all: HashMap<String, BridgeFastValue>) {
+    pub(crate) fn reset(&self, all: HashMap<Vec<u8>, BridgeFastValue>) {
         self.values.write(|values| {
-            let mut changed: Vec<String> = values
+            let mut changed: Vec<Vec<u8>> = values
                 .keys()
                 .filter(|key| !all.contains_key(*key))
                 .chain(all.keys().filter(|key| !values.contains_key(*key)))

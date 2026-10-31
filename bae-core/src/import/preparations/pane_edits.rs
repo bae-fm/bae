@@ -32,8 +32,8 @@ impl CandidatePreparations {
 
     pub async fn set_prepared_cover(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &std::path::Path,
+        candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         cover: &crate::import::CoverSelection,
         remote_image: Option<&bae_catalogs::remote_image::RemoteImage>,
@@ -93,8 +93,8 @@ impl CandidatePreparations {
     /// [`CandidateAsRead`] — its caller never reads a metadata revision.
     pub async fn set_field_prepared(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &std::path::Path,
+        candidate_path: &crate::import::CandidateKey,
         content_hash: &str,
         expected_file_edit_revision: u64,
         edit: crate::import::DraftFieldEdit,
@@ -136,8 +136,8 @@ impl CandidatePreparations {
 
     pub async fn set_album_artists_prepared(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &std::path::Path,
+        candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         assignments: &[crate::import::Credited],
     ) -> Result<u64, LibraryError> {
@@ -171,8 +171,8 @@ impl CandidatePreparations {
     /// Record one mapping-table row the user changed.
     pub async fn set_track_edit_prepared(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &std::path::Path,
+        candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         row: &crate::import::RawTrackEdit,
     ) -> Result<u64, LibraryError> {
@@ -184,8 +184,8 @@ impl CandidatePreparations {
 
     pub async fn set_track_artists_prepared(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &std::path::Path,
+        candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         track_ids: &[String],
         assignments: &TrackArtistAssignments,
@@ -206,8 +206,8 @@ impl CandidatePreparations {
     /// moved.
     async fn edit_read_candidate(
         &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
+        watched_folder_path: &std::path::Path,
+        candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), LibraryError>,
     ) -> Result<u64, LibraryError> {
@@ -285,10 +285,13 @@ impl CandidatePreparations {
     }
 }
 
-fn scanned_key(watched_folder_path: &str, candidate_path: &str) -> ScannedCandidateKey {
+fn scanned_key(
+    watched_folder_path: &std::path::Path,
+    candidate_path: &crate::import::CandidateKey,
+) -> ScannedCandidateKey {
     ScannedCandidateKey {
-        watched_folder_path: watched_folder_path.to_string(),
-        candidate_path: candidate_path.to_string(),
+        watched_folder_path: watched_folder_path.to_path_buf(),
+        candidate_path: candidate_path.clone(),
     }
 }
 

@@ -1,7 +1,7 @@
-fn local_import_command(import_id: &str, candidate_key: &str, folder: &Path) -> ImportCommand {
+fn local_import_command(import_id: &str, candidate_key: &crate::import::CandidateKey, folder: &Path) -> ImportCommand {
     ImportCommand {
         import_id: import_id.to_string(),
-        candidate_key: candidate_key.to_string(),
+        candidate_key: candidate_key.clone(),
         source: crate::import::release_candidate::CandidateSource {
             path: folder.to_path_buf(),
             scope: crate::import::ReleaseFileScope::Recursive,

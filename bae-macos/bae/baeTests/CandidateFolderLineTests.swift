@@ -12,7 +12,7 @@ final class CandidateFolderLineTests: XCTestCase {
             CandidateFolderLine(
                 tab: .pending,
                 folderName: "Release Folder",
-                folderPaths: ["/library/release-folder"],
+                folderPaths: [Data("/library/release-folder".utf8)],
                 onNavigateToPlacement: {}
             )
             .padding()
@@ -23,7 +23,7 @@ final class CandidateFolderLineTests: XCTestCase {
                 CandidateFolderLine(
                     tab: nil,
                     folderName: "Release Folder",
-                    folderPaths: ["/library/release-folder"],
+                    folderPaths: [Data("/library/release-folder".utf8)],
                     onNavigateToPlacement: {}
                 )
                 .padding()

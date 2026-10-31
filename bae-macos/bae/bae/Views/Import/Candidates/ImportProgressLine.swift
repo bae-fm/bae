@@ -12,7 +12,7 @@ import SwiftUI
 /// update. The row itself only says *that* an import is running, which is a
 /// fact the queue projects.
 struct ImportProgressLine: View {
-    let key: String
+    let key: Data
     @Environment(\.importPercents)
     private var percents
 

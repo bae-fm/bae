@@ -48,7 +48,7 @@ fn counted(
 /// What is running for each candidate row a snapshot's page holds, by key.
 fn page_live(
     snapshot: &crate::import::ImportListSnapshot,
-) -> BTreeMap<String, crate::import::CandidateLiveState> {
+) -> BTreeMap<crate::import::CandidateKey, crate::import::CandidateLiveState> {
     snapshot
         .windows
         .iter()
@@ -78,9 +78,9 @@ fn running(phase: crate::import::ImportPhase, percent: Option<u8>) -> crate::imp
     }
 }
 
-fn reported(key: &str, progress: crate::import::ImportProgress) -> ImportEvent {
+fn reported(key: &crate::import::CandidateKey, progress: crate::import::ImportProgress) -> ImportEvent {
     ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
+        candidate_key: key.clone(),
         progress,
     }
 }
@@ -94,7 +94,7 @@ fn reported(key: &str, progress: crate::import::ImportProgress) -> ImportEvent {
 async fn a_claimed_import_reaches_its_row_on_the_page() {
     let fixture = Fixture::new("live-state-on-the-page").await;
     let dir = fixture.disc_id_candidate("Album Title");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.scan(1).await;
 
     let list = list_subscription(&fixture, page_window(0, 50)).await;
@@ -213,7 +213,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     let on_key = on_page.into_keys().next().expect("one row");
     let off_key = [first, second]
         .into_iter()
-        .map(|dir| dir.to_string_lossy().into_owned())
+        .map(|dir| crate::import::CandidateKey::folder(&dir))
         .find(|key| *key != on_key)
         .expect("the other candidate is off the page");
 
@@ -322,10 +322,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
 
     let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
-    let keys: Vec<String> = dirs
-        .iter()
-        .map(|dir| dir.to_string_lossy().into_owned())
-        .collect();
+    let keys: Vec<crate::import::CandidateKey> = dirs.iter().map(|dir| crate::import::CandidateKey::folder(dir)).collect();
     for key in &keys {
         assert_eq!(page_live(&initial)[key].facts.identification, None);
     }
@@ -335,7 +332,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     }
     wait_for_request(&fixture.provider, "/discid/", MAX_IN_FLIGHT).await;
 
-    let status = |snapshot: &crate::import::ImportListSnapshot, key: &String| {
+    let status = |snapshot: &crate::import::ImportListSnapshot, key: &crate::import::CandidateKey| {
         page_live(snapshot)[key].facts.identification.clone()
     };
     let running = Some(crate::import::IdentificationStatus::Running);
@@ -352,7 +349,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
             .iter()
             .filter(|key| status(&snapshot, key) == running)
             .count();
-        let waits: Vec<&String> = keys
+        let waits: Vec<&crate::import::CandidateKey> = keys
             .iter()
             .filter(|key| status(&snapshot, key) == queued)
             .collect();
@@ -402,7 +399,7 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
         .expect("the window holds one row");
     let off_dir = [&first, &second]
         .into_iter()
-        .find(|dir| dir.to_string_lossy() != on_key)
+        .find(|dir| crate::import::CandidateKey::folder(dir) != on_key)
         .expect("the other candidate is off the page")
         .clone();
 

@@ -31,10 +31,10 @@ fn found_over(pressings: Vec<u32>) -> crate::identify::IdentifyState {
 #[tokio::test]
 async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import_ask() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), found_over(vec![0])).await;
@@ -71,10 +71,10 @@ async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import
 #[tokio::test]
 async fn an_answer_that_picks_nothing_reads_as_finalizing_and_takes_no_ask() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), found_over(vec![0, 1])).await;
@@ -97,10 +97,10 @@ async fn an_answer_that_picks_nothing_reads_as_finalizing_and_takes_no_ask() {
 #[tokio::test]
 async fn an_import_ask_goes_with_the_answer_it_was_asked_of() {
     let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
+        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
         .await
         .unwrap();
     report(&runtime, key, &files, run(2), found_over(vec![0])).await;

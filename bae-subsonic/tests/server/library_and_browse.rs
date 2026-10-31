@@ -179,7 +179,7 @@ async fn seed_library() -> Library {
     import
         .send_command(ImportCommand {
             import_id: import_id.clone(),
-            candidate_key: "pt".to_string(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(b"pt".to_vec()),
             source: CandidateSource {
                 path: pt_dir.clone(),
                 scope: ReleaseFileScope::Recursive,
@@ -218,7 +218,7 @@ async fn seed_library() -> Library {
     cue_import
         .send_command(ImportCommand {
             import_id: cue_id.clone(),
-            candidate_key: "cue".to_string(),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(b"cue".to_vec()),
             source: CandidateSource {
                 path: cue_dir,
                 scope: ReleaseFileScope::Recursive,

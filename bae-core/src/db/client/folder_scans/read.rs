@@ -20,6 +20,7 @@ use crate::import::folder_scanner::{
     InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
     SkippedFile, SkippedTags,
 };
+use crate::import::{CandidateKey, RelativeFolder};
 use bae_util::content_type::ContentType;
 use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
 
@@ -50,12 +51,15 @@ impl RowSources {
 /// at a key, which each table's primary key reaches directly.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum EntryRows<'a> {
-    Root(&'a str),
-    Entry { root: &'a str, key: &'a str },
+    Root(&'a Path),
+    Entry {
+        root: &'a Path,
+        key: &'a CandidateKey,
+    },
 }
 
 impl<'a> EntryRows<'a> {
-    fn root(self) -> &'a str {
+    fn root(self) -> &'a Path {
         match self {
             Self::Root(root) | Self::Entry { root, .. } => root,
         }
@@ -71,10 +75,10 @@ impl<'a> EntryRows<'a> {
     }
 
     /// What [`Self::condition`] binds.
-    fn params(self) -> rusqlite::ParamsFromIter<Vec<&'a str>> {
+    fn params(self) -> rusqlite::ParamsFromIter<Vec<Vec<u8>>> {
         rusqlite::params_from_iter(match self {
-            Self::Root(root) => vec![root],
-            Self::Entry { root, key } => vec![root, key],
+            Self::Root(root) => vec![coven::path_bytes(root)],
+            Self::Entry { root, key } => vec![coven::path_bytes(root), key.as_bytes().to_vec()],
         })
     }
 }
@@ -82,7 +86,7 @@ impl<'a> EntryRows<'a> {
 /// One stored entry: the key it is addressed by, the scan generation that
 /// wrote it, and the item itself.
 pub(crate) struct StoredScanItem {
-    pub(crate) key: String,
+    pub(crate) key: CandidateKey,
     pub(crate) generation: u64,
     pub(crate) item: ScanItem,
 }
@@ -105,14 +109,14 @@ struct StoredEmbeddedCoverColumns {
 /// nothing here wrote, so the assembly refuses it.
 pub(super) fn load_items(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
     let items = load_candidate_items_rows(sql, EntryRows::Root(watched_folder_path), sources)?;
     let root_generation = sql
         .query(
             "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-            [watched_folder_path],
+            [coven::path_bytes(watched_folder_path)],
             |row| row.get::<_, i64>(0),
         )?
         .into_iter()
@@ -139,9 +143,9 @@ pub(super) fn load_items(
 /// overlap and keys are absolute paths, so at most one root holds it.
 pub(crate) fn load_item_by_key(
     sql: &(impl QueryOne + QueryRows),
-    entry_key: &str,
+    entry_key: &CandidateKey,
     sources: RowSources,
-) -> Result<Option<(String, StoredScanItem)>, DbError> {
+) -> Result<Option<(PathBuf, StoredScanItem)>, DbError> {
     load_item_by_key_rows(sql, entry_key, sources)?
         .map(|process| process())
         .transpose()
@@ -149,9 +153,9 @@ pub(crate) fn load_item_by_key(
 
 pub(crate) fn load_item_by_key_rows(
     sql: &(impl QueryOne + QueryRows),
-    entry_key: &str,
+    entry_key: &CandidateKey,
     sources: RowSources,
-) -> Result<Option<FinishRead<(String, StoredScanItem)>>, DbError> {
+) -> Result<Option<FinishRead<(PathBuf, StoredScanItem)>>, DbError> {
     let roots = sql.query(
         &format!(
             "SELECT candidate.watched_folder_path FROM scan_candidate AS candidate \
@@ -159,7 +163,7 @@ pub(crate) fn load_item_by_key_rows(
             sources.clause()
         ),
         [entry_key],
-        |row| row.get::<_, String>(0),
+        |row| path_column::get(row, 0),
     )?;
     if roots.len() > 1 {
         return Err(DbError::Message(format!(
@@ -176,7 +180,7 @@ pub(crate) fn load_item_by_key_rows(
             },
             sources,
         )?;
-        let entry_key = entry_key.to_string();
+        let entry_key = entry_key.clone();
         return Ok(Some(Box::new(move || {
             let mut items = items()?;
             match items.pop() {
@@ -196,8 +200,8 @@ pub(crate) fn load_item_by_key_rows(
 /// decision.
 pub(crate) fn load_candidate_file_tag_snapshot(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
     let Some(stored_candidate) =
         super::super::release_groupings::load_candidate_on(sql, candidate_path)?
@@ -207,9 +211,10 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     // A blocked candidate still displays its stored artwork and metadata.
     // Operations enforce actionability before reading or changing source files.
     let candidate = stored_candidate.candidate;
-    if candidate.watched_folder_path != watched_folder_path {
+    if candidate.watched_folder_path.as_os_str() != watched_folder_path.as_os_str() {
         return Err(DbError::Message(format!(
-            "candidate {candidate_path} does not belong to {watched_folder_path}"
+            "candidate {candidate_path} does not belong to {}",
+            coven::path_text(watched_folder_path)
         )));
     }
 
@@ -226,8 +231,8 @@ pub(crate) fn load_candidate_file_tag_snapshot(
 /// row around it says. The candidate's own shape is the caller's to check.
 pub(crate) fn load_file_tag_snapshot(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
 ) -> Result<Option<FileTagSnapshot>, DbError> {
     let stored: Option<StoredFileTagSnapshotRow> = sql
         .query_row(
@@ -236,7 +241,7 @@ pub(crate) fn load_file_tag_snapshot(
                     embedded_cover_data \
              FROM scan_candidate_tag_snapshot \
              WHERE watched_folder_path = ? AND candidate_path = ?",
-            params![watched_folder_path, candidate_path],
+            params![coven::path_bytes(watched_folder_path), candidate_path],
             |row| {
                 Ok(StoredFileTagSnapshotRow {
                     scan_generation: row.get(0)?,
@@ -289,8 +294,8 @@ pub(crate) fn load_file_tag_snapshot(
 
 fn load_file_tag_facts(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    candidate_path: &str,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
 ) -> Result<Vec<FileTagFact>, DbError> {
     let rows = sql.query(
         &format!(
@@ -303,7 +308,7 @@ fn load_file_tag_facts(
          WHERE tags.watched_folder_path = ? AND tags.candidate_path = ? \
          ORDER BY files.position"
         ),
-        params![watched_folder_path, candidate_path],
+        params![coven::path_bytes(watched_folder_path), candidate_path],
         |row| StoredFileTags::of_row(row, 0),
     )?;
     rows.into_iter().map(StoredFileTags::fact).collect()
@@ -410,13 +415,13 @@ fn tag_values<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<
 /// stored at `path`.
 pub(crate) fn settled_entry_is_stored(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    path: &str,
+    watched_folder_path: &Path,
+    path: &CandidateKey,
 ) -> Result<bool, DbError> {
     let kind: Option<String> = sql
         .query_row(
             "SELECT kind FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
-            [watched_folder_path, path],
+            params![coven::path_bytes(watched_folder_path), path],
             |row| row.get(0),
         )
         .optional()?;
@@ -430,7 +435,7 @@ pub(crate) enum Readers<'a> {
     /// down for.
     Settled,
     /// Every one but the entry at this key: what a settled write replaces.
-    Besides(&'a str),
+    Besides(&'a CandidateKey),
 }
 
 /// The keys of the entries the scans stored under the root that read any of
@@ -446,29 +451,24 @@ pub(crate) enum Readers<'a> {
 /// would read every one of them in key order instead.
 pub(crate) fn entries_reading(
     sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
+    watched_folder_path: &Path,
     coverage: &Coverage,
     readers: Readers<'_>,
-) -> Result<Vec<String>, DbError> {
-    let folder = coverage.folder.to_string_lossy().into_owned();
-    let above = serde_json::Value::from(
+) -> Result<Vec<CandidateKey>, DbError> {
+    let root = coven::path_bytes(watched_folder_path);
+    let folder = coven::path_bytes(&coverage.folder);
+    let above = path_column::hex_list(
         coverage
             .folder
             .ancestors()
             .skip(1)
-            .take_while(|above| above.starts_with(watched_folder_path))
-            .map(|above| above.to_string_lossy().into_owned())
-            .collect::<Vec<_>>(),
-    )
-    .to_string();
+            .take_while(|above| above.starts_with(watched_folder_path)),
+    );
     let below = coverage
         .whole_subtree
-        .then(|| crate::import::folder_path::paths_below(&folder));
-    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![
-        (":root", &watched_folder_path),
-        (":folder", &folder),
-        (":above", &above),
-    ];
+        .then(|| crate::import::relative_folder::paths_below(&coverage.folder));
+    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> =
+        vec![(":root", &root), (":folder", &folder), (":above", &above)];
     let readers_clause = match &readers {
         Readers::Settled => "kind IN ('valid', 'invalid')",
         Readers::Besides(key) => {
@@ -491,11 +491,11 @@ pub(crate) fn entries_reading(
                AND {readers_clause} \
                AND (file_root = :folder \
                     OR (scope = 'recursive' \
-                        AND file_root IN (SELECT value FROM json_each(:above))){below_clause}) \
+                        AND file_root IN (SELECT unhex(value) FROM json_each(:above))){below_clause}) \
              ORDER BY path"
         ),
         params.as_slice(),
-        |row| row.get::<_, String>(0),
+        |row| row.get::<_, CandidateKey>(0),
     )?)
 }
 
@@ -529,7 +529,7 @@ fn files_json_sql() -> String {
 /// The parts the entry joined as `candidate` is read from, as a JSON array
 /// in play order.
 const PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
-         'folder', part.folder, 'prefix', part.prefix) ORDER BY part.position) \
+         'folder', hex(part.folder), 'prefix', part.prefix) ORDER BY part.position) \
      FROM scan_candidate_part AS part \
      WHERE part.watched_folder_path = candidate.watched_folder_path \
        AND part.candidate_path = candidate.path)";
@@ -546,16 +546,16 @@ const SKIPPED_FILES_JSON: &str = "(SELECT json_group_array(json_object( \
        AND skipped.candidate_path = candidate.path)";
 
 struct CandidateRow {
-    path: String,
+    path: CandidateKey,
     generation: i64,
     kind: String,
     name: String,
-    display_path: String,
-    folder: String,
-    file_root: String,
+    relative_folder: RelativeFolder,
+    folder: PathBuf,
+    file_root: PathBuf,
     scope: String,
     file_edit_revision: i64,
-    grouping_key: Option<String>,
+    grouping_key: Option<CandidateKey>,
     files: String,
     parts: String,
     skipped_files: String,
@@ -573,7 +573,7 @@ pub(crate) fn load_candidate_items_rows(
     let rows = sql.query(
         &format!(
             "SELECT candidate.path, candidate.generation, candidate.kind, candidate.name, \
-                    candidate.display_path, candidate.folder, candidate.file_root, \
+                    candidate.relative_folder, candidate.folder, candidate.file_root, \
                     candidate.scope, candidate.file_edit_revision, candidate.grouping_key, \
                     {files} AS files, {PARTS_JSON} AS parts, \
                     {SKIPPED_FILES_JSON} AS skipped_files, \
@@ -595,9 +595,9 @@ pub(crate) fn load_candidate_items_rows(
                 generation: row.get("generation")?,
                 kind: row.get("kind")?,
                 name: row.get("name")?,
-                display_path: row.get("display_path")?,
-                folder: row.get("folder")?,
-                file_root: row.get("file_root")?,
+                relative_folder: row.get("relative_folder")?,
+                folder: path_column::get(row, "folder")?,
+                file_root: path_column::get(row, "file_root")?,
                 scope: row.get("scope")?,
                 file_edit_revision: row.get("file_edit_revision")?,
                 grouping_key: row.get("grouping_key")?,
@@ -616,37 +616,37 @@ pub(crate) fn load_candidate_items_rows(
             })
         },
     )?;
-    let watched_folder_path = entries.root().to_string();
+    let watched_folder_path = entries.root().to_path_buf();
     Ok(Box::new(move || {
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
             let generation = to_u64(row.generation, "a scan candidate's generation")?;
             let item = match row.kind.as_str() {
                 "invalid" => ScanItem::Invalid(InvalidCandidate {
-                    path: PathBuf::from(&row.folder),
+                    path: row.folder,
                     name: row.name,
-                    watched_folder_path: watched_folder_path.to_string(),
-                    display_path: row.display_path,
+                    watched_folder_path: watched_folder_path.clone(),
+                    relative_folder: row.relative_folder,
                     grouping: row.grouping_key,
                     files: skipped_files_of(&row.path, &row.skipped_files)?,
                     tags: row.skipped_tags,
                 }),
                 kind @ ("tentative" | "valid") => {
                     let candidate = FolderCandidate {
-                        path: PathBuf::from(&row.folder),
-                        file_root: PathBuf::from(&row.file_root),
+                        path: row.folder,
+                        file_root: row.file_root,
                         name: row.name,
                         files: CategorizedFiles {
                             files: files_of(&row.path, &row.files)?,
                             parts: parts_of(&row.path, &row.parts)?,
                         },
-                        watched_folder_path: watched_folder_path.to_string(),
+                        watched_folder_path: watched_folder_path.clone(),
                         scope: scope_of(&row.scope)?,
                         file_edit_revision: to_u64(
                             row.file_edit_revision,
                             "a scan candidate's file edit revision",
                         )?,
-                        display_path: row.display_path,
+                        relative_folder: row.relative_folder,
                         grouping: row.grouping_key,
                     };
                     match kind {
@@ -668,7 +668,7 @@ pub(crate) fn load_candidate_items_rows(
 
 /// A list an entry's row holds as JSON, decoded.
 fn listed<T: serde::de::DeserializeOwned>(
-    candidate_path: &str,
+    candidate_path: &CandidateKey,
     json: &str,
     what: &str,
 ) -> Result<Vec<T>, DbError> {
@@ -705,7 +705,7 @@ struct FileRow {
 }
 
 /// The files of the entry at `candidate_path`, in their order.
-fn files_of(candidate_path: &str, json: &str) -> Result<Vec<CandidateFile>, DbError> {
+fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFile>, DbError> {
     let files = listed::<FileRow>(candidate_path, json, "files")?
         .into_iter()
         .map(|row| {
@@ -763,7 +763,7 @@ fn files_of(candidate_path: &str, json: &str) -> Result<Vec<CandidateFile>, DbEr
 /// is audio, so a candidate that violates it is refused here rather than
 /// panicking whoever reads the bound sheets.
 fn check_sheet_bindings_name_audio(
-    candidate_path: &str,
+    candidate_path: &CandidateKey,
     files: &[CandidateFile],
 ) -> Result<(), DbError> {
     let audio: std::collections::HashSet<&str> = files
@@ -854,7 +854,10 @@ struct SkippedFileRow {
 }
 
 /// The files of the release at `candidate_path` that failed validation.
-fn skipped_files_of(candidate_path: &str, json: &str) -> Result<Vec<SkippedFile>, DbError> {
+fn skipped_files_of(
+    candidate_path: &CandidateKey,
+    json: &str,
+) -> Result<Vec<SkippedFile>, DbError> {
     listed::<SkippedFileRow>(candidate_path, json, "skipped files")?
         .into_iter()
         .map(|row| {
@@ -874,16 +877,17 @@ fn skipped_files_of(candidate_path: &str, json: &str) -> Result<Vec<SkippedFile>
 /// One `scan_candidate_part` row as [`PARTS_JSON`] holds it.
 #[derive(serde::Deserialize)]
 struct PartRow {
-    folder: String,
+    #[serde(deserialize_with = "path_column::from_hex")]
+    folder: PathBuf,
     prefix: String,
 }
 
 /// The parts the release at `candidate_path` is read from, in play order.
-fn parts_of(candidate_path: &str, json: &str) -> Result<Vec<ReleasePart>, DbError> {
+fn parts_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<ReleasePart>, DbError> {
     Ok(listed::<PartRow>(candidate_path, json, "parts")?
         .into_iter()
         .map(|part| ReleasePart {
-            folder: PathBuf::from(part.folder),
+            folder: part.folder,
             prefix: part.prefix,
         })
         .collect())

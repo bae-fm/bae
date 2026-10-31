@@ -16,7 +16,7 @@
 async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
     let fixture = Fixture::new("rerun-is-its-own-run").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .provider
@@ -100,7 +100,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
             barcode: PAIRED_BARCODE.to_string(),
         }));
     let dir = fixture.barcode_candidate("From Barcode");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/release?",
@@ -277,7 +277,7 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
 
     let (admitted, _) = fixture.judgement_for(&dir).await;
     assert!(!admitted, "an unreadable release is never admitted");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     assert!(
         !matches!(
             fixture.identification_status(&key).await,
@@ -325,7 +325,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
 async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
     let fixture = Fixture::new("explicit-with-pre-filled-draft").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/discid/",
@@ -395,12 +395,12 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
     let wrote = fixture
         .import
         .save_candidate_verdict_if_current(
-            &dir.to_string_lossy(),
+            &crate::import::CandidateKey::folder(&dir),
             IdentifyRunId::for_test(1),
             &NewImportCandidateVerdict {
                 content_hash: fixture.content_hash(&dir),
                 file_edit_revision: 0,
-                folder_path: dir.to_string_lossy().into_owned(),
+                candidate_key: crate::import::CandidateKey::folder(&dir),
                 verdict,
                 signals: settled_signals(),
                 pick: None,
@@ -438,7 +438,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
 async fn explicit_lookup_during_an_active_run_supersedes_it() {
     let fixture = Fixture::new("explicit-supersedes-active-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
@@ -536,7 +536,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
 
     fixture
         .identification()
-        .rerun_identify(dir.to_string_lossy().into_owned());
+        .rerun_identify(crate::import::CandidateKey::folder(&dir));
 
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 }
@@ -547,7 +547,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
 async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
     let fixture = Fixture::new("pick-ends-explicit-run").await;
     let dir = fixture.disc_id_candidate("Candidate");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
@@ -597,7 +597,7 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
 async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     let fixture = Fixture::new("choices-supersede-run").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/discid/",
@@ -696,7 +696,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
 async fn an_edit_during_a_run_leaves_its_answer_to_land() {
     let fixture = Fixture::new("edit-during-run").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture
         .provider

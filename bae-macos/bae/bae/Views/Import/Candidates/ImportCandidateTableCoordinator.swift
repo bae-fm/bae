@@ -35,7 +35,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// by row, until the page answers.
     private var offScreenAsks: [Int: Task<Void, Never>] = [:]
     /// The key of the row the person last pointed at without Shift.
-    var anchorKey: String?
+    var anchorKey: Data?
     /// Set while an update moves the rows and scrolls to keep the place, so
     /// the scrolling it does is not taken for the person's.
     private var updating = false
@@ -136,7 +136,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         list: PaginatedList<BridgeImportListItem>,
         rows: ImportCandidateTableRows,
         read: ImportCandidateListContentRead,
-        shownSelected: Set<String>,
+        shownSelected: Set<Data>,
         revealing: Bool
     ) {
         updating = true

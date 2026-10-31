@@ -402,3 +402,11 @@ pub enum BridgeIdentifyFailure {
         failure: BridgeLookupFailure,
     },
 }
+
+/// The key a library release's re-identify session runs under: what its
+/// identify events and its pane name it by.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_reidentify_key(release_id: String) -> Vec<u8> {
+    bae_core::import::CandidateKey::reidentify(&release_id).into_bytes()
+}

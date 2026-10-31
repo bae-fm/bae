@@ -5,11 +5,14 @@ pub struct BridgeFolderCandidate {
     /// The folders this release is read from, in play order; empty for one
     /// folder.
     pub parts: Vec<BridgeReleasePart>,
-    pub folder_path: String,
+    /// The key every other import call takes for it.
+    pub candidate_key: Vec<u8>,
+    /// The folder it is read from, as coven's bytes for its path.
+    pub folder_path: Vec<u8>,
     pub source_folder_name: String,
     /// The watched folder this candidate was scanned from
     /// (`BridgeWatchedFolder.path`).
-    pub watched_folder_path: String,
+    pub watched_folder_path: Vec<u8>,
     pub files: BridgeCandidateFiles,
     pub track_count: u32,
     /// Whether the person skipped this candidate.
@@ -20,8 +23,11 @@ pub struct BridgeFolderCandidate {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFolderReleaseDecisionKey {
-    pub watched_folder_path: String,
-    pub relative_folder_path: String,
+    /// The watched folder, as coven's bytes for its path.
+    pub watched_folder_path: Vec<u8>,
+    /// The folder below it: each name's bytes, joined by `/`; empty for the
+    /// watched folder itself.
+    pub relative_folder: Vec<u8>,
 }
 
 /// Why a folder failed validation; the UI localizes it through
@@ -119,12 +125,14 @@ mirror_struct! {
 /// Skipped with its reason, as what the scan read of it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInvalidCandidate {
-    /// Its folder's path, or its grouping's.
-    pub candidate_key: String,
-    pub folder_path: String,
+    /// Its folder's path, or its grouping's key.
+    pub candidate_key: Vec<u8>,
+    /// Its folder, as coven's bytes for its path.
+    pub folder_path: Vec<u8>,
     pub source_folder_name: String,
     /// The watched folder this was scanned from (`BridgeWatchedFolder.path`).
-    pub watched_folder_path: String,
+    pub watched_folder_path: Vec<u8>,
+    /// Its folder below the watched folder, shown as text.
     pub display_path: String,
     /// Whether this row is folders a grouping reads as one, which it offers
     /// to separate.
@@ -154,11 +162,11 @@ pub struct BridgeInvalidCandidateDetail {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateRuntimeChange {
     Updated {
-        key: String,
+        key: Vec<u8>,
         runtime: BridgeCandidateRuntimeSnapshot,
     },
     /// Nothing is running for the key any more.
-    Removed { key: String },
+    Removed { key: Vec<u8> },
     /// Every key in flight now; a key not listed is removed.
     Reset {
         runtimes: Vec<BridgeKeyedCandidateRuntime>,
@@ -167,7 +175,7 @@ pub enum BridgeCandidateRuntimeChange {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeKeyedCandidateRuntime {
-    pub key: String,
+    pub key: Vec<u8>,
     pub runtime: BridgeCandidateRuntimeSnapshot,
 }
 
@@ -220,7 +228,7 @@ pub enum BridgeTriageImportStatus {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeWatchedFolderScanStatus {
-    pub watched_folder_path: String,
+    pub watched_folder_path: Vec<u8>,
     pub watched_folder_name: String,
     pub status: BridgeFolderScanStatus,
     /// Whether this folder is on a network volume, which is also checked on a
@@ -379,7 +387,7 @@ pub enum BridgeBadgeTone {
 /// One selected candidate and the actions its live state offers.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionMember {
-    pub candidate_key: String,
+    pub candidate_key: Vec<u8>,
     pub actions: Vec<BridgeCandidateAction>,
 }
 
@@ -407,11 +415,11 @@ pub struct BridgeSelectionSummary {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeSingleSelection {
     Candidate {
-        key: String,
+        key: Vec<u8>,
     },
     /// A folder that failed validation.
     InvalidCandidate {
-        key: String,
+        key: Vec<u8>,
     },
 }
 
@@ -419,7 +427,7 @@ mirror_enum! {
     #[cfg(feature = "desktop")]
     BridgeSingleSelection = bae_core::import::selection::SingleSelection,
     from_core: pub(crate) fn,
-    variants: { Candidate { key }, InvalidCandidate { key } },
+    variants: { Candidate { key: (into) }, InvalidCandidate { key: (into) } },
 }
 
 /// How a person changed the selection by pointing at rows. Mirrors
@@ -427,14 +435,14 @@ mirror_enum! {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSelectionChange {
     /// Select exactly these rows, and nothing else.
-    Replace { keys: Vec<String> },
+    Replace { keys: Vec<Vec<u8>> },
     /// Add these rows and take those out, leaving the rest as it is.
     Toggle {
-        add: Vec<String>,
-        remove: Vec<String>,
+        add: Vec<Vec<u8>>,
+        remove: Vec<Vec<u8>>,
     },
     /// Add every row the list shows from `from` to `to`, both included.
-    Extend { from: String, to: String },
+    Extend { from: Vec<u8>, to: Vec<u8> },
 }
 
 /// How many of the candidates a bulk action runs on it has finished.
@@ -447,7 +455,7 @@ pub struct BridgeSelectionActionProgress {
 /// One selected candidate a bulk action could not run on, and why.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSelectionActionFailure {
-    pub candidate_key: String,
+    pub candidate_key: Vec<u8>,
     pub name: String,
     pub error: BridgeError,
 }
@@ -712,12 +720,13 @@ mirror_enum! {
 /// One candidate's sidebar row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageRow {
-    /// The candidate's folder path — the key every other import call takes.
-    pub candidate_key: String,
+    /// The candidate's key — the key every other import call takes.
+    pub candidate_key: Vec<u8>,
     /// The folder's name, which is the row's title while it has no draft.
     pub folder_name: String,
     /// The watched folder this was scanned from (`BridgeWatchedFolder.path`).
-    pub watched_folder_path: String,
+    pub watched_folder_path: Vec<u8>,
+    /// Its folder below the watched folder, shown as text.
     pub display_path: String,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,

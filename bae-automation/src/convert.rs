@@ -7,6 +7,24 @@ mod signals;
 pub(crate) use candidates::*;
 pub(crate) use identify::*;
 
+/// A candidate's key as automation names it: the hex of its bytes, so a
+/// folder whose name isn't valid Unicode is named as surely as any other.
+pub(crate) fn candidate_key_name(key: &CandidateKey) -> String {
+    hex::encode(key.as_bytes())
+}
+
+/// The key a caller names, refused when the name is not the hex of a key's
+/// bytes.
+pub(crate) fn candidate_key_named(name: &str) -> Result<CandidateKey, AutomationError> {
+    hex::decode(name)
+        .map(CandidateKey::from_bytes)
+        .map_err(|error| {
+            AutomationError::validation(format!(
+                "candidate key '{name}' is not the hex of a key's bytes: {error}"
+            ))
+        })
+}
+
 pub(super) fn expect_no_args(args: Value, tool_name: &str) -> Result<(), AutomationError> {
     match args {
         Value::Null => Ok(()),

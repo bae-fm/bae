@@ -23,7 +23,7 @@ impl Automation {
             .await?
             .into_iter()
             .map(|folder| AutomationWatchedFolder {
-                path: folder.path,
+                path: coven::path_text(&folder.path),
                 name: folder.name,
             })
             .collect())
@@ -33,7 +33,9 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services.import_add_watched_folder(path).await?;
+        self.services
+            .import_add_watched_folder(PathBuf::from(path))
+            .await?;
         self.watched_folders().await
     }
 
@@ -41,7 +43,9 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services.import_remove_watched_folder(path).await?;
+        self.services
+            .import_remove_watched_folder(PathBuf::from(path))
+            .await?;
         self.watched_folders().await
     }
 
@@ -70,13 +74,13 @@ impl Automation {
                         bae_core::import::FolderScanStatus::Failed { error } => {
                             return Err(AutomationError::import(format!(
                                 "{}: {error}",
-                                status.watched_folder_path
+                                coven::path_text(&status.watched_folder_path)
                             )));
                         }
                         bae_core::import::FolderScanStatus::Scanning { .. } => {
                             return Err(AutomationError::import(format!(
                                 "{}: its read ended with no outcome stored",
-                                status.watched_folder_path
+                                coven::path_text(&status.watched_folder_path)
                             )));
                         }
                     }
@@ -155,9 +159,10 @@ impl Automation {
         &self,
         candidate_key: String,
     ) -> Result<AutomationCandidate, AutomationError> {
+        let key = candidate_key_named(&candidate_key)?;
         if let Some(detail) = self
             .services
-            .load_import_candidate(&candidate_key)
+            .load_import_candidate(&key)
             .await
             .map_err(AutomationError::from)?
         {
@@ -172,7 +177,7 @@ impl Automation {
         }
         if let Some(bae_core::import::ImportCandidateSnapshot::Invalid(candidate)) = self
             .services
-            .import_get_candidate(&candidate_key)
+            .import_get_candidate(&key)
             .await
             .map_err(AutomationError::from)?
         {
@@ -183,13 +188,21 @@ impl Automation {
         )))
     }
 
+    /// The key `candidate_key` names, refused unless the import tables hold
+    /// a candidate under it, so a typo is refused here rather than stored.
+    async fn known_key(&self, candidate_key: String) -> Result<CandidateKey, AutomationError> {
+        let key = candidate_key_named(&candidate_key)?;
+        self.get_candidate(candidate_key).await?;
+        Ok(key)
+    }
+
     pub async fn set_candidate_skipped(
         &self,
         candidate_key: String,
         skipped: bool,
     ) -> Result<(), AutomationError> {
         self.services
-            .import_set_candidate_skipped(candidate_key, skipped)
+            .import_set_candidate_skipped(candidate_key_named(&candidate_key)?, skipped)
             .await?;
         Ok(())
     }
@@ -212,12 +225,9 @@ impl Automation {
         candidate_key: String,
         link: AutomationPressingLink,
     ) -> Result<EmptyResponse, AutomationError> {
-        // Resolve the candidate first, and hand core the key the snapshot
-        // resolved rather than the caller's string, so a typo is refused here
-        // rather than stored.
-        let candidate = self.get_candidate(candidate_key).await?;
+        let key = self.known_key(candidate_key).await?;
         self.services
-            .import_select_candidate_release(candidate.key().to_string(), link.into_core())
+            .import_select_candidate_release(key, link.into_core())
             .await?;
         Ok(EmptyResponse {})
     }
@@ -228,10 +238,8 @@ impl Automation {
         &self,
         candidate_key: String,
     ) -> Result<EmptyResponse, AutomationError> {
-        let candidate = self.get_candidate(candidate_key).await?;
-        self.services
-            .import_select_candidate_file_tags(candidate.key().to_string())
-            .await?;
+        let key = self.known_key(candidate_key).await?;
+        self.services.import_select_candidate_file_tags(key).await?;
         Ok(EmptyResponse {})
     }
 
@@ -242,10 +250,10 @@ impl Automation {
         field: AutomationCandidateEditField,
         value: String,
     ) -> Result<EmptyResponse, AutomationError> {
-        let candidate = self.get_candidate(candidate_key).await?;
+        let key = self.known_key(candidate_key).await?;
         self.services
             .import_set_candidate_edit_field(
-                candidate.key(),
+                &key,
                 bae_core::import::DraftFieldEdit::Text {
                     field: field.into_core(),
                     value,
@@ -261,10 +269,10 @@ impl Automation {
         candidate_key: String,
         labels: Vec<AutomationLabelRow>,
     ) -> Result<EmptyResponse, AutomationError> {
-        let candidate = self.get_candidate(candidate_key).await?;
+        let key = self.known_key(candidate_key).await?;
         self.services
             .import_set_candidate_edit_field(
-                candidate.key(),
+                &key,
                 bae_core::import::DraftFieldEdit::Labels(
                     labels
                         .into_iter()
@@ -282,9 +290,9 @@ impl Automation {
         candidate_key: String,
         album_id: Option<String>,
     ) -> Result<EmptyResponse, AutomationError> {
-        let candidate = self.get_candidate(candidate_key).await?;
+        let key = self.known_key(candidate_key).await?;
         self.services
-            .import_set_candidate_album(candidate.key(), album_id)
+            .import_set_candidate_album(&key, album_id)
             .await?;
         Ok(EmptyResponse {})
     }
@@ -295,10 +303,10 @@ impl Automation {
         candidate_key: String,
         barcodes: Vec<String>,
     ) -> Result<EmptyResponse, AutomationError> {
-        let candidate = self.get_candidate(candidate_key).await?;
+        let key = self.known_key(candidate_key).await?;
         self.services
             .import_set_candidate_edit_field(
-                candidate.key(),
+                &key,
                 bae_core::import::DraftFieldEdit::Barcodes(barcodes),
             )
             .await?;
@@ -311,10 +319,10 @@ impl Automation {
         candidate_key: String,
         fact: AutomationPressingFactEdit,
     ) -> Result<EmptyResponse, AutomationError> {
-        let candidate = self.get_candidate(candidate_key).await?;
+        let key = self.known_key(candidate_key).await?;
         self.services
             .import_set_candidate_edit_field(
-                candidate.key(),
+                &key,
                 bae_core::import::DraftFieldEdit::PressingFact(fact.into_core()),
             )
             .await?;
@@ -327,9 +335,9 @@ impl Automation {
         candidate_key: String,
         cover: AutomationCoverSelection,
     ) -> Result<EmptyResponse, AutomationError> {
-        let candidate = self.get_candidate(candidate_key).await?;
+        let key = self.known_key(candidate_key).await?;
         self.services
-            .import_set_candidate_cover(candidate.key(), cover_selection(cover))
+            .import_set_candidate_cover(&key, cover_selection(cover))
             .await?;
         Ok(EmptyResponse {})
     }
@@ -342,7 +350,11 @@ impl Automation {
         candidate_key: String,
     ) -> Result<AutomationImportStarted, AutomationError> {
         Ok(
-            match self.services.import_start_import(&candidate_key).await? {
+            match self
+                .services
+                .import_start_import(&candidate_key_named(&candidate_key)?)
+                .await?
+            {
                 bae_core::import::ImportStart::Queued { import_id } => {
                     AutomationImportStarted::Queued { import_id }
                 }

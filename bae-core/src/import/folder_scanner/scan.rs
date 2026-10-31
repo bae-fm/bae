@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::{CandidateKey, RelativeFolder};
 use std::collections::HashSet;
 
 mod root;
@@ -85,15 +86,9 @@ impl DirectoryReader for OsDirectoryReader {
                     .map_err(|source| FolderScanError::io(&path, source))?;
                 (!metadata.is_dir() || file_type.is_symlink()).then_some(metadata)
             };
+            // A folder is known by its path's bytes, so one whose name isn't
+            // valid Unicode is walked like any other.
             let Some(metadata) = metadata else {
-                // A folder is known by its path's text: its key, and the
-                // relative paths the import list stores.
-                if name.to_str().is_none() {
-                    return Err(FolderScanError::Other(format!(
-                        "folder name is not UTF-8: {}",
-                        path.display()
-                    )));
-                }
                 directories.push(relative);
                 continue;
             };
@@ -218,13 +213,11 @@ struct LooseFolder {
 }
 
 /// The folder one scan pass reads, and what it reads it against: the watched
-/// root every relative path is under, the folder key its candidates are stamped
-/// with, the file corrections the user has stored, and the flag that stops the
-/// pass.
+/// root every relative path is under and its candidates are stamped with, the
+/// file corrections the user has stored, and the flag that stops the pass.
 #[derive(Clone, Copy)]
 pub(super) struct ScanRoot<'a> {
     root: &'a Path,
-    watched_folder_path: &'a str,
     stored: &'a StoredCandidateEdits,
     cancellation: &'a ScanCancellation,
     /// What is known of each file, so the pass reads none it holds a reading
@@ -238,13 +231,13 @@ pub(super) struct ScanRoot<'a> {
 pub(crate) struct ScanReadings<'a> {
     pub(crate) stored: &'a StoredCandidateEdits,
     pub(crate) decisions: &'a FolderReleaseDecisions,
-    pub(crate) new_grouping_key: &'a (dyn Fn() -> String + Sync),
+    pub(crate) new_grouping_key: &'a (dyn Fn() -> CandidateKey + Sync),
 }
 
 /// A key for a grouping nobody has stored yet, for a pass with no store to
 /// give it one.
-pub fn fresh_grouping_key() -> String {
-    format!("grouping:{}", uuid::Uuid::new_v4())
+pub fn fresh_grouping_key() -> CandidateKey {
+    CandidateKey::grouping(&uuid::Uuid::new_v4().to_string())
 }
 
 /// One walk over a [`ScanRoot`]: how directories are read, the readings each
@@ -254,7 +247,7 @@ pub(super) struct Walk<'a, R: ?Sized> {
     scan: ScanRoot<'a>,
     reader: &'a R,
     decisions: &'a FolderReleaseDecisions,
-    new_grouping_key: &'a (dyn Fn() -> String + Sync),
+    new_grouping_key: &'a (dyn Fn() -> CandidateKey + Sync),
     /// Listings a folder's reading looked at before the walk reached them,
     /// by root-relative path, each held until the walk takes it, so no folder
     /// is listed twice in one walk.
@@ -266,7 +259,7 @@ impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
         scan: ScanRoot<'a>,
         reader: &'a R,
         decisions: &'a FolderReleaseDecisions,
-        new_grouping_key: &'a (dyn Fn() -> String + Sync),
+        new_grouping_key: &'a (dyn Fn() -> CandidateKey + Sync),
     ) -> Self {
         Self {
             scan,
@@ -342,7 +335,7 @@ fn in_disc_order(relative: &Path, audio_folders: &[PathBuf]) -> Vec<PathBuf> {
         .iter()
         .map(|folder| {
             let part = folder.strip_prefix(relative).ok()?.components().next()?;
-            let number = folder_part_number(&part.as_os_str().to_string_lossy())?;
+            let number = folder_part_number(&coven::path_text(Path::new(part.as_os_str())))?;
             Some((number, folder))
         })
         .collect();
@@ -392,7 +385,7 @@ pub(super) fn candidate_from_files(
     relative: &Path,
     candidate_relative: &Path,
     scope: ReleaseFileScope,
-    grouping: Option<String>,
+    grouping: Option<CandidateKey>,
     part_folders: &[PathBuf],
 ) -> Result<Option<ProjectedScanNode>, FolderScanError> {
     if files.iter().any(|file| is_partial_marker_file(&file.path)) {
@@ -414,7 +407,8 @@ pub(super) fn candidate_from_files(
         root.join(relative)
     };
     let name = directory_name(root, candidate_relative);
-    let display_path = relative_path_string(candidate_relative);
+    let relative_folder = RelativeFolder::of(candidate_relative)
+        .map_err(|error| FolderScanError::Other(error.to_string()))?;
     let parts = match grouping {
         Some(_) => parts_under(root, relative, part_folders),
         None => Vec::new(),
@@ -427,10 +421,10 @@ pub(super) fn candidate_from_files(
                 file_root,
                 name,
                 files,
-                watched_folder_path: scan.watched_folder_path.to_string(),
+                watched_folder_path: root.to_path_buf(),
                 scope,
                 file_edit_revision,
-                display_path,
+                relative_folder,
                 grouping,
             })))
         }
@@ -438,8 +432,8 @@ pub(super) fn candidate_from_files(
             Ok(Some(ProjectedScanNode::Invalid(InvalidCandidate {
                 path,
                 name,
-                watched_folder_path: scan.watched_folder_path.to_string(),
-                display_path,
+                watched_folder_path: root.to_path_buf(),
+                relative_folder,
                 grouping,
                 files,
                 tags,
@@ -467,7 +461,6 @@ where
         ..
     } = walk;
     let root = scan.root;
-    let watched_folder_path = scan.watched_folder_path;
     let cancellation = scan.cancellation;
     cancellation.check()?;
     on_directory(root.join(relative));
@@ -489,7 +482,8 @@ where
         audio_folders.push(relative.to_path_buf());
     }
     let mut loose = Vec::new();
-    let relative_string = relative_path_string(relative);
+    let relative_folder =
+        RelativeFolder::of(relative).map_err(|error| FolderScanError::Other(error.to_string()))?;
     // How this folder is read. A stored reading — the user's, or the one an
     // earlier scan settled on — stands. With nothing stored, the scan decides
     // for itself from its parts and says so, so the queue gets candidates to
@@ -501,15 +495,15 @@ where
     // parts are read ahead of the reading and the folders that hold no audio,
     // numbered or not, are left out of both counts. The watched root is never
     // a release itself, so it never decides.
-    let reading = match decisions.get(&relative_string) {
+    let reading = match decisions.get(&relative_folder) {
         Some(stored) => Some((stored.decision, stored.grouping.clone())),
         None if !listing_dirs.is_empty() => {
             if let Some(decision) = scanned_decision(walk, direct_audio, &listing_dirs)? {
                 let grouping = new_grouping_key();
                 on_item(ScanItem::Decided {
                     key: FolderReleaseDecisionKey {
-                        watched_folder_path: watched_folder_path.to_string(),
-                        relative_folder_path: relative_string.clone(),
+                        watched_folder_path: root.to_path_buf(),
+                        relative_folder: relative_folder.clone(),
                     },
                     decision,
                     grouping: grouping.clone(),
@@ -585,9 +579,7 @@ where
             members.push(folder.clone());
         }
         let reads_own_files = crate::import::grouping::shared_parent(
-            members
-                .iter()
-                .map(|member| (watched_folder_path, member.as_path())),
+            members.iter().map(|member| (root, member.as_path())),
         )
         .as_ref()
             == Some(&folder);
@@ -734,7 +726,7 @@ fn sidecar_of(scan: &ScanRoot<'_>, loose: LooseFolder) -> Result<FolderSidecar, 
         categorize_sidecar(&tree, &folder, scan.root, scan.cancellation, scan.reads)?
     };
     Ok(FolderSidecar {
-        watched_folder_path: scan.watched_folder_path.to_string(),
+        watched_folder_path: scan.root.to_path_buf(),
         folder: scan.root.join(&folder),
         files,
     })
@@ -815,14 +807,12 @@ where
     ) {
         return Err(FolderScanError::Other(format!(
             "{} is not a folder directly under the watched root",
-            folder.display()
+            coven::path_text(folder)
         )));
     }
-    let watched_folder_path = root.to_string_lossy().into_owned();
     let walk = Walk::new(
         ScanRoot {
             root,
-            watched_folder_path: &watched_folder_path,
             stored: readings.stored,
             cancellation,
             reads,

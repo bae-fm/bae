@@ -98,7 +98,7 @@ fn audio_folder(root: &Path, name: &str) {
 
 /// Retitle `key` and wait for its pane to read the new title back, as long as
 /// that takes.
-async fn retitle(handle: &ImportServiceHandle, key: &str) {
+async fn retitle(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     let mut pane_query = handle.subscribe_candidate_pane(key);
     pane_query.next().await.expect("the query stays open").result.unwrap();
     handle
@@ -144,7 +144,7 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
         .await
         .unwrap();
     handle
-        .add_watched_folder(slow_root.to_string_lossy().into_owned())
+        .add_watched_folder(slow_root.clone())
         .await
         .unwrap();
     tokio::time::timeout(HANG_GUARD, entered.recv())
@@ -167,8 +167,8 @@ async fn two_candidates() -> (
     ImportServiceHandle,
     Arc<HeldTagReader>,
     tokio::sync::mpsc::UnboundedReceiver<PathBuf>,
-    (String, PathBuf),
-    String,
+    (crate::import::CandidateKey, PathBuf),
+    crate::import::CandidateKey,
     [TempDir; 2],
 ) {
     let (manager, tmp) = setup_test_manager().await;

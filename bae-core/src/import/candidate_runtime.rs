@@ -25,6 +25,7 @@
 //! moved; readers of the signals wake on [`Revisions`], which names the keys
 //! whose signals moved.
 
+use super::candidate_key::CandidateKey;
 use super::candidate_search::CandidateSearch;
 use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
@@ -65,14 +66,14 @@ pub(crate) mod tests;
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidateRuntimeChange {
     Updated {
-        key: String,
+        key: CandidateKey,
         runtime: CandidateRuntimeSnapshot,
     },
     /// Nothing is running for the key any more.
-    Removed { key: String },
+    Removed { key: CandidateKey },
     /// Every key's runtime, as a reader first reads it.
     Reset {
-        runtimes: HashMap<String, CandidateRuntimeSnapshot>,
+        runtimes: HashMap<CandidateKey, CandidateRuntimeSnapshot>,
     },
 }
 
@@ -151,12 +152,12 @@ impl CandidateRuntimeState {
 #[derive(Default)]
 struct Inner {
     /// Also holds `reidentify:` keys, which have no scanned folder.
-    runtime: HashMap<String, CandidateRuntimeState>,
+    runtime: HashMap<CandidateKey, CandidateRuntimeState>,
     /// The files last reported for each scanned key, so a reshape can be told
     /// from a repeat.
-    shapes: HashMap<String, CandidateShape>,
+    shapes: HashMap<CandidateKey, CandidateShape>,
     /// The latest signals extraction reported for each key, and their run.
-    signals: HashMap<String, (IdentifyRunId, Signals)>,
+    signals: HashMap<CandidateKey, (IdentifyRunId, Signals)>,
     /// Which keys' signals moved, so a reader reads only those.
     signal_changes: change_log::ChangeLog,
     /// The next search run number, one counter across every key so no old
@@ -189,7 +190,7 @@ pub struct CandidateRuntime {
     /// The percent of each key's running import, composed beside its
     /// snapshot: it moves many times a second, and the snapshot only as the
     /// import's step does.
-    percents: Arc<watch::Sender<HashMap<String, u32>>>,
+    percents: Arc<watch::Sender<HashMap<CandidateKey, u32>>>,
     /// Test readers that hear every move of the identification count, and
     /// every key's runtime as each write of its standing leaves it.
     #[cfg(any(test, feature = "test-utils"))]
@@ -264,7 +265,7 @@ impl CandidateRuntime {
 
     /// `key`'s row as the standings table reads it, for a test.
     #[cfg(test)]
-    pub(crate) async fn stored_standing_for_test(&self, key: &str) -> StoredStanding {
+    pub(crate) async fn stored_standing_for_test(&self, key: &CandidateKey) -> StoredStanding {
         self.database
             .load_candidate_standing(key)
             .await
@@ -280,7 +281,7 @@ impl CandidateRuntime {
 
     /// The signals extraction has found for a key so far, or `None` before it
     /// has reported any.
-    pub fn signals(&self, key: &str) -> Option<Signals> {
+    pub fn signals(&self, key: &CandidateKey) -> Option<Signals> {
         self.inner
             .lock()
             .unwrap()
@@ -291,7 +292,7 @@ impl CandidateRuntime {
 
     /// The signals `run` was judged against, or `None` once the key is on
     /// another run.
-    pub(super) fn run_signals(&self, key: &str, run: IdentifyRunId) -> Option<Signals> {
+    pub(super) fn run_signals(&self, key: &CandidateKey, run: IdentifyRunId) -> Option<Signals> {
         self.inner
             .lock()
             .unwrap()
@@ -310,7 +311,7 @@ impl CandidateRuntime {
     /// The signals of each key whose signals moved after `seen`, and where
     /// that leaves a reader who has read them. A key whose signals went with
     /// its files is left out.
-    pub(crate) fn signals_since(&self, seen: u64) -> (u64, Vec<(String, Signals)>) {
+    pub(crate) fn signals_since(&self, seen: u64) -> (u64, Vec<(CandidateKey, Signals)>) {
         let inner = self.inner.lock().unwrap();
         let moved = inner
             .signal_changes
@@ -319,7 +320,7 @@ impl CandidateRuntime {
                 inner
                     .signals
                     .get(key)
-                    .map(|(_, signals)| (key.to_string(), signals.clone()))
+                    .map(|(_, signals)| (key.clone(), signals.clone()))
             })
             .collect();
         (inner.signal_changes.sequence(), moved)
@@ -349,7 +350,7 @@ impl CandidateRuntime {
     /// left idle is removed. Returns what `mutate` returned.
     fn set<R>(
         &self,
-        key: &str,
+        key: &CandidateKey,
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
         let (result, changed) = {
@@ -360,7 +361,7 @@ impl CandidateRuntime {
             let next = (!next.is_idle()).then_some(next);
             let changed = next != previous;
             match next {
-                Some(next) => inner.runtime.insert(key.to_string(), next),
+                Some(next) => inner.runtime.insert(key.clone(), next),
                 None => inner.runtime.remove(key),
             };
             (result, changed)
@@ -373,7 +374,7 @@ impl CandidateRuntime {
 
     /// Put `key` on a new search run carrying `search`, and return the run a
     /// landing must name to count.
-    pub(super) fn start_search(&self, key: &str, search: CandidateSearch) -> u64 {
+    pub(super) fn start_search(&self, key: &CandidateKey, search: CandidateSearch) -> u64 {
         self.set(key, |inner, runtime| {
             let run = inner.mint_search_run();
             runtime.search = Some(RunningSearch { run, search });
@@ -384,7 +385,10 @@ impl CandidateRuntime {
     /// Put every failed source of `key`'s search back to looking on a new run,
     /// returning the query, the sources to re-ask and the run; `None` when
     /// there is nothing to re-ask.
-    pub(super) fn retry_search(&self, key: &str) -> Option<(SearchQuery, Vec<Catalog>, u64)> {
+    pub(super) fn retry_search(
+        &self,
+        key: &CandidateKey,
+    ) -> Option<(SearchQuery, Vec<Catalog>, u64)> {
         self.set(key, |inner, runtime| {
             let running = runtime.search.as_mut()?;
             let mut search = running.search.clone();
@@ -401,7 +405,7 @@ impl CandidateRuntime {
     }
 
     /// Drop `key`'s search, so nothing its run has out can land.
-    pub(super) fn clear_search(&self, key: &str) {
+    pub(super) fn clear_search(&self, key: &CandidateKey) {
         self.set(key, |_, runtime| runtime.search = None);
     }
 
@@ -409,7 +413,7 @@ impl CandidateRuntime {
     /// the other source's lookup in flight still lands; the dropped source's
     /// answer is refused because that part is no longer looking.
     pub(super) fn switch_source_off(&self, source: Catalog) {
-        let searching: Vec<String> = self
+        let searching: Vec<CandidateKey> = self
             .inner
             .lock()
             .unwrap()
@@ -429,7 +433,7 @@ impl CandidateRuntime {
 
     /// Whether `run` is still the run `key`'s search is on.
     #[cfg(test)]
-    pub(super) fn search_run_is_current(&self, key: &str, run: u64) -> bool {
+    pub(super) fn search_run_is_current(&self, key: &CandidateKey, run: u64) -> bool {
         self.inner
             .lock()
             .unwrap()
@@ -444,7 +448,7 @@ impl CandidateRuntime {
     /// share the map's lock, so an old run never writes over a newer one.
     pub(super) fn land_search(
         &self,
-        key: &str,
+        key: &CandidateKey,
         run: u64,
         source: Catalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
@@ -467,7 +471,7 @@ impl CandidateRuntime {
     /// search, or its search does not hold the release.
     pub(super) fn land_picked(
         &self,
-        key: &str,
+        key: &CandidateKey,
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
     ) -> Vec<(String, Vec<crate::import::album_links::AlbumLink>)> {
@@ -481,7 +485,7 @@ impl CandidateRuntime {
     /// while the standings table names the run.
     pub(crate) fn record_run_state(
         &self,
-        key: &str,
+        key: &CandidateKey,
         run: IdentifyRunId,
         of_candidate: bool,
         state: &IdentifyState,
@@ -498,14 +502,14 @@ impl CandidateRuntime {
     }
 
     /// `run` of `key` is over: what it published is not drawn any more.
-    pub(crate) fn forget_run(&self, key: &str, run: IdentifyRunId) {
+    pub(crate) fn forget_run(&self, key: &CandidateKey, run: IdentifyRunId) {
         self.set(key, |_, runtime| {
             runtime.runs.remove(&run);
         });
     }
 
     /// Every run of `key` is over.
-    fn forget_runs(&self, key: &str) {
+    fn forget_runs(&self, key: &CandidateKey) {
         self.set(key, |_, runtime| runtime.runs.clear());
     }
 
@@ -513,7 +517,7 @@ impl CandidateRuntime {
     /// search and signals go with the files they were of. What its runs
     /// published goes as each run ends; an import outlives it, and only that
     /// import's ending clears it.
-    fn end_candidate(&self, key: &str) {
+    fn end_candidate(&self, key: &CandidateKey) {
         self.end_work(key);
         let signals_removed = {
             let mut inner = self.inner.lock().unwrap();
@@ -558,7 +562,7 @@ impl CandidateRuntime {
     }
 
     /// The scan no longer lists the key, so it ends.
-    fn forget(&self, key: &str) {
+    fn forget(&self, key: &CandidateKey) {
         self.inner.lock().unwrap().shapes.remove(key);
         self.end_candidate(key);
     }

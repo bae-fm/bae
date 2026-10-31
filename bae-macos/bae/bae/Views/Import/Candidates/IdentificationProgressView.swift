@@ -231,12 +231,12 @@ struct FolderScanProgressIndicator: View {
                 foundCount: 179,
                 folders: [
                     BridgeActiveFolderScan(
-                        watchedFolderPath: "/imports/one",
+                        watchedFolderPath: Data("/imports/one".utf8),
                         watchedFolderName: "Incoming",
                         foundCount: 124
                     ),
                     BridgeActiveFolderScan(
-                        watchedFolderPath: "/imports/two",
+                        watchedFolderPath: Data("/imports/two".utf8),
                         watchedFolderName: "Archive",
                         foundCount: 55
                     ),

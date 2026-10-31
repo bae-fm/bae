@@ -113,12 +113,16 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
     let bus = ImportEventBus::new(runtime.clone());
     let mut events = bus.every_event();
     runtime
-        .claim_for_import("candidate", "import-1", false)
+        .claim_for_import(
+            &crate::import::CandidateKey::test("candidate"),
+            "import-1",
+            false,
+        )
         .await
         .unwrap();
     runtime
         .move_import(
-            "candidate",
+            &crate::import::CandidateKey::test("candidate"),
             "import-1",
             Some(crate::import::ImportStanding::Running),
         )
@@ -126,7 +130,7 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
         .unwrap();
 
     bus.send(ImportEvent::ImportProgress {
-        candidate_key: "candidate".to_string(),
+        candidate_key: crate::import::CandidateKey::test("candidate"),
         progress: crate::import::ImportProgress::Progress {
             id: REL_1.to_string(),
             percent: Some(40),
@@ -138,7 +142,7 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
     events.recv().await.unwrap();
     assert_eq!(
         runtime
-            .snapshot("candidate")
+            .snapshot(&crate::import::CandidateKey::test("candidate"))
             .await
             .unwrap()
             .and_then(|candidate| candidate.import)
@@ -151,7 +155,7 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
 
 /// Put `key` on the identification queue as the queue admits it, with the
 /// files the scan holds it with.
-async fn admit(handle: &ImportServiceHandle, key: &str) {
+async fn admit(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     let candidate = handle
         .get_release_candidate(key)
         .await
@@ -159,10 +163,7 @@ async fn admit(handle: &ImportServiceHandle, key: &str) {
         .expect("the candidate is stored");
     handle
         .admit_identification(
-            vec![(
-                key.to_string(),
-                crate::import::CandidateFiles::of(&candidate),
-            )],
+            vec![(key.clone(), crate::import::CandidateFiles::of(&candidate))],
             crate::import::Admission::Requested,
         )
         .await
@@ -171,7 +172,11 @@ async fn admit(handle: &ImportServiceHandle, key: &str) {
 
 /// Start `run` of the queued `key`, as the identify driver records its first
 /// state.
-async fn start_run(handle: &ImportServiceHandle, key: &str, run: crate::identify::IdentifyRunId) {
+async fn start_run(
+    handle: &ImportServiceHandle,
+    key: &crate::import::CandidateKey,
+    run: crate::identify::IdentifyRunId,
+) {
     let candidate = handle
         .get_release_candidate(key)
         .await

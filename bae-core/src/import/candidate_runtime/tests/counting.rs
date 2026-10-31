@@ -18,11 +18,11 @@ async fn counts(runtime: &CandidateRuntime, last: &mut (u32, u32)) -> Vec<(u32, 
 async fn a_lookup_started_by_hand_opens_a_batch() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 1)]);
@@ -56,16 +56,16 @@ async fn a_lookup_started_by_hand_opens_a_batch() {
 async fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let first = "/watch/a/rel1";
-    let second = "/watch/a/rel2";
+    let first = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let first_files = scanned_key(&runtime, first).await;
     let second_files = scanned_key(&runtime, second).await;
 
     runtime
         .admit(
             vec![
-                (first.to_string(), first_files.clone()),
-                (second.to_string(), second_files.clone()),
+                (first.clone(), first_files.clone()),
+                (second.clone(), second_files.clone()),
             ],
             Admission::Automatic,
         )
@@ -88,11 +88,11 @@ async fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
 async fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let first = "/watch/a/rel1";
-    let second = "/watch/a/rel2";
+    let first = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let marks = vec![
-        (first.to_string(), scanned_key(&runtime, first).await),
-        (second.to_string(), scanned_key(&runtime, second).await),
+        (first.clone(), scanned_key(&runtime, first).await),
+        (second.clone(), scanned_key(&runtime, second).await),
     ];
 
     runtime.admit(marks, Admission::Automatic).await.unwrap();
@@ -115,11 +115,11 @@ async fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
 async fn a_failed_write_ends_the_identification() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
@@ -145,11 +145,11 @@ async fn a_failed_write_ends_the_identification() {
 async fn a_cancelled_run_s_end_ends_its_identification() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let key = "/watch/a/rel1";
+    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
     runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
         .await
         .unwrap();
     report(&runtime, key, &files, run(1), triangulating()).await;
@@ -165,16 +165,16 @@ async fn a_cancelled_run_s_end_ends_its_identification() {
 async fn a_batch_after_a_drain_starts_from_zero() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let first = "/watch/a/rel1";
-    let second = "/watch/a/rel2";
+    let first = &crate::import::CandidateKey::test("/watch/a/rel1");
+    let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let first_files = scanned_key(&runtime, first).await;
     let second_files = scanned_key(&runtime, second).await;
 
     runtime
         .admit(
             vec![
-                (first.to_string(), first_files.clone()),
-                (second.to_string(), second_files),
+                (first.clone(), first_files.clone()),
+                (second.clone(), second_files),
             ],
             Admission::Automatic,
         )
@@ -187,7 +187,7 @@ async fn a_batch_after_a_drain_starts_from_zero() {
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 0)]);
 
     runtime
-        .admit(vec![(first.to_string(), first_files)], Admission::Requested)
+        .admit(vec![(first.clone(), first_files)], Admission::Requested)
         .await
         .unwrap();
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 1)]);
@@ -200,7 +200,7 @@ async fn a_batch_after_a_drain_starts_from_zero() {
 async fn a_release_re_identified_in_its_own_sheet_is_not_counted() {
     let runtime = CandidateRuntime::for_test().await;
     let mut last = (0, 0);
-    let key = "reidentify:release-1";
+    let key = &crate::import::CandidateKey::reidentify("release-1");
 
     runtime.record_run_state(key, run(1), false, &triangulating());
     runtime.record_run_state(key, run(1), false, &manual_only());

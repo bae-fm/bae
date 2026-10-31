@@ -10,6 +10,15 @@ enum SystemActions {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 
+    /// Open Finder at the folder whose path crosses the bridge as `folder`,
+    /// coven's bytes for it.
+    static func revealInFinder(folder: Data) {
+        revealInFinder(
+            path: URL(filePathBytes: folder, isDirectory: true)
+                .path(percentEncoded: false)
+        )
+    }
+
     /// Replace the general pasteboard's contents with `value` as a string.
     static func copyToPasteboard(_ value: String) {
         NSPasteboard.general.clearContents()

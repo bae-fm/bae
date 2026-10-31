@@ -33,7 +33,7 @@ pub struct NewImportCandidateVerdict {
     pub file_edit_revision: u64,
     /// Where the candidate was last seen on disk. Not identity — the hash is —
     /// so a moved folder keeps reading the same row under its unchanged hash.
-    pub folder_path: String,
+    pub candidate_key: crate::import::CandidateKey,
     pub verdict: crate::identify::TerminalVerdict,
     /// The settled signals the run reached this verdict on: the disc ID, the
     /// barcodes, the classified text, and what every audio unit plays for.
@@ -75,7 +75,7 @@ pub struct DbCandidateIdentifyResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbImportCandidateState {
     pub content_hash: String,
-    pub folder_path: String,
+    pub candidate_key: crate::import::CandidateKey,
     /// What identification concluded, or `None` when nothing has identified
     /// this candidate yet — including when a file decision cleared what had,
     /// because that verdict described a folder shape that no longer applies.
@@ -153,7 +153,7 @@ pub struct DbCandidateImportPreparation {
 #[derive(Debug, Clone)]
 pub(crate) enum ImportCommitGuard {
     Candidate {
-        candidate_key: String,
+        candidate_key: crate::import::CandidateKey,
         source: crate::import::release_candidate::CandidateSource,
         expectation: crate::import::service::ImportExpectation,
         /// The import committing, whose claim on the candidate the commit
@@ -184,7 +184,7 @@ impl ImportCommitGuard {
 #[cfg(test)]
 #[derive(Debug, Clone)]
 pub struct DbFolderScanSnapshot {
-    pub watched_folder_path: String,
+    pub watched_folder_path: std::path::PathBuf,
     pub generation: u64,
     pub status: crate::import::FolderScanStatus,
     pub items: Vec<crate::import::folder_scanner::ScanItem>,

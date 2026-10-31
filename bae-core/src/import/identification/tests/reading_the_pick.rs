@@ -10,7 +10,7 @@ impl Fixture {
     /// Wait until the runtime says `status` of `key`.
     async fn await_identification_status(
         &self,
-        key: &str,
+        key: &crate::import::CandidateKey,
         status: crate::import::IdentificationStatus,
     ) {
         let reached = tokio::time::timeout(Duration::from_secs(20), async {
@@ -31,10 +31,10 @@ impl Fixture {
     /// A disc-ID candidate whose one release `release_id` the run picks
     /// unattended, with the settle's read of that release held, and its run
     /// asked for and reading the pick. Returns its folder and key.
-    async fn reading_its_pick(&self, release_id: &str, group_id: &str) -> (PathBuf, String) {
+    async fn reading_its_pick(&self, release_id: &str, group_id: &str) -> (PathBuf, crate::import::CandidateKey) {
         self.manager.set_identify_automatically(false).await.unwrap();
         let dir = self.disc_id_candidate("Album");
-        let key = dir.to_string_lossy().into_owned();
+        let key = crate::import::CandidateKey::folder(&dir);
         self.route_disc_id_match(&dir, release_id, group_id, 2);
         self.provider.hold(&format!("/release/{release_id}?"));
         self.scan(1).await;
@@ -71,7 +71,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
         .import
         .register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let settling = fixture.disc_id_candidate("Album 0");
-    let settling_key = settling.to_string_lossy().into_owned();
+    let settling_key = crate::import::CandidateKey::folder(&settling);
     fixture.route_disc_id_match(&settling, "mb-slot", "rg-slot", 2);
     let mut running = Vec::new();
     for index in 1..=MAX_IN_FLIGHT {
@@ -117,7 +117,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
     );
     for dir in &running {
         assert_eq!(
-            fixture.identification_status(&dir.to_string_lossy()).await,
+            fixture.identification_status(&crate::import::CandidateKey::folder(dir)).await,
             Some(crate::import::IdentificationStatus::Running),
             "{} started while the pick was read",
             dir.display()
@@ -137,7 +137,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     let fixture = Fixture::new("reading-the-pick-row").await;
     fixture.manager.set_identify_automatically(false).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-row", "rg-row", 2);
     fixture.provider.hold("/release/mb-row?");
     fixture.scan(1).await;
@@ -279,7 +279,7 @@ async fn a_read_that_fails_after_import_was_asked_imports_nothing() {
     let fixture = Fixture::importing("import-asked-read-fails").await;
     fixture.manager.set_identify_automatically(false).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
-    let key = dir.to_string_lossy().into_owned();
+    let key = crate::import::CandidateKey::folder(&dir);
     // The run reads its release from the Disc ID answer; the pick's read of
     // the release itself is refused.
     fixture.provider.route("/release/mb-fails?", 400, "{}");

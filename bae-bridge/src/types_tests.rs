@@ -755,3 +755,31 @@ fn a_preview_target_whose_name_is_not_utf8_comes_back_as_its_path() {
         .expect("a path core gave the app comes back");
     assert_eq!(back.into_sample_range(), (path, 0, Some(44_100)));
 }
+
+/// A watched folder and a candidate key whose names aren't UTF-8 show as
+/// their escapes, while the bytes that name them back to core stay the
+/// folder's own.
+#[cfg(all(unix, feature = "desktop"))]
+#[test]
+fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let path = std::path::Path::new("/music").join(std::ffi::OsStr::from_bytes(b"Caf\xE9"));
+    let folder = BridgeWatchedFolder::from_core(bae_core::import::WatchedFolder {
+        path: path.clone(),
+        name: "Caf\\xE9".into(),
+    });
+    assert_eq!(folder.path, b"/music/Caf\xE9");
+    assert_eq!(folder.path_text, "/music/Caf\\xE9");
+
+    let key = bae_core::import::CandidateKey::folder(&path);
+    assert_eq!(
+        bridge_candidate_key_text(key.into_bytes()),
+        "/music/Caf\\xE9"
+    );
+    let grouping = bae_core::import::CandidateKey::grouping("g1");
+    assert_eq!(
+        bridge_candidate_key_text(grouping.into_bytes()),
+        "grouping:g1"
+    );
+}
