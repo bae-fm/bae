@@ -197,7 +197,10 @@ impl Library {
         (self.root_text(), "candidate", self.text(display_path))
     }
 
-    /// The release at the folder `relative` below the watched folder.
+    /// The release at the folder `relative` below the watched folder. Only the
+    /// Unix test of a folder name that isn't valid UTF-8 spells a release by
+    /// its path.
+    #[cfg(unix)]
     fn release_at(&self, relative: &std::path::Path) -> Item {
         (
             self.root_text(),
