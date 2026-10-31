@@ -499,6 +499,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
             direction: SortDirection::Ascending,
         },
         filter: StorageFilter::All,
+        search: String::new(),
         windows: [bae_core::library::LibraryPageWindow {
             offset: 0,
             limit: 50,

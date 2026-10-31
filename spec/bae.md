@@ -1466,8 +1466,11 @@ storage stays until nothing refers to it; coven then deletes it
 credits, its media, its files' count and total size, whether it is uploaded,
 whether this device keeps all its files pinned (§4.3), and when it was
 added. It shows every
-release, or only the local ones, or only the uploaded ones, and shows the
-shown list's count and total size. It sorts by album title (ignoring ASCII
+release, or only the local ones, or only the uploaded ones; text typed in its
+filter field narrows that to the releases whose album library search finds
+(§2.3), as each character is typed, and blank text narrows nothing. It shows
+the shown list's count and total size, and says there are no matches when the
+text narrows it to none. It sorts by album title (ignoring ASCII
 case), artist (§2.3), media (a release stating none last), file count, size,
 storage — uploading, then pinning: files coming to this device, waiting
 or downloading in the download queue (§4.3), then local, pinned, and in the
@@ -2783,7 +2786,14 @@ Reads come two ways:
   the middle of the list reaches, is read by its offset, past every row before
   it. The playback queue's upcoming tracks are read by offset alone: the
   offset passes over the context lane's positions before any track is read,
-  so a deep window costs little. The artist picker's search reads every
+  so a deep window costs little. The Storage Manager's search counts what it
+  finds first, from library search's tables, and reads a window from those
+  releases, sorted, when that costs less than passing the releases it doesn't
+  find on the way through the sort's index; so a search finding a handful of
+  releases never walks the whole index, and one finding most of them reads
+  its windows through the index like the unsearched list. Its rows' places
+  also hold only while what library search finds stands (`library_search`
+  in `list_order_versions`). The artist picker's search reads every
   artist its text finds and sorts them, so each window of it is read by its
   offset.
   The Storage Manager's list is also told
@@ -3174,7 +3184,7 @@ Beside them, device-local tables:
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
-| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `release_listing`, `download_queue`, `output_queue`, and for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
+| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `release_listing`, `download_queue`, `output_queue`, for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`, and `library_search` for what library search finds of albums, which the Storage Manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 

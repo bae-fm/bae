@@ -3,7 +3,9 @@
 //! jump, which reads it by its offset, and by scrolling, which reads it from
 //! the row beside it (`list_windows`): the row after the window at the top,
 //! and the row before it lower down. Each window is read by the reads its live
-//! query runs, its rows decoded as that query decodes them. A measurement, not
+//! query runs, its rows decoded as that query decodes them. At 100,000 rows
+//! the Storage Manager list is also measured narrowed by a search that finds
+//! nearly every release and by one that finds few. A measurement, not
 //! a check: run it in release with
 //!
 //! ```sh
@@ -143,15 +145,19 @@ fn report(
 type Rows<R> =
     fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>;
 
-/// Read one window at each measured offset of a list in `order`, once by a
-/// jump and once from the row beside it.
+/// Read one window at each measured offset of a list of `n` rows in `order`,
+/// once by a jump and once from the row beside it.
 async fn measure<R: Send + 'static>(
     db: &Database,
     list: &str,
     name: &str,
     n: u64,
     order: ListOrder,
-    rows: Rows<R>,
+    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>
+        + Clone
+        + Send
+        + Sync
+        + 'static,
 ) {
     let order = std::sync::Arc::new(order);
     for (at, offset) in offsets(n) {
@@ -167,7 +173,7 @@ async fn measure<R: Send + 'static>(
             offset - 1
         };
         let key = {
-            let order = order.clone();
+            let (order, rows) = (order.clone(), rows.clone());
             db.read(move |sql| {
                 Ok(rows(&sql, &order, &order.everything(), 1, beside)?
                     .pop()
@@ -184,7 +190,7 @@ async fn measure<R: Send + 'static>(
                 super::super::list_windows::Places::from([(beside, key.clone())]),
             ),
         ] {
-            let (order, window) = (order.clone(), window.clone());
+            let (order, window, rows) = (order.clone(), window.clone(), rows.clone());
             let timing = median(db, move |sql| {
                 let read = read_windows(&order, &window, known.clone(), |seek, limit, at| {
                     rows(sql, &order, seek, limit, at)
@@ -305,11 +311,11 @@ async fn measure_storage(db: &Database, n: u64) {
         (
             StorageFilter::All,
             (|sql, order, seek, limit, offset| {
-                storage_rows_on(sql, order, StorageFilter::All, seek, limit, offset)
+                storage_rows_on(sql, order, StorageFilter::All, None, seek, limit, offset)
             }) as Rows<_>,
         ),
         (StorageFilter::Local, |sql, order, seek, limit, offset| {
-            storage_rows_on(sql, order, StorageFilter::Local, seek, limit, offset)
+            storage_rows_on(sql, order, StorageFilter::Local, None, seek, limit, offset)
         }),
     ] {
         for field in [
@@ -326,6 +332,61 @@ async fn measure_storage(db: &Database, n: u64) {
                 let name = format!("{filter:?}_{field:?}_{direction:?}");
                 measure(db, "storage", &name, n, order, rows).await;
             }
+        }
+    }
+}
+
+/// What a search narrowing the Storage Manager list costs: counting what it
+/// finds, which every read of it does first, and then each window, read as
+/// the search's counts decide. `album` is in every title; `album 123` is in
+/// about one title in a thousand.
+async fn measure_storage_search(db: &Database, n: u64) {
+    for (name, text) in [("broad", "album"), ("rare", "album 123")] {
+        let query = crate::library::LibrarySearchQuery::parse(text).unwrap();
+        let counted = query.clone();
+        let timing = median(db, move |sql| {
+            let (count, _, _) = storage_totals_on(sql, StorageFilter::All, Some(&counted))?;
+            Ok(count as usize)
+        })
+        .await;
+        report("storage_search", name, "count", "all", 0, n, timing);
+        let counted = query.clone();
+        let (found, search) = db
+            .read(move |sql| {
+                let (count, _, search) =
+                    storage_totals_on(&sql, StorageFilter::All, Some(&counted))?;
+                Ok((count, search.unwrap()))
+            })
+            .await
+            .unwrap();
+        let search = std::sync::Arc::new(search);
+        for (field, direction) in [
+            (StorageSortField::AlbumTitle, SortDirection::Ascending),
+            (StorageSortField::AlbumTitle, SortDirection::Descending),
+            (StorageSortField::DateAdded, SortDirection::Descending),
+            (StorageSortField::Storage, SortDirection::Ascending),
+        ] {
+            let order = query::storage_order(&StorageSortCriterion { field, direction });
+            let search = search.clone();
+            measure(
+                db,
+                "storage_search",
+                &format!("{name}_{field:?}_{direction:?}"),
+                found,
+                order,
+                move |sql, order, seek, limit, offset| {
+                    storage_rows_on(
+                        sql,
+                        order,
+                        StorageFilter::All,
+                        Some(search.as_ref()),
+                        seek,
+                        limit,
+                        offset,
+                    )
+                },
+            )
+            .await;
         }
     }
 }
@@ -492,6 +553,9 @@ async fn window_cost() {
         measure_artists(&db, n).await;
         measure_composers(&db, n).await;
         measure_storage(&db, n).await;
+        if n == 100_000 {
+            measure_storage_search(&db, n).await;
+        }
         measure_queues(&db, n).await;
         measure_import_list(&db, n).await;
     }

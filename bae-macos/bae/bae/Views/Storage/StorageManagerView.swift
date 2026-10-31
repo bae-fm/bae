@@ -25,6 +25,10 @@ struct StorageManagerView: View {
         field: .albumTitle,
         direction: .ascending
     )
+    /// What the filter field holds, which narrows the list to the releases
+    /// whose album library search finds.
+    @State
+    private var search: String
     @State
     private var selection: Set<String> = []
     @State
@@ -45,10 +49,12 @@ struct StorageManagerView: View {
     private let initialSelectedFileId: String?
 
     init(
+        initialSearch: String = "",
         initialSelection: Set<String> = [],
         initialInspectorPresented: Bool = false,
         initialSelectedFileId: String? = nil
     ) {
+        _search = State(initialValue: initialSearch)
         _selection = State(initialValue: initialSelection)
         _inspectorPresented = State(
             initialValue: initialInspectorPresented
@@ -75,6 +81,11 @@ struct StorageManagerView: View {
         .frame(
             minWidth: Self.minimumWidth,
             minHeight: Self.minimumHeight
+        )
+        .searchable(
+            text: $search,
+            placement: .toolbar,
+            prompt: Text("Filter")
         )
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -134,6 +145,7 @@ struct StorageManagerView: View {
             updateQuery()
         }
         .onChange(of: sort) { _, _ in updateQuery() }
+        .onChange(of: search) { _, _ in updateQuery() }
         .onDisappear {
             storageManagerStore.cancel()
         }
@@ -156,6 +168,13 @@ struct StorageManagerView: View {
                         layout: $columnLayout,
                         runner: runner,
                     )
+                    .overlay {
+                        if storageManagerStore.searching, list.totalCount == 0 {
+                            ContentUnavailableView {
+                                Text("No matches")
+                            }
+                        }
+                    }
                     Divider()
                     StorageFooter(
                         list: list,
@@ -172,7 +191,7 @@ struct StorageManagerView: View {
     }
 
     private func updateQuery() {
-        storageManagerStore.update(filter: filter, sort: sort)
+        storageManagerStore.update(filter: filter, sort: sort, search: search)
     }
 }
 
@@ -186,12 +205,14 @@ struct StorageManagerView: View {
         let outputStore: OutputStore
         let outboxStore: OutboxStore
 
+        let initialSearch: String
         let initialSelection: Set<String>
         let initialInspectorPresented: Bool
         let initialSelectedFileId: String?
 
         init(
             rows: [BridgeStorageRow] = PreviewData.storageRows,
+            search: String = "",
             selectedReleaseId: String? = nil,
             inspectorPresented: Bool = false,
             selectedFileId: String? = nil,
@@ -213,6 +234,7 @@ struct StorageManagerView: View {
                 onError: { uiStore.showError($0) }
             )
             self.uiStore = uiStore
+            initialSearch = search
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
             initialSelectedFileId = selectedFileId
@@ -338,6 +360,33 @@ struct StorageManagerView: View {
     #Preview("Empty") {
         let fixture = StorageManagerPreviewFixture(rows: [])
         StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(Importer.stub())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
+    }
+
+    /// A search that finds nothing.
+    #Preview("No matches") {
+        let fixture = StorageManagerPreviewFixture(
+            rows: [],
+            search: "Album Title"
+        )
+        StorageManagerView(
+            initialSearch: fixture.initialSearch,
             initialSelection: fixture.initialSelection,
             initialInspectorPresented: fixture.initialInspectorPresented
         )

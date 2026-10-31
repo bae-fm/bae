@@ -173,8 +173,13 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
             let order = super::super::query::storage_order(&sort);
             let steps = plan(
                 &db,
-                super::super::query::storage_window_query(&order, filter, &order.everything())
-                    .replace("LIMIT :limit OFFSET :offset", "LIMIT 50 OFFSET 0"),
+                super::super::storage_window_query(
+                    &order,
+                    filter,
+                    super::super::StorageRows::Listed,
+                    &order.everything(),
+                )
+                .replace("LIMIT :limit OFFSET :offset", "LIMIT 50 OFFSET 0"),
             )
             .await;
             assert!(

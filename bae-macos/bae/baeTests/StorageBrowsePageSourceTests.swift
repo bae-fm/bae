@@ -65,6 +65,7 @@ private let bySize = BridgeStorageSort(
 
 private func snapshot(
     sort: BridgeStorageSort,
+    search: String,
     rows: [BridgeStorageRow],
     selected: [BridgeStorageRow] = [],
     selectionActions: [BridgeReleaseStorageAction] = []
@@ -72,6 +73,8 @@ private func snapshot(
     BridgeStorageBrowseSnapshot(
         sort: sort,
         filter: .all,
+        search: search,
+        searching: !search.isEmpty,
         windows: [
             BridgeStorageBrowseWindow(
                 window: BridgeLibraryPageWindow(offset: 0, limit: 50),
@@ -100,6 +103,7 @@ struct StorageBrowsePageSourceTests {
             query: feed.query(),
             sort: byTitle,
             filter: .all,
+            search: "",
             selected: [],
             onListValue: { totalSize.value = $0.totalSize }
         )
@@ -114,7 +118,7 @@ struct StorageBrowsePageSourceTests {
         #expect(feed.requested.last?.sort == byTitle)
         #expect(feed.requested.last?.windows.count == 1)
 
-        source.setView(sort: bySize, filter: .all)
+        source.setView(sort: bySize, filter: .all, search: "")
         first.cancel()
         let second = source.subscribe(
             offset: 0,
@@ -130,13 +134,48 @@ struct StorageBrowsePageSourceTests {
             "the old list's late cancel leaves the new list's window alone"
         )
 
-        feed.deliver(snapshot(sort: byTitle, rows: [rows[0]]))
-        feed.deliver(snapshot(sort: bySize, rows: [rows[1]]))
+        feed.deliver(snapshot(sort: byTitle, search: "", rows: [rows[0]]))
+        feed.deliver(snapshot(sort: bySize, search: "", rows: [rows[1]]))
         try await Wait.until { !delivered.ids.isEmpty }
 
         #expect(delivered.ids == [[rows[1].id]])
         #expect(totalSize.value == 7)
         _ = second
+    }
+
+    @MainActor
+    @Test(
+        "a new search moves the one query, and rows read under the old text are dropped"
+    )
+    func searchMovesOneQuery() async throws {
+        let feed = StorageFeed()
+        let rows = PreviewData.storageRows
+        let source = StorageBrowsePageSource(
+            query: feed.query(),
+            sort: byTitle,
+            filter: .all,
+            search: "",
+            selected: [],
+            onListValue: { _ in }
+        )
+        let delivered = DeliveredRows()
+
+        source.setView(sort: byTitle, filter: .all, search: "Album")
+        let page = source.subscribe(
+            offset: 0,
+            limit: 50,
+            onValue: { rows, _ in delivered.ids.append(rows.map(\.id)) },
+            onError: { _ in }
+        )
+        #expect(feed.opened == 1)
+        #expect(feed.requested.last?.search == "Album")
+
+        feed.deliver(snapshot(sort: byTitle, search: "", rows: [rows[0]]))
+        feed.deliver(snapshot(sort: byTitle, search: "Album", rows: [rows[1]]))
+        try await Wait.until { !delivered.ids.isEmpty }
+
+        #expect(delivered.ids == [[rows[1].id]])
+        _ = page
     }
 
     @MainActor
@@ -151,6 +190,7 @@ struct StorageBrowsePageSourceTests {
             query: feed.query(),
             sort: byTitle,
             filter: .all,
+            search: "",
             selected: [],
             onListValue: { answers.values.append($0.selected.map(\.id)) }
         )
@@ -173,6 +213,7 @@ struct StorageBrowsePageSourceTests {
         feed.deliver(
             snapshot(
                 sort: byTitle,
+                search: "",
                 rows: [rows[1]],
                 selected: [rows[0]]
             )
@@ -198,12 +239,13 @@ struct StorageManagerStoreSelectionTests {
         )
         let selected: Set<String> = [rows[0].id, rows[1].id]
         store.select(selected)
-        store.update(filter: .all, sort: byTitle)
+        store.update(filter: .all, sort: byTitle, search: "")
         try await Wait.until { !feed.requested.isEmpty }
 
         feed.deliver(
             snapshot(
                 sort: byTitle,
+                search: "",
                 rows: rows,
                 selected: [rows[0], rows[1]],
                 selectionActions: [.detachAudio]

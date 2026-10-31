@@ -9,6 +9,7 @@ struct StorageManagerPreviewScene: View {
 
     init(
         rows: [BridgeStorageRow] = PreviewData.storageRows,
+        search: String = "",
         selectedReleaseId: String? = nil,
         inspectorPresented: Bool = false,
         selectedFileId: String? = nil,
@@ -19,6 +20,7 @@ struct StorageManagerPreviewScene: View {
     ) {
         fixture = StorageManagerPreviewFixture(
             rows: rows,
+            search: search,
             selectedReleaseId: selectedReleaseId,
             inspectorPresented: inspectorPresented,
             selectedFileId: selectedFileId,
@@ -30,6 +32,7 @@ struct StorageManagerPreviewScene: View {
 
     var body: some View {
         StorageManagerView(
+            initialSearch: fixture.initialSearch,
             initialSelection: fixture.initialSelection,
             initialInspectorPresented: fixture.initialInspectorPresented,
             initialSelectedFileId: fixture.initialSelectedFileId

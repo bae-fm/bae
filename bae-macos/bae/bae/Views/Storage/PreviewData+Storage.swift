@@ -778,6 +778,7 @@
                     direction: .ascending
                 ),
                 filter: .all,
+                search: "",
                 selected: [],
                 onListValue: { _ in }
             )

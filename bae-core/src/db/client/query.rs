@@ -780,76 +780,28 @@ pub(super) const CLOUD_ONLY_RELEASE_COUNT: &str =
 pub(super) const RELEASE_LISTING_PINNED: &str =
     "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
 
-/// What a Storage Manager filter keeps of `release_listing listing`, as a
-/// condition.
-fn storage_filter(filter: StorageFilter) -> &'static str {
-    match filter {
-        StorageFilter::All => "1",
-        StorageFilter::Remote => "listing.stored = 1",
-        StorageFilter::Local => "listing.stored = 0",
-    }
-}
-
-/// One Storage Manager row per release the filter keeps and `condition`
-/// passes: the release's half and its album's, the raw aggregates the
-/// resolver maps to `ReleaseSummary` / `AlbumSummary`, whether it is pinned,
-/// where it sorts by storage, when it was added, and `extra` columns.
-fn storage_row_select(filter: StorageFilter, extra: &str, condition: &str) -> String {
-    let album_columns = album_summary_columns();
-    let filter = storage_filter(filter);
+/// Whether the album `album_id` names is one library search finds (§2.3)
+/// for the search pattern the parameter `pattern` binds (see
+/// [`crate::library::search::search_pattern`]): its title, or the name of an
+/// artist one of its credits shows or the other name a credit prints, holds
+/// it. Each part reads its search table, and an album two of them find is
+/// listed twice, which the `IN` list holds once, so no part is sorted to
+/// merge them.
+pub(super) fn album_matches_sql(album_id: &str, pattern: &str) -> String {
     format!(
-        "SELECT \
-            r.id AS release_id, \
-            r.album_id, \
-            r.media AS release_media, \
-            listing.stored AS remote, \
-            listing.file_count, \
-            listing.total_size, \
-            {RELEASE_LISTING_PINNED} AS pinned, \
-            listing.storage_order, \
-            listing.created_at AS date_added, \
-            {release_cover} AS release_cover_version, \
-            {upload_columns}, \
-            {album_columns}{extra} \
-        FROM release_listing listing \
-        JOIN releases r ON r.id = listing.release_id \
-        JOIN albums a ON a.id = listing.album_id \
-        LEFT JOIN ({releases_sending}) sending ON sending.release_id = listing.release_id \
-        WHERE {filter} AND ({condition})",
-        release_cover = super::files::cover_version_sql("r.id"),
-        upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
-        releases_sending = super::queued_uploads::RELEASES_SENDING,
-    )
-}
-
-/// The rows of the Storage Manager list under `filter` that `seek` reads,
-/// in its order, each with its key in `order`, from `:offset` for at most
-/// `:limit` rows.
-pub(super) fn storage_window_query(
-    order: &ListOrder,
-    filter: StorageFilter,
-    seek: &Seek,
-) -> String {
-    format!(
-        "{} ORDER BY {} LIMIT :limit OFFSET :offset",
-        storage_row_select(
-            filter,
-            &format!(", {}", order.key_columns()),
-            &order.condition(seek)
-        ),
-        order.ordering(seek)
-    )
-}
-
-/// The rows of `selected_count` bound release ids that the list under
-/// `filter` holds, by release id. SQLite folds the outer id filter into the
-/// list's rows, so each selected release is looked up by its key rather than
-/// the list read whole.
-pub(super) fn storage_selected_query(filter: StorageFilter, selected_count: usize) -> String {
-    format!(
-        "SELECT * FROM ({}) WHERE release_id IN ({}) ORDER BY release_id",
-        storage_row_select(filter, "", "1"),
-        in_clause_placeholders(selected_count)
+        "{album_id} IN ( \
+             SELECT album_id FROM album_search WHERE title GLOB {pattern} \
+             UNION ALL \
+             SELECT credit.album_id FROM artist_search matched_artist \
+             JOIN artist_shown_as shown ON shown.shown_artist_id = matched_artist.artist_id \
+             JOIN album_artists credit ON credit.artist_id = shown.artist_id \
+             WHERE matched_artist.name GLOB {pattern} \
+             UNION ALL \
+             SELECT credit.album_id FROM artist_credit_search matched_credit \
+             JOIN album_artists credit \
+                 ON credit.artist_id = matched_credit.artist_id \
+                AND credit.credit_key = matched_credit.name_key \
+             WHERE matched_credit.name GLOB {pattern})"
     )
 }
 

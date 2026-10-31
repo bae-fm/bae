@@ -100,7 +100,7 @@
     extension StorageBrowseQuery {
         /// A query over a fixed, already-sorted list, for previews and tests:
         /// every view is answered with its windows' slices of `rows`, whatever
-        /// the sort and filter, beside `queues`.
+        /// the sort, filter and search, beside `queues`.
         public static func fixed(
             _ rows: [BridgeStorageRow],
             queues: BridgeStorageQueues
@@ -114,6 +114,10 @@
                     return BridgeStorageBrowseSnapshot(
                         sort: view.sort,
                         filter: view.filter,
+                        search: view.search,
+                        // The fixture's stand-in for core's answer: any text
+                        // narrows the list.
+                        searching: !view.search.isEmpty,
                         windows: view.windows.map { window in
                             let start = min(Int(window.offset), rows.count)
                             let end = min(start + Int(window.limit), rows.count)

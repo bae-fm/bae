@@ -8,16 +8,20 @@ pub struct BridgeStorageBrowseWindow {
     pub rows: Vec<BridgeStorageRow>,
 }
 
-/// Every requested window of the Storage Manager list under the sort and
-/// filter it was read for — a UI that has since moved to another drops it —
-/// with the filtered set's row count and total size, the row of each
-/// selected release the filtered set holds, in a window or not, by release
-/// id, the storage actions every one of those allows, and the transfer
-/// queues holding work.
+/// Every requested window of the Storage Manager list under the sort, filter
+/// and search text it was read for — a UI that has since moved to another
+/// drops it — with the filtered set's row count and total size, the row of
+/// each selected release the filtered set holds, in a window or not, by
+/// release id, the storage actions every one of those allows, and the
+/// transfer queues holding work.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageBrowseSnapshot {
     pub sort: BridgeStorageSort,
     pub filter: BridgeStorageFilter,
+    pub search: String,
+    /// Whether the search text narrows the list: it is a library search,
+    /// not blank.
+    pub searching: bool,
     pub windows: Vec<BridgeStorageBrowseWindow>,
     pub total_count: u64,
     pub total_size: u64,
@@ -67,7 +71,7 @@ impl BridgeStorageQueues {
 }
 
 /// The Storage Manager list read live: one query for as long as the manager
-/// is open, whose sort, filter, and windows move in place.
+/// is open, whose sort, filter, search text and windows move in place.
 #[derive(uniffi::Object)]
 pub struct StorageBrowseSubscription {
     inner: bae_core::library::StorageBrowseSubscription,
@@ -76,8 +80,9 @@ pub struct StorageBrowseSubscription {
 
 #[uniffi::export]
 impl AppHandle {
-    /// A subscription to the list under `sort` and `filter`, reading no
-    /// windows and holding no selection until `set_view` names them.
+    /// A subscription to the list under `sort` and `filter`, searching for
+    /// nothing, reading no windows and holding no selection until `set_view`
+    /// names them.
     pub fn subscribe_storage_browse(
         &self,
         sort: BridgeStorageSort,
@@ -89,6 +94,7 @@ impl AppHandle {
                 .subscribe_storage_browse(bae_core::library::StorageBrowseView {
                     sort: sort.into_core(),
                     filter: filter.into_core(),
+                    search: String::new(),
                     windows: Default::default(),
                     selected: Default::default(),
                 }),
@@ -99,12 +105,13 @@ impl AppHandle {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl StorageBrowseSubscription {
-    /// Read `windows` of the list under `sort` and `filter`, and the rows of
-    /// the `selected` releases it holds, from now on.
+    /// Read `windows` of the list under `sort`, `filter` and the `search`
+    /// text, and the rows of the `selected` releases it holds, from now on.
     pub fn set_view(
         &self,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
+        search: String,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
         selected: Vec<String>,
     ) -> Result<(), BridgeError> {
@@ -112,6 +119,7 @@ impl StorageBrowseSubscription {
             .set(bae_core::library::StorageBrowseView {
                 sort: sort.into_core(),
                 filter: filter.into_core(),
+                search,
                 windows: windows
                     .into_iter()
                     .map(crate::types::BridgeLibraryPageWindow::into_core)
@@ -132,6 +140,8 @@ impl StorageBrowseSubscription {
                 .map(|snapshot| BridgeStorageBrowseSnapshot {
                     sort: BridgeStorageSort::from_core(snapshot.sort),
                     filter: BridgeStorageFilter::from_core(snapshot.filter),
+                    search: snapshot.search,
+                    searching: snapshot.searching,
                     windows: snapshot
                         .windows
                         .into_iter()

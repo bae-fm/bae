@@ -512,6 +512,7 @@ async fn transition_completions_deliver_storage_values() {
             direction: SortDirection::Ascending,
         },
         filter: StorageFilter::All,
+        search: String::new(),
         windows: [bae_core::library::LibraryPageWindow {
             offset: 0,
             limit: 50,
@@ -563,6 +564,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
             direction: SortDirection::Ascending,
         },
         filter: StorageFilter::Local,
+        search: String::new(),
         // One row on screen, so one selected release sits outside it.
         windows: [bae_core::library::LibraryPageWindow {
             offset: 0,
@@ -646,6 +648,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
             direction: SortDirection::Ascending,
         },
         filter: StorageFilter::All,
+        search: String::new(),
         // One row on screen, so one selected release sits outside it.
         windows: [bae_core::library::LibraryPageWindow {
             offset: 0,

@@ -6,6 +6,8 @@ import Observation
 public final class StorageManagerStore {
     public private(set) var list: StorageList?
     public private(set) var totalSize: UInt64?
+    /// Whether the search text narrows the list, by core's last answer.
+    public private(set) var searching = false
     /// The transfer queues holding work, by core's last answer; `nil` until
     /// it answers.
     public private(set) var queues: BridgeStorageQueues?
@@ -25,7 +27,7 @@ public final class StorageManagerStore {
     @ObservationIgnored
     private var generation = 0
     /// The manager's one live read, opened by the first `update` and kept
-    /// across sort and filter changes until `cancel`.
+    /// across sort, filter and search changes until `cancel`.
     @ObservationIgnored
     private var pageSource: StorageBrowsePageSource?
     /// The releases selected in the list, which the query is asked about.
@@ -40,9 +42,13 @@ public final class StorageManagerStore {
         self.onError = onError
     }
 
+    /// Show the list under `filter`, `sort` and the `search` text, which
+    /// core reads as library search reads its query; blank text narrows
+    /// nothing.
     public func update(
         filter: BridgeStorageFilter,
-        sort: BridgeStorageSort
+        sort: BridgeStorageSort,
+        search: String
     ) {
         rebuildTask?.cancel()
         list?.cancel()
@@ -54,7 +60,7 @@ public final class StorageManagerStore {
         selectedActions = []
         let pageSource: StorageBrowsePageSource
         if let existing = self.pageSource {
-            existing.setView(sort: sort, filter: filter)
+            existing.setView(sort: sort, filter: filter, search: search)
             pageSource = existing
         }
         else {
@@ -62,8 +68,10 @@ public final class StorageManagerStore {
                 library: library,
                 sort: sort,
                 filter: filter,
+                search: search,
                 selected: selection,
                 onListValue: { [weak self] value in
+                    self?.searching = value.searching
                     self?.totalSize = value.totalSize
                     self?.queues = value.queues
                     self?.selectedRows = Dictionary(

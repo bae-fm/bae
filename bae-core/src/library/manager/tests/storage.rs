@@ -453,6 +453,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
                 direction: crate::db::SortDirection::Ascending,
             },
             filter: crate::db::StorageFilter::All,
+            search: String::new(),
             windows: [crate::library::LibraryPageWindow {
                 offset: 0,
                 limit: 50,
@@ -607,6 +608,7 @@ async fn the_storage_view_moves_one_subscription() {
                 direction,
             },
             filter,
+            search: String::new(),
             windows: windows.iter().cloned().collect(),
             selected: Default::default(),
         }
@@ -816,6 +818,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
             direction: crate::db::SortDirection::Ascending,
         },
         filter: crate::db::StorageFilter::All,
+        search: String::new(),
         windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
             .into_iter()
             .collect(),

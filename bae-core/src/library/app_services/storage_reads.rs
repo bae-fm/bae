@@ -26,6 +26,7 @@ impl AppServices {
             let request_for = |view: &crate::library::StorageBrowseView| crate::db::StorageBrowseRequest {
                 sort: view.sort,
                 filter: view.filter,
+                search: view.search.clone(),
                 windows: view.windows.clone(),
                 selected: view.selected.clone(),
             };

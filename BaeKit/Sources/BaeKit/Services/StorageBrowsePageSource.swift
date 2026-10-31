@@ -1,31 +1,37 @@
 import Foundation
 
-/// What the Storage Manager asks its query to read: the list under one sort
-/// and filter, the windows of it on screen, and the releases selected in it.
+/// What the Storage Manager asks its query to read: the list under one sort,
+/// filter and search text, the windows of it on screen, and the releases
+/// selected in it.
 public struct StorageBrowseView: Equatable, Sendable {
     public let sort: BridgeStorageSort
     public let filter: BridgeStorageFilter
+    public let search: String
     public let windows: [BridgeLibraryPageWindow]
     public let selected: Set<String>
 
     public init(
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
+        search: String,
         windows: [BridgeLibraryPageWindow],
         selected: Set<String>
     ) {
         self.sort = sort
         self.filter = filter
+        self.search = search
         self.windows = windows
         self.selected = selected
     }
 }
 
 /// What one value of the Storage Manager list says of the whole filtered
-/// list rather than of a window: its total size, the row of each selected
-/// release it holds, wherever it sits in the list, the storage actions
-/// every one of those allows, and the transfer queues holding work.
+/// list rather than of a window: whether a search narrows it, its total size,
+/// the row of each selected release it holds, wherever it sits in the list,
+/// the storage actions every one of those allows, and the transfer queues
+/// holding work.
 public struct StorageListValue: Sendable {
+    public let searching: Bool
     public let totalSize: UInt64
     public let selected: [BridgeStorageRow]
     public let selectionActions: [BridgeReleaseStorageAction]
@@ -33,8 +39,8 @@ public struct StorageListValue: Sendable {
 }
 
 /// The Storage Manager list read live through one query: its sort, filter,
-/// and windows change in place, and each value answers every window at once,
-/// named with the sort and filter it was read under.
+/// search text and windows change in place, and each value answers every
+/// window at once, named with the sort, filter and search it was read under.
 public struct StorageBrowseQuery: Sendable {
     public let setView: @Sendable (StorageBrowseView) throws -> Void
     public let next: @Sendable () async throws -> BridgeStorageBrowseSnapshot
@@ -57,6 +63,7 @@ public struct StorageBrowseQuery: Sendable {
                 try subscription.setView(
                     sort: $0.sort,
                     filter: $0.filter,
+                    search: $0.search,
                     windows: $0.windows,
                     selected: Array($0.selected)
                 )
@@ -70,10 +77,11 @@ public struct StorageBrowseQuery: Sendable {
 /// The Storage Manager's pages, all served by one query for as long as the
 /// manager is open.
 ///
-/// A new sort or filter is a new view on the same query: `setView` drops the
-/// pages the previous view's list registered, and the next list registers its
-/// own. The whole set of registered windows under the current view is what
-/// the query reads, and a value read under another view is not delivered.
+/// A new sort, filter or search is a new view on the same query: `setView`
+/// drops the pages the previous view's list registered, and the next list
+/// registers its own. The whole set of registered windows under the current
+/// view is what the query reads, and a value read under another view is not
+/// delivered.
 /// The selection rides on the same query, which answers with the rows of the
 /// selected releases the list holds, wherever they sit in it.
 public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
@@ -92,6 +100,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
     private let lock = NSLock()
     private var sort: BridgeStorageSort
     private var filter: BridgeStorageFilter
+    private var search: String
     private var selected: Set<String>
     /// Moves with each view, so a page of a previous view's list that
     /// cancels late cannot take a window the current list registered.
@@ -106,6 +115,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         query: StorageBrowseQuery,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
+        search: String,
         selected: Set<String>,
         onListValue:
             @escaping @MainActor @Sendable (StorageListValue) -> Void
@@ -113,6 +123,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         self.query = query
         self.sort = sort
         self.filter = filter
+        self.search = search
         self.selected = selected
         self.onListValue = onListValue
         deliveries = Task { [weak self] in
@@ -124,6 +135,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         library: Library,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
+        search: String,
         selected: Set<String>,
         onListValue:
             @escaping @MainActor @Sendable (StorageListValue) -> Void
@@ -132,6 +144,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
             query: library.storageBrowse(sort, filter),
             sort: sort,
             filter: filter,
+            search: search,
             selected: selected,
             onListValue: onListValue
         )
@@ -149,12 +162,17 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         Task { await query.cancel() }
     }
 
-    /// Show the list under `sort` and `filter`, with no pages until its new
-    /// list registers them.
-    public func setView(sort: BridgeStorageSort, filter: BridgeStorageFilter) {
+    /// Show the list under `sort`, `filter` and the `search` text, with no
+    /// pages until its new list registers them.
+    public func setView(
+        sort: BridgeStorageSort,
+        filter: BridgeStorageFilter,
+        search: String
+    ) {
         lock.withLock {
             self.sort = sort
             self.filter = filter
+            self.search = search
             generation += 1
             sinks = [:]
         }
@@ -215,6 +233,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
             StorageBrowseView(
                 sort: sort,
                 filter: filter,
+                search: search,
                 windows: sinks.keys
                     .sorted { ($0.offset, $0.limit) < ($1.offset, $1.limit) }
                     .map {
@@ -246,7 +265,8 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
             do {
                 let snapshot = try await query.next()
                 let sinks: [WindowKey: Sink]? = lock.withLock {
-                    guard snapshot.sort == sort, snapshot.filter == filter
+                    guard snapshot.sort == sort, snapshot.filter == filter,
+                        snapshot.search == search
                     else { return nil }
                     return self.sinks
                 }
@@ -257,6 +277,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
                     // selection's answer never lags or leads the rows shown.
                     onListValue(
                         StorageListValue(
+                            searching: snapshot.searching,
                             totalSize: snapshot.totalSize,
                             selected: snapshot.selected,
                             selectionActions: snapshot.selectionActions,

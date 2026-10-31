@@ -255,6 +255,8 @@ impl LibraryManager {
         crate::library::StorageBrowseSnapshot {
             sort: projection.sort,
             filter: projection.filter,
+            search: projection.search,
+            searching: projection.searching,
             windows,
             total_count: projection.total_count,
             total_size: projection.total_size,

@@ -420,6 +420,7 @@ async fn listed_queues(manager: &LibraryManager) -> crate::library::StorageQueue
             direction: crate::db::SortDirection::Ascending,
         },
         filter: crate::db::StorageFilter::All,
+        search: String::new(),
         windows: Default::default(),
         selected: Default::default(),
     });

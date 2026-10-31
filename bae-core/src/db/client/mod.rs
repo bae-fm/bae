@@ -179,7 +179,11 @@ use query::*;
 use read::*;
 use release_projection::{
     find_release_detail_context_on, storage_count_on, storage_rows_on, storage_selected_on,
-    storage_total_size_on,
+    storage_total_size_on, storage_totals_on,
+};
+#[cfg(test)]
+use release_projection::{
+    storage_found_totals_query, storage_selected_query, storage_window_query, StorageRows,
 };
 pub use release_projection::{
     ReleaseDetailProjection, StorageBrowseProjection, StorageBrowseRequest,

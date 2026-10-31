@@ -87,23 +87,34 @@ impl Database {
     ) -> Result<Vec<DbStorageRow>, DbError> {
         let order = storage_order(sort);
         self.read(move |sql| {
-            Ok(
-                storage_rows_on(&sql, &order, filter, &order.everything(), limit, offset)?
-                    .into_iter()
-                    .map(|(row, _)| row)
-                    .collect::<Vec<_>>(),
-            )
+            Ok(storage_rows_on(
+                &sql,
+                &order,
+                filter,
+                None,
+                &order.everything(),
+                limit,
+                offset,
+            )?
+            .into_iter()
+            .map(|(row, _)| row)
+            .collect::<Vec<_>>())
         })
         .process(super::release_projection::process_storage_rows)
         .await
     }
 
     /// Follow the Storage Manager list: every window the request names under
-    /// its sort and filter, each read from the row beside it when one is
-    /// known (`list_windows`), with the filtered set's count and total size
-    /// and the rows of the selected releases it holds read once per run. A
-    /// new sort, filter, window set, selection, or upload queue points the
-    /// same query at it through its request handle.
+    /// its sort, filter and search, each read from the row beside it when one
+    /// is known (`list_windows`), with the filtered set's count and total
+    /// size and the rows of the selected releases it holds read once per run.
+    /// A new sort, filter, search, window set, selection, or upload queue
+    /// points the same query at it through its request handle.
+    ///
+    /// A search's count is read first, from what it finds: it decides
+    /// whether each window is read from those releases or through the
+    /// order's index (`StorageSearch`). Its rows' places hold for the next
+    /// read only while what library search finds has not moved either.
     pub(crate) fn subscribe_storage_browse(
         &self,
         initial: StorageBrowseRequest,
@@ -113,32 +124,48 @@ impl Database {
             .handle
             .subscribe_reconfigurable(initial, move |request, sql| {
                 let order = storage_order(&request.sort);
+                let query = crate::library::LibrarySearchQuery::parse(&request.search);
+                let (total_count, total_size, search) =
+                    storage_totals_on(&sql, request.filter, query.as_ref())
+                        .map_err(CovenError::from)?;
                 // The places a read found hold for the next only under the
-                // same sort and filter.
+                // same sort, filter and search.
+                let sources: &[&str] = match query {
+                    Some(_) => &["release_listing", "library_search"],
+                    None => &["release_listing"],
+                };
                 let standing = (
                     request.sort,
                     request.filter,
-                    list_order_versions_on(&sql, &["release_listing"])?,
+                    query,
+                    list_order_versions_on(&sql, sources)?,
                 );
                 let WindowsRead { windows, found } = read_windows(
                     &order,
                     &request.windows,
                     places.under(&standing),
                     |seek, limit, offset| {
-                        storage_rows_on(&sql, &order, request.filter, seek, limit, offset)
+                        storage_rows_on(
+                            &sql,
+                            &order,
+                            request.filter,
+                            search.as_ref(),
+                            seek,
+                            limit,
+                            offset,
+                        )
                     },
                 )
                 .map_err(CovenError::from)?;
                 places.keep(standing, found);
-                let total_count =
-                    storage_count_on(&sql, request.filter).map_err(CovenError::from)?;
-                let total_size =
-                    storage_total_size_on(&sql, request.filter).map_err(CovenError::from)?;
-                let selected = storage_selected_on(&sql, request.filter, &request.selected)
-                    .map_err(CovenError::from)?;
+                let selected =
+                    storage_selected_on(&sql, request.filter, search.as_ref(), &request.selected)
+                        .map_err(CovenError::from)?;
                 let queues = storage_queues_on(&sql).map_err(CovenError::from)?;
+                let searching = search.is_some();
                 Ok((
                     request.clone(),
+                    searching,
                     windows,
                     total_count,
                     total_size,
@@ -147,7 +174,7 @@ impl Database {
                 ))
             })
             .process(
-                |(request, windows, total_count, total_size, selected, queues)| {
+                |(request, searching, windows, total_count, total_size, selected, queues)| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -160,6 +187,8 @@ impl Database {
                     Ok(StorageBrowseProjection {
                         sort: request.sort,
                         filter: request.filter,
+                        search: request.search,
+                        searching,
                         windows,
                         total_count,
                         total_size,

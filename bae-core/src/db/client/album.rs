@@ -469,8 +469,6 @@ fn search_library_on(
     pattern: &str,
     limit: i64,
 ) -> Result<LibrarySearchRows, DbError> {
-    // An album holds the pattern in its title, or in a credit's name: the
-    // name of the artist the credit shows, or the other name it prints.
     let album_query = format!(
         r#"
             SELECT a.id, a.title, a.year,
@@ -479,20 +477,7 @@ fn search_library_on(
                    {artist_names} AS artist_name
             FROM (
                 SELECT a.id, a.title, a.year FROM albums a
-                WHERE a.id IN (
-                    SELECT album_id FROM album_search WHERE title GLOB ?1
-                    UNION
-                    SELECT credit.album_id FROM artist_search found
-                    JOIN artist_shown_as shown ON shown.shown_artist_id = found.artist_id
-                    JOIN album_artists credit ON credit.artist_id = shown.artist_id
-                    WHERE found.name GLOB ?1
-                    UNION
-                    SELECT credit.album_id FROM artist_credit_search found
-                    JOIN album_artists credit
-                        ON credit.artist_id = found.artist_id
-                       AND credit.credit_key = found.name_key
-                    WHERE found.name GLOB ?1
-                )
+                WHERE {album_matches}
                   AND {ALBUM_A_IS_SHOWN}
                 ORDER BY a.title, a.id
                 LIMIT ?2
@@ -502,6 +487,7 @@ fn search_library_on(
         primary_release = album_primary_release_sql(),
         primary_cover = super::files::cover_version_sql(album_primary_release_sql()),
         artist_names = album_credits_json_sql(),
+        album_matches = album_matches_sql("a.id", "?1"),
     );
     let albums = sql.query(&album_query, params![pattern, limit], |row| {
         Ok(AlbumSearchRow {

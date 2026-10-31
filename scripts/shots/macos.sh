@@ -104,6 +104,7 @@ for scene in \
     storage-manager-pin-queued-inspector \
     storage-manager-uploads-and-pinning \
     storage-manager-file-details \
+    storage-manager-no-matches \
     storage-manager-window
 do
     selected=$(( ${#SCENES[@]} == 0 ))

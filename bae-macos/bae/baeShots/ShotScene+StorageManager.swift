@@ -147,8 +147,19 @@ extension ShotScene {
                 )
             )
         },
-        // The whole window, its toolbar's All / Local / Cloud filter and
-        // inspector toggle included.
+        // A search that finds nothing, in the whole window: the toolbar's
+        // filter field holding the text, and the list saying so.
+        ShotScene(
+            id: "storage-manager-no-matches",
+            size: CGSize(width: 1_040, height: 654),
+            frame: .window(title: String(localized: "Storage Manager"))
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(rows: [], search: "Album Title")
+            )
+        },
+        // The whole window, its toolbar's All / Local / Cloud filter, filter
+        // field and inspector toggle included.
         ShotScene(
             id: "storage-manager-window",
             size: CGSize(width: 1_040, height: 654),

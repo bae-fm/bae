@@ -583,7 +583,7 @@ CREATE TABLE IF NOT EXISTS list_order_versions (
     source  TEXT PRIMARY KEY CHECK (source IN (
         'album_listing', 'album_artist_link', 'artist_listing', 'composer_listing',
         'release_listing', 'download_queue', 'output_queue', 'import_list_placement',
-        'local_release_origin', 'scan_candidate')),
+        'local_release_origin', 'scan_candidate', 'library_search')),
     version INTEGER NOT NULL
 ) STRICT;
 
@@ -591,7 +591,7 @@ INSERT OR IGNORE INTO list_order_versions (source, version) VALUES
     ('album_listing', 0), ('album_artist_link', 0), ('artist_listing', 0),
     ('composer_listing', 0), ('release_listing', 0), ('download_queue', 0),
     ('output_queue', 0), ('import_list_placement', 0), ('local_release_origin', 0),
-    ('scan_candidate', 0);
+    ('scan_candidate', 0), ('library_search', 0);
 
 CREATE TRIGGER IF NOT EXISTS local_release_origin_order_added AFTER INSERT ON local_release_origin
 BEGIN
@@ -1768,6 +1768,86 @@ CREATE TRIGGER IF NOT EXISTS artist_credit_search_removed AFTER DELETE ON artist
 BEGIN
     DELETE FROM artist_credit_search WHERE rowid = (SELECT entry FROM artist_credit_search_entry WHERE artist_id = OLD.artist_id AND name_key = OLD.name_key);
     DELETE FROM artist_credit_search_entry WHERE artist_id = OLD.artist_id AND name_key = OLD.name_key;
+END;
+
+-- What library search finds of albums (above) moves with an album's title,
+-- an artist's name, an artist's other printed names, an album's credits and
+-- the artist each credit shows as: every write changing one of them advances
+-- `library_search` in `list_order_versions`, so a list narrowed to what it
+-- finds, the Storage Manager's (§4.2), knows when its rows may have moved.
+CREATE TRIGGER IF NOT EXISTS library_search_album_added AFTER INSERT ON albums
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_album_changed AFTER UPDATE OF id, title ON albums
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_album_removed AFTER DELETE ON albums
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_added AFTER INSERT ON artists
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_changed AFTER UPDATE OF id, name ON artists
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_removed AFTER DELETE ON artists
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_credit_added AFTER INSERT ON artist_credits
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_credit_changed AFTER UPDATE OF artist_id, name_key, name ON artist_credits
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_credit_removed AFTER DELETE ON artist_credits
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_album_credit_added AFTER INSERT ON album_artists
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_album_credit_changed AFTER UPDATE OF album_id, artist_id, credit_key ON album_artists
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_album_credit_removed AFTER DELETE ON album_artists
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_shown_added AFTER INSERT ON artist_shown_as
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_shown_changed AFTER UPDATE OF artist_id, shown_artist_id ON artist_shown_as
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_shown_removed AFTER DELETE ON artist_shown_as
+BEGIN
+    UPDATE list_order_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
 -- ── Playback ──────────────────────────────────────────────────────────────────

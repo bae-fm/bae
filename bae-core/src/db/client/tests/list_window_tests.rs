@@ -235,7 +235,7 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
                     &db,
                     &order,
                     |sql, order, seek, limit, offset| {
-                        storage_rows_on(sql, order, StorageFilter::All, seek, limit, offset)
+                        storage_rows_on(sql, order, StorageFilter::All, None, seek, limit, offset)
                     },
                     150,
                 )
@@ -245,12 +245,243 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
                     &format!("storage {filter:?} {field:?} {direction:?}"),
                     &order,
                     key,
-                    |seek| storage_window_query(&order, filter, seek),
+                    |seek| storage_window_query(&order, filter, StorageRows::Listed, seek),
                     Vec::new(),
                 )
                 .await;
             }
         }
+    }
+}
+
+/// The aliases a searching Storage Manager statement reads what the search
+/// finds through, beside the list's: never scanned whole.
+const SEARCH_ALIASES: &[&str] = &["credit", "shown", "listing", "r", "a"];
+
+/// Whether a plan scans one of `aliases` whole.
+fn scans(steps: &[String], aliases: &[&str]) -> bool {
+    steps.iter().any(|step| {
+        aliases.iter().any(|alias| {
+            step.starts_with(&format!("SCAN {alias} ")) || step == &format!("SCAN {alias}")
+        })
+    })
+}
+
+/// The search pattern of `text`, as a statement binds it.
+fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
+    vec![(
+        ":search",
+        rusqlite::types::Value::Text(crate::library::search::search_pattern(text)),
+    )]
+}
+
+/// A searching Storage Manager list stays on its indexes under every sort
+/// and filter: read in the order's index, each seek searches the index and
+/// sorts nothing; read from what the search finds, each reaches the listing
+/// by its album and sorts only those rows; and its count and its selection
+/// read what the search finds and the selected keys, never the whole list.
+#[tokio::test]
+async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index() {
+    let (db, _tmp) = library().await;
+    let search = search_param("album 1");
+    for filter in [
+        StorageFilter::All,
+        StorageFilter::Local,
+        StorageFilter::Remote,
+    ] {
+        for field in [
+            StorageSortField::AlbumTitle,
+            StorageSortField::ArtistNames,
+            StorageSortField::Media,
+            StorageSortField::FileCount,
+            StorageSortField::TotalSize,
+            StorageSortField::Storage,
+            StorageSortField::DateAdded,
+        ] {
+            for (field, direction) in both_ways(field) {
+                let order = storage_order(&StorageSortCriterion { field, direction });
+                let key = key_at(
+                    &db,
+                    &order,
+                    |sql, order, seek, limit, offset| {
+                        storage_rows_on(sql, order, StorageFilter::All, None, seek, limit, offset)
+                    },
+                    150,
+                )
+                .await;
+                let what = format!("searched storage {filter:?} {field:?} {direction:?}");
+                assert_seeks_search(
+                    &db,
+                    &what,
+                    &order,
+                    key.clone(),
+                    |seek| storage_window_query(&order, filter, StorageRows::SearchedInOrder, seek),
+                    search.clone(),
+                )
+                .await;
+                for seek in order.seeks_beside(&key) {
+                    let statement = storage_window_query(&order, filter, StorageRows::Found, &seek);
+                    let steps = plan(&db, statement, seek.clone(), search.clone()).await;
+                    assert!(
+                        !scans(&steps, SEARCH_ALIASES)
+                            && steps
+                                .iter()
+                                .any(|step| step.contains("USING INDEX idx_release_listing_album")),
+                        "found {what} {seek:?}: {steps:?}"
+                    );
+                }
+            }
+        }
+        let read = |statement: String, params: Vec<(&'static str, rusqlite::types::Value)>| {
+            let db = &db;
+            async move {
+                db.read(move |sql| {
+                    let params = params
+                        .iter()
+                        .map(|(name, value)| (*name, value as &dyn rusqlite::ToSql))
+                        .collect::<Vec<_>>();
+                    Ok(sql.query(
+                        &format!("EXPLAIN QUERY PLAN {statement}"),
+                        params.as_slice(),
+                        |row| row.get::<_, String>(3),
+                    )?)
+                })
+                .await
+                .unwrap()
+            }
+        };
+        let steps = read(storage_found_totals_query(filter), search.clone()).await;
+        assert!(
+            !scans(&steps, SEARCH_ALIASES),
+            "count {filter:?}: {steps:?}"
+        );
+        let mut selected = search.clone();
+        selected.push((
+            ":selected",
+            rusqlite::types::Value::Text(r#"["a", "b"]"#.to_string()),
+        ));
+        let steps = read(storage_selected_query(filter, true), selected).await;
+        assert!(
+            !scans(&steps, SEARCH_ALIASES),
+            "selection {filter:?}: {steps:?}"
+        );
+    }
+}
+
+/// How a search reads a window at the top of the list: from what it finds
+/// when it finds few releases, so a rare match never walks the whole index,
+/// and through the order's index when it finds most of them.
+#[tokio::test]
+async fn a_rare_search_reads_what_it_finds_and_a_broad_one_the_index() {
+    let (db, _tmp) = library().await;
+    let rows_at_top = |text: &'static str| {
+        let db = &db;
+        async move {
+            db.read(move |sql| {
+                let query = crate::library::LibrarySearchQuery::parse(text).unwrap();
+                let (count, _, search) = storage_totals_on(&sql, StorageFilter::All, Some(&query))?;
+                Ok((count, search.unwrap().rows(50, 0)))
+            })
+            .await
+            .unwrap()
+        }
+    };
+    // The second album's title, "Album 16807", is the only text holding it.
+    assert_eq!(rows_at_top("16807").await, (1, StorageRows::Found));
+    assert_eq!(
+        rows_at_top("album").await,
+        (300, StorageRows::SearchedInOrder)
+    );
+}
+
+/// The ids in each window of the Storage Manager list `request` reads, as
+/// the next value of `query` once it is pointed there.
+async fn read_storage(
+    query: &mut coven::ReconfigurableLiveQuery<StorageBrowseRequest, StorageBrowseProjection>,
+    request: StorageBrowseRequest,
+) -> (u64, Vec<Vec<String>>) {
+    query.requests().set(request.clone()).unwrap();
+    loop {
+        let event = query.next().await.unwrap();
+        if event.request == request {
+            let value = event.result.unwrap();
+            return (
+                value.total_count,
+                value
+                    .windows
+                    .into_iter()
+                    .map(|window| window.rows.into_iter().map(|row| row.release.id).collect())
+                    .collect(),
+            );
+        }
+    }
+}
+
+/// A live Storage Manager list narrowed by a search and scrolled a window at
+/// a time holds what a read with nothing to start from holds at each window;
+/// and so it does after renaming an artist brings an album into what the
+/// search finds above the window it scrolls from, which moves no row of the
+/// listing itself.
+#[tokio::test]
+async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
+    let (db, _tmp) = library().await;
+    // The first artist's albums sort by its sort name from now on, so its
+    // rename below changes only what the search finds.
+    let artist = "00000000-0001-4000-8000-000000000000";
+    db.call(move |conn| {
+        conn.execute(
+            "UPDATE artists SET sort_name = name WHERE id = ?1",
+            [artist],
+        )
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    let request = |offset| StorageBrowseRequest {
+        sort: StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
+        },
+        filter: StorageFilter::All,
+        search: "album 1".to_string(),
+        windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit: 5 }]),
+        selected: Default::default(),
+    };
+    let fresh = |offset| {
+        let db = &db;
+        async move {
+            let mut query = db.subscribe_storage_browse(request(offset));
+            read_storage(&mut query, request(offset)).await
+        }
+    };
+    let mut query = db.subscribe_storage_browse(request(0));
+    query.next().await.unwrap().result.unwrap();
+    let (count, _) = fresh(0).await;
+    assert!(count > 20, "the search finds {count} releases");
+    for offset in [5, 10, 15, 10, 5] {
+        assert_eq!(
+            read_storage(&mut query, request(offset)).await,
+            fresh(offset).await,
+            "at {offset}"
+        );
+    }
+    db.call(move |conn| {
+        conn.execute(
+            "UPDATE artists SET name = 'Album 1 Artist' WHERE id = ?1",
+            [artist],
+        )
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    for offset in [10, 5] {
+        let read = read_storage(&mut query, request(offset)).await;
+        assert_eq!(
+            read.0,
+            count + 1,
+            "the renamed artist's album joins the list"
+        );
+        assert_eq!(read, fresh(offset).await, "at {offset} after the rename");
     }
 }
 
