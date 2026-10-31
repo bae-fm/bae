@@ -89,13 +89,12 @@ pub(super) fn update_release_pressing_on(
 ) -> Result<(), DbError> {
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     tx.execute(
-        r#"UPDATE releases SET year = ?, labels = ?, barcodes = ?,
+        r#"UPDATE releases SET year = ?, labels = ?,
             country = ?, region = ?, status = ?, packaging = ?,
             discogs_details = ? WHERE id = ?"#,
         params![
             release.pressing.year,
             super::pressing_columns::labels_column(&release.pressing.labels),
-            super::pressing_columns::barcodes_column(&release.pressing.barcodes),
             facts.country,
             facts.region,
             facts.status,
@@ -104,6 +103,7 @@ pub(super) fn update_release_pressing_on(
             release.id,
         ],
     )?;
+    super::write::replace_release_barcodes(tx, &release.id, &release.pressing.barcodes)?;
     super::write::replace_release_media(tx, &release.id, &release.pressing.facts.media)
 }
 

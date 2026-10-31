@@ -314,7 +314,7 @@ mod schema_tests;
 mod release_medium_tests;
 
 #[cfg(test)]
-mod release_media_tests;
+mod release_list_rows_tests;
 
 #[cfg(test)]
 mod candidate_standing_tests;

@@ -73,6 +73,11 @@ pub fn release_medium_id(release_id: &str, position: u16) -> String {
     id_for(&format!("release medium {release_id} {position}"))
 }
 
+/// The barcode at `position` of a release's barcodes.
+pub fn release_barcode_id(release_id: &str, position: usize) -> String {
+    id_for(&format!("release barcode {release_id} {position}"))
+}
+
 /// The carrier at `position` of a release's media.
 pub fn release_media_id(release_id: &str, position: usize) -> String {
     id_for(&format!("release media {release_id} {position}"))

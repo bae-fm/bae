@@ -134,12 +134,12 @@ pub(super) fn insert_release_row(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            labels, barcodes,
+            labels,
             country, region, status, packaging, discogs_details,
             source_folder_name,
             album_loudness_lufs, album_peak_linear,
             created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?))
         "#,
         params![
@@ -148,7 +148,6 @@ pub(super) fn insert_release_row(
             release.release_name,
             release.pressing.year,
             super::pressing_columns::labels_column(&release.pressing.labels),
-            super::pressing_columns::barcodes_column(&release.pressing.barcodes),
             facts.country,
             facts.region,
             facts.status,
@@ -161,7 +160,53 @@ pub(super) fn insert_release_row(
             release.album_id,
         ],
     )?;
+    replace_release_barcodes(conn, &release.id, &release.pressing.barcodes)?;
     replace_release_media(conn, &release.id, &release.pressing.facts.media)
+}
+
+/// Make the release `release_id`'s barcodes exactly `barcodes`, in order,
+/// touching only the rows that differ: a row is a place in the list, so
+/// another device's edit of another place merges with this one.
+pub(super) fn replace_release_barcodes(
+    conn: &SqlContext<'_, '_>,
+    release_id: &str,
+    barcodes: &[String],
+) -> Result<(), DbError> {
+    let stored: HashMap<String, String> = conn
+        .query(
+            "SELECT id, barcode FROM release_barcodes WHERE release_id = ?",
+            params![release_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?
+        .into_iter()
+        .collect();
+    let ids: Vec<String> = (0..barcodes.len())
+        .map(|position| crate::db::identity::release_barcode_id(release_id, position))
+        .collect();
+    for id in stored.keys() {
+        if !ids.contains(id) {
+            conn.execute("DELETE FROM release_barcodes WHERE id = ?", params![id])?;
+        }
+    }
+    for (position, (id, barcode)) in ids.iter().zip(barcodes).enumerate() {
+        match stored.get(id) {
+            Some(stored) if stored == barcode => {}
+            Some(_) => {
+                conn.execute(
+                    "UPDATE release_barcodes SET barcode = ? WHERE id = ?",
+                    params![barcode, id],
+                )?;
+            }
+            None => {
+                conn.execute(
+                    "INSERT INTO release_barcodes (id, release_id, position, barcode) \
+                     VALUES (?, ?, ?, ?)",
+                    params![id, release_id, position as i64, barcode],
+                )?;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Make the release `release_id`'s media exactly `media`, in order, touching

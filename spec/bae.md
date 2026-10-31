@@ -138,8 +138,9 @@ printed with more than one barcode (an EAN and a UPC): it keeps every one its
 source states, in order, each product once, and the editor shows one row per
 barcode, each removable, with a row to add another, as it does labels. Its
 media are a list of carriers, each with how many of it there are (two CDs, one
-vinyl record), kept one row per place in the list, so two devices editing
-different places of one release's media at once keep both edits. A saved
+vinyl record). Its barcodes and its media are each kept one row per place in
+the list, so two devices editing different places of one release's list at
+once keep both edits. A saved
 CUE sheet's `CATALOG` line states the barcode when every one names the same
 product, and none otherwise.
 
@@ -1089,7 +1090,8 @@ track's composers and other roles, the works it performs and the works those
 nest among, and the composers the source credits on the release as a whole. An *audio unit* is
 what one track plays: a whole file, or one slice a bound CUE sheet carves out of
 an image. Units add up: a disc image with two loose bonus tracks offers
-thirteen.
+thirteen. The draft's barcodes are kept as the form holds them, one row each
+as typed, a row added and not filled yet included.
 
 **Track order.** The units play in the order the files' own numbers give
 them. A file's disc and track numbers come from its tags (`DISCNUMBER` and
@@ -3497,7 +3499,8 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
+| `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type and size in pixels |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
@@ -3603,7 +3606,7 @@ Keyed by the candidate's content hash.
 | Table | Holds |
 |---|---|
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
-| `import_candidate_edit`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, each track's place and listed length (§3.6) |
+| `import_candidate_edit`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its barcode rows as typed, each track's place and listed length (§3.6) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
@@ -3656,6 +3659,7 @@ under it.
 | Table | Holds |
 |---|---|
 | `source_release` | one fetched catalog release and every fact an import reads from it but two it reads derived (§3.4): its album's year and its media counts |
+| `source_release_barcode` | its barcodes, in order |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
 | `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
@@ -3698,6 +3702,7 @@ the transfer queues (A.9) are not declared, so they never sync.
 | `releases` | independent | store | | |
 | `release_records` | shared key | store | | |
 | `release_mediums` | shared key | store | | |
+| `release_barcodes` | shared key | store | | |
 | `release_media` | shared key | store | | |
 | `tracks` | independent | store | | |
 | `track_artists` | shared key | store | | |

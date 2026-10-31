@@ -367,3 +367,34 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         assert_eq!(tracks[1].title, "Typed Track");
     }
 }
+
+/// The draft keeps its barcode rows as the form holds them, in order, a blank
+/// row the person has not filled yet included, and keeps only what the next
+/// edit leaves.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_draft_keeps_its_barcode_rows_as_typed() {
+    let (fixture, hash) = three_track_draft().await;
+    let set = |barcodes: &[&str]| {
+        let barcodes = barcodes.iter().map(|code| code.to_string()).collect();
+        let handle = fixture.handle.clone();
+        let key = fixture.key.clone();
+        async move {
+            handle
+                .set_candidate_edit_field(&key, crate::import::DraftFieldEdit::Barcodes(barcodes))
+                .await
+                .unwrap();
+        }
+    };
+
+    set(&["0123456789012", "", "5012345678900"]).await;
+    assert_eq!(
+        stored_draft(&fixture.handle, &hash).await.pressing.barcodes,
+        ["0123456789012", "", "5012345678900"]
+    );
+
+    set(&["5012345678900"]).await;
+    assert_eq!(
+        stored_draft(&fixture.handle, &hash).await.pressing.barcodes,
+        ["5012345678900"]
+    );
+}

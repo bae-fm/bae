@@ -109,6 +109,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("release_records", RowIdentity::SharedKey),
         SyncedTable::new("release_mediums", RowIdentity::SharedKey),
         SyncedTable::new("release_media", RowIdentity::SharedKey),
+        SyncedTable::new("release_barcodes", RowIdentity::SharedKey),
         SyncedTable::new("tracks", RowIdentity::IndependentUuid),
         SyncedTable::new("track_artists", RowIdentity::SharedKey),
         SyncedTable::new("works", RowIdentity::SharedKey),
@@ -169,6 +170,7 @@ mod tests {
                 "release_records",
                 "release_mediums",
                 "release_media",
+                "release_barcodes",
                 "tracks",
                 "track_artists",
                 "works",
@@ -201,6 +203,7 @@ mod tests {
                     | "release_records"
                     | "release_mediums"
                     | "release_media"
+                    | "release_barcodes"
                     | "track_artists"
                     | "works"
                     | "work_artists"
@@ -367,6 +370,7 @@ mod tests {
         "import_candidate_state",
         "import_candidate_folder",
         "import_candidate_edit",
+        "import_candidate_edit_barcode",
         "import_candidate_album_artist_assignment",
         "import_candidate_medium",
         "import_candidate_track",
@@ -447,6 +451,7 @@ mod tests {
         "source_release_work",
         "source_release_work_composer",
         "source_release_unfetched",
+        "source_release_barcode",
     ];
 
     #[test]

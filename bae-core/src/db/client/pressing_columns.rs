@@ -81,13 +81,18 @@ pub(super) fn read_labels(row: &Row, column: &str) -> rusqlite::Result<Vec<Relea
     })
 }
 
-/// A pressing's barcodes as their `barcodes` column holds them: a JSON array
-/// of strings.
-pub(super) fn barcodes_column(barcodes: &[String]) -> String {
-    serde_json::to_string(barcodes).expect("barcodes serialize")
+/// The SQL of the library release `release_id`'s barcodes as one `barcodes`
+/// column: its `release_barcodes` rows in order, as the JSON array
+/// [`read_barcodes`] reads.
+pub(super) fn release_barcodes_sql(release_id: &str) -> String {
+    format!(
+        "(SELECT json_group_array(b.barcode ORDER BY b.position) \
+          FROM release_barcodes b WHERE b.release_id = {release_id})"
+    )
 }
 
-/// Read a `barcodes` column: every barcode, in order.
+/// Read a `barcodes` column, a list of barcode rows read as one JSON array of
+/// strings: every barcode, in order.
 pub(super) fn read_barcodes(row: &Row, column: &str) -> rusqlite::Result<Vec<String>> {
     let barcodes: String = row.get(column)?;
     serde_json::from_str::<Vec<String>>(&barcodes).map_err(|error| {

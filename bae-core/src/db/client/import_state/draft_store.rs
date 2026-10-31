@@ -6,8 +6,8 @@
 //! way from one draft to the next.
 
 use super::pane_rows::{
-    edit_row_values, insert_draft_body, insert_track_rows, store_album_artist_assignment,
-    store_track_row,
+    edit_row_values, insert_barcode_rows, insert_draft_body, insert_track_rows,
+    store_album_artist_assignment, store_track_row,
 };
 use super::*;
 use crate::import::{
@@ -28,12 +28,19 @@ pub(super) fn store_draft(
         row.rotate_left(1);
         sql.execute(
             "UPDATE import_candidate_edit SET \
-                 (album_title, album_year, year, labels, barcodes, country, region, media, \
+                 (album_title, album_year, year, labels, country, region, media, \
                   status, packaging, discogs_details, author, draft_blank, draft_valid) = \
-                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
              WHERE content_hash = ?",
             rusqlite::params_from_iter(row),
         )?;
+    }
+    if stored.pressing.barcodes != draft.pressing.barcodes {
+        sql.execute(
+            "DELETE FROM import_candidate_edit_barcode WHERE content_hash = ?",
+            params![content_hash],
+        )?;
+        insert_barcode_rows(sql, content_hash, &draft.pressing.barcodes)?;
     }
     store_album_artist_assignments(
         sql,

@@ -188,15 +188,12 @@ CREATE TABLE IF NOT EXISTS releases (
     -- {"name", "catalog_number"} objects, each stating one or both.
     labels             TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    -- Every barcode the pressing is printed with, in its source's order: a
-    -- JSON array of strings.
-    barcodes           TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(barcodes) AND json_type(barcodes) = 'array'),
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
     region             TEXT CHECK (region IS NULL OR region <> ''),
-    -- Its media are its `release_media` rows.
+    -- Its barcodes are its `release_barcodes` rows, its media its
+    -- `release_media` rows.
     status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
     packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
     -- What Discogs says about the pressing that no column holds: a JSON array
@@ -218,6 +215,19 @@ CREATE TABLE IF NOT EXISTS releases (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id, album_order, id);
+
+-- Every barcode a pressing is printed with, in its source's order. The id
+-- derives from (release, position), so two devices that write one release's
+-- barcodes write the same rows.
+CREATE TABLE IF NOT EXISTS release_barcodes (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    -- Counted from zero.
+    position INTEGER NOT NULL CHECK (position >= 0),
+    barcode TEXT NOT NULL CHECK (barcode <> ''),
+    UNIQUE (release_id, position),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
 
 -- The carriers a pressing is made of, each with how many of it there are, in
 -- the record's order: two CDs, one vinyl record. The id derives from
@@ -2578,10 +2588,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     -- {"name", "catalog_number"} objects, each as typed, empty meaning unset.
     labels         TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    -- The barcode rows as the form holds them: a JSON array of strings, each
-    -- as typed.
-    barcodes       TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(barcodes) AND json_type(barcodes) = 'array'),
+    -- Its barcode rows are its `import_candidate_edit_barcode` rows.
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
@@ -2608,6 +2615,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     draft_valid    INTEGER NOT NULL CHECK (draft_valid IN (0, 1)),
     CHECK (country IS NULL OR region IS NULL),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The draft's barcode rows as the form holds them, in order, each as typed:
+-- a row the person added and has not filled yet is blank.
+CREATE TABLE IF NOT EXISTS import_candidate_edit_barcode (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    barcode      TEXT NOT NULL,
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
 ) STRICT;
 
 -- The draft's album artists: a library artist the user picked ('picked'), or
@@ -4980,15 +4997,13 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- {"name", "catalog_number"} objects, each stating one or both.
     labels             TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    -- Every barcode the record states, in its order: a JSON array of strings.
-    barcodes           TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(barcodes) AND json_type(barcodes) = 'array'),
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
     region             TEXT CHECK (region IS NULL OR region <> ''),
-    -- Its media are counted from source_release_medium (MusicBrainz) or
-    -- source_release_format (Discogs) on read.
+    -- Its barcodes are its source_release_barcode rows. Its media are counted
+    -- from source_release_medium (MusicBrainz) or source_release_format
+    -- (Discogs) on read.
     status             TEXT CHECK (status IS NULL OR status IN ('official', 'promotion', 'bootleg', 'pseudo_release', 'withdrawn', 'expunged', 'cancelled')),
     packaging          TEXT CHECK (packaging IS NULL OR packaging IN ('jewel_case', 'slim_jewel_case', 'digipak', 'cardboard_sleeve', 'other', 'keep_case', 'unpackaged', 'cassette_case', 'book', 'fatbox', 'snap_case', 'gatefold_cover', 'discbox_slider', 'super_jewel_box', 'digibook', 'plastic_sleeve', 'box', 'slidepack', 'snap_pack', 'metal_tin', 'longbox', 'clamshell_case', 'digifile', 'slipcase')),
     -- What Discogs says about the pressing that no column holds: a JSON array
@@ -5016,6 +5031,17 @@ CREATE TABLE IF NOT EXISTS source_release (
     CHECK (archive_release_id IS NOT NULL OR archive_group_id IS NULL),
     CHECK (country IS NULL OR region IS NULL),
     CHECK ((catalog = 'musicbrainz') = (album_links IS NOT NULL))
+) STRICT;
+
+-- Every barcode the record states, in its order.
+CREATE TABLE IF NOT EXISTS source_release_barcode (
+    catalog    TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    position   INTEGER NOT NULL CHECK (position >= 0),
+    barcode    TEXT NOT NULL CHECK (barcode <> ''),
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
 
 -- The album's artists, in credit order.
