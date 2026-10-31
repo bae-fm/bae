@@ -100,6 +100,13 @@ opt-level = 3
 # misclassifies every revocation-check exception as a revoked certificate.
 rustls-platform-verifier = { git = "https://github.com/bae-fm/rustls-platform-verifier", rev = "c0649fc1bb3e653c9261a3a0672938444b457bc2" }
 
+# notify 8.2's FSEvents callback is `extern "C"` and panics on a path that is
+# not UTF-8 and on any event flag bit it doesn't know (a newer macOS can add
+# one), which aborts the process. The fork reads the path as bytes, drops
+# unknown bits and catches a panic at the callback. Upstream fixed the first
+# two after 8.2 (in the 9.0 line); drop this entry once bae moves to it.
+notify = { git = "https://github.com/bae-fm/notify", rev = "673d0932ccdcfa3944860171caf9b611403ba2ff" }
+
 uniffi = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_bindgen = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_core = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }

@@ -87,4 +87,6 @@ allow-git = [
     # bae's rustls-platform-verifier fork (Android platform-verifier changes),
     # pinned by coven-storage.
     "https://github.com/bae-fm/rustls-platform-verifier",
+    # bae's notify fork (an FSEvents callback that never panics).
+    "https://github.com/bae-fm/notify",
 ]
