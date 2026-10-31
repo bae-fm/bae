@@ -333,10 +333,11 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
 }
 
 /// Playing a file front-to-back recovers every byte, yet the buffer holds
-/// only the file's first window and a window around the playhead: the fill
-/// evicts what the reader has passed, past the head, instead of accumulating
-/// the whole file in RAM. Sabotage check — drop the eviction and the buffer
-/// grows to the full `source_size`, failing the bound and the evicted middle.
+/// only the file's head (its first window and one AVIO buffer past it) and a
+/// window around the playhead: the fill evicts what the reader has passed,
+/// past the head, instead of accumulating the whole file in RAM. Sabotage
+/// check — drop the eviction and the buffer grows to the full `source_size`,
+/// failing the bound and the evicted middle.
 #[tokio::test]
 async fn forward_play_keeps_the_head_and_evicts_behind_the_playhead() {
     let source_size = 16 * WINDOW;
@@ -354,17 +355,18 @@ async fn forward_play_keeps_the_head_and_evicts_behind_the_playhead() {
     // No ceiling is set on this reader, so it fetches the cushion ahead and
     // evicts behind: the whole file passes through but only the head and a
     // few windows at the playhead are retained.
+    let head = WINDOW + bae_audio::AVIO_BUFFER_SIZE as u64;
     let ranges = buffer.get_ranges();
     assert_eq!(
         ranges.first(),
-        Some(&(0, WINDOW)),
-        "the file's first window is kept: {ranges:?}"
+        Some(&(0, head)),
+        "the file's head is kept: {ranges:?}"
     );
     assert!(
-        !buffer.is_buffered(WINDOW) && !buffer.is_buffered(8 * WINDOW),
+        !buffer.is_buffered(head) && !buffer.is_buffered(8 * WINDOW),
         "the windows the reader passed, past the head, are evicted: {ranges:?}"
     );
-    let bound = WINDOW + 3 * FILL_WINDOW_SIZE;
+    let bound = head + 3 * FILL_WINDOW_SIZE;
     let buffered = buffer.total_buffered();
     assert!(
         buffered <= bound,
@@ -482,7 +484,7 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
     let reader_buffer = buffer.clone();
     let (n, got) = tokio::task::spawn_blocking(move || {
         let mut reader = reader_buffer.new_reader();
-        // Play forward well past the second window so [WINDOW, 2*WINDOW) is
+        // Play forward well past the third window so [2*WINDOW, 3*WINDOW) is
         // evicted (it is past the head and more than a window behind the
         // playhead).
         let mut sink = vec![0u8; 10 * WINDOW as usize];
@@ -498,7 +500,7 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
             }
         }
         // Seek back into the evicted window and read it again.
-        assert!(reader.seek(WINDOW));
+        assert!(reader.seek(2 * WINDOW));
         let mut b = [0u8; 32];
         let n = reader.read(&mut b).ok();
         (n, b)
@@ -507,24 +509,24 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
     .expect("forward-then-back task");
 
     let n = n.expect("the backward-seek read returned data, not EOF/cancel");
-    let target = WINDOW as usize;
+    let target = 2 * WINDOW;
     assert_eq!(
         &got[..n],
-        &contents[target..target + n],
+        &contents[target as usize..target as usize + n],
         "re-fetched bytes must match the file at the seek target"
     );
 
     buffer.cancel();
-    let fetches_at_window = read_log
+    let fetches_of_target = read_log
         .lock()
         .unwrap()
         .iter()
-        .filter(|&&(start, _)| start == WINDOW)
+        .filter(|&&(start, end)| (start..end).contains(&target))
         .count();
     assert!(
-        fetches_at_window >= 2,
-        "the window at {WINDOW} must be fetched twice (once forward, once \
-         after it was evicted and sought back into); fetches: {fetches_at_window}"
+        fetches_of_target >= 2,
+        "the byte at {target} must be fetched twice (once forward, once \
+         after it was evicted and sought back into); fetches: {fetches_of_target}"
     );
 }
 

@@ -502,10 +502,10 @@ impl SparseStreamingBuffer {
     /// dropped, `window` bytes at a time at most. The fill keeps one window
     /// ahead of a reader with no ceiling (see `pick_window_gap`), keeps one
     /// window behind the most-behind reader before evicting, and never evicts
-    /// the file's first window, so an open file holds about one window more
-    /// than the window around its readers. The wake signal remains private:
-    /// this owner clones it for the loop, then releases its own strong
-    /// reference before every await.
+    /// the file's first window or the one AVIO buffer past it, so an open file
+    /// holds about one window more than the window around its readers. The
+    /// wake signal remains private: this owner clones it for the loop, then
+    /// releases its own strong reference before every await.
     ///
     /// A failed fetch (or a short one, as `E::from(ShortRead)`) fails the buffer
     /// with that error, which unblocks every reader with it, and returns it for
@@ -533,6 +533,14 @@ impl SparseStreamingBuffer {
                 return Ok(());
             }
         };
+        // The file's head is never evicted: a demuxer opening a file reads its
+        // head, may jump to the end (an MP3 with no ID3v2 tag reads its last
+        // 128 bytes for an ID3v1 tag) and comes back, and the jump moves the
+        // floor past the head. The head is the first window plus the
+        // read-ahead the fill fetched past it after the demuxer's first read:
+        // that read takes one AVIO buffer, and the fill keeps `window` ahead
+        // of where it ended.
+        let head = window + crate::AVIO_BUFFER_SIZE as u64;
 
         loop {
             let Some(buffer) = weak_buffer.upgrade() else {
@@ -546,11 +554,7 @@ impl SparseStreamingBuffer {
 
             let windows = buffer.demand_windows();
             if let Some(floor) = windows.first() {
-                // The file's first window is never evicted: a demuxer opening
-                // a file reads its head, may jump to the end (an MP3 with no
-                // ID3v2 tag reads its last 128 bytes for an ID3v1 tag) and
-                // comes back, and the jump moves the floor past the head.
-                buffer.evict(window..floor.pos.saturating_sub(window));
+                buffer.evict(head..floor.pos.saturating_sub(window));
             }
             let gap = pick_window_gap(&buffer, &windows, total, window);
             drop(buffer);

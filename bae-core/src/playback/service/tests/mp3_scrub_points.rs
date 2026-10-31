@@ -465,7 +465,7 @@ async fn scrub_fetching(
 /// file's head, which the probe reads, and one window from the point, but
 /// none of the windows between. A file with no ID3v2 tag also costs a fetch
 /// of its last 128 bytes, where FFmpeg looks for an ID3v1 tag on open, but
-/// not a second fetch of the head window the open comes back to.
+/// no second fetch of the head the open comes back to.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_scrub_deep_into_a_long_mp3_fetches_its_head_and_the_window_from_its_point() {
     bae_audio::init();
@@ -509,15 +509,27 @@ async fn a_scrub_deep_into_a_long_mp3_fetches_its_head_and_the_window_from_its_p
             !tagged,
             "{name}: the file's last 128 bytes are fetched only without an ID3v2 tag"
         );
-        // The buffer keeps the file's first window, so the open's jump to the
-        // last 128 bytes and back doesn't fetch the head again.
+        // The buffer keeps the file's first window and the read-ahead past it
+        // for the probe's first read, so the open's jump to the last 128 bytes
+        // and back fetches neither again: no byte is fetched twice.
+        let mut ordered = fetches.clone();
+        ordered.sort_unstable();
+        assert!(
+            ordered.windows(2).all(|pair| pair[0].1 <= pair[1].0),
+            "{name}: a byte is fetched twice: {fetches:?}"
+        );
+        // Besides the read-ahead past the head (how much of it the fill makes
+        // before the decode seeks depends on how far ahead of the fill the
+        // probe reads), the scrub fetches the head window, the last 128 bytes
+        // when there is no ID3v2 tag, and the window from the point.
+        let read_aheads = fetches
+            .iter()
+            .filter(|&&(start, end)| start >= FILL_WINDOW_SIZE && end <= head_end)
+            .count();
         assert_eq!(
-            fetches
-                .iter()
-                .filter(|&&(start, _)| start < FILL_WINDOW_SIZE)
-                .count(),
-            1,
-            "{name}: the head window is fetched once: {fetches:?}"
+            fetches.len() - read_aheads,
+            if tagged { 2 } else { 3 },
+            "{name}: {fetches:?}"
         );
     }
 }
