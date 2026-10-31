@@ -31,6 +31,7 @@ mod test_import_open_files;
 mod test_import_selection;
 mod test_import_service;
 mod test_library_create_cost;
+mod test_open_progress;
 mod test_people;
 mod test_playback_behavior;
 mod test_release_edit_validation;

@@ -1,15 +1,18 @@
 use super::*;
 
+/// Where an open of a library reports each step it runs, with how much of
+/// it is done: rebuilding indexes, then migrating. Most opens run neither.
+pub type OpenProgressReport = Box<dyn Fn(coven::Progress<coven::OpenStep>) + Send>;
+
 /// Either open an existing store or retain a handle returned by creation or restore.
 pub enum LibraryOpening {
-    Registered(coven::CovenBuilder),
+    /// Open the registered store, reporting the open's steps to
+    /// `on_progress`.
+    Registered {
+        builder: coven::CovenBuilder,
+        on_progress: OpenProgressReport,
+    },
     Open(coven::CovenHandle),
-}
-
-impl From<coven::CovenBuilder> for LibraryOpening {
-    fn from(builder: coven::CovenBuilder) -> Self {
-        Self::Registered(builder)
-    }
 }
 
 async fn report_background_task_exit(task_name: &'static str, task: tokio::task::JoinHandle<()>) {
@@ -56,20 +59,23 @@ impl LibraryManager {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        opening: impl Into<LibraryOpening>,
+        opening: LibraryOpening,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
         let limits = config_handle.config().prefs.transfer_limits();
         let store_id = config_handle.config().store_id;
-        let handle = match opening.into() {
-            LibraryOpening::Registered(builder) => {
+        let handle = match opening {
+            LibraryOpening::Registered {
+                builder,
+                on_progress,
+            } => {
                 crate::library::with_transfer_limits(
                     crate::library::configure_store(builder),
                     limits,
                 )
                 .clock(clock.clone())
-                .open(store_id, |_| ())
+                .open(store_id, on_progress)
                 .await?
             }
             LibraryOpening::Open(handle) => {

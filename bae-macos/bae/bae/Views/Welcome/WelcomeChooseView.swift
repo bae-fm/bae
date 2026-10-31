@@ -146,6 +146,7 @@ struct WelcomeChooseView: View {
                     disabled: isBusy,
                     canDeleteActiveLibrary: canDeleteActiveLibrary,
                     removingLibraryId: removals.removingLibraryId,
+                    opening: removals.opening,
                     onOpen: { onOpenLibrary($0.id) },
                     onFinish: { onFinishReplacement($0.id, $1) },
                     onRemove: { askToRemove($0) }

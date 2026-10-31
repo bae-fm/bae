@@ -153,7 +153,9 @@ impl BridgeHost {
     /// closed the library and showed the restore's warning before calling. A
     /// failed restore leaves the library on this device as it was, to open
     /// again or to retry. Called again, it finishes a restore that stopped
-    /// partway.
+    /// partway. When this device already holds the code's keys, the call
+    /// just opens the library, and that open's steps are written into
+    /// `opening`'s stream.
     pub async fn restore_replacing_device(
         self: Arc<Self>,
         library_id: String,
@@ -161,9 +163,11 @@ impl BridgeHost {
         credentials: Option<BridgeS3Credentials>,
         device_name: String,
         callback: Box<dyn BootstrapCallback>,
+        opening: Arc<crate::BridgeLibraryOpening>,
         cancellation: Arc<BootstrapCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let report = opening.report();
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelOnDrop(cancellation);
         crate::operation_runtime::run_to_completion(
@@ -184,6 +188,7 @@ impl BridgeHost {
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
                     |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                    report,
                     &cancel,
                 )
                 .await

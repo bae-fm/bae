@@ -62,6 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     var uiStore = UiStore()
     var screen: AppScreen = .loading
+    /// The library open in flight by id, whose steps the loading screen
+    /// shows; nil while nothing opens one.
+    var openProgress: LibraryOpenProgress?
     var loadError: LoadError?
     /// What launch found wrong. Set once, at launch, and kept for the run
     /// whatever opens or fails after.
@@ -93,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         #endif
         return LibrarySessionOpener<AppHandle, AppService>(
-            makeHandle: { libraryId in
+            makeHandle: { libraryId, opening in
                 // The "Restore on launch" preference.
                 let restorePlayback = UserDefaults.standard.bool(
                     forKey: "persistPlayback"
@@ -105,7 +108,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             positionUpdateIntervalMs: 200,
                             restorePlayback: restorePlayback,
                             fixturePath: fixturePath,
-                            host: host
+                            host: host,
+                            opening: opening
                         )
                     }
                 #endif
@@ -114,7 +118,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     positionUpdateIntervalMs: 200,
                     restorePlayback: restorePlayback,
                     // Telemetry is up before the library opens.
-                    host: host
+                    host: host,
+                    opening: opening
                 )
             },
             makeService: { [weak self] handle, config, seed in
@@ -260,8 +265,16 @@ extension AppDelegate {
     func openLocalLibrary(id libraryId: String) {
         loadError = nil
         screen = .loading
-        opener.open(libraryId: libraryId) { [weak self] outcome in
-            self?.applyOpenOutcome(outcome, libraryId: libraryId, warning: nil)
+        let progress = LibraryOpenProgress()
+        openProgress = progress
+        opener.open(libraryId: libraryId, progress: progress) {
+            [weak self] outcome in
+            guard let self else { return }
+            // A newer open owns the loading screen, and its own steps.
+            if openProgress === progress {
+                openProgress = nil
+            }
+            applyOpenOutcome(outcome, libraryId: libraryId, warning: nil)
         }
     }
 
@@ -271,6 +284,8 @@ extension AppDelegate {
     func openOpenedLibrary(_ library: OpenedLibrary, warning: BridgeError?) {
         loadError = nil
         screen = .loading
+        // The store is already open, so no open runs a step.
+        openProgress = nil
         let libraryId = library.libraryId()
         opener.open(
             makeHandle: {

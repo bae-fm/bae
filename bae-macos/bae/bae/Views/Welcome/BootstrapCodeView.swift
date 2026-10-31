@@ -70,9 +70,11 @@ struct BootstrapCodeView: View {
                     .padding(.bottom, ThemeSpace.related)
             }
             if let status = form.status {
-                BootstrapStatusView(status: status)
-                    .padding(.horizontal)
-                    .padding(.bottom, ThemeSpace.group)
+                OpenProgressLine(steps: form.openSteps) {
+                    BootstrapStatusView(status: status)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, ThemeSpace.group)
             }
             HStack(spacing: ThemeSpace.group) {
                 Button(form.isRunning ? "Cancel" : "Back") {

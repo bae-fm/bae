@@ -7,6 +7,7 @@ import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeSavedRestoreCode
@@ -41,7 +42,10 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
 
     override suspend fun unfinishedRemoval(): BridgeUnfinishedRemoval? = unfaked("unfinishedRemoval")
 
-    override suspend fun unsentBeforeRemoval(libraryId: String): BridgeUnsentWork = unfaked("unsentBeforeRemoval")
+    override suspend fun unsentBeforeRemoval(
+        libraryId: String,
+        opening: BridgeLibraryOpening,
+    ): BridgeUnsentWork = unfaked("unsentBeforeRemoval")
 
     override suspend fun forgetSavedRestoreCode(libraryId: String) {
         unfaked("forgetSavedRestoreCode")
@@ -81,6 +85,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         credentials: BridgeS3Credentials?,
         deviceName: String,
         callback: BootstrapCallback,
+        opening: BridgeLibraryOpening,
         cancellation: BootstrapCancellation,
     ): BridgeBootstrapResult = unfaked("restoreReplacingDevice")
 

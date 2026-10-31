@@ -7,6 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
@@ -15,6 +16,7 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackSystem
+import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +37,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryRemoval
+import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStoreKeyState
@@ -89,6 +92,11 @@ internal class DiscoveredLibraries {
 /** Lifecycle state for the app root. */
 sealed interface AppScreen {
     data object Loading : AppScreen
+
+    /** A library opening by id, whose [steps] the screen draws once the open runs one. */
+    data class Opening(
+        val steps: LatestSource<BridgeOpenProgress>,
+    ) : AppScreen
 
     data object Onboarding : AppScreen
 
@@ -345,15 +353,23 @@ object AppSessionHolder {
                 return
             }
         }
-        onScreen(AppScreen.Loading)
         val app = context.applicationContext as BaeApp
         try {
             val handle =
-                withContext(Dispatchers.IO) {
-                    // The "Restore on launch" preference (default on): off
-                    // starts with nothing in playback; the core keeps the
-                    // resume row current either way.
-                    initApp(libraryId, POSITION_UPDATE_INTERVAL_MS, RestorePlaybackPref.load(context), app.host)
+                LibraryOpenProgress().use { progress ->
+                    onScreen(AppScreen.Opening(progress.steps))
+                    withContext(Dispatchers.IO) {
+                        // The "Restore on launch" preference (default on): off
+                        // starts with nothing in playback; the core keeps the
+                        // resume row current either way.
+                        initApp(
+                            libraryId,
+                            POSITION_UPDATE_INTERVAL_MS,
+                            RestorePlaybackPref.load(context),
+                            app.host,
+                            progress.opening,
+                        )
+                    }
                 }
             onScreen(AppScreen.LibraryOpen(installSession(libraryId, handle, app.diagnostics, context)))
         } catch (e: CancellationException) {

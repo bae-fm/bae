@@ -80,9 +80,14 @@ impl BridgeBootstrapStatus {
                 next_check: BridgeNextCheck::from_core(next_check),
             },
             coven::BootstrapStatus::Loading => Self::Loading,
-            // Sentinel: removed in the next commit, which carries the open's
-            // steps to the apps. Only here to keep the pin bump to the bump.
-            coven::BootstrapStatus::Opening(_) => Self::Loading,
+            // coven reports an open's steps as a status from restore_device
+            // alone, and bae-core's restore over this device sends them to
+            // the open's progress instead.
+            coven::BootstrapStatus::Opening(progress) => {
+                unreachable!(
+                    "an open's step reaches the open's progress, never a status: {progress:?}"
+                )
+            }
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
                     .into_iter()
@@ -96,6 +101,51 @@ impl BridgeBootstrapStatus {
         }
     }
 }
+/// A step of opening a library, in the order they run. Mirrors
+/// `coven::OpenStep`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeOpenStep {
+    /// Rebuilding the library's indexes after a new version of SQLite or of
+    /// one of bae's orders or functions.
+    Rebuilding,
+    /// Running the migrations the library hasn't run yet.
+    Migrating,
+}
+
+/// How far an open has come: its step, and how many of the step's units are
+/// done out of its total. Its stream's one key, `""`, holds it while a step
+/// runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeOpenProgress {
+    pub step: BridgeOpenStep,
+    pub done: u64,
+    pub total: u64,
+}
+
+impl BridgeOpenProgress {
+    pub(crate) fn from_core(value: coven::Progress<coven::OpenStep>) -> Self {
+        Self {
+            step: match value.step {
+                coven::OpenStep::Rebuilding => BridgeOpenStep::Rebuilding,
+                coven::OpenStep::Migrating => BridgeOpenStep::Migrating,
+            },
+            done: value.done,
+            total: value.total,
+        }
+    }
+}
+
+/// Localization key for an open's step, the line over its progress bar. The
+/// UI resolves it against the `Core` table.
+#[uniffi::export]
+pub fn bridge_open_step_key(step: BridgeOpenStep) -> String {
+    match step {
+        BridgeOpenStep::Rebuilding => "core.library.open_step.rebuilding",
+        BridgeOpenStep::Migrating => "core.library.open_step.migrating",
+    }
+    .to_string()
+}
+
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeBootstrapResult {
     Opened {

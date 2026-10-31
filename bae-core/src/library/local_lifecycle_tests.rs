@@ -482,10 +482,13 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
     handle.close().await.unwrap();
     drop(handle);
 
-    let work =
-        super::unsent_before_removal(home.installation.builder(home.app_dir.store_layout()), id)
-            .await
-            .unwrap();
+    let work = super::unsent_before_removal(
+        home.installation.builder(home.app_dir.store_layout()),
+        id,
+        |_| (),
+    )
+    .await
+    .unwrap();
     assert!(work.is_empty(), "{work:?}");
     let reopened = super::configure_store(home.installation.builder(home.app_dir.store_layout()))
         .open(id, |_| ())
@@ -524,9 +527,13 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
             && matches!(library.state, crate::config::LibraryState::Unreadable(_))),
         "{listed:?}"
     );
-    super::unsent_before_removal(home.installation.builder(home.app_dir.store_layout()), id)
-        .await
-        .expect_err("counting opens the library, and its settings can't be read");
+    super::unsent_before_removal(
+        home.installation.builder(home.app_dir.store_layout()),
+        id,
+        |_| (),
+    )
+    .await
+    .expect_err("counting opens the library, and its settings can't be read");
 
     remove_unopenable_library(
         &home.app_dir,

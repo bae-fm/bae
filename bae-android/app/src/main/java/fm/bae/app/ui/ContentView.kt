@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BugReports
@@ -42,10 +44,14 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.SessionMessage
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.LaunchProblemBanner
+import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
+import fm.bae.fastvalues.LatestSource
+import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.only
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -53,6 +59,8 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeOpenProgress
+import uniffi.bae_bridge.BridgeOpenStep
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.bridgeErrorCategoryKey
 
@@ -152,7 +160,11 @@ private fun AppScreenRouter(
     val scope = rememberScreenScope()
     when (val current = screen) {
         AppScreen.Loading -> {
-            LoadingScreen()
+            LoadingScreen(steps = null)
+        }
+
+        is AppScreen.Opening -> {
+            LoadingScreen(steps = current.steps)
         }
 
         AppScreen.Onboarding -> {
@@ -402,11 +414,16 @@ private suspend fun showMessage(
 }
 
 @Composable
-private fun LoadingScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+private fun LoadingScreen(steps: LatestSource<BridgeOpenProgress>?) {
+    Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
+        OpenProgressLine(steps = steps, modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH)) {
+            CircularProgressIndicator()
+        }
     }
 }
+
+/** How wide an open's line is where it stands alone, on the loading screen. */
+private val OPEN_PROGRESS_MAX_WIDTH = 360.dp
 
 @Composable
 private fun FailedScreen(failure: ScreenFailure) {
@@ -422,7 +439,17 @@ private fun FailedScreen(failure: ScreenFailure) {
 @Composable
 private fun LoadingScreenPreview() {
     BaeTheme {
-        LoadingScreen()
+        LoadingScreen(steps = null)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OpeningScreenPreview() {
+    BaeTheme {
+        LoadingScreen(
+            steps = LatestStream.openProgress(BridgeOpenProgress(BridgeOpenStep.MIGRATING, 2uL, 5uL)).only,
+        )
     }
 }
 

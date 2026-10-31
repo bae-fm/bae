@@ -9,8 +9,10 @@ import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.deviceName
 import fm.bae.app.displayError
+import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -26,6 +28,7 @@ import uniffi.bae_bridge.BridgeHostInterface
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeOAuthAccess
+import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.decodeCodeInfo
@@ -112,11 +115,15 @@ internal sealed interface OnboardingStep {
 
     /**
      * A restore with [from], or a join when [from] is an invite, running;
-     * [status] is coven's latest report, null until the first arrives.
+     * [status] is coven's latest report, null until the first arrives. A
+     * restore over this device's copy just opens it when this device holds
+     * the code's keys, and [openSteps] are that open's steps; null for any
+     * other attempt.
      */
     data class Running(
         val from: CodeRead,
         val status: BridgeBootstrapStatus?,
+        val openSteps: LatestSource<BridgeOpenProgress>? = null,
     ) : OnboardingStep
 }
 
@@ -314,20 +321,24 @@ internal class OnboardingFlow(
         credentials: BridgeS3Credentials?,
     ) {
         val running = core.newCancellation()
-        run(from, running::cancel) { callback ->
-            when (val entry = from.entry) {
-                is RestoreOver -> {
+        when (val entry = from.entry) {
+            is RestoreOver -> {
+                val opening = LibraryOpenProgress()
+                run(from, running::cancel, opening) { callback ->
                     core.host.restoreReplacingDevice(
                         entry.libraryId,
                         from.code,
                         credentials,
                         deviceName(context),
                         callback,
+                        opening.opening,
                         running,
                     )
                 }
+            }
 
-                CodeEntry.NewDevice -> {
+            CodeEntry.NewDevice -> {
+                run(from, running::cancel) { callback ->
                     core.host.restoreFromCode(from.code, credentials, deviceName(context), callback, running)
                 }
             }
@@ -374,13 +385,15 @@ internal class OnboardingFlow(
         cancellation?.invoke()
     }
 
+    /** Run [start], with [opening] following the open it runs, if it opens this device's own copy. */
     private fun run(
         from: OnboardingStep.CodeRead,
         cancel: () -> Unit,
+        opening: LibraryOpenProgress? = null,
         start: suspend (BootstrapCallback) -> BridgeBootstrapResult,
     ) {
         error = null
-        step = OnboardingStep.Running(from, status = null)
+        step = OnboardingStep.Running(from, status = null, openSteps = opening?.steps)
         cancellation = cancel
         scope.launch {
             val statuses =
@@ -433,6 +446,7 @@ internal class OnboardingFlow(
                 step = from.formStep()
                 error = context.displayError(e)
             } finally {
+                opening?.close()
                 if (cancellation === cancel) {
                     cancellation = null
                     joining = null

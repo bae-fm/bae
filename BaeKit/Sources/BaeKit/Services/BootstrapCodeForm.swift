@@ -121,6 +121,12 @@ public final class BootstrapCodeForm {
     /// What the running attempt is doing, nil once it finished.
     public var status: BridgeBootstrapStatus? { bootstrap?.status }
 
+    /// The steps of the open the running attempt runs, if it opens this
+    /// device's own copy.
+    public var openSteps: LatestSource<BridgeOpenProgress>? {
+        bootstrap?.openSteps
+    }
+
     public var attempt: BootstrapAttempt? {
         if let saved { return .restoreSaved(saved) }
         if case .resume(let join) = entry {

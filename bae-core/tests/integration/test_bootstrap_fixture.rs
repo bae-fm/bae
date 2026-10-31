@@ -63,6 +63,7 @@ fn open(
         bae_core::playback::AudioFocus::Unshared,
         bae_core::diagnostics::Diagnostics::noop(),
         builder,
+        |_| (),
         TestApp::start,
     )
     .expect("the library opens on its fixture")
@@ -148,6 +149,7 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
         bae_core::playback::AudioFocus::Unshared,
         bae_core::diagnostics::Diagnostics::noop(),
         installation.builder(app_dir.store_layout()),
+        |_| (),
         TestApp::start,
     );
 

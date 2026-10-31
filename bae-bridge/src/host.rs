@@ -244,13 +244,16 @@ impl BridgeHost {
     }
 
     /// What removing the library `library_id`, which isn't open, would lose,
-    /// for the person to confirm first.
+    /// for the person to confirm first. Counting opens the library, and the
+    /// open's steps are written into `opening`'s stream.
     pub async fn unsent_before_removal(
         self: Arc<Self>,
         library_id: String,
+        opening: Arc<crate::BridgeLibraryOpening>,
     ) -> Result<crate::BridgeUnsentWork, BridgeError> {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
         let builder = self.builder();
+        let report = opening.report();
         crate::operation_runtime::run(
             self.runtime
                 .as_ref()
@@ -260,7 +263,7 @@ impl BridgeHost {
             move || async move {
                 self.closed(store).await?;
                 Ok(crate::BridgeUnsentWork::from_core(
-                    bae_core::library::unsent_before_removal(builder, store).await?,
+                    bae_core::library::unsent_before_removal(builder, store, report).await?,
                 ))
             },
         )
@@ -383,12 +386,15 @@ pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
     })
 }
 
+/// Open the library `library_id`, writing the open's steps into `opening`'s
+/// stream.
 #[uniffi::export]
 pub fn init_app(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
     host: Arc<BridgeHost>,
+    opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
     host.wait_for_closing(coven::StoreId(
         library_id.parse().map_err(BridgeError::config)?,
@@ -399,6 +405,7 @@ pub fn init_app(
         position_update_interval_ms,
         restore_playback,
         host.builder(),
+        &opening,
         host.clone(),
     )
 }
@@ -411,6 +418,7 @@ pub fn init_app_on_fixture(
     restore_playback: bool,
     fixture_path: String,
     host: Arc<BridgeHost>,
+    opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
     host.wait_for_closing(coven::StoreId(
         library_id.parse().map_err(BridgeError::config)?,
@@ -422,6 +430,7 @@ pub fn init_app_on_fixture(
         position_update_interval_ms,
         restore_playback,
         host.builder(),
+        &opening,
         host.clone(),
     )
 }

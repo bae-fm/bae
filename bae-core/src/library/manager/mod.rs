@@ -46,7 +46,7 @@ use coven::ClockRef;
 use coven::IdSourceRef;
 
 mod service;
-pub use service::LibraryOpening;
+pub use service::{LibraryOpening, OpenProgressReport};
 
 mod album;
 mod artist;

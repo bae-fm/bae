@@ -238,6 +238,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
                 Some(owner_key()),
                 "Laptop",
                 |_| {},
+                |_| {},
                 &cancel,
             )
             .await
@@ -304,6 +305,7 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
         &replaced.current_code,
         Some(owner_key()),
         "Laptop",
+        |_| {},
         |_| {},
         &cancel,
     )
@@ -397,6 +399,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
                 Some(owner_key()),
                 "Laptop",
                 |_| {},
+                |_| {},
                 &cancel,
             )
             .await
@@ -432,6 +435,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
                 crate::playback::AudioFocus::Unshared,
                 crate::diagnostics::Diagnostics::noop(),
                 builder,
+                |_| (),
                 |_, _| -> Result<(), crate::app::BootstrapError> {
                     panic!("a library whose restore is unfinished doesn't open")
                 },
@@ -502,11 +506,12 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
             Some(owner_key()),
             "Laptop",
             |_| {},
+            |_| {},
             &cancel,
         ),
     )
     .await;
-    let counted = unsent_before_removal(builder(), store)
+    let counted = unsent_before_removal(builder(), store, |_| ())
         .await
         .expect_err("counting opens the library, which only finishing the restore allows");
     assert!(
@@ -654,6 +659,7 @@ async fn a_restore_over_this_devices_copy_loads_at_its_transfer_limits() {
         &replaced.current_code,
         Some(owner_key()),
         "Laptop",
+        |_| {},
         |_| {},
         &cancel,
     )

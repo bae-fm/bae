@@ -7,6 +7,8 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
+import uniffi.bae_bridge.BridgeLibraryOpening
+import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.KeyActivityCallback
@@ -17,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 // The one place the app touches the bridge's KeyedValueStream: values core
 // sends many times a second (transfer bytes and rates, the playing track's
-// position) arrive in a stream the
+// position, a library open's steps) arrive in a stream the
 // bridge holds and writes itself, and the only reader of a value is
 // FrameFollowing, which hands it to the View drawing that key once per
 // display frame. App code passes streams and sources around; it never holds a
@@ -94,14 +96,20 @@ class LatestStream<V : Any> private constructor(
         /** Where the playing track is, by track id; a preview's holds [values] and nothing feeds it. */
         fun trackPositions(values: Map<String, BridgeTrackPosition>? = null) =
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
+
+        /** How far a library's open has come, while it runs a step; a preview's holds [value], fed by nothing. */
+        fun openProgress(value: BridgeOpenProgress? = null): LatestStream<BridgeOpenProgress> =
+            LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
+                (it as? BridgeFastValue.OpenProgress)?.progress
+            }
     }
 }
 
 /** The key a stream that holds one value holds it under. */
 private const val ONLY_KEY = ""
 
-/** The stream's one value, for the View that draws it. */
-val LatestStream<BridgeUploadTransfer>.only: LatestSource<BridgeUploadTransfer> get() = source(ONLY_KEY)
+/** The value of a stream that holds one, for the View that draws it. */
+val <V : Any> LatestStream<V>.only: LatestSource<V> get() = source(ONLY_KEY)
 
 /** Fill from core, telling [onError] on the main thread each failed read. */
 fun LatestStream<BridgeUploadTransfer>.feed(
@@ -112,6 +120,10 @@ fun LatestStream<BridgeUploadTransfer>.feed(
 /** Fill from core. */
 fun LatestStream<BridgeDownloadTransferProgress>.feed(appHandle: AppHandleInterface): LatestFeed =
     fed { appHandle.feedDownloadTransfers(it) }
+
+/** Fill with the steps of the open [opening] is handed to. */
+@JvmName("feedOpenProgress")
+fun LatestStream<BridgeOpenProgress>.feed(opening: BridgeLibraryOpening): LatestFeed = fed { opening.feedOpenSteps(it) }
 
 /** Fill from core. */
 @JvmName("feedTrackPositions")

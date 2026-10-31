@@ -53,6 +53,7 @@ impl Home {
             bae_core::playback::AudioFocus::Unshared,
             bae_core::diagnostics::Diagnostics::noop(),
             self.builder(),
+            |_| (),
             TestApp::start,
         )
         .unwrap()
@@ -103,6 +104,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         bae_core::playback::AudioFocus::Unshared,
         bae_core::diagnostics::Diagnostics::noop(),
         home.builder(),
+        |_| (),
         TestApp::start,
     );
     assert!(result.is_err());
@@ -123,6 +125,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         bae_core::playback::AudioFocus::Unshared,
         bae_core::diagnostics::Diagnostics::noop(),
         home.builder(),
+        |_| (),
         |services, runtime| {
             runtime.block_on(services.close()).unwrap();
             Err(BootstrapError::Internal(
@@ -146,6 +149,7 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
         bae_core::playback::AudioFocus::Unshared,
         bae_core::diagnostics::Diagnostics::noop(),
         home.builder(),
+        |_| (),
         |services, runtime| {
             runtime.block_on(services.close()).unwrap();
             panic!("frontend owner panicked")
@@ -214,6 +218,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         bae_core::playback::AudioFocus::Unshared,
         bae_core::diagnostics::Diagnostics::noop(),
         home.builder().storage_connector(storage),
+        |_| (),
         TestApp::start,
     )
     .unwrap();

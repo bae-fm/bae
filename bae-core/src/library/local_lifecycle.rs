@@ -166,12 +166,15 @@ pub async fn remove_unopenable_library(
 /// What removing a library that isn't open would lose, read by opening its
 /// store just long enough to count, as
 /// [`crate::library::LibraryManager::unsent_before_removal`] does for an open
-/// one.
+/// one. The open reports its steps to `on_open_progress`, as any open does.
 pub async fn unsent_before_removal(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
+    on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
 ) -> Result<coven::UnsentWork, LibraryError> {
-    let handle = super::configure_store(builder).open(store, |_| ()).await?;
+    let handle = super::configure_store(builder)
+        .open(store, on_open_progress)
+        .await?;
     let unsent =
         crate::db::Database::from_handle(handle.clone(), std::sync::Arc::new(coven::SystemClock))
             .unsent_before_removal()

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,7 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.delay
@@ -229,7 +231,6 @@ internal fun OnboardingProgress(
     onCancel: (() -> Unit)?,
     onCheckNow: () -> Unit,
 ) {
-    val context = LocalContext.current
     val title =
         when (val from = step.from) {
             is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
@@ -238,8 +239,15 @@ internal fun OnboardingProgress(
         }
     OnboardingContainer {
         val status = step.status
+        // While the restore's open runs a step, its line stands in for the
+        // spinner and the status, which it has moved past.
+        var stepping by remember(step.openSteps) { mutableStateOf(false) }
         if (status !is BridgeBootstrapStatus.WaitingForApproval) {
-            CircularProgressIndicator()
+            OpenProgressLine(
+                steps = step.openSteps,
+                modifier = Modifier.widthIn(max = 360.dp),
+                onStepping = { stepping = it },
+            ) { CircularProgressIndicator() }
             Spacer(modifier = Modifier.height(ThemeSpace.section))
         }
         Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
@@ -250,38 +258,46 @@ internal fun OnboardingProgress(
             }
 
             else -> {
-                val lines =
-                    when (status) {
-                        null, BridgeBootstrapStatus.Connecting -> {
-                            listOf(stringResource(R.string.onboarding_status_connecting))
-                        }
-
-                        BridgeBootstrapStatus.Loading -> {
-                            listOf(stringResource(R.string.onboarding_status_loading))
-                        }
-
-                        is BridgeBootstrapStatus.Pending -> {
-                            status.records.map { context.coreString(it.reason.key) }
-                        }
-
-                        is BridgeBootstrapStatus.WaitingForApproval -> {
-                            emptyList()
-                        }
-                    }
-                lines.forEach { line ->
-                    Text(
-                        text = line,
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                // The open's line has moved past the status.
+                if (!stepping) StatusLines(status)
             }
         }
         onCancel?.let {
             Spacer(modifier = Modifier.height(ThemeSpace.section))
             OutlinedButton(onClick = it) { Text(stringResource(R.string.cancel)) }
         }
+    }
+}
+
+/** What a running restore or join waits on now, a line each; none while it waits for approval. */
+@Composable
+private fun StatusLines(status: BridgeBootstrapStatus?) {
+    val context = LocalContext.current
+    val lines =
+        when (status) {
+            null, BridgeBootstrapStatus.Connecting -> {
+                listOf(stringResource(R.string.onboarding_status_connecting))
+            }
+
+            BridgeBootstrapStatus.Loading -> {
+                listOf(stringResource(R.string.onboarding_status_loading))
+            }
+
+            is BridgeBootstrapStatus.Pending -> {
+                status.records.map { context.coreString(it.reason.key) }
+            }
+
+            is BridgeBootstrapStatus.WaitingForApproval -> {
+                emptyList()
+            }
+        }
+    lines.forEach { line ->
+        Text(
+            text = line,
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

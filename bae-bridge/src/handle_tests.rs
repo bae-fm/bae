@@ -917,7 +917,8 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     caller
         .block_on(runtime.spawn(async move { drop(app) }))
         .expect("the handle is released on its runtime");
-    let reopened = crate::init_app(id, 50, false, host).expect("the library opens again");
+    let reopened = crate::init_app(id, 50, false, host, crate::BridgeLibraryOpening::new())
+        .expect("the library opens again");
 
     let read = caller.block_on(services.library_name());
     assert!(

@@ -7,6 +7,9 @@ import Observation
 @Observable
 public final class LibraryBootstrap {
     public private(set) var status: BridgeBootstrapStatus?
+    /// The steps of the open a restore over this device's copy runs when
+    /// this device already holds the code's keys; nil for any other attempt.
+    public private(set) var openSteps: LatestSource<BridgeOpenProgress>?
     private let host: BridgeHost
     private let deviceName: String
     private var cancelAttempt: (() -> Void)?
@@ -57,13 +60,17 @@ public final class LibraryBootstrap {
         code: String,
         credentials: BridgeS3Credentials?
     ) async throws -> BridgeBootstrapResult {
-        try await runRestore { callback, cancellation in
+        let progress = LibraryOpenProgress()
+        openSteps = progress.steps
+        defer { openSteps = nil }
+        return try await runRestore { callback, cancellation in
             try await self.host.restoreReplacingDevice(
                 libraryId: libraryId,
                 code: code,
                 credentials: credentials,
                 deviceName: self.deviceName,
                 callback: callback,
+                opening: progress.opening,
                 cancellation: cancellation
             )
         }

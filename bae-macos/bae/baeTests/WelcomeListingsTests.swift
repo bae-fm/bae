@@ -49,8 +49,8 @@ struct WelcomeListingsTests {
     private var removals: LibraryRemovals {
         let bridge = bridge
         return LibraryRemovals(
-            unsentOfClosed: { _ in throw WelcomeTestError.notUsed },
-            removeClosed: { await bridge.remove($0) },
+            unsentOfClosed: { _, _ in throw WelcomeTestError.notUsed },
+            removeClosed: { libraryId, _ in await bridge.remove(libraryId) },
             removeUnopenable: { _ in throw WelcomeTestError.notUsed },
             findUnfinished: { nil },
             finishUnfinished: {}

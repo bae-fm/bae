@@ -2926,6 +2926,24 @@ library is registered there by id.
 Creating, restoring and joining each return coven's open handle, and bae
 starts the library on that same handle rather than opening it again.
 
+**How far an open has come.** Opening a library can take a while on a large
+one: after an app update it runs the migrations the library hasn't run, and
+after a new version of SQLite or of one of bae's orders or functions it
+rebuilds the indexes they changed. Every call that opens a library's store
+reports each of these steps as it runs, with how much of it is done: first
+rebuilding, counted in rebuilds, then migrating, counted in migrations, at
+most four times a second within a step
+([coven E1](https://github.com/bae-fm/coven/blob/main/spec/api.md#e1-opening)).
+That is `app::bootstrap`, `unsent_before_removal` for a library that isn't
+open, and `restore_replacing_device` when this device already holds the
+code's keys and the call just opens the library. An open with neither step
+reports nothing. The apps read the steps as a fast stream, never as observed
+state, and wherever such an open runs they show the step's name over a bar of
+how much of it is done in place of the spinner: the screen a library opens
+or switches on, the restore over this device's copy, and, on the Mac, the
+row of a library that isn't open while removing it counts what it would
+lose.
+
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker
 holding it.

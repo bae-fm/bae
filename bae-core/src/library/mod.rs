@@ -748,7 +748,10 @@ pub async fn reset_device(
 /// same code retries it, or finishes one that stopped after the swap; for a
 /// reset that stopped there, coven refuses it and changes nothing. The caller
 /// closed the library and warned that edits on this device that haven't
-/// synced are discarded.
+/// synced are discarded. When this device's custody already holds the code's
+/// keys, the call just opens the library, and that open's steps go to
+/// `on_open_progress`, as any open's do; every other status goes to
+/// `on_status`.
 pub async fn restore_replacing_device(
     mut builder: coven::CovenBuilder,
     app_dir: &AppDir,
@@ -757,6 +760,7 @@ pub async fn restore_replacing_device(
     s3_credentials: Option<coven::S3Credentials>,
     device_name: &str,
     on_status: impl Fn(coven::BootstrapStatus),
+    on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
     cancel: &watch::Receiver<bool>,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
     // Coven refuses an invite or another library's code too, but only after
@@ -779,8 +783,12 @@ pub async fn restore_replacing_device(
         }
     };
     bootstrap_auth::authenticate(&mut builder, access, cancel).await?;
+    let status = |status| match status {
+        coven::BootstrapStatus::Opening(progress) => on_open_progress(progress),
+        status => on_status(status),
+    };
     loading_builder(builder, app_dir, store)?
-        .restore_device(store, code, s3_credentials, device_name, on_status, cancel)
+        .restore_device(store, code, s3_credentials, device_name, status, cancel)
         .await
         .map_err(restore_error)
 }

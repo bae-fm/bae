@@ -472,6 +472,10 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.push(bridge_upload_activity_key(activity));
     }
+    // bridge_open_step_key — each step carries a key.
+    for step in [BridgeOpenStep::Rebuilding, BridgeOpenStep::Migrating] {
+        keys.push(bridge_open_step_key(step));
+    }
     // bridge_entity_not_found_key — every variant carries a key.
     keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 

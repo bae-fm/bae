@@ -16,7 +16,7 @@ struct LibrarySessionOpenerTests {
     @Test("a keychain that refused is not a failure the user has to act on")
     func refusedKeychainIsItsOwnOutcome() async {
         let opener = TestOpener(
-            makeHandle: { _ in
+            makeHandle: { _, _ in
                 throw BridgeError.Diagnostic(
                     category: .keyringLocked,
                     detail: "the OS keychain refused the read"
@@ -29,7 +29,10 @@ struct LibrarySessionOpenerTests {
         )
 
         let waiter = OutcomeWaiter()
-        opener.open(libraryId: "lib-1") { waiter.record($0) }
+        opener.open(
+            libraryId: "lib-1",
+            progress: LibraryOpenProgress()
+        ) { waiter.record($0) }
         let outcome = await waiter.value()
 
         guard case .keychainLocked = outcome else {
@@ -43,7 +46,7 @@ struct LibrarySessionOpenerTests {
     @Test("every other open failure is still a failure")
     func otherOpenFailuresStillFail() async {
         let opener = TestOpener(
-            makeHandle: { _ in
+            makeHandle: { _, _ in
                 throw BridgeError.Diagnostic(
                     category: .keyring,
                     detail: "the keyring is broken"
@@ -56,7 +59,10 @@ struct LibrarySessionOpenerTests {
         )
 
         let waiter = OutcomeWaiter()
-        opener.open(libraryId: "lib-1") { waiter.record($0) }
+        opener.open(
+            libraryId: "lib-1",
+            progress: LibraryOpenProgress()
+        ) { waiter.record($0) }
         let outcome = await waiter.value()
 
         guard case .failed = outcome else {
@@ -75,7 +81,7 @@ struct LibrarySessionOpenerTests {
         let gate = DispatchSemaphore(value: 0)
         let parked = FakeHandle(config: makeConfig())
         let opener = TestOpener(
-            makeHandle: { libraryId in
+            makeHandle: { libraryId, _ in
                 guard libraryId == "parked" else { throw OpenError() }
                 gate.wait()
                 return parked
@@ -88,8 +94,13 @@ struct LibrarySessionOpenerTests {
 
         let first = OutcomeWaiter()
         let second = OutcomeWaiter()
-        opener.open(libraryId: "parked") { first.record($0) }
-        opener.open(libraryId: "failing") { second.record($0) }
+        opener.open(
+            libraryId: "parked",
+            progress: LibraryOpenProgress()
+        ) { first.record($0) }
+        opener.open(libraryId: "failing", progress: LibraryOpenProgress()) {
+            second.record($0)
+        }
 
         // The second open runs to completion while the first is parked.
         let secondOutcome = await second.value()
@@ -118,7 +129,7 @@ struct LibrarySessionOpenerTests {
             outbox: .failure(SeedError())
         )
         let opener = TestOpener(
-            makeHandle: { _ in handle },
+            makeHandle: { _, _ in handle },
             makeService: { _, _, _ in
                 Issue.record(
                     "makeService must not run when the outbox seed fails"
@@ -128,7 +139,10 @@ struct LibrarySessionOpenerTests {
         )
 
         let waiter = OutcomeWaiter()
-        opener.open(libraryId: "lib-3") { waiter.record($0) }
+        opener.open(
+            libraryId: "lib-3",
+            progress: LibraryOpenProgress()
+        ) { waiter.record($0) }
         let outcome = await waiter.value()
 
         guard case .failed(let error) = outcome else {
@@ -149,7 +163,7 @@ struct LibrarySessionOpenerTests {
             name: .failure(NameError())
         )
         let opener = TestOpener(
-            makeHandle: { _ in handle },
+            makeHandle: { _, _ in handle },
             makeService: { _, _, _ in
                 Issue.record("makeService must not run when the name fails")
                 fatalError("unreachable")
@@ -157,7 +171,10 @@ struct LibrarySessionOpenerTests {
         )
 
         let waiter = OutcomeWaiter()
-        opener.open(libraryId: "lib-4") { waiter.record($0) }
+        opener.open(
+            libraryId: "lib-4",
+            progress: LibraryOpenProgress()
+        ) { waiter.record($0) }
         let outcome = await waiter.value()
 
         guard case .failed(let error) = outcome else {
@@ -178,7 +195,7 @@ struct LibrarySessionOpenerTests {
             outbox: .failure(SeedError())
         )
         let opener = TestOpener(
-            makeHandle: { _ in
+            makeHandle: { _, _ in
                 Issue.record("a bootstrapped store must not reopen by id")
                 fatalError("unreachable")
             },

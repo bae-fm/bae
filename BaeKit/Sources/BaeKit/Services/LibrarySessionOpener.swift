@@ -52,13 +52,17 @@ public final class LibrarySessionOpener<
         case failed(Error)
     }
 
-    private let makeHandle: @Sendable (String) throws -> Handle
+    private let makeHandle:
+        @Sendable (String, BridgeLibraryOpening) throws -> Handle
     private let makeService:
         @MainActor (Handle, BridgeConfig, LibrarySessionSeed) -> Service
     private let slot = CancellableTaskSlot()
 
+    /// `makeHandle` opens a library by id, writing the open's steps into the
+    /// opening's stream.
     public init(
-        makeHandle: @escaping @Sendable (String) throws -> Handle,
+        makeHandle:
+            @escaping @Sendable (String, BridgeLibraryOpening) throws -> Handle,
         makeService:
             @escaping @MainActor (Handle, BridgeConfig, LibrarySessionSeed) ->
             Service
@@ -67,12 +71,17 @@ public final class LibrarySessionOpener<
         self.makeService = makeService
     }
 
+    /// Open the library `libraryId`, its steps followed through `progress`.
     public func open(
         libraryId: String,
+        progress: LibraryOpenProgress,
         onOutcome: @escaping @MainActor (Outcome) -> Void
     ) {
         let factory = makeHandle
-        open(makeHandle: { try factory(libraryId) }, onOutcome: onOutcome)
+        open(
+            makeHandle: { try factory(libraryId, progress.opening) },
+            onOutcome: onOutcome
+        )
     }
 
     public func open(

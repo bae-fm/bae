@@ -7,7 +7,8 @@ import os
 
 // The one place the app touches the bridge's `KeyedValueStream`: values core
 // sends many times a second (transfer bytes and rates, file shares, export
-// percents, playback and preview positions, import percents) arrive in a stream the bridge holds and writes itself, and the
+// percents, playback and preview positions, import percents, a library
+// open's steps) arrive in a stream the bridge holds and writes itself, and the
 // only reader of a value is `FrameFollowing`, which hands it to the native
 // view drawing that key once per display frame. App code passes streams and
 // sources around; it never holds a value, so nothing SwiftUI observes can
@@ -382,6 +383,28 @@ extension LatestStream where Value == UInt32 {
         }
     }
 #endif
+
+extension LatestStream where Value == BridgeOpenProgress {
+    /// How far an open of a library has come, while it runs a step; a
+    /// preview's holds `value` and nothing feeds it.
+    public static func openProgress(holding value: Value? = nil)
+        -> LatestStream
+    {
+        LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
+            if case .openProgress(let progress) = $0 {
+                progress
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill with the steps of the open `opening` is handed to.
+    public func feed(from opening: BridgeLibraryOpening) -> LatestFeed {
+        fed { opening.feedOpenSteps(activity: $0) }
+    }
+}
 
 extension LatestStream {
     /// The value of a stream that holds one, for the native view that draws

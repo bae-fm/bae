@@ -8,6 +8,9 @@ struct LocalLibrariesSection: View {
     let disabled: Bool
     let canDeleteActiveLibrary: Bool
     let removingLibraryId: String?
+    /// The library that isn't open which counting or removing it is
+    /// opening now.
+    let opening: ClosedLibraryOpening?
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onRemove: (BridgeLibrary) -> Void
@@ -22,6 +25,8 @@ struct LocalLibrariesSection: View {
                     deleteDisabled: library.isActive
                         && !canDeleteActiveLibrary,
                     isRemoving: removingLibraryId == library.id,
+                    openSteps: opening?.libraryId == library.id
+                        ? opening?.progress.steps : nil,
                     onOpen: onOpen,
                     onFinish: onFinish,
                     onRemove: onRemove,
@@ -35,12 +40,14 @@ struct LocalLibrariesSection: View {
 /// One library row: its name, its provider and account when it has a cloud
 /// home, Open and Remove. A library whose settings can't be read says why,
 /// and doesn't open. One whose reset or restore stopped partway says which,
-/// and offers to finish it in place of Open.
+/// and offers to finish it in place of Open. While counting or removing it
+/// opens the library, a step the open runs shows in place of the detail line.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
     let deleteDisabled: Bool
     let isRemoving: Bool
+    let openSteps: LatestSource<BridgeOpenProgress>?
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onRemove: (BridgeLibrary) -> Void
@@ -51,12 +58,14 @@ private struct LibraryRow: View {
                 Text(library.name)
                     .themeText(.rowTitle)
                 // Every row keeps the detail line so rows share one height.
-                Text(library.detailLine)
-                    .themeText(.detail)
-                    .foregroundStyle(
-                        library.isOpenable
-                            ? Color.secondary : StatusTone.danger.color
-                    )
+                OpenProgressLine(steps: openSteps) {
+                    Text(library.detailLine)
+                        .themeText(.detail)
+                        .foregroundStyle(
+                            library.isOpenable
+                                ? Color.secondary : StatusTone.danger.color
+                        )
+                }
             }
             Spacer(minLength: ThemeSpace.group)
             Button(primaryTitle, action: primaryAction)
@@ -113,6 +122,7 @@ private struct LibraryRow: View {
             disabled: false,
             canDeleteActiveLibrary: true,
             removingLibraryId: nil,
+            opening: nil,
             onOpen: { _ in },
             onFinish: { _, _ in },
             onRemove: { _ in },

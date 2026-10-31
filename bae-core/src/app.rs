@@ -132,6 +132,9 @@ fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
 /// on the returned runtime and reports readiness or failure through sync status.
 ///
 /// `builder` supplies the installation's custody, OAuth presentation, and storage.
+/// `on_open_progress` hears each step opening the store runs (rebuilding
+/// its indexes, then migrating it) with how much of the step is done, on the
+/// bootstrap's own thread; an open with neither step calls it never.
 ///
 /// Opening by registered id records the library as this device's active library
 /// only once the open fully completes and the library is unlocked on this device;
@@ -149,6 +152,7 @@ pub fn bootstrap<T, F>(
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
+    on_open_progress: impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -163,7 +167,10 @@ where
         restore_playback,
         audio_focus,
         diagnostics,
-        builder.into(),
+        crate::library::manager::LibraryOpening::Registered {
+            builder,
+            on_progress: Box::new(on_open_progress),
+        },
         compose,
     )
 }
@@ -200,6 +207,8 @@ where
 /// [`bootstrap`] with the [`crate::library::LibraryFixture`] at `fixture`
 /// written into the library before any of its services starts, so each starts
 /// on the state the fixture names: what a debug UI test opens the app on.
+/// The store's open reports its steps to `on_open_progress`, as for
+/// [`bootstrap`].
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))
@@ -214,6 +223,7 @@ pub fn bootstrap_on_fixture<T, F>(
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
+    on_open_progress: impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -228,7 +238,10 @@ where
         restore_playback,
         audio_focus,
         diagnostics,
-        builder.into(),
+        crate::library::manager::LibraryOpening::Registered {
+            builder,
+            on_progress: Box::new(on_open_progress),
+        },
         compose,
     )
 }

@@ -96,8 +96,9 @@ impl BridgeDiagnostics {
             .map_err(diagnostics_error_to_bridge)
     }
 
-    /// Bootstrap the library `library_id` with this sink. A bootstrap failure
-    /// ships `app_start_failed` through it before the error returns.
+    /// Bootstrap the library `library_id` with this sink, its open's steps
+    /// written into `opening`'s stream. A bootstrap failure ships
+    /// `app_start_failed` through it before the error returns.
     pub(crate) fn open_app(
         &self,
         app_dir: bae_core::config::AppDir,
@@ -105,6 +106,7 @@ impl BridgeDiagnostics {
         position_update_interval_ms: u32,
         restore_playback: bool,
         builder: coven::CovenBuilder,
+        opening: &crate::BridgeLibraryOpening,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Arc<AppHandle>, BridgeError> {
         self.opened(bootstrap(
@@ -115,6 +117,7 @@ impl BridgeDiagnostics {
             host.audio_focus(),
             self.inner.clone(),
             builder,
+            opening.report(),
             move |services, runtime| AppHandle::start_for_host(services, runtime, host),
         ))
     }
@@ -130,6 +133,7 @@ impl BridgeDiagnostics {
         position_update_interval_ms: u32,
         restore_playback: bool,
         builder: coven::CovenBuilder,
+        opening: &crate::BridgeLibraryOpening,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Arc<AppHandle>, BridgeError> {
         self.opened(bae_core::app::bootstrap_on_fixture(
@@ -141,6 +145,7 @@ impl BridgeDiagnostics {
             host.audio_focus(),
             self.inner.clone(),
             builder,
+            opening.report(),
             move |services, runtime| AppHandle::start_for_host(services, runtime, host),
         ))
     }
