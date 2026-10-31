@@ -351,6 +351,7 @@ extension TriageRowView {
         .padding()
         .frame(width: 340)
         .environment(PreviewData.artImageStore())
+        .environment(\.importPercents, importStore.importPercents)
         .candidateReaderPreviewEnvironment()
         .windowBackground()
     }
@@ -375,6 +376,7 @@ extension TriageRowView {
         .padding()
         .frame(width: 340)
         .environment(PreviewData.artImageStore())
+        .environment(\.importPercents, importStore.importPercents)
         .candidateReaderPreviewEnvironment()
         .windowBackground()
     }
@@ -414,6 +416,7 @@ extension TriageRowView {
         .padding()
         .frame(width: 340)
         .environment(PreviewData.artImageStore())
+        .environment(\.importPercents, importStore.importPercents)
         .candidateReaderPreviewEnvironment()
         .windowBackground()
     }
