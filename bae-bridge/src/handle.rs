@@ -251,9 +251,12 @@ fn end(
 pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
 
 impl AppHandle {
+    /// Start the handle over an open library. `diagnostics` is where casting
+    /// reports a panic in its background work.
     pub(crate) fn start(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
+        #[cfg(feature = "cast")] diagnostics: bae_core::diagnostics::Diagnostics,
     ) -> Result<Self, bae_core::app::BootstrapError> {
         #[cfg(feature = "desktop")]
         let desktop = {
@@ -282,6 +285,7 @@ impl AppHandle {
             services.clone(),
             runtime.handle().clone(),
             bae_cast::renderer::RendererDiscovery::for_host(),
+            diagnostics,
         );
 
         Ok(Self {
@@ -300,8 +304,14 @@ impl AppHandle {
         services: AppServices,
         runtime: tokio::runtime::Runtime,
         host: std::sync::Arc<crate::BridgeHost>,
+        #[cfg(feature = "cast")] diagnostics: bae_core::diagnostics::Diagnostics,
     ) -> Result<Self, bae_core::app::BootstrapError> {
-        let mut app = Self::start(services, runtime)?;
+        let mut app = Self::start(
+            services,
+            runtime,
+            #[cfg(feature = "cast")]
+            diagnostics,
+        )?;
         app._host = Some(host);
         Ok(app)
     }

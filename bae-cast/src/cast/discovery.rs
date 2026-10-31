@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::thread::JoinHandle;
 
+use bae_core::diagnostics::Diagnostics;
+use bae_util::task_failure::caught_sync;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
@@ -30,7 +32,7 @@ pub(crate) struct CastBrowse {
 }
 
 impl Browse for CastBrowse {
-    fn start(devices: &PublishedDevices) -> Option<Self> {
+    fn start(devices: &PublishedDevices, diagnostics: &Diagnostics) -> Option<Self> {
         let daemon = match ServiceDaemon::new() {
             Ok(daemon) => daemon,
             Err(e) => {
@@ -53,7 +55,8 @@ impl Browse for CastBrowse {
         };
         devices.clear();
         let devices = devices.clone();
-        let reader = std::thread::spawn(move || run_browse(events, devices));
+        let diagnostics = diagnostics.clone();
+        let reader = std::thread::spawn(move || run_browse(events, devices, diagnostics));
         Some(Self { daemon, reader })
     }
 
@@ -71,36 +74,49 @@ impl Browse for CastBrowse {
 
 /// Drain the mDNS event channel, maintaining the device list keyed by service
 /// fullname, and publish a de-duplicated snapshot on every change. Returns when
-/// the channel closes (the daemon shut down).
-fn run_browse(events: mdns_sd::Receiver<ServiceEvent>, devices: PublishedDevices) {
+/// the channel closes (the daemon shut down). An event whose handling panics
+/// is reported and skipped; the browse reads on.
+fn run_browse(
+    events: mdns_sd::Receiver<ServiceEvent>,
+    devices: PublishedDevices,
+    diagnostics: Diagnostics,
+) {
     // Keyed by service fullname (what `ServiceRemoved` carries), so a device can
     // be dropped when it leaves.
     let mut by_fullname: HashMap<String, RendererDevice> = HashMap::new();
     while let Ok(event) = events.recv() {
-        match event {
-            ServiceEvent::ServiceResolved(resolved) => {
-                let fullname = resolved.fullname.clone();
-                match device_from_resolved(&resolved) {
-                    Some(device) => {
-                        by_fullname.insert(fullname, device);
-                    }
-                    None => {
-                        debug!("cast discovery: ignoring unusable service {fullname}");
-                        continue;
-                    }
-                }
+        let followed = caught_sync("follow a Cast advertisement", || {
+            if apply_event(&mut by_fullname, event) {
+                devices.publish(snapshot(&by_fullname));
             }
-            ServiceEvent::ServiceRemoved(_ty, fullname) => {
-                if by_fullname.remove(&fullname).is_none() {
-                    continue;
-                }
-            }
-            // Search lifecycle and pre-resolution "found" events carry no
-            // address, and `ServiceEvent` is non-exhaustive, so anything else is
-            // ignored until it's handled above.
-            _ => continue,
+        });
+        if let Err(failed) = followed {
+            diagnostics.bug(failed);
         }
-        devices.publish(snapshot(&by_fullname));
+    }
+}
+
+/// Apply one mDNS event to the device table: whether it changed.
+fn apply_event(by_fullname: &mut HashMap<String, RendererDevice>, event: ServiceEvent) -> bool {
+    match event {
+        ServiceEvent::ServiceResolved(resolved) => {
+            let fullname = resolved.fullname.clone();
+            match device_from_resolved(&resolved) {
+                Some(device) => {
+                    by_fullname.insert(fullname, device);
+                    true
+                }
+                None => {
+                    debug!("cast discovery: ignoring unusable service {fullname}");
+                    false
+                }
+            }
+        }
+        ServiceEvent::ServiceRemoved(_ty, fullname) => by_fullname.remove(&fullname).is_some(),
+        // Search lifecycle and pre-resolution "found" events carry no
+        // address, and `ServiceEvent` is non-exhaustive, so anything else is
+        // ignored until it's handled above.
+        _ => false,
     }
 }
 

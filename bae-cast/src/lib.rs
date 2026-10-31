@@ -21,9 +21,11 @@ mod cast;
 mod dlna;
 pub mod renderer;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use bae_core::config::SubsonicCredential;
+use bae_core::diagnostics::{lock_or_crash, Diagnostics, ReportedTask};
 use bae_core::library::AppServices;
 use bae_core::playback::airplay_output::AirPlaySink;
 use bae_core::playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
@@ -31,10 +33,10 @@ use bae_core::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
     RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
 };
+use bae_util::task_failure::{blocking, caught, caught_sync, TaskFailed};
 use md5::{Digest, Md5};
 use rand::RngCore;
 use tokio::runtime::Handle;
-use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
@@ -53,6 +55,7 @@ use renderer::{
 /// PIN-gated receiver, or one offering only encryption the sender can't
 /// provide. RAOP receivers pick unencrypted when offered, else RSA-AES.
 fn build_airplay_sink(
+    diagnostics: &Diagnostics,
     addr: std::net::IpAddr,
     port: u16,
     capabilities: &Result<AirPlayCapabilities, UnreadableSetting>,
@@ -64,12 +67,13 @@ fn build_airplay_sink(
         return Err(CastError::AirPlayPinRequired);
     }
     match capabilities.dialect {
-        Dialect::AirPlay2 => Ok(Box::new(Ap2Sink {
-            receiver: addr,
-            airplay_port: port,
+        Dialect::AirPlay2 => Ok(Box::new(Ap2Sink::new(
+            addr,
+            port,
             // The receiver's features decide whether it requires PTP or accepts NTP.
-            timing: TimingProtocol::from_features(capabilities.features),
-        })),
+            TimingProtocol::from_features(capabilities.features),
+            diagnostics.clone(),
+        ))),
         Dialect::Raop => {
             let raop = capabilities
                 .raop
@@ -82,14 +86,15 @@ fn build_airplay_sink(
             } else {
                 return Err(CastError::AirPlayEncryptionUnsupported);
             };
-            Ok(Box::new(RaopSink {
-                receiver: addr,
-                rtsp_port: port,
+            Ok(Box::new(RaopSink::new(
+                addr,
+                port,
                 encryption,
                 // The receiver plays at its hardware volume; bae attenuates locally
                 // in the output drain, so seed the session at full.
-                initial_volume: 1.0,
-            }))
+                1.0,
+                diagnostics.clone(),
+            )))
         }
     }
 }
@@ -119,6 +124,10 @@ pub enum CastError {
     /// connect to it can't be decided.
     #[error("this AirPlay receiver advertises settings bae can't read: {0}")]
     AirPlayUnreadableSettings(UnreadableSetting),
+    /// Starting the session failed in bae itself: work it ran panicked, a bug
+    /// reported where it was caught.
+    #[error("{0}")]
+    Internal(TaskFailed),
 }
 
 /// Where the ephemeral server listens, and the address its URLs name.
@@ -160,14 +169,24 @@ struct EphemeralServer {
     base_url: String,
     credential: SubsonicCredential,
     cancel: CancellationToken,
-    task: JoinHandle<()>,
+    task: ReportedTask,
+    /// Set once the server panicked: it serves nothing, and the next cast
+    /// starts another.
+    panicked: Arc<AtomicBool>,
 }
 
 impl EphemeralServer {
     /// Bind the router on `network` at an OS-assigned port, read the port back,
     /// and serve until cancelled. The base URL names the address `network`
-    /// gives, so the receiver can reach it.
-    async fn start(services: AppServices, network: ServingNetwork) -> Result<Self, String> {
+    /// gives, so the receiver can reach it. A server that panics is reported
+    /// through `diagnostics`, reads as [`Self::panicked`], and `on_panic`
+    /// runs, for its owner to end the cast it served.
+    async fn start(
+        services: AppServices,
+        network: ServingNetwork,
+        diagnostics: &Diagnostics,
+        on_panic: impl FnOnce() + Send + 'static,
+    ) -> Result<Self, String> {
         let credential = SubsonicCredential {
             username: random_hex(8),
             password: random_hex(32),
@@ -185,28 +204,42 @@ impl EphemeralServer {
         let router = bae_subsonic::router(services, credential.clone());
         let cancel = CancellationToken::new();
         let server_cancel = cancel.clone();
-        let task = tokio::spawn(async move {
-            let served = axum::serve(listener, router)
-                .with_graceful_shutdown(async move { server_cancel.cancelled_owned().await })
-                .await;
-            if let Err(e) = served {
-                warn!("ephemeral cast server stopped with error: {e}");
-            }
-        });
+        let panicked = Arc::new(AtomicBool::new(false));
+        let mark_panicked = panicked.clone();
+        let task = diagnostics.spawn_reported(
+            &Handle::current(),
+            "serve audio to a cast receiver",
+            async move {
+                let served = axum::serve(listener, router)
+                    .with_graceful_shutdown(async move { server_cancel.cancelled_owned().await })
+                    .await;
+                if let Err(e) = served {
+                    warn!("ephemeral cast server stopped with error: {e}");
+                }
+            },
+            move |_| {
+                mark_panicked.store(true, Ordering::Release);
+                on_panic();
+            },
+        );
 
         Ok(Self {
             base_url,
             credential,
             cancel,
             task,
+            panicked,
         })
+    }
+
+    /// Whether the server panicked and serves nothing.
+    fn panicked(&self) -> bool {
+        self.panicked.load(Ordering::Acquire)
     }
 
     async fn stop(self) {
         self.cancel.cancel();
-        if let Err(e) = self.task.await {
-            warn!("ephemeral cast server task join failed: {e}");
-        }
+        self.task.ended().await;
     }
 }
 
@@ -231,6 +264,9 @@ pub struct CastController {
     server: Arc<Mutex<Option<EphemeralServer>>>,
     /// Where that server listens.
     serving: ServingNetwork,
+    /// Where casting's background work — the server, the watchers, the
+    /// discovery readers and the AirPlay stream threads — reports a panic.
+    diagnostics: Diagnostics,
     /// The `cast_enabled` value the setting watcher last finished applying, so
     /// a test can wait for the watcher to act on a change it wrote.
     #[cfg(test)]
@@ -246,8 +282,15 @@ impl CastController {
         services: AppServices,
         runtime: Handle,
         discovery: RendererDiscovery,
+        diagnostics: Diagnostics,
     ) -> Arc<Self> {
-        Self::start_serving_on(services, runtime, discovery, ServingNetwork::Lan)
+        Self::start_serving_on(
+            services,
+            runtime,
+            discovery,
+            ServingNetwork::Lan,
+            diagnostics,
+        )
     }
 
     /// [`Self::start`], with the ephemeral server on `serving`.
@@ -256,6 +299,7 @@ impl CastController {
         runtime: Handle,
         discovery: RendererDiscovery,
         serving: ServingNetwork,
+        diagnostics: Diagnostics,
     ) -> Arc<Self> {
         let receivers = discovery.subscribe();
         let (devices_tx, _) = tokio::sync::watch::channel(discovery.devices());
@@ -266,6 +310,7 @@ impl CastController {
             devices_tx,
             server: Arc::new(Mutex::new(None)),
             serving,
+            diagnostics,
             #[cfg(test)]
             setting_applied: tokio::sync::watch::Sender::new(None),
         });
@@ -284,9 +329,19 @@ impl CastController {
         let controller = self.clone();
         self.runtime.spawn(async move {
             while devices.changed().await.is_ok() {
-                controller
-                    .devices_tx
-                    .send_replace(controller.discovery.lock().unwrap().devices());
+                // One change at a time: a panic merging the lists is reported,
+                // and the next change is merged again.
+                let merged = controller.with_discovery(|discovery| {
+                    caught_sync("merge the cast device lists", || discovery.devices())
+                });
+                match merged {
+                    Ok(merged) => {
+                        controller.devices_tx.send_replace(merged);
+                    }
+                    Err(failed) => {
+                        controller.diagnostics.bug(failed);
+                    }
+                }
             }
         });
     }
@@ -294,7 +349,8 @@ impl CastController {
     /// Follow the library's `cast_enabled` setting: turning casting off stops
     /// browsing and ends any session in flight, so the machinery is idle rather
     /// than merely hidden; turning it on starts nothing by itself, since browsing
-    /// follows the picker.
+    /// follows the picker. A panic applying one change is reported, and the
+    /// next change is applied.
     fn spawn_setting_watcher(self: &Arc<Self>) {
         let mut config_rx = self.services.subscribe_config_changes();
         let controller = self.clone();
@@ -304,8 +360,13 @@ impl CastController {
                     Ok(()) => {
                         let enabled = config_rx.borrow().prefs.cast_enabled;
                         if !enabled {
-                            controller.stop_discovery();
-                            controller.stop_casting();
+                            let applied = caught_sync("turn casting off", || {
+                                controller.stop_discovery();
+                                controller.stop_casting();
+                            });
+                            if let Err(failed) = applied {
+                                controller.diagnostics.bug(failed);
+                            }
                         }
                         #[cfg(test)]
                         controller.setting_applied.send_replace(Some(enabled));
@@ -321,10 +382,12 @@ impl CastController {
 
     /// Follow the playback service's remote-output status and stop the ephemeral
     /// server once casting ends (a user stop or a receiver-side end the service
-    /// surfaced on its own).
+    /// surfaced on its own). A panic stopping it is reported, and the next end
+    /// is followed.
     fn spawn_status_follower(&self) {
         let mut progress = self.services.subscribe_playback_progress();
         let slot = self.server.clone();
+        let diagnostics = self.diagnostics.clone();
         self.runtime.spawn(async move {
             while let Some(event) = progress.recv().await {
                 let PlaybackProgress::RemoteStatusChanged {
@@ -333,14 +396,31 @@ impl CastController {
                 else {
                     continue;
                 };
-                // Take the server out under the lock, then stop it off the lock
-                // (its shutdown awaits).
-                let server = slot.lock().unwrap().take();
-                if let Some(server) = server {
-                    server.stop().await;
+                let stopped = caught("stop the cast server", async {
+                    // Take the server out under the lock, then stop it off the
+                    // lock (its shutdown awaits).
+                    let server = slot.lock().unwrap().take();
+                    if let Some(server) = server {
+                        server.stop().await;
+                    }
+                })
+                .await;
+                if let Err(failed) = stopped {
+                    diagnostics.bug(failed);
                 }
             }
         });
+    }
+
+    /// Act on the device sources. A panic while they were held may have left
+    /// a browse partway through starting or stopping, holding a daemon,
+    /// socket or thread nothing tracks: casting can't go on from that.
+    fn with_discovery<T>(&self, act: impl FnOnce(&mut RendererDiscovery) -> T) -> T {
+        act(&mut lock_or_crash(
+            &self.diagnostics,
+            "the cast device sources",
+            &self.discovery,
+        ))
     }
 
     /// Whether the library has casting turned on. Read from config on demand:
@@ -358,12 +438,12 @@ impl CastController {
             debug!("cast discovery not started: casting is off");
             return;
         }
-        self.discovery.lock().unwrap().start();
+        self.with_discovery(|discovery| discovery.start(&self.diagnostics));
     }
 
     /// Stop browsing (the picker closed).
     pub fn stop_discovery(&self) {
-        self.discovery.lock().unwrap().stop();
+        self.with_discovery(RendererDiscovery::stop);
     }
 
     /// Take a renderer service a host's browser resolved, on the hosts that
@@ -374,21 +454,26 @@ impl CastController {
             debug!("reported renderer ignored: casting is off");
             return;
         }
-        self.discovery.lock().unwrap().report(service);
+        // Mapping a service runs over what a host browser read off the
+        // network; one that panics is reported and skipped, and the panic
+        // stays inside the lock's hold, so it poisons nothing.
+        let reported = self.with_discovery(|discovery| {
+            caught_sync("take a reported renderer", || discovery.report(service))
+        });
+        if let Err(failed) = reported {
+            self.diagnostics.bug(failed);
+        }
     }
 
     /// Drop a renderer service a host's browser no longer sees.
     pub fn renderer_lost(&self, service_type: RendererServiceType, instance_name: &str) {
-        self.discovery
-            .lock()
-            .unwrap()
-            .forget(service_type, instance_name);
+        self.with_discovery(|discovery| discovery.forget(service_type, instance_name));
     }
 
     /// The current merged device list — Cast, UPnP, and AirPlay devices in one
     /// list, sorted by name for a stable picker.
     pub fn devices(&self) -> Vec<RendererDevice> {
-        self.discovery.lock().unwrap().devices()
+        self.with_discovery(|discovery| discovery.devices())
     }
 
     pub fn subscribe_devices(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
@@ -417,7 +502,7 @@ impl CastController {
             capabilities,
         } = &device.connection
         {
-            let sink = build_airplay_sink(*addr, *port, capabilities)?;
+            let sink = build_airplay_sink(&self.diagnostics, *addr, *port, capabilities)?;
             self.services.playback_play_on_airplay(
                 sink,
                 RemoteDevice {
@@ -440,11 +525,12 @@ impl CastController {
         {
             RendererConnection::Cast { addr, port } => {
                 let (addr, port) = (*addr, *port);
-                let channel =
-                    tokio::task::spawn_blocking(move || RustCastChannel::connect(addr, port))
-                        .await
-                        .map_err(|e| CastError::Connect(format!("connect task failed: {e}")))?
-                        .map_err(|e| CastError::Connect(e.to_string()))?;
+                let channel = blocking("connect to the Cast device", move || {
+                    RustCastChannel::connect(addr, port)
+                })
+                .await
+                .map_err(|failed| CastError::Internal(self.diagnostics.bug(failed)))?
+                .map_err(|e| CastError::Connect(e.to_string()))?;
                 (Box::new(channel), RendererFlavor::Cast)
             }
             RendererConnection::Dlna {
@@ -495,12 +581,28 @@ impl CastController {
     }
 
     async fn ensure_server(&self) -> Result<(), CastError> {
-        if self.server.lock().unwrap().is_some() {
-            return Ok(());
+        let panicked = {
+            let mut slot = self.server.lock().unwrap();
+            match slot.as_ref() {
+                Some(server) if !server.panicked() => return Ok(()),
+                Some(_) => slot.take(),
+                None => None,
+            }
+        };
+        if let Some(panicked) = panicked {
+            panicked.stop().await;
         }
-        let server = EphemeralServer::start(self.services.clone(), self.serving)
-            .await
-            .map_err(CastError::Serving)?;
+        // A server that panics serves nothing more: end the cast it served,
+        // and the next cast starts another in its place.
+        let services = self.services.clone();
+        let server = EphemeralServer::start(
+            self.services.clone(),
+            self.serving,
+            &self.diagnostics,
+            move || services.playback_stop_remote(),
+        )
+        .await
+        .map_err(CastError::Serving)?;
         *self.server.lock().unwrap() = Some(server);
         Ok(())
     }
@@ -565,347 +667,5 @@ fn random_hex(n: usize) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn credential() -> SubsonicCredential {
-        SubsonicCredential {
-            username: "castuser".to_string(),
-            password: "castpassword".to_string(),
-        }
-    }
-
-    /// Whether a browse is live right now — the gate the `cast_enabled` setting
-    /// exists to hold shut.
-    fn browsing(controller: &CastController) -> bool {
-        match &*controller.discovery.lock().unwrap() {
-            RendererDiscovery::Reported(reported) => reported.is_browsing(),
-            RendererDiscovery::Builtin(_) => {
-                panic!("the controller tests run over the reported device source")
-            }
-        }
-    }
-
-    /// A controller over a fresh library, on the runtime it returns, serving
-    /// casts on loopback. The `TempDir` owns that library's files, so it must
-    /// outlive the controller.
-    fn test_controller(
-        discovery: RendererDiscovery,
-    ) -> (
-        tokio::runtime::Runtime,
-        Arc<CastController>,
-        AppServices,
-        tempfile::TempDir,
-    ) {
-        let (runtime, services, tmp) = bae_test_support::runtime_with_services();
-        let controller = CastController::start_serving_on(
-            services.clone(),
-            runtime.handle().clone(),
-            discovery,
-            ServingNetwork::Loopback,
-        );
-        (runtime, controller, services, tmp)
-    }
-
-    /// A loopback port nothing listens on: bound to take a free port from the
-    /// OS, then released, so a connect to it is refused at once.
-    fn refusing_loopback_port() -> u16 {
-        std::net::TcpListener::bind(("127.0.0.1", 0))
-            .expect("bind a loopback port")
-            .local_addr()
-            .expect("read the bound port")
-            .port()
-    }
-
-    /// A Cast service a host browser reports at `127.0.0.1:port`, so a connect
-    /// to it stays on this machine.
-    fn reported_cast_service(instance: &str, id: &str, port: u16) -> ReportedRenderer {
-        ReportedRenderer {
-            service_type: RendererServiceType::GoogleCast,
-            instance_name: instance.to_string(),
-            addr: "127.0.0.1".to_string(),
-            port,
-            txt: [("id", id), ("fn", instance)]
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
-        }
-    }
-
-    /// The gate the setting exists for: with casting off, asking to browse
-    /// starts no browse and asking to cast is refused outright — the UI hiding
-    /// its Cast control is a consequence, not the mechanism. Turning the setting
-    /// on makes the same two calls do their work. The gate is the controller's,
-    /// the same over either device source, so this runs over the reported one,
-    /// which holds no socket.
-    #[test]
-    fn discovery_and_casting_follow_the_cast_setting() {
-        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
-
-        assert!(
-            !services.get_config().prefs.cast_enabled,
-            "casting is opt-in"
-        );
-        controller.start_discovery();
-        assert!(!browsing(&controller), "casting is off: nothing may browse");
-        assert!(
-            matches!(
-                runtime.block_on(controller.cast_to("some-device")),
-                Err(CastError::Disabled)
-            ),
-            "casting is off: a session must be refused"
-        );
-
-        runtime.block_on(services.set_cast_enabled(true)).unwrap();
-        controller.start_discovery();
-        assert!(browsing(&controller), "casting is on: browsing may run");
-        // No device was reported, so the request reaches the device lookup and
-        // fails there rather than at the gate.
-        assert!(matches!(
-            runtime.block_on(controller.cast_to("some-device")),
-            Err(CastError::DeviceNotFound)
-        ));
-
-        controller.stop_discovery();
-    }
-
-    /// Turning the setting off while browsing stops it, rather than leaving the
-    /// browse running until the picker happens to close. The controller's own
-    /// watcher does this, so writing the setting is all a caller has to do.
-    #[test]
-    fn turning_casting_off_stops_browsing() {
-        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
-
-        runtime.block_on(services.set_cast_enabled(true)).unwrap();
-        controller.start_discovery();
-        assert!(browsing(&controller));
-
-        let mut applied = controller.setting_applied.subscribe();
-        runtime.block_on(services.set_cast_enabled(false)).unwrap();
-        runtime
-            .block_on(applied.wait_for(|applied| *applied == Some(false)))
-            .expect("the setting watcher runs while the controller is alive");
-        assert!(
-            !browsing(&controller),
-            "casting turned off: the watcher stopped browsing"
-        );
-    }
-
-    /// The reported path: a host that browses for bae pushes what its browser
-    /// resolved, and the picker's list follows — appearing on a report, gone on a
-    /// loss. Reports are refused while casting is off, exactly as browsing is, so
-    /// the setting is one gate rather than one per device source.
-    #[test]
-    fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
-        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
-
-        let port = refusing_loopback_port();
-        controller.start_discovery();
-        controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
-        assert!(
-            controller.devices().is_empty(),
-            "casting is off: nothing browses and no report is taken"
-        );
-
-        runtime.block_on(services.set_cast_enabled(true)).unwrap();
-        controller.start_discovery();
-        controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
-        controller.renderer_found(reported_cast_service("Study", "cast-2", port));
-        assert_eq!(
-            controller
-                .devices()
-                .iter()
-                .map(|device| device.name.as_str())
-                .collect::<Vec<_>>(),
-            vec!["Kitchen", "Study"],
-            "a reported service is a device the picker can cast to"
-        );
-
-        controller.renderer_lost(RendererServiceType::GoogleCast, "Kitchen");
-        assert_eq!(
-            controller
-                .devices()
-                .iter()
-                .map(|device| device.name.as_str())
-                .collect::<Vec<_>>(),
-            vec!["Study"],
-            "a service the host's browser lost leaves the picker"
-        );
-
-        // Casting to a reported device reaches the real connect, which the
-        // loopback port refuses, rather than stopping at the gate.
-        let cast = runtime.block_on(controller.cast_to("cast-2"));
-        assert!(matches!(cast, Err(CastError::Connect(_))), "{cast:?}");
-    }
-
-    #[test]
-    fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
-        let (runtime, controller, _services, _tmp) = test_controller(RendererDiscovery::reported());
-
-        runtime.block_on(async {
-            controller
-                .ensure_server()
-                .await
-                .expect("server starts from the controller runtime");
-        });
-        let base_url = controller
-            .server
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .base_url
-            .clone();
-        assert!(
-            base_url.starts_with("http://127.0.0.1:"),
-            "the test's server stays on loopback: {base_url}"
-        );
-    }
-
-    /// A receiver advertising a setting bae can't read is refused before any
-    /// connection is attempted, with the setting named in the error.
-    #[test]
-    fn an_unreadable_airplay_advertisement_is_refused() {
-        let unreadable = UnreadableSetting {
-            key: "features".to_string(),
-            raw: Some("garbage".to_string()),
-        };
-        let Err(error) =
-            build_airplay_sink("10.0.0.7".parse().unwrap(), 7000, &Err(unreadable.clone()))
-        else {
-            panic!("an unreadable advertisement builds no sink");
-        };
-        assert!(
-            matches!(&error, CastError::AirPlayUnreadableSettings(setting) if *setting == unreadable)
-        );
-        assert!(error.to_string().contains("\"garbage\""));
-    }
-
-    /// A raw serve carries `format=raw`; an MP3 conversion carries
-    /// `format=mp3&maxBitRate=320`, a WAV one `format=wav`. Each names the
-    /// track as a `tr-` Subsonic id and carries the auth triplet.
-    #[test]
-    fn stream_url_encodes_format_and_track() {
-        let provider = stream_url_provider("http://10.0.0.5:9000".to_string(), credential());
-
-        let raw = provider("track-1", RendererStreamFormat::Raw).unwrap();
-        assert!(raw.starts_with("http://10.0.0.5:9000/rest/stream?id=tr-track-1&"));
-        assert!(raw.contains("&format=raw"), "{raw}");
-        assert!(raw.contains("u=castuser"));
-        assert!(raw.contains("&t="));
-        assert!(raw.contains("&s="));
-
-        let transcoded = provider("track-2", RendererStreamFormat::TranscodeMp3).unwrap();
-        assert!(
-            transcoded.contains("&format=mp3&maxBitRate=320"),
-            "{transcoded}"
-        );
-
-        let wav = provider("track-3", RendererStreamFormat::TranscodeWav).unwrap();
-        assert!(wav.contains("id=tr-track-3&"), "{wav}");
-        assert!(wav.ends_with("&format=wav"), "{wav}");
-    }
-
-    /// The token in a minted URL is `md5(password + salt)` over the URL's own
-    /// salt — the exact derivation bae-subsonic recomputes to authenticate the
-    /// request.
-    #[test]
-    fn minted_token_matches_the_credential() {
-        let credential = credential();
-        let url = stream_url_provider("http://host:1".to_string(), credential.clone())(
-            "t",
-            RendererStreamFormat::Raw,
-        )
-        .unwrap();
-
-        let params: std::collections::HashMap<_, _> = url
-            .split_once('?')
-            .unwrap()
-            .1
-            .split('&')
-            .filter_map(|pair| pair.split_once('='))
-            .collect();
-        let salt = params["s"];
-        let expected = md5_hex(&format!("{}{salt}", credential.password));
-        assert_eq!(params["t"], expected, "token must be md5(password + salt)");
-    }
-
-    /// Each minted URL carries a fresh salt, so the token differs between calls.
-    #[test]
-    fn each_url_uses_a_fresh_salt() {
-        let provider = stream_url_provider("http://host:1".to_string(), credential());
-        let a = provider("t", RendererStreamFormat::Raw).unwrap();
-        let b = provider("t", RendererStreamFormat::Raw).unwrap();
-        assert_ne!(a, b, "a fresh salt per call yields distinct URLs");
-    }
-
-    /// The ephemeral server binds a real port and authenticates the minted URLs
-    /// through bae-subsonic's own auth: a request with the minted token reaches
-    /// the handler (a missing track answers "not found", code 70 — not the
-    /// wrong-credentials code 40), a tampered token is rejected (code 40), and
-    /// stopping the server frees the port.
-    #[test]
-    fn ephemeral_server_authenticates_minted_urls_and_stops() {
-        let (runtime, services, _tmp) = bae_test_support::runtime_with_services();
-
-        runtime.block_on(async move {
-            let server = EphemeralServer::start(services, ServingNetwork::Loopback)
-                .await
-                .expect("the ephemeral server binds a real port");
-            assert!(
-                server.base_url.starts_with("http://127.0.0.1:"),
-                "the test's server stays on loopback: {}",
-                server.base_url
-            );
-
-            let base = server.base_url.clone();
-            let valid = stream_url_provider(base.clone(), server.credential.clone())(
-                "missing-track",
-                RendererStreamFormat::Raw,
-            )
-            .unwrap();
-
-            let body = reqwest::get(&valid)
-                .await
-                .expect("the server is reachable on its bound port")
-                .text()
-                .await
-                .unwrap();
-            assert!(
-                !body.contains("code=\"40\""),
-                "the minted token must authenticate (not a wrong-credentials error): {body}"
-            );
-            assert!(
-                body.contains("code=\"70\""),
-                "an authenticated request for a missing track answers not-found: {body}"
-            );
-
-            // Tamper with the token: auth must reject it.
-            let tampered = valid.replace(
-                &format!("&t={}", token_of(&valid)),
-                "&t=00000000000000000000000000000000",
-            );
-            let tampered_body = reqwest::get(&tampered).await.unwrap().text().await.unwrap();
-            assert!(
-                tampered_body.contains("code=\"40\""),
-                "a tampered token must be rejected with wrong-credentials: {tampered_body}"
-            );
-
-            server.stop().await;
-
-            // The port is released: a fresh request fails to connect.
-            assert!(
-                reqwest::get(&valid).await.is_err(),
-                "stopping the session must release the port"
-            );
-        });
-    }
-
-    /// Extract the `t` (token) value from a minted URL, for the tamper test.
-    fn token_of(url: &str) -> String {
-        url.split('&')
-            .find_map(|pair| pair.strip_prefix("t="))
-            .expect("the URL carries a token")
-            .to_string()
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

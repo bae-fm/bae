@@ -16,6 +16,8 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::thread::JoinHandle;
 
+use bae_core::diagnostics::Diagnostics;
+use bae_util::task_failure::caught_sync;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
@@ -75,7 +77,7 @@ pub(crate) struct AirPlayBrowse {
 }
 
 impl Browse for AirPlayBrowse {
-    fn start(devices: &PublishedDevices) -> Option<Self> {
+    fn start(devices: &PublishedDevices, diagnostics: &Diagnostics) -> Option<Self> {
         let daemon = match ServiceDaemon::new() {
             Ok(daemon) => daemon,
             Err(e) => {
@@ -101,8 +103,9 @@ impl Browse for AirPlayBrowse {
             };
             let devices = devices.clone();
             let table = table.clone();
+            let diagnostics = diagnostics.clone();
             readers.push(std::thread::spawn(move || {
-                run_browse(service_type, events, table, devices);
+                run_browse(service_type, events, table, devices, diagnostics);
             }));
         }
         if readers.is_empty() {
@@ -136,44 +139,83 @@ struct DeviceTable {
 
 /// Drain one service type's mDNS event channel into the shared table, publishing
 /// a de-duplicated snapshot on every change. Returns when the channel closes.
+/// An event whose handling panics is reported and skipped; the browse reads
+/// on.
 fn run_browse(
     service_type: RendererServiceType,
     events: mdns_sd::Receiver<ServiceEvent>,
     table: std::sync::Arc<std::sync::Mutex<DeviceTable>>,
     devices: PublishedDevices,
+    diagnostics: Diagnostics,
 ) {
     while let Ok(event) = events.recv() {
-        let changed = {
-            let mut table = table.lock().unwrap();
-            match event {
-                ServiceEvent::ServiceResolved(resolved) => {
-                    let fullname = resolved.fullname.clone();
-                    match device_from_resolved(service_type, &resolved) {
-                        Some(device) => {
-                            table.by_fullname.insert(fullname, device);
-                            true
-                        }
-                        None => {
-                            debug!("airplay discovery: ignoring unusable service {fullname}");
-                            false
-                        }
-                    }
+        let followed = caught_sync("follow an AirPlay advertisement", || {
+            if let Some(change) = table_change(service_type, event) {
+                let mut table = lock_table(&table);
+                if change.apply(&mut table) {
+                    devices.publish(
+                        snapshot(&table)
+                            .iter()
+                            .map(AirPlayDevice::to_renderer_device)
+                            .collect(),
+                    );
                 }
-                ServiceEvent::ServiceRemoved(_ty, fullname) => {
-                    table.by_fullname.remove(&fullname).is_some()
-                }
-                _ => false,
             }
-        };
-        if !changed {
-            continue;
+        });
+        if let Err(failed) = followed {
+            diagnostics.bug(failed);
         }
-        devices.publish(
-            snapshot(&table.lock().unwrap())
-                .iter()
-                .map(AirPlayDevice::to_renderer_device)
-                .collect(),
-        );
+    }
+}
+
+/// The table both service browses share. Each change to it is one map
+/// operation, made after the advertisement is read, so a panic while it was
+/// held never leaves it partway through a change, and it stands.
+fn lock_table(table: &std::sync::Mutex<DeviceTable>) -> std::sync::MutexGuard<'_, DeviceTable> {
+    table
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// What one mDNS event does to the table, read before the table is locked.
+enum TableChange {
+    Resolved {
+        fullname: String,
+        device: AirPlayDevice,
+    },
+    Removed {
+        fullname: String,
+    },
+}
+
+impl TableChange {
+    /// Make the change: whether the table changed.
+    fn apply(self, table: &mut DeviceTable) -> bool {
+        match self {
+            Self::Resolved { fullname, device } => {
+                table.by_fullname.insert(fullname, device);
+                true
+            }
+            Self::Removed { fullname } => table.by_fullname.remove(&fullname).is_some(),
+        }
+    }
+}
+
+/// The change `event` makes, or `None` when it makes none the picker sees.
+fn table_change(service_type: RendererServiceType, event: ServiceEvent) -> Option<TableChange> {
+    match event {
+        ServiceEvent::ServiceResolved(resolved) => {
+            let fullname = resolved.fullname.clone();
+            match device_from_resolved(service_type, &resolved) {
+                Some(device) => Some(TableChange::Resolved { fullname, device }),
+                None => {
+                    debug!("airplay discovery: ignoring unusable service {fullname}");
+                    None
+                }
+            }
+        }
+        ServiceEvent::ServiceRemoved(_ty, fullname) => Some(TableChange::Removed { fullname }),
+        _ => None,
     }
 }
 

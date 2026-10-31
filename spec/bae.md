@@ -2814,6 +2814,20 @@ A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
 log names its address.
 
+**When casting breaks.** A panic in casting's own work is a bug, reported to
+the crash reporter, and ends only what it was doing. A thread sending audio,
+sync or timing to an AirPlay receiver that panics ends the session the way a
+receiver that stops answering does: playback comes back to this device,
+paused, and the picker says the receiver was lost. The server a Chromecast or
+UPnP renderer fetches from that panics ends the cast, and the next cast starts
+a new one. Connecting to a Chromecast that panics fails the cast as bae's own
+error, not as an unreachable device. An advertisement or search answer whose
+reading panics is left out of the picker, and browsing goes on; so does the
+watcher that stops casting when the setting is turned off. bae waits at most
+ten seconds on an AirPlay receiver's control connection — to connect, send a
+request, or hear back — so a receiver that stops answering without closing it
+can't hold up ending the session.
+
 **This device.** On every platform, playback and a preview follow a change of
 the default output device: they move to the new one at the same position. On
 macOS and Windows bae starts them again on the new device, and on iOS it does

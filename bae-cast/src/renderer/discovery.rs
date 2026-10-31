@@ -314,13 +314,14 @@ impl RendererDiscovery {
         }
     }
 
-    /// Begin browsing (the picker opened). Idempotent.
-    pub fn start(&mut self) {
+    /// Begin browsing (the picker opened). Idempotent. bae's own readers
+    /// report a panic through `diagnostics`.
+    pub fn start(&mut self, diagnostics: &bae_core::diagnostics::Diagnostics) {
         match self {
             Self::Builtin(builtin) => {
-                builtin.cast.start();
-                builtin.dlna.start();
-                builtin.airplay.start();
+                builtin.cast.start(diagnostics);
+                builtin.dlna.start(diagnostics);
+                builtin.airplay.start(diagnostics);
             }
             Self::Reported(reported) => reported.start(),
         }
@@ -413,7 +414,7 @@ mod tests {
     #[test]
     fn reported_services_appear_and_disappear() {
         let mut discovery = RendererDiscovery::reported();
-        discovery.start();
+        discovery.start(&bae_core::diagnostics::Diagnostics::noop());
 
         discovery.report(cast_service("Kitchen", "cast-1", "192.168.1.7"));
         discovery.report(airplay_service("Studio", "AA:BB:CC:DD:EE:FF"));
@@ -454,12 +455,12 @@ mod tests {
             "a report outside a browse is dropped"
         );
 
-        discovery.start();
+        discovery.start(&bae_core::diagnostics::Diagnostics::noop());
         discovery.report(cast_service("Kitchen", "cast-1", "192.168.1.7"));
         assert_eq!(discovery.devices().len(), 1);
 
         discovery.stop();
-        discovery.start();
+        discovery.start(&bae_core::diagnostics::Diagnostics::noop());
         assert!(
             discovery.devices().is_empty(),
             "a fresh browse starts from nothing"
@@ -471,7 +472,7 @@ mod tests {
     #[test]
     fn unusable_services_are_dropped() {
         let mut discovery = RendererDiscovery::reported();
-        discovery.start();
+        discovery.start(&bae_core::diagnostics::Diagnostics::noop());
 
         discovery.report(cast_service("Bad Address", "cast-2", "not-an-address"));
         let mut no_id = cast_service("No Id", "", "192.168.1.9");

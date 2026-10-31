@@ -508,6 +508,7 @@ fn run_full_ap2_session(
 
     // The sender: pair, set up, and stream five packets of known PCM.
     let session = Ap2Session::start(
+        &bae_core::diagnostics::Diagnostics::noop(),
         addr.ip(),
         addr.port(),
         Box::new(FixedSource { packets_left: 5 }),

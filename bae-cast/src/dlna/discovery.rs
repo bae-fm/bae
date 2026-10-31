@@ -19,7 +19,9 @@ use tracing::{debug, warn};
 use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
+use bae_core::diagnostics::Diagnostics;
 use bae_util::error_text::CauseChain;
+use bae_util::task_failure::caught_sync;
 
 /// The SSDP multicast endpoint every `M-SEARCH` is sent to.
 const SSDP_MULTICAST: &str = "239.255.255.250:1900";
@@ -46,7 +48,7 @@ pub(crate) struct DlnaSearch {
 }
 
 impl Browse for DlnaSearch {
-    fn start(devices: &PublishedDevices) -> Option<Self> {
+    fn start(devices: &PublishedDevices, diagnostics: &Diagnostics) -> Option<Self> {
         let socket = match open_search_socket() {
             Ok(socket) => socket,
             Err(e) => {
@@ -58,7 +60,9 @@ impl Browse for DlnaSearch {
         let devices = devices.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let reader_stop = stop.clone();
-        let reader = std::thread::spawn(move || run_search(socket, reader_stop, devices));
+        let diagnostics = diagnostics.clone();
+        let reader =
+            std::thread::spawn(move || run_search(socket, reader_stop, devices, diagnostics));
         Some(Self { stop, reader })
     }
 
@@ -96,8 +100,14 @@ fn msearch_datagram() -> String {
 /// The search-thread body: multicast the search, then drain unicast answers,
 /// fetching and parsing each new responder's description into a device. Re-sends
 /// the search every [`RESEARCH_INTERVAL`] and publishes a snapshot whenever the
-/// set changes. Returns when the stop flag is set.
-fn run_search(socket: UdpSocket, stop: Arc<AtomicBool>, devices: PublishedDevices) {
+/// set changes. Returns when the stop flag is set. A response whose handling
+/// panics is reported and skipped; the search reads on.
+fn run_search(
+    socket: UdpSocket,
+    stop: Arc<AtomicBool>,
+    devices: PublishedDevices,
+    diagnostics: Diagnostics,
+) {
     let client = match reqwest::blocking::Client::builder()
         .timeout(DESCRIPTION_TIMEOUT)
         .build()
@@ -146,19 +156,25 @@ fn run_search(socket: UdpSocket, stop: Arc<AtomicBool>, devices: PublishedDevice
             }
         };
 
-        let Some(location) = parse_ssdp_location(&String::from_utf8_lossy(&buf[..received])) else {
-            continue;
-        };
-        if !fetched_locations.insert(location.clone()) {
-            continue;
-        }
-
-        match fetch_device(&client, &location) {
-            Some(device) => {
-                by_id.insert(device.id.clone(), device);
-                devices.publish(snapshot(&by_id));
+        let followed = caught_sync("follow a UPnP search response", || {
+            let Some(location) = parse_ssdp_location(&String::from_utf8_lossy(&buf[..received]))
+            else {
+                return;
+            };
+            if !fetched_locations.insert(location.clone()) {
+                return;
             }
-            None => debug!("dlna discovery: {location} is not a usable renderer"),
+
+            match fetch_device(&client, &location) {
+                Some(device) => {
+                    by_id.insert(device.id.clone(), device);
+                    devices.publish(snapshot(&by_id));
+                }
+                None => debug!("dlna discovery: {location} is not a usable renderer"),
+            }
+        });
+        if let Err(failed) = followed {
+            diagnostics.bug(failed);
         }
     }
 }

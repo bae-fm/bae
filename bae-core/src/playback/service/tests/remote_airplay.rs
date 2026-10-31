@@ -282,8 +282,9 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
 }
 
 /// A dead AirPlay receiver (the session reports transport failure) ends AirPlay
-/// and returns to local — surfaced on the regular position path rather than
-/// erroring silently forever — and announces the receiver lost with why.
+/// and returns to local — surfaced on the service's audio tick rather than
+/// erroring silently forever, even with no position ticks coming, as when a
+/// sender thread panicked — and announces the receiver lost with why.
 #[tokio::test]
 async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
     let (_home, mut service, mut progress_rx) =
@@ -302,13 +303,8 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
         .set("20 audio sends in a row failed: No route to host (os error 65)".to_string())
         .expect("the failure is set once");
 
-    // A routine position tick catches it and ends AirPlay.
-    service
-        .handle_position_event(
-            Arc::new(test_track_fmt(TRACK_T)),
-            StreamPosition::from_millis(1_000),
-        )
-        .await;
+    // The service's audio tick catches it and ends AirPlay.
+    service.drain_current_audio_events().await;
 
     assert!(
         !service.renderer.is_airplay(),

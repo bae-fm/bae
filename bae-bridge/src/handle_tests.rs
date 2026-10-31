@@ -193,7 +193,15 @@ pub(super) fn start_test_handle(
             .expect("start playback");
         bae_core::library::AppServices::new(manager, playback)
     };
-    Arc::new(super::AppHandle::start(services, runtime).expect("the bridge handle starts"))
+    Arc::new(
+        super::AppHandle::start(
+            services,
+            runtime,
+            #[cfg(feature = "cast")]
+            bae_core::diagnostics::Diagnostics::noop(),
+        )
+        .expect("the bridge handle starts"),
+    )
 }
 
 #[cfg(not(feature = "desktop"))]
@@ -872,7 +880,13 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))
         .expect("start test app services");
-    let app = super::AppHandle::start(services, runtime).expect("the bridge handle starts");
+    let app = super::AppHandle::start(
+        services,
+        runtime,
+        #[cfg(feature = "cast")]
+        bae_core::diagnostics::Diagnostics::noop(),
+    )
+    .expect("the bridge handle starts");
 
     drop(app);
 

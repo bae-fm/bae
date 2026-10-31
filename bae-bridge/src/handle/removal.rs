@@ -131,7 +131,15 @@ mod tests {
         let (manager, root) = bae_test_support::setup_fresh_library(&runtime);
         manager.get_config().save_preferences().unwrap();
         let services = runtime.block_on(AppServices::for_test(manager)).unwrap();
-        let app = Arc::new(AppHandle::start(services, runtime).unwrap());
+        let app = Arc::new(
+            AppHandle::start(
+                services,
+                runtime,
+                #[cfg(feature = "cast")]
+                bae_core::diagnostics::Diagnostics::noop(),
+            )
+            .unwrap(),
+        );
         let host = crate::BridgeHost::new(
             crate::BridgeDiagnostics::noop(),
             crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),

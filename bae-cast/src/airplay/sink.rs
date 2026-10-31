@@ -9,6 +9,7 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use bae_core::diagnostics::Diagnostics;
 use bae_core::playback::airplay_output::{AirPlaySink, AirPlayStreamControl, PcmSource};
 use bae_core::playback::AudioError;
 use tracing::warn;
@@ -22,12 +23,32 @@ use super::stream::SystemClock;
 
 /// The parameters an [`AirPlaySink`] needs to open a RAOP session to a receiver.
 pub(crate) struct RaopSink {
-    pub receiver: IpAddr,
-    pub rtsp_port: u16,
+    receiver: IpAddr,
+    rtsp_port: u16,
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
     /// `et=1`.
-    pub encryption: RaopEncryption,
-    pub initial_volume: f32,
+    encryption: RaopEncryption,
+    initial_volume: f32,
+    /// Where the session's stream threads report a panic.
+    diagnostics: Diagnostics,
+}
+
+impl RaopSink {
+    pub(crate) fn new(
+        receiver: IpAddr,
+        rtsp_port: u16,
+        encryption: RaopEncryption,
+        initial_volume: f32,
+        diagnostics: Diagnostics,
+    ) -> Self {
+        Self {
+            receiver,
+            rtsp_port,
+            encryption,
+            initial_volume,
+            diagnostics,
+        }
+    }
 }
 
 impl AirPlaySink for RaopSink {
@@ -41,6 +62,7 @@ impl AirPlaySink for RaopSink {
                 .map_err(|e| AudioError::Unexpected(format!("RAOP key wrap: {e}")))?,
         };
         let session = RaopSession::start(
+            &self.diagnostics,
             self.receiver,
             self.rtsp_port,
             source,
@@ -77,11 +99,29 @@ impl AirPlayStreamControl for RaopSession {
 /// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
 /// (transient) then push ChaCha-encrypted audio to a HomePod-class receiver.
 pub(crate) struct Ap2Sink {
-    pub receiver: IpAddr,
+    receiver: IpAddr,
     /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
-    pub airplay_port: u16,
+    airplay_port: u16,
     /// The clock the receiver requires, decided from its features — PTP or NTP.
-    pub timing: TimingProtocol,
+    timing: TimingProtocol,
+    /// Where the session's stream threads report a panic.
+    diagnostics: Diagnostics,
+}
+
+impl Ap2Sink {
+    pub(crate) fn new(
+        receiver: IpAddr,
+        airplay_port: u16,
+        timing: TimingProtocol,
+        diagnostics: Diagnostics,
+    ) -> Self {
+        Self {
+            receiver,
+            airplay_port,
+            timing,
+            diagnostics,
+        }
+    }
 }
 
 impl AirPlaySink for Ap2Sink {
@@ -90,6 +130,7 @@ impl AirPlaySink for Ap2Sink {
         source: Box<dyn PcmSource>,
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError> {
         let session = Ap2Session::start(
+            &self.diagnostics,
             self.receiver,
             self.airplay_port,
             source,

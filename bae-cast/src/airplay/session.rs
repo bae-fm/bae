@@ -226,11 +226,14 @@ impl RaopControl {
     }
 
     fn rtsp_request(&self, method: Method, step: &'static str) -> Result<(), RaopError> {
-        let response = self
-            .rtsp
-            .lock()
-            .unwrap()
-            .request(&RtspRequest::new(method, &self.uri))?;
+        // A connection a panic left mid-request can't be read in step with
+        // its replies again, so it takes no more requests.
+        let mut rtsp = self.rtsp.lock().map_err(|poisoned| {
+            std::io::Error::other(format!(
+                "a panic left the control connection partway through a request: {poisoned}"
+            ))
+        })?;
+        let response = rtsp.request(&RtspRequest::new(method, &self.uri))?;
         expect_success(step, &response)
     }
 }
@@ -246,6 +249,7 @@ impl RaopSession {
     /// Connect to `receiver`, run the handshake, and start streaming `source`.
     /// `cipher` is the negotiated encryption ([`RaopCipher::none`] for `et=0`).
     pub(crate) fn start(
+        diagnostics: &bae_core::diagnostics::Diagnostics,
         receiver: IpAddr,
         rtsp_port: u16,
         source: Box<dyn PcmSource>,
@@ -290,6 +294,7 @@ impl RaopSession {
         };
         let stream_control = RaopStreamControl::new(latency);
         let stream = RaopStream::spawn(
+            diagnostics,
             source,
             PayloadCrypto::Raop(cipher),
             endpoints,
@@ -525,6 +530,7 @@ mod tests {
         });
 
         let session = RaopSession::start(
+            &bae_core::diagnostics::Diagnostics::noop(),
             addr.ip(),
             addr.port(),
             Box::new(SilentSource),

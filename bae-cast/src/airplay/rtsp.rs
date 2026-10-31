@@ -14,6 +14,12 @@
 
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
+use std::time::Duration;
+
+/// How long the control connection waits on the receiver — to connect, or for
+/// a request to go out or its reply to come back — before the operation fails.
+/// A receiver on the local network answers well within it.
+const CONTROL_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// The RTSP methods AirPlay uses. `Method::Other` carries a verb the scripted
 /// test receiver reads that it has no variant for.
@@ -244,23 +250,29 @@ pub(crate) struct RtspConnection {
 }
 
 impl RtspConnection {
-    /// Open the RTSP control connection to `addr:port`.
+    /// Open the RTSP control connection to `addr:port`, giving up after
+    /// [`CONTROL_TIMEOUT`].
     pub(crate) fn connect(
         addr: IpAddr,
         port: u16,
         user_agent: impl Into<String>,
     ) -> io::Result<Self> {
-        let stream = TcpStream::connect(SocketAddr::new(addr, port))?;
+        let stream = TcpStream::connect_timeout(&SocketAddr::new(addr, port), CONTROL_TIMEOUT)?;
         stream.set_nodelay(true).ok();
         Self::from_stream(stream, user_agent)
     }
 
     /// Build a connection over an already-open stream (loopback fakes in tests use
-    /// this).
+    /// this). A read or write that waits on the receiver longer than
+    /// [`CONTROL_TIMEOUT`] fails, so a receiver that stops answering without
+    /// closing the connection can't hold a request — or the TEARDOWN a
+    /// session's drop sends on the playback service's thread — forever.
     pub(crate) fn from_stream(
         stream: TcpStream,
         user_agent: impl Into<String>,
     ) -> io::Result<Self> {
+        stream.set_read_timeout(Some(CONTROL_TIMEOUT))?;
+        stream.set_write_timeout(Some(CONTROL_TIMEOUT))?;
         let local_addr = stream.local_addr()?.ip();
         let reader = BufReader::new(stream.try_clone()?);
         Ok(RtspConnection {

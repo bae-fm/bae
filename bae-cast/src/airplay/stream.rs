@@ -17,10 +17,11 @@
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
+use bae_core::diagnostics::{Diagnostics, ReportedThread};
 use bae_core::playback::airplay_output::{PcmSource, PCM_SAMPLE_RATE};
+use bae_util::task_failure::TaskFailed;
 use tracing::{debug, warn};
 
 use super::crypto::RaopCipher;
@@ -222,7 +223,7 @@ pub(super) struct StreamSockets {
 /// stops every thread. Created by a session after RECORD.
 pub(crate) struct RaopStream {
     stop: Arc<AtomicBool>,
-    threads: Vec<JoinHandle<()>>,
+    threads: Vec<ReportedThread>,
 }
 
 /// The shared state a running stream is observed and steered through: how far the
@@ -295,14 +296,24 @@ impl RaopStreamControl {
             warn!("airplay receiver unreachable: {failure}");
         }
     }
+
+    /// One of the stream's threads panicked, so the receiver gets no more
+    /// audio, sync or timing answers from it: the stream has failed.
+    fn mark_panicked(&self, failed: TaskFailed) {
+        if self.failure.set(failed.to_string()).is_err() {
+            debug!("airplay stream already failed before {failed}");
+        }
+    }
 }
 
 impl RaopStream {
     /// Spawn the audio, (optional) sync, and timing threads over the already-bound
     /// sockets in `sockets`. AirPlay 2 anchors its timeline with
     /// SETRATEANCHORTIME instead of RAOP sync packets, so it passes
-    /// `send_sync = false`.
+    /// `send_sync = false`. A thread that panics is reported through
+    /// `diagnostics` and fails the stream, which ends the session.
     pub(super) fn spawn(
+        diagnostics: &Diagnostics,
         source: Box<dyn PcmSource>,
         crypto: PayloadCrypto,
         endpoints: StreamEndpoints,
@@ -318,33 +329,37 @@ impl RaopStream {
 
         let stop = Arc::new(AtomicBool::new(false));
         let mut threads = vec![
-            spawn_audio_thread(AudioThread {
-                source,
-                packetizer: Packetizer::new(
-                    audio.ssrc,
-                    crypto,
-                    audio.channels,
-                    0,
-                    audio.initial_timestamp,
-                ),
-                pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
-                sample_rate: audio.sample_rate,
-                socket: audio_socket,
-                dst: audio_dst,
-                clock: clock.clone(),
-                stop: stop.clone(),
-                control: control.clone(),
-            }),
-            spawn_timing_thread(sockets.timing, stop.clone()),
+            spawn_audio_thread(
+                diagnostics,
+                AudioThread {
+                    source,
+                    packetizer: Packetizer::new(
+                        audio.ssrc,
+                        crypto,
+                        audio.channels,
+                        0,
+                        audio.initial_timestamp,
+                    ),
+                    pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
+                    sample_rate: audio.sample_rate,
+                    socket: audio_socket,
+                    dst: audio_dst,
+                    clock: clock.clone(),
+                    stop: stop.clone(),
+                    control: control.clone(),
+                },
+            )?,
+            spawn_timing_thread(diagnostics, sockets.timing, control.clone(), stop.clone())?,
         ];
         if send_sync {
             threads.push(spawn_sync_thread(
+                diagnostics,
                 sockets.control,
                 control_dst,
                 audio.initial_timestamp,
                 control,
                 stop.clone(),
-            ));
+            )?);
         }
 
         Ok(RaopStream { stop, threads })
@@ -355,9 +370,7 @@ impl Drop for RaopStream {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         for thread in self.threads.drain(..) {
-            if thread.join().is_err() {
-                warn!("airplay stream thread panicked during shutdown");
-            }
+            thread.join();
         }
     }
 }
@@ -380,96 +393,115 @@ struct AudioThread {
 /// packet but the thread lives on — only [`RaopStream`] being dropped (the stop
 /// flag) ends it, so pause and gapless track swaps don't tear the stream down. A
 /// re-anchor resets the pacing lead and clock and re-marks the next packet.
-fn spawn_audio_thread(mut t: AudioThread) -> JoinHandle<()> {
+fn spawn_audio_thread(
+    diagnostics: &Diagnostics,
+    mut t: AudioThread,
+) -> std::io::Result<ReportedThread> {
     let channels = 2usize; // L16 stereo; the session negotiates 44.1/16/2.
                            // Consecutive audio-send failures before the receiver is declared dead — a
                            // handful of packets (~50 ms) so a transient blip doesn't end the session.
     const FAILURE_THRESHOLD: u32 = 20;
-    std::thread::spawn(move || {
-        let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
-        let mut seen_reanchor = t.control.reanchor_epoch();
-        let mut consecutive_failures = 0u32;
-        while !t.stop.load(Ordering::Acquire) {
-            let epoch = t.control.reanchor_epoch();
-            if epoch != seen_reanchor {
-                t.pacer = Pacer::new(t.sample_rate, t.control.latency_frames());
-                t.clock.reset();
-                t.packetizer.reanchor();
-                seen_reanchor = epoch;
-            }
+    let on_panic = t.control.clone();
+    diagnostics.spawn_thread_reported(
+        "airplay audio sender",
+        move || {
+            let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
+            let mut seen_reanchor = t.control.reanchor_epoch();
+            let mut consecutive_failures = 0u32;
+            while !t.stop.load(Ordering::Acquire) {
+                let epoch = t.control.reanchor_epoch();
+                if epoch != seen_reanchor {
+                    t.pacer = Pacer::new(t.sample_rate, t.control.latency_frames());
+                    t.clock.reset();
+                    t.packetizer.reanchor();
+                    seen_reanchor = epoch;
+                }
 
-            let due = t.pacer.packets_due(t.clock.elapsed());
-            let mut sent_any = false;
-            for _ in 0..due {
-                if t.stop.load(Ordering::Acquire) {
-                    break;
-                }
-                buf.iter_mut().for_each(|s| *s = 0);
-                if t.source.next_frames(&mut buf) == 0 {
-                    // Nothing to send this packet; wait rather than end.
-                    break;
-                }
-                let packet = t.packetizer.packet(&buf);
-                match t.socket.send_to(&packet, t.dst) {
-                    Ok(_) => consecutive_failures = 0,
-                    Err(e) => {
-                        // Each failed packet is noted; the run of them that
-                        // declares the receiver dead is warned once, with why.
-                        debug!("airplay audio send failed: {e}");
-                        consecutive_failures += 1;
-                        if consecutive_failures >= FAILURE_THRESHOLD {
-                            // The receiver is unreachable — surface the death rather
-                            // than erroring silently forever.
-                            t.control.mark_failed(consecutive_failures, &e);
+                let due = t.pacer.packets_due(t.clock.elapsed());
+                let mut sent_any = false;
+                for _ in 0..due {
+                    if t.stop.load(Ordering::Acquire) {
+                        break;
+                    }
+                    buf.iter_mut().for_each(|s| *s = 0);
+                    if t.source.next_frames(&mut buf) == 0 {
+                        // Nothing to send this packet; wait rather than end.
+                        break;
+                    }
+                    let packet = t.packetizer.packet(&buf);
+                    match t.socket.send_to(&packet, t.dst) {
+                        Ok(_) => consecutive_failures = 0,
+                        Err(e) => {
+                            // Each failed packet is noted; the run of them that
+                            // declares the receiver dead is warned once, with why.
+                            debug!("airplay audio send failed: {e}");
+                            consecutive_failures += 1;
+                            if consecutive_failures >= FAILURE_THRESHOLD {
+                                // The receiver is unreachable — surface the death rather
+                                // than erroring silently forever.
+                                t.control.mark_failed(consecutive_failures, &e);
+                            }
                         }
                     }
+                    t.pacer.record_packet();
+                    t.control.record_frames(u64::from(FRAMES_PER_PACKET));
+                    sent_any = true;
                 }
-                t.pacer.record_packet();
-                t.control.record_frames(u64::from(FRAMES_PER_PACKET));
-                sent_any = true;
+                if due == 0 || !sent_any {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
             }
-            if due == 0 || !sent_any {
-                std::thread::sleep(Duration::from_millis(5));
-            }
-        }
-        debug!("airplay audio thread ended");
-    })
+            debug!("airplay audio thread ended");
+        },
+        move |failed| on_panic.mark_panicked(failed),
+    )
 }
 
 /// Send a sync packet immediately (extension bit set) and then ~every second, so
 /// the receiver keeps its clock anchored to ours.
 fn spawn_sync_thread(
+    diagnostics: &Diagnostics,
     socket: UdpSocket,
     dst: SocketAddr,
     initial_timestamp: u32,
     control: RaopStreamControl,
     stop: Arc<AtomicBool>,
-) -> JoinHandle<()> {
-    std::thread::spawn(move || {
-        let latency_frames = control.latency_frames();
-        let mut first = true;
-        let mut last_sent = Instant::now() - Duration::from_secs(1);
-        while !stop.load(Ordering::Acquire) {
-            if last_sent.elapsed() >= Duration::from_secs(1) {
-                let now_ts = initial_timestamp
-                    .wrapping_add(control.frames_sent() as u32)
-                    .wrapping_add(latency_frames);
-                let played = now_ts.wrapping_sub(latency_frames);
-                let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
-                if let Err(e) = socket.send_to(&packet, dst) {
-                    debug!("airplay sync send failed: {e}");
+) -> std::io::Result<ReportedThread> {
+    let on_panic = control.clone();
+    diagnostics.spawn_thread_reported(
+        "airplay sync sender",
+        move || {
+            let latency_frames = control.latency_frames();
+            let mut first = true;
+            let mut last_sent = Instant::now() - Duration::from_secs(1);
+            while !stop.load(Ordering::Acquire) {
+                if last_sent.elapsed() >= Duration::from_secs(1) {
+                    let now_ts = initial_timestamp
+                        .wrapping_add(control.frames_sent() as u32)
+                        .wrapping_add(latency_frames);
+                    let played = now_ts.wrapping_sub(latency_frames);
+                    let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
+                    if let Err(e) = socket.send_to(&packet, dst) {
+                        debug!("airplay sync send failed: {e}");
+                    }
+                    first = false;
+                    last_sent = Instant::now();
                 }
-                first = false;
-                last_sent = Instant::now();
+                std::thread::sleep(Duration::from_millis(100));
             }
-            std::thread::sleep(Duration::from_millis(100));
-        }
-    })
+        },
+        move |failed| on_panic.mark_panicked(failed),
+    )
 }
 
 /// Answer the receiver's timing requests until stopped.
-fn spawn_timing_thread(socket: UdpSocket, stop: Arc<AtomicBool>) -> JoinHandle<()> {
-    std::thread::spawn(move || {
+fn spawn_timing_thread(
+    diagnostics: &Diagnostics,
+    socket: UdpSocket,
+    control: RaopStreamControl,
+    stop: Arc<AtomicBool>,
+) -> std::io::Result<ReportedThread> {
+    diagnostics.spawn_thread_reported("airplay timing responder", move || {
         // A read timeout lets the thread notice the stop flag between requests.
         if let Err(error) = socket.set_read_timeout(Some(Duration::from_millis(200))) {
             warn!("airplay timing socket has no read timeout, so stopping waits for a request: {error}");
@@ -496,7 +528,7 @@ fn spawn_timing_thread(socket: UdpSocket, stop: Arc<AtomicBool>) -> JoinHandle<(
                 }
             }
         }
-    })
+    }, move |failed| control.mark_panicked(failed))
 }
 
 #[cfg(test)]
@@ -595,22 +627,64 @@ mod tests {
     }
 
     fn audio_thread(
+        diagnostics: &Diagnostics,
         source: Box<dyn PcmSource>,
         stop: Arc<AtomicBool>,
-    ) -> (JoinHandle<()>, RaopStreamControl) {
+    ) -> (ReportedThread, RaopStreamControl) {
         let control = RaopStreamControl::new(88_200);
-        let handle = spawn_audio_thread(AudioThread {
-            source,
-            packetizer: Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0),
-            pacer: Pacer::new(44_100, 88_200),
-            sample_rate: 44_100,
-            socket: UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
-            dst: "127.0.0.1:9".parse().unwrap(),
-            clock: Arc::new(FarAheadClock),
-            stop,
-            control: control.clone(),
-        });
+        let handle = spawn_audio_thread(
+            diagnostics,
+            AudioThread {
+                source,
+                packetizer: Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0),
+                pacer: Pacer::new(44_100, 88_200),
+                sample_rate: 44_100,
+                socket: UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
+                dst: "127.0.0.1:9".parse().unwrap(),
+                clock: Arc::new(FarAheadClock),
+                stop,
+                control: control.clone(),
+            },
+        )
+        .expect("spawn the audio sender");
         (handle, control)
+    }
+
+    /// A source whose pull panics: a bug in the samples' way to the sender.
+    struct PanickingSource;
+    impl PcmSource for PanickingSource {
+        fn next_frames(&mut self, _out: &mut [i16]) -> usize {
+            panic!("ring index out of range")
+        }
+    }
+
+    /// An audio sender that panics fails the stream, which ends the session
+    /// rather than leaving the receiver silent while the session says it
+    /// streams, and the panic is reported. Sabotage: drop the `on_panic` in
+    /// `spawn_audio_thread`, and the stream reads as healthy.
+    #[test]
+    fn a_sender_that_panics_fails_the_stream_and_is_reported() {
+        let bugs = Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
+        let (handle, control) = audio_thread(
+            &diagnostics,
+            Box::new(PanickingSource),
+            Arc::new(AtomicBool::new(false)),
+        );
+
+        handle.join();
+
+        assert_eq!(
+            control.failure().as_deref(),
+            Some("airplay audio sender panicked: ring index out of range")
+        );
+        assert_eq!(
+            bugs.reports(),
+            vec![(
+                "airplay audio sender".to_string(),
+                "airplay audio sender panicked: ring index out of range".to_string()
+            )]
+        );
     }
 
     /// A source that drains does NOT end the thread — the stream is persistent, so
@@ -619,8 +693,11 @@ mod tests {
     #[test]
     fn audio_thread_is_persistent_across_a_drained_source() {
         let stop = Arc::new(AtomicBool::new(false));
-        let (handle, control) =
-            audio_thread(Box::new(FixedSource { packets_left: 3 }), stop.clone());
+        let (handle, control) = audio_thread(
+            &Diagnostics::noop(),
+            Box::new(FixedSource { packets_left: 3 }),
+            stop.clone(),
+        );
 
         // Wait for the three packets to be sent; the thread stays alive after.
         let deadline = Instant::now() + Duration::from_secs(2);
@@ -634,7 +711,7 @@ mod tests {
         );
 
         stop.store(true, Ordering::Release);
-        handle.join().unwrap();
+        handle.join();
         assert_eq!(control.frames_sent(), 3 * u64::from(FRAMES_PER_PACKET));
     }
 

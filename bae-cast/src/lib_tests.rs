@@ -1,0 +1,351 @@
+use super::*;
+
+fn credential() -> SubsonicCredential {
+    SubsonicCredential {
+        username: "castuser".to_string(),
+        password: "castpassword".to_string(),
+    }
+}
+
+/// Whether a browse is live right now — the gate the `cast_enabled` setting
+/// exists to hold shut.
+fn browsing(controller: &CastController) -> bool {
+    controller.with_discovery(|discovery| match discovery {
+        RendererDiscovery::Reported(reported) => reported.is_browsing(),
+        RendererDiscovery::Builtin(_) => {
+            panic!("the controller tests run over the reported device source")
+        }
+    })
+}
+
+/// A controller over a fresh library, on the runtime it returns, serving
+/// casts on loopback. The `TempDir` owns that library's files, so it must
+/// outlive the controller.
+fn test_controller(
+    discovery: RendererDiscovery,
+) -> (
+    tokio::runtime::Runtime,
+    Arc<CastController>,
+    AppServices,
+    tempfile::TempDir,
+) {
+    let (runtime, services, tmp) = bae_test_support::runtime_with_services();
+    let controller = CastController::start_serving_on(
+        services.clone(),
+        runtime.handle().clone(),
+        discovery,
+        ServingNetwork::Loopback,
+        Diagnostics::noop(),
+    );
+    (runtime, controller, services, tmp)
+}
+
+/// A loopback port nothing listens on: bound to take a free port from the
+/// OS, then released, so a connect to it is refused at once.
+fn refusing_loopback_port() -> u16 {
+    std::net::TcpListener::bind(("127.0.0.1", 0))
+        .expect("bind a loopback port")
+        .local_addr()
+        .expect("read the bound port")
+        .port()
+}
+
+/// A Cast service a host browser reports at `127.0.0.1:port`, so a connect
+/// to it stays on this machine.
+fn reported_cast_service(instance: &str, id: &str, port: u16) -> ReportedRenderer {
+    ReportedRenderer {
+        service_type: RendererServiceType::GoogleCast,
+        instance_name: instance.to_string(),
+        addr: "127.0.0.1".to_string(),
+        port,
+        txt: [("id", id), ("fn", instance)]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect(),
+    }
+}
+
+/// The gate the setting exists for: with casting off, asking to browse
+/// starts no browse and asking to cast is refused outright — the UI hiding
+/// its Cast control is a consequence, not the mechanism. Turning the setting
+/// on makes the same two calls do their work. The gate is the controller's,
+/// the same over either device source, so this runs over the reported one,
+/// which holds no socket.
+#[test]
+fn discovery_and_casting_follow_the_cast_setting() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+
+    assert!(
+        !services.get_config().prefs.cast_enabled,
+        "casting is opt-in"
+    );
+    controller.start_discovery();
+    assert!(!browsing(&controller), "casting is off: nothing may browse");
+    assert!(
+        matches!(
+            runtime.block_on(controller.cast_to("some-device")),
+            Err(CastError::Disabled)
+        ),
+        "casting is off: a session must be refused"
+    );
+
+    runtime.block_on(services.set_cast_enabled(true)).unwrap();
+    controller.start_discovery();
+    assert!(browsing(&controller), "casting is on: browsing may run");
+    // No device was reported, so the request reaches the device lookup and
+    // fails there rather than at the gate.
+    assert!(matches!(
+        runtime.block_on(controller.cast_to("some-device")),
+        Err(CastError::DeviceNotFound)
+    ));
+
+    controller.stop_discovery();
+}
+
+/// Turning the setting off while browsing stops it, rather than leaving the
+/// browse running until the picker happens to close. The controller's own
+/// watcher does this, so writing the setting is all a caller has to do.
+#[test]
+fn turning_casting_off_stops_browsing() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+
+    runtime.block_on(services.set_cast_enabled(true)).unwrap();
+    controller.start_discovery();
+    assert!(browsing(&controller));
+
+    let mut applied = controller.setting_applied.subscribe();
+    runtime.block_on(services.set_cast_enabled(false)).unwrap();
+    runtime
+        .block_on(applied.wait_for(|applied| *applied == Some(false)))
+        .expect("the setting watcher runs while the controller is alive");
+    assert!(
+        !browsing(&controller),
+        "casting turned off: the watcher stopped browsing"
+    );
+}
+
+/// The reported path: a host that browses for bae pushes what its browser
+/// resolved, and the picker's list follows — appearing on a report, gone on a
+/// loss. Reports are refused while casting is off, exactly as browsing is, so
+/// the setting is one gate rather than one per device source.
+#[test]
+fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+
+    let port = refusing_loopback_port();
+    controller.start_discovery();
+    controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
+    assert!(
+        controller.devices().is_empty(),
+        "casting is off: nothing browses and no report is taken"
+    );
+
+    runtime.block_on(services.set_cast_enabled(true)).unwrap();
+    controller.start_discovery();
+    controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
+    controller.renderer_found(reported_cast_service("Study", "cast-2", port));
+    assert_eq!(
+        controller
+            .devices()
+            .iter()
+            .map(|device| device.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Kitchen", "Study"],
+        "a reported service is a device the picker can cast to"
+    );
+
+    controller.renderer_lost(RendererServiceType::GoogleCast, "Kitchen");
+    assert_eq!(
+        controller
+            .devices()
+            .iter()
+            .map(|device| device.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Study"],
+        "a service the host's browser lost leaves the picker"
+    );
+
+    // Casting to a reported device reaches the real connect, which the
+    // loopback port refuses, rather than stopping at the gate.
+    let cast = runtime.block_on(controller.cast_to("cast-2"));
+    assert!(matches!(cast, Err(CastError::Connect(_))), "{cast:?}");
+}
+
+#[test]
+fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
+    let (runtime, controller, _services, _tmp) = test_controller(RendererDiscovery::reported());
+
+    runtime.block_on(async {
+        controller
+            .ensure_server()
+            .await
+            .expect("server starts from the controller runtime");
+    });
+    let base_url = controller
+        .server
+        .lock()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .base_url
+        .clone();
+    assert!(
+        base_url.starts_with("http://127.0.0.1:"),
+        "the test's server stays on loopback: {base_url}"
+    );
+}
+
+/// A receiver advertising a setting bae can't read is refused before any
+/// connection is attempted, with the setting named in the error.
+#[test]
+fn an_unreadable_airplay_advertisement_is_refused() {
+    let unreadable = UnreadableSetting {
+        key: "features".to_string(),
+        raw: Some("garbage".to_string()),
+    };
+    let Err(error) = build_airplay_sink(
+        &Diagnostics::noop(),
+        "10.0.0.7".parse().unwrap(),
+        7000,
+        &Err(unreadable.clone()),
+    ) else {
+        panic!("an unreadable advertisement builds no sink");
+    };
+    assert!(
+        matches!(&error, CastError::AirPlayUnreadableSettings(setting) if *setting == unreadable)
+    );
+    assert!(error.to_string().contains("\"garbage\""));
+}
+
+/// A raw serve carries `format=raw`; an MP3 conversion carries
+/// `format=mp3&maxBitRate=320`, a WAV one `format=wav`. Each names the
+/// track as a `tr-` Subsonic id and carries the auth triplet.
+#[test]
+fn stream_url_encodes_format_and_track() {
+    let provider = stream_url_provider("http://10.0.0.5:9000".to_string(), credential());
+
+    let raw = provider("track-1", RendererStreamFormat::Raw).unwrap();
+    assert!(raw.starts_with("http://10.0.0.5:9000/rest/stream?id=tr-track-1&"));
+    assert!(raw.contains("&format=raw"), "{raw}");
+    assert!(raw.contains("u=castuser"));
+    assert!(raw.contains("&t="));
+    assert!(raw.contains("&s="));
+
+    let transcoded = provider("track-2", RendererStreamFormat::TranscodeMp3).unwrap();
+    assert!(
+        transcoded.contains("&format=mp3&maxBitRate=320"),
+        "{transcoded}"
+    );
+
+    let wav = provider("track-3", RendererStreamFormat::TranscodeWav).unwrap();
+    assert!(wav.contains("id=tr-track-3&"), "{wav}");
+    assert!(wav.ends_with("&format=wav"), "{wav}");
+}
+
+/// The token in a minted URL is `md5(password + salt)` over the URL's own
+/// salt — the exact derivation bae-subsonic recomputes to authenticate the
+/// request.
+#[test]
+fn minted_token_matches_the_credential() {
+    let credential = credential();
+    let url = stream_url_provider("http://host:1".to_string(), credential.clone())(
+        "t",
+        RendererStreamFormat::Raw,
+    )
+    .unwrap();
+
+    let params: std::collections::HashMap<_, _> = url
+        .split_once('?')
+        .unwrap()
+        .1
+        .split('&')
+        .filter_map(|pair| pair.split_once('='))
+        .collect();
+    let salt = params["s"];
+    let expected = md5_hex(&format!("{}{salt}", credential.password));
+    assert_eq!(params["t"], expected, "token must be md5(password + salt)");
+}
+
+/// Each minted URL carries a fresh salt, so the token differs between calls.
+#[test]
+fn each_url_uses_a_fresh_salt() {
+    let provider = stream_url_provider("http://host:1".to_string(), credential());
+    let a = provider("t", RendererStreamFormat::Raw).unwrap();
+    let b = provider("t", RendererStreamFormat::Raw).unwrap();
+    assert_ne!(a, b, "a fresh salt per call yields distinct URLs");
+}
+
+/// The ephemeral server binds a real port and authenticates the minted URLs
+/// through bae-subsonic's own auth: a request with the minted token reaches
+/// the handler (a missing track answers "not found", code 70 — not the
+/// wrong-credentials code 40), a tampered token is rejected (code 40), and
+/// stopping the server frees the port.
+#[test]
+fn ephemeral_server_authenticates_minted_urls_and_stops() {
+    let (runtime, services, _tmp) = bae_test_support::runtime_with_services();
+
+    runtime.block_on(async move {
+        let server = EphemeralServer::start(
+            services,
+            ServingNetwork::Loopback,
+            &Diagnostics::noop(),
+            || {},
+        )
+        .await
+        .expect("the ephemeral server binds a real port");
+        assert!(
+            server.base_url.starts_with("http://127.0.0.1:"),
+            "the test's server stays on loopback: {}",
+            server.base_url
+        );
+
+        let base = server.base_url.clone();
+        let valid = stream_url_provider(base.clone(), server.credential.clone())(
+            "missing-track",
+            RendererStreamFormat::Raw,
+        )
+        .unwrap();
+
+        let body = reqwest::get(&valid)
+            .await
+            .expect("the server is reachable on its bound port")
+            .text()
+            .await
+            .unwrap();
+        assert!(
+            !body.contains("code=\"40\""),
+            "the minted token must authenticate (not a wrong-credentials error): {body}"
+        );
+        assert!(
+            body.contains("code=\"70\""),
+            "an authenticated request for a missing track answers not-found: {body}"
+        );
+
+        // Tamper with the token: auth must reject it.
+        let tampered = valid.replace(
+            &format!("&t={}", token_of(&valid)),
+            "&t=00000000000000000000000000000000",
+        );
+        let tampered_body = reqwest::get(&tampered).await.unwrap().text().await.unwrap();
+        assert!(
+            tampered_body.contains("code=\"40\""),
+            "a tampered token must be rejected with wrong-credentials: {tampered_body}"
+        );
+
+        server.stop().await;
+
+        // The port is released: a fresh request fails to connect.
+        assert!(
+            reqwest::get(&valid).await.is_err(),
+            "stopping the session must release the port"
+        );
+    });
+}
+
+/// Extract the `t` (token) value from a minted URL, for the tamper test.
+fn token_of(url: &str) -> String {
+    url.split('&')
+        .find_map(|pair| pair.strip_prefix("t="))
+        .expect("the URL carries a token")
+        .to_string()
+}

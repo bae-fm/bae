@@ -8,14 +8,16 @@
 
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::RendererDevice;
+use bae_core::diagnostics::Diagnostics;
 
 /// One protocol's live browse: everything it holds while it is reading the
 /// network. Started against the list it publishes into, and stopped as a whole.
 pub(crate) trait Browse: Sized {
     /// Start reading the network, publishing what is found into `devices`.
     /// `None` when the transport could not open what it browses with — it has
-    /// logged why and released whatever it had taken.
-    fn start(devices: &PublishedDevices) -> Option<Self>;
+    /// logged why and released whatever it had taken. A reader that panics on
+    /// what it read reports it through `diagnostics`, skips it, and reads on.
+    fn start(devices: &PublishedDevices, diagnostics: &Diagnostics) -> Option<Self>;
 
     /// Stop reading and release everything the browse holds. The published list
     /// is left alone, so the last devices found stay on screen.
@@ -46,11 +48,11 @@ impl<B: Browse> ProtocolDiscovery<B> {
 
     /// Begin browsing. Idempotent: a second call while already browsing is a
     /// no-op, and a transport that cannot start stays stopped.
-    pub(crate) fn start(&mut self) {
+    pub(crate) fn start(&mut self, diagnostics: &Diagnostics) {
         if self.running.is_some() {
             return;
         }
-        self.running = B::start(&self.devices);
+        self.running = B::start(&self.devices, diagnostics);
     }
 
     /// Stop browsing and release what the browse held. The last published

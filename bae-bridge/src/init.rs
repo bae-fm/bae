@@ -118,7 +118,11 @@ impl BridgeDiagnostics {
             self.inner.clone(),
             builder,
             opening.report(),
-            move |services, runtime| AppHandle::start_for_host(services, runtime, host),
+            start_handle(
+                host,
+                #[cfg(feature = "cast")]
+                self.inner.clone(),
+            ),
         ))
     }
 
@@ -146,7 +150,11 @@ impl BridgeDiagnostics {
             self.inner.clone(),
             builder,
             opening.report(),
-            move |services, runtime| AppHandle::start_for_host(services, runtime, host),
+            start_handle(
+                host,
+                #[cfg(feature = "cast")]
+                self.inner.clone(),
+            ),
         ))
     }
 
@@ -165,7 +173,11 @@ impl BridgeDiagnostics {
             restore_playback,
             host.audio_focus(),
             self.inner.clone(),
-            move |services, runtime| AppHandle::start_for_host(services, runtime, host),
+            start_handle(
+                host,
+                #[cfg(feature = "cast")]
+                self.inner.clone(),
+            ),
         ))
     }
 
@@ -513,6 +525,28 @@ fn configure_logging() {
             bae_core::logging::install(terminal_log_sink().into_iter().collect());
             tracing::error!("journald tracing layer initialization failed: {error}");
         }
+    }
+}
+
+/// What a bootstrap runs once the library is open: start the handle for
+/// `host` over it, casting reporting through `diagnostics`.
+fn start_handle(
+    host: Arc<crate::BridgeHost>,
+    #[cfg(feature = "cast")] diagnostics: Diagnostics,
+) -> impl FnOnce(
+    bae_core::library::AppServices,
+    tokio::runtime::Runtime,
+) -> Result<AppHandle, bae_core::app::BootstrapError>
+       + Send
+       + 'static {
+    move |services, runtime| {
+        AppHandle::start_for_host(
+            services,
+            runtime,
+            host,
+            #[cfg(feature = "cast")]
+            diagnostics,
+        )
     }
 }
 

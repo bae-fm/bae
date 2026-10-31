@@ -449,18 +449,28 @@ struct Ap2SessionControl {
 impl Ap2SessionControl {
     /// Pause the receiver's rendering (rate 0) — AirPlay 2's FLUSH.
     fn flush(&self) -> Result<(), Ap2Error> {
-        self.control.lock().unwrap().set_rate(0)
+        self.connection()?.set_rate(0)
     }
 
     /// Resume rendering (rate 1) and re-anchor the sender's pacing.
     fn reanchor(&self) -> Result<(), Ap2Error> {
         self.stream.reanchor();
-        self.control.lock().unwrap().set_rate(1)
+        self.connection()?.set_rate(1)
     }
 
     /// TEARDOWN the session on the receiver.
     fn teardown(&self) -> Result<(), Ap2Error> {
-        self.control.lock().unwrap().teardown()
+        self.connection()?.teardown()
+    }
+
+    /// The encrypted control connection. One a panic left mid-request can't
+    /// be read in step with its replies again, so it takes no more requests.
+    fn connection(&self) -> Result<std::sync::MutexGuard<'_, Ap2Control>, Ap2Error> {
+        self.control.lock().map_err(|poisoned| {
+            Ap2Error::Io(std::io::Error::other(format!(
+                "a panic left the control connection partway through a request: {poisoned}"
+            )))
+        })
     }
 }
 
@@ -476,6 +486,7 @@ impl Ap2Session {
     /// drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
     /// start streaming `source` as ChaCha-encrypted audio.
     pub(crate) fn start(
+        diagnostics: &bae_core::diagnostics::Diagnostics,
         receiver: IpAddr,
         airplay_port: u16,
         source: Box<dyn PcmSource>,
@@ -540,6 +551,7 @@ impl Ap2Session {
         let cipher = Ap2AudioCipher::from_shared_secret(&shared);
         let stream_control = RaopStreamControl::new(latency);
         let stream = RaopStream::spawn(
+            diagnostics,
             source,
             PayloadCrypto::Ap2(cipher),
             endpoints,
