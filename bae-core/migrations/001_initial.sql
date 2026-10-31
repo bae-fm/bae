@@ -5336,7 +5336,6 @@ CREATE TABLE history (
     id TEXT PRIMARY KEY NOT NULL,
     person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
     track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
-    release_id TEXT NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
     started_at TEXT NOT NULL,
     played_ms INTEGER NOT NULL CHECK (played_ms > 0),
     audience TEXT NOT NULL
@@ -5348,7 +5347,6 @@ CREATE INDEX history_started_at ON history(started_at);
 CREATE TABLE local_history (
     id TEXT PRIMARY KEY NOT NULL,
     track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
-    release_id TEXT NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
     started_at TEXT NOT NULL,
     played_ms INTEGER NOT NULL CHECK (played_ms > 0)
 ) STRICT;

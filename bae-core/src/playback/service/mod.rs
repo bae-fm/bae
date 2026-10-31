@@ -286,7 +286,6 @@ impl PreparedAudioSegment {
 #[derive(Clone)]
 struct PlaybackPreparedTrack {
     track_id: String,
-    release_id: String,
     segments: Vec<PreparedAudioSegment>,
     /// In Hz.
     sample_rate: u32,
@@ -387,7 +386,6 @@ fn finalize_playback_track(
 
     PlaybackPreparedTrack {
         track_id,
-        release_id: resolved.release_id.clone(),
         segments,
         sample_rate: resolved.sample_rate.get(),
         channels: resolved.channels.get(),

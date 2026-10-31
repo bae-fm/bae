@@ -17,7 +17,6 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
         .begin_play(
             uuid::Uuid::new_v4(),
             &track,
-            &release,
             Some(Duration::from_secs(40)),
             started,
         )
@@ -59,7 +58,6 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
         .begin_play(
             uuid::Uuid::new_v4(),
             &track,
-            &release,
             Some(Duration::from_secs(100)),
             started,
         )
@@ -86,7 +84,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert_eq!(row.played, Duration::from_secs(62));
     assert_ne!(row.id, local.entry().id);
     let mut unknown = db
-        .begin_play(uuid::Uuid::new_v4(), &track, &release, None, started)
+        .begin_play(uuid::Uuid::new_v4(), &track, None, started)
         .await
         .unwrap();
     unknown.set_played(Duration::from_secs(8));
@@ -96,7 +94,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     // A profile can arrive from another device while this device still has
     // listening from before registration. Retrying profile setup adopts it too.
     let awaiting_profile = uuid::Uuid::new_v4();
-    db.execute_local_sql_for_test(&format!("INSERT INTO local_history (id, track_id, release_id, started_at, played_ms) VALUES ('{awaiting_profile}', '{track}', '{release}', '2026-10-18T16:00:00Z', 30000)")).await.unwrap();
+    db.execute_local_sql_for_test(&format!("INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{awaiting_profile}', '{track}', '2026-10-18T16:00:00Z', 30000)")).await.unwrap();
     manager.create_profile("Robin").await.unwrap();
     let rows = db.history().await.unwrap();
     assert_eq!(

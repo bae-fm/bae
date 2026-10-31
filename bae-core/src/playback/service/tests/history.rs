@@ -7,7 +7,6 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     let (_home, mut service, mut progress) =
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
-    prepared.release_id = RELEASE.to_string();
     prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;
@@ -85,7 +84,6 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
     let (_home, mut service, mut progress) =
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
-    prepared.release_id = RELEASE.to_string();
     prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;
@@ -153,7 +151,6 @@ async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one()
     fill_test_release(&mut service, RELEASE).await;
     let prepared = |id: &str| {
         let mut track = test_prepared_track(id, create_sparse_buffer(1024));
-        track.release_id = RELEASE.into();
         track.sample_rate = 100;
         track.channels = 1;
         track
@@ -207,7 +204,6 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         let clock = Arc::new(crate::playback::ManualPlaybackClock::new(test_clock_start()));
         service.clock = clock.clone();
         let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
-        prepared.release_id = RELEASE.into();
         prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
         prepared.sample_rate = 100;
         prepared.channels = 1;
@@ -313,7 +309,6 @@ async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
     let (_home, mut service, mut progress) =
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
-    prepared.release_id = RELEASE.into();
     prepared.timeline = TrackTimeline::new(None, std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;

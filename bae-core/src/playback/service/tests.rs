@@ -378,7 +378,6 @@ fn test_prepared_track_with_file(
 ) -> PlaybackPreparedTrack {
     PlaybackPreparedTrack {
         track_id: track_id.to_string(),
-        release_id: "release-id".to_string(),
         segments: vec![PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),

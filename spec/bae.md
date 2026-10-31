@@ -1888,10 +1888,10 @@ circle is an ordinary write in coven
 ([§15.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#154-moving-rows)).
 
 **History.** Ben plays track 3 of Ana's album for two minutes: one `history`
-row records Ben, the track, the release, when the play started, and how much
-of it he heard. He skips track 4 after ten seconds: nothing is recorded. A play
-counts once 30 seconds of the track, or half of it, whichever comes first, has
-played; a 40-second interlude counts after 20. A skip isn't a listen.
+row records Ben, the track, when the play started, and how much of it he
+heard; the track names its release. He skips track 4 after ten seconds:
+nothing is recorded. A play counts once 30 seconds of the track, or half of
+it, whichever comes first, has played; a 40-second interlude counts after 20. A skip isn't a listen.
 
 How much he heard counts only audio that played: not pauses, not waiting for
 the network, not what a seek jumped over. The row is written when the play
@@ -3545,10 +3545,10 @@ All sync (§5), except `local_history`.
 |---|---|
 | `people` | person, keyed by their `MemberId`: name, private circle, history setting (private or household), and the coven file of their avatar (`avatar_id`), with an index by it |
 | `ratings` | rating by a person of an album or of a track, one to five stars |
-| `history` | play: person, track, release, when it started, how much was played, audience |
+| `history` | play: person, track, when it started, how much was played, audience |
 | `playlists` | playlist: whose it is, its name and its audience |
 | `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
-| `local_history` | play on this device before the person had a profile: track, release, when it started, how much was played (§5.3) |
+| `local_history` | play on this device before the person had a profile: track, when it started, how much was played (§5.3) |
 
 ### A.3 Playback
 

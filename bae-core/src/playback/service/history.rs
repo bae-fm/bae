@@ -89,14 +89,9 @@ impl PlaybackService {
         }
         let track = cur.prepared.track_id.clone();
         let position = cur.position;
-        let release = cur.prepared.release_id.clone();
         let duration = cur.prepared.timeline.duration();
         let now = self.clock.now();
-        match self
-            .library_manager
-            .begin_play(&track, &release, duration, now)
-            .await
-        {
+        match self.library_manager.begin_play(&track, duration, now).await {
             Ok(play) => {
                 let meter = if self.renderer.is_remote() {
                     ListeningMeter::Remote {
