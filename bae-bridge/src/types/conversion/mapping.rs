@@ -7,7 +7,6 @@ impl BridgeFileInfo {
             size: f.size,
             dir_prefix: f.dir_prefix.clone(),
             file_name: f.file_name.clone(),
-            local_path: f.path.to_string_lossy().to_string(),
             audio_format: f
                 .source_audio
                 .as_ref()
@@ -162,7 +161,7 @@ impl BridgeMappingFile {
         } = file;
         BridgeMappingFile {
             role: BridgeMappingRole::from_core(role),
-            local_path: path.to_string_lossy().to_string(),
+            local_path: coven::path_bytes(&path),
             preview_target: preview_target.map(BridgePreviewTarget::from_core),
             file_id,
             name,
@@ -183,7 +182,6 @@ impl BridgeMappingEntry {
             duration_ms,
             container_id,
             container_name,
-            container_path,
             preview_target,
             audio_format,
         } = entry;
@@ -195,7 +193,6 @@ impl BridgeMappingEntry {
             duration_ms,
             container_id,
             container_name,
-            container_local_path: container_path.to_string_lossy().to_string(),
             preview_target: BridgePreviewTarget::from_core(preview_target),
             audio_format: BridgeAudioFormat::from_core(audio_format),
         }
@@ -245,7 +242,7 @@ impl BridgeSheetGroup {
             sheet_id,
             name,
             size,
-            local_path: path.to_string_lossy().into_owned(),
+            local_path: coven::path_bytes(&path),
             bound: BridgeSheetBound::from_core(bound),
             reference_options: reference_options
                 .into_iter()

@@ -564,9 +564,8 @@ extension AlbumDetailView {
             }
 
             let presetId = SaveFormatPopup.selectedPresetId(of: formatPopup)
-            let outputPath = url.path(percentEncoded: false)
             do {
-                try await export.saveTrack(trackId, outputPath, presetId)
+                try await export.saveTrack(trackId, url, presetId)
             }
             catch is CancellationError {
                 // view dismissed mid-save; OutputFileGuard cleaned up

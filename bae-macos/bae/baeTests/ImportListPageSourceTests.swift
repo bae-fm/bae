@@ -667,7 +667,7 @@ extension ImportListPageSourceTests {
                 title: "/w/b",
                 cover: .local(
                     file: BridgeFileVersion(
-                        path: "/w/b/cover.jpg",
+                        path: Data("/w/b/cover.jpg".utf8),
                         size: 4096,
                         modifiedAtNs: 1_700_000_000_000_000_000
                     )

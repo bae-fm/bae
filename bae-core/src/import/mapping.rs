@@ -176,7 +176,6 @@ pub struct MappingEntry {
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
     pub container_name: String,
-    pub container_path: PathBuf,
     /// The exact window of the container that auditioning this entry plays.
     pub preview_target: crate::playback::PreviewTarget,
     pub audio_format: crate::album_detail::AudioFormat,
@@ -449,7 +448,6 @@ impl RowBuilder<'_> {
                         duration_ms,
                         container_id: audio.relative_path.clone(),
                         container_name: audio.file_name.clone(),
-                        container_path: audio.path.clone(),
                         audio_format: format,
                         preview_target,
                     }),

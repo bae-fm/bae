@@ -89,7 +89,7 @@ extension ImportMappingTracksLayoutTests {
             sheetId: "Collection.cue",
             name: "Collection.cue",
             size: 2_048,
-            localPath: "/tmp/source/Collection.cue",
+            localPath: Data("/tmp/source/Collection.cue".utf8),
             bound: secondAssigned
                 ? .describesFiles(audioFileCount: 2)
                 : .unresolved(requested: ["Second.wav"]),
@@ -162,7 +162,7 @@ extension ImportMappingTracksLayoutTests {
             sheetId: "Collection.cue",
             name: "Collection.cue",
             size: 2_048,
-            localPath: "/tmp/source/Collection.cue",
+            localPath: Data("/tmp/source/Collection.cue".utf8),
             bound: .describesFiles(audioFileCount: 2),
             referenceOptions: references,
             assignment: .disc(number: 1),

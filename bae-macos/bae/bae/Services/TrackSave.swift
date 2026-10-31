@@ -6,7 +6,7 @@ import Foundation
 final class TrackSave: Sendable, Observable {
     let saveTrack:
         @Sendable (
-            _ trackId: String, _ outputPath: String, _ presetId: String
+            _ trackId: String, _ outputPath: URL, _ presetId: String
         ) async throws -> Void
     /// The default filename stem (no extension) the save panel pre-fills for a
     /// track under the selected preset, rendered by core from that preset's
@@ -16,7 +16,7 @@ final class TrackSave: Sendable, Observable {
 
     init(
         saveTrack:
-            @escaping @Sendable (String, String, String)
+            @escaping @Sendable (String, URL, String)
             async throws -> Void = { _, _, _ in },
         suggestedName:
             @escaping @Sendable (String, String) async throws -> String = {
@@ -33,7 +33,7 @@ final class TrackSave: Sendable, Observable {
             saveTrack: {
                 try await handle.saveTrack(
                     trackId: $0,
-                    outputPath: $1,
+                    outputPath: $1.pathBytes,
                     presetId: $2
                 )
             },

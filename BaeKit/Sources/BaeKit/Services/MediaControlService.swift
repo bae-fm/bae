@@ -172,7 +172,7 @@ public final class MediaControlService: @unchecked Sendable {
                 }
                 guard line.target == target else {
                     logger.debug(
-                        "Not showing the position of preview \(line.target.path); Now Playing shows \(target.path)"
+                        "Not showing the position of preview \(URL(filePathBytes: line.target.path, isDirectory: false).path); Now Playing shows \(URL(filePathBytes: target.path, isDirectory: false).path)"
                     )
                     return
                 }

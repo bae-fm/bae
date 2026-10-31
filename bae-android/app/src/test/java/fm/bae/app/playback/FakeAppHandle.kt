@@ -314,7 +314,7 @@ internal open class FakeAppHandle(
 
     override suspend fun detachReleaseAudio(
         releaseId: String,
-        newPath: String,
+        newPath: ByteArray,
     ) {
         unfaked("detachReleaseAudio")
     }
@@ -323,7 +323,7 @@ internal open class FakeAppHandle(
         unfaked("disconnectCloudProvider")
     }
 
-    override suspend fun filePath(fileId: String): String? = unfaked("filePath")
+    override suspend fun filePath(fileId: String): ByteArray? = unfaked("filePath")
 
     override suspend fun generateRestoreCode(): BridgeRestoreCodeShare = unfaked("generateRestoreCode")
 

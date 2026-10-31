@@ -356,7 +356,7 @@ struct ImageStoreContentIdentityTests {
         let bytes = try makePngBytes(width: 8, height: 8)
         try bytes.write(to: file)
         let version = BridgeFileVersion(
-            path: file.path,
+            path: file.pathBytes,
             size: UInt64(bytes.count),
             modifiedAtNs: 1_000
         )
@@ -390,12 +390,12 @@ struct ImageStoreContentIdentityTests {
         let bytes = try makePngBytes(width: 8, height: 8)
         try bytes.write(to: file)
         let scanned = BridgeFileVersion(
-            path: file.path,
+            path: file.pathBytes,
             size: UInt64(bytes.count),
             modifiedAtNs: 1_000
         )
         let rescanned = BridgeFileVersion(
-            path: file.path,
+            path: file.pathBytes,
             size: UInt64(bytes.count),
             modifiedAtNs: 2_000
         )
@@ -439,7 +439,7 @@ struct ImageStoreContentIdentityTests {
         let bytes = try makePngBytes(width: 8, height: 8)
         // No file exists at this path: the store never looks at it.
         let source = BridgeFileVersion(
-            path: "/nonexistent/candidate/01.flac",
+            path: Data("/nonexistent/candidate/01.flac".utf8),
             size: 1_000,
             modifiedAtNs: 1_000
         )

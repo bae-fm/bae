@@ -9,15 +9,16 @@ import Foundation
     /// type is gated to macOS.
     public final class PreviewAudio: Sendable, Observable {
         public let previewPlay:
-            @Sendable (_ target: BridgePreviewTarget) -> Void
+            @Sendable (_ target: BridgePreviewTarget) throws -> Void
         public let previewStop: @Sendable () -> Void
         public let previewTogglePause: @Sendable () -> Void
         public let previewSeekByRatio: @Sendable (_ ratio: Double) -> Void
 
         public init(
-            previewPlay: @escaping @Sendable (BridgePreviewTarget) -> Void = {
-                _ in
-            },
+            previewPlay:
+                @escaping @Sendable (BridgePreviewTarget) throws -> Void = {
+                    _ in
+                },
             previewStop: @escaping @Sendable () -> Void = {},
             previewTogglePause: @escaping @Sendable () -> Void = {},
             previewSeekByRatio: @escaping @Sendable (Double) -> Void = { _ in }
@@ -30,7 +31,7 @@ import Foundation
 
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                previewPlay: { handle.previewPlay(target: $0) },
+                previewPlay: { try handle.previewPlay(target: $0) },
                 previewStop: { handle.previewStop() },
                 previewTogglePause: { handle.previewTogglePause() },
                 previewSeekByRatio: { handle.previewSeekByRatio(ratio: $0) }

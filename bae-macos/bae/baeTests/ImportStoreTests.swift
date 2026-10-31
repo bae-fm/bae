@@ -50,7 +50,6 @@ private func bridgeFiles(fileMetadataIdentity: String) -> BridgeCandidateFiles {
                     size: 100,
                     dirPrefix: nil,
                     fileName: "01.flac",
-                    localPath: "/music/01.flac",
                     audioFormat: nil
                 ),
                 role: .audio

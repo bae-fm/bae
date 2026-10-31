@@ -118,7 +118,7 @@ impl TransferService {
     pub fn detach_release_audio(
         &self,
         release_id: String,
-        new_path: String,
+        new_path: std::path::PathBuf,
         cancel: crate::library::CancellationToken,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
         let library_manager = self.library_manager.clone();

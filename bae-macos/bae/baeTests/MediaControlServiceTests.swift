@@ -165,7 +165,7 @@ struct MediaControlServiceTests {
         service.applyTimeline(
             previewTimeline(
                 target: BridgePreviewTarget(
-                    path: "/tmp/Other Track.flac",
+                    path: Data("/tmp/Other Track.flac".utf8),
                     startSample: 0,
                     endSample: nil
                 ),
@@ -295,7 +295,7 @@ private func pausedState(trackId: String) -> BridgePlaybackValueState {
 private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())
 
 private let previewTarget = BridgePreviewTarget(
-    path: "/tmp/Preview Track.flac",
+    path: Data("/tmp/Preview Track.flac".utf8),
     startSample: 0,
     endSample: nil
 )

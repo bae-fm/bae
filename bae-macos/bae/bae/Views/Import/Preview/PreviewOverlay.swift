@@ -4,7 +4,7 @@ import SwiftUI
 struct PreviewOverlay: View {
     @Environment(PreviewAudio.self)
     var previewAudio
-    let path: String
+    let path: Data
     let isPlaying: Bool
 
     var body: some View {
@@ -15,10 +15,13 @@ struct PreviewOverlay: View {
             content: {
                 VStack(spacing: ThemeSpace.group) {
                     HStack {
-                        Text(URL(fileURLWithPath: path).lastPathComponent)
-                            .themeText(.body)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                        Text(
+                            URL(filePathBytes: path, isDirectory: false)
+                                .lastPathComponent
+                        )
+                        .themeText(.body)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                         Spacer()
                         Button {
                             previewAudio.previewStop()
@@ -59,7 +62,7 @@ struct PreviewOverlay: View {
 
     #Preview("Preview overlay") {
         PreviewOverlay(
-            path: "/Music/Downloads/Album Title/01 Track Title.flac",
+            path: Data("/Music/Downloads/Album Title/01 Track Title.flac".utf8),
             isPlaying: true,
         )
         .frame(width: 600, height: 400)

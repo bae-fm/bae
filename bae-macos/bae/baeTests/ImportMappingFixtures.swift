@@ -45,9 +45,9 @@ extension MappingFixtures {
             fileId: "\(index).flac",
             name: "\(index).flac",
             size: UInt64(30_000_000 + index * 1_000_000),
-            localPath: "/tmp/walkthrough/\(index).flac",
+            localPath: Data("/tmp/walkthrough/\(index).flac".utf8),
             previewTarget: BridgePreviewTarget(
-                path: "/tmp/walkthrough/\(index).flac",
+                path: Data("/tmp/walkthrough/\(index).flac".utf8),
                 startSample: 0,
                 endSample: nil
             ),
@@ -129,7 +129,7 @@ extension MappingFixtures {
 
     static let containerId = "Album Title.flac"
     static let sheetId = "Album Title.cue"
-    static let containerPath = "/tmp/walkthrough/Album Title.flac"
+    static let containerPath = Data("/tmp/walkthrough/Album Title.flac".utf8)
 
     static let containerFile = BridgeMappingFile(
         fileId: containerId,
@@ -161,7 +161,7 @@ extension MappingFixtures {
             sheetId: sheetId,
             name: sheetId,
             size: 2_048,
-            localPath: "/tmp/walkthrough/\(sheetId)",
+            localPath: Data("/tmp/walkthrough/\(sheetId)".utf8),
             bound: container.map { .describes(container: $0) }
                 ?? .unresolved(requested: [containerId]),
             referenceOptions: [
@@ -248,7 +248,6 @@ extension MappingFixtures {
                     durationMs: UInt64(200_000 + index * 1000),
                     containerId: containerId,
                     containerName: containerId,
-                    containerLocalPath: containerPath,
                     previewTarget: previewTarget,
                     audioFormat: audioFormat
                 )

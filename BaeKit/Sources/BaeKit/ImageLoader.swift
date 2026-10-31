@@ -21,7 +21,7 @@ public enum ImageLoader {
     public enum Source: Equatable, Sendable {
         /// A file already on disk. Streamed rather than read whole, so a huge
         /// image never sits in memory twice.
-        case local(path: String)
+        case local(URL)
         /// Image bytes already in memory — fetched through the bridge, or held
         /// by the caller. Decoded at the requested size without any fetch.
         case data(Data)
@@ -29,8 +29,8 @@ public enum ImageLoader {
         /// Human-readable description for failure logs.
         public var description: String {
             switch self {
-            case .local(let path):
-                return "image at path: \(path)"
+            case .local(let url):
+                return "image at path: \(url.path)"
             case .data(let bytes):
                 return "in-memory image: \(bytes.count) bytes"
             }
@@ -63,10 +63,10 @@ public enum ImageLoader {
         displayScale: CGFloat
     ) async throws -> PlatformImage {
         switch source {
-        case .local(let path):
+        case .local(let url):
             return try await decodeAsPlatformImage(displayScale: displayScale) {
-                let url = URL(fileURLWithPath: path) as CFURL
-                guard let cgSource = CGImageSourceCreateWithURL(url, nil)
+                guard
+                    let cgSource = CGImageSourceCreateWithURL(url as CFURL, nil)
                 else {
                     return nil
                 }

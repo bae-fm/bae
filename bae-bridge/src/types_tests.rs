@@ -737,3 +737,21 @@ fn an_s3_location_crosses_back_with_its_prefix_parsed() {
         Some("core.error.storage.prefix.invalid_character")
     );
 }
+
+/// A file whose name isn't UTF-8 crosses to the app and back as its own
+/// bytes, so auditioning it opens that file.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_preview_target_whose_name_is_not_utf8_comes_back_as_its_path() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let path =
+        std::path::Path::new("/music/Album").join(std::ffi::OsStr::from_bytes(b"Caf\xE9.flac"));
+    let target = bae_core::playback::PreviewTarget::sample_range(path.clone(), 0, Some(44_100));
+    let crossed = BridgePreviewTarget::from_core(target);
+    assert_eq!(crossed.path, b"/music/Album/Caf\xE9.flac");
+    let back = crossed
+        .into_core()
+        .expect("a path core gave the app comes back");
+    assert_eq!(back.into_sample_range(), (path, 0, Some(44_100)));
+}

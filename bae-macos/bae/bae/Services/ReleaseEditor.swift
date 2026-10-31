@@ -15,7 +15,7 @@ final class ReleaseEditor: Observable {
         @Sendable (_ releaseIds: [String]) async throws ->
             BridgeUploadReleasesOutcome
     let makeReleaseLocal:
-        @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
+        @Sendable (_ releaseId: String, _ newPath: URL) async throws -> Void
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
     let setPrimaryRelease:
         @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
@@ -39,7 +39,7 @@ final class ReleaseEditor: Observable {
             BridgeUploadReleasesOutcome =
             { _ in throw StubError.notImplemented },
         makeReleaseLocal:
-            @escaping @Sendable (String, String) async throws -> Void = {
+            @escaping @Sendable (String, URL) async throws -> Void = {
                 _,
                 _ in
             },
@@ -86,7 +86,10 @@ final class ReleaseEditor: Observable {
                 try await handle.uploadReleases(releaseIds: $0)
             },
             makeReleaseLocal: {
-                try await handle.detachReleaseAudio(releaseId: $0, newPath: $1)
+                try await handle.detachReleaseAudio(
+                    releaseId: $0,
+                    newPath: $1.pathBytes
+                )
             },
             deleteRelease: { try await handle.deleteRelease(releaseId: $0) },
             setPrimaryRelease: {

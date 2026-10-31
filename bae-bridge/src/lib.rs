@@ -18,6 +18,7 @@ mod keyed_values;
 mod live_subscription;
 mod oauth;
 mod operation_runtime;
+mod path_bytes;
 mod setup;
 #[cfg(feature = "desktop")]
 mod signals;

@@ -4,7 +4,9 @@ use super::{BridgeImageRef, BridgeRepeatMode};
 /// candidate has no byte seek positions yet.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePreviewTarget {
-    pub path: String,
+    /// The file's path as coven's bytes (`coven::path_bytes`), which the app
+    /// sends back to play it.
+    pub path: Vec<u8>,
     pub start_sample: u64,
     pub end_sample: Option<u64>,
 }
@@ -13,18 +15,20 @@ impl BridgePreviewTarget {
     pub(crate) fn from_core(target: bae_core::playback::PreviewTarget) -> Self {
         let (path, start_sample, end_sample) = target.into_sample_range();
         Self {
-            path: path.to_string_lossy().into_owned(),
+            path: coven::path_bytes(&path),
             start_sample,
             end_sample,
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::playback::PreviewTarget {
-        bae_core::playback::PreviewTarget::sample_range(
-            self.path.into(),
+    pub(crate) fn into_core(
+        self,
+    ) -> Result<bae_core::playback::PreviewTarget, crate::types::BridgeError> {
+        Ok(bae_core::playback::PreviewTarget::sample_range(
+            crate::path_bytes::path_from_app(self.path)?,
             self.start_sample,
             self.end_sample,
-        )
+        ))
     }
 }
 

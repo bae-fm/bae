@@ -235,7 +235,7 @@ struct PlaybackProgressViewTests {
     @Test("import audition displays both clocks, and none once it ends")
     func previewClocks() async throws {
         let target = BridgePreviewTarget(
-            path: "/Music/Track.flac",
+            path: Data("/Music/Track.flac".utf8),
             startSample: 0,
             endSample: nil
         )

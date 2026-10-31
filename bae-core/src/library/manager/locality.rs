@@ -29,7 +29,7 @@ impl LibraryManager {
     pub async fn detach_release_audio_into(
         &self,
         release_id: &str,
-        new_path: &str,
+        new_path: &std::path::Path,
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
         let destinations = self
@@ -39,7 +39,7 @@ impl LibraryManager {
         let cancel_on_drop = operation.clone().drop_guard();
         let manager = self.clone();
         let release_id = release_id.to_string();
-        let root = PathBuf::from(new_path);
+        let root = new_path.to_path_buf();
         let result = self
             .run_file_operation("make release local", move |closing| async move {
                 let copy =
@@ -67,7 +67,7 @@ impl LibraryManager {
     pub(super) async fn detached_audio_destinations(
         &self,
         release_id: &str,
-        new_path: &str,
+        new_path: &std::path::Path,
     ) -> Result<HashMap<String, PathBuf>, LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
         let mut dest = HashMap::with_capacity(files.len());
@@ -77,10 +77,7 @@ impl LibraryManager {
                 &format!("original_filename for file {}", f.id),
                 &f.original_filename,
             )?;
-            dest.insert(
-                f.id.clone(),
-                std::path::Path::new(new_path).join(&f.original_filename),
-            );
+            dest.insert(f.id.clone(), new_path.join(&f.original_filename));
         }
         Ok(dest)
     }
@@ -295,7 +292,7 @@ impl LibraryManager {
     pub async fn detach_release_audio(
         &self,
         release_id: &str,
-        new_path: &str,
+        new_path: &std::path::Path,
     ) -> Result<(), LibraryError> {
         // The token `cancel_release_transition` fires to stop this transfer
         // between files; registered with the drive so it is reachable for
@@ -304,7 +301,7 @@ impl LibraryManager {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.detach_release_audio(
             release_id.to_string(),
-            new_path.to_string(),
+            new_path.to_path_buf(),
             cancel.clone(),
         );
         self.drive_transfer(

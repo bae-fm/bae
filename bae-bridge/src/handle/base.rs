@@ -126,19 +126,20 @@ forward! { async this => {
             .collect())
     }
 
-    /// Filesystem path for the user's own external file behind a library file
+    /// Filesystem path, as coven's bytes (`coven::path_bytes`), for the
+    /// user's own external file behind a library file
     /// (including the DiscID re-read of a rip's LOG/CUE evidence; retained
     /// source-audio facts supply its duration). Returns `Ok(None)` if the
     /// file has no readable local location (e.g. cloud-only and not cached).
     /// Returns `Err` on DB failures so callers can distinguish a missing file
     /// from a broken library state. NOT a substitute for a coven byte read.
-    fn file_path(file_id: String) -> Option<String> {
+    fn file_path(file_id: String) -> Option<Vec<u8>> {
         let path = this
             .services
             .file_local_path(&file_id)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(path.and_then(|p| p.to_str().map(|s| s.to_string())))
+        Ok(path.map(|path| coven::path_bytes(&path)))
     }
 
     /// Resolve a list of IDs (album or track) to track IDs.
@@ -196,7 +197,8 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    fn detach_release_audio(release_id: String, new_path: String) -> () {
+    fn detach_release_audio(release_id: String, new_path: Vec<u8>) -> () {
+        let new_path = crate::path_bytes::path_from_app(new_path)?;
         Ok(this.services.detach_release_audio(&release_id, &new_path).await?)
     }
 
@@ -316,8 +318,9 @@ forward! { sync this => {
         this.services.playback_set_muted(muted);
     }
 
-    fn preview_play(target: BridgePreviewTarget) {
-        this.services.playback_preview_play(target.into_core());
+    fn preview_play(target: BridgePreviewTarget) -> Result<(), BridgeError> {
+        this.services.playback_preview_play(target.into_core()?);
+        Ok(())
     }
 
     fn preview_stop() {

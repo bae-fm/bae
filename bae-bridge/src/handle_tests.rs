@@ -305,7 +305,7 @@ fn enqueue_export_missing_release_does_not_panic() {
         Arc::clone(&handle)
             .enqueue_export(
                 "missing-release".to_string(),
-                root.join("exports").to_string_lossy().into_owned(),
+                coven::path_bytes(&root.join("exports")),
             )
             .await
     });

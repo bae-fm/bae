@@ -178,8 +178,8 @@ final class StorageActionRunner {
     }
 
     /// Prompt for the folder a local release's files move into. Returns
-    /// the chosen directory path, or nil when the user cancels the panel.
-    static func promptDetachAudioDestination() -> String? {
+    /// the chosen directory, or nil when the user cancels the panel.
+    static func promptDetachAudioDestination() -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -188,7 +188,7 @@ final class StorageActionRunner {
         guard panel.runModal() == .OK, let url = panel.url else {
             return nil
         }
-        return url.path(percentEncoded: false)
+        return url
     }
 
     private func detachAudio(releaseIds: [String]) {

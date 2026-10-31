@@ -397,13 +397,9 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     .await;
 
     let new_path = tmp.path().join("exported");
-    mgr.detach_release_audio_into(
-        &release_id,
-        new_path.to_str().unwrap(),
-        &CancellationToken::new(),
-    )
-    .await
-    .unwrap();
+    mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
+        .await
+        .unwrap();
 
     // Release is Local, and each file's original path names its new copy.
     assert_eq!(
@@ -442,11 +438,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 
     let new_path = tmp.path().join("exported");
     let result = mgr
-        .detach_release_audio_into(
-            &release_id,
-            new_path.to_str().unwrap(),
-            &CancellationToken::new(),
-        )
+        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
         .await;
     assert!(result.is_err(), "missing file must be a hard error");
 

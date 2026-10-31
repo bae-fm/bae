@@ -24,8 +24,7 @@
             name: String,
             size: UInt64,
             role: BridgeFileRole,
-            dirPrefix: String? = nil,
-            localPath: String? = nil
+            dirPrefix: String? = nil
         ) -> BridgeCandidateFile {
             BridgeCandidateFile(
                 file: BridgeFileInfo(
@@ -33,7 +32,6 @@
                     size: size,
                     dirPrefix: dirPrefix,
                     fileName: name,
-                    localPath: localPath ?? "/tmp/fake/\(name)",
                     audioFormat: role.isAudio ? previewSourceAudioFormat : nil
                 ),
                 role: role
@@ -54,8 +52,7 @@
                 name: name,
                 size: size,
                 role: .artwork(choice: choice),
-                dirPrefix: dirPrefix,
-                localPath: file.path
+                dirPrefix: dirPrefix
             )
         }
 

@@ -75,7 +75,7 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
         devices.pause().await;
         manager.database.unlock_store_key().await.unwrap();
         manager
-            .detach_release_audio(&release.id, destination.path().to_str().unwrap())
+            .detach_release_audio(&release.id, destination.path())
             .await
             .unwrap();
     } else {

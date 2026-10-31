@@ -118,7 +118,7 @@ impl BridgeFileVersion {
             modified_at_ns,
         } = file;
         Self {
-            path: path.to_string_lossy().into_owned(),
+            path: coven::path_bytes(&path),
             size,
             modified_at_ns,
         }

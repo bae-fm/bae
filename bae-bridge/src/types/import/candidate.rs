@@ -25,8 +25,6 @@ pub struct BridgeFileInfo {
     pub dir_prefix: Option<String>,
     /// Filename without directory, e.g. "front.jpg".
     pub file_name: String,
-    /// Absolute filesystem path of the file on disk.
-    pub local_path: String,
     /// Probe-verified source audio facts. `None` for non-audio files.
     pub audio_format: Option<BridgeAudioFormat>,
 }

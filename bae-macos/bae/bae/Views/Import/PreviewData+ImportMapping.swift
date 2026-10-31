@@ -15,6 +15,12 @@
             channels: 2
         )
 
+        /// Where a fake file named `name` would be, as the bridge carries a
+        /// path.
+        private static func fakePath(_ name: String) -> Data {
+            URL(fileURLWithPath: "/tmp/fake/\(name)").pathBytes
+        }
+
         /// One of the folder's audio files, as the mapping table's left half
         /// shows it. Track 4's file runs long against the release, which is
         /// what the row's two lengths are there to show.
@@ -24,9 +30,9 @@
                 fileId: "Track \(index).flac",
                 name: "Track \(index).flac",
                 size: UInt64(35_000_000 + index * 2_000_000),
-                localPath: "/tmp/fake/Track \(index).flac",
+                localPath: fakePath("Track \(index).flac"),
                 previewTarget: BridgePreviewTarget(
-                    path: "/tmp/fake/Track \(index).flac",
+                    path: fakePath("Track \(index).flac"),
                     startSample: 0,
                     endSample: nil
                 ),
@@ -44,10 +50,10 @@
                 fileId: file.file.name,
                 name: file.file.name,
                 size: file.file.size,
-                localPath: file.file.localPath,
+                localPath: fakePath(file.file.name),
                 previewTarget: role == .audio
                     ? BridgePreviewTarget(
-                        path: file.file.localPath,
+                        path: fakePath(file.file.name),
                         startSample: 0,
                         endSample: nil
                     ) : nil,
@@ -122,7 +128,6 @@
                 size: 221_100_000,
                 dirPrefix: nil,
                 fileName: "Album Image.flac",
-                localPath: "/tmp/fake/Album Image.flac",
                 audioFormat: BridgeAudioFormat(
                     codec: "FLAC",
                     sampleRateHz: 44_100,
@@ -178,11 +183,13 @@
                                         fileId: moreTracksAudio.file.name,
                                         name: moreTracksAudio.file.fileName,
                                         size: moreTracksAudio.file.size,
-                                        localPath: moreTracksAudio.file
-                                            .localPath,
+                                        localPath: fakePath(
+                                            moreTracksAudio.file.name
+                                        ),
                                         previewTarget: BridgePreviewTarget(
-                                            path: moreTracksAudio.file
-                                                .localPath,
+                                            path: fakePath(
+                                                moreTracksAudio.file.name
+                                            ),
                                             startSample: 0,
                                             endSample: nil
                                         ),
@@ -218,9 +225,8 @@
                 durationMs: durationMs,
                 containerId: mappedAudioContainer.file.name,
                 containerName: mappedAudioContainer.file.fileName,
-                containerLocalPath: mappedAudioContainer.file.localPath,
                 previewTarget: BridgePreviewTarget(
-                    path: mappedAudioContainer.file.localPath,
+                    path: fakePath(mappedAudioContainer.file.name),
                     startSample: UInt64(index) * 44_100,
                     endSample: UInt64(index + 1) * 44_100
                 ),
@@ -239,7 +245,7 @@
             sheetId: boundTrackSheet.file.name,
             name: boundTrackSheet.file.fileName,
             size: boundTrackSheet.file.size,
-            localPath: boundTrackSheet.file.localPath,
+            localPath: fakePath(boundTrackSheet.file.name),
             bound: .describes(
                 container: BridgeMappingContainer(
                     fileId: mappedAudioContainer.file.name,

@@ -179,7 +179,7 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     token.cancel();
     let dest = temp_dir.path().join("out");
     manager
-        .detach_release_audio_into(&release_id, dest.to_str().unwrap(), &token)
+        .detach_release_audio_into(&release_id, &dest, &token)
         .await
         .expect_err("a cancelled audio detachment must not report completion");
 

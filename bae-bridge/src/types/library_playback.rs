@@ -951,7 +951,9 @@ pub enum BridgeCoverImageSource {
 /// `FileVersion`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFileVersion {
-    pub path: String,
+    /// Its path as coven's bytes (`coven::path_bytes`), which the app opens
+    /// the file from.
+    pub path: Vec<u8>,
     pub size: u64,
     pub modified_at_ns: i64,
 }

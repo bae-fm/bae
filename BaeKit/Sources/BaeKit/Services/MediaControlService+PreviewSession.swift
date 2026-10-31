@@ -222,8 +222,8 @@
             publish(info, on: MPNowPlayingInfoCenter.default())
         }
 
-        private func previewTitle(from path: String) -> String {
-            (path as NSString).lastPathComponent
+        private func previewTitle(from path: Data) -> String {
+            URL(filePathBytes: path, isDirectory: false).lastPathComponent
         }
     }
 #endif

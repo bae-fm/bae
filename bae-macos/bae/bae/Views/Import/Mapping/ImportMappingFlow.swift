@@ -12,10 +12,10 @@ struct ImportMappingServices {
     let endEditing: @MainActor () async -> Void
     let previewAudio: PreviewAudio
     /// Show a document (a log, a text file, a track sheet) in the viewer: its
-    /// name, then its path on disk.
-    let openDocument: (String, String) -> Void
+    /// name, then its path on disk as the bridge carries it.
+    let openDocument: (String, Data) -> Void
     /// Show the folder's images in the lightbox: the gallery's images, then
-    /// the path of the one that was clicked.
+    /// the file id of the one that was clicked.
     let openImages: ([BridgeMappingImage], String) -> Void
     /// Surface a failed call to the user: a line the caller worded around
     /// core's, with core's diagnostic behind it.
@@ -128,7 +128,16 @@ extension ImportMappingFlow {
             setSheetDisc: discAction(key: key, services: services),
             openDocument: services.openDocument,
             openImages: services.openImages,
-            preview: { target in services.previewAudio.previewPlay(target) },
+            preview: { target in
+                do {
+                    try services.previewAudio.previewPlay(target)
+                }
+                catch {
+                    if let failure = DisplayError(error) {
+                        services.onError(failure)
+                    }
+                }
+            },
             stopPreview: { services.previewAudio.previewStop() },
             editTrack: { track in
                 start {

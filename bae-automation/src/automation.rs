@@ -432,7 +432,7 @@ impl Automation {
                     "detach audio",
                 )?;
                 self.services
-                    .detach_release_audio(&release_id, &destination_dir)
+                    .detach_release_audio(&release_id, std::path::Path::new(&destination_dir))
                     .await?;
                 Ok(AutomationStorageActionOutcome::AudioDetached { release_id })
             }

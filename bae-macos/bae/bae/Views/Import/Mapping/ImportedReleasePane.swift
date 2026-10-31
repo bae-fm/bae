@@ -10,7 +10,7 @@ struct ImportedReleasePane: View {
     let editCommands: ReleaseEditCommands
     let onViewInLibrary: (String) -> Void
     let onOpenImages: ([BridgeMappingImage], String) -> Void
-    let onOpenDocument: (String, String) -> Void
+    let onOpenDocument: (String, Data) -> Void
     let onPlayTrack: (String) -> Void
 
     /// The height the loading and failed states hold.
@@ -183,7 +183,7 @@ struct ImportingCandidatePane: View {
     let standing: BridgeImportStanding
     let coverContent: ImageContent?
     let onOpenImages: ([BridgeMappingImage], String) -> Void
-    let onOpenDocument: (String, String) -> Void
+    let onOpenDocument: (String, Data) -> Void
     let onPreview: (BridgePreviewTarget) -> Void
     let onStopPreview: () -> Void
     let previewingTarget: BridgePreviewTarget?
@@ -258,7 +258,7 @@ struct ImportingCandidatePane: View {
 private struct ReadOnlyCandidateMappingTable: View {
     let table: BridgeMappingTable
     let previewingTarget: BridgePreviewTarget?
-    let onOpenDocument: (String, String) -> Void
+    let onOpenDocument: (String, Data) -> Void
     let onPreview: (BridgePreviewTarget) -> Void
     let onStopPreview: () -> Void
 

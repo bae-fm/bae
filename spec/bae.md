@@ -2973,6 +2973,15 @@ Most `Bridge*` types restate a core type field for field. Macros in bae-mirror
 write those copies, and destructure every field, so a field added in core fails
 to compile in the bridge until it is carried across.
 
+A path on the device crosses as coven's bytes for it (`coven::path_bytes`;
+`Data` in Swift, `ByteArray` in Kotlin, `byte[]` in C#), never as text, so a
+name that isn't valid Unicode still opens: a path core gives the app to open
+or send back (a file to audition or read, an image to draw), and a folder or
+file the person picks (an export or save target, the folder a release's files
+move into). The app makes a file URL from the bytes, and the bytes from a
+URL's file-system representation. Text that shows a path comes from core,
+escaped (§3.1).
+
 ### 10.2 The handle and the host
 
 - **`BridgeHost`** is built once per process. It holds bae's directory, the

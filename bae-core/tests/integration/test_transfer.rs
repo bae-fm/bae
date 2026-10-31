@@ -528,13 +528,9 @@ async fn transition_completions_deliver_storage_values() {
     expect_storage_state(&values, &release_id, ReleaseStorageState::Remote).await;
 
     let dest = tmp.path().join("brought-back");
-    mgr.detach_release_audio_into(
-        &release_id,
-        dest.to_str().unwrap(),
-        &CancellationToken::new(),
-    )
-    .await
-    .unwrap();
+    mgr.detach_release_audio_into(&release_id, &dest, &CancellationToken::new())
+        .await
+        .unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 }
 

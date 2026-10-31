@@ -20,9 +20,7 @@ impl ArtworkAnalyzerAdapter {
 
 impl ArtworkAnalyzer for ArtworkAnalyzerAdapter {
     fn analyze(&self, path: &Path) -> ArtworkAnalysis {
-        self.callback
-            .analyze(path.to_string_lossy().into_owned())
-            .into_core()
+        self.callback.analyze(coven::path_bytes(path)).into_core()
     }
 }
 

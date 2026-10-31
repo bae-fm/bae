@@ -51,7 +51,7 @@
                 preconditionFailure("placeholder art has a size and a date")
             }
             return BridgeFileVersion(
-                path: path,
+                path: URL(fileURLWithPath: path).pathBytes,
                 size: size,
                 modifiedAtNs: Int64(
                     (modified.timeIntervalSince1970 * 1_000_000_000).rounded()
@@ -241,7 +241,7 @@
             size: UInt64,
             role: BridgeMappingRole
         ) -> BridgeMappingFile {
-            let path = "\(folder)/\(name)"
+            let path = URL(fileURLWithPath: "\(folder)/\(name)").pathBytes
             return BridgeMappingFile(
                 fileId: name,
                 name: name,

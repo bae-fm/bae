@@ -287,7 +287,7 @@ async fn detached_audio_destinations_reject_a_traversing_original_filename() {
     .await;
 
     let error = manager
-        .detached_audio_destinations(&release_id, target.to_str().unwrap())
+        .detached_audio_destinations(&release_id, &target)
         .await
         .expect_err("a traversing original_filename must not produce a destination");
     assert!(

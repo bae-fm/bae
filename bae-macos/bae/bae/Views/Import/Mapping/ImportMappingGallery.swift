@@ -55,7 +55,7 @@ struct ImportMappingGalleryTile: View {
 
     var body: some View {
         Button {
-            onOpen(images, image.file.path)
+            onOpen(images, image.fileId)
         } label: {
             VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 ImageView(

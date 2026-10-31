@@ -60,9 +60,9 @@ public enum ImageContent: Equatable, Hashable, Sendable {
         case .remote(let image):
             return "remote image: \(image.url)"
         case .localFile(let file):
-            return "image at path: \(file.path)"
+            return "image at path: \(file.url.path)"
         case .embeddedCover(let source, _):
-            return "image embedded in: \(source.path)"
+            return "image embedded in: \(source.url.path)"
         }
     }
 }
@@ -349,7 +349,7 @@ public final class ImageStore: Sendable, Observable {
             }
             return .data(bytes)
         case .localFile(let file):
-            return .local(path: file.path)
+            return .local(file.url)
         case .embeddedCover(_, let data):
             return .data(data)
         }
@@ -399,7 +399,7 @@ extension ImageStore {
     }
 
     fileprivate static func versionToken(_ file: BridgeFileVersion) -> String {
-        "\(file.path)@\(file.modifiedAtNs):\(file.size)"
+        "\(file.path.base64EncodedString())@\(file.modifiedAtNs):\(file.size)"
     }
 
     fileprivate static func libraryToken(_ image: BridgeImageRef) -> String {

@@ -12,10 +12,10 @@ struct ImportMappingActions {
     /// out of the tracklist: the sheet's file id, then the assignment.
     let setSheetDisc: (String, BridgeSheetDisc) -> Void
     /// Open a document (a log, a text file, a track sheet) in the viewer: the
-    /// file's name, then its path on disk.
-    let openDocument: (String, String) -> Void
+    /// file's name, then its path on disk as the bridge carries it.
+    let openDocument: (String, Data) -> Void
     /// Open the folder's images in the lightbox: the gallery's images, then
-    /// the path of the one that was clicked.
+    /// the file id of the one that was clicked.
     let openImages: ([BridgeMappingImage], String) -> Void
     /// Audition the exact source window carried by a mapping row.
     let preview: (BridgePreviewTarget) -> Void

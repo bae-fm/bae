@@ -54,8 +54,11 @@
             LatestStream.previewPosition(
                 holding: BridgePreviewPosition(
                     target: BridgePreviewTarget(
-                        path:
-                            "/Music/Downloads/Album Title/01 Track Title.flac",
+                        path: URL(
+                            fileURLWithPath:
+                                "/Music/Downloads/Album Title/01 Track Title.flac"
+                        )
+                        .pathBytes,
                         startSample: 0,
                         endSample: nil
                     ),

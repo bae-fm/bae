@@ -11,13 +11,13 @@ final class Outputs: Sendable, Observable {
     /// arrives through its live read, and each export's percent through its
     /// transfers.
     let enqueueExport:
-        @Sendable (_ releaseId: String, _ targetDir: String) async throws ->
+        @Sendable (_ releaseId: String, _ targetDir: URL) async throws ->
             Void
     /// Enqueue a release-level save to `targetDir` under `presetId`. The preset
     /// is captured whole at enqueue, so a later config edit can't drift it.
     let enqueueReleaseSave:
         @Sendable (
-            _ releaseId: String, _ targetDir: String, _ presetId: String
+            _ releaseId: String, _ targetDir: URL, _ presetId: String
         ) async throws -> Void
     /// Pause or resume the output queue. In-flight work finishes; the queue
     /// stops starting new operations until resumed.
@@ -35,12 +35,12 @@ final class Outputs: Sendable, Observable {
 
     init(
         enqueueExport:
-            @escaping @Sendable (String, String)
+            @escaping @Sendable (String, URL)
             async throws -> Void =
             { _, _ in
             },
         enqueueReleaseSave:
-            @escaping @Sendable (String, String, String)
+            @escaping @Sendable (String, URL, String)
             async throws -> Void =
             { _, _, _ in
             },
@@ -73,12 +73,15 @@ final class Outputs: Sendable, Observable {
     convenience init(handle: any AppHandleProtocol) {
         self.init(
             enqueueExport: {
-                try await handle.enqueueExport(releaseId: $0, targetDir: $1)
+                try await handle.enqueueExport(
+                    releaseId: $0,
+                    targetDir: $1.pathBytes
+                )
             },
             enqueueReleaseSave: {
                 try await handle.enqueueReleaseSave(
                     releaseId: $0,
-                    targetDir: $1,
+                    targetDir: $1.pathBytes,
                     presetId: $2
                 )
             },

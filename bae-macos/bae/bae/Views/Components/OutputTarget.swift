@@ -84,7 +84,7 @@ enum SaveFormatPopup {
 /// A resolved release-save destination: the chosen folder plus the preset to
 /// render with.
 struct ReleaseSaveTarget {
-    let targetDir: String
+    let targetDir: URL
     let presetId: String
 }
 
@@ -100,14 +100,16 @@ enum OutputTarget {
     /// Verbatim export: a plain folder dialog, no format anywhere. Returns the
     /// chosen directory.
     @MainActor
-    static func resolveExportDir() -> String? {
+    static func resolveExportDir() -> URL? {
         let panel = makeFolderPanel()
         guard panel.runModal() == .OK, let url = panel.url else {
             return nil
         }
-        let dir = url.path(percentEncoded: false)
-        UserDefaults.standard.set(dir, forKey: lastOutputFolderKey)
-        return dir
+        UserDefaults.standard.set(
+            url.path(percentEncoded: false),
+            forKey: lastOutputFolderKey
+        )
+        return url
     }
 
     /// Release save: a folder dialog with a preset-picker accessory (release
@@ -137,10 +139,12 @@ enum OutputTarget {
         guard panel.runModal() == .OK, let url = panel.url else {
             return nil
         }
-        let dir = url.path(percentEncoded: false)
-        UserDefaults.standard.set(dir, forKey: lastOutputFolderKey)
+        UserDefaults.standard.set(
+            url.path(percentEncoded: false),
+            forKey: lastOutputFolderKey
+        )
         return ReleaseSaveTarget(
-            targetDir: dir,
+            targetDir: url,
             presetId: SaveFormatPopup.selectedPresetId(of: popup)
         )
     }

@@ -46,7 +46,7 @@ extension ImportView {
         )
     }
 
-    private func openDocument(name: String, at path: String) {
+    private func openDocument(name: String, at path: Data) {
         do {
             let text = try readTextFile(path: path)
             uiStore.presentDocument(name: name, text: text)
@@ -63,15 +63,17 @@ extension ImportView {
         }
     }
 
-    /// Open the folder's images in the lightbox, starting at `path`.
-    private func openGallery(images: [BridgeMappingImage], at path: String) {
+    /// Open the folder's images in the lightbox, starting at the image whose
+    /// file id is `fileId`.
+    private func openGallery(images: [BridgeMappingImage], at fileId: String) {
         let items = images.map { image in
             LightboxItem(
+                id: image.fileId,
                 label: image.name,
-                file: image.file
+                image: .localFile(image.file)
             )
         }
         guard !items.isEmpty else { return }
-        uiStore.presentLightbox(items: items, preferring: path)
+        uiStore.presentLightbox(items: items, preferring: fileId)
     }
 }

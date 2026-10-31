@@ -5,12 +5,13 @@ import Foundation
 /// `AppService` god-object. Images are not paths: they load through
 /// `ImageStore`, by reference or URL.
 public final class MediaPaths: Sendable, Observable {
-    /// Filesystem path for the user's own external file behind a library file
-    /// (the DiscID re-read of a rip's LOG/CUE/audio).
-    public let filePath: @Sendable (_ fileId: String) async throws -> String?
+    /// Filesystem path, as the bridge carries it, for the user's own external
+    /// file behind a library file (the DiscID re-read of a rip's
+    /// LOG/CUE/audio).
+    public let filePath: @Sendable (_ fileId: String) async throws -> Data?
 
     public init(
-        filePath: @escaping @Sendable (String) async throws -> String? = {
+        filePath: @escaping @Sendable (String) async throws -> Data? = {
             _ in throw MediaPathsUnavailable()
         }
     ) {

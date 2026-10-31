@@ -722,9 +722,9 @@ forward! {
         /// output queue; the worker drains it one release at a time. The
         /// storage-summary lookup (resolving the pane row's title/size) happens here;
         /// the deep cloud read + copy runs on the queue worker.
-        fn enqueue_export(release_id: String, target_dir: String) -> () {
+        fn enqueue_export(release_id: String, target_dir: Vec<u8>) -> () {
             this.services
-                .enqueue_export(&release_id, std::path::PathBuf::from(target_dir))
+                .enqueue_export(&release_id, crate::path_bytes::path_from_app(target_dir)?)
                 .await
                 .map_err(BridgeError::export)
         }
@@ -734,13 +734,13 @@ forward! {
         /// so a later config edit can't change or break this queued save.
         fn enqueue_release_save(
             release_id: String,
-            target_dir: String,
+            target_dir: Vec<u8>,
             preset_id: String,
         ) -> () {
             this.services
                 .enqueue_release_save(
                     &release_id,
-                    std::path::PathBuf::from(target_dir),
+                    crate::path_bytes::path_from_app(target_dir)?,
                     &preset_id,
                 )
                 .await
@@ -750,9 +750,10 @@ forward! {
         /// Save one track to `output_path` under the preset named by `preset_id`
         /// (must apply to track saves). Always a constructed file — decoded, encoded
         /// to the preset codec, tagged, cover embedded — never a verbatim copy.
-        fn save_track(track_id: String, output_path: String, preset_id: String) -> () {
+        fn save_track(track_id: String, output_path: Vec<u8>, preset_id: String) -> () {
+            let output_path = crate::path_bytes::path_from_app(output_path)?;
             this.services
-                .save_track(&track_id, std::path::Path::new(&output_path), &preset_id)
+                .save_track(&track_id, &output_path, &preset_id)
                 .await
                 .map_err(|e| BridgeError::save(format!("{e}")))
         }

@@ -342,7 +342,7 @@ extension ImportMappingTracksLayoutTests {
         #expect(host.fittingSize.width < 46)
     }
 
-    fileprivate var audioPath: String { "/tmp/source/track.flac" }
+    fileprivate var audioPath: Data { Data("/tmp/source/track.flac".utf8) }
     fileprivate var previewTarget: BridgePreviewTarget {
         BridgePreviewTarget(path: audioPath, startSample: 0, endSample: nil)
     }
@@ -386,7 +386,7 @@ extension ImportMappingTracksLayoutTests {
             name:
                 "A long descriptor filename that must remain inside Source.cue",
             size: 2_048,
-            localPath: "/tmp/source/descriptor.cue",
+            localPath: Data("/tmp/source/descriptor.cue".utf8),
             bound: associated
                 ? .describes(
                     container: BridgeMappingContainer(
@@ -426,7 +426,6 @@ extension ImportMappingTracksLayoutTests {
             durationMs: 180_000,
             containerId: longAudioName,
             containerName: longAudioName,
-            containerLocalPath: audioPath,
             previewTarget: BridgePreviewTarget(
                 path: audioPath,
                 startSample: UInt64(number - 1) * 44_100,

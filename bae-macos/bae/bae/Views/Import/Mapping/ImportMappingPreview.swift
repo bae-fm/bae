@@ -149,7 +149,7 @@
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             previewingTarget: BridgePreviewTarget(
-                path: "/tmp/fake/Track 3.flac",
+                path: URL(fileURLWithPath: "/tmp/fake/Track 3.flac").pathBytes,
                 startSample: 0,
                 endSample: nil
             )

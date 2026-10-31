@@ -20,8 +20,9 @@ pub struct BridgeArtworkAnalysis {
 /// barcodes and text. Core calls it on blocking tasks, several images at once.
 #[uniffi::export(callback_interface)]
 pub trait ArtworkAnalyzerCallback: Send + Sync {
-    /// Empty on failure, as when there is nothing to read.
-    fn analyze(&self, path: String) -> BridgeArtworkAnalysis;
+    /// Empty on failure, as when there is nothing to read. `path` is the
+    /// image's path as coven's bytes (`coven::path_bytes`).
+    fn analyze(&self, path: Vec<u8>) -> BridgeArtworkAnalysis;
 }
 
 /// A UI event; database-backed state arrives through live results instead.

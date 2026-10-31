@@ -32,12 +32,13 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
     /// RGBA — as it did in the sweep.
     private let ciContext = CIContext()
 
-    func analyze(path: String) -> BridgeArtworkAnalysis {
-        guard let decoded = decode(path: path) else {
+    func analyze(path: Data) -> BridgeArtworkAnalysis {
+        let url = URL(filePathBytes: path, isDirectory: false)
+        guard let decoded = decode(url: url) else {
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }
         guard let cgImage = prepared(decoded.image) else {
-            logger.error("analyze could not prepare \(path) for reading")
+            logger.error("analyze could not prepare \(url.path) for reading")
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }
 
@@ -105,9 +106,8 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
     /// The stored image as ImageIO decodes it, with the orientation its
     /// EXIF names so Vision reads it upright.
     private func decode(
-        path: String
+        url: URL
     ) -> (image: CGImage, orientation: CGImagePropertyOrientation)? {
-        let url = URL(fileURLWithPath: path)
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
             let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
