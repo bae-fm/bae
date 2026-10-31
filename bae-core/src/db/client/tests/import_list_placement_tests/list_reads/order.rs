@@ -791,12 +791,14 @@ async fn a_search_reads_the_rows_its_index_finds() {
     }
 }
 
-/// A list folding groups shut reads each order in runs off that order's
-/// indexes, in its order: the headers and the rows outside every group, and
-/// each open group's members, with no sort and no folded member passed, so a
-/// window costs about its offset and limit however many members are folded.
+/// Found reads each order in runs off that order's indexes, in its order, by
+/// a window's offset and from an item beside it, folding groups shut or not:
+/// the headers and the rows outside every group, and each open group's
+/// members in their header's place, with no sort and no folded member passed,
+/// so a window costs about its offset and limit however many members are
+/// folded, and one read from an item beside it about its limit.
 #[tokio::test]
-async fn a_folded_list_reads_its_windows_off_its_runs() {
+async fn found_reads_its_windows_off_its_runs() {
     let lib = Library::new().await;
     lib.run(&format!(
         "{}{}{}",
@@ -814,27 +816,46 @@ async fn a_folded_list_reads_its_windows_off_its_runs() {
             "import_list_path_descending",
         ),
     ] {
-        let list = lib.open(ordered(TriageTab::Pending, order)).await;
-        lib.db
-            .set_import_list_group_folded(list, lib.group_key("Box"), true)
-            .await
-            .unwrap();
-        let plans = lib.db.import_list_folded_plans(list).await.unwrap();
-        let plan = plans.concat();
-        for run in ["_unfolded", "_headers", "_members"] {
-            assert!(
-                plan.iter()
-                    .any(|step| step.contains(&format!("{index}{run} "))),
-                "{order:?} reads {run}: {plan:?}"
-            );
+        for folded in [false, true] {
+            let list = lib.open(ordered(TriageTab::Pending, order)).await;
+            lib.db
+                .set_import_list_group_folded(list, lib.group_key("Box"), folded)
+                .await
+                .unwrap();
+            // Found runs in one part, read by its offset off the three runs'
+            // indexes, and by each seek from its first item, which searches
+            // them, or reaches the row it holds every term up to the folder
+            // and its number equal to by that number.
+            let plans = lib
+                .db
+                .import_list_window_plans(list)
+                .await
+                .unwrap()
+                .concat();
+            let (by_offset, seeks) = plans.split_first().expect("a part is read by its offset");
+            assert!(!seeks.is_empty(), "{order:?} folded {folded}: {plans:?}");
+            for run in ["_unfolded", "_headers", "_members"] {
+                assert!(
+                    by_offset
+                        .iter()
+                        .any(|step| step.contains(&format!("{index}{run} "))),
+                    "{order:?} folded {folded} reads {run}: {by_offset:?}"
+                );
+            }
+            for plan in &plans {
+                assert!(
+                    !plan.iter().any(|step| step.starts_with("SCAN")),
+                    "{order:?} folded {folded} scans: {plan:?}"
+                );
+                assert!(
+                    plan.iter().any(|step| step.contains("MERGE")),
+                    "{order:?} folded {folded}: {plan:?}"
+                );
+                assert!(
+                    !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+                    "{order:?} folded {folded} sorts: {plan:?}"
+                );
+            }
         }
-        assert!(
-            plan.iter().any(|step| step.contains("MERGE")),
-            "{order:?}: {plan:?}"
-        );
-        assert!(
-            !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-            "{order:?} sorts: {plan:?}"
-        );
     }
 }

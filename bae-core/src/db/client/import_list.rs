@@ -319,25 +319,11 @@ impl Database {
         .await
     }
 
-    /// The plan each run of a folded list's windows is read by, one line per
-    /// step: what a test holds the runs to their indexes with.
-    #[cfg(test)]
-    pub(crate) async fn import_list_folded_plans(
-        &self,
-        list: ImportListId,
-    ) -> Result<Vec<Vec<String>>, DbError> {
-        self.read(move |sql| {
-            let row = list_row(&sql, list)?;
-            Ok(row.items(Shown::Folded).window_plans(&sql)?.concat())
-        })
-        .await
-    }
-
-    /// Every item a list shows, read from its tab's rows in order and by the
-    /// read its windows may take instead — from the rows its search finds,
-    /// or, folding groups shut, in runs past them: the two reads, which a
-    /// test holds to agree. `None` for a list whose windows are only read in
-    /// order.
+    /// Every item a list shows, read from its tab's rows in order — Found's
+    /// in runs — and another way: from the rows its search finds, or, on
+    /// Found, its items sorted with each member in its header's place. The
+    /// two reads, which a test holds to agree. `None` for a list on Done or
+    /// Skipped that does not search, whose rows are only read in order.
     #[cfg(test)]
     pub(crate) async fn import_list_read_both_ways(
         &self,
@@ -358,17 +344,25 @@ impl Database {
                     .map(|item| format!("{:?} {}", item.item, item.key))
                     .collect())
             };
-            let folds = sql.query_row(
-                "SELECT folds FROM import_list_view WHERE id = ?",
-                [list.0],
-                |row| row.get::<_, bool>(0),
-            )?;
-            let other = match (row.filters_text, folds, row.view.tab) {
-                (true, _, _) => Shown::Found,
-                (false, true, crate::import::TriageTab::Pending) => Shown::Folded,
-                _ => return Ok(None),
+            let other = match (row.filters_text, row.view.tab) {
+                (true, _) => keys(Shown::Found)?,
+                (false, crate::import::TriageTab::Pending) => sql
+                    .query(
+                        &format!(
+                            "SELECT i.item, i.key FROM import_list_item AS i {join} \
+                             WHERE i.list_id = ? AND i.tab = 'pending' ORDER BY {terms}",
+                            join = order::unit_join("i", "unit"),
+                            terms = order::sorted_terms(row.view.order, "i", "unit"),
+                        ),
+                        [list.0],
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                    )?
+                    .into_iter()
+                    .map(|(item, key)| Ok(format!("{:?} {key}", order::Item::of(&item)?)))
+                    .collect::<Result<_, DbError>>()?,
+                (false, _) => return Ok(None),
             };
-            Ok(Some((keys(Shown::View)?, keys(other)?)))
+            Ok(Some((keys(Shown::View)?, other)))
         })
         .await
     }

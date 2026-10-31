@@ -173,7 +173,7 @@ async fn reordering_the_watched_folders_moves_every_row_under_them() {
         moves([
             (
                 lib.release("Artist/Album"),
-                Some(found("Artist/Album").grouped("Artist", None).at_root(3))
+                Some(found("Artist/Album").grouped("Artist").at_root(3))
             ),
             (lib.group("Artist"), Some(header("Artist", None).at_root(3))),
             (

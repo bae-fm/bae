@@ -117,11 +117,11 @@ impl Placed {
         }
     }
 
-    /// Listed under the group at `name`, which sorts by `date`.
-    fn grouped(self, name: &str, date: Option<i64>) -> Self {
+    /// Listed under the group at `name`, sorting in its header's place.
+    fn grouped(self, name: &str) -> Self {
         Self {
             group_name: Some(name.to_string()),
-            unit_date: date,
+            unit_date: None,
             ..self
         }
     }

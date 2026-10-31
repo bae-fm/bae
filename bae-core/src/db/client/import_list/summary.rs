@@ -9,7 +9,7 @@
 use super::super::import_state::{RuntimeFactColumns, RUNTIME_FACT_COLUMNS};
 use super::super::query::{QueryOne, QueryRows};
 use super::listed::{BasisColumns, BASIS_COLUMNS};
-use super::order::{order_terms, tab_of, uploading_cte, Item};
+use super::order::{sorted_terms, tab_of, unit_join, uploading_cte, Item};
 use super::*;
 use crate::import::list::{ImportCandidateListLocation, NarrowedCount};
 use crate::import::selection::{
@@ -83,10 +83,7 @@ pub(super) struct Listed {
 enum Reads {
     /// Its search narrows it.
     Search,
-    /// It folds groups shut: `folded` of the releases its filters keep are
-    /// in them, which reading in order would pass.
-    Folds { folded: u64 },
-    /// Neither.
+    /// Its tab's order.
     Order,
 }
 
@@ -96,29 +93,17 @@ enum Reads {
 /// row read in order and tested.
 const FOUND_ROW_COST: u128 = 3;
 
-/// What a row read in a folded list's runs costs against a row the tab's
-/// order passes, in halves: it is merged from two runs and its item worked
-/// out by its group, about one and a half times as much.
-const RUN_ROW_COST_HALVES: u64 = 3;
 impl Listed {
     /// The rows a window of the list is read from. A search's window is read
     /// from the rows the search finds, sorted, when reading them costs less
     /// than passing the rows the tab's order would pass to reach the window's
     /// end: about the window's end times the tab's releases over the releases
-    /// the search keeps. A list folding groups reads its window in runs that
-    /// pass no folded member when the members it folds cost more to pass
-    /// than reading in runs costs over reading in order: when they outnumber
-    /// half its items. Otherwise it is read from the tab's rows in order,
+    /// the search keeps. Otherwise it is read from the tab's rows in order,
     /// each tested.
     pub(super) fn shown(&self, window: &crate::library::LibraryPageWindow) -> Shown<'static> {
         let narrowed = match (self.reads, self.narrowed) {
             (Reads::Search, Some(narrowed)) => narrowed,
-            (Reads::Folds { folded }, _) if 2 * folded > (RUN_ROW_COST_HALVES - 2) * self.total => {
-                return Shown::Folded
-            }
-            (Reads::Search, None) | (Reads::Folds { .. }, _) | (Reads::Order, _) => {
-                return Shown::View
-            }
+            (Reads::Search, None) | (Reads::Order, _) => return Shown::View,
         };
         let kept = u128::from(narrowed.shown);
         let end = u128::from(window.offset.saturating_add(window.limit));
@@ -173,19 +158,15 @@ pub(super) fn listed(
             reads: Reads::Search,
         });
     }
-    let (items, reads) = match list.keeps_all {
-        true => (
-            sql.query_row(
-                "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
-                 JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?",
-                [list.id.0],
-                |row| row.get::<_, i64>(0),
-            )?,
-            Reads::Order,
-        ),
-        false => {
-            let (items, folded) = sql.query_row(
-                "SELECT kept - folded + headers, folded FROM ( \
+    let items = match list.keeps_all {
+        true => sql.query_row(
+            "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
+             JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?",
+            [list.id.0],
+            |row| row.get::<_, i64>(0),
+        )?,
+        false => sql.query_row(
+            "SELECT kept - folded + headers FROM ( \
                  SELECT \
                      CASE WHEN v.tab = 'pending' AND v.pending_filter <> 'all' \
                           THEN COALESCE((SELECT e.count FROM import_list_entry_count AS e \
@@ -209,12 +190,9 @@ pub(super) fn listed(
                           ELSE (SELECT count(*) FROM import_list_group_entry_count AS g \
                                 WHERE g.pending_entry = v.pending_filter) END AS headers \
                  FROM import_list_view AS v WHERE v.id = ?)",
-                [list.id.0],
-                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
-            )?;
-            let folded = to_u64(folded, "a list's folded releases")?;
-            (items, Reads::Folds { folded })
-        }
+            [list.id.0],
+            |row| row.get::<_, i64>(0),
+        )?,
     };
     let narrowed = match list.narrows {
         true => Some(narrowed(sql.query_row(
@@ -229,7 +207,7 @@ pub(super) fn listed(
     Ok(Listed {
         total: total(items)?,
         narrowed,
-        reads,
+        reads: Reads::Order,
     })
 }
 
@@ -297,13 +275,13 @@ pub(super) fn selected(
     list: ImportListId,
 ) -> Result<SelectedRows, DbError> {
     let row = super::list_row(sql, list)?;
-    let terms = order_terms(row.view.order, "p");
     let rows = sql.query(
         &format!(
             "WITH {uploading} \
              SELECT p.item, p.key, c.name, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS} \
              FROM import_list_selection AS s \
              JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
+             {unit} \
              JOIN scan_candidate AS c \
                  ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
              LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
@@ -311,6 +289,8 @@ pub(super) fn selected(
              WHERE s.list_id = ? \
              ORDER BY u.position IS NULL, u.position, {terms}",
             uploading = uploading_cte(),
+            unit = unit_join("p", "unit"),
+            terms = sorted_terms(row.view.order, "p", "unit"),
         ),
         [list.0],
         |row| {
@@ -391,7 +371,6 @@ pub(super) fn first_identifying(
     list: ImportListId,
 ) -> Result<Option<String>, DbError> {
     let row = super::list_row(sql, list)?;
-    let terms = order_terms(row.view.order, "p");
     Ok(sql
         .query_row(
             &format!(
@@ -399,12 +378,15 @@ pub(super) fn first_identifying(
                  SELECT p.key FROM import_candidate_standing AS st \
                  JOIN import_list_placement AS p \
                      ON p.key = st.candidate_key AND p.item = 'candidate' \
+                 {unit} \
                  LEFT JOIN uploading AS u ON u.key = p.key \
                  WHERE st.identification IN ('queued', 'running', 'finalizing', 'reading_pick') \
                  ORDER BY CASE p.tab WHEN 'pending' THEN 0 WHEN 'done' THEN 1 ELSE 2 END, \
                           u.position IS NULL, u.position, {terms} \
                  LIMIT 1",
                 uploading = uploading_cte(),
+                unit = unit_join("p", "unit"),
+                terms = sorted_terms(row.view.order, "p", "unit"),
             ),
             [],
             |row| row.get::<_, String>(0),

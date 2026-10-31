@@ -3346,15 +3346,19 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     -- Unix epoch milliseconds; otherwise its folder's date, as
     -- `folder_discovery` holds it. NULL when none is stored, and for a header.
     own_date            INTEGER,
-    -- A group's date, its newest member's own date, on its header and its
-    -- members; NULL off a group.
+    -- A group's date, its newest member's own date, on its header; NULL off
+    -- a header. A member sorts in its header's place rather than by a copy
+    -- of it, so a member that moves its group's date writes only the header.
     group_date          INTEGER,
     -- For a header: whether its folder is offered to be read as one release
     -- (`import_list_recombine`). NULL off a header.
     combinable          INTEGER CHECK (combinable IN (0, 1)),
-    -- What the row sorts by first: its group's date, else its own.
+    -- What a header or a row outside every group sorts by first: the
+    -- group's date on a header, the row's own otherwise. NULL on a member,
+    -- which sorts in its header's place.
     unit_date           INTEGER GENERATED ALWAYS AS (CASE
-        WHEN group_name IS NULL THEN own_date ELSE group_date END) STORED,
+        WHEN item = 'group' THEN group_date
+        WHEN group_name IS NULL THEN own_date END) STORED,
     display_path        TEXT,
     -- What the row sorts by after its date: its group's folder, else its
     -- display path.
@@ -3417,10 +3421,9 @@ CREATE INDEX IF NOT EXISTS import_list_placement_by_group
 CREATE INDEX IF NOT EXISTS import_list_placement_by_display_path
     ON import_list_placement (watched_folder_path, display_path);
 
--- Each tab's rows in each order the list shows them in. A group's header
--- leads its members, which share its date and folder; undated rows come last
--- either way; descending path order reverses every term but the header's
--- lead.
+-- Each tab's rows in each order the list shows them in, for Done and
+-- Skipped, which hold no group; undated rows come last either way. Found's
+-- groups are read in runs instead (below).
 CREATE INDEX IF NOT EXISTS import_list_newest_first ON import_list_placement (
     tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path,
     item = 'group' DESC, own_date IS NULL, own_date DESC,
@@ -3438,12 +3441,13 @@ CREATE INDEX IF NOT EXISTS import_list_path_descending ON import_list_placement 
     tab, root_position DESC, watched_folder_path DESC, unit_path DESC, item = 'group' DESC,
     display_path COLLATE natural_order DESC, key DESC);
 
--- A list that folds groups shut reads each order in three runs instead, so
--- no read passes a folded group's members: the headers and the rows outside
--- every group (`_unfolded`), each open group's header (`_headers`), and that
--- group's members in its order (`_members`). Within the order's terms up to
--- the folder, only a header and its members tie, so the row's number breaks
--- the tie in the first two and the members take their header's: the three
+-- Found reads each order in three runs, so a member sorts in its header's
+-- place and no read passes a folded group's members: the headers and the
+-- rows outside every group (`_unfolded`), each open group's header
+-- (`_headers`), and that group's members in its order (`_members`), its
+-- header leading them. Within the order's terms up to the folder, only a
+-- header and its members tie, so the row's number breaks the tie in the
+-- first two and the members take their header's terms and number: the three
 -- runs then merge in the order's own sequence.
 CREATE INDEX IF NOT EXISTS import_list_newest_first_unfolded ON import_list_placement (
     tab, unit_date IS NULL, unit_date DESC, root_position, watched_folder_path, unit_path, entry)
@@ -3809,8 +3813,8 @@ BEGIN
 END;
 
 -- Bring the header of the group `group_name` under `watched_folder_path` in
--- line with its members: there while it has any, and dated with them by the
--- newest member's own date. Like `import_list_replace`, a procedure entry
+-- line with its members: there while it has any, and dated by its newest
+-- member's own date. Like `import_list_replace`, a procedure entry
 -- point that stores nothing.
 CREATE VIEW IF NOT EXISTS import_list_regroup AS
 SELECT watched_folder_path, group_name FROM import_list_placement WHERE 0;
@@ -3842,7 +3846,7 @@ BEGIN
     SET group_date = (SELECT MAX(member.own_date) FROM import_list_placement AS member
                       WHERE member.watched_folder_path = NEW.watched_folder_path
                         AND member.group_name = NEW.group_name AND member.item <> 'group')
-    WHERE watched_folder_path = NEW.watched_folder_path AND group_name = NEW.group_name
+    WHERE watched_folder_path = NEW.watched_folder_path AND item = 'group' AND key = NEW.group_name
       AND group_date IS NOT (SELECT MAX(member.own_date) FROM import_list_placement AS member
                              WHERE member.watched_folder_path = NEW.watched_folder_path
                                AND member.group_name = NEW.group_name
@@ -3965,8 +3969,7 @@ SELECT watched_folder_path, display_path FROM import_list_placement WHERE 0;
 CREATE TRIGGER IF NOT EXISTS import_list_renest_row INSTEAD OF INSERT ON import_list_renest
 BEGIN
     UPDATE import_list_placement
-    SET holds_nested = nesting.holds_nested,
-        group_date = CASE WHEN nesting.holds_nested THEN import_list_placement.group_date END
+    SET holds_nested = nesting.holds_nested
     FROM import_list_nesting AS nesting
     WHERE nesting.watched_folder_path = NEW.watched_folder_path
       AND nesting.display_path = NEW.display_path
@@ -4032,10 +4035,6 @@ CREATE TRIGGER IF NOT EXISTS import_list_placement_regrouped AFTER UPDATE ON imp
 WHEN NEW.item <> 'group'
  AND (OLD.group_name IS NOT NEW.group_name OR OLD.own_date IS NOT NEW.own_date)
 BEGIN
-    -- A row out of every group carries no group's date.
-    UPDATE import_list_placement SET group_date = NULL
-    WHERE NEW.group_name IS NULL AND NEW.group_date IS NOT NULL
-      AND watched_folder_path = NEW.watched_folder_path AND item = NEW.item AND key = NEW.key;
     INSERT INTO import_list_regroup (watched_folder_path, group_name)
     SELECT OLD.watched_folder_path, OLD.group_name WHERE OLD.group_name IS NOT NULL
     UNION

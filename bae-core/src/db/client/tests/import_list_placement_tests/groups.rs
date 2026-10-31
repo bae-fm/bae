@@ -4,7 +4,9 @@
 use super::*;
 
 /// A release nested below a folder is listed under that folder's header, and
-/// the group sorts by its newest member.
+/// the group sorts by its newest member. A member sorts in its header's
+/// place, so one that moves the group's date moves only the header: a scan
+/// writing a large group's members newest last writes two rows each.
 #[tokio::test]
 async fn nested_releases_group_under_their_first_folder_by_the_newest() {
     let lib = Library::new().await;
@@ -19,11 +21,7 @@ async fn nested_releases_group_under_their_first_folder_by_the_newest() {
         moves([
             (
                 lib.release("Artist/Early"),
-                Some(
-                    found("Artist/Early")
-                        .dated(100)
-                        .grouped("Artist", Some(100))
-                )
+                Some(found("Artist/Early").dated(100).grouped("Artist"))
             ),
             (lib.group("Artist"), Some(header("Artist", Some(100)))),
         ])
@@ -32,16 +30,8 @@ async fn nested_releases_group_under_their_first_folder_by_the_newest() {
         lib.moved(&lib.scan("Artist/Late")).await,
         moves([
             (
-                lib.release("Artist/Early"),
-                Some(
-                    found("Artist/Early")
-                        .dated(100)
-                        .grouped("Artist", Some(300))
-                )
-            ),
-            (
                 lib.release("Artist/Late"),
-                Some(found("Artist/Late").dated(300).grouped("Artist", Some(300)))
+                Some(found("Artist/Late").dated(300).grouped("Artist"))
             ),
             (lib.group("Artist"), Some(header("Artist", Some(300)))),
         ])
@@ -54,16 +44,8 @@ async fn nested_releases_group_under_their_first_folder_by_the_newest() {
         .await,
         moves([
             (
-                lib.release("Artist/Early"),
-                Some(
-                    found("Artist/Early")
-                        .dated(100)
-                        .grouped("Artist", Some(100))
-                )
-            ),
-            (
                 lib.release("Artist/Late"),
-                Some(found("Artist/Late").grouped("Artist", Some(100)))
+                Some(found("Artist/Late").grouped("Artist"))
             ),
             (lib.group("Artist"), Some(header("Artist", Some(100)))),
         ])
@@ -80,7 +62,7 @@ async fn a_release_at_a_folder_groups_while_another_is_nested_below_it() {
     assert_eq!(
         lib.moved(&lib.scan_as("Box/Disc 1", "invalid")).await,
         moves([
-            (lib.release("Box"), Some(found("Box").grouped("Box", None))),
+            (lib.release("Box"), Some(found("Box").grouped("Box"))),
             (lib.group("Box"), Some(header("Box", None))),
             (
                 lib.invalid("Box/Disc 1"),
@@ -112,7 +94,7 @@ async fn a_folder_sharing_a_name_prefix_is_not_nested() {
         moves([
             (
                 lib.release("Box Set/Disc 1"),
-                Some(found("Box Set/Disc 1").grouped("Box Set", None))
+                Some(found("Box Set/Disc 1").grouped("Box Set"))
             ),
             (lib.group("Box Set"), Some(header("Box Set", None))),
         ])
@@ -139,14 +121,6 @@ async fn a_member_leaving_found_leaves_its_group() {
         ))
         .await,
         moves([
-            (
-                lib.release("Artist/Early"),
-                Some(
-                    found("Artist/Early")
-                        .dated(100)
-                        .grouped("Artist", Some(100))
-                )
-            ),
             (
                 lib.release("Artist/Late"),
                 Some(found("Artist/Late").dated(300).on("skipped"))
@@ -191,7 +165,7 @@ async fn a_moved_release_changes_group() {
                 lib.release("Old/Album"),
                 Some(Placed {
                     display_path: Some("New/Album".to_string()),
-                    ..found("Old/Album").grouped("New", None)
+                    ..found("Old/Album").grouped("New")
                 })
             ),
             (lib.group("New"), Some(header("New", None))),

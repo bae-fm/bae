@@ -266,6 +266,26 @@ impl ListOrder {
             .join(", ")
     }
 
+    /// The order as an ORDER BY clause over the key columns
+    /// ([`Self::key_columns`]) of a subquery aliased `t`; a column keeps its
+    /// expression's collation.
+    #[cfg(desktop)]
+    pub(super) fn key_ordering(&self, t: &str) -> String {
+        self.terms
+            .iter()
+            .enumerate()
+            .map(|(at, term)| {
+                let column = format!("{t}.{}", key_column(at));
+                if term.descending {
+                    format!("{column} DESC")
+                } else {
+                    column
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
     /// The seeks reading the rows after the row at `key`, then those reading
     /// the rows before it: what a test holds to the order's index.
     #[cfg(test)]

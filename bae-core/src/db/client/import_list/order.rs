@@ -2,15 +2,17 @@
 //! sorts runs them in, and the reads that take a window of them or find where
 //! one sits.
 //!
-//! Every order is one of the placement's order indexes, so a window read by
-//! its offset reads about as many index entries as its offset and limit, one
-//! read from an item beside it about as many as its limit (`list_windows`),
-//! and a position is the count of the items before it in the same scan. A
-//! search that finds few rows has its windows read from those rows instead,
-//! sorted. Done runs in two parts: the releases coven still has uploads
-//! queued for (`coven_uploads`), first to go first, and then the rest in the
-//! index's order. The first part is the outbox's handful; the second is read
-//! by its index like any other tab.
+//! Every order is read off the placement's order indexes, so a window read
+//! by its offset reads about as many index entries as its offset and limit,
+//! one read from an item beside it about as many as its limit
+//! (`list_windows`), and a position is the count of the items before it in
+//! the same order. Found's members sort in their header's place, so Found is
+//! read in runs off three of them. A search that finds few rows has its
+//! windows read from those rows instead, sorted, each member by its header's
+//! terms. Done runs in two parts: the releases coven still has uploads queued
+//! for (`coven_uploads`), first to go first, and then the rest in the index's
+//! order. The first part is the outbox's handful; the second is read by its
+//! index like any other tab.
 
 use super::super::query::{QueryOne, QueryRows};
 use super::*;
@@ -216,14 +218,6 @@ impl Term {
         self.expression.replace("{t}", t)
     }
 
-    /// The term over the alias `t`, as an ORDER BY term.
-    fn ordering(&self, t: &str) -> String {
-        match self.descending {
-            true => format!("{} DESC", self.over(t)),
-            false => self.over(t),
-        }
-    }
-
     /// The term over the alias `t`, as a list order's term.
     fn sort_term(&self, t: &str) -> SortTerm {
         let term = match self.descending {
@@ -237,8 +231,10 @@ impl Term {
     }
 }
 
-/// `order`'s terms over the alias `t`, as a list order: what a window of a
-/// stream's rows is read from a row beside it by.
+/// `order`'s terms over the alias `t`, as a list order: what a window of
+/// Done's or Skipped's rows, which hold no group, is read from a row beside
+/// it by, exactly the order index's (`import_list_newest_first` and its
+/// siblings), so SQLite reads the rows in order from it.
 fn list_order(order: ImportListOrder, lead: Option<&str>, t: &str) -> ListOrder {
     let (prefix, suffix) = terms(order);
     ListOrder::new(
@@ -249,73 +245,68 @@ fn list_order(order: ImportListOrder, lead: Option<&str>, t: &str) -> ListOrder 
     )
 }
 
-/// The terms `order` sorts placement rows by, over the alias `t`: exactly the
-/// order index's (`import_list_newest_first` and its siblings), so SQLite
-/// reads the rows in order from it.
-pub(super) fn order_terms(order: ImportListOrder, t: &str) -> String {
+/// `order` with each member in its header's place: its terms up to the folder
+/// over the row aliased `head` — a member's header, every other row itself —
+/// then that row's number, which breaks the tie between rows that are not a
+/// header and its members, then its terms after the folder over the row
+/// aliased `row`. What Found's items, the only ones in groups, run in.
+fn unit_order(order: ImportListOrder, head: &str, row: &str) -> ListOrder {
     let (prefix, suffix) = terms(order);
-    prefix
-        .iter()
-        .chain(suffix)
-        .map(|term| term.ordering(t))
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-/// A folded list's run of `order` in three parts, each read off its own
-/// index (`import_list_newest_first_unfolded`, `_headers` and `_members`,
-/// and their siblings): the headers and the rows outside every group, and
-/// each open group's members under its header. Each part selects the row's
-/// key and the group it is listed under, and then the order's terms, the
-/// row's number breaking the tie after its folder, which a group's members
-/// take from their header; SQLite merges the two parts in that sequence.
-/// Every row is one of the list's items (`import_list_item`), and only open
-/// groups' members are read. The run is read under `seek`, which both parts
-/// hold their rows to, in the order the seek reads.
-fn folded_run(order: ImportListOrder, seek: &Seek) -> String {
-    let (unfolded, members) = folded_orders(order);
-    format!(
-        "SELECT p.watched_folder_path, p.item, p.key, p.group_name, {unfolded_keys} \
-         FROM import_list_item AS p \
-         WHERE p.list_id = :list AND p.tab = :tab \
-           AND (p.item = 'group' OR p.group_name IS NULL) AND {unfolded_condition} \
-         UNION ALL \
-         SELECT m.watched_folder_path, m.item, m.key, m.group_name, {member_keys} \
-         FROM import_list_judged AS h \
-         CROSS JOIN import_list_item AS m \
-             ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
-            AND m.group_name = h.key AND m.item <> 'group' \
-         WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded \
-           AND {member_condition} \
-         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
-        unfolded_keys = unfolded.key_columns(),
-        unfolded_condition = unfolded.condition(seek),
-        member_keys = members.key_columns(),
-        member_condition = members.condition(seek),
-        // Each term sorts its result column, the first four being the key
-        // and its group; a column keeps its expression's collation.
-        ordering = unfolded.column_ordering(seek, 5),
+    ListOrder::new(
+        prefix
+            .iter()
+            .map(|term| term.sort_term(head))
+            .chain(std::iter::once(SortTerm::ascending(format!(
+                "{head}.entry"
+            ))))
+            .chain(suffix.iter().map(|term| term.sort_term(row)))
+            .collect(),
     )
 }
 
-/// A folded list's order in each of its two runs: over the headers and the
-/// rows outside every group as `p`, and over each open group's members as
-/// `m` under their header `h`, the row's number after the folder's terms.
-fn folded_orders(order: ImportListOrder) -> (ListOrder, ListOrder) {
-    let (prefix, suffix) = terms(order);
-    let over = |head: &str, row: &str| {
-        ListOrder::new(
-            prefix
-                .iter()
-                .map(|term| term.sort_term(head))
-                .chain(std::iter::once(SortTerm::ascending(format!(
-                    "{head}.entry"
-                ))))
-                .chain(suffix.iter().map(|term| term.sort_term(row)))
-                .collect(),
-        )
-    };
-    (over("p", "p"), over("h", "m"))
+/// The placement row whose terms up to the folder the row aliased `t` sorts
+/// by in [`unit_order`], joined as `u`: a group's member sorts in its
+/// header's place, every other row in its own. For reads that sort the few
+/// rows they take.
+pub(super) fn unit_join(t: &str, u: &str) -> String {
+    format!(
+        "JOIN import_list_placement AS {u} ON {u}.entry = CASE \
+             WHEN {t}.item <> 'group' AND {t}.group_name IS NOT NULL \
+             THEN (SELECT header.entry FROM import_list_placement AS header \
+                   WHERE header.watched_folder_path = {t}.watched_folder_path \
+                     AND header.item = 'group' AND header.key = {t}.group_name) \
+             ELSE {t}.entry END"
+    )
+}
+
+/// The ORDER BY terms the row aliased `t` sorts by in the list's `order`,
+/// its terms up to the folder taken from the row [`unit_join`] joins as `u`:
+/// the order the list shows, on any tab.
+pub(super) fn sorted_terms(order: ImportListOrder, t: &str, u: &str) -> String {
+    unit_order(order, u, t).clause()
+}
+
+/// Found's run of `order` in two parts, each read off its own indexes
+/// (`import_list_newest_first_unfolded`, `_headers` and `_members`, and their
+/// siblings) in [`unit_order`]: the headers and the rows outside every group,
+/// from `rows` aliased `p`; and each open group's members under their header,
+/// from `members` aliased `m` under headers aliased `h`. Each part selects
+/// the row's key and the group it is listed under, and then the order's
+/// terms as key columns, held to `seek`. An ORDER BY over those columns
+/// after it sorts the whole run, which SQLite does by merging the two parts.
+fn run(order: ImportListOrder, (rows, members): (&str, &str), seek: &Seek) -> String {
+    let (unfolded, grouped) = (unit_order(order, "p", "p"), unit_order(order, "h", "m"));
+    format!(
+        "SELECT p.watched_folder_path, p.item, p.key, p.group_name, {unfolded_keys} \
+         FROM {rows} AND (p.item = 'group' OR p.group_name IS NULL) AND {unfolded_condition} \
+         UNION ALL \
+         SELECT m.watched_folder_path, m.item, m.key, m.group_name, {grouped_keys} \
+         FROM {members} AND {grouped_condition}",
+        unfolded_keys = unfolded.key_columns(),
+        unfolded_condition = unfolded.condition(seek),
+        grouped_keys = grouped.key_columns(),
+        grouped_condition = grouped.condition(seek),
+    )
 }
 
 /// The releases with uploads coven still has queued, by key, and where the
@@ -341,14 +332,11 @@ pub(super) type HeaderPlaces = std::collections::BTreeMap<(String, String), u64>
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Shown<'a> {
     /// What the list shows under its view, its tab's rows read in order and
-    /// each tested.
+    /// each tested; Found's in runs that pass no folded group's members.
     View,
     /// What a searching list shows, read from the rows its search finds and
     /// sorted: the same items as `View`.
     Found,
-    /// What a list that folds groups shut shows on Found, read in runs that
-    /// pass no folded group's members: the same items as `View`.
-    Folded,
     /// What `tab` shows with the filters cleared and the group `opened`
     /// folded open: the view a release is revealed in, its other folds kept.
     Revealing {
@@ -428,12 +416,6 @@ impl<'a> Items<'a> {
                 "import_list_found_item AS i",
                 "i.list_id = :list AND i.tab = :tab",
             ),
-            // Only a window is read in runs; a position or a part's count
-            // reads the folded list's items as `View` does.
-            Shown::Folded => (
-                "import_list_item AS i",
-                "i.list_id = :list AND i.tab = :tab",
-            ),
             Shown::Revealing { .. } => (
                 "import_list_placement AS i",
                 "i.tab = :tab \
@@ -447,24 +429,68 @@ impl<'a> Items<'a> {
         }
     }
 
+    /// Found's rows read in runs, each member in its header's place, by the
+    /// rows and the members under their headers each run reads: a header's
+    /// members only while the list does not fold it, or while it is the
+    /// group being opened. `None` for a search's rows, which are sorted, and
+    /// for Done and Skipped, which hold no group.
+    fn run_sources(&self) -> Option<(&'static str, &'static str)> {
+        if self.tab != TriageTab::Pending {
+            return None;
+        }
+        match self.shown {
+            Shown::View => Some((
+                "import_list_item AS p WHERE p.list_id = :list AND p.tab = :tab",
+                "import_list_judged AS h \
+                 CROSS JOIN import_list_item AS m \
+                     ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
+                    AND m.group_name = h.key AND m.item <> 'group' \
+                 WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded",
+            )),
+            Shown::Revealing { .. } => Some((
+                "import_list_placement AS p WHERE p.tab = :tab",
+                "import_list_placement AS h \
+                 CROSS JOIN import_list_placement AS m \
+                     ON m.watched_folder_path = h.watched_folder_path \
+                    AND m.group_name = h.key AND m.item <> 'group' \
+                 WHERE h.tab = :tab AND h.item = 'group' \
+                   AND ((h.watched_folder_path IS :opened_root AND h.key IS :opened_group) \
+                        OR NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
+                                       WHERE c.list_id = :list \
+                                         AND c.watched_folder_path = h.watched_folder_path \
+                                         AND c.group_name = h.key))",
+            )),
+            Shown::Found => None,
+        }
+    }
+
+    /// A statement over `part`'s rows, aliased `i`, sorted by
+    /// [`Self::part_order`]: Found's each joined to the row it sorts in the
+    /// place of as `unit`.
     fn part(&self, part: Part) -> PartSql {
         let (source, condition) = self.source();
+        let join = match self.tab {
+            TriageTab::Pending => unit_join("i", "unit"),
+            TriageTab::Done | TriageTab::Skipped => String::new(),
+        };
         let order = self.part_order(part).clause();
         match part {
             Part::Whole => PartSql {
                 with: String::new(),
-                from: format!("{source} WHERE {condition}"),
+                from: format!("{source} {join} WHERE {condition}"),
                 order,
             },
             Part::Uploading => PartSql {
                 with: format!("WITH {}", uploading_cte()),
-                from: format!("uploading AS u JOIN {source} ON i.key = u.key WHERE {condition}"),
+                from: format!(
+                    "uploading AS u JOIN {source} ON i.key = u.key {join} WHERE {condition}"
+                ),
                 order,
             },
             Part::Settled => PartSql {
                 with: format!("WITH {}", uploading_cte()),
                 from: format!(
-                    "{source} WHERE {condition} AND i.key NOT IN (SELECT key FROM uploading)"
+                    "{source} {join} WHERE {condition} AND i.key NOT IN (SELECT key FROM uploading)"
                 ),
                 order,
             },
@@ -472,13 +498,18 @@ impl<'a> Items<'a> {
     }
 
     /// The order `part`'s rows run in, over the alias `i`: Done's uploads
-    /// first to go first, and every part then in the list's order.
+    /// first to go first, and every part then in the list's order, Found's
+    /// with each member in its header's place, the row [`Self::part`] joins
+    /// as `unit`. Found's runs read the same terms over their own aliases.
     fn part_order(&self, part: Part) -> ListOrder {
         let lead = match part {
             Part::Uploading => Some("u.position"),
             Part::Whole | Part::Settled => None,
         };
-        list_order(self.order, lead, "i")
+        match self.tab {
+            TriageTab::Pending => unit_order(self.order, "unit", "i"),
+            TriageTab::Done | TriageTab::Skipped => list_order(self.order, lead, "i"),
+        }
     }
 
     /// Run `run` with each parameter `statement` names, bound.
@@ -495,9 +526,7 @@ impl<'a> Items<'a> {
                 Some(opened.watched_folder_path.as_str()),
                 Some(opened.relative_folder_path.as_str()),
             ),
-            Shown::Revealing { opened: None } | Shown::View | Shown::Found | Shown::Folded => {
-                (None, None)
-            }
+            Shown::Revealing { opened: None } | Shown::View | Shown::Found => (None, None),
         };
         let tab = tab_column(self.tab);
         let mut named: Vec<(&str, &dyn ToSql)> = vec![
@@ -546,8 +575,14 @@ impl<'a> Items<'a> {
     /// item's key and group then its key in the part's order, at most
     /// `:limit` from `:offset`.
     fn window_statement(&self, part: Part, seek: &Seek) -> String {
-        if let (Shown::Folded, Part::Whole) = (self.shown, part) {
-            return folded_run(self.order, seek);
+        if let Some(sources) = self.run_sources() {
+            // Each term sorts its result column, the first four being the
+            // key and its group; a column keeps its expression's collation.
+            return format!(
+                "{run} ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+                run = run(self.order, sources, seek),
+                ordering = self.part_order(part).column_ordering(seek, 5),
+            );
         }
         let PartSql { with, from, .. } = self.part(part);
         let order = self.part_order(part);
@@ -559,15 +594,6 @@ impl<'a> Items<'a> {
             condition = order.condition(seek),
             ordering = order.ordering(seek),
         )
-    }
-
-    /// The order the rows of `part` are read by a seek in: a folded list's
-    /// runs merged, or the part's own.
-    fn seek_order(&self, part: Part) -> ListOrder {
-        match (self.shown, part) {
-            (Shown::Folded, Part::Whole) => folded_orders(self.order).0,
-            _ => self.part_order(part),
-        }
     }
 
     fn window_of(
@@ -597,7 +623,7 @@ impl<'a> Items<'a> {
     ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
         let mut parts = Vec::new();
         for &part in self.parts() {
-            let order = self.seek_order(part);
+            let order = self.part_order(part);
             let mut seeks = vec![order.everything()];
             let first = self.window_of(sql, part, &order, &order.everything(), 1, 0)?;
             if let Some((_, key)) = first.first() {
@@ -683,7 +709,7 @@ impl<'a> Items<'a> {
             limit,
         } in self.window_parts(sql, window)?
         {
-            let order = self.seek_order(part);
+            let order = self.part_order(part);
             // The part's places, in its own count from its first row.
             let in_part = known
                 .range(start..)
@@ -723,7 +749,7 @@ impl<'a> Items<'a> {
             ..
         } in self.window_parts(sql, window)?
         {
-            let order = self.seek_order(part);
+            let order = self.part_order(part);
             let everything = order.everything();
             let statement = format!(
                 "INSERT INTO import_list_selection (list_id, key) \
@@ -805,6 +831,30 @@ impl<'a> Items<'a> {
         condition: &str,
         extra: &[(&'static str, &dyn ToSql)],
     ) -> Result<Option<u64>, DbError> {
+        if let Some(sources) = self.run_sources() {
+            // Found runs in one part, its runs numbered in their order.
+            let order = self.part_order(Part::Whole);
+            let found = self
+                .query(
+                    sql,
+                    &format!(
+                        "SELECT s.position FROM ( \
+                             SELECT r.watched_folder_path, r.item, r.key, \
+                                    row_number() OVER (ORDER BY {ordering}) - 1 AS position \
+                             FROM ({run}) AS r) AS s \
+                         WHERE {condition} LIMIT 1",
+                        ordering = order.key_ordering("r"),
+                        run = run(self.order, sources, &order.everything()),
+                    ),
+                    extra,
+                    |row| row.get::<_, i64>(0),
+                )?
+                .into_iter()
+                .next();
+            return found
+                .map(|position| to_u64(position, "an import list position"))
+                .transpose();
+        }
         let mut before = 0;
         for &part in self.parts() {
             let PartSql { with, from, order } = self.part(part);
