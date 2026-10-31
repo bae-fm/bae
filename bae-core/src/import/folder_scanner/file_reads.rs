@@ -565,11 +565,13 @@ impl Known {
     }
 
     /// Keep what one read of the track at `version`'s tags gave, holding the
-    /// picture they embed.
+    /// picture they embed. What the file's label or store wrote is not kept:
+    /// identification reads it from the file.
     fn remember_tags(&mut self, version: &FileVersion, read: Result<FileTagRead, ImportError>) {
         let read = match read {
             Ok(FileTagRead {
                 tags,
+                delivery: _,
                 embedded_cover,
             }) => TagRead::Read {
                 tags,

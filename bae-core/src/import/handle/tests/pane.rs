@@ -476,6 +476,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
                 },
                 ..crate::import::file_tag_snapshot::FileTags::untagged()
             },
+            delivery: crate::import::file_tag_snapshot::DeliveryTags::default(),
             embedded_cover: if index == 0 {
                 self.embedded_cover
                     .clone()

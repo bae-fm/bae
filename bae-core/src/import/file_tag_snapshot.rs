@@ -49,16 +49,6 @@ pub(crate) struct FileTags {
     pub years: Vec<u16>,
     /// The disc and track numbers the tags state.
     pub numbers: TrackNumbers,
-    /// The codes the track's recording is registered under, as the tag
-    /// writes them.
-    pub isrcs: Vec<String>,
-    /// The labels the tag names (Vorbis `LABEL` or `ORGANIZATION`, ID3
-    /// `TPUB`, iTunes `LABEL`).
-    pub labels: Vec<String>,
-    /// The copyright lines, as the tag writes them.
-    pub copyrights: Vec<String>,
-    /// The store the tags say sold the file, when they say so.
-    pub store: Option<StoreMarker>,
 }
 
 impl FileTags {
@@ -72,12 +62,25 @@ impl FileTags {
             compilation: false,
             years: Vec::new(),
             numbers: TrackNumbers::unstated(),
-            isrcs: Vec::new(),
-            labels: Vec::new(),
-            copyrights: Vec::new(),
-            store: None,
         }
     }
+}
+
+/// What the label or store that issued a file wrote into its tags.
+/// Identification reads these from the file on each run, so a scan's stored
+/// reading keeps none of them.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct DeliveryTags {
+    /// The codes the track's recording is registered under, as the tag
+    /// writes them.
+    pub isrcs: Vec<String>,
+    /// The labels the tag names (Vorbis `LABEL` or `ORGANIZATION`, ID3
+    /// `TPUB`, iTunes `LABEL`).
+    pub labels: Vec<String>,
+    /// The copyright lines, as the tag writes them.
+    pub copyrights: Vec<String>,
+    /// The store the tags say sold the file, when they say so.
+    pub store: Option<StoreMarker>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -134,20 +137,11 @@ impl FileTagSnapshot {
             && *files == other.files
             && *embedded_cover == other.embedded_cover
     }
-
-    /// Each file's ISRCs, as [`crate::isrc::code`] reads its tag, in the
-    /// files' order; a value that reads as no code adds nothing.
-    pub(crate) fn isrcs(&self) -> Vec<String> {
-        self.files
-            .iter()
-            .flat_map(|fact| &fact.tags.isrcs)
-            .filter_map(|isrc| crate::isrc::code(isrc))
-            .collect()
-    }
 }
 
 pub(crate) struct FileTagRead {
     pub tags: FileTags,
+    pub delivery: DeliveryTags,
     pub embedded_cover: Option<(Vec<u8>, ContentType)>,
 }
 
@@ -176,9 +170,10 @@ impl FileTagReader for LoftyFileTagReader {
         let store = store_marker(parsed.itunes_purchase, tag);
         let Some(tag) = tag else {
             return Ok(FileTagRead {
-                tags: FileTags {
+                tags: FileTags::untagged(),
+                delivery: DeliveryTags {
                     store,
-                    ..FileTags::untagged()
+                    ..DeliveryTags::default()
                 },
                 embedded_cover: None,
             });
@@ -224,6 +219,8 @@ impl FileTagReader for LoftyFileTagReader {
                     .is_some_and(|flag| flag.trim() == "1"),
                 years: tag_years(tag),
                 numbers: TrackNumbers::of_tag(tag),
+            },
+            delivery: DeliveryTags {
                 isrcs: values(None, ItemKey::Isrc),
                 labels: values(legacy.labels, ItemKey::Label),
                 copyrights: values(legacy.copyrights, ItemKey::CopyrightMessage),
@@ -479,6 +476,34 @@ pub(crate) fn read_observed(
         return Err(changed_file_error(file));
     }
     Ok((before, read))
+}
+
+/// One audio file's tags as they were read from it, with what the label or
+/// store that issued it wrote there.
+pub(crate) struct DeliveredFileTags {
+    pub fact: FileTagFact,
+    pub delivery: DeliveryTags,
+}
+
+/// The tags of each of `audio_files` as `reader` reads them now, in their
+/// order.
+pub(crate) fn read_delivered_file_tags(
+    audio_files: &[ScannedFile],
+    reader: &dyn FileTagReader,
+) -> Result<Vec<DeliveredFileTags>, ImportError> {
+    audio_files
+        .iter()
+        .map(|file| {
+            let (observation, read) = read_observed(file, reader)?;
+            Ok(DeliveredFileTags {
+                fact: FileTagFact {
+                    observation,
+                    tags: read.tags,
+                },
+                delivery: read.delivery,
+            })
+        })
+        .collect()
 }
 
 pub(crate) fn extract_file_tag_snapshot(

@@ -2302,8 +2302,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     title               TEXT,
     -- Every value a multi-valued tag states, in order, as a JSON array of
-    -- strings: the track's artists, the album's artists, the ISRCs the file's
-    -- recording is registered under, its labels and copyright lines.
+    -- strings: the track's artists and the album's artists.
     track_artists       TEXT NOT NULL
         CHECK (json_valid(track_artists) AND json_type(track_artists) = 'array'),
     album_title         TEXT,
@@ -2316,15 +2315,6 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
         CHECK (json_valid(years) AND json_type(years) = 'array'),
     track_number        INTEGER,
     disc_number         INTEGER,
-    isrcs               TEXT NOT NULL
-        CHECK (json_valid(isrcs) AND json_type(isrcs) = 'array'),
-    labels              TEXT NOT NULL
-        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    copyrights          TEXT NOT NULL
-        CHECK (json_valid(copyrights) AND json_type(copyrights) = 'array'),
-    -- The store the tags say sold the file: 'itunes_purchase', the atoms iTunes
-    -- writes only into a purchase; 'bandcamp', Bandcamp's "Visit" comment.
-    store               TEXT CHECK (store IS NULL OR store IN ('itunes_purchase', 'bandcamp')),
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate_tag_snapshot (watched_folder_path, candidate_path) ON DELETE CASCADE,

@@ -197,10 +197,6 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
                         disc: Some(7),
                         track: Some(1),
                     },
-                    isrcs: Vec::new(),
-                    labels: Vec::new(),
-                    copyrights: Vec::new(),
-                    store: None,
                 },
             })
             .collect(),

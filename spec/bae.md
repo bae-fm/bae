@@ -560,10 +560,11 @@ as a bug and reads the whole folder.
 
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
-damaged image, document, other), the parsed CUE sheets, the tags each audio file carried, and
-when each folder was first seen. A file is stored by its name in the release
-and by its path, as the system's own bytes for it, which is what opens it
-again. A scan writes as it finds: what it found while its last write ran, up to
+damaged image, document, other), the parsed CUE sheets, what each audio
+file's tags say of its title, artists, album, album artists, compilation flag,
+years and disc and track numbers, and when each folder was first seen. A file
+is stored by its name in the release and by its path, as the system's own
+bytes for it, which is what opens it again. A scan writes as it finds: what it found while its last write ran, up to
 eight entries, goes in one transaction, so an interrupted scan loses at most
 those and the next scan finds them again. Completing removes what it didn't
 see, in the same transaction that marks it complete. A failed or interrupted
@@ -814,6 +815,10 @@ of:
 - **The tags**: album title, artists and label become lines of the folder's
   text; each file's title, or its file name without the number, is the track's
   title.
+
+Identification reads the audio's tags from the files on every run, so the
+scan's stored reading keeps none of the ISRCs, labels, copyright lines or
+store markers: nothing else uses them.
 
 Reading the artwork means reading text off images. On macOS this uses the
 system's Vision framework. bae reads no artwork on other platforms, though
@@ -3567,7 +3572,7 @@ reads it again once.
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan and the directories it saw; the scans' progress reads the roots in their watched folders' order, by the index of their positions |
 | `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, with an index on the folder each candidate reads its files from; each file by its name in the release and its path, a BLOB of coven's bytes for it |
-| `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio, and its embedded cover |
+| `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |

@@ -120,9 +120,8 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
             "INSERT INTO scan_candidate_file_tag \
                  (watched_folder_path, candidate_path, relative_path, file_size, \
                   modified_at_ns, title, track_artists, album_title, \
-                  album_artists, compilation, years, track_number, disc_number, isrcs, \
-                  labels, copyrights, store) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  album_artists, compilation, years, track_number, disc_number) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 coven::path_bytes(watched_folder_path),
                 candidate_path,
@@ -137,10 +136,6 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
                 tag_values_json(&tags.years)?,
                 tags.numbers.track.map(i64::from),
                 tags.numbers.disc.map(i64::from),
-                tag_values_json(&tags.isrcs)?,
-                tag_values_json(&tags.labels)?,
-                tag_values_json(&tags.copyrights)?,
-                tags.store.map(crate::signals::StoreMarker::key),
             ],
         )?;
     }

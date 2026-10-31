@@ -318,8 +318,7 @@ fn load_file_tag_facts(
 pub(super) const FILE_TAG_COLUMNS: &str =
     "tags.relative_path, tags.file_size, tags.modified_at_ns, \
      tags.title, tags.track_artists, tags.album_title, tags.album_artists, tags.compilation, \
-     tags.years, tags.track_number, tags.disc_number, tags.isrcs, tags.labels, tags.copyrights, \
-     tags.store";
+     tags.years, tags.track_number, tags.disc_number";
 
 /// One `scan_candidate_file_tag` row as SQLite returns it.
 pub(super) struct StoredFileTags {
@@ -334,10 +333,6 @@ pub(super) struct StoredFileTags {
     years: String,
     track_number: Option<i64>,
     disc_number: Option<i64>,
-    isrcs: String,
-    labels: String,
-    copyrights: String,
-    store: Option<String>,
 }
 
 impl StoredFileTags {
@@ -355,10 +350,6 @@ impl StoredFileTags {
             years: row.get(first + 8)?,
             track_number: row.get(first + 9)?,
             disc_number: row.get(first + 10)?,
-            isrcs: row.get(first + 11)?,
-            labels: row.get(first + 12)?,
-            copyrights: row.get(first + 13)?,
-            store: row.get(first + 14)?,
         })
     }
 
@@ -386,19 +377,6 @@ impl StoredFileTags {
                         .map(|value| to_u32(value, "a file-tag track number"))
                         .transpose()?,
                 },
-                isrcs: tag_values(&self.isrcs, "ISRCs")?,
-                labels: tag_values(&self.labels, "labels")?,
-                copyrights: tag_values(&self.copyrights, "copyright lines")?,
-                store: self
-                    .store
-                    .map(|key| {
-                        crate::signals::StoreMarker::from_key(&key).ok_or_else(|| {
-                            DbError::Message(format!(
-                                "a file-tag store {key:?} is no store bae reads"
-                            ))
-                        })
-                    })
-                    .transpose()?,
             },
         })
     }

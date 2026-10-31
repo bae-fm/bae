@@ -176,6 +176,7 @@ impl FileTagReader for CountingReader {
                 },
                 ..FileTags::untagged()
             },
+            delivery: DeliveryTags::default(),
             embedded_cover: None,
         })
     }
@@ -199,7 +200,7 @@ fn a_tag_s_isrc_is_read() {
     std::fs::write(&path, file).unwrap();
 
     assert_eq!(
-        LoftyFileTagReader.read(&path).unwrap().tags.isrcs,
+        LoftyFileTagReader.read(&path).unwrap().delivery.isrcs,
         ["IT-00G-91-70501"]
     );
 }
@@ -400,7 +401,7 @@ fn a_tag_s_label_and_copyright_are_read() {
             ],
         ))
         .unwrap()
-        .tags;
+        .delivery;
     assert_eq!(read.labels, ["Imprint Name"]);
     assert_eq!(
         read.copyrights,
@@ -409,7 +410,7 @@ fn a_tag_s_label_and_copyright_are_read() {
     let read = LoftyFileTagReader
         .read(&flac_with(dir.path(), &[("ORGANIZATION", "Other Imprint")]))
         .unwrap()
-        .tags;
+        .delivery;
     assert_eq!(read.labels, ["Other Imprint"]);
     assert_eq!(read.store, None);
     let read = LoftyFileTagReader
@@ -418,7 +419,7 @@ fn a_tag_s_label_and_copyright_are_read() {
             &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")],
         ))
         .unwrap()
-        .tags;
+        .delivery;
     assert_eq!(read.labels, ["Imprint Name", "Second Imprint"]);
 }
 
@@ -433,11 +434,11 @@ fn bandcamp_s_comment_marks_a_bandcamp_download() {
             &[("COMMENT", "Visit https://artistname.bandcamp.com")],
         ))
         .unwrap();
-    assert_eq!(read.tags.store, Some(StoreMarker::Bandcamp));
+    assert_eq!(read.delivery.store, Some(StoreMarker::Bandcamp));
     let read = LoftyFileTagReader
         .read(&flac_with(dir.path(), &[("COMMENT", "Ripped with care")]))
         .unwrap();
-    assert_eq!(read.tags.store, None);
+    assert_eq!(read.delivery.store, None);
 }
 
 /// The atoms iTunes writes only into a purchase mark an iTunes purchase; its
@@ -450,7 +451,7 @@ fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
             .read(&m4a_with(dir.path(), &[(atom, "placeholder")]))
             .unwrap();
         assert_eq!(
-            read.tags.store,
+            read.delivery.store,
             Some(StoreMarker::ITunesPurchase),
             "{atom:?}"
         );
@@ -458,7 +459,7 @@ fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
     let read = LoftyFileTagReader
         .read(&m4a_with(dir.path(), &[(*b"cnID", "1")]))
         .unwrap();
-    assert_eq!(read.tags.store, None);
+    assert_eq!(read.delivery.store, None);
 }
 
 /// Every value of a multi-valued comment is its own: two `ARTIST` comments

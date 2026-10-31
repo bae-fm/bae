@@ -146,34 +146,38 @@ pub(super) fn gather_non_ocr_sources(
     // their ISRCs are looked up. A reading that cannot be had is skipped like
     // any other unreadable text.
     let audio_files: Vec<_> = categorized.audio().cloned().collect();
-    match crate::import::file_tag_snapshot::extract_file_tag_snapshot(
+    match crate::import::file_tag_snapshot::read_delivered_file_tags(
         &audio_files,
-        0,
-        0,
         &crate::import::file_tag_snapshot::LoftyFileTagReader,
     ) {
-        Ok(tags) => {
-            pass.isrcs = tags.isrcs();
-            pass.track_titles = track_titles(categorized, &tags);
+        Ok(files) => {
+            // Each file's ISRCs, as `isrc::code` reads its tag, in the files'
+            // order; a value that reads as no code adds nothing.
+            pass.isrcs = files
+                .iter()
+                .flat_map(|file| &file.delivery.isrcs)
+                .filter_map(|isrc| crate::isrc::code(isrc))
+                .collect();
+            pass.track_titles = track_titles(categorized, &files);
             // A file a ripper made reading a disc outweighs a tag, which can
             // be copied.
             if pass.origin.source.is_none() {
-                pass.origin.source = download_proof(&tags, categorized).map(AudioSource::Download);
+                pass.origin.source = download_proof(&files, categorized).map(AudioSource::Download);
             }
             let mut seen = HashSet::new();
-            for fact in &tags.files {
-                let tagged = &fact.tags;
+            for file in &files {
+                let tagged = &file.fact.tags;
                 for value in tagged
                     .album_title
                     .iter()
                     .chain(&tagged.album_artists)
                     .chain(&tagged.track_artists)
-                    .chain(&tagged.labels)
+                    .chain(&file.delivery.labels)
                 {
                     if seen.insert(value.clone()) {
                         pass.lines.push(SourcedLine::new(
                             Source::FileTag {
-                                file_id: fact.observation.relative_path.clone(),
+                                file_id: file.fact.observation.relative_path.clone(),
                             },
                             value.clone(),
                         ));
@@ -223,7 +227,7 @@ pub(super) fn gather_non_ocr_sources(
 /// order would tell a tracklist listing them otherwise apart for no reason.
 fn track_titles(
     categorized: &CategorizedFiles,
-    tags: &crate::import::file_tag_snapshot::FileTagSnapshot,
+    files: &[crate::import::file_tag_snapshot::DeliveredFileTags],
 ) -> Vec<String> {
     let mut titles = Vec::new();
     let mut previous: Option<(Option<u32>, u32)> = None;
@@ -231,9 +235,9 @@ fn track_titles(
         let crate::import::AudioFile::Standalone { file_id } = unit else {
             return Vec::new();
         };
-        let fact = tags
-            .files
+        let fact = files
             .iter()
+            .map(|file| &file.fact)
             .find(|fact| fact.observation.relative_path == file_id);
         let numbers = match fact {
             Some(fact) => fact.tags.numbers,
@@ -342,25 +346,25 @@ fn read_capped_text(path: &Path) -> Option<String> {
 /// a phonographic copyright line and the label — where no rip document or
 /// track sheet says a disc was read.
 fn download_proof(
-    tags: &crate::import::file_tag_snapshot::FileTagSnapshot,
+    files: &[crate::import::file_tag_snapshot::DeliveredFileTags],
     categorized: &CategorizedFiles,
 ) -> Option<DownloadProof> {
-    if let Some((marker, file)) = tags.files.iter().find_map(|fact| {
-        fact.tags
+    if let Some((marker, file)) = files.iter().find_map(|file| {
+        file.delivery
             .store
-            .map(|marker| (marker, fact.observation.relative_path.clone()))
+            .map(|marker| (marker, file.fact.observation.relative_path.clone()))
     }) {
         return Some(DownloadProof::Store { marker, file });
     }
     let read_off_a_disc = categorized.files.iter().any(|entry| {
         crate::import::discid::is_rip_document(&entry.file.path) || has_ext(&entry.file.path, "cue")
     });
-    let delivered = !tags.files.is_empty()
-        && tags.files.iter().all(|fact| {
-            !fact.tags.isrcs.is_empty()
-                && !fact.tags.labels.is_empty()
-                && fact
-                    .tags
+    let delivered = !files.is_empty()
+        && files.iter().all(|file| {
+            !file.delivery.isrcs.is_empty()
+                && !file.delivery.labels.is_empty()
+                && file
+                    .delivery
                     .copyrights
                     .iter()
                     .any(|line| super::rip::states_phonographic_copyright(line))
