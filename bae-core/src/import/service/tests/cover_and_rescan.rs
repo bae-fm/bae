@@ -347,6 +347,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     let TestService {
         service,
         preparations,
+        database: _,
         temp: tmp,
     } = setup_import_service().await;
     let folder = tmp.path().join("release");

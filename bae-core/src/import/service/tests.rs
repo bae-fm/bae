@@ -22,6 +22,9 @@ fn root_path(posix: &str) -> PathBuf {
 struct TestService {
     service: ImportService,
     preparations: crate::import::CandidatePreparations,
+    /// The library the service imports into, for a test that reads or seeds
+    /// rows no call reads or writes on its own.
+    database: Database,
     temp: TempDir,
 }
 
@@ -42,7 +45,7 @@ async fn setup_import_service() -> TestService {
         crate::diagnostics::Diagnostics::noop(),
     );
     let manager = LibraryManager::new(
-        database,
+        database.clone(),
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
         Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
@@ -66,6 +69,7 @@ async fn setup_import_service() -> TestService {
             diagnostics: crate::diagnostics::Diagnostics::noop(),
         },
         preparations,
+        database,
         temp: temp_dir,
     }
 }
@@ -421,6 +425,7 @@ impl CoordinatorHarness {
         let TestService {
             service,
             preparations,
+            database: _,
             temp,
         } = setup_import_service().await;
         for root in &roots {
@@ -668,5 +673,6 @@ include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");
 include!("tests/failed_import_retry.rs");
 include!("tests/scan_reads.rs");
+include!("tests/spent_rows.rs");
 include!("tests/stored_names.rs");
 include!("tests/takeover.rs");

@@ -101,6 +101,42 @@ pub(crate) fn record_import_origin_on(
     }
 }
 
+/// Delete, inside the commit, what the candidate holds that nothing reads once
+/// its release is in: the identify verdict (its releases go with it), what
+/// the person let the lookups use, where the pane was, the covers the applied
+/// release offered the picker, the artist decisions this commit just resolved
+/// its credits by, and the library album picked for it. The Done row and the
+/// imported folder's pane read the rest: the draft, its source, the link and
+/// the cover draw the row, and the clues mark the files they were read off. A
+/// commit that does not land deletes none of it, so a retry finds the
+/// candidate as the failed attempt left it.
+pub(crate) fn delete_what_the_import_spent_on(
+    sql: &SqlContext<'_, '_>,
+    guard: &ImportCommitGuard,
+) -> Result<(), DbError> {
+    match guard {
+        ImportCommitGuard::Candidate { expectation, .. } => {
+            let content_hash = expectation.candidate.content_hash.as_str();
+            for table in [
+                "import_candidate_verdict",
+                "import_candidate_lookup_choices",
+                "import_candidate_session",
+                "import_candidate_cover_option",
+                "import_candidate_artist_identity_choice",
+                "import_candidate_album_pick",
+            ] {
+                sql.execute(
+                    &format!("DELETE FROM {table} WHERE content_hash = ?"),
+                    [content_hash],
+                )?;
+            }
+            Ok(())
+        }
+        #[cfg(test)]
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+    }
+}
+
 /// The stored candidate at `candidate_key` as the commit sees it, or `None`
 /// when the scan no longer lists one there.
 fn load_committing_candidate(

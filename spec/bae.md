@@ -1239,6 +1239,15 @@ Ana clicks Import. bae:
    left untitled takes its file's name. Each credit, role
    and composer is its own artist credit until that transaction decides which
    library artist it is (§2.3), so two credits naming one artist write one.
+   The same transaction deletes what the folder's state holds that nothing
+   reads once the release is in: the identify verdict with the releases it
+   found, what the person let the lookups use, where the pane was, the covers
+   offered to the picker, the artist decisions it just resolved its credits
+   by, and the album picked for it. The draft, its source, its link and its
+   cover stay, since the Done row draws them (§3.2), and so do the clues,
+   since the imported folder's pane marks the files they were read off. An
+   import that fails deletes none of it, so a retry reads what the person
+   and the run settled.
 
 Nothing durable is written before the last step, so a cancel before it leaves
 the library as it was. Once the write begins, a cancel is refused and the

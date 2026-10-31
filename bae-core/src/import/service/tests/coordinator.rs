@@ -565,6 +565,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     let TestService {
         service,
         preparations,
+        database: _,
         temp: tmp,
     } = setup_import_service().await;
     let root = tmp.path().join("watched");
