@@ -510,28 +510,31 @@ async fn watched_root_rejects_a_path_climbing_out_of_itself() {
     );
 }
 
+/// Folder keys below the root that are not canonical — a doubled separator,
+/// a `.` — fail the reads of the root's folders. They are spelled with the
+/// host's separator, which the reads take the range below the root by.
 #[tokio::test]
 async fn corrupt_folder_keys_fail_when_loaded() {
     let (db, _tmp) = empty_db().await;
     let root = host_root("/mounted/library");
     db.add_watched_import_folder(&root).await.unwrap();
+    let sep = std::path::MAIN_SEPARATOR;
+    let stored_root = root.display().to_string();
+    let doubled = format!("{stored_root}{sep}a{sep}{sep}b");
+    let dotted = format!("{stored_root}{sep}a{sep}.{sep}b");
     assert!(db
-        .set_import_candidate_skipped(
-            std::path::Path::new(&format!("{}/a//b", root.display())),
-            true
-        )
+        .set_import_candidate_skipped(std::path::Path::new(&doubled), true)
         .await
         .is_err());
-    let stored_root = root.display().to_string();
     db.call(move |conn| {
         conn.execute(
             "INSERT INTO skipped_import_candidates VALUES (?)",
-            [format!("{stored_root}/a//b").into_bytes()],
+            [doubled.into_bytes()],
         )?;
         conn.execute(
             "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
                  VALUES (CAST('grouping:corrupt' AS BLOB), ?, 1, 'user')",
-            [format!("{stored_root}/a/./b").into_bytes()],
+            [dotted.into_bytes()],
         )?;
         Ok(())
     })
