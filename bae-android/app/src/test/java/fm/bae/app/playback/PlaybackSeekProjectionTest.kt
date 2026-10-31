@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import android.os.Looper
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,6 +19,9 @@ import java.time.Duration
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackSeekProjectionTest {
+    /** What the player's scope reported, as the session scope's handler reports bugs. */
+    private val reported = mutableListOf<Throwable>()
+
     @Test
     fun inTrackSeekPublishesDropPositionUntilCoreProgressCatchesUp() {
         val (player, handle) = player()
@@ -199,6 +203,7 @@ class PlaybackSeekProjectionTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, handle.nextTrackCalls)
+        assertEquals("next failed", reported.single().message)
     }
 
     @Test
@@ -211,6 +216,7 @@ class PlaybackSeekProjectionTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, handle.previousTrackCalls)
+        assertEquals("previous failed", reported.single().message)
     }
 
     private fun player(): Pair<BaeCorePlayer, SeekRecordingHandle> {
@@ -221,7 +227,10 @@ class PlaybackSeekProjectionTest {
                 applicationLooper = Looper.getMainLooper(),
                 appHandle = handle,
                 system = PlaybackSystem(context, AudioFocus(context), { false }),
-                scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                scope =
+                    CoroutineScope(
+                        SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, error -> reported += error },
+                    ),
             )
         return player to handle
     }
