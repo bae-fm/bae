@@ -50,8 +50,6 @@ enum IdentifyState: Equatable {
         /// The check against the folder the found release failed: why
         /// nothing was picked.
         folderCheck: BridgeFolderCheck?,
-        /// Whether core picks the one release for the folder on its own.
-        picksUnattended: Bool,
         /// Whether the offered rows are several pressings of one album, which
         /// the folder can be linked to with its pressing unknown.
         offersSharedAlbum: Bool,
@@ -103,7 +101,6 @@ enum IdentifyState: Equatable {
             let agreements,
             let narrowedOutCount,
             let folderCheck,
-            let picksUnattended,
             let offersSharedAlbum
         ):
             self = .found(
@@ -113,7 +110,6 @@ enum IdentifyState: Equatable {
                 agreements: agreements,
                 narrowedOutCount: narrowedOutCount,
                 folderCheck: folderCheck,
-                picksUnattended: picksUnattended,
                 offersSharedAlbum: offersSharedAlbum,
             )
         case .notFoundAnywhere(let run): self = .notFoundAnywhere(run: run)
@@ -143,7 +139,7 @@ enum IdentifyState: Equatable {
     /// the pane's disclosure counts.
     var narrowedOutCount: UInt32 {
         switch self {
-        case .found(_, _, _, _, let count, _, _, _): count
+        case .found(_, _, _, _, let count, _, _): count
         case .failed(_, _, _, _, let count, _): count
         case .triangulating(_, _, _, let count): count
         case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: 0
@@ -154,7 +150,7 @@ enum IdentifyState: Equatable {
     /// why nothing was picked.
     var folderCheck: BridgeFolderCheck? {
         switch self {
-        case .found(_, _, _, _, _, let folderCheck, _, _): folderCheck
+        case .found(_, _, _, _, _, let folderCheck, _): folderCheck
         case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
             .failed, .error:
             nil
@@ -165,20 +161,10 @@ enum IdentifyState: Equatable {
     /// the folder can be linked to with its pressing unknown.
     var offersSharedAlbum: Bool {
         switch self {
-        case .found(_, _, _, _, _, _, _, let offers): offers
+        case .found(_, _, _, _, _, _, let offers): offers
         case .failed(_, _, _, _, _, let offers): offers
         case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
             .error:
-            false
-        }
-    }
-
-    /// Whether core picks the found release for the folder on its own.
-    var picksUnattended: Bool {
-        switch self {
-        case .found(_, _, _, _, _, _, let picks, _): picks
-        case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
-            .failed, .error:
             false
         }
     }
@@ -187,7 +173,7 @@ enum IdentifyState: Equatable {
     var run: BridgeIdentifyRun? {
         switch self {
         case .triangulating(let run, _, _, _): run
-        case .found(let run, _, _, _, _, _, _, _): run
+        case .found(let run, _, _, _, _, _, _): run
         case .notFoundAnywhere(let run): run
         case .manualOnly(_, let run): run
         case .failed(let run, _, _, _, _, _): run

@@ -20,7 +20,6 @@ struct NotSureOfferTests {
             agreements: PreviewData.searchAgreementsExact,
             narrowedOutCount: 0,
             folderCheck: nil,
-            picksUnattended: false,
             offersSharedAlbum: true
         ),
         signals: PreviewData.settledSignals,

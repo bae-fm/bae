@@ -322,8 +322,6 @@ pub enum BridgeIdentifyState {
         /// The check against the folder the found release failed: why the
         /// verdict picks none of its releases.
         folder_check: Option<crate::types::BridgeFolderCheck>,
-        /// Whether the verdict picks its one release unattended.
-        picks_unattended: bool,
         /// Whether the offered rows are several pressings of one album, which
         /// the folder can be linked to with its pressing unknown.
         offers_shared_album: bool,

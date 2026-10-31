@@ -72,7 +72,6 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
-                picksUnattended: false,
                 offersSharedAlbum: false
             )
         )
@@ -122,7 +121,6 @@
                 agreements: [:],
                 narrowedOutCount: 0,
                 folderCheck: .sourceTracksUnknown,
-                picksUnattended: false,
                 offersSharedAlbum: false
             )
         )
@@ -153,7 +151,6 @@
                     agreements: searchAgreementsExact,
                     narrowedOutCount: 0,
                     folderCheck: nil,
-                    picksUnattended: false,
                     offersSharedAlbum: false
                 )
             )
@@ -235,7 +232,6 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
-                picksUnattended: false,
                 offersSharedAlbum: false
             )
         )
@@ -251,7 +247,6 @@
                     agreements: searchAgreementsExact,
                     narrowedOutCount: 0,
                     folderCheck: nil,
-                    picksUnattended: false,
                     offersSharedAlbum: false
                 )
             )
