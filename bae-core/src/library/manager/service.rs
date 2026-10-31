@@ -507,7 +507,10 @@ impl LibraryManager {
         Option<bae_catalogs::remote_image::RemoteImage>,
         bae_catalogs::remote_image::RemoteImageError,
     > {
-        self.remote_images.fetch(url).await
+        self.remote_images
+            .fetch(url)
+            .await
+            .map_err(|error| self.remote_image_failed(error))
     }
 
     #[cfg(desktop)]
@@ -516,7 +519,26 @@ impl LibraryManager {
         url: &str,
     ) -> Result<bae_catalogs::remote_image::RemoteImage, bae_catalogs::remote_image::RemoteImageError>
     {
-        self.remote_images.fetch_required(url).await
+        self.remote_images
+            .fetch_required(url)
+            .await
+            .map_err(|error| self.remote_image_failed(error))
+    }
+
+    /// A remote image fetch's failure, reported first when it is the cache's
+    /// disk work panicking: the cache can't report it itself.
+    pub(super) fn remote_image_failed(
+        &self,
+        error: bae_catalogs::remote_image::RemoteImageError,
+    ) -> bae_catalogs::remote_image::RemoteImageError {
+        match error {
+            bae_catalogs::remote_image::RemoteImageError::CacheTask(failed) => {
+                bae_catalogs::remote_image::RemoteImageError::CacheTask(
+                    self.diagnostics.bug(failed),
+                )
+            }
+            error => error,
+        }
     }
 
     /// Ship one `audio_format_orphaned` anomaly per orphan the release-detail

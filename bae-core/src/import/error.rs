@@ -377,7 +377,7 @@ impl ImportError {
                     C::Internal
                 }
                 RemoteImageError::Transport { .. } | RemoteImageError::Status { .. } => C::Import,
-                RemoteImageError::CacheTask { .. } => C::Internal,
+                RemoteImageError::CacheTask(_) => C::Internal,
             },
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]

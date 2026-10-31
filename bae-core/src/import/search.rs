@@ -636,7 +636,7 @@ pub(crate) fn remote_image_failure(error: &RemoteImageError) -> Option<LookupFai
         RemoteImageError::Status { status, .. } => Some(LookupFailure::Provider {
             status: Some(*status),
         }),
-        RemoteImageError::Unusable { .. } | RemoteImageError::CacheTask { .. } => None,
+        RemoteImageError::Unusable { .. } | RemoteImageError::CacheTask(_) => None,
     }
 }
 

@@ -80,7 +80,9 @@ impl LibraryManager {
                     .remote_images
                     .fetch_required(&url)
                     .await
-                    .map_err(crate::import::ImportError::from)?;
+                    .map_err(|error| {
+                        crate::import::ImportError::from(self.remote_image_failed(error))
+                    })?;
 
                 (image.bytes, source.as_str().to_string(), Some(url))
             }

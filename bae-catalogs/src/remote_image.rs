@@ -8,6 +8,7 @@ use bae_util::http::Http;
 use bae_util::retry::{
     is_transient_status, retry_classified, ClassifiedAttempt, Repeat, RetryPolicy,
 };
+use bae_util::task_failure::{blocking, TaskFailed};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -45,12 +46,10 @@ pub enum RemoteImageError {
     Status { status: u16, detail: String },
 
     /// The blocking task that reads or writes the disk cache did not report
-    /// back: it panicked, or the runtime is shutting down under it.
-    #[error("remote image cache {operation} task failed: {error}")]
-    CacheTask {
-        operation: &'static str,
-        error: tokio::task::JoinError,
-    },
+    /// back: it panicked — a bug the caller reports — or the runtime is
+    /// shutting down under it.
+    #[error("{0}")]
+    CacheTask(TaskFailed),
 }
 
 /// Where the Cover Art Archive serves images from. Every path under it is fixed
@@ -324,6 +323,10 @@ struct DiskImageCache {
     access: Mutex<DiskImageAccess>,
 }
 
+/// The order this session read and wrote cache files in, which eviction
+/// prefers over the files' modified times. It only orders eviction, so it can
+/// always start over empty.
+#[derive(Default)]
 struct DiskImageAccess {
     next: u64,
     current_session: HashMap<std::path::PathBuf, u64>,
@@ -334,10 +337,7 @@ impl DiskImageCache {
         Self {
             dir,
             budget,
-            access: Mutex::new(DiskImageAccess {
-                next: 0,
-                current_session: HashMap::new(),
-            }),
+            access: Mutex::new(DiskImageAccess::default()),
         }
     }
 
@@ -438,18 +438,14 @@ impl DiskImageCache {
             return;
         }
 
-        {
-            let access = self
-                .access
-                .lock()
-                .expect("disk image cache access mutex poisoned");
+        self.with_access(|access| {
             entries.sort_by_key(
                 |(path, modified, _)| match access.current_session.get(path) {
                     Some(sequence) => CacheAccess::Current(*sequence),
                     None => CacheAccess::Prior(*modified),
                 },
             );
-        }
+        });
 
         let mut removed = Vec::new();
         for (path, _, size) in entries {
@@ -470,13 +466,11 @@ impl DiskImageCache {
                 budget = self.budget,
                 "Evicted remote image cache entries"
             );
-            let mut access = self
-                .access
-                .lock()
-                .expect("disk image cache access mutex poisoned");
-            for path in removed {
-                access.current_session.remove(&path);
-            }
+            self.with_access(|access| {
+                for path in removed {
+                    access.current_session.remove(&path);
+                }
+            });
         }
     }
 
@@ -522,16 +516,32 @@ impl DiskImageCache {
     }
 
     fn record_access(&self, path: std::path::PathBuf) {
-        let mut access = self
-            .access
-            .lock()
-            .expect("disk image cache access mutex poisoned");
-        access.next = access
-            .next
-            .checked_add(1)
-            .expect("disk image cache access counter overflow");
-        let sequence = access.next;
-        access.current_session.insert(path, sequence);
+        self.with_access(|access| {
+            access.next = access
+                .next
+                .checked_add(1)
+                .expect("disk image cache access counter overflow");
+            let sequence = access.next;
+            access.current_session.insert(path, sequence);
+        });
+    }
+
+    /// Run `change` on the access order. A panic that poisoned the lock left
+    /// the order partway through a change; the order is only eviction's
+    /// preference, so it starts over empty rather than failing every later
+    /// read and write of the cache.
+    fn with_access<T>(&self, change: impl FnOnce(&mut DiskImageAccess) -> T) -> T {
+        let mut access = match self.access.lock() {
+            Ok(access) => access,
+            Err(poisoned) => {
+                warn!("the image cache's access order was left partway through a change by a panic; starting it over");
+                let mut access = poisoned.into_inner();
+                *access = DiskImageAccess::default();
+                self.access.clear_poison();
+                access
+            }
+        };
+        change(&mut access)
     }
 }
 
@@ -678,12 +688,9 @@ async fn read_disk(
     disk: Arc<DiskImageCache>,
     url: String,
 ) -> Result<Option<DiskImageEntry>, RemoteImageError> {
-    tokio::task::spawn_blocking(move || disk.get(&url))
+    blocking("read the remote image cache", move || disk.get(&url))
         .await
-        .map_err(|error| RemoteImageError::CacheTask {
-            operation: "read",
-            error,
-        })
+        .map_err(RemoteImageError::CacheTask)
 }
 
 async fn write_disk(
@@ -691,12 +698,11 @@ async fn write_disk(
     url: String,
     entry: DiskImageEntry,
 ) -> Result<(), RemoteImageError> {
-    tokio::task::spawn_blocking(move || disk.put(&url, &entry))
-        .await
-        .map_err(|error| RemoteImageError::CacheTask {
-            operation: "write",
-            error,
-        })
+    blocking("write the remote image cache", move || {
+        disk.put(&url, &entry)
+    })
+    .await
+    .map_err(RemoteImageError::CacheTask)
 }
 
 /// What one image request returned. A 404 is an ordinary answer because cover

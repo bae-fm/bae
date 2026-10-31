@@ -309,6 +309,32 @@ fn disk_cache_evicts_the_oldest_entry_when_over_budget() {
     assert!(bounded.get("https://host/c").is_some());
 }
 
+/// A panic that poisoned the access order leaves the cache reading, writing
+/// and evicting: the order starts over instead of failing every later call.
+#[test]
+fn a_poisoned_access_order_starts_over_and_the_cache_keeps_working() {
+    let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
+    let cache = DiskImageCache::new(directory.path().to_path_buf(), u64::MAX);
+    let image = |byte| {
+        DiskImageEntry::Image(RemoteImage {
+            bytes: vec![byte; 400],
+            content_type: ContentType::Jpeg,
+        })
+    };
+    cache.put("https://host/a", &image(0x11));
+
+    let poisoned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        cache.with_access(|_| panic!("a change to the access order broke"))
+    }));
+    assert!(poisoned.is_err());
+    assert!(cache.access.is_poisoned());
+
+    assert!(cache.get("https://host/a").is_some());
+    cache.put("https://host/b", &image(0x22));
+    assert!(cache.get("https://host/b").is_some());
+    assert!(!cache.access.is_poisoned(), "the order started over");
+}
+
 #[tokio::test]
 async fn concurrent_reads_of_one_url_share_the_download() {
     let body = test_png();

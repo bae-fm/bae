@@ -213,10 +213,15 @@ impl RateLimiter {
         }
     }
 
+    /// The bookkeeping. Nothing done while it is held panics — a broken
+    /// guarantee found under it, like an answer the limiter can't read, panics
+    /// only once the guard is gone — so a poisoned lock says nothing about it;
+    /// and the `Drop`s of [`Ticket`] and [`Admitted`] take it, where a panic
+    /// must not start.
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         self.inner
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Wait for this call's admission slot, then stamp it. The first call, and
@@ -293,7 +298,7 @@ impl RateLimiter {
     /// provider and the provider answered.
     fn settle(&self, admission: u64, answer: RateAnswer) {
         let now = Instant::now();
-        {
+        let unread = {
             let mut inner = self.lock();
             if let Some(ledger) = &mut inner.ledger {
                 ledger.answer(admission, now);
@@ -308,16 +313,22 @@ impl RateLimiter {
                     if let Some(ledger) = &mut inner.ledger {
                         ledger.forget_count();
                     }
+                    None
                 }
-                RateAnswer::Counted(count) => inner
-                    .ledger
-                    .as_mut()
-                    .expect("only a limiter counted over a window reads a provider's count")
-                    .counted(admission, now, count),
-                RateAnswer::Silent => {}
+                RateAnswer::Counted(count) => match &mut inner.ledger {
+                    Some(ledger) => {
+                        ledger.counted(admission, now, count);
+                        None
+                    }
+                    None => Some(count),
+                },
+                RateAnswer::Silent => None,
             }
-        }
+        };
         self.advanced.notify_waiters();
+        if let Some(count) = unread {
+            panic!("only a limiter counted over a window reads a provider's count, got {count:?}");
+        }
     }
 
     #[cfg(test)]

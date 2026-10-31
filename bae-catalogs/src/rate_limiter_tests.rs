@@ -376,3 +376,22 @@ async fn requests_no_count_can_hold_are_let_go() {
         limiter.sent_in_ledger()
     );
 }
+
+/// A count answered to a limiter that keeps none is a caller's bug: it panics,
+/// but only once the bookkeeping's lock is released, so the limiter is left
+/// whole and the next call is admitted as before.
+#[tokio::test(start_paused = true)]
+async fn a_count_the_limiter_cannot_read_panics_without_poisoning_it() {
+    let limiter = RateLimiter::new(INTERVAL);
+    let admitted = limiter.wait(CallPriority::Interactive).await;
+
+    let answered = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        admitted.answered(RateAnswer::Counted(WindowCount::Rolling { remaining: 1 }))
+    }));
+
+    assert!(answered.is_err(), "the unreadable count is a bug");
+    assert!(!limiter.inner.is_poisoned());
+    let start = Instant::now();
+    drop(limiter.wait(CallPriority::Interactive).await);
+    assert!(start.elapsed() >= Duration::from_millis(900));
+}

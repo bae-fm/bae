@@ -86,15 +86,12 @@ fn bytes_that_are_not_an_image_are_unusable_data() {
     assert_eq!(category(error), UiErrorCategory::ImportData);
 }
 
-#[tokio::test]
-async fn a_cache_task_that_did_not_finish_is_bae_s_failure() {
-    let error = tokio::spawn(async { panic!("the cache task fails") })
-        .await
-        .expect_err("the task panicked");
-    let error = RemoteImageError::CacheTask {
-        operation: "read",
-        error,
-    };
+#[test]
+fn a_cache_task_that_did_not_finish_is_bae_s_failure() {
+    let error = RemoteImageError::CacheTask(bae_util::task_failure::TaskFailed::Panicked {
+        operation: "read the remote image cache",
+        message: "the cache task fails".to_string(),
+    });
     assert_eq!(remote_image_failure(&error), None);
     assert_eq!(category(error), UiErrorCategory::Internal);
 }
