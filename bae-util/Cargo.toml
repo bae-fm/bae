@@ -11,6 +11,9 @@ name = "bae_util"
 path = "src/lib.rs"
 
 [dependencies]
+# Work apart from its caller whose panic comes back as a value
+# (src/task_failure.rs re-exports `coven::task`).
+coven = { workspace = true }
 # The outbound client every provider shares (src/http.rs). `rustls`: the
 # providers it reaches are HTTPS.
 reqwest = { workspace = true, features = ["rustls"] }
