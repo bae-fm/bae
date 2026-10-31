@@ -3142,14 +3142,16 @@ identifications and imports in flight have got is a live query of its own,
 The import service (desktop only) owns the watched folders, the scan, the
 candidates, extraction, identification and the import worker. Its handle
 watches and unwatches folders, scans, groups and separates candidates, runs and
-cancels identification, searches, picks, edits drafts, binds CUE sheets,
-starts and cancels imports, and serves the import list's live query. What
-each candidate has in flight — what its identification is doing, the step
-its import is at, its search — is a subscription by key, sent as it steps;
-how far through its step a running import is moves many times a second, so
-it reaches an app only in a `KeyedValueStream` (§10.2), by candidate. Every
-write to a candidate loads it whole, applies its rule, and saves it against
-the revisions it read, so two writers never disagree about which rows belong
+cancels identification, searches, picks, edits drafts, binds CUE sheets, starts
+and cancels imports, and serves the import list's live query. The step a
+candidate's import is at is a column of its standings row, which the worker
+writes before it starts each step, so the list's rows and the pane read it with
+the rest of the row. What else each candidate has in flight — what its
+identification is doing, its search — is a subscription by key, sent as it
+steps; how far through its step a running import is moves many times a second,
+so it reaches an app only in a `KeyedValueStream` (§10.2), by candidate. Every
+write to a candidate loads it whole, applies its rule, and saves it against the
+revisions it read, so two writers never disagree about which rows belong
 together.
 
 ### 9.4 Playing
@@ -3623,7 +3625,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 
 | Table | Holds |
 |---|---|
-| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it, for the files it names; its import queued, running or writing its release. Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, the import's steps — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A panic while composing the runtime's read ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far a run or an import has got is not stored. No row outlives the process: the table is emptied as the library opens |
+| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it, for the files it names; its import at the step it has reached: queued for the worker, validating its source files, fetching artist pictures, reading files, measuring loudness, or finalizing (writing its release). Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, each step of the import, written before the worker starts it — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A panic while composing the runtime's read ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far a run has got, or how far through its step an import is, is not stored. No row outlives the process: the table is emptied as the library opens |
 | `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws, read by the import counts' own live query: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
 
 ### A.6 Identification

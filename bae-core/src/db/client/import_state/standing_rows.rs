@@ -24,13 +24,13 @@ use crate::import::candidate_runtime::{
     StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
-use crate::import::triage::{ImportStanding, TriageRuntimeFacts};
-use crate::import::ImportCounts;
+use crate::import::triage::TriageRuntimeFacts;
+use crate::import::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads
 /// them.
 const COLUMNS: &str = "identification, content_hash, file_edit_revision, admission, \
-     identify_run, import_asked, save_failure_error, import, import_id";
+     identify_run, import_asked, save_failure_error, import_step, import_id";
 
 /// One row's columns as SQLite holds them.
 struct StandingColumns {
@@ -41,7 +41,7 @@ struct StandingColumns {
     identify_run: Option<i64>,
     import_asked: Option<bool>,
     save_failure_error: Option<String>,
-    import: Option<String>,
+    import_step: Option<String>,
     import_id: Option<String>,
 }
 
@@ -55,7 +55,7 @@ impl StandingColumns {
             identify_run: row.get(first + 4)?,
             import_asked: row.get(first + 5)?,
             save_failure_error: row.get(first + 6)?,
-            import: row.get(first + 7)?,
+            import_step: row.get(first + 7)?,
             import_id: row.get(first + 8)?,
         })
     }
@@ -119,11 +119,11 @@ impl StandingColumns {
                 })
             }
         };
-        let import = match (self.import.as_deref(), self.import_id) {
+        let import = match (self.import_step.as_deref(), self.import_id) {
             (None, None) => None,
-            (Some(standing), Some(import_id)) => Some(StoredImport {
+            (Some(step), Some(import_id)) => Some(StoredImport {
                 import_id,
-                standing: import_standing(standing).map_err(|unknown| broken(&unknown))?,
+                step: import_step(step).map_err(|unknown| broken(&unknown))?,
             }),
             (Some(_), None) | (None, Some(_)) => {
                 return Err(broken(
@@ -138,14 +138,31 @@ impl StandingColumns {
     }
 }
 
-/// Where an import stands, as the `import` column holds it; what is wrong
-/// with the column otherwise.
-fn import_standing(column: &str) -> Result<ImportStanding, String> {
+/// The step an import is at, as the `import_step` column holds it; what is
+/// wrong with the column otherwise.
+fn import_step(column: &str) -> Result<ImportStep, String> {
     match column {
-        "queued" => Ok(ImportStanding::Queued),
-        "running" => Ok(ImportStanding::Running),
-        "writing" => Ok(ImportStanding::Writing),
-        other => Err(format!("names an unknown import {other}")),
+        "queued" => Ok(ImportStep::Preparing(PrepareStep::Queued)),
+        "validating_source_files" => Ok(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),
+        "fetching_artist_pictures" => {
+            Ok(ImportStep::Preparing(PrepareStep::FetchingArtistPictures))
+        }
+        "reading_files" => Ok(ImportStep::Running(ImportPhase::ReadingFiles)),
+        "measuring_loudness" => Ok(ImportStep::Running(ImportPhase::MeasuringLoudness)),
+        "finalizing" => Ok(ImportStep::Running(ImportPhase::Finalizing)),
+        other => Err(format!("names an unknown import step {other}")),
+    }
+}
+
+/// `step` as the `import_step` column holds it.
+fn import_step_column(step: ImportStep) -> &'static str {
+    match step {
+        ImportStep::Preparing(PrepareStep::Queued) => "queued",
+        ImportStep::Preparing(PrepareStep::ValidatingSourceFiles) => "validating_source_files",
+        ImportStep::Preparing(PrepareStep::FetchingArtistPictures) => "fetching_artist_pictures",
+        ImportStep::Running(ImportPhase::ReadingFiles) => "reading_files",
+        ImportStep::Running(ImportPhase::MeasuringLoudness) => "measuring_loudness",
+        ImportStep::Running(ImportPhase::Finalizing) => "finalizing",
     }
 }
 
@@ -153,7 +170,7 @@ fn import_standing(column: &str) -> Result<ImportStanding, String> {
 /// the alias `st`, in the order [`RuntimeFactColumns::read`] reads them: what
 /// the list reads of a row's standing, and groups selected rows by.
 pub(crate) const RUNTIME_FACT_COLUMNS: &str =
-    "st.identification, st.import_asked, st.save_failure_error, st.import";
+    "st.identification, st.import_asked, st.save_failure_error, st.import_step";
 
 /// [`RUNTIME_FACT_COLUMNS`] as SQLite holds them: all `NULL` for a candidate
 /// with no standing.
@@ -162,7 +179,7 @@ pub(crate) struct RuntimeFactColumns {
     identification: Option<String>,
     import_asked: Option<bool>,
     save_failure_error: Option<String>,
-    import: Option<String>,
+    import_step: Option<String>,
 }
 
 impl RuntimeFactColumns {
@@ -171,7 +188,7 @@ impl RuntimeFactColumns {
             identification: row.get(first)?,
             import_asked: row.get(first + 1)?,
             save_failure_error: row.get(first + 2)?,
-            import: row.get(first + 3)?,
+            import_step: row.get(first + 3)?,
         })
     }
 
@@ -206,9 +223,9 @@ impl RuntimeFactColumns {
                 }
             },
             import: self
-                .import
+                .import_step
                 .as_deref()
-                .map(import_standing)
+                .map(import_step)
                 .transpose()
                 .map_err(|unknown| broken(&unknown))?,
         })
@@ -271,7 +288,7 @@ fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32
 /// How many candidates an import holds, whatever step it has reached.
 fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
     Ok(sql.query_row(
-        "SELECT COUNT(*) FROM import_candidate_standing WHERE import IS NOT NULL",
+        "SELECT COUNT(*) FROM import_candidate_standing WHERE import_step IS NOT NULL",
         [],
         |row| row.get::<_, u32>(0),
     )?)
@@ -393,14 +410,10 @@ fn write_on(
             }
         });
     }
-    let (import, import_id) = match &standing.import {
+    let (import_step, import_id) = match &standing.import {
         None => (None, None),
         Some(stored) => (
-            Some(match stored.standing {
-                ImportStanding::Queued => "queued",
-                ImportStanding::Running => "running",
-                ImportStanding::Writing => "writing",
-            }),
+            Some(import_step_column(stored.step)),
             Some(stored.import_id.as_str()),
         ),
     };
@@ -416,7 +429,7 @@ fn write_on(
                  identify_run = excluded.identify_run, \
                  import_asked = excluded.import_asked, \
                  save_failure_error = excluded.save_failure_error, \
-                 import = excluded.import, \
+                 import_step = excluded.import_step, \
                  import_id = excluded.import_id"
         ),
         params![
@@ -428,7 +441,7 @@ fn write_on(
             identify_run,
             import_asked,
             save_failure_error,
-            import,
+            import_step,
             import_id,
         ],
     )?;
@@ -467,20 +480,20 @@ fn claim_import_on(
     }
     standing.import = Some(StoredImport {
         import_id: import_id.to_string(),
-        standing: ImportStanding::Queued,
+        step: ImportStep::Preparing(PrepareStep::Queued),
     });
     write_on(sql, candidate_key, &standing)?;
     Ok(true)
 }
 
-/// Where the import `import_id` that owns `candidate_key` stands now, or its
-/// end with `None`, inside the caller's write. Refused when that import does
-/// not own it: only the import holding a claim moves or ends it.
+/// The step the import `import_id` that owns `candidate_key` is at now, or
+/// its end with `None`, inside the caller's write. Refused when that import
+/// does not own it: only the import holding a claim moves or ends it.
 pub(crate) fn move_import_on(
     sql: &SqlContext<'_, '_>,
     candidate_key: &CandidateKey,
     import_id: &str,
-    next: Option<ImportStanding>,
+    next: Option<ImportStep>,
 ) -> Result<(), DbError> {
     let mut standing = load_standing_on(sql, candidate_key)?;
     if standing
@@ -492,9 +505,9 @@ pub(crate) fn move_import_on(
             "import {import_id} does not own {candidate_key}"
         )));
     }
-    standing.import = next.map(|standing| StoredImport {
+    standing.import = next.map(|step| StoredImport {
         import_id: import_id.to_string(),
-        standing,
+        step,
     });
     write_on(sql, candidate_key, &standing)
 }
@@ -603,13 +616,13 @@ impl Database {
         .await
     }
 
-    /// Where the import `import_id` that owns `candidate_key` stands now, or
-    /// its end with `None`.
+    /// The step the import `import_id` that owns `candidate_key` is at now,
+    /// or its end with `None`.
     pub(crate) async fn move_candidate_import(
         &self,
         candidate_key: &CandidateKey,
         import_id: &str,
-        next: Option<ImportStanding>,
+        next: Option<ImportStep>,
     ) -> Result<(), DbError> {
         let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();

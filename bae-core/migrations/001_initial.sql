@@ -3014,11 +3014,13 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
 -- `identify_run`, having that run's answer written (the release it picked
 -- unattended read first, and whether an Import was asked of that answer), or
 -- the answer's write failed. Its import is the one `import_id`
--- names, queued, running or writing its release; a second import is refused
--- while one stands. A row exists only while one of the two is set. No run or
--- import outlives the process, so the table is emptied as the library opens.
--- How far a run or an import has got is not here: it moves too often to be
--- written.
+-- names, at the step `import_step` names: queued for the worker, validating
+-- its source files, fetching artist pictures, reading files, measuring
+-- loudness, or finalizing (writing its release), each step written by the
+-- worker before it starts it; a second import is refused while one stands. A
+-- row exists only while one of the two is set. No run or import outlives the
+-- process, so the table is emptied as the library opens. How far through its
+-- step an import is is not here: it moves too often to be written.
 CREATE TABLE IF NOT EXISTS import_candidate_standing (
     candidate_key      BLOB PRIMARY KEY,
     identification     TEXT CHECK (identification IN (
@@ -3029,9 +3031,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_standing (
     identify_run       INTEGER CHECK (identify_run >= 0),
     import_asked       INTEGER CHECK (import_asked IN (0, 1)),
     save_failure_error TEXT,
-    import             TEXT CHECK (import IN ('queued', 'running', 'writing')),
+    import_step        TEXT CHECK (import_step IN (
+        'queued', 'validating_source_files', 'fetching_artist_pictures',
+        'reading_files', 'measuring_loudness', 'finalizing')),
     import_id          TEXT,
-    CHECK (identification IS NOT NULL OR import IS NOT NULL),
+    CHECK (identification IS NOT NULL OR import_step IS NOT NULL),
     CHECK ((identification IS NOT NULL) = (content_hash IS NOT NULL)),
     CHECK ((identification IS NOT NULL) = (file_edit_revision IS NOT NULL)),
     CHECK ((identification IS 'queued') = (admission IS NOT NULL)),
@@ -3040,12 +3044,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_standing (
     CHECK ((identification IS 'reading_pick') = (import_asked IS NOT NULL)),
     CHECK ((identification IN ('not_written', 'inapplicable') IS 1)
         = (save_failure_error IS NOT NULL)),
-    CHECK ((import IS NOT NULL) = (import_id IS NOT NULL))
+    CHECK ((import_step IS NOT NULL) = (import_id IS NOT NULL))
 ) STRICT;
 
 -- The rows an import holds, which the count of imports in flight reads.
 CREATE INDEX IF NOT EXISTS idx_import_candidate_standing_import
-    ON import_candidate_standing (import) WHERE import IS NOT NULL;
+    ON import_candidate_standing (import_step) WHERE import_step IS NOT NULL;
 
 -- The identifications counted as one batch, for the count the import list
 -- draws: each candidate admitted since the batch opened, and whether its
@@ -3962,7 +3966,7 @@ FROM (
                                                       WHERE m.content_hash = v.content_hash
                                                         AND m.listing = 'offered'))
                    END AS declined,
-                   st.identification, st.import AS running_import, st.save_failure_error,
+                   st.identification, st.import_step AS running_import, st.save_failure_error,
                    t.album_title AS tag_title, t.artist AS tag_artist,
                    e.album_title AS draft_title,
                    CASE WHEN listed.item = 'candidate' THEN
@@ -4938,10 +4942,10 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_standing_changed
-AFTER UPDATE OF candidate_key, identification, save_failure_error, import
+AFTER UPDATE OF candidate_key, identification, save_failure_error, import_step
 ON import_candidate_standing
-WHEN (OLD.candidate_key, OLD.identification, OLD.save_failure_error, OLD.import)
-  IS NOT (NEW.candidate_key, NEW.identification, NEW.save_failure_error, NEW.import)
+WHEN (OLD.candidate_key, OLD.identification, OLD.save_failure_error, OLD.import_step IS NULL)
+  IS NOT (NEW.candidate_key, NEW.identification, NEW.save_failure_error, NEW.import_step IS NULL)
 BEGIN
     INSERT INTO import_list_replace (key) SELECT OLD.candidate_key UNION SELECT NEW.candidate_key;
 END;

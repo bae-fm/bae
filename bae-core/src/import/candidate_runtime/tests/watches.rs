@@ -20,6 +20,21 @@ fn signals_event(key: &crate::import::CandidateKey, text: &str) -> ImportEvent {
 /// a reader taking the view before that is told the move later, as if
 /// whatever it waits for had moved the key.
 async fn wait_until_running(runtime: &CandidateRuntime, keys: &[&crate::import::CandidateKey]) {
+    wait_until_at(
+        runtime,
+        keys,
+        ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
+    )
+    .await;
+}
+
+/// Wait until the view shows each of `keys`' import at `step`, as a read of
+/// the table after the step's write says.
+async fn wait_until_at(
+    runtime: &CandidateRuntime,
+    keys: &[&crate::import::CandidateKey],
+    step: ImportStep,
+) {
     runtime
         .watch_view()
         .wait_for(|view| {
@@ -28,7 +43,7 @@ async fn wait_until_running(runtime: &CandidateRuntime, keys: &[&crate::import::
                     .get(key)
                     .and_then(|snapshot| snapshot.import.as_ref())
                     .map(|import| import.step)
-                    == Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles))
+                    == Some(step)
             })
         })
         .await
@@ -58,7 +73,7 @@ async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
         [CandidateRuntimeChange::Reset { runtimes }] if runtimes.len() == 2
     ));
 
-    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 40));
+    measuring(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1"), 40).await;
     runtime.move_import(&crate::import::CandidateKey::test("/watch/a/rel2"), "imp-1", None).await.unwrap();
     let mut changed = Vec::new();
     while !(changed.iter().any(|change| {
@@ -249,7 +264,7 @@ async fn a_snapshots_reader_is_told_only_the_key_that_moved() {
     let mut watch = RuntimeSnapshotsWatch::of(&runtime);
     watch.next().await.expect("the runtime is there");
 
-    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 40));
+    measuring(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1"), 40).await;
     let next = watch.next().await.expect("the runtime is there");
     assert!(
         matches!(
@@ -275,11 +290,17 @@ async fn an_import_percent_moves_the_percents_not_the_snapshots() {
     claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
     let mut percents = runtime.watch_import_percents();
     wait_until_running(&runtime, &[&crate::import::CandidateKey::test("/watch/a/rel1"), &crate::import::CandidateKey::test("/watch/a/rel2")]).await;
-    runtime.record_event(&progress(&crate::import::CandidateKey::test("/watch/a/rel1"), 40));
+    measuring(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1"), 40).await;
     percents
         .wait_for(|percents| percents.get(&crate::import::CandidateKey::test("/watch/a/rel1")) == Some(&40))
         .await
         .unwrap();
+    wait_until_at(
+        &runtime,
+        &[&crate::import::CandidateKey::test("/watch/a/rel1")],
+        ImportStep::Running(ImportPhase::MeasuringLoudness),
+    )
+    .await;
     let mut watch = RuntimeSnapshotsWatch::of(&runtime);
     watch.next().await.expect("the runtime is there");
 
@@ -300,6 +321,14 @@ async fn an_import_percent_moves_the_percents_not_the_snapshots() {
     );
 
     runtime.move_import(&crate::import::CandidateKey::test("/watch/a/rel1"), "imp-1", None).await.unwrap();
+    runtime.record_event(&ImportEvent::ImportProgress {
+        candidate_key: crate::import::CandidateKey::test("/watch/a/rel1"),
+        progress: ImportProgress::Complete {
+            id: "rel1".to_string(),
+            import_id: "imp-1".to_string(),
+            album_id: "alb".to_string(),
+        },
+    });
     percents
         .wait_for(|percents| !percents.contains_key(&crate::import::CandidateKey::test("/watch/a/rel1")))
         .await

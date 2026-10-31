@@ -312,7 +312,7 @@ async fn what_is_running_decides_a_found_releases_state() {
     let now = |state: &str| moves([(lib.release("Album"), Some(found("Album").state(state)))]);
     assert_eq!(
         lib.moved(&format!(
-            "INSERT INTO import_candidate_standing (candidate_key, import, import_id)
+            "INSERT INTO import_candidate_standing (candidate_key, import_step, import_id)
              VALUES ({key}, 'queued', 'import-1');"
         ))
         .await,
@@ -320,7 +320,7 @@ async fn what_is_running_decides_a_found_releases_state() {
     );
     assert_eq!(
         lib.moved(&standing(&format!(
-            "UPDATE import_candidate_standing SET import = 'running', identification = 'queued', \
+            "UPDATE import_candidate_standing SET import_step = 'reading_files', identification = 'queued', \
              content_hash = '{}', file_edit_revision = 0, admission = 'requested'",
             hash("Album")
         )))
@@ -329,7 +329,7 @@ async fn what_is_running_decides_a_found_releases_state() {
     );
     assert_eq!(
         lib.moved(&standing(
-            "UPDATE import_candidate_standing SET import = NULL, import_id = NULL"
+            "UPDATE import_candidate_standing SET import_step = NULL, import_id = NULL"
         ))
         .await,
         now("identifying")
@@ -365,7 +365,7 @@ async fn what_is_running_decides_a_found_releases_state() {
     .await;
     assert_eq!(
         lib.moved(&format!(
-            "INSERT INTO import_candidate_standing (candidate_key, import, import_id)
+            "INSERT INTO import_candidate_standing (candidate_key, import_step, import_id)
              VALUES ({key}, 'queued', 'import-1');"
         ))
         .await,

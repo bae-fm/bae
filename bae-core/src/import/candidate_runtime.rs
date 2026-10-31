@@ -11,8 +11,9 @@
 //! operation that asked for it.
 //!
 //! This runtime holds what is not a standing: the state each run last
-//! published, which a pane draws while the table names that run; how far an
-//! import has got; a person's typed search; extraction's
+//! published, which a pane draws while the table names that run; how far
+//! through its step an import is, for the import percents' stream alone; a
+//! person's typed search; extraction's
 //! [`Signals`](crate::signals::Signals); and the whole of a library release's
 //! re-identify run, which is no list row's and has no standing. The count of
 //! identifications in flight is the table's too, moved by each change in its
@@ -27,11 +28,11 @@
 
 use super::candidate_key::CandidateKey;
 use super::candidate_search::CandidateSearch;
-use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
+use super::candidates::CandidateRuntimeSnapshot;
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
-use super::types::{ImportProgress, ImportStep};
+use super::types::ImportProgress;
 use crate::db::Database;
 use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{Failure, Signals};
@@ -122,12 +123,11 @@ struct PublishedState {
     of_candidate: bool,
 }
 
-/// How far the import that last reported for a key has got. The import id
-/// tells it from an import that already ended.
+/// How far through its step the import that last reported for a key is. The
+/// import id tells it from an import that already ended.
 #[derive(Clone, PartialEq)]
 struct ImportReport {
     import_id: String,
-    in_flight: ImportInFlight,
     /// How far through its step it is, once the step counts any.
     percent: Option<u32>,
 }
@@ -138,14 +138,13 @@ struct CandidateRuntimeState {
     /// The state each of the key's runs last published, by run, until the run
     /// ends.
     runs: BTreeMap<IdentifyRunId, PublishedState>,
-    import: Option<ImportReport>,
     search: Option<RunningSearch>,
 }
 
 impl CandidateRuntimeState {
     /// Nothing is held for the key, so its entry is removed.
     fn is_idle(&self) -> bool {
-        self.runs.is_empty() && self.import.is_none() && self.search.is_none()
+        self.runs.is_empty() && self.search.is_none()
     }
 }
 
@@ -156,6 +155,8 @@ struct Inner {
     /// The files last reported for each scanned key, so a reshape can be told
     /// from a repeat.
     shapes: HashMap<CandidateKey, CandidateShape>,
+    /// How far through its step each key's import is, as it last reported.
+    imports: HashMap<CandidateKey, ImportReport>,
     /// The latest signals extraction reported for each key, and their run.
     signals: HashMap<CandidateKey, (IdentifyRunId, Signals)>,
     /// Which keys' signals moved, so a reader reads only those.
@@ -187,9 +188,8 @@ pub struct CandidateRuntime {
     /// Every key's snapshot, kept key by key from the live read of the table
     /// and what `inner` holds.
     view: Arc<watch::Sender<snapshots::RuntimeView>>,
-    /// The percent of each key's running import, composed beside its
-    /// snapshot: it moves many times a second, and the snapshot only as the
-    /// import's step does.
+    /// The percent of each key's running import, apart from its snapshot: it
+    /// moves many times a second, and the step only a few times an import.
     percents: Arc<watch::Sender<HashMap<CandidateKey, u32>>>,
     /// Test readers that hear every move of the identification count, and
     /// every key's runtime as each write of its standing leaves it.
@@ -564,6 +564,59 @@ impl CandidateRuntime {
         self.end_candidate(key);
     }
 
+    /// Hold how far through its step `progress`'s import is, for the import
+    /// percents' stream. An import's first report, of its preparation, opens
+    /// its entry; a later report moves only its own import's entry, and an
+    /// ending clears only its own, so a late report of an import that ended
+    /// or was replaced moves nothing.
+    fn record_import_progress(&self, key: &CandidateKey, progress: &ImportProgress) {
+        let import_id = progress.import_id();
+        let shown = {
+            let mut inner = self.held();
+            let own = inner
+                .imports
+                .get(key)
+                .is_some_and(|report| report.import_id == import_id);
+            match progress {
+                ImportProgress::Preparing { .. } => {
+                    inner.imports.insert(
+                        key.clone(),
+                        ImportReport {
+                            import_id: import_id.to_string(),
+                            percent: None,
+                        },
+                    );
+                }
+                ImportProgress::Progress { percent, .. } if own => {
+                    inner.imports.insert(
+                        key.clone(),
+                        ImportReport {
+                            import_id: import_id.to_string(),
+                            percent: percent.map(u32::from),
+                        },
+                    );
+                }
+                ImportProgress::Complete { .. }
+                | ImportProgress::RemoteUploadQueued { .. }
+                | ImportProgress::Failed { .. }
+                | ImportProgress::Cancelled { .. }
+                    if own =>
+                {
+                    inner.imports.remove(key);
+                }
+                _ => debug!("{key}: import {import_id} reported after it ended"),
+            }
+            inner.imports.get(key).and_then(|report| report.percent)
+        };
+        self.percents.send_if_modified(|percents| {
+            let previous = match shown {
+                Some(percent) => percents.insert(key.clone(), percent),
+                None => percents.remove(key),
+            };
+            previous != shown
+        });
+    }
+
     /// Hold what `event` says that is not a standing: how far an import has
     /// got, which files a candidate has, the signals extraction found. Every
     /// standing an event announces is written before it is sent.
@@ -572,52 +625,7 @@ impl CandidateRuntime {
             ImportEvent::ImportProgress {
                 candidate_key,
                 progress,
-            } => {
-                let in_flight = match progress {
-                    ImportProgress::Preparing { step, .. } => Some((
-                        ImportInFlight {
-                            step: ImportStep::Preparing(*step),
-                        },
-                        None,
-                    )),
-                    ImportProgress::Progress { percent, phase, .. } => Some((
-                        ImportInFlight {
-                            step: ImportStep::Running(*phase),
-                        },
-                        percent.map(u32::from),
-                    )),
-                    ImportProgress::Complete { .. }
-                    | ImportProgress::RemoteUploadQueued { .. }
-                    | ImportProgress::Failed { .. }
-                    | ImportProgress::Cancelled { .. } => None,
-                };
-                let import_id = progress.import_id();
-                self.set(candidate_key, |_, runtime| match in_flight {
-                    Some((in_flight, percent)) => {
-                        runtime.import = Some(ImportReport {
-                            import_id: import_id.to_string(),
-                            in_flight,
-                            percent,
-                        });
-                    }
-                    // An ending clears only its own import's progress: a late
-                    // ending of an import that was replaced leaves the
-                    // replacement's.
-                    None => {
-                        if runtime
-                            .import
-                            .as_ref()
-                            .is_some_and(|report| report.import_id == import_id)
-                        {
-                            runtime.import = None;
-                        } else {
-                            debug!(
-                                "{candidate_key}: import {import_id} ended after another reported"
-                            );
-                        }
-                    }
-                });
-            }
+            } => self.record_import_progress(candidate_key, progress),
             // The driver records its own run's state, beside the standing it
             // writes, before it sends it.
             ImportEvent::IdentifyStateChanged { .. } => {}

@@ -2,33 +2,25 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// A running import's line under a triage row: the phase it is in and the
+/// A running import's line under a triage row: the step it is at and the
 /// bar. The bar is how far through it is; a number beside it would say the
 /// same thing again in a row that has no room for it.
 ///
-/// The phase is the candidate's runtime, which changes as the import steps;
-/// the bar is set straight from the import percents' stream once per
-/// display frame, so a percent tick redraws the bar and runs no SwiftUI
-/// update. The row itself only says *that* an import is running, which is a
-/// fact the queue projects.
+/// The step is the row's, which the list's live query delivers as the worker
+/// writes each one; the bar is set straight from the import percents' stream
+/// once per display frame, so a percent tick redraws the bar and runs no
+/// SwiftUI update.
 struct ImportProgressLine: View {
     let key: Data
+    let step: BridgeImportStep
     @Environment(\.importPercents)
     private var percents
 
     var body: some View {
-        CandidateRuntimeReader(key: key) { runtime in
-            ProgressLine(
-                phaseText(step: runtime?.import?.step),
-                bar: ImportPercentBar(percent: percents?.source(for: key))
-            )
-        }
-    }
-
-    /// A row placed as importing whose run has not reported yet is at the
-    /// start with no phase named.
-    private func phaseText(step: BridgeImportStep?) -> String {
-        step?.localizedText ?? String(localized: "Importing\u{2026}")
+        ProgressLine(
+            step.localizedText,
+            bar: ImportPercentBar(percent: percents?.source(for: key))
+        )
     }
 }
 

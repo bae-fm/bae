@@ -88,16 +88,17 @@ pub fn import_status_of(
 }
 
 /// Where a candidate stands, as its row reads it from the standings table.
-/// How far a run or an import has got is not part of it, and leaves the row
-/// as it was drawn. The default is a key nothing is running for: no
-/// identification work exists and no import has claimed it.
+/// How far a run has got, or how far through its step an import is, is not
+/// part of it, and leaves the row as it was drawn. The default is a key
+/// nothing is running for: no identification work exists and no import has
+/// claimed it.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TriageRuntimeFacts {
     pub identification: Option<IdentificationStatus>,
-    /// Where the import that owns this candidate right now stands, or `None`
-    /// when no import does. How far it has got is the runtime's, read by the
-    /// leaf that draws the bar.
-    pub import: Option<ImportStanding>,
+    /// The step of the import that owns this candidate right now, or `None`
+    /// when no import does. How far through it the import is is the import
+    /// percents' stream, read by the leaf that draws the bar.
+    pub import: Option<crate::import::ImportStep>,
 }
 
 /// Where an import that owns a candidate stands: what a row draws for it and
@@ -113,10 +114,32 @@ pub enum ImportStanding {
     Writing,
 }
 
+impl ImportStanding {
+    /// Where an import at `step` stands.
+    pub(crate) fn of_step(step: crate::import::ImportStep) -> Self {
+        use crate::import::{ImportPhase, ImportStep, PrepareStep};
+        match step {
+            ImportStep::Preparing(PrepareStep::Queued) => Self::Queued,
+            ImportStep::Preparing(
+                PrepareStep::ValidatingSourceFiles | PrepareStep::FetchingArtistPictures,
+            )
+            | ImportStep::Running(ImportPhase::ReadingFiles | ImportPhase::MeasuringLoudness) => {
+                Self::Running
+            }
+            ImportStep::Running(ImportPhase::Finalizing) => Self::Writing,
+        }
+    }
+}
+
 impl TriageRuntimeFacts {
     /// An import owns the candidate, whatever it has reached.
     pub fn importing(&self) -> bool {
         self.import.is_some()
+    }
+
+    /// Where the import that owns the candidate stands, from its step.
+    pub fn import_standing(&self) -> Option<ImportStanding> {
+        self.import.map(ImportStanding::of_step)
     }
 
     /// A run for the candidate is queued, running, or having its answer

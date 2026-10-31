@@ -183,7 +183,7 @@ impl Library {
     /// at `display_path`.
     fn importing(&self, display_path: &str, stage: &str) -> String {
         format!(
-            "INSERT INTO import_candidate_standing (candidate_key, import, import_id)
+            "INSERT INTO import_candidate_standing (candidate_key, import_step, import_id)
              VALUES ({}, '{stage}', 'import-{display_path}');",
             self.sql(display_path)
         )

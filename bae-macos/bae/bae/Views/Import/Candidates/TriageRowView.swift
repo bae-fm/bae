@@ -107,13 +107,13 @@ struct TriageRowView: View {
     @ViewBuilder
     private var stateLine: some View {
         switch live.import {
-        case .running, .writing:
-            // A running import updates by the second, so only this leaf
-            // observes its progress.
-            ImportProgressLine(key: row.candidateKey)
-                .themeText(.detail)
-        case .queued:
+        case .preparing(step: .queued)?:
             EmptyView()
+        case let step?:
+            // A running import's bar moves by the second, so only this leaf
+            // reads its percent.
+            ImportProgressLine(key: row.candidateKey, step: step)
+                .themeText(.detail)
         case nil:
             if let release = row.importedRelease, let upload = row.upload {
                 // The bar moves each display frame, so only this leaf reads
@@ -218,8 +218,8 @@ extension TriageRowView {
             else if let step = live.identifying {
                 identifyingTrailing(step)
             }
-            else if let standing = live.import {
-                importStandingTrailing(standing)
+            else if let step = live.import {
+                importTrailing(step)
             }
         }
         .fixedSize()
@@ -243,13 +243,13 @@ extension TriageRowView {
 
     /// A queued import's clock; a running one's progress is its state line.
     @ViewBuilder
-    private func importStandingTrailing(
-        _ standing: BridgeImportStanding
+    private func importTrailing(
+        _ step: BridgeImportStep
     ) -> some View {
-        switch standing {
-        case .queued:
+        switch step {
+        case .preparing(step: .queued):
             QueuedImportIcon()
-        case .running, .writing:
+        case .preparing, .running:
             EmptyView()
         }
     }

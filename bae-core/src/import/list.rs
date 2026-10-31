@@ -436,7 +436,7 @@ impl ImportCandidateDetailProjection {
             standing: facts,
             listed,
         } = self;
-        let import_standing = facts.import;
+        let import_step = facts.import;
         let importing = facts.importing();
         let file_evidence = signals
             .as_ref()
@@ -487,8 +487,8 @@ impl ImportCandidateDetailProjection {
             TriageTab::Done => CandidatePanePlacement::Done,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let import_status = match import_standing {
-            Some(standing) => Some(CandidateImportStatus::Importing { standing }),
+        let import_status = match import_step {
+            Some(step) => Some(CandidateImportStatus::Importing { step }),
             None => import_status.map(CandidateImportStatus::of),
         };
         ImportCandidateDetail {
@@ -552,8 +552,9 @@ pub enum CandidatePanePlacement {
 /// than a row's stored outcome beside a live flag.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidateImportStatus {
+    /// An import runs, at this step.
     Importing {
-        standing: super::ImportStanding,
+        step: super::ImportStep,
     },
     /// The release this device imported from the candidate's files.
     Complete {

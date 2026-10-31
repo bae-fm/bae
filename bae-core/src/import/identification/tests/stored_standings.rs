@@ -178,7 +178,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         .move_candidate_import(
             &crate::import::CandidateKey::test("/watched/Writing"),
             "import-1",
-            Some(crate::import::ImportStanding::Writing),
+            Some(crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing)),
         )
         .await
         .unwrap();

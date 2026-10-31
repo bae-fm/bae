@@ -585,10 +585,10 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
-        standing: crate::import::ImportStanding,
+        step: crate::import::ImportStep,
     ) {
         self.runtime
-            .move_import(candidate_key, import_id, Some(standing))
+            .move_import(candidate_key, import_id, Some(step))
             .await
             .expect("a test moves the claim it made");
     }
@@ -663,12 +663,10 @@ impl ImportServiceHandle {
         super::RuntimeSnapshotsWatch::of(&self.runtime)
     }
 
-    /// Each running import's percent, by candidate key, right now, read from
-    /// the standings table and the runtime.
-    pub async fn import_percents(
-        &self,
-    ) -> Result<HashMap<crate::import::CandidateKey, u32>, crate::library::LibraryError> {
-        self.runtime.percents().await
+    /// Each running import's percent, by candidate key, as its import last
+    /// reported.
+    pub fn import_percents(&self) -> HashMap<crate::import::CandidateKey, u32> {
+        self.runtime.percents()
     }
 
     /// Each running import's percent, by candidate key, now and as it moves.

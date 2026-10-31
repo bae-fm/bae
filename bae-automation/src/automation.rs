@@ -104,11 +104,7 @@ impl Automation {
             .candidate_runtimes()
             .await
             .map_err(AutomationError::from)?;
-        let percents = self
-            .services
-            .import_percents()
-            .await
-            .map_err(AutomationError::from)?;
+        let percents = self.services.import_percents();
         let mut candidates = Vec::new();
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
             let view = ImportListView {
@@ -175,11 +171,7 @@ impl Automation {
                 .candidate_runtimes()
                 .await
                 .map_err(AutomationError::from)?;
-            let percents = self
-                .services
-                .import_percents()
-                .await
-                .map_err(AutomationError::from)?;
+            let percents = self.services.import_percents();
             return automation_candidate_from_folder(&detail, &runtime, &percents, &self.services)
                 .await;
         }

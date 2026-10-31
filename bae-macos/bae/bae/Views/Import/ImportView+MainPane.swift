@@ -79,11 +79,11 @@ extension ImportView {
                 )
                 .id(release.releaseId)
             }
-        case .importing(let standing):
+        case .importing(let step):
             let mappingActions = mappingActions(for: candidate)
             ImportingCandidatePane(
                 candidate: candidate,
-                standing: standing,
+                step: step,
                 coverContent: candidate.cover?.imageContent,
                 onOpenImages: mappingActions.openImages,
                 onOpenDocument: mappingActions.openDocument,

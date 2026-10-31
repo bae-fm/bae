@@ -58,7 +58,7 @@ async fn only_the_claiming_import_moves_its_claim() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
-    runtime.record_event(&progress(key, 60));
+    measuring(&runtime, key, 60).await;
     runtime.move_import(key, "imp-1", None).await.unwrap();
     runtime.record_event(&ImportEvent::ImportProgress {
         candidate_key: key.clone(),
@@ -78,8 +78,16 @@ async fn only_the_claiming_import_moves_its_claim() {
         "the ended import's report does not move the new claim"
     );
     assert!(
+        runtime.percents().is_empty(),
+        "nor is the ended import's percent drawn"
+    );
+    assert!(
         runtime
-            .move_import(key, "imp-1", Some(ImportStanding::Running))
+            .move_import(
+                key,
+                "imp-1",
+                Some(ImportStep::Running(ImportPhase::ReadingFiles)),
+            )
             .await
             .is_err(),
         "nor may the ended import move it"
@@ -160,6 +168,9 @@ async fn a_claim_that_ends_identification_ends_it_in_its_own_write() {
     runtime.claim_for_import(key, "imp-1", true).await.unwrap();
     let facts = runtime.standing_facts(key).await.unwrap();
     assert_eq!(facts.identification, None);
-    assert_eq!(facts.import, Some(ImportStanding::Queued));
+    assert_eq!(
+        facts.import,
+        Some(ImportStep::Preparing(PrepareStep::Queued))
+    );
     assert_eq!(runtime.identification_progress().await.unwrap(), (0, 0));
 }

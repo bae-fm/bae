@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::import_cancel::{ImportRunEnd, ImportStop};
-use crate::import::types::TrackAudio;
+use crate::import::types::{ImportStep, TrackAudio};
 use bae_util::task_failure::{blocking, caught};
 use bae_util::worker_thread::WorkerThread;
 
@@ -264,7 +264,7 @@ impl ImportService {
                 self.runtime.move_import(
                     &candidate_key,
                     &import_id,
-                    Some(crate::import::ImportStanding::Running),
+                    Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),
                 ),
             )
             .await
@@ -388,13 +388,23 @@ impl ImportService {
             .await?;
         if !new_artists.is_empty() {
             self.event_tx
-                .send(crate::import::handle::ImportEvent::ImportProgress {
-                    candidate_key: candidate_key.clone(),
-                    progress: ImportProgress::Preparing {
-                        import_id: import_id.clone(),
-                        step: PrepareStep::FetchingArtistPictures,
+                .send_once_written(
+                    crate::import::handle::ImportEvent::ImportProgress {
+                        candidate_key: candidate_key.clone(),
+                        progress: ImportProgress::Preparing {
+                            import_id: import_id.clone(),
+                            step: PrepareStep::FetchingArtistPictures,
+                        },
                     },
-                });
+                    self.runtime.move_import(
+                        &candidate_key,
+                        &import_id,
+                        Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)),
+                    ),
+                )
+                .await
+                .map_err(crate::library::LibraryError::from)
+                .map_err(crate::import::ImportError::from)?;
         }
         let artist_images = library_manager
             .fetch_discogs_artist_images(new_artists)
@@ -616,7 +626,18 @@ impl ImportService {
             }
             .into());
         }
-        self.emit_phase_progress(run, &db_release.id, Some(0), ImportPhase::ReadingFiles);
+        self.event_tx
+            .send_once_written(
+                Self::phase_progress(run, &db_release.id, Some(0), ImportPhase::ReadingFiles),
+                self.runtime.move_import(
+                    candidate_key,
+                    import_id,
+                    Some(ImportStep::Running(ImportPhase::ReadingFiles)),
+                ),
+            )
+            .await
+            .map_err(crate::library::LibraryError::from)
+            .map_err(crate::import::ImportError::from)?;
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
         for (idx, entry) in discovered_files.iter().enumerate() {
@@ -773,6 +794,18 @@ impl ImportService {
             );
             std::num::NonZeroUsize::MIN
         });
+        self.event_tx
+            .send_once_written(
+                Self::phase_progress(run, &db_release.id, None, ImportPhase::MeasuringLoudness),
+                self.runtime.move_import(
+                    candidate_key,
+                    import_id,
+                    Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
+                ),
+            )
+            .await
+            .map_err(crate::library::LibraryError::from)
+            .map_err(crate::import::ImportError::from)?;
         let loudness = crate::import::loudness::measure_loudness(
             &self.event_tx,
             parallelism,
@@ -860,7 +893,7 @@ impl ImportService {
                 self.runtime.move_import(
                     candidate_key,
                     import_id,
-                    Some(crate::import::ImportStanding::Writing),
+                    Some(ImportStep::Running(ImportPhase::Finalizing)),
                 ),
             )
             .await

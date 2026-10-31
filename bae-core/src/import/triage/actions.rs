@@ -141,7 +141,7 @@ impl CandidateActionBasis {
         }
         // A running import can be cancelled; one writing its release
         // completes, so nothing is offered for it.
-        match live.import {
+        match live.import_standing() {
             Some(ImportStanding::Queued | ImportStanding::Running) => return vec![A::CancelImport],
             Some(ImportStanding::Writing) => return Vec::new(),
             None => {}
@@ -339,16 +339,19 @@ mod tests {
     /// is still waiting for the worker or running.
     #[test]
     fn a_queued_or_running_import_offers_only_its_cancel() {
-        for standing in [ImportStanding::Queued, ImportStanding::Running] {
+        for step in [
+            crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
+            crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles),
+        ] {
             let importing = TriageRuntimeFacts {
                 identification: None,
-                import: Some(standing),
+                import: Some(step),
             };
             for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
                 assert_eq!(
                     basis(placement, None).actions(&importing),
                     vec![CandidateAction::CancelImport, CandidateAction::RevealFolder],
-                    "{standing:?}, {placement:?}"
+                    "{step:?}, {placement:?}"
                 );
             }
         }
@@ -360,7 +363,9 @@ mod tests {
     fn an_import_writing_its_release_offers_no_cancel() {
         let writing = TriageRuntimeFacts {
             identification: None,
-            import: Some(ImportStanding::Writing),
+            import: Some(crate::import::ImportStep::Running(
+                crate::import::ImportPhase::Finalizing,
+            )),
         };
         assert_eq!(
             basis(TriagePlacement::Pending, None).actions(&writing),
@@ -463,7 +468,9 @@ mod tests {
         assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
         let importing = TriageRuntimeFacts {
             identification: None,
-            import: Some(ImportStanding::Running),
+            import: Some(crate::import::ImportStep::Running(
+                crate::import::ImportPhase::ReadingFiles,
+            )),
         };
         assert!(!grouped
             .actions(&importing)

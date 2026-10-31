@@ -1,18 +1,13 @@
 //! Each key's [`CandidateRuntimeSnapshot`]: where the standings table says it
-//! stands, with what the runtime holds beside it — the state the run the
-//! table names last published, the step its import is at, its search — and
-//! a library release's re-identify run, which only the runtime holds. Beside
-//! it, each key's import percent, which moves too often for the snapshot.
+//! stands — the step its import is at among it — with what the runtime holds
+//! beside it — the state the run the table names last published, its search —
+//! and a library release's re-identify run, which only the runtime holds.
 
 use super::change_log::ChangeLog;
-use super::{
-    CandidateRuntime, CandidateRuntimeState, IdentificationStage, ImportReport, StoredImport,
-    StoredStanding,
-};
+use super::{CandidateRuntime, CandidateRuntimeState, IdentificationStage, StoredStanding};
 use crate::import::candidates::{
     CandidateRuntimeSnapshot, IdentificationRuntime, ImportInFlight, SavingAnswer,
 };
-use crate::import::triage::ImportStanding;
 use crate::import::CandidateKey;
 use crate::library::LibraryError;
 use std::collections::HashMap;
@@ -30,15 +25,7 @@ fn compose(
     };
     let import = stored
         .and_then(|stored| stored.import.as_ref())
-        .map(|import| {
-            current_report(import, held)
-                .map(|report| report.in_flight.clone())
-                // A claim no report has moved yet, or a report of the step
-                // before the table's: the standing's first step.
-                .unwrap_or(ImportInFlight {
-                    step: import.standing.first_step(),
-                })
-        });
+        .map(|import| ImportInFlight { step: import.step });
     let search = held
         .and_then(|held| held.search.as_ref())
         .map(|running| running.search.clone());
@@ -50,41 +37,6 @@ fn compose(
         import,
         search,
     })
-}
-
-/// The report of the import the table names, at the step the table has it
-/// at; `None` for a report of another import, or of the step before.
-fn current_report<'a>(
-    import: &StoredImport,
-    held: Option<&'a CandidateRuntimeState>,
-) -> Option<&'a ImportReport> {
-    held.and_then(|held| held.import.as_ref()).filter(|report| {
-        report.import_id == import.import_id
-            && ImportStanding::of_step(report.in_flight.step) == import.standing
-    })
-}
-
-/// How far through its step the import the table names for a key is, once
-/// its current report counts any.
-fn compose_percent(
-    stored: Option<&StoredStanding>,
-    held: Option<&CandidateRuntimeState>,
-) -> Option<u32> {
-    let import = stored?.import.as_ref()?;
-    current_report(import, held)?.percent
-}
-
-/// Every key's import percent from `stored` and what `runtime` holds.
-fn compose_percents(
-    stored: &HashMap<CandidateKey, StoredStanding>,
-    runtime: &HashMap<CandidateKey, CandidateRuntimeState>,
-) -> HashMap<CandidateKey, u32> {
-    stored
-        .iter()
-        .filter_map(|(key, stored)| {
-            compose_percent(Some(stored), runtime.get(key)).map(|percent| (key.clone(), percent))
-        })
-        .collect()
 }
 
 /// A folder candidate's identification as the table holds it, with the
@@ -190,12 +142,9 @@ impl CandidateRuntime {
         Ok(self.compose_all(&stored))
     }
 
-    /// Each running import's percent, by key, right now, read from the table
-    /// and the runtime.
-    pub(crate) async fn percents(&self) -> Result<HashMap<CandidateKey, u32>, LibraryError> {
-        let stored = self.database.load_candidate_standings().await?;
-        let inner = self.inner.lock().unwrap();
-        Ok(compose_percents(&stored, &inner.runtime))
+    /// Each running import's percent, by key, as its import last reported.
+    pub(crate) fn percents(&self) -> HashMap<CandidateKey, u32> {
+        self.percents.borrow().clone()
     }
 
     /// What is in flight for `key` as the live read last read the table, with
@@ -220,32 +169,12 @@ impl CandidateRuntime {
 
     /// Compose `key` again from its standing as the table was last read and
     /// what the runtime holds for it now, and tell the view's readers if that
-    /// changed it, and the percents' readers if its percent moved.
+    /// changed it.
     pub(super) fn recompose(&self, key: &CandidateKey) {
-        let mut percent = None;
         self.view.send_if_modified(|view| {
             let inner = self.held();
             let stored = view.stored.get(key);
-            let held = inner.runtime.get(key);
-            percent = compose_percent(stored, held);
-            view.show(key, compose(key, stored, held))
-        });
-        self.percents
-            .send_if_modified(|percents| show_percent(percents, key, percent));
-    }
-
-    /// Every key's import percent again from the table as last read and what
-    /// the runtime holds now.
-    fn recompose_percents(&self) {
-        let view = self.view.borrow();
-        let inner = self.held();
-        let next = compose_percents(&view.stored, &inner.runtime);
-        drop(inner);
-        drop(view);
-        self.percents.send_if_modified(|percents| {
-            let changed = *percents != next;
-            *percents = next;
-            changed
+            view.show(key, compose(key, stored, inner.runtime.get(key)))
         });
     }
 
@@ -265,7 +194,6 @@ impl CandidateRuntime {
                             compose(key, stored, inner.runtime.get(key))
                         })
                     });
-                    self.recompose_percents();
                 }
                 // The stream has no reader to hand the failure to: a bug,
                 // reported as one. The next read that succeeds is delivered.
@@ -335,46 +263,6 @@ impl RuntimeView {
     }
 }
 
-/// Show `next` as `key`'s percent; whether that moved it.
-fn show_percent(
-    percents: &mut HashMap<CandidateKey, u32>,
-    key: &CandidateKey,
-    next: Option<u32>,
-) -> bool {
-    let previous = match next {
-        Some(next) => percents.insert(key.clone(), next),
-        None => percents.remove(key),
-    };
-    previous != next
-}
-
-impl ImportStanding {
-    /// Where an import at `step` stands.
-    pub(crate) fn of_step(step: crate::import::ImportStep) -> Self {
-        use crate::import::{ImportPhase, ImportStep, PrepareStep};
-        match step {
-            ImportStep::Preparing(PrepareStep::Queued) => Self::Queued,
-            ImportStep::Preparing(
-                PrepareStep::ValidatingSourceFiles | PrepareStep::FetchingArtistPictures,
-            )
-            | ImportStep::Running(ImportPhase::ReadingFiles | ImportPhase::MeasuringLoudness) => {
-                Self::Running
-            }
-            ImportStep::Running(ImportPhase::Finalizing) => Self::Writing,
-        }
-    }
-
-    /// The step an import reaching this standing starts it with.
-    pub(crate) fn first_step(self) -> crate::import::ImportStep {
-        use crate::import::{ImportPhase, ImportStep, PrepareStep};
-        match self {
-            Self::Queued => ImportStep::Preparing(PrepareStep::Queued),
-            Self::Running => ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
-            Self::Writing => ImportStep::Running(ImportPhase::Finalizing),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,7 +274,9 @@ mod tests {
             identification: None,
             import: Some(StoredImport {
                 import_id: import_id.to_string(),
-                standing: ImportStanding::Running,
+                step: crate::import::ImportStep::Preparing(
+                    crate::import::PrepareStep::ValidatingSourceFiles,
+                ),
             }),
         }
     }

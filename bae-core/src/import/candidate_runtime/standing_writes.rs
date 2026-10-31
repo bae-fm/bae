@@ -11,8 +11,9 @@ use super::{CandidateRuntime, IdentificationChange, IdentificationMove, Identifi
 use crate::db::{DbError, ImportClaim};
 use crate::identify::IdentifyRunId;
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
-use crate::import::triage::{ImportStanding, TriageRuntimeFacts};
+use crate::import::triage::TriageRuntimeFacts;
 use crate::import::CandidateKey;
+use crate::import::ImportStep;
 
 /// What a run identifies: a folder candidate's files, whose standing the
 /// table holds, or a library release, which has none.
@@ -301,14 +302,14 @@ impl CandidateRuntime {
         }
     }
 
-    /// Where `import_id`, which owns `key`, stands now, or its end with
-    /// `None`: its claim released, cancelled, or ended. Refused when that
-    /// import does not own the key.
+    /// The step `import_id`, which owns `key`, is at now, written before the
+    /// import starts it, or its end with `None`: its claim released,
+    /// cancelled, or ended. Refused when that import does not own the key.
     pub(crate) async fn move_import(
         &self,
         key: &CandidateKey,
         import_id: &str,
-        next: Option<ImportStanding>,
+        next: Option<ImportStep>,
     ) -> Result<(), DbError> {
         self.database
             .move_candidate_import(key, import_id, next)

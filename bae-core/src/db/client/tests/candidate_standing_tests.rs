@@ -6,7 +6,6 @@ use crate::import::candidate_runtime::{
     IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
-use crate::import::triage::ImportStanding;
 
 /// Store `key` as a candidate the scan holds with `files`, as the scan would.
 async fn scanned(
@@ -164,12 +163,13 @@ async fn every_standing_reads_back_as_written() {
     db.claim_candidate_import(key, "import-1", None)
         .await
         .unwrap();
-    for standing in [
-        ImportStanding::Queued,
-        ImportStanding::Running,
-        ImportStanding::Writing,
+    for step in [
+        crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
+        crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles),
+        crate::import::ImportStep::Running(crate::import::ImportPhase::MeasuringLoudness),
+        crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing),
     ] {
-        db.move_candidate_import(key, "import-1", Some(standing))
+        db.move_candidate_import(key, "import-1", Some(step))
             .await
             .unwrap();
         assert_eq!(
@@ -178,7 +178,7 @@ async fn every_standing_reads_back_as_written() {
                 identification: None,
                 import: Some(StoredImport {
                     import_id: "import-1".to_string(),
-                    standing,
+                    step,
                 }),
             }
         );
@@ -337,7 +337,9 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     db.move_candidate_import(
         &crate::import::CandidateKey::test("/music/Two"),
         "import-2",
-        Some(ImportStanding::Writing),
+        Some(crate::import::ImportStep::Running(
+            crate::import::ImportPhase::Finalizing,
+        )),
     )
     .await
     .unwrap();

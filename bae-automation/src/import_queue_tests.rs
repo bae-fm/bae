@@ -277,13 +277,21 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
     let fixture = automation_over().await;
     let key = scan(&fixture, "A").await;
     fixture.claim(&key).await;
-    // The worker takes the import up, then reports how far it has got.
+    // The worker takes the import up and reports its preparation, writes the
+    // step it starts, then reports how far through it it has got.
+    fixture.record(ImportEvent::ImportProgress {
+        candidate_key: candidate_key_named(&key).unwrap(),
+        progress: ImportProgress::Preparing {
+            import_id: IMPORT_ID.to_string(),
+            step: bae_core::import::PrepareStep::ValidatingSourceFiles,
+        },
+    });
     fixture
         .services
         .move_candidate_import_for_test(
             &candidate_key_named(&key).unwrap(),
             IMPORT_ID,
-            bae_core::import::ImportStanding::Running,
+            bae_core::import::ImportStep::Running(bae_core::import::ImportPhase::MeasuringLoudness),
         )
         .await;
     fixture.record(importing(&key, 42));

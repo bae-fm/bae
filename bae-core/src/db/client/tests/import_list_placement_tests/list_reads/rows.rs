@@ -350,7 +350,7 @@ async fn a_claimed_import_leaves_the_row_pending() {
         "{}{}{}",
         scanned_with_states(&lib, &["Release"]),
         lib.valid_draft("Release"),
-        lib.importing("Release", "running")
+        lib.importing("Release", "reading_files")
     ))
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;

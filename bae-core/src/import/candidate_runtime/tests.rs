@@ -1,5 +1,6 @@
 use super::*;
 use crate::import::candidate_search::{CandidateSearch, SourceSearch};
+use crate::import::candidates::ImportInFlight;
 use crate::import::candidates::{
     Admission, CandidateFiles, IdentificationRuntime, SaveFailure, SavingAnswer,
 };
@@ -7,7 +8,7 @@ use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::types::{
     CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability,
 };
-use crate::import::{ImportStanding, ImportStep};
+use crate::import::ImportStep;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::path::PathBuf;
@@ -56,13 +57,38 @@ fn progress(key: &crate::import::CandidateKey, percent: u8) -> ImportEvent {
 }
 
 /// Claim `key` for the import every [`progress`] reports on, and take it up
-/// as the worker does before it reports.
+/// as the worker does: its first step written, then reported.
 async fn claim(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) {
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     runtime
-        .move_import(key, "imp-1", Some(ImportStanding::Running))
+        .move_import(
+            key,
+            "imp-1",
+            Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),
+        )
         .await
         .unwrap();
+    runtime.record_event(&ImportEvent::ImportProgress {
+        candidate_key: key.clone(),
+        progress: ImportProgress::Preparing {
+            import_id: "imp-1".to_string(),
+            step: PrepareStep::ValidatingSourceFiles,
+        },
+    });
+}
+
+/// Move `key`'s import to measuring loudness, as the worker writes it before
+/// it starts, and report `percent` of it, as the measuring does.
+async fn measuring(runtime: &CandidateRuntime, key: &crate::import::CandidateKey, percent: u8) {
+    runtime
+        .move_import(
+            key,
+            "imp-1",
+            Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
+        )
+        .await
+        .unwrap();
+    runtime.record_event(&progress(key, percent));
 }
 
 pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
@@ -259,10 +285,10 @@ fn extracted_signals() -> crate::signals::Signals {
     }
 }
 
-/// How far an import has got is held per key and composed with the claim the
-/// table holds; a report of the step the table has not reached is not drawn.
+/// An import's step is the one its claim holds, per key, and how far through
+/// it the import is is held per key apart from it.
 #[tokio::test]
-async fn import_progress_is_held_per_key_beside_its_claim() {
+async fn an_import_s_step_is_its_claim_s_and_its_percent_is_held_per_key() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
@@ -272,7 +298,7 @@ async fn import_progress_is_held_per_key_beside_its_claim() {
     )
     .await;
 
-    runtime.record_event(&progress(key, 42));
+    measuring(&runtime, key, 42).await;
 
     assert_eq!(
         runtime
@@ -294,6 +320,11 @@ async fn import_progress_is_held_per_key_beside_its_claim() {
             step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
         }),
         "another key's progress is its own"
+    );
+    assert_eq!(
+        runtime.percents(),
+        HashMap::from([(key.clone(), 42)]),
+        "only the key that reported a percent has one"
     );
 }
 
@@ -322,7 +353,7 @@ async fn a_finished_import_leaves_nothing_in_flight() {
     for ending in endings {
         let runtime = CandidateRuntime::for_test().await;
         claim(&runtime, key).await;
-        runtime.record_event(&progress(key, 42));
+        measuring(&runtime, key, 42).await;
 
         runtime.move_import(key, "imp-1", None).await.unwrap();
         runtime.record_event(&ImportEvent::ImportProgress {
@@ -334,6 +365,7 @@ async fn a_finished_import_leaves_nothing_in_flight() {
             "{ending:?} left something behind"
         );
         assert!(runtime.inner.lock().unwrap().runtime.is_empty());
+        assert!(runtime.percents().is_empty(), "{ending:?} left a percent");
     }
 }
 
@@ -375,10 +407,12 @@ async fn a_late_reader_reads_every_running_key() {
         &crate::import::CandidateKey::test("/watch/a/rel1"),
     )
     .await;
-    runtime.record_event(&progress(
+    measuring(
+        &runtime,
         &crate::import::CandidateKey::test("/watch/a/rel1"),
         10,
-    ));
+    )
+    .await;
     claim(
         &runtime,
         &crate::import::CandidateKey::test("/watch/a/rel2"),
@@ -398,19 +432,21 @@ async fn a_late_reader_reads_every_running_key() {
         .is_some());
 }
 
+/// A preparing step reads back as the step the worker wrote.
 #[tokio::test]
-async fn a_preparing_step_is_the_step_it_reports() {
+async fn a_preparing_step_is_the_step_written() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
 
-    runtime.record_event(&ImportEvent::ImportProgress {
-        candidate_key: key.clone(),
-        progress: ImportProgress::Preparing {
-            import_id: "imp-1".to_string(),
-            step: PrepareStep::ValidatingSourceFiles,
-        },
-    });
+    runtime
+        .move_import(
+            key,
+            "imp-1",
+            Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)),
+        )
+        .await
+        .unwrap();
 
     assert_eq!(
         runtime
@@ -420,7 +456,7 @@ async fn a_preparing_step_is_the_step_it_reports() {
             .and_then(|runtime| runtime.import)
             .expect("preparation is in flight"),
         ImportInFlight {
-            step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
+            step: ImportStep::Preparing(PrepareStep::FetchingArtistPictures),
         }
     );
 }
@@ -726,266 +762,11 @@ async fn a_cancel_ends_the_run_and_what_it_published() {
     assert!(runtime.inner.lock().unwrap().runtime.is_empty());
 }
 
-/// A library that asks every catalog it can — what these tests search from
-/// unless they are about a catalog that is not asked.
-fn every_source_on() -> Vec<CatalogAvailability> {
-    Catalog::LOOKUP
-        .into_iter()
-        .map(|catalog| CatalogAvailability {
-            catalog,
-            state: SourceAvailability::On,
-        })
-        .collect()
-}
-
-fn search_query() -> crate::import::search::SearchQuery {
-    crate::import::search::SearchQuery::General {
-        artist: "Artist Name".to_string(),
-        album: "Album Title".to_string(),
-    }
-}
-
-fn search_result(source: Catalog, release_id: &str) -> crate::import::search::MetadataResult {
-    crate::import::search::MetadataResult {
-        title: "Album Title".to_string(),
-        artist: Some("Artist Name".to_string()),
-        year: Some(1992),
-        ..crate::import::search::MetadataResult::for_test(source, release_id, None)
-    }
-}
-
-/// The search `key` holds, as its snapshot draws it.
-async fn search_of(
-    runtime: &CandidateRuntime,
-    key: &crate::import::CandidateKey,
-) -> Option<CandidateSearch> {
-    runtime
-        .snapshot(key)
-        .await
-        .unwrap()
-        .and_then(|runtime| runtime.search)
-}
-
-/// Both sources land on the same run, one after the other, and neither
-/// landing loses the other's answer.
-#[tokio::test]
-async fn two_landings_on_one_run_both_stand() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
-    let run = runtime.start_search(
-        key,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
-
-    assert!(runtime.land_search(
-        key,
-        run,
-        Catalog::MusicBrainz,
-        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
-    ));
-    assert!(runtime.land_search(
-        key,
-        run,
-        Catalog::Discogs,
-        Ok(vec![search_result(Catalog::Discogs, "dg-1")]),
-    ));
-
-    let landed = search_of(&runtime, key)
-        .await
-        .expect("the search is what is in flight for the key");
-    assert!(matches!(
-        landed.source(Catalog::MusicBrainz),
-        Some(SourceSearch::Done { .. })
-    ));
-    assert!(matches!(
-        landed.source(Catalog::Discogs),
-        Some(SourceSearch::Done { .. })
-    ));
-}
-
-/// A superseded run's landing goes nowhere and leaves the new run untouched.
-#[tokio::test]
-async fn a_superseded_run_cannot_land() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
-    let first = runtime.start_search(
-        key,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
-    let second = runtime.start_search(
-        key,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
-    assert!(!runtime.search_run_is_current(key, first));
-    assert!(runtime.search_run_is_current(key, second));
-
-    assert!(!runtime.land_search(
-        key,
-        first,
-        Catalog::MusicBrainz,
-        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
-    ));
-    assert!(matches!(
-        search_of(&runtime, key)
-            .await
-            .expect("the second run stands")
-            .source(Catalog::MusicBrainz),
-        Some(SourceSearch::Searching)
-    ));
-}
-
-/// A cleared search is gone from the key, and the run it was on cannot be
-/// started again by a landing that was still out.
-#[tokio::test]
-async fn a_cleared_search_cannot_land() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
-    let run = runtime.start_search(
-        key,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
-
-    runtime.clear_search(key);
-    assert!(
-        runtime.snapshot(key).await.unwrap().is_none(),
-        "nothing else was running"
-    );
-    assert!(!runtime.search_run_is_current(key, run));
-    assert!(!runtime.land_search(
-        key,
-        run,
-        Catalog::MusicBrainz,
-        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
-    ));
-    assert!(runtime.snapshot(key).await.unwrap().is_none());
-}
-
-/// Retry re-asks only the failed source, on a new run, keeping what the other
-/// found. A search with nothing to re-ask changes nothing.
-#[tokio::test]
-async fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
-    let run = runtime.start_search(
-        key,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
-    assert!(runtime.land_search(
-        key,
-        run,
-        Catalog::MusicBrainz,
-        Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
-    ));
-    assert!(runtime.land_search(
-        key,
-        run,
-        Catalog::Discogs,
-        Err(crate::signals::LookupFailure::Network.into()),
-    ));
-
-    let (query, sources, retried) = runtime.retry_search(key).expect("Discogs failed");
-    assert_eq!(query, search_query());
-    assert_eq!(sources, vec![Catalog::Discogs]);
-    assert!(runtime.search_run_is_current(key, retried));
-    assert!(!runtime.search_run_is_current(key, run));
-    let search = search_of(&runtime, key)
-        .await
-        .expect("the retried search is in flight");
-    assert!(matches!(
-        search.source(Catalog::MusicBrainz),
-        Some(SourceSearch::Done { .. })
-    ));
-    assert_eq!(
-        search.source(Catalog::Discogs),
-        Some(&SourceSearch::Searching)
-    );
-
-    assert!(runtime.land_search(
-        key,
-        retried,
-        Catalog::Discogs,
-        Ok(vec![search_result(Catalog::Discogs, "dg-1")]),
-    ));
-    assert!(
-        runtime.retry_search(key).is_none(),
-        "a settled search has no source to re-ask"
-    );
-    assert!(
-        runtime
-            .retry_search(&crate::import::CandidateKey::test("/watch/a/rel2"))
-            .is_none(),
-        "a key with no search has none either"
-    );
-}
-
-/// Switching a source off closes its part of every search running right now,
-/// wherever the person is looking, and leaves its run standing.
-#[tokio::test]
-async fn switching_a_source_off_closes_its_part_of_every_live_search() {
-    let runtime = CandidateRuntime::for_test().await;
-    let searching = &crate::import::CandidateKey::test("/watch/a/rel1");
-    let run = runtime.start_search(
-        searching,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
-
-    runtime.switch_source_off(Catalog::MusicBrainz);
-
-    let search = search_of(&runtime, searching)
-        .await
-        .expect("the search is still what is in flight for the key");
-    assert_eq!(
-        search.source(Catalog::MusicBrainz),
-        Some(&SourceSearch::Off)
-    );
-    assert_eq!(
-        search.source(Catalog::Discogs),
-        Some(&SourceSearch::Searching),
-        "the source still being asked is untouched"
-    );
-    assert!(
-        runtime.search_run_is_current(searching, run),
-        "the run stands, so the other source's lookup still lands"
-    );
-}
-
-/// The lookup the dropped source already had out lands on a part that is no
-/// longer looking, so it goes nowhere and the search stays closed on it.
-#[tokio::test]
-async fn a_landing_for_a_switched_off_source_goes_nowhere() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::import::CandidateKey::test("/watch/a/rel1");
-    let run = runtime.start_search(
-        key,
-        CandidateSearch::started(search_query(), &every_source_on()),
-    );
-
-    runtime.switch_source_off(Catalog::MusicBrainz);
-    assert!(
-        runtime.land_search(
-            key,
-            run,
-            Catalog::MusicBrainz,
-            Ok(vec![search_result(Catalog::MusicBrainz, "mb-1")]),
-        ),
-        "the run is current, so the landing reaches the search"
-    );
-
-    let search = search_of(&runtime, key)
-        .await
-        .expect("the search is what is in flight for the key");
-    assert_eq!(
-        search.source(Catalog::MusicBrainz),
-        Some(&SourceSearch::Off),
-        "a part that is not looking takes no answer"
-    );
-    assert!(search.groups.is_empty());
-}
-
 include!("tests/claims.rs");
 include!("tests/counting.rs");
 include!("tests/departures.rs");
 include!("tests/failing_writes.rs");
 include!("tests/in_flight.rs");
 include!("tests/reading_the_pick.rs");
+include!("tests/searches.rs");
 include!("tests/watches.rs");

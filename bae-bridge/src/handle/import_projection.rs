@@ -210,8 +210,8 @@ impl crate::types::BridgeTriageImportStatus {
 impl crate::types::BridgeCandidateImportStatus {
     pub(super) fn from_core(status: bae_core::import::CandidateImportStatus) -> Self {
         match status {
-            bae_core::import::CandidateImportStatus::Importing { standing } => Self::Importing {
-                standing: crate::types::BridgeImportStanding::from_core(standing),
+            bae_core::import::CandidateImportStatus::Importing { step } => Self::Importing {
+                step: crate::types::BridgeImportStep::from_core(step),
             },
             bae_core::import::CandidateImportStatus::Complete { release } => Self::Complete {
                 release: crate::types::BridgeImportedRelease::from_core(release),
@@ -372,7 +372,7 @@ impl crate::types::BridgeCandidateLiveState {
         Self {
             identifying,
             reading_pick,
-            import: import.map(crate::types::BridgeImportStanding::from_core),
+            import: import.map(crate::types::BridgeImportStep::from_core),
             actions: actions
                 .into_iter()
                 .map(crate::types::BridgeCandidateAction::from_core)
@@ -416,12 +416,6 @@ mirror_enum! {
     crate::types::BridgeIdentifyingStep = bae_core::import::IdentifyingStep,
     from_core: fn,
     variants: { Queued, Running },
-}
-
-mirror_enum! {
-    crate::types::BridgeImportStanding = bae_core::import::ImportStanding,
-    from_core: fn,
-    variants: { Queued, Running, Writing },
 }
 
 // Not a copy: audio no CD holds crosses with the rate its files state, which

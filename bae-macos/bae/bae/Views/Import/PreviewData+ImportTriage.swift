@@ -410,7 +410,10 @@
             for: importTabImportingCandidate,
             placement: .pending,
             metadataSummary: nil,
-            live: triageLive([], importStanding: .running)
+            live: triageLive(
+                [],
+                importStep: .running(phase: .measuringLoudness)
+            )
         )
 
         static let triageRowSkipped = triageRow(
@@ -626,14 +629,14 @@
         static func triageLive(
             _ actions: [BridgeCandidateAction],
             identifying: BridgeIdentifyingStep? = nil,
-            importStanding: BridgeImportStanding? = nil,
+            importStep: BridgeImportStep? = nil,
             standing: BridgePendingStanding? = nil,
             badge: BridgeRowBadge? = nil
         ) -> BridgeCandidateLiveState {
             BridgeCandidateLiveState(
                 identifying: identifying,
                 readingPick: false,
-                import: importStanding,
+                import: importStep,
                 actions: actions,
                 standing: standing,
                 badge: badge

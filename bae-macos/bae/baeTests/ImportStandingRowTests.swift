@@ -5,9 +5,9 @@ import Testing
 
 @testable import bae
 
-/// What a row draws for the import that owns its candidate. Where the import
-/// stands is core's answer and core tests it; these are about what each
-/// standing draws.
+/// What a row draws for the import that owns its candidate. The step the
+/// import is at is core's answer and core tests it; these are about what each
+/// step draws.
 @Suite("Rows of an import in flight", .serialized)
 @MainActor
 struct ImportStandingRowTests {
@@ -16,8 +16,8 @@ struct ImportStandingRowTests {
     @Test("a queued import's row keeps its two lines and draws no bar")
     func queuedTriageRow() async throws {
         let row = PreviewData.triageRowPrefilledFromTags
-        let idle = try await drawn(triage: row, standing: nil)
-        let queued = try await drawn(triage: row, standing: .queued)
+        let idle = try await drawn(triage: row, step: nil)
+        let queued = try await drawn(triage: row, step: .preparing(step: .queued))
 
         #expect(queued.bars == 0)
         #expect(queued.height == idle.height)
@@ -26,12 +26,15 @@ struct ImportStandingRowTests {
 
     @Test(
         "a running import's row draws its bar on a line of its own",
-        arguments: [BridgeImportStanding.running, .writing]
+        arguments: [
+            BridgeImportStep.preparing(step: .validatingSourceFiles),
+            .running(phase: .finalizing),
+        ]
     )
-    func runningTriageRow(standing: BridgeImportStanding) async throws {
+    func runningTriageRow(step: BridgeImportStep) async throws {
         let row = PreviewData.triageRowPrefilledFromTags
-        let idle = try await drawn(triage: row, standing: nil)
-        let running = try await drawn(triage: row, standing: standing)
+        let idle = try await drawn(triage: row, step: nil)
+        let running = try await drawn(triage: row, step: step)
 
         #expect(running.bars == 1)
         #expect(running.height > idle.height)
@@ -40,9 +43,12 @@ struct ImportStandingRowTests {
     @Test("a queued import's Done row draws no bar")
     func queuedDoneRow() async throws {
         let row = PreviewData.triageRowDoneFromTags
-        let idle = try await drawn(done: row, standing: nil)
-        let queued = try await drawn(done: row, standing: .queued)
-        let running = try await drawn(done: row, standing: .running)
+        let idle = try await drawn(done: row, step: nil)
+        let queued = try await drawn(done: row, step: .preparing(step: .queued))
+        let running = try await drawn(
+            done: row,
+            step: .running(phase: .readingFiles)
+        )
 
         #expect(queued.bars == 0)
         #expect(queued.height == idle.height)
@@ -51,7 +57,7 @@ struct ImportStandingRowTests {
 
     @Test("a queued import's pane says it is waiting and draws no bar")
     func queuedPane() async throws {
-        let queued = try await drawn(pane: .queued)
+        let queued = try await drawn(pane: .preparing(step: .queued))
 
         #expect(queued.bars == 0)
         let lines =
@@ -65,10 +71,13 @@ struct ImportStandingRowTests {
 
     @Test(
         "a running import's pane draws its phase and bar",
-        arguments: [BridgeImportStanding.running, .writing]
+        arguments: [
+            BridgeImportStep.preparing(step: .validatingSourceFiles),
+            .running(phase: .finalizing),
+        ]
     )
-    func runningPane(standing: BridgeImportStanding) async throws {
-        #expect(try await drawn(pane: standing).bars == 1)
+    func runningPane(step: BridgeImportStep) async throws {
+        #expect(try await drawn(pane: step).bars == 1)
     }
 
     private struct Drawn {
@@ -79,13 +88,13 @@ struct ImportStandingRowTests {
 
     private func drawn(
         triage row: BridgeTriageRow,
-        standing: BridgeImportStanding?
+        step: BridgeImportStep?
     ) async throws -> Drawn {
         var row = row
         row.live = BridgeCandidateLiveState(
             identifying: nil,
             readingPick: false,
-            import: standing,
+            import: step,
             actions: [],
             standing: .notLookedUp,
             badge: nil
@@ -101,13 +110,13 @@ struct ImportStandingRowTests {
 
     private func drawn(
         done row: BridgeTriageRow,
-        standing: BridgeImportStanding?
+        step: BridgeImportStep?
     ) async throws -> Drawn {
         var row = row
         row.live = BridgeCandidateLiveState(
             identifying: nil,
             readingPick: false,
-            import: standing,
+            import: step,
             actions: [],
             standing: nil,
             badge: nil
@@ -121,13 +130,13 @@ struct ImportStandingRowTests {
         )
     }
 
-    private func drawn(pane standing: BridgeImportStanding) async throws
+    private func drawn(pane step: BridgeImportStep) async throws
         -> Drawn
     {
         try await drawn(
             ImportingCandidatePane(
                 candidate: PreviewData.folderCandidates[0],
-                standing: standing,
+                step: step,
                 coverContent: nil,
                 onOpenImages: { _, _ in },
                 onOpenDocument: { _, _ in },

@@ -9,7 +9,8 @@
 
 use crate::identify::IdentifyRunId;
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
-use crate::import::triage::{IdentificationStatus, ImportStanding, TriageRuntimeFacts};
+use crate::import::triage::{IdentificationStatus, TriageRuntimeFacts};
+use crate::import::ImportStep;
 
 /// One candidate's row: its identification and its import, each absent when
 /// nothing of that kind is going for it.
@@ -27,7 +28,7 @@ impl StoredStanding {
                 .identification
                 .as_ref()
                 .map(|identification| identification.stage.status()),
-            import: self.import.as_ref().map(|import| import.standing),
+            import: self.import.as_ref().map(|import| import.step),
         }
     }
 }
@@ -85,11 +86,11 @@ impl IdentificationStage {
     }
 }
 
-/// The import that owns a candidate, and where it stands.
+/// The import that owns a candidate, and the step it is at.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct StoredImport {
     pub(crate) import_id: String,
-    pub(crate) standing: ImportStanding,
+    pub(crate) step: ImportStep,
 }
 
 /// One owner's change to a candidate's identification, decided from the one

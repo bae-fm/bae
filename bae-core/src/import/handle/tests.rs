@@ -138,7 +138,9 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
         .move_import(
             &crate::import::CandidateKey::test("candidate"),
             "import-1",
-            Some(crate::import::ImportStanding::Running),
+            Some(crate::import::ImportStep::Running(
+                crate::import::ImportPhase::ReadingFiles,
+            )),
         )
         .await
         .unwrap();

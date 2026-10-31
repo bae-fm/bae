@@ -218,11 +218,11 @@ impl AppServices {
         &self,
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
-        standing: crate::import::ImportStanding,
+        step: crate::import::ImportStep,
     ) {
         self.inner
             .import
-            .move_candidate_import_for_test(candidate_key, import_id, standing)
+            .move_candidate_import_for_test(candidate_key, import_id, step)
             .await;
     }
 
@@ -254,15 +254,10 @@ impl AppServices {
         self.inner.import.watch_candidate_runtimes()
     }
 
-    /// Each running import's percent, by candidate key, right now, read from
-    /// the standings table like [`Self::candidate_runtimes`].
-    pub async fn import_percents(
-        &self,
-    ) -> Result<
-        std::collections::HashMap<crate::import::CandidateKey, u32>,
-        crate::library::LibraryError,
-    > {
-        self.inner.import.import_percents().await
+    /// Each running import's percent, by candidate key, as its import last
+    /// reported.
+    pub fn import_percents(&self) -> std::collections::HashMap<crate::import::CandidateKey, u32> {
+        self.inner.import.import_percents()
     }
 
     /// Each running import's percent, by candidate key, now and as it moves.

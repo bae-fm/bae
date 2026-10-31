@@ -473,7 +473,13 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
 
     let key = pane_candidate_key();
     db.claim_candidate_import(&key, "import-1", None).await.unwrap();
-    db.move_candidate_import(&key, "import-1", Some(crate::import::ImportStanding::Running))
+    db.move_candidate_import(
+        &key,
+        "import-1",
+        Some(crate::import::ImportStep::Running(
+            crate::import::ImportPhase::ReadingFiles,
+        )),
+    )
         .await
         .unwrap();
     let detail = db
@@ -494,21 +500,22 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     assert!(detail.failure.is_none());
 }
 
-/// The pane draws a queued import differently from a running one, so its
-/// import status says where the import stands.
+/// The pane draws a queued import differently from a running one, and names
+/// a running one's step, so its import status says the step the import is at.
 #[tokio::test]
-async fn the_pane_s_import_status_says_where_the_import_stands() {
+async fn the_pane_s_import_status_says_the_step_the_import_is_at() {
     let (db, _tmp) = empty_db().await;
     stored_pane_candidate(&db).await;
     let key = pane_candidate_key();
 
     db.claim_candidate_import(&key, "import-1", None).await.unwrap();
-    for standing in [
-        crate::import::ImportStanding::Queued,
-        crate::import::ImportStanding::Running,
-        crate::import::ImportStanding::Writing,
+    for step in [
+        crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
+        crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles),
+        crate::import::ImportStep::Running(crate::import::ImportPhase::MeasuringLoudness),
+        crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing),
     ] {
-        db.move_candidate_import(&key, "import-1", Some(standing))
+        db.move_candidate_import(&key, "import-1", Some(step))
             .await
             .unwrap();
         let detail = db
@@ -519,7 +526,7 @@ async fn the_pane_s_import_status_says_where_the_import_stands() {
             .resolve();
         assert_eq!(
             detail.import_status,
-            Some(crate::import::CandidateImportStatus::Importing { standing })
+            Some(crate::import::CandidateImportStatus::Importing { step })
         );
     }
 }

@@ -100,7 +100,7 @@ async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
 
     handle
         .runtime
-        .move_import(&key, "import-1", Some(crate::import::ImportStanding::Running))
+        .move_import(&key, "import-1", Some(crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles)))
         .await
         .unwrap();
     list.shows(&[&key]).await;

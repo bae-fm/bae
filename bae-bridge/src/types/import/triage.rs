@@ -213,9 +213,16 @@ pub struct BridgeImportInFlight {
 /// files, or its stored failure.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateImportStatus {
-    Importing { standing: BridgeImportStanding },
-    Complete { release: BridgeImportedRelease },
-    Error { error: BridgeError },
+    /// An import runs, at this step.
+    Importing {
+        step: BridgeImportStep,
+    },
+    Complete {
+        release: BridgeImportedRelease,
+    },
+    Error {
+        error: BridgeError,
+    },
 }
 
 /// The release this device imported from the folder's files, or its stored
@@ -501,8 +508,8 @@ pub struct BridgeCandidateLiveState {
     /// Whether the release the run picked unattended is being read in full
     /// before its answer is stored, which the pane shows on that release.
     pub reading_pick: bool,
-    /// Where the import that owns the candidate stands; `None` when none does.
-    pub import: Option<BridgeImportStanding>,
+    /// The step of the import that owns the candidate; `None` when none does.
+    pub import: Option<BridgeImportStep>,
     pub actions: Vec<BridgeCandidateAction>,
     /// Where the row stands among Found's states; `None` off Found.
     pub standing: Option<BridgePendingStanding>,
@@ -518,17 +525,6 @@ pub enum BridgeIdentifyingStep {
     Queued,
     /// Its run is going, or writing an answer that picks no release.
     Running,
-}
-
-/// Where the import that owns a candidate stands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeImportStanding {
-    /// Waiting for the worker to take it up.
-    Queued,
-    /// Taken up and not yet writing its release.
-    Running,
-    /// Writing its release; it can no longer be cancelled.
-    Writing,
 }
 
 /// A check of the found release against the folder that did not pass, with raw
