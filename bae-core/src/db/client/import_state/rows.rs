@@ -4,9 +4,11 @@
 use super::super::query::CandidateRows;
 use super::edit_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
+use super::match_rows::{
+    match_of, read_match_row, MatchColumns, MatchEntries, StoredMatches, StoredMedium,
+};
 use super::verdict_rows::{
-    identification_of, match_of, read_match_row, read_verdict_row, unreadable, MatchColumns,
-    MatchEntries, StoredMatches, StoredMedium, VerdictRow, VERDICT_COLUMNS,
+    identification_of, read_verdict_row, unreadable, verdict_columns, VerdictRow,
 };
 use super::*;
 use crate::import::{AlbumLink, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
@@ -297,7 +299,7 @@ const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found
      found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
      found.album_links, found.source_tracks_kind, found.source_tracks_count, \
      found.by_disc_id, found.by_barcode, found.by_catalog, found.by_isrc, found.by_search, \
-     found.by_pressing, found.narrowed_out, found.document_failure, \
+     found.by_pressing, found.listing, found.document_failure, \
      found.document_failure_status, found.album_first_year, found.track_titles, found.notes, \
      found.named_note";
 
@@ -477,7 +479,7 @@ pub(crate) fn load_states_rows_on(
                  SELECT state.content_hash, state.candidate_key, state.metadata_revision, \
                         edit.author AS draft_author, {FILE_EDITS_COLUMNS}, {signals}, \
                         {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {LOOKUP_CHOICES_COLUMNS}, \
-                        {VERDICT_COLUMNS} \
+                        {verdict} \
                  FROM import_candidate_state AS state \
                  LEFT JOIN import_candidate_edit AS edit \
                      ON edit.content_hash = state.content_hash \
@@ -498,6 +500,7 @@ pub(crate) fn load_states_rows_on(
                  ON found.content_hash = candidate.content_hash \
              ORDER BY candidate.content_hash, found.position",
             signals = super::signal_rows::signals_read_columns(),
+            verdict = verdict_columns(),
             entries = match_entries_columns(),
             clause = filter.clause,
         ),
@@ -529,13 +532,10 @@ pub(crate) fn load_states_rows_on(
             let candidate = candidates
                 .last_mut()
                 .expect("a match row follows its candidate's first row");
-            let found = match_of(columns, entries.entries()?)?;
-            let list = if found.narrowed_out {
-                &mut candidate.matches.narrowed_out
-            } else {
-                &mut candidate.matches.found
-            };
-            list.push(found.stored);
+            candidate
+                .matches
+                .rows
+                .push(match_of(columns, entries.entries()?)?);
         }
         candidates
             .into_iter()
@@ -578,7 +578,7 @@ impl StoredCandidate {
             Some(verdict) => Some(identification_of(verdict, matches)?),
             // The match rows hang off the verdict row, so a candidate
             // without one has none.
-            None if matches.found.is_empty() && matches.narrowed_out.is_empty() => None,
+            None if matches.rows.is_empty() => None,
             None => {
                 return Err(DbError::Message(format!(
                     "candidate {content_hash} holds matches but no verdict"

@@ -4,7 +4,8 @@
 //! per value and one cell per provider. The bridge and automation copy it
 //! field by field.
 //!
-//! The ledger is recorded once as a run ends and stored with its verdict.
+//! The ledger is recorded once as a run ends, each release in its cells as
+//! the run last read it, and stored with its verdict.
 
 use super::agreements::{judged_results, Agreements, CandidateText};
 use super::combine::LookupAnswers;
@@ -18,13 +19,13 @@ use super::NotAskedReason;
 use crate::import::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
+use crate::import::search::MetadataResult;
 use crate::import::shared_album::SharedAlbum;
 use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
 use bae_catalogs::catalog::Catalog;
 
-/// One provider's lookup of one value: a cell of the ledger. The ledger's
-/// types are serializable because [`super::TerminalVerdict`] stores it.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+/// One provider's lookup of one value: a cell of the ledger.
+#[derive(Debug, Clone, PartialEq)]
 pub enum LookupView {
     /// Not asked yet: the codes are still being read off the artwork.
     Queued,
@@ -44,14 +45,14 @@ pub enum LookupView {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ProviderCell {
     pub source: Catalog,
     pub lookup: LookupView,
 }
 
 /// One value extraction found, as a row of the ledger.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SignalValueRow {
     pub value: String,
     /// Whether the person left the value out: a barcode they unchecked, a
@@ -63,7 +64,7 @@ pub struct SignalValueRow {
 
 /// The disc IDs, read off the LOGs and CUEs and each looked up on
 /// [`Catalog::DISC_ID_CATALOG`] alone, so each has one lookup and no cells.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DiscIdStepView {
     /// Extraction has not reported yet.
     Reading,
@@ -76,7 +77,7 @@ pub enum DiscIdStepView {
 }
 
 /// One disc ID and its lookup.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DiscIdRow {
     pub disc_id: String,
     pub lookup: LookupView,
@@ -84,7 +85,7 @@ pub struct DiscIdRow {
 
 /// The barcodes, read off the artwork and the CUE sheets, each asked of every
 /// provider.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BarcodeStepView {
     /// No barcode source at all.
     Absent,
@@ -101,14 +102,14 @@ pub enum BarcodeStepView {
 /// A catalog number the folder's text offers that is not in effect: neither
 /// picked, nor carried by a release the run found, nor struck out. A surface
 /// folds these behind their count, for the person to pick.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogCandidateView {
     pub value: String,
 }
 
 /// The catalog numbers: the ones in effect, each searched on every catalog,
 /// and the rest offered.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CatalogStepView {
     /// Extraction found no catalog number to offer, none is in effect, and
     /// extraction is not still looking.
@@ -128,7 +129,7 @@ pub enum CatalogStepView {
 
 /// The ISRCs the audio's tags carry, looked up together on
 /// [`Catalog::ISRC_CATALOG`] alone, so the step has one lookup and no cells.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IsrcStepView {
     /// Extraction has not reported yet.
     Reading,
@@ -143,7 +144,7 @@ pub enum IsrcStepView {
 
 /// The title search, asked of every provider when the identifiers name
 /// nothing.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SearchStepView {
     /// The identifiers answered; no search was needed.
     NotNeeded,
@@ -161,7 +162,7 @@ pub enum SearchStepView {
 
 /// The run as a ledger: the three identifiers, the ISRCs and the title
 /// search.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IdentifyRunView {
     /// The providers the run asks, in cell order.
     pub providers: Vec<Catalog>,

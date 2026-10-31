@@ -1,18 +1,32 @@
 /// The rows an import spends, seeded under `content_hash` the way the pane
-/// and a run leave them: a found verdict with one release, the lookups the
-/// person let it use, where the pane was, the covers offered to the picker,
-/// an artist decision and a picked album.
+/// and a run leave them: a found verdict with one release and the ledger
+/// whose barcode lookup found it, the lookups the person let it use, where
+/// the pane was, the covers offered to the picker, an artist decision and a
+/// picked album.
 async fn seed_spent_rows(test: &TestService, content_hash: &str) {
     let database = &test.database;
     for statement in [
         "INSERT INTO import_candidate_verdict \
-             (content_hash, kind, track_count, kept_own_draft, identified_at) \
-         VALUES (?1, 'found', 3, 0, '2026-01-01T00:00:00+00:00')",
+             (content_hash, kind, track_count, kept_own_draft, identified_at, disc_id_step, \
+              barcode_step, catalog_step, isrc_step, search_step) \
+         VALUES (?1, 'found', 3, 0, '2026-01-01T00:00:00+00:00', 'absent', 'rows', \
+                 'none_found', 'absent', 'not_needed')",
         "INSERT INTO import_candidate_match \
-             (content_hash, position, pressing, source, release_id, title, media_kind, \
+             (content_hash, position, listing, pressing, source, release_id, title, media_kind, \
               album_links, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, by_pressing) \
-         VALUES (?1, 0, 0, 'musicbrainz', 'release-1', 'Box Set', 'undescribed', \
+         VALUES (?1, 0, 'offered', 0, 'musicbrainz', 'release-1', 'Box Set', 'undescribed', \
                  'not_asked', 0, 1, 0, 0, 0, 0)",
+        "INSERT INTO import_candidate_lookup_provider (content_hash, position, catalog) \
+         VALUES (?1, 0, 'musicbrainz')",
+        "INSERT INTO import_candidate_lookup_value \
+             (content_hash, step, position, value, excluded) \
+         VALUES (?1, 'barcode', 0, '012345678905', 0)",
+        "INSERT INTO import_candidate_lookup \
+             (content_hash, step, position, cell, catalog, answer) \
+         VALUES (?1, 'barcode', 0, 0, 'musicbrainz', 'answered')",
+        "INSERT INTO import_candidate_lookup_release \
+             (content_hash, step, position, cell, ordinal, match_position) \
+         VALUES (?1, 'barcode', 0, 0, 0, 0)",
         "INSERT INTO import_candidate_lookup_choices (content_hash, disc_id_excluded) \
          VALUES (?1, 0)",
         "INSERT INTO import_candidate_chosen_catalog (content_hash, position, value) \
@@ -50,6 +64,10 @@ async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'stat
     for table in [
         "import_candidate_verdict",
         "import_candidate_match",
+        "import_candidate_lookup_provider",
+        "import_candidate_lookup_value",
+        "import_candidate_lookup",
+        "import_candidate_lookup_release",
         "import_candidate_lookup_choices",
         "import_candidate_chosen_catalog",
         "import_candidate_session",
@@ -83,8 +101,8 @@ async fn spent_rows_candidate(
 }
 
 /// The import's own write deletes what the candidate holds that nothing reads
-/// once its release is in — the verdict and its releases, the lookup
-/// choices, where the pane was, the offered covers, the artist decisions and
+/// once its release is in — the verdict, its releases and its ledger, the
+/// lookup choices, where the pane was, the offered covers, the artist decisions and
 /// the picked album — and the folder's Done row still shows the draft it was
 /// imported from.
 #[tokio::test]

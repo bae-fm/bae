@@ -18,7 +18,7 @@ use bae_catalogs::catalog::Catalog;
 use std::collections::{HashMap, HashSet};
 
 /// Which of a run's keys returned one result. Stored with the [`Findings`].
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LookupProvenance {
     pub by_disc_id: bool,
     /// A barcode the folder's files carry.
@@ -52,7 +52,7 @@ impl LookupProvenance {
 /// What a run's lookups found once combined: the offered rows and the rows
 /// set aside, each release with its lookups and its pressing row. A failed
 /// run's findings are stored the same way as a found one's.
-#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Findings {
     /// The offered rows' releases, most-agreed-with first.
     pub matches: Vec<MetadataResult>,
@@ -75,7 +75,7 @@ pub struct Findings {
 }
 
 /// A note of an offered release the folder's text names its row by.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedNote {
     pub release: crate::import::MetadataRef,
     pub note: String,
@@ -95,7 +95,7 @@ impl Findings {
 
 /// The rows the ranking did not offer, whole, as the releases they are made
 /// of. Empty when every row tied.
-#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct NarrowedOut {
     /// In signal order, each release once.
     pub matches: Vec<MetadataResult>,

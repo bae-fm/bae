@@ -104,7 +104,7 @@ pub(super) fn isrc_step(progress: &IsrcProgress, context: &SignalsContext) -> Is
         IsrcProgress::Reading => return IsrcStepView::Reading,
         IsrcProgress::Skipped => return IsrcStepView::Absent,
         IsrcProgress::LookingUp => LookupView::LookingUp,
-        IsrcProgress::Done { results } => found_or_no_match(results),
+        IsrcProgress::Done { results } => LookupView::answered(results),
         IsrcProgress::NotAsked { reason } => LookupView::NotAsked { reason: *reason },
         IsrcProgress::Failed { failure } => LookupView::Failed {
             failure: failure.clone(),
@@ -257,7 +257,7 @@ fn lookup_cells(lookup: &ValueLookup) -> Vec<ProviderCell> {
 fn lookup_view(state: &LookupState) -> LookupView {
     match state {
         LookupState::LookingUp => LookupView::LookingUp,
-        LookupState::Done { results } => found_or_no_match(results),
+        LookupState::Done { results } => LookupView::answered(results),
         LookupState::Failed { failure } => LookupView::Failed {
             failure: failure.clone(),
         },
@@ -312,7 +312,7 @@ fn searches_view(states: &[&LookupState]) -> LookupView {
             LookupState::LookingUp | LookupState::Failed { .. } => None,
         }));
     if !found.is_empty() {
-        return found_or_no_match(&found);
+        return LookupView::answered(&found);
     }
     let failure = states.iter().find_map(|state| match state {
         LookupState::Failed { failure } => Some(failure),
@@ -326,21 +326,125 @@ fn searches_view(states: &[&LookupState]) -> LookupView {
     }
 }
 
-/// A settled lookup's cell: its releases in album cards, in the lookup's own
-/// order, or no match.
-fn found_or_no_match(results: &LookupResults) -> LookupView {
-    if results.is_empty() {
-        return LookupView::NoMatch;
+impl LookupView {
+    /// A settled lookup's cell: the releases it found in album cards, in the
+    /// lookup's own order, or no match.
+    pub(crate) fn answered(results: &LookupResults) -> Self {
+        if results.is_empty() {
+            return LookupView::NoMatch;
+        }
+        let groups = group_results(
+            crate::import::release_group::unranked(results.clone()),
+            None,
+        );
+        LookupView::Found {
+            count: groups
+                .iter()
+                .map(|group| group.pressings().count() as u32)
+                .sum(),
+            groups,
+        }
     }
-    let groups = group_results(
-        crate::import::release_group::unranked(results.clone()),
-        None,
-    );
-    LookupView::Found {
-        count: groups
+
+    /// The releases a cell that found some lists, card by card and row by
+    /// row: the order [`Self::answered`] lays them out in, which it lays out
+    /// again as they stand. None for any other cell.
+    pub(crate) fn releases(&self) -> Vec<&MetadataResult> {
+        let LookupView::Found { groups, .. } = self else {
+            return Vec::new();
+        };
+        groups
             .iter()
-            .map(|group| group.pressings().count() as u32)
-            .sum(),
-        groups,
+            .flat_map(|group| &group.sections)
+            .flat_map(|section| section.pressings.iter().chain(&section.narrowed_out))
+            .flat_map(|pressing| &pressing.releases)
+            .collect()
+    }
+}
+
+impl IdentifyRunView {
+    /// Every lookup's cell, clue by clue, row by row and cell by cell.
+    pub(crate) fn lookups(&self) -> Vec<&LookupView> {
+        fn cells(cells: &[ProviderCell]) -> impl Iterator<Item = &LookupView> {
+            cells.iter().map(|cell| &cell.lookup)
+        }
+        let mut lookups = Vec::new();
+        if let DiscIdStepView::Read { discs } = &self.disc_id {
+            lookups.extend(discs.iter().map(|disc| &disc.lookup));
+        }
+        if let BarcodeStepView::Rows { rows, .. } = &self.barcode {
+            lookups.extend(rows.iter().flat_map(|row| cells(&row.cells)));
+        }
+        if let CatalogStepView::Numbers { rows, .. } = &self.catalog {
+            lookups.extend(rows.iter().flat_map(|row| cells(&row.cells)));
+        }
+        if let IsrcStepView::Read { lookup, .. } = &self.isrc {
+            lookups.push(lookup);
+        }
+        if let SearchStepView::Searched {
+            cells: searched, ..
+        } = &self.search
+        {
+            lookups.extend(cells(searched));
+        }
+        lookups
+    }
+
+    /// Every lookup's cell, as [`Self::lookups`] orders them, to change.
+    fn lookups_mut(&mut self) -> Vec<&mut LookupView> {
+        let mut lookups = Vec::new();
+        if let DiscIdStepView::Read { discs } = &mut self.disc_id {
+            lookups.extend(discs.iter_mut().map(|disc| &mut disc.lookup));
+        }
+        if let BarcodeStepView::Rows { rows, .. } = &mut self.barcode {
+            lookups.extend(
+                rows.iter_mut()
+                    .flat_map(|row| row.cells.iter_mut().map(|cell| &mut cell.lookup)),
+            );
+        }
+        if let CatalogStepView::Numbers { rows, .. } = &mut self.catalog {
+            lookups.extend(
+                rows.iter_mut()
+                    .flat_map(|row| row.cells.iter_mut().map(|cell| &mut cell.lookup)),
+            );
+        }
+        if let IsrcStepView::Read { lookup, .. } = &mut self.isrc {
+            lookups.push(lookup);
+        }
+        if let SearchStepView::Searched { cells, .. } = &mut self.search {
+            lookups.extend(cells.iter_mut().map(|cell| &mut cell.lookup));
+        }
+        lookups
+    }
+
+    /// The ledger with every release its cells list as the run last read
+    /// it: the copy of it `answers` holds first, its documents and album
+    /// links applied, which is the copy the run's findings hold. A cell then
+    /// shows what the rows show, and a stored verdict, which keeps each
+    /// release once, lays the ledger out as it was recorded.
+    pub(crate) fn read_as(mut self, answers: &LookupAnswers) -> Self {
+        let mut reads: std::collections::HashMap<(Catalog, &str), &MetadataResult> =
+            std::collections::HashMap::new();
+        for result in answers.all() {
+            reads
+                .entry((result.source, result.release_id.as_str()))
+                .or_insert(result);
+        }
+        for lookup in self.lookups_mut() {
+            let releases: Vec<MetadataResult> = lookup
+                .releases()
+                .into_iter()
+                .map(|release| {
+                    (*reads
+                        .get(&(release.source, release.release_id.as_str()))
+                        .expect("a cell lists releases its lookup returned to the run"))
+                    .clone()
+                })
+                .collect();
+            if !releases.is_empty() {
+                *lookup = LookupView::answered(&releases);
+            }
+        }
+        self
     }
 }

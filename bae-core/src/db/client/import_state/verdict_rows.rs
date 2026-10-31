@@ -2,35 +2,27 @@
 //!
 //! One `import_candidate_verdict` row holds a whole terminal verdict — found,
 //! nothing anywhere, manual only, or failed — and the ordered release-match
-//! rows hang off it. Deleting the row clears the matches with it, so a
-//! candidate can neither hold two verdicts nor keep matches without one.
+//! rows (see `match_rows`) and the rows of the ledger it recorded (see
+//! `ledger_rows`) hang off it. Deleting the row clears them with it, so a candidate can neither hold
+//! two verdicts nor keep matches without one.
 
-use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
+use super::ledger_rows::{
+    delete_ledger, read_ledger, step_columns, store_ledger, MatchPositions, StoredLedger,
+    LEDGER_COLUMNS,
+};
+use super::match_rows::{ordinal_column, store_match, Listing, StoredMatches, Written};
 use super::*;
 use crate::identify::{
-    Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, MediumConflict, NamedNote,
-    NarrowedOut, TerminalVerdict,
+    Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, LookupView, MediumConflict,
+    NamedNote, TerminalVerdict,
 };
-use crate::import::album_links::AlbumLinks;
-use crate::import::search::{MetadataResult, SourceTracks};
+use crate::import::search::MetadataResult;
 use crate::import::MetadataRef;
 use crate::signals::InternalFailure;
-use bae_catalogs::catalog::Catalog;
-use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
-use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
-use std::str::FromStr;
 
 /// What a stored column holds that no writer here produces.
 pub(super) fn unreadable(column: &str, stored: &str) -> DbError {
     DbError::Message(format!("import candidate column {column} holds {stored:?}"))
-}
-
-fn source_of(stored: &str) -> Result<Catalog, DbError> {
-    Catalog::from_str(stored).map_err(DbError::Message)
-}
-
-fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
-    CoverStanding::from_column(stored).ok_or_else(|| unreadable("cover_standing", stored))
 }
 
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
@@ -43,10 +35,11 @@ pub(super) fn delete_verdict(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
     Ok(())
 }
 
-/// Write one whole verdict and the matches it found over whatever verdict
-/// stood under this hash: the verdict row and each match row in place, so the
-/// candidate never reads as holding no verdict or no matches on its way from
-/// one verdict to another, and the matches past the new last go.
+/// Write one whole verdict, the matches it found and the ledger it recorded
+/// over whatever verdict stood under this hash: the verdict row and each
+/// match row in place, so the candidate never reads as holding no verdict or
+/// no matches on its way from one verdict to another, and the matches past
+/// the new last go.
 pub(super) fn store_verdict(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -60,18 +53,7 @@ pub(super) fn store_verdict(
         TerminalVerdict::Failed { track_count, .. } => ("failed", Some(*track_count)),
         TerminalVerdict::Error { .. } => ("error", None),
     };
-    // The ledger the run recorded, stored whole: no query reads into it, and
-    // what it draws is the run laid out cell by cell.
-    let ledger_json = verdict
-        .ledger()
-        .map(|ledger| {
-            serde_json::to_string(ledger).map_err(|error| {
-                DbError::Message(format!(
-                    "failed to serialize the identify ledger for {content_hash}: {error}"
-                ))
-            })
-        })
-        .transpose()?;
+    let steps = step_columns(content_hash, verdict.ledger())?;
     let medium_conflict = verdict
         .findings()
         .and_then(|findings| findings.medium_conflict)
@@ -106,13 +88,17 @@ pub(super) fn store_verdict(
     };
     sql.execute(
         "INSERT INTO import_candidate_verdict \
-             (content_hash, kind, track_count, failures_json, error_detail, \
-              ledger_json, identified_at, medium_conflict, kept_own_draft) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+             (content_hash, kind, track_count, failures_json, error_detail, disc_id_step, \
+              barcode_step, catalog_step, isrc_step, search_step, search_album, search_artist, \
+              identified_at, medium_conflict, kept_own_draft) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (content_hash) DO UPDATE SET \
              kind = excluded.kind, track_count = excluded.track_count, \
              failures_json = excluded.failures_json, error_detail = excluded.error_detail, \
-             ledger_json = excluded.ledger_json, identified_at = excluded.identified_at, \
+             disc_id_step = excluded.disc_id_step, barcode_step = excluded.barcode_step, \
+             catalog_step = excluded.catalog_step, isrc_step = excluded.isrc_step, \
+             search_step = excluded.search_step, search_album = excluded.search_album, \
+             search_artist = excluded.search_artist, identified_at = excluded.identified_at, \
              medium_conflict = excluded.medium_conflict, \
              kept_own_draft = excluded.kept_own_draft",
         params![
@@ -121,15 +107,23 @@ pub(super) fn store_verdict(
             track_count,
             failures_json,
             error_detail,
-            ledger_json,
+            steps.disc_id,
+            steps.barcode,
+            steps.catalog,
+            steps.isrc,
+            steps.search,
+            steps.search_album,
+            steps.search_artist,
             identification.identified_at.to_rfc3339(),
             medium_conflict,
             identification.kept_own_draft,
         ],
     )?;
-    // The rows under each match name what the match row below may change
-    // (its cover's address, its media's kind), so the previous verdict's go
-    // first. The import list reads none of them.
+    // The ledger's rows link the match rows, and the rows under each match
+    // name what the match row below may change (its cover's address, its
+    // media's kind), so the previous verdict's go first. The import list
+    // reads none of them.
+    delete_ledger(sql, content_hash)?;
     for table in [
         "import_candidate_match_cover_copy",
         "import_candidate_match_barcode",
@@ -142,34 +136,66 @@ pub(super) fn store_verdict(
             [content_hash],
         )?;
     }
-    let count = store_matches(sql, content_hash, verdict)?;
+    let written = store_matches(sql, content_hash, verdict)?;
     sql.execute(
         "DELETE FROM import_candidate_match WHERE content_hash = ? AND position >= ?",
-        params![content_hash, ordinal_column(count)?],
+        params![content_hash, ordinal_column(written.len())?],
     )?;
+    if let Some(ledger) = verdict.ledger() {
+        let positions: MatchPositions<'_> = written
+            .iter()
+            .enumerate()
+            .map(|(position, result)| {
+                (
+                    (result.source, result.release_id.as_str()),
+                    (position, *result),
+                )
+            })
+            .collect();
+        store_ledger(sql, content_hash, ledger, &positions)?;
+    }
     Ok(())
 }
 
 /// The releases of one verdict, written under the verdict row that found them:
-/// the matches first, then the ones agreement narrowed out, which continue the
-/// same position sequence and are marked as what they are. A found verdict and
-/// a failed one write theirs alike; the other two hold none. Answers how many
-/// positions it wrote.
-fn store_matches(
+/// the matches first, then the ones agreement narrowed out, then the ones a
+/// cell of its ledger lists that neither does, each once, in the order the
+/// ledger lists them — all one position sequence, each marked as what it is.
+/// A found verdict and a failed one write theirs alike; the other kinds hold
+/// no findings, and a ledger of theirs lists nothing. Answers the releases
+/// written, in position order.
+fn store_matches<'a>(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-    verdict: &TerminalVerdict,
-) -> Result<usize, DbError> {
-    let Some(Findings {
-        matches,
-        provenance,
-        pressings,
-        narrowed_out,
-        medium_conflict: _,
-        named_notes,
-    }) = verdict.findings()
-    else {
-        return Ok(0);
+    verdict: &'a TerminalVerdict,
+) -> Result<Vec<&'a MetadataResult>, DbError> {
+    let (matches, provenance, pressings, narrowed_out, named_notes): (
+        &[MetadataResult],
+        &[LookupProvenance],
+        &[u32],
+        _,
+        &[NamedNote],
+    ) = match verdict.findings() {
+        Some(findings) => (
+            &findings.matches,
+            &findings.provenance,
+            &findings.pressings,
+            Some(&findings.narrowed_out),
+            &findings.named_notes,
+        ),
+        None => (&[], &[], &[], None, &[]),
+    };
+    let (narrowed_matches, narrowed_provenance, narrowed_pressings): (
+        &[MetadataResult],
+        &[LookupProvenance],
+        &[u32],
+    ) = match narrowed_out {
+        Some(narrowed_out) => (
+            &narrowed_out.matches,
+            &narrowed_out.provenance,
+            &narrowed_out.pressings,
+        ),
+        None => (&[], &[], &[]),
     };
     let named_note = |result: &MetadataResult| {
         named_notes
@@ -204,8 +230,8 @@ fn store_matches(
     aligned("matches", matches, provenance)?;
     aligned(
         "narrowed-out releases",
-        &narrowed_out.matches,
-        &narrowed_out.provenance,
+        narrowed_matches,
+        narrowed_provenance,
     )?;
     let rowed = |what: &str, results: &[MetadataResult], rows: &[u32]| {
         if results.len() == rows.len() {
@@ -221,516 +247,46 @@ fn store_matches(
     rowed("matches", matches, pressings)?;
     rowed(
         "narrowed-out releases",
-        &narrowed_out.matches,
-        &narrowed_out.pressings,
+        narrowed_matches,
+        narrowed_pressings,
     )?;
-    let written = matches
+    let mut written: Vec<(&MetadataResult, Written<'_>)> = matches
         .iter()
         .zip(provenance.iter())
         .zip(pressings.iter())
-        .map(|pair| (pair, false))
+        .map(|((result, provenance), pressing)| {
+            (
+                result,
+                Written::Offered(provenance, *pressing, named_note(result)),
+            )
+        })
         .chain(
-            narrowed_out
-                .matches
+            narrowed_matches
                 .iter()
-                .zip(narrowed_out.provenance.iter())
-                .zip(narrowed_out.pressings.iter())
-                .map(|pair| (pair, true)),
-        );
-    let mut count = 0;
-    for (position, (((result, provenance), pressing), narrowed_out)) in written.enumerate() {
-        count = position + 1;
-        store_match(
-            sql,
-            content_hash,
-            position,
-            *pressing,
-            result,
-            provenance,
-            narrowed_out,
-            if narrowed_out {
-                None
-            } else {
-                named_note(result)
-            },
-        )?;
-    }
-    Ok(count)
-}
-
-/// One match at `position`, in place of the one there, with the rows under
-/// it. The rows under the match that stood there are already gone.
-fn store_match(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    position: usize,
-    pressing: u32,
-    result: &MetadataResult,
-    provenance: &LookupProvenance,
-    narrowed_out: bool,
-    named_note: Option<&str>,
-) -> Result<(), DbError> {
-    let position = i64::try_from(position).map_err(|error| {
-        DbError::Message(format!(
-            "a match list is longer than SQLite counts: {error}"
-        ))
-    })?;
-    let cover = result.cover_art.as_ref();
-    let (tracks_kind, tracks_count) = match &result.source_tracks {
-        None => (None, None),
-        Some(SourceTracks::Nothing) => (Some("nothing"), None),
-        Some(SourceTracks::Unreadable) => (Some("unreadable"), None),
-        Some(SourceTracks::Listed { count }) => (Some("listed"), Some(i64::from(*count))),
-    };
-    let album_links_kind = match &result.album_links {
-        AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
-        AlbumLinks::Read(_) => ALBUM_LINKS_READ,
-        AlbumLinks::Unread => ALBUM_LINKS_UNREAD,
-    };
-    let (media_kind, media_entries): (&str, Vec<(Option<Medium>, u32)>) = match &result.media {
-        StatedMedia::Undescribed => (MEDIA_UNDESCRIBED, Vec::new()),
-        StatedMedia::PerMedium(entries) => (
-            MEDIA_PER_MEDIUM,
-            entries.iter().map(|medium| (*medium, 1)).collect(),
-        ),
-        StatedMedia::Formats(formats) => (
-            MEDIA_FORMATS,
-            formats
-                .iter()
-                .map(|format| (format.medium, format.quantity))
-                .collect(),
-        ),
-    };
-    let facts = super::super::pressing_columns::FactColumns::of(&result.facts());
-    let document_failure =
-        super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
-    sql.execute(
-        "INSERT INTO import_candidate_match \
-             (content_hash, position, pressing, source, release_id, title, artist, year, \
-              labels, country, region, status, packaging, discogs_details, \
-              media_kind, cover_url, cover_label, cover_source, \
-              cover_standing, source_group_id, album_links, source_tracks_kind, \
-              source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
-              by_pressing, narrowed_out, document_failure, \
-              document_failure_status, album_first_year, track_titles, notes, named_note) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-         ON CONFLICT (content_hash, position) DO UPDATE SET \
-             pressing = excluded.pressing, source = excluded.source, \
-             release_id = excluded.release_id, title = excluded.title, \
-             artist = excluded.artist, year = excluded.year, labels = excluded.labels, \
-             country = excluded.country, region = excluded.region, status = excluded.status, \
-             packaging = excluded.packaging, discogs_details = excluded.discogs_details, \
-             media_kind = excluded.media_kind, cover_url = excluded.cover_url, \
-             cover_label = excluded.cover_label, cover_source = excluded.cover_source, \
-             cover_standing = excluded.cover_standing, \
-             source_group_id = excluded.source_group_id, album_links = excluded.album_links, \
-             source_tracks_kind = excluded.source_tracks_kind, \
-             source_tracks_count = excluded.source_tracks_count, \
-             by_disc_id = excluded.by_disc_id, by_barcode = excluded.by_barcode, \
-             by_catalog = excluded.by_catalog, by_isrc = excluded.by_isrc, \
-             by_search = excluded.by_search, by_pressing = excluded.by_pressing, \
-             narrowed_out = excluded.narrowed_out, \
-             document_failure = excluded.document_failure, \
-             document_failure_status = excluded.document_failure_status, \
-             album_first_year = excluded.album_first_year, \
-             track_titles = excluded.track_titles, notes = excluded.notes, \
-             named_note = excluded.named_note",
-        params![
-            content_hash,
-            position,
-            pressing,
-            result.source.as_str(),
-            result.release_id,
-            result.title,
-            result.artist,
-            result.year,
-            super::super::pressing_columns::labels_column(&result.labels),
-            facts.country,
-            facts.region,
-            facts.status,
-            facts.packaging,
-            facts.discogs_details,
-            media_kind,
-            cover.map(|cover| cover.image.url.as_str()),
-            cover.map(|cover| cover.label.as_str()),
-            cover.map(|cover| cover.source.as_str()),
-            cover.map(|cover| cover.standing.as_str()),
-            result.source_group_id,
-            album_links_kind,
-            tracks_kind,
-            tracks_count,
-            provenance.by_disc_id,
-            provenance.by_barcode,
-            provenance.by_catalog,
-            provenance.by_isrc,
-            provenance.by_search,
-            provenance.by_pressing,
-            narrowed_out,
-            document_failure.kind,
-            document_failure.status,
-            result.album_first_year,
-            serde_json::to_string(&result.track_titles).expect("titles serialize"),
-            serde_json::to_string(&result.notes).expect("notes serialize"),
-            named_note,
-        ],
-    )?;
-    if let Some(cover) = cover {
-        for copy in &cover.image.downscaled {
-            sql.execute(
-                "INSERT INTO import_candidate_match_cover_copy \
-                     (content_hash, position, cover_url, max_edge, url) \
-                 VALUES (?, ?, ?, ?, ?)",
-                params![
-                    content_hash,
-                    position,
-                    cover.image.url,
-                    copy.max_edge,
-                    copy.url
-                ],
-            )?;
-        }
-    }
-    for (ordinal, barcode) in result.barcodes.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_barcode (content_hash, position, ordinal, barcode) \
-             VALUES (?, ?, ?, ?)",
-            params![content_hash, position, ordinal_column(ordinal)?, barcode],
-        )?;
-    }
-    for (ordinal, (medium, quantity)) in media_entries.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_medium \
-                 (content_hash, position, media_kind, ordinal, medium, quantity) \
-             VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                position,
-                media_kind,
-                ordinal_column(ordinal)?,
-                medium.map(Medium::key),
-                quantity,
-            ],
-        )?;
-    }
-    for (ordinal, link) in result.links.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_match_link (content_hash, position, ordinal, catalog, key) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                position,
-                ordinal_column(ordinal)?,
-                link.catalog.as_str(),
-                link.key
-            ],
-        )?;
-    }
-    for (ordinal, link) in result.album_links.read().iter().enumerate() {
-        let StatementColumns {
-            stated,
-            wikidata_item,
-            musicbrainz_release,
-            release,
-        } = StatementColumns::of(&link.stated);
-        sql.execute(
-            "INSERT INTO import_candidate_match_album_link \
-                 (content_hash, position, ordinal, catalog, key, stated, wikidata_item, \
-                  musicbrainz_release, release_catalog, release_key) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                position,
-                ordinal_column(ordinal)?,
-                link.album.catalog.as_str(),
-                link.album.key,
-                stated,
-                wikidata_item,
-                musicbrainz_release,
-                release.map(|release| release.catalog.as_str()),
-                release.map(|release| release.key.as_str()),
-            ],
-        )?;
-    }
-    Ok(())
-}
-
-fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
-    i64::try_from(ordinal).map_err(|error| {
-        DbError::Message(format!(
-            "a match's list is longer than SQLite counts: {error}"
-        ))
-    })
-}
-
-/// The stored `album_links` values, one per [`AlbumLinks`] shape.
-const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
-const ALBUM_LINKS_READ: &str = "read";
-const ALBUM_LINKS_UNREAD: &str = "unread";
-
-/// The stored `media_kind` values, one per [`StatedMedia`] shape.
-pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";
-pub(super) const MEDIA_PER_MEDIUM: &str = "per_medium";
-pub(super) const MEDIA_FORMATS: &str = "formats";
-
-/// One medium row of a match: the media kind it was written for, the carrier
-/// it names and how many of it.
-pub(super) struct StoredMedium {
-    pub(super) kind: String,
-    pub(super) medium: Option<Medium>,
-    pub(super) quantity: u32,
-}
-
-/// The ordinal-ordered rows the child tables hold for one match, read on its
-/// row and handed to [`match_of`].
-pub(super) struct MatchEntries {
-    pub(super) barcodes: Vec<String>,
-    /// The downscaled copies of the match's cover.
-    pub(super) cover_copies: Vec<DownscaledCopy>,
-    /// The kind rides on every medium row, so a row whose kind disagrees with
-    /// its match's is unreadable rather than silently reinterpreted.
-    pub(super) media: Vec<StoredMedium>,
-    pub(super) links: Vec<(String, String)>,
-    /// The album link rows, for a match whose album links were read.
-    pub(super) album_links: Vec<AlbumLinkRow>,
-}
-
-/// One stored release of a verdict: what the lookup returned, which lookups
-/// named it, and which pressing row of its list the run put it in.
-pub(crate) struct StoredMatch {
-    pub(crate) result: MetadataResult,
-    pub(crate) provenance: LookupProvenance,
-    /// The row's number within this list, as the run numbered it. Rows are
-    /// read, never re-formed: a list of a run's answers does not hold what
-    /// the run decided its rows against.
-    pub(crate) pressing: u32,
-    /// The note the folder's text names its row by — see
-    /// [`crate::identify::Findings::named_notes`].
-    pub(crate) named_note: Option<String>,
-}
-
-/// One candidate's stored releases, each list in the order it was written: the
-/// verdict's matches, the lead first, and the releases its signals' agreement
-/// narrowed out.
-#[derive(Default)]
-pub(crate) struct StoredMatches {
-    pub(crate) found: Vec<StoredMatch>,
-    pub(crate) narrowed_out: Vec<StoredMatch>,
-}
-
-pub(super) struct MatchRow {
-    pub(super) stored: StoredMatch,
-    /// Whether this release is one the agreement left out rather than one the
-    /// verdict settled on.
-    pub(super) narrowed_out: bool,
-}
-
-/// One match row's own columns, before the child tables' rows are joined
-/// to it.
-pub(super) struct MatchColumns {
-    pub(super) content_hash: String,
-    pub(super) position: i64,
-    pressing: i64,
-    media_kind: String,
-    /// The stored `album_links` value; [`match_of`] reads it with the album
-    /// link rows.
-    album_links: String,
-    /// The result with its list fields still empty; [`match_of`] fills them.
-    result: MetadataResult,
-    provenance: LookupProvenance,
-    narrowed_out: bool,
-    named_note: Option<String>,
-}
-
-/// The match its columns and its child rows describe. The media kind and the
-/// medium rows have to agree: a kind with no entries is `undescribed`, a
-/// `per_medium` row counts one medium, and a row of another kind is a
-/// different match's.
-pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<MatchRow, DbError> {
-    let MatchColumns {
-        content_hash,
-        position,
-        pressing,
-        media_kind,
-        album_links: album_links_kind,
-        mut result,
-        provenance,
-        narrowed_out,
-        named_note,
-    } = columns;
-    let MatchEntries {
-        barcodes,
-        cover_copies,
-        media,
-        links,
-        album_links,
-    } = entries;
-    let mismatch = |what: &str| {
-        DbError::Message(format!(
-            "match {position} of {content_hash} holds {media_kind} media but {what}"
-        ))
-    };
-    for stored in &media {
-        if stored.kind != media_kind {
-            return Err(mismatch(&format!("a {} medium row", stored.kind)));
-        }
-    }
-    result.media = match media_kind.as_str() {
-        MEDIA_UNDESCRIBED => {
-            if !media.is_empty() {
-                return Err(mismatch("lists medium rows"));
-            }
-            StatedMedia::Undescribed
-        }
-        MEDIA_PER_MEDIUM => StatedMedia::PerMedium(
-            media
-                .into_iter()
-                .map(|stored| {
-                    (stored.quantity == 1)
-                        .then_some(stored.medium)
-                        .ok_or_else(|| mismatch("a medium row counts more than one"))
-                })
-                .collect::<Result<_, _>>()?,
-        ),
-        MEDIA_FORMATS => StatedMedia::Formats(
-            media
-                .into_iter()
-                .map(|stored| StatedFormat {
-                    medium: stored.medium,
-                    quantity: stored.quantity,
-                })
-                .collect(),
-        ),
-        other => return Err(unreadable("media_kind", other)),
-    };
-    result.barcodes = barcodes;
-    // Copy rows reference their match's cover, so a match without one has none.
-    if let Some(cover) = &mut result.cover_art {
-        cover.image = RemoteImageSet::with_copies(cover.image.url.clone(), cover_copies);
-    }
-    result.links = links
+                .zip(narrowed_provenance.iter())
+                .zip(narrowed_pressings.iter())
+                .map(|((result, provenance), pressing)| {
+                    (result, Written::NarrowedOut(provenance, *pressing))
+                }),
+        )
+        .collect();
+    for listed in verdict
+        .ledger()
         .into_iter()
-        .map(|(catalog, key)| Ok(MetadataRef::new(source_of(&catalog)?, key)))
-        .collect::<Result<_, DbError>>()?;
-    result.album_links = match album_links_kind.as_str() {
-        ALBUM_LINKS_READ => AlbumLinks::Read(
-            album_links
-                .into_iter()
-                .map(AlbumLinkRow::link)
-                .collect::<Result<_, DbError>>()?,
-        ),
-        ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !album_links.is_empty() => {
-            return Err(DbError::Message(format!(
-                "match {position} of {content_hash} holds album link rows but its album links \
-                 are {album_links_kind}"
-            )))
+        .flat_map(IdentifyRunView::lookups)
+        .flat_map(LookupView::releases)
+    {
+        let held = written.iter().any(|(result, _)| {
+            result.source == listed.source && result.release_id == listed.release_id
+        });
+        if !held {
+            written.push((listed, Written::Unlisted));
         }
-        ALBUM_LINKS_NOT_ASKED => AlbumLinks::NotAsked,
-        ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
-        other => return Err(unreadable("album_links", other)),
-    };
-    let row = u32::try_from(pressing).map_err(|error| {
-        DbError::Message(format!(
-            "match {position} of {content_hash} names pressing row {pressing}: {error}"
-        ))
-    })?;
-    Ok(MatchRow {
-        stored: StoredMatch {
-            result,
-            provenance,
-            pressing: row,
-            named_note,
-        },
-        narrowed_out,
-    })
-}
-
-pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
-    read_match_columns(row, row.get("pressing")?)
-}
-
-/// One match row's own columns with the pressing row it belongs to supplied
-/// beside it, for a reader whose rows do not carry the column yet.
-fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbError> {
-    let cover_url: Option<String> = row.get("cover_url")?;
-    let cover_source: Option<String> = row.get("cover_source")?;
-    let cover_art = match (cover_url, cover_source) {
-        // The copies are child rows; [`match_of`] adds them.
-        (Some(url), Some(source)) => Some(RemoteCover {
-            image: RemoteImageSet::original(url),
-            label: row.get("cover_label")?,
-            source: source_of(&source)?,
-            standing: standing_of(&row.get::<_, String>("cover_standing")?)?,
-        }),
-        // The table sets and clears the four cover columns together.
-        _ => None,
-    };
-    let tracks_kind: Option<String> = row.get("source_tracks_kind")?;
-    let source_tracks = match tracks_kind.as_deref() {
-        None => None,
-        Some("nothing") => Some(SourceTracks::Nothing),
-        Some("unreadable") => Some(SourceTracks::Unreadable),
-        Some("listed") => {
-            let count: i64 = row
-                .get::<_, Option<i64>>("source_tracks_count")?
-                .ok_or_else(|| {
-                    DbError::Message("a listed source tracklist states no count".to_string())
-                })?;
-            Some(SourceTracks::Listed {
-                count: u32::try_from(count).map_err(|error| {
-                    DbError::Message(format!(
-                        "a source tracklist's count is out of range: {error}"
-                    ))
-                })?,
-            })
-        }
-        Some(other) => return Err(unreadable("source_tracks_kind", other)),
-    };
-    let source: String = row.get("source")?;
-    let facts = super::super::pressing_columns::read_facts_without_media(row, "")?;
-    Ok(MatchColumns {
-        content_hash: row.get("content_hash")?,
-        position: row.get("position")?,
-        pressing,
-        media_kind: row.get("media_kind")?,
-        album_links: row.get("album_links")?,
-        result: MetadataResult {
-            source: source_of(&source)?,
-            release_id: row.get("release_id")?,
-            title: row.get("title")?,
-            artist: row.get("artist")?,
-            year: row.get("year")?,
-            labels: super::super::pressing_columns::read_labels(row, "labels")?,
-            area: facts.area,
-            status: facts.status,
-            packaging: facts.packaging,
-            discogs_details: facts.discogs_details,
-            barcodes: Vec::new(),
-            media: StatedMedia::Undescribed,
-            links: Vec::new(),
-            cover_art,
-            source_group_id: row.get("source_group_id")?,
-            album_links: AlbumLinks::NotAsked,
-            source_tracks,
-            document_failure: super::lookup_failure_columns::failure_of(
-                row.get("document_failure")?,
-                row.get("document_failure_status")?,
-            )?,
-            album_first_year: row.get("album_first_year")?,
-            track_titles: read_strings(row, "track_titles")?,
-            notes: read_strings(row, "notes")?,
-        },
-        provenance: LookupProvenance {
-            by_disc_id: row.get("by_disc_id")?,
-            by_barcode: row.get("by_barcode")?,
-            by_catalog: row.get("by_catalog")?,
-            by_isrc: row.get("by_isrc")?,
-            by_search: row.get("by_search")?,
-            by_pressing: row.get("by_pressing")?,
-        },
-        narrowed_out: row.get("narrowed_out")?,
-        named_note: row.get("named_note")?,
-    })
+    }
+    for (position, (result, listing)) in written.iter().enumerate() {
+        store_match(sql, content_hash, position, result, *listing)?;
+    }
+    Ok(written.into_iter().map(|(result, _)| result).collect())
 }
 
 /// The columns of one stored verdict row.
@@ -740,23 +296,28 @@ pub(super) struct VerdictRow {
     pub(super) track_count: Option<i64>,
     pub(super) failures_json: Option<String>,
     pub(super) error_detail: Option<String>,
-    pub(super) ledger_json: Option<String>,
+    pub(super) ledger: StoredLedger,
     pub(super) identified_at: DateTime<Utc>,
     pub(super) medium_conflict: Option<MediumConflict>,
     pub(super) kept_own_draft: bool,
 }
 
 /// A candidate's verdict as columns of a read that joins its row as
-/// `verdict`. A candidate with none reads `verdict_row` as NULL.
-pub(super) const VERDICT_COLUMNS: &str = "verdict.content_hash AS verdict_row, \
-     verdict.kind AS verdict_kind, verdict.track_count AS verdict_track_count, \
-     verdict.failures_json AS verdict_failures_json, \
-     verdict.error_detail AS verdict_error_detail, verdict.ledger_json AS verdict_ledger_json, \
-     verdict.identified_at AS verdict_identified_at, \
-     verdict.medium_conflict AS verdict_medium_conflict, \
-     verdict.kept_own_draft AS verdict_kept_own_draft";
+/// `verdict`, its ledger's beside them. A candidate with none reads
+/// `verdict_row` as NULL.
+pub(super) fn verdict_columns() -> String {
+    format!(
+        "verdict.content_hash AS verdict_row, \
+         verdict.kind AS verdict_kind, verdict.track_count AS verdict_track_count, \
+         verdict.failures_json AS verdict_failures_json, \
+         verdict.error_detail AS verdict_error_detail, \
+         verdict.identified_at AS verdict_identified_at, \
+         verdict.medium_conflict AS verdict_medium_conflict, \
+         verdict.kept_own_draft AS verdict_kept_own_draft, {LEDGER_COLUMNS}"
+    )
+}
 
-/// The [`VERDICT_COLUMNS`] of `row`; none for a candidate no verdict stands
+/// The [`verdict_columns`] of `row`; none for a candidate no verdict stands
 /// for.
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbError> {
     let Some(content_hash) = row.get::<_, Option<String>>("verdict_row")? else {
@@ -768,14 +329,15 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbEr
         track_count: row.get("verdict_track_count")?,
         failures_json: row.get("verdict_failures_json")?,
         error_detail: row.get("verdict_error_detail")?,
-        ledger_json: row.get("verdict_ledger_json")?,
+        ledger: read_ledger(row)?,
         identified_at: super::rfc3339_column(row, "verdict_identified_at")?,
         medium_conflict: super::medium_conflict_of(row.get("verdict_medium_conflict")?)?,
         kept_own_draft: row.get("verdict_kept_own_draft")?,
     }))
 }
 
-/// Rebuild what identification concluded from its row and the matches it found.
+/// Rebuild what identification concluded from its row, the matches it found
+/// and the ledger it recorded.
 pub(super) fn identification_of(
     row: VerdictRow,
     found: StoredMatches,
@@ -786,20 +348,27 @@ pub(super) fn identification_of(
         track_count,
         failures_json,
         error_detail,
-        ledger_json,
+        ledger,
         identified_at,
         medium_conflict,
         kept_own_draft,
     } = row;
-    let ledger: Option<IdentifyRunView> = ledger_json
-        .map(|json| {
-            serde_json::from_str(&json).map_err(|error| {
-                DbError::Message(format!(
-                    "the identify ledger for {content_hash} is unreadable: {error}"
-                ))
-            })
-        })
-        .transpose()?;
+    let held: HashMap<i64, &MetadataResult> = found
+        .rows
+        .iter()
+        .map(|row| (row.position, &row.result))
+        .collect();
+    let (ledger, linked) = ledger.ledger(&content_hash, &held)?;
+    if let Some(stray) = found
+        .rows
+        .iter()
+        .find(|row| matches!(row.listing, Listing::Unlisted) && !linked.contains(&row.position))
+    {
+        return Err(DbError::Message(format!(
+            "match {} of {content_hash} is unlisted, but no lookup of its ledger found it",
+            stray.position
+        )));
+    }
     let count_of = || {
         track_count
             .ok_or_else(|| {
@@ -815,64 +384,60 @@ pub(super) fn identification_of(
                 })
             })
     };
-    // Only the verdicts that hold findings may have match rows under them; a
-    // row under any other kind is one no writer here produces.
+    // Only the verdicts that hold findings may list releases; a listed row
+    // under any other kind is one no writer here produces.
     let findings_of = |found: StoredMatches| {
-        if found
-            .narrowed_out
-            .iter()
-            .any(|stored| stored.named_note.is_some())
-        {
-            return Err(DbError::Message(format!(
-                "a release {content_hash} set aside holds a named note"
-            )));
-        }
-        let named_notes = found
-            .found
-            .iter()
-            .filter_map(|stored| {
-                stored.named_note.as_ref().map(|note| NamedNote {
-                    release: MetadataRef::new(stored.result.source, &stored.result.release_id),
-                    note: note.clone(),
-                })
-            })
-            .collect();
-        let (matches, provenance, pressings) = unzip_stored(found.found);
-        let (narrowed_matches, narrowed_provenance, narrowed_pressings) =
-            unzip_stored(found.narrowed_out);
-        Ok(Findings {
-            matches,
-            provenance,
-            pressings,
-            narrowed_out: NarrowedOut {
-                matches: narrowed_matches,
-                provenance: narrowed_provenance,
-                pressings: narrowed_pressings,
-            },
+        let mut findings = Findings {
             medium_conflict,
-            named_notes,
-        })
+            ..Findings::default()
+        };
+        for row in found.rows {
+            match row.listing {
+                Listing::Offered(listed) => {
+                    if let Some(note) = listed.named_note {
+                        findings.named_notes.push(NamedNote {
+                            release: MetadataRef::new(row.result.source, &row.result.release_id),
+                            note,
+                        });
+                    }
+                    findings.matches.push(row.result);
+                    findings.provenance.push(listed.provenance);
+                    findings.pressings.push(listed.pressing);
+                }
+                Listing::NarrowedOut(listed) => {
+                    findings.narrowed_out.matches.push(row.result);
+                    findings.narrowed_out.provenance.push(listed.provenance);
+                    findings.narrowed_out.pressings.push(listed.pressing);
+                }
+                Listing::Unlisted => {}
+            }
+        }
+        findings
     };
-    let no_matches = |found: &StoredMatches| {
-        if found.found.is_empty() && found.narrowed_out.is_empty() {
+    let no_findings = |found: &StoredMatches| {
+        if found
+            .rows
+            .iter()
+            .all(|row| matches!(row.listing, Listing::Unlisted))
+        {
             return Ok(());
         }
         Err(DbError::Message(format!(
-            "verdict {kind} for {content_hash} holds match rows"
+            "verdict {kind} for {content_hash} lists releases"
         )))
     };
     let verdict = match kind.as_str() {
         "found" => TerminalVerdict::Found {
-            findings: findings_of(found)?,
+            findings: findings_of(found),
             track_count: count_of()?,
             ledger,
         },
         "not_found" => {
-            no_matches(&found)?;
+            no_findings(&found)?;
             TerminalVerdict::NotFoundAnywhere { ledger }
         }
         "manual_only" => {
-            no_matches(&found)?;
+            no_findings(&found)?;
             TerminalVerdict::ManualOnly {
                 track_count: count_of()?,
                 ledger,
@@ -896,13 +461,13 @@ pub(super) fn identification_of(
             }
             TerminalVerdict::Failed {
                 failures,
-                findings: findings_of(found)?,
+                findings: findings_of(found),
                 track_count: count_of()?,
                 ledger,
             }
         }
         "error" => {
-            no_matches(&found)?;
+            no_findings(&found)?;
             let detail = error_detail.ok_or_else(|| {
                 DbError::Message(format!("error verdict for {content_hash} states no error"))
             })?;
@@ -917,26 +482,4 @@ pub(super) fn identification_of(
         identified_at,
         kept_own_draft,
     })
-}
-
-/// One stored list as the verdict carries it: three index-aligned lists.
-fn unzip_stored(
-    stored: Vec<StoredMatch>,
-) -> (Vec<MetadataResult>, Vec<LookupProvenance>, Vec<u32>) {
-    let mut results = Vec::with_capacity(stored.len());
-    let mut provenance = Vec::with_capacity(stored.len());
-    let mut pressings = Vec::with_capacity(stored.len());
-    for entry in stored {
-        results.push(entry.result);
-        provenance.push(entry.provenance);
-        pressings.push(entry.pressing);
-    }
-    (results, provenance, pressings)
-}
-
-/// Read a match's column that holds a JSON array of strings.
-fn read_strings(row: &Row<'_>, column: &str) -> Result<Vec<String>, DbError> {
-    let stored: String = row.get(column)?;
-    serde_json::from_str(&stored)
-        .map_err(|error| DbError::Message(format!("{column} {stored:?}: {error}")))
 }

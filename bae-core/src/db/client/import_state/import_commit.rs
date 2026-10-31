@@ -102,7 +102,7 @@ pub(crate) fn record_import_origin_on(
 }
 
 /// Delete, inside the commit, what the candidate holds that nothing reads once
-/// its release is in: the identify verdict (its releases go with it), what
+/// its release is in: the identify verdict (its releases and ledger go with it), what
 /// the person let the lookups use, where the pane was, the covers the applied
 /// release offered the picker, the artist decisions this commit just resolved
 /// its credits by, and the library album picked for it. The Done row and the

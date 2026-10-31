@@ -3150,12 +3150,23 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
             AND json_type(failures_json) = 'array'
             AND json_array_length(failures_json) > 0)
     ),
-    -- The ledger the run recorded as it ended, stored whole since no query
-    -- reads into it; NULL when none was recorded.
-    ledger_json   TEXT CHECK (
-        ledger_json IS NULL
-        OR (json_valid(ledger_json) AND json_type(ledger_json) = 'object')
-    ),
+    -- How each clue stood in the ledger the run recorded as it ended, all
+    -- NULL when it recorded none. The ledger's rows and lookups are
+    -- import_candidate_lookup_value and the tables beside it. 'absent': no
+    -- LOG or CUE, no barcode source, no ISRC. 'not_cd_audio': the CUE lays out
+    -- audio at a rate no CD has. 'no_codes': a barcode source held no code.
+    -- 'none_found': no catalog number was offered or in effect.
+    -- 'not_needed': the clues answered, so no title search went out;
+    -- 'no_title': there was no title to search by.
+    disc_id_step  TEXT CHECK (disc_id_step IN ('absent', 'not_cd_audio', 'read')),
+    barcode_step  TEXT CHECK (barcode_step IN ('absent', 'no_codes', 'rows')),
+    catalog_step  TEXT CHECK (catalog_step IN ('none_found', 'numbers')),
+    isrc_step     TEXT CHECK (isrc_step IN ('absent', 'read')),
+    search_step   TEXT CHECK (search_step IN ('not_needed', 'no_title', 'searched')),
+    -- The words the title search asked, for a 'searched' step: the album, and
+    -- the album artist, blank where the draft named none.
+    search_album  TEXT CHECK (search_album <> ''),
+    search_artist TEXT,
     -- How bae broke on its own side, for an 'error' verdict: the error chain
     -- the person is shown.
     error_detail  TEXT CHECK (error_detail IS NULL OR error_detail <> ''),
@@ -3172,17 +3183,32 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     CHECK ((kind IN ('not_found', 'error')) = (track_count IS NULL)),
     CHECK ((kind = 'failed') = (failures_json IS NOT NULL)),
     CHECK ((kind = 'error') = (error_detail IS NOT NULL)),
-    CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed'))
+    CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed')),
+    CHECK ((disc_id_step IS NULL) = (barcode_step IS NULL)
+           AND (disc_id_step IS NULL) = (catalog_step IS NULL)
+           AND (disc_id_step IS NULL) = (isrc_step IS NULL)
+           AND (disc_id_step IS NULL) = (search_step IS NULL)),
+    CHECK (kind <> 'error' OR disc_id_step IS NULL),
+    CHECK ((search_step IS 'searched') = (search_album IS NOT NULL)),
+    CHECK ((search_album IS NULL) = (search_artist IS NULL))
 ) STRICT;
 
 -- Every release a run's lookups returned, in listed order, with what the
--- record said and which lookup found it.
+-- record said and which lookup found it: the releases it offers, then the
+-- ones agreement set aside, then the ones a lookup of the recorded ledger
+-- found that neither lists.
 CREATE TABLE IF NOT EXISTS import_candidate_match (
     content_hash        TEXT NOT NULL,
     position            INTEGER NOT NULL CHECK (position >= 0),
-    -- The pressing row this release belongs to, numbered from zero; matches
-    -- and narrowed-out releases each number their own rows.
-    pressing            INTEGER NOT NULL CHECK (pressing >= 0),
+    -- 'offered': a release of the rows the run offers. 'narrowed_out': one of
+    -- the rows agreement set aside. 'unlisted': listed in neither, because
+    -- its tracklist holds other tracks than the folder or it looks alike an
+    -- offered row; only the ledger's cells show it.
+    listing             TEXT NOT NULL CHECK (listing IN ('offered', 'narrowed_out', 'unlisted')),
+    -- The pressing row this release belongs to, numbered from zero; offered
+    -- and narrowed-out releases each number their own rows. NULL for an
+    -- unlisted release, which is in no row.
+    pressing            INTEGER CHECK (pressing >= 0),
     source              TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
     release_id          TEXT NOT NULL,
     title               TEXT NOT NULL,
@@ -3226,25 +3252,24 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- lists tracks for the audio that cannot be read into values.
     source_tracks_kind  TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing', 'unreadable')),
     source_tracks_count INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
-    -- Which of the run's keys returned this release. Matches against the
-    -- folder's text are not stored; they are read from the text lines each
-    -- time.
-    by_disc_id          INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
+    -- Which of the run's keys returned an offered or narrowed-out release;
+    -- NULL for an unlisted one. Matches against the folder's text are not
+    -- stored; they are read from the text lines each time.
+    by_disc_id          INTEGER CHECK (by_disc_id IN (0, 1)),
     -- A barcode the folder's files carry.
-    by_barcode          INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
+    by_barcode          INTEGER CHECK (by_barcode IN (0, 1)),
     -- A catalog number in effect: picked, or printed by the folder's text
     -- and carried by a release the run found.
-    by_catalog          INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
+    by_catalog          INTEGER CHECK (by_catalog IN (0, 1)),
     -- The search by the ISRCs the audio's tags carry.
-    by_isrc             INTEGER NOT NULL CHECK (by_isrc IN (0, 1)),
+    by_isrc             INTEGER CHECK (by_isrc IN (0, 1)),
     -- The title search, asked only when the folder's own keys and the picked
     -- catalog numbers all came back empty.
-    by_search           INTEGER NOT NULL CHECK (by_search IN (0, 1)),
+    by_search           INTEGER CHECK (by_search IN (0, 1)),
     -- An offered row's pressing, looked up on a catalog the row had no record
     -- of: by the release its page names there, its barcode, or its catalog
     -- number under its label.
-    by_pressing         INTEGER NOT NULL CHECK (by_pressing IN (0, 1)),
-    narrowed_out        INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
+    by_pressing         INTEGER CHECK (by_pressing IN (0, 1)),
     -- Why the release's full document could not be read when the run offered
     -- its row, which then holds what the lookup returned. NULL when it was
     -- read or never asked for.
@@ -3264,7 +3289,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
         CHECK (json_valid(notes) AND json_type(notes) = 'array'),
     -- The note of this release the folder's text names its row by, where the
     -- ranking's notes point went to that row; NULL otherwise, and always for a
-    -- release set aside.
+    -- release the run does not offer.
     named_note              TEXT CHECK (named_note IS NULL OR named_note <> ''),
     PRIMARY KEY (content_hash, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
@@ -3275,7 +3300,14 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL) AND (cover_url IS NULL) = (cover_standing IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
-    CHECK (narrowed_out = 0 OR named_note IS NULL),
+    CHECK (listing = 'offered' OR named_note IS NULL),
+    CHECK ((listing = 'unlisted') = (pressing IS NULL)),
+    CHECK ((listing = 'unlisted') = (by_disc_id IS NULL)
+           AND (listing = 'unlisted') = (by_barcode IS NULL)
+           AND (listing = 'unlisted') = (by_catalog IS NULL)
+           AND (listing = 'unlisted') = (by_isrc IS NULL)
+           AND (listing = 'unlisted') = (by_search IS NULL)
+           AND (listing = 'unlisted') = (by_pressing IS NULL)),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider')
 ) STRICT;
@@ -3362,6 +3394,101 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
         REFERENCES import_candidate_match (content_hash, position, media_kind)
         ON DELETE CASCADE,
     CHECK (media_kind = 'formats' OR quantity = 1)
+) STRICT;
+
+-- The catalogs the recorded ledger's run asked, in the order its cells are
+-- laid out.
+CREATE TABLE IF NOT EXISTS import_candidate_lookup_provider (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    catalog      TEXT NOT NULL CHECK (catalog IN ('musicbrainz', 'discogs')),
+    PRIMARY KEY (content_hash, position),
+    UNIQUE (content_hash, catalog),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The ISRCs the recorded ledger's run looked up together, each once, in the
+-- files' order, for an isrc_step of 'read'.
+CREATE TABLE IF NOT EXISTS import_candidate_lookup_isrc (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    isrc         TEXT NOT NULL CHECK (isrc <> ''),
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The catalog numbers the folder's text offered that the recorded ledger's
+-- run neither had in effect nor had struck out, in first-seen order, for a
+-- catalog_step of 'numbers'.
+CREATE TABLE IF NOT EXISTS import_candidate_lookup_offered_catalog (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    value        TEXT NOT NULL CHECK (value <> ''),
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The recorded ledger's rows, each clue's in its order: a disc ID, a barcode
+-- or a catalog number (`value`), and the one row of the ISRCs and of the
+-- title search, which name none. `excluded`: a barcode or catalog number the
+-- person left out.
+CREATE TABLE IF NOT EXISTS import_candidate_lookup_value (
+    content_hash TEXT NOT NULL,
+    step         TEXT NOT NULL CHECK (step IN ('disc_id', 'barcode', 'catalog', 'isrc', 'search')),
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    value        TEXT CHECK (value <> ''),
+    excluded     INTEGER NOT NULL CHECK (excluded IN (0, 1)),
+    PRIMARY KEY (content_hash, step, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    CHECK ((step IN ('isrc', 'search')) = (value IS NULL)),
+    CHECK (step NOT IN ('isrc', 'search') OR position = 0),
+    CHECK (excluded = 0 OR step IN ('barcode', 'catalog'))
+) STRICT;
+
+-- One lookup of a ledger row: a cell, one catalog's answer, in the row's
+-- cell order. A disc ID and the ISRCs are asked of MusicBrainz alone, so
+-- their row has one lookup and names no catalog. 'answered': the releases it
+-- found are import_candidate_lookup_release, none for no match.
+CREATE TABLE IF NOT EXISTS import_candidate_lookup (
+    content_hash     TEXT NOT NULL,
+    step             TEXT NOT NULL,
+    position         INTEGER NOT NULL,
+    cell             INTEGER NOT NULL CHECK (cell >= 0),
+    catalog          TEXT CHECK (catalog IN ('musicbrainz', 'discogs')),
+    answer           TEXT NOT NULL CHECK (answer IN ('not_asked', 'answered', 'failed')),
+    -- Why nobody was asked: the person left the value out, or no catalog the
+    -- run asks answers this lookup.
+    not_asked_reason TEXT CHECK (not_asked_reason IN ('left_out', 'no_catalog')),
+    failure          TEXT CHECK (failure IN ('network', 'provider', 'timeout')),
+    failure_status   INTEGER,
+    PRIMARY KEY (content_hash, step, position, cell),
+    -- Referenced by the releases found, which only an answered lookup has.
+    UNIQUE (content_hash, step, position, cell, answer),
+    FOREIGN KEY (content_hash, step, position)
+        REFERENCES import_candidate_lookup_value (content_hash, step, position) ON DELETE CASCADE,
+    CHECK ((step IN ('disc_id', 'isrc')) = (catalog IS NULL)),
+    CHECK (step NOT IN ('disc_id', 'isrc') OR cell = 0),
+    CHECK ((answer = 'not_asked') = (not_asked_reason IS NOT NULL)),
+    CHECK ((answer = 'failed') = (failure IS NOT NULL)),
+    CHECK (failure_status IS NULL OR failure = 'provider')
+) STRICT;
+
+-- The releases an answered lookup found, in its order, each the match row
+-- that holds it.
+CREATE TABLE IF NOT EXISTS import_candidate_lookup_release (
+    content_hash   TEXT NOT NULL,
+    step           TEXT NOT NULL,
+    position       INTEGER NOT NULL,
+    cell           INTEGER NOT NULL,
+    answer         TEXT NOT NULL DEFAULT 'answered' CHECK (answer = 'answered'),
+    ordinal        INTEGER NOT NULL CHECK (ordinal >= 0),
+    match_position INTEGER NOT NULL,
+    PRIMARY KEY (content_hash, step, position, cell, ordinal),
+    FOREIGN KEY (content_hash, step, position, cell, answer)
+        REFERENCES import_candidate_lookup (content_hash, step, position, cell, answer)
+        ON DELETE CASCADE,
+    FOREIGN KEY (content_hash, match_position)
+        REFERENCES import_candidate_match (content_hash, position)
 ) STRICT;
 
 -- ── The import list ───────────────────────────────────────────────────────────
@@ -3760,7 +3887,7 @@ FROM (
                    v.error_detail AS verdict_error,
                    -- How many pressings the releases agreement kept make.
                    (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
-                    WHERE m.content_hash = v.content_hash AND m.narrowed_out = 0) AS pressings,
+                    WHERE m.content_hash = v.content_hash AND m.listing = 'offered') AS pressings,
                    -- Why a found verdict picks none of its releases
                    -- unattended, judged from what it found that agreement
                    -- kept, led by the lowest position.
@@ -3771,11 +3898,11 @@ FROM (
                                   WHEN (SELECT COUNT(DISTINCT m.pressing)
                                         FROM import_candidate_match AS m
                                         WHERE m.content_hash = v.content_hash
-                                          AND m.narrowed_out = 0) <> 1
+                                          AND m.listing = 'offered') <> 1
                                       THEN 'several'
                                   WHEN EXISTS (SELECT 1 FROM import_candidate_match AS m
                                                WHERE m.content_hash = v.content_hash
-                                                 AND m.narrowed_out = 0
+                                                 AND m.listing = 'offered'
                                                  AND m.document_failure IS NOT NULL)
                                       THEN 'unread_document'
                                   WHEN lead.source_tracks_kind = 'listed'
@@ -3790,7 +3917,7 @@ FROM (
                                  AND lead.position = (SELECT MIN(m.position)
                                                       FROM import_candidate_match AS m
                                                       WHERE m.content_hash = v.content_hash
-                                                        AND m.narrowed_out = 0))
+                                                        AND m.listing = 'offered'))
                    END AS declined,
                    st.identification, st.import AS running_import, st.save_failure_error,
                    t.album_title AS tag_title, t.artist AS tag_artist,
@@ -4710,8 +4837,8 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_match_changed
-AFTER UPDATE OF content_hash, position, pressing, narrowed_out, source_tracks_kind, source_tracks_count, document_failure ON import_candidate_match
-WHEN (OLD.content_hash, OLD.position, OLD.pressing, OLD.narrowed_out, OLD.source_tracks_kind, OLD.source_tracks_count, OLD.document_failure) IS NOT (NEW.content_hash, NEW.position, NEW.pressing, NEW.narrowed_out, NEW.source_tracks_kind, NEW.source_tracks_count, NEW.document_failure)
+AFTER UPDATE OF content_hash, position, pressing, listing, source_tracks_kind, source_tracks_count, document_failure ON import_candidate_match
+WHEN (OLD.content_hash, OLD.position, OLD.pressing, OLD.listing, OLD.source_tracks_kind, OLD.source_tracks_count, OLD.document_failure) IS NOT (NEW.content_hash, NEW.position, NEW.pressing, NEW.listing, NEW.source_tracks_kind, NEW.source_tracks_count, NEW.document_failure)
 BEGIN
     INSERT INTO import_list_replace (key)
     SELECT path FROM scan_candidate WHERE content_hash IN (OLD.content_hash, NEW.content_hash);

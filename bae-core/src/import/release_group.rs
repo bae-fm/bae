@@ -38,10 +38,7 @@ use pressing_sets::{formed_pressings, gather_pressings};
 
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it.
-///
-/// `Serialize`/`Deserialize`: named by a ledger cell that found releases,
-/// and the ledger is what `identify::TerminalVerdict` persists.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseGroup {
     /// Stable card identity: the first source's group id, or the lone
     /// release's id when no source named a group.
@@ -99,7 +96,7 @@ impl ReleaseGroup {
 }
 
 /// One album's rows on a card.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PressingSection {
     /// The album the rows are pressings of, where the card splits its rows by
     /// album; `None` where it does not.
@@ -114,14 +111,14 @@ pub struct PressingSection {
 
 /// An album heading a card's section: its own title as its catalog states
 /// it, and its page there.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlbumHeading {
     pub title: String,
     pub source: ReleaseGroupSource,
 }
 
 /// One source carrying a group, and where its editorial page for it is.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseGroupSource {
     pub source: Catalog,
     /// Editorial URL for the group on this source (release-group on
@@ -140,7 +137,7 @@ pub struct ReleaseGroupSource {
 /// further entry is the same pressing as another record has it — another
 /// catalog's, or the same catalog's second record of one object. The
 /// pressing's constructor says which record that first one is.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Pressing {
     pub releases: Vec<MetadataResult>,
 }

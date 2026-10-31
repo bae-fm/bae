@@ -512,22 +512,19 @@ async fn the_detail_resumes_the_stored_verdict() {
 async fn the_detail_resumes_the_ledger_the_run_recorded() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
+    // The disc ID's lookup found the verdict's release, as the run last read
+    // it.
+    let found = verdict("mb-verdict", None)
+        .findings()
+        .expect("a found verdict holds findings")
+        .matches
+        .clone();
     let ledger = crate::identify::IdentifyRunView {
         providers: vec![Catalog::MusicBrainz],
         disc_id: crate::identify::DiscIdStepView::Read {
             discs: vec![crate::identify::DiscIdRow {
                 disc_id: "disc-1".to_string(),
-                lookup: crate::identify::LookupView::Found {
-                    count: 1,
-                    groups: crate::import::release_group::group_results(
-                        crate::import::release_group::unranked(vec![MetadataResult::for_test(
-                            Catalog::MusicBrainz,
-                            "mb-verdict",
-                            Some("group-1"),
-                        )]),
-                        None,
-                    ),
-                },
+                lookup: crate::identify::LookupView::answered(&found),
             }],
         },
         barcode: crate::identify::BarcodeStepView::Absent,

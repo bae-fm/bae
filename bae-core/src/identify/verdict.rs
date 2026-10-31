@@ -14,8 +14,10 @@
 //! What a run showed is stored with what it concluded: the `ledger` on every
 //! variant is the run's own last frame, recorded once when the run ended.
 //! Reading a candidate back draws that, so the pane after the save is the pane
-//! during the run — nothing is rebuilt from the matches, which can only name
-//! providers that produced one.
+//! during the run. Its cells are stored as they stood, every provider asked
+//! and every answer, not rebuilt from the matches, which can only name
+//! providers that produced one; the releases a cell found are the match rows,
+//! which hold each release once, as the run last read it.
 //!
 //! `LibraryStatus` is deliberately absent from every variant, and from the
 //! run's own state too. It is mutable local state — another import landing can
@@ -80,7 +82,7 @@ pub enum IdentifyFailure {
 /// while the run went is what they see afterwards. `None` for a run
 /// extraction handed nothing to lay out, and for a verdict whose stored row
 /// records none.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TerminalVerdict {
     /// One or more results — what `combine` produced, and what the sidebar and
     /// the auto-import check both work from directly.

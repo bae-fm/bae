@@ -2,7 +2,7 @@
 
 /// Why a run did not ask about a value. When several hold, the one nearest
 /// the value wins: a value left out says so even where no catalog answers it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NotAskedReason {
     /// The person left the value out of the run.
     LeftOut,

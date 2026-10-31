@@ -419,3 +419,300 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         vec!["rel-narrowed"]
     );
 }
+
+/// `release` as one catalog's record of its own.
+fn release_on(source: bae_catalogs::catalog::Catalog, release_id: &str) -> MetadataResult {
+    MetadataResult {
+        source,
+        release_id: release_id.to_string(),
+        source_group_id: Some(format!("group-{release_id}")),
+        ..sample_match()
+    }
+}
+
+/// Store `verdict` for a fresh candidate and read it back, with the
+/// listing of each match row in position order.
+async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdict, Vec<String>) {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), verdict);
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    let read = loaded[&hash]
+        .identify
+        .as_ref()
+        .expect("a stored verdict reads back")
+        .verdict
+        .clone();
+    let listings = db
+        .read(move |sql| {
+            sql.query(
+                "SELECT release_id || ' ' || listing FROM import_candidate_match \
+                 WHERE content_hash = ? ORDER BY position",
+                [hash],
+                |row| row.get::<_, String>(0),
+            )
+            .map_err(super::super::super::DbError::from)
+        })
+        .await
+        .unwrap();
+    (read, listings)
+}
+
+/// Every cell of the band reads back as the run left it: found, no match,
+/// failed and not asked, each clue's rows in order with the values left out,
+/// the catalog numbers offered and the ISRCs. A found cell lists every
+/// release it found — one the run offers, one agreement set aside, and one
+/// listed in neither, which only its cell shows and counts.
+#[tokio::test]
+async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
+    use crate::identify::{
+        BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, IsrcStepView,
+        NotAskedReason, ProviderCell, SearchStepView, SignalValueRow,
+    };
+    use crate::signals::LookupFailure;
+    use bae_catalogs::catalog::Catalog;
+
+    let offered = release_on(Catalog::MusicBrainz, "rel-offered");
+    let catalogued = release_on(Catalog::Discogs, "42");
+    let set_aside = release_on(Catalog::MusicBrainz, "rel-set-aside");
+    let ruled_out = MetadataResult {
+        source_tracks: Some(crate::import::search::SourceTracks::Listed { count: 9 }),
+        ..release_on(Catalog::MusicBrainz, "rel-ruled-out")
+    };
+    let found = |releases: &[&MetadataResult]| {
+        LookupView::answered(&releases.iter().map(|release| (*release).clone()).collect())
+    };
+    let left_out = LookupView::NotAsked {
+        reason: NotAskedReason::LeftOut,
+    };
+    let cell = |source, lookup| ProviderCell { source, lookup };
+    let ledger = IdentifyRunView {
+        providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
+        disc_id: DiscIdStepView::Read {
+            discs: vec![
+                DiscIdRow {
+                    disc_id: "disc-1".to_string(),
+                    lookup: found(&[&offered, &set_aside]),
+                },
+                DiscIdRow {
+                    disc_id: "disc-2".to_string(),
+                    lookup: LookupView::Failed {
+                        failure: LookupFailure::Timeout,
+                    },
+                },
+            ],
+        },
+        barcode: BarcodeStepView::Rows {
+            scanning: false,
+            rows: vec![
+                SignalValueRow {
+                    value: "012345678905".to_string(),
+                    excluded: false,
+                    cells: vec![
+                        cell(Catalog::MusicBrainz, found(&[&ruled_out, &offered])),
+                        cell(
+                            Catalog::Discogs,
+                            LookupView::Failed {
+                                failure: LookupFailure::Provider { status: Some(503) },
+                            },
+                        ),
+                    ],
+                },
+                SignalValueRow {
+                    value: "5051961234567".to_string(),
+                    excluded: true,
+                    cells: vec![
+                        cell(Catalog::MusicBrainz, left_out.clone()),
+                        cell(Catalog::Discogs, left_out.clone()),
+                    ],
+                },
+            ],
+        },
+        catalog: CatalogStepView::Numbers {
+            scanning: false,
+            rows: vec![
+                SignalValueRow {
+                    value: "CAT-1".to_string(),
+                    excluded: false,
+                    cells: vec![
+                        cell(Catalog::MusicBrainz, LookupView::NoMatch),
+                        cell(Catalog::Discogs, found(&[&catalogued])),
+                    ],
+                },
+                SignalValueRow {
+                    value: "CAT-2".to_string(),
+                    excluded: true,
+                    cells: vec![
+                        cell(Catalog::MusicBrainz, left_out.clone()),
+                        cell(Catalog::Discogs, left_out),
+                    ],
+                },
+            ],
+            candidates: vec![CatalogCandidateView {
+                value: "CAT-9".to_string(),
+            }],
+        },
+        isrc: IsrcStepView::Read {
+            isrcs: vec!["USAAA0000001".to_string(), "USAAA0000002".to_string()],
+            lookup: LookupView::NotAsked {
+                reason: NotAskedReason::NoCatalog,
+            },
+        },
+        search: SearchStepView::NotNeeded,
+    };
+    let returned = |by_disc_id, by_catalog| LookupProvenance {
+        by_disc_id,
+        by_catalog,
+        ..LookupProvenance::CHOSEN
+    };
+    let verdict = TerminalVerdict::Failed {
+        failures: vec![crate::identify::IdentifyFailure::DiscId(
+            LookupFailure::Timeout,
+        )],
+        findings: Findings {
+            matches: vec![offered.clone(), catalogued.clone()],
+            provenance: vec![returned(true, false), returned(false, true)],
+            pressings: vec![0, 1],
+            narrowed_out: NarrowedOut {
+                matches: vec![set_aside.clone()],
+                provenance: vec![returned(true, false)],
+                pressings: vec![0],
+            },
+            medium_conflict: None,
+            named_notes: Vec::new(),
+        },
+        track_count: 11,
+        ledger: Some(ledger),
+    };
+
+    let (read, listings) = stored_and_read(&verdict).await;
+
+    assert_eq!(read, verdict);
+    assert_eq!(
+        listings,
+        vec![
+            "rel-offered offered",
+            "42 offered",
+            "rel-set-aside narrowed_out",
+            "rel-ruled-out unlisted",
+        ],
+        "each release is stored once, the one no list holds after the listed ones"
+    );
+    let BarcodeStepView::Rows { rows, .. } = &read.ledger().expect("a ledger").barcode else {
+        panic!("the barcode step read rows");
+    };
+    let LookupView::Found { count, .. } = &rows[0].cells[0].lookup else {
+        panic!("the barcode's MusicBrainz lookup found releases");
+    };
+    assert_eq!(*count, 2, "the release no list holds still counts in its cell");
+    assert!(
+        rows[0].cells[0]
+            .lookup
+            .releases()
+            .iter()
+            .any(|release| release.release_id == "rel-ruled-out"),
+        "and its cell lists it"
+    );
+    assert!(
+        !read
+            .named_releases()
+            .iter()
+            .any(|release| release.release_id == "rel-ruled-out"),
+        "but the verdict names it nowhere else"
+    );
+}
+
+/// How each clue stood reads back for every state but rows of lookups:
+/// a sheet no CD plays, a barcode source with no code, no catalog number, no
+/// ISRC and no title; and a title search reads back its words and its cells.
+#[tokio::test]
+async fn the_ledger_round_trips_how_each_clue_stood() {
+    use crate::identify::{
+        BarcodeStepView, CatalogStepView, IsrcStepView, ProviderCell, SearchStepView,
+    };
+    use bae_catalogs::catalog::Catalog;
+
+    let quiet = IdentifyRunView {
+        providers: vec![Catalog::MusicBrainz],
+        disc_id: DiscIdStepView::NotCdAudio,
+        barcode: BarcodeStepView::NoCodes,
+        catalog: CatalogStepView::NoneFound,
+        isrc: IsrcStepView::Absent,
+        search: SearchStepView::NoTitle,
+    };
+    let verdict = TerminalVerdict::ManualOnly {
+        track_count: 11,
+        ledger: Some(quiet.clone()),
+    };
+    assert_eq!(stored_and_read(&verdict).await.0, verdict);
+
+    let searched = release_on(Catalog::Discogs, "77");
+    let verdict = TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![searched.clone()],
+            provenance: vec![LookupProvenance {
+                by_search: true,
+                ..LookupProvenance::CHOSEN
+            }],
+            pressings: vec![0],
+            ..Findings::default()
+        },
+        track_count: 11,
+        ledger: Some(IdentifyRunView {
+            providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
+            disc_id: DiscIdStepView::Absent,
+            barcode: BarcodeStepView::Absent,
+            search: SearchStepView::Searched {
+                album: "Album".to_string(),
+                artist: String::new(),
+                cells: vec![
+                    ProviderCell {
+                        source: Catalog::MusicBrainz,
+                        lookup: LookupView::NoMatch,
+                    },
+                    ProviderCell {
+                        source: Catalog::Discogs,
+                        lookup: LookupView::answered(&vec![searched]),
+                    },
+                ],
+            },
+            ..quiet
+        }),
+    };
+    let (read, listings) = stored_and_read(&verdict).await;
+    assert_eq!(read, verdict);
+    assert_eq!(listings, vec!["77 offered"]);
+}
+
+/// A ledger a settled run cannot have recorded is refused: a lookup still
+/// under way.
+#[tokio::test]
+async fn a_ledger_with_a_lookup_under_way_is_not_stored() {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let mut ledger = sample_ledger();
+    ledger.disc_id = DiscIdStepView::Read {
+        discs: vec![crate::identify::DiscIdRow {
+            disc_id: "disc-1".to_string(),
+            lookup: LookupView::LookingUp,
+        }],
+    };
+    let verdict = TerminalVerdict::NotFoundAnywhere {
+        ledger: Some(ledger),
+    };
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
+    assert!(crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .is_err());
+}

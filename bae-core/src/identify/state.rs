@@ -815,9 +815,10 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     };
 
     // The only place a ledger is recorded; later readers show this one.
-    let ledger = context
-        .has_inputs()
-        .then(|| run_view(&discid, &barcode, &catalog, &isrc, &search, &context));
+    let ledger = context.has_inputs().then(|| {
+        run_view(&discid, &barcode, &catalog, &isrc, &search, &context)
+            .read_as(&context.lookup_results())
+    });
 
     // Nothing was asked of anyone, so nothing was found wanting.
     if matches!(

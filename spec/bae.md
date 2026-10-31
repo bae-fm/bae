@@ -1006,7 +1006,14 @@ that pressing first among otherwise equal ones.
 
 A run's answers are kept with its verdict, so they re-rank without being
 fetched again, and a fetched release is stored on the device (`source_release`
-and its tables, Appendix A).
+and its tables, Appendix A). So is the run as the pane lays it out: how each
+clue stood, its rows, and each catalog's answer to each row — the releases it
+found, nothing, a failure, or why nobody was asked. Every release a lookup
+found is kept, also one no list shows because its tracklist doesn't fit or it
+looks like an offered one; only its lookup shows and counts it. A release is
+kept once, as the run last read it, and every lookup that found it shows it
+that way, while the run is going and after it ends, so a candidate opened
+later shows what its run showed. A run with no clue to lay out keeps none.
 
 ### 3.5 Picking a pressing
 
@@ -3523,8 +3530,10 @@ Beside them, keyed by the candidate's key as the import list names it:
 |---|---|
 | `import_candidate_signals`, `import_candidate_signal_value`, `import_candidate_text_line` | the clues read off a candidate (§3.3) |
 | `import_candidate_lookup_choices`, `import_candidate_chosen_catalog`, `import_candidate_discounted_catalog`, `import_candidate_excluded_barcode` | what the person let the lookups use |
-| `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; the ledger it showed; a medium conflict |
-| `import_candidate_match` and its `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, with which lookup found it |
+| `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict |
+| `import_candidate_match` and its `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with which lookup found a listed one |
+| `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them |
+| `import_candidate_lookup_provider`, `import_candidate_lookup_isrc`, `import_candidate_lookup_offered_catalog` | the catalogs the run asked, the ISRCs it looked up, and the catalog numbers it offered to pick |
 
 ### A.7 The import list
 

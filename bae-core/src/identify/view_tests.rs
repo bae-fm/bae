@@ -420,7 +420,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
 }
 
 /// A settled state's ledger is the run's last frame with the last answers
-/// filled in.
+/// filled in, each release in it as the run last read it.
 #[test]
 fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let mut context = context();
@@ -475,7 +475,10 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
             }],
         },
     );
-    assert!(matches!(settled, IdentifyState::Failed { .. }));
+    let IdentifyState::Failed { findings, .. } = &settled else {
+        panic!("a failed lookup fails the run: {settled:?}");
+    };
+    let offered = findings.matches.clone();
     let ledger = run_of(settled);
 
     assert_eq!(ledger.providers, last_frame.providers);
@@ -491,6 +494,13 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
         cells(&after[1]).as_slice(),
         [LookupView::Found { count: 1, .. }, LookupView::NoMatch]
     ));
+    // The cell shows the record as the run last read it, its document
+    // wanting, as the offered row does.
+    assert_eq!(offered[0].document_failure, Some(LookupFailure::Network));
+    assert_eq!(
+        cells(&after[1])[0].releases(),
+        offered.iter().collect::<Vec<_>>()
+    );
 }
 
 /// A folder with nothing to look up records no ledger.

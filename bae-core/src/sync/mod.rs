@@ -406,6 +406,12 @@ mod tests {
         "import_candidate_match_link",
         "import_candidate_match_album_link",
         "import_candidate_match_medium",
+        "import_candidate_lookup_provider",
+        "import_candidate_lookup_isrc",
+        "import_candidate_lookup_offered_catalog",
+        "import_candidate_lookup_value",
+        "import_candidate_lookup",
+        "import_candidate_lookup_release",
         // Where each row of the import list sits, worked out from the rows
         // above.
         "import_list_placement",

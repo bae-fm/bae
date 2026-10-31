@@ -135,14 +135,26 @@ async fn a_found_verdict_names_what_holds_its_pick_back() {
     );
     assert_eq!(
         lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET narrowed_out = 1"
+            "UPDATE import_candidate_match SET listing = 'narrowed_out'"
         ))
         .await,
         now(&lib, found("Album").state("unmatched"))
     );
     assert_eq!(
         lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET narrowed_out = 0, pressing = 0"
+            "UPDATE import_candidate_match SET listing = 'unlisted', pressing = NULL, \
+             by_disc_id = NULL, by_barcode = NULL, by_catalog = NULL, by_isrc = NULL, \
+             by_search = NULL, by_pressing = NULL"
+        ))
+        .await,
+        moves([]),
+        "a release only the ledger lists is no more offered than one set aside"
+    );
+    assert_eq!(
+        lib.moved(&found_releases(
+            "UPDATE import_candidate_match SET listing = 'offered', pressing = 0, \
+             by_disc_id = 1, by_barcode = 0, by_catalog = 0, by_isrc = 0, by_search = 0, \
+             by_pressing = 0"
         ))
         .await,
         now(&lib, found("Album").needs_you("not_found"))
