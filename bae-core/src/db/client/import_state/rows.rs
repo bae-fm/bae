@@ -294,7 +294,7 @@ fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
 }
 
 const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found.release_id, \
-     found.title, found.artist, found.year, found.labels, found.country, found.region, \
+     found.title, found.artist, found.year, found.country, found.region, \
      found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
      found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
      found.album_links, found.source_tracks_kind, found.source_tracks_count, found.listing, \
@@ -302,8 +302,8 @@ const MATCH_COLUMNS: &str = "found.position, found.pressing, found.source, found
      found.named_note";
 
 /// What hangs off a match joined as `found`, each list a JSON array in its
-/// stored order: its barcodes, its cover's copies, its media, its links and
-/// its album links.
+/// stored order: its labels, its barcodes, its cover's copies, its media, its
+/// links and its album links.
 fn match_entries_columns() -> String {
     let child = |table: &str, value: &str, order: &str| {
         format!(
@@ -312,8 +312,14 @@ fn match_entries_columns() -> String {
         )
     };
     format!(
-        "{barcodes} AS match_barcodes, {copies} AS match_cover_copies, \
+        "{labels} AS match_labels, {barcodes} AS match_barcodes, \
+         {copies} AS match_cover_copies, \
          {media} AS match_media, {links} AS match_links, {album_links} AS match_album_links",
+        labels = child(
+            "import_candidate_match_label",
+            "json_object('name', entry.name, 'catalog_number', entry.catalog_number)",
+            "entry.ordinal"
+        ),
         barcodes = child(
             "import_candidate_match_barcode",
             "entry.barcode",
@@ -348,6 +354,7 @@ fn match_entries_columns() -> String {
 
 /// One match's child lists as SQLite hands them over, still JSON.
 struct StoredMatchEntries {
+    labels: String,
     barcodes: String,
     cover_copies: String,
     media: String,
@@ -357,6 +364,7 @@ struct StoredMatchEntries {
 
 fn read_match_entries(row: &Row<'_>) -> rusqlite::Result<StoredMatchEntries> {
     Ok(StoredMatchEntries {
+        labels: row.get("match_labels")?,
         barcodes: row.get("match_barcodes")?,
         cover_copies: row.get("match_cover_copies")?,
         media: row.get("match_media")?,
@@ -381,6 +389,7 @@ impl StoredMatchEntries {
             })
         }
         Ok(MatchEntries {
+            labels: list(&self.labels, "labels")?,
             barcodes: list(&self.barcodes, "barcodes")?,
             cover_copies: super::super::downscaled_copies::copies_of(&self.cover_copies)?,
             media: list::<StoredMatchMedium>(&self.media, "media")?

@@ -82,17 +82,17 @@ pub(super) fn store_match(
     sql.execute(
         "INSERT INTO import_candidate_match \
              (content_hash, position, pressing, source, release_id, title, artist, year, \
-              labels, country, region, status, packaging, discogs_details, \
+              country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, listing, document_failure, document_failure_status, \
               album_first_year, named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?) \
+                 ?) \
          ON CONFLICT (content_hash, position) DO UPDATE SET \
              pressing = excluded.pressing, source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
-             artist = excluded.artist, year = excluded.year, labels = excluded.labels, \
+             artist = excluded.artist, year = excluded.year, \
              country = excluded.country, region = excluded.region, status = excluded.status, \
              packaging = excluded.packaging, discogs_details = excluded.discogs_details, \
              media_kind = excluded.media_kind, cover_url = excluded.cover_url, \
@@ -115,7 +115,6 @@ pub(super) fn store_match(
             result.title,
             result.artist,
             result.year,
-            super::super::pressing_columns::labels_column(&result.labels),
             facts.country,
             facts.region,
             facts.status,
@@ -152,6 +151,20 @@ pub(super) fn store_match(
                 ],
             )?;
         }
+    }
+    for (ordinal, label) in result.labels.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_match_label \
+                 (content_hash, position, ordinal, name, catalog_number) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                position,
+                ordinal_column(ordinal)?,
+                label.name(),
+                label.catalog_number()
+            ],
+        )?;
     }
     for (ordinal, barcode) in result.barcodes.iter().enumerate() {
         sql.execute(
@@ -251,6 +264,7 @@ pub(super) struct StoredMedium {
 /// The ordinal-ordered rows the child tables hold for one match, read on its
 /// row and handed to [`match_of`].
 pub(super) struct MatchEntries {
+    pub(super) labels: Vec<bae_types::pressing::ReleaseLabel>,
     pub(super) barcodes: Vec<String>,
     /// The downscaled copies of the match's cover.
     pub(super) cover_copies: Vec<DownscaledCopy>,
@@ -331,6 +345,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         named_note,
     } = columns;
     let MatchEntries {
+        labels,
         barcodes,
         cover_copies,
         media,
@@ -375,6 +390,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         ),
         other => return Err(unreadable("media_kind", other)),
     };
+    result.labels = labels;
     result.barcodes = barcodes;
     // Copy rows reference their match's cover, so a match without one has none.
     if let Some(cover) = &mut result.cover_art {
@@ -489,7 +505,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
             title: row.get("title")?,
             artist: row.get("artist")?,
             year: row.get("year")?,
-            labels: super::super::pressing_columns::read_labels(row, "labels")?,
+            labels: Vec::new(),
             area: facts.area,
             status: facts.status,
             packaging: facts.packaging,

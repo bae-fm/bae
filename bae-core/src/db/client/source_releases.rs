@@ -16,7 +16,7 @@ use crate::import::source_release::{
 };
 use crate::import::{MetadataRef, ReleaseRecord};
 use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
-use bae_types::pressing::{Medium, Pressing, StatedFormat, StatedMedia};
+use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
 
 #[path = "source_releases/tracklist.rs"]
@@ -25,7 +25,8 @@ mod tracklist;
 /// The tables under `source_release`, children before the tables they hang
 /// off. Deleting a release's mediums takes its entries, and with them their
 /// credits, roles and works.
-const CHILD_TABLES: [&str; 12] = [
+const CHILD_TABLES: [&str; 13] = [
+    "source_release_label",
     "source_release_barcode",
     "source_release_album_artist",
     "source_release_link",
@@ -125,15 +126,15 @@ pub(super) fn replace_source_release_on(
     sql.execute(
         "INSERT INTO source_release \
              (catalog, release_id, source_group_id, album_title, \
-              album_first_year, year, labels, country, region, status, \
+              album_first_year, year, country, region, status, \
               packaging, discogs_details, notes, archive_release_id, archive_group_id, \
               album_links) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (catalog, release_id) DO UPDATE SET \
              source_group_id = excluded.source_group_id, \
              album_title = excluded.album_title, \
              album_first_year = excluded.album_first_year, \
-             year = excluded.year, labels = excluded.labels, \
+             year = excluded.year, \
              country = excluded.country, region = excluded.region, \
              status = excluded.status, packaging = excluded.packaging, \
              discogs_details = excluded.discogs_details, notes = excluded.notes, \
@@ -147,7 +148,6 @@ pub(super) fn replace_source_release_on(
             metadata.album.title,
             metadata.album.first_year,
             pressing.year,
-            super::pressing_columns::labels_column(&pressing.labels),
             facts.country,
             facts.region,
             facts.status,
@@ -169,6 +169,20 @@ pub(super) fn replace_source_release_on(
         sql.execute(
             &format!("DELETE FROM {table} WHERE catalog = ? AND release_id = ?"),
             params![catalog, key],
+        )?;
+    }
+    for (position, label) in pressing.labels.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO source_release_label \
+                 (catalog, release_id, position, name, catalog_number) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![
+                catalog,
+                key,
+                position as i64,
+                label.name(),
+                label.catalog_number()
+            ],
         )?;
     }
     for (position, barcode) in pressing.barcodes.iter().enumerate() {
@@ -425,7 +439,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     let key = release.key.as_str();
     let head = sql
         .query_row(
-            "SELECT source_group_id, album_title, year, labels, \
+            "SELECT source_group_id, album_title, year, \
                     archive_release_id, archive_group_id, country, region, \
                     status, packaging, discogs_details, album_first_year, notes, album_links \
              FROM source_release WHERE catalog = ? AND release_id = ?",
@@ -438,13 +452,13 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                     // below.
                     Pressing {
                         year: row.get(2)?,
-                        labels: super::pressing_columns::read_labels(row, "labels")?,
                         // Read from their rows below.
+                        labels: Vec::new(),
                         barcodes: Vec::new(),
                         facts: super::pressing_columns::read_facts_without_media(row, "")?,
                     },
+                    row.get::<_, Option<String>>(3)?,
                     row.get::<_, Option<String>>(4)?,
-                    row.get::<_, Option<String>>(5)?,
                     row.get::<_, Option<i32>>("album_first_year")?,
                     row.get::<_, String>("notes")?,
                     row.get::<_, Option<String>>("album_links")?,
@@ -475,6 +489,24 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     };
     let notes: Vec<String> =
         serde_json::from_str(&notes).map_err(|error| unreadable("notes", (&notes, error)))?;
+    pressing.labels = sql
+        .query(
+            "SELECT name, catalog_number FROM source_release_label \
+             WHERE catalog = ? AND release_id = ? ORDER BY position",
+            params![catalog, key],
+            |row| {
+                Ok((
+                    row.get::<_, Option<String>>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                ))
+            },
+        )?
+        .into_iter()
+        .map(|(name, catalog_number)| {
+            ReleaseLabel::new(name.clone(), catalog_number.clone())
+                .ok_or_else(|| unreadable("label", (name, catalog_number)))
+        })
+        .collect::<Result<_, DbError>>()?;
     pressing.barcodes = sql.query(
         "SELECT barcode FROM source_release_barcode \
          WHERE catalog = ? AND release_id = ? ORDER BY position",

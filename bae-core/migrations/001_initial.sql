@@ -3270,10 +3270,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     title               TEXT NOT NULL,
     artist              TEXT,
     year                INTEGER,
-    -- Every label the pressing is on, in its source's order: a JSON array of
-    -- {"name", "catalog_number"} objects, each stating one or both.
-    labels             TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
+    -- Its labels are its import_candidate_match_label rows.
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
@@ -3333,6 +3330,20 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK ((listing = 'unlisted') = (pressing IS NULL)),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider')
+) STRICT;
+
+-- Every label a matched record is on, in its order, each stating a name, a
+-- catalog number or both.
+CREATE TABLE IF NOT EXISTS import_candidate_match_label (
+    content_hash   TEXT NOT NULL,
+    position       INTEGER NOT NULL,
+    ordinal        INTEGER NOT NULL CHECK (ordinal >= 0),
+    name           TEXT CHECK (name IS NULL OR name <> ''),
+    catalog_number TEXT CHECK (catalog_number IS NULL OR catalog_number <> ''),
+    PRIMARY KEY (content_hash, position, ordinal),
+    FOREIGN KEY (content_hash, position)
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
+    CHECK (name IS NOT NULL OR catalog_number IS NOT NULL)
 ) STRICT;
 
 -- Every barcode a matched record states.
@@ -4993,10 +5004,7 @@ CREATE TABLE IF NOT EXISTS source_release (
     album_first_year   INTEGER,
     -- The pressing's facts, filled the same way.
     year               INTEGER,
-    -- Every label the pressing is on, in its source's order: a JSON array of
-    -- {"name", "catalog_number"} objects, each stating one or both.
-    labels             TEXT NOT NULL DEFAULT '[]'
-        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
+    -- Its labels are its source_release_label rows.
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
@@ -5031,6 +5039,20 @@ CREATE TABLE IF NOT EXISTS source_release (
     CHECK (archive_release_id IS NOT NULL OR archive_group_id IS NULL),
     CHECK (country IS NULL OR region IS NULL),
     CHECK ((catalog = 'musicbrainz') = (album_links IS NOT NULL))
+) STRICT;
+
+-- Every label the pressing is on, in its source's order, each stating a
+-- name, a catalog number or both.
+CREATE TABLE IF NOT EXISTS source_release_label (
+    catalog        TEXT NOT NULL,
+    release_id     TEXT NOT NULL,
+    position       INTEGER NOT NULL CHECK (position >= 0),
+    name           TEXT CHECK (name IS NULL OR name <> ''),
+    catalog_number TEXT CHECK (catalog_number IS NULL OR catalog_number <> ''),
+    PRIMARY KEY (catalog, release_id, position),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE,
+    CHECK (name IS NOT NULL OR catalog_number IS NOT NULL)
 ) STRICT;
 
 -- Every barcode the record states, in its order.

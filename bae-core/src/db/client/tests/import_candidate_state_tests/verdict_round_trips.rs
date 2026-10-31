@@ -75,6 +75,11 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     let hash = candidate.content_hash();
     let mut musicbrainz = sample_match();
     musicbrainz.barcodes = vec!["012345678905".to_string()];
+    musicbrainz.labels = vec![
+        bae_types::pressing::ReleaseLabel::of(Some("Label Name"), Some("CAT-1")),
+        bae_types::pressing::ReleaseLabel::of(Some("Second Label"), None),
+        bae_types::pressing::ReleaseLabel::of(None, Some("CAT-2")),
+    ];
     musicbrainz.media = StatedMedia::PerMedium(vec![Some(Medium::Cd), None]);
     musicbrainz.status = Some(ReleaseStatus::Official);
     musicbrainz.packaging = Some(Packaging::JewelCase);

@@ -53,7 +53,11 @@ fn musicbrainz_documents() -> ReleasePayloads {
             { "name": "Artist Name", "artist": { "id": "mb-artist", "name": "Artist Name", "sort-name": "Name, Artist" } }
         ],
         "release-group": { "id": "mb-group", "first-release-date": "1998" },
-        "label-info": [{ "label": { "name": "Label Name" }, "catalog-number": "CAT-1" }],
+        "label-info": [
+            { "label": { "name": "Label Name" }, "catalog-number": "CAT-1" },
+            { "label": { "name": "Second Label" } },
+            { "catalog-number": "CAT-2" }
+        ],
         "media": [
             {
                 "format": "12\" Vinyl",

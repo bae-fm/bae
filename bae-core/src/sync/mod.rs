@@ -409,6 +409,7 @@ mod tests {
         "import_candidate_verdict",
         "import_candidate_match",
         "import_candidate_match_barcode",
+        "import_candidate_match_label",
         "import_candidate_match_cover_copy",
         "import_candidate_match_link",
         "import_candidate_match_album_link",
@@ -452,6 +453,7 @@ mod tests {
         "source_release_work_composer",
         "source_release_unfetched",
         "source_release_barcode",
+        "source_release_label",
     ];
 
     #[test]

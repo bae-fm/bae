@@ -125,6 +125,7 @@ pub(super) fn store_verdict(
     delete_ledger(sql, content_hash)?;
     for table in [
         "import_candidate_match_cover_copy",
+        "import_candidate_match_label",
         "import_candidate_match_barcode",
         "import_candidate_match_medium",
         "import_candidate_match_link",
