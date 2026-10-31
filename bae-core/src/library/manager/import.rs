@@ -84,6 +84,10 @@ impl LibraryManager {
         self.database.subscribe_folder_scan_progress()
     }
 
+    pub(crate) fn subscribe_import_counts(&self) -> coven::LiveQuery<crate::import::ImportCounts> {
+        self.database.subscribe_import_counts()
+    }
+
     pub(crate) async fn load_import_list(
         &self,
         request: crate::import::ImportListRequest,

@@ -105,7 +105,7 @@ pub(crate) use import_list::SelectionWrite;
 #[cfg(desktop)]
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ImportClaim,
-    RunVerdictSaved, ScannedCandidateKey, StandingsRead,
+    RunVerdictSaved, ScannedCandidateKey,
 };
 #[cfg(desktop)]
 mod album_link_rows;

@@ -8,6 +8,8 @@ pub mod download_snapshot;
 mod file_transfers;
 mod library_status;
 mod live_read;
+#[cfg(desktop)]
+mod live_values;
 mod local_lifecycle;
 pub mod manager;
 mod outbox_watch;
@@ -45,6 +47,8 @@ pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };
 pub use live_read::{LiveRead, LiveReadError};
+#[cfg(desktop)]
+pub use live_values::{LiveValues, LiveValuesError};
 pub use local_lifecycle::{
     finish_removals, remove_local_library, remove_unopenable_library, unsent_before_removal,
     LibraryRemovalError, UnfinishedRemoval,

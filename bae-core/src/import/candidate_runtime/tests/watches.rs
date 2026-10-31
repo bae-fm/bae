@@ -137,36 +137,73 @@ async fn the_runtime_stream_shows_queued_then_running_from_the_table() {
 }
 
 #[tokio::test]
-async fn a_values_reader_reads_the_counts_and_signals_as_they_stand() {
+async fn a_values_reader_reads_the_signals_as_they_stand() {
     let runtime = CandidateRuntime::for_test().await;
-    let live = keep_current(&runtime);
     let mut watch = RuntimeValuesWatch::of(&runtime);
+    let key = &crate::import::CandidateKey::test("/watch/a/rel3");
+    runtime.record_event(&signals_event(key, "first"));
+    runtime.record_event(&signals_event(key, "last"));
+
+    let mut changed = Vec::new();
+    while !changed
+        .iter()
+        .any(|value: &RuntimeValue| value.key == *key && value.signals.track_titles == ["last"])
+    {
+        changed.extend(watch.next().await.expect("the runtime is there"));
+    }
+}
+
+/// The import counts' live query delivers each write that moves them: an
+/// admission opens the batch at its total, a withdrawal ends one of it, and
+/// a claim puts an import in flight.
+#[tokio::test]
+async fn the_import_counts_query_delivers_each_write_that_moves_them() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut counts = runtime.database.subscribe_import_counts();
     let first = &crate::import::CandidateKey::test("/watch/a/rel1");
     let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let marks = vec![
         (first.clone(), scanned_key(&runtime, first).await),
         (second.clone(), scanned_key(&runtime, second).await),
     ];
+    let mut next_counts = async || {
+        tokio::time::timeout(std::time::Duration::from_secs(5), counts.next())
+            .await
+            .expect("the query delivers")
+            .expect("the query stays open")
+            .expect("the query reads")
+    };
+    assert_eq!(next_counts().await, crate::import::ImportCounts::default());
 
     runtime.admit(marks, Admission::Automatic).await.unwrap();
-    runtime.withdraw(first).await.unwrap();
-    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel3")).await;
-    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel3"), "first"));
-    runtime.record_event(&signals_event(&crate::import::CandidateKey::test("/watch/a/rel3"), "last"));
+    assert_eq!(
+        next_counts().await,
+        crate::import::ImportCounts {
+            identified: 0,
+            admitted: 2,
+            imports_in_flight: 0,
+        }
+    );
 
-    let mut changed = Vec::new();
-    while !(changed.contains(&RuntimeValue::ImportsInFlight { count: 1 })
-        && changed.iter().any(|value| {
-            matches!(value, RuntimeValue::Signals { signals, .. } if signals.track_titles == ["last"])
-        })
-        && changed.contains(&RuntimeValue::IdentificationProgress {
+    runtime.withdraw(first).await.unwrap();
+    assert_eq!(
+        next_counts().await,
+        crate::import::ImportCounts {
             identified: 1,
-            total: 2,
-        }))
-    {
-        changed.extend(watch.next().await.expect("the runtime is there"));
-    }
-    live.abort();
+            admitted: 2,
+            imports_in_flight: 0,
+        }
+    );
+
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel3")).await;
+    assert_eq!(
+        next_counts().await,
+        crate::import::ImportCounts {
+            identified: 1,
+            admitted: 2,
+            imports_in_flight: 1,
+        }
+    );
 }
 
 /// A signals change names only the key whose signals moved, not every key
@@ -184,9 +221,7 @@ async fn a_values_reader_is_told_only_the_key_whose_signals_moved() {
             watch
                 .next()
                 .await
-                .expect("the runtime is there")
-                .into_iter()
-                .filter(|value| matches!(value, RuntimeValue::Signals { .. })),
+                .expect("the runtime is there"),
         );
     }
 
@@ -195,7 +230,7 @@ async fn a_values_reader_is_told_only_the_key_whose_signals_moved() {
     assert!(
         matches!(
             next.as_slice(),
-            [RuntimeValue::Signals { key, signals }]
+            [RuntimeValue { key, signals }]
                 if key == &crate::import::CandidateKey::test("/watch/a/rel2") && signals.track_titles == ["second"]
         ),
         "{next:?}"

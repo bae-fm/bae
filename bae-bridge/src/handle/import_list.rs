@@ -89,6 +89,15 @@ impl AppHandle {
         )
     }
 
+    /// How far the identifications and imports in flight have got, now and
+    /// as they change.
+    pub fn subscribe_import_counts(&self) -> std::sync::Arc<crate::ImportCountsSubscription> {
+        crate::screens::import_counts(
+            self.services.subscribe_import_counts(),
+            self.runtime.clone(),
+        )
+    }
+
     /// What every candidate has in flight: a run's identify state and a
     /// running import's progress, keyed by candidate.
     pub fn subscribe_candidate_runtime(

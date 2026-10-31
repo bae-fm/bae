@@ -18,14 +18,6 @@ final class DesktopEventHandler {
                 )
             )
 
-        case .importIdentificationProgress(let identified, let total):
-            importStore.identificationProgress = (
-                identified: identified, total: total
-            )
-
-        case .importsInFlight(let count):
-            importStore.importsInFlight = count
-
         case .playbackError, .queueItemsAdded:
             preconditionFailure("Unhandled UI event \(event)")
         }

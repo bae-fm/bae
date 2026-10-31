@@ -294,6 +294,18 @@ impl LibraryManager {
         crate::live_query::CancellableLiveQuery::new(query, self.tasks.closing.child_token())
     }
 
+    /// `query`'s values for a surface to pull, which closing the library ends
+    /// before the store closes: a pull waiting on it then answers that it was
+    /// cancelled. One opened while the library closes is cancelled from the
+    /// start.
+    #[cfg(desktop)]
+    pub(crate) fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
+        &self,
+        query: coven::LiveQuery<T>,
+    ) -> crate::library::LiveValues<T> {
+        crate::library::LiveValues::new(query, self.tasks.closing.child_token())
+    }
+
     /// A file operation owns its rollback even when its caller disappears.
     pub(super) async fn run_file_operation<T, F, Fut>(
         &self,

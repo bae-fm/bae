@@ -20,16 +20,8 @@ pub(super) fn convert_ui_event(
                 signals: crate::types::BridgeSignals::from_core(signals),
             })
         }
-        #[cfg(feature = "desktop")]
-        UiEvent::ImportIdentificationProgress { identified, total } => {
-            Some(BridgeUiEvent::ImportIdentificationProgress { identified, total })
-        }
-        #[cfg(feature = "desktop")]
-        UiEvent::ImportsInFlight { count } => Some(BridgeUiEvent::ImportsInFlight { count }),
         #[cfg(all(not(feature = "desktop"), desktop))]
-        UiEvent::CandidateSignalsUpdated { .. }
-        | UiEvent::ImportIdentificationProgress { .. }
-        | UiEvent::ImportsInFlight { .. } => None,
+        UiEvent::CandidateSignalsUpdated { .. } => None,
     }
 }
 

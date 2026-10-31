@@ -41,13 +41,6 @@ pub enum BridgeUiEvent {
         key: Vec<u8>,
         signals: BridgeSignals,
     },
-    /// How many running identifications have ended, out of how many; `(0, 0)`
-    /// is none. A view must not derive `total` from its filtered rows.
-    #[cfg(feature = "desktop")]
-    ImportIdentificationProgress { identified: u32, total: u32 },
-    /// How many imports are waiting or running.
-    #[cfg(feature = "desktop")]
-    ImportsInFlight { count: u32 },
 }
 
 /// The activity exposed by coven's committed upload queue.

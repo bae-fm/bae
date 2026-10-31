@@ -31,7 +31,7 @@ pub(crate) use client::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, GroupingFacts, ImportClaim,
     ImportRows, NewArtistImages, RunVerdictSaved, ScanItemSeed, ScanItemToWrite,
-    ScannedCandidateKey, StandingsRead,
+    ScannedCandidateKey,
 };
 pub use client::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,

@@ -289,9 +289,9 @@ async fn clearing_removes_every_standing() {
     assert!(db.load_candidate_standings().await.unwrap().is_empty());
 }
 
-/// How many imports the standings read counts in flight.
+/// How many imports the import counts' live query counts in flight.
 async fn imports_in_flight(db: &super::super::Database) -> u32 {
-    db.subscribe_candidate_standings()
+    db.subscribe_import_counts()
         .next()
         .await
         .expect("the query stays open")

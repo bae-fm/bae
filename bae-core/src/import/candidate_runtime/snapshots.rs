@@ -205,9 +205,8 @@ impl CandidateRuntime {
         self.view.borrow().snapshots.get(key).cloned()
     }
 
-    /// Every key's snapshot and the identification count as the live read
-    /// reads them, now and as they change; [`RuntimeView::changes`] names
-    /// the keys each change moved.
+    /// Every key's snapshot as the live read reads it, now and as it
+    /// changes; [`RuntimeView::changes`] names the keys each change moved.
     pub(crate) fn watch_view(&self) -> tokio::sync::watch::Receiver<RuntimeView> {
         self.view.subscribe()
     }
@@ -278,16 +277,11 @@ impl CandidateRuntime {
     }
 }
 
-/// Every key's snapshot, and the two counts, as the table was last read with
-/// what the runtime holds beside it, kept key by key.
+/// Every key's snapshot, as the table was last read with what the runtime
+/// holds beside it, kept key by key.
 #[derive(Debug, Default)]
 pub(crate) struct RuntimeView {
     pub(crate) snapshots: HashMap<CandidateKey, CandidateRuntimeSnapshot>,
-    /// How far the batch of identifications in flight has got: ended of
-    /// admitted; `(0, 0)` is none.
-    pub(crate) identification_progress: (u32, u32),
-    /// How many keys an import owns, as the table counts them.
-    pub(crate) importing: u32,
     /// Which keys' snapshots changed, so a reader reads only those.
     pub(crate) changes: ChangeLog,
     /// Each key's standing as the table was last read.
@@ -295,31 +289,27 @@ pub(crate) struct RuntimeView {
 }
 
 impl RuntimeView {
-    /// Take a read of the table: its counts, and each key whose standing it
-    /// moved composed again by `compose`. Whether anything a reader draws
-    /// changed.
+    /// Take a read of the table: each key whose standing it moved composed
+    /// again by `compose`. Whether anything a reader draws changed.
     fn take_read(
         &mut self,
-        read: crate::db::StandingsRead,
+        standings: HashMap<CandidateKey, StoredStanding>,
         compose: impl Fn(&CandidateKey, Option<&StoredStanding>) -> Option<CandidateRuntimeSnapshot>,
     ) -> bool {
-        let mut changed = read.identification_progress != self.identification_progress
-            || read.imports_in_flight != self.importing;
-        self.identification_progress = read.identification_progress;
-        self.importing = read.imports_in_flight;
+        let mut changed = false;
         let moved: Vec<CandidateKey> = self
             .stored
             .keys()
-            .filter(|key| !read.standings.contains_key(*key))
+            .filter(|key| !standings.contains_key(*key))
             .chain(
-                read.standings
+                standings
                     .iter()
                     .filter(|(key, standing)| self.stored.get(*key) != Some(*standing))
                     .map(|(key, _)| key),
             )
             .cloned()
             .collect();
-        self.stored = read.standings;
+        self.stored = standings;
         for key in moved {
             let next = compose(&key, self.stored.get(&key));
             changed |= self.show(&key, next);
@@ -401,22 +391,15 @@ mod tests {
         }
     }
 
-    fn read(
-        standings: Vec<(&str, StoredStanding)>,
-        imports_in_flight: u32,
-    ) -> crate::db::StandingsRead {
-        crate::db::StandingsRead {
-            standings: standings
-                .into_iter()
-                .map(|(key, standing)| (crate::import::CandidateKey::test(key), standing))
-                .collect(),
-            identification_progress: (0, 0),
-            imports_in_flight,
-        }
+    fn read(standings: Vec<(&str, StoredStanding)>) -> HashMap<CandidateKey, StoredStanding> {
+        standings
+            .into_iter()
+            .map(|(key, standing)| (crate::import::CandidateKey::test(key), standing))
+            .collect()
     }
 
     /// A read of the table composes only the keys whose standing it moved,
-    /// names only those as changed, and takes the import count it read.
+    /// and names only those as changed.
     #[test]
     fn a_read_composes_only_the_keys_it_moved() {
         let composed = RefCell::new(Vec::new());
@@ -427,17 +410,13 @@ mod tests {
         let mut view = RuntimeView::default();
 
         assert!(view.take_read(
-            read(
-                vec![("a", importing("imp-a")), ("b", importing("imp-b"))],
-                2
-            ),
+            read(vec![("a", importing("imp-a")), ("b", importing("imp-b"))]),
             compose_one
         ));
-        assert_eq!(view.importing, 2);
         let seen = view.changes.sequence();
         composed.borrow_mut().clear();
 
-        assert!(view.take_read(read(vec![("a", importing("imp-a"))], 1), compose_one));
+        assert!(view.take_read(read(vec![("a", importing("imp-a"))]), compose_one));
         let b = crate::import::CandidateKey::test("b");
         assert_eq!(
             *composed.borrow(),
@@ -448,10 +427,9 @@ mod tests {
         assert!(!view
             .snapshots
             .contains_key(&crate::import::CandidateKey::test("b")));
-        assert_eq!(view.importing, 1);
 
         composed.borrow_mut().clear();
-        assert!(!view.take_read(read(vec![("a", importing("imp-a"))], 1), compose_one));
+        assert!(!view.take_read(read(vec![("a", importing("imp-a"))]), compose_one));
         assert!(
             composed.borrow().is_empty(),
             "a read that moves nothing composes nothing"

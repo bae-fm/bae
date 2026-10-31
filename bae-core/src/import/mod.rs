@@ -297,7 +297,7 @@ pub use import_failure::{ImportFailure, ImportFailureReason};
 pub use list::{
     ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement, FolderScanActivity,
     FolderScanProgress, ImportCandidateDetail, ImportCandidateDetailProjection,
-    ImportCandidateListLocation, ImportListId, ImportListItem, ImportListNarrowing,
+    ImportCandidateListLocation, ImportCounts, ImportListId, ImportListItem, ImportListNarrowing,
     ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
     ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
     ImportQueueSummary, ListedRelease, NarrowedCount, PendingFilter, PendingFilterEntry,

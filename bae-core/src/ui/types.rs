@@ -228,17 +228,4 @@ pub enum UiEvent {
         key: crate::import::CandidateKey,
         signals: crate::signals::Signals,
     },
-    /// How far the identifications running right now have got: how many have
-    /// ended, out of how many there are, whoever started them. The sidebar
-    /// header renders it as a ring, a line and a bar. Both numbers are the
-    /// runtime's, not the list's — the sidebar is filtered, so a view counting
-    /// the rows it holds would report a different, wrong total. `(0, 0)` is
-    /// none running, which the header shows nothing for.
-    #[cfg(desktop)]
-    ImportIdentificationProgress { identified: u32, total: u32 },
-    /// How many imports are waiting or running, whoever started them. The
-    /// sidebar header shows them, and a way to cancel them all, while there
-    /// are any.
-    #[cfg(desktop)]
-    ImportsInFlight { count: u32 },
 }

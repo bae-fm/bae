@@ -143,6 +143,19 @@ pub struct BridgeNarrowedCount {
     pub total: u32,
 }
 
+/// How far the identifications and imports in flight have got, whoever
+/// started them. Mirrors `bae_core::import::ImportCounts`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportCounts {
+    /// How many identifications of the batch in flight have ended, of
+    /// `admitted`; both zero when no batch is in flight. A view must not
+    /// count its filtered rows instead.
+    pub identified: u32,
+    pub admitted: u32,
+    /// How many imports are waiting or running.
+    pub imports_in_flight: u32,
+}
+
 /// Where each watched folder's scan stands. Mirrors
 /// `bae_core::import::FolderScanProgress`.
 #[derive(Debug, Clone, uniffi::Record)]

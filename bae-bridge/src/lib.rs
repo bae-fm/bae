@@ -20,6 +20,8 @@ mod live_subscription;
 mod oauth;
 mod operation_runtime;
 mod path_bytes;
+#[cfg(feature = "desktop")]
+mod screens;
 mod setup;
 #[cfg(feature = "desktop")]
 mod signals;
@@ -39,6 +41,8 @@ pub use keyed_values::*;
 pub use library_opening::*;
 pub use live_subscription::*;
 pub use oauth::*;
+#[cfg(feature = "desktop")]
+pub use screens::*;
 pub use setup::*;
 pub use types::*;
 #[cfg(feature = "desktop")]

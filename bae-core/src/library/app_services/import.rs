@@ -311,6 +311,15 @@ impl AppServices {
         self.inner.manager.subscribe_folder_scan_progress()
     }
 
+    /// How far the identifications and imports in flight have got: the
+    /// first value at once, then a value after each write that moves them.
+    pub fn subscribe_import_counts(
+        &self,
+    ) -> crate::library::LiveValues<crate::import::ImportCounts> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_import_counts())
+    }
+
     /// One read of a list showing `view` through `windows`, for a caller
     /// with no subscription: a list opened for the read and closed after it.
     pub async fn load_import_list(

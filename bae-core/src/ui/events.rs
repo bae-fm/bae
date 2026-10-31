@@ -1,8 +1,8 @@
 use super::*;
 
 /// What one UI subscriber hears: each playback notice sent after it
-/// subscribed, and on desktop the import runtime's values, first as they
-/// stand and then as they change. Nothing is dropped however far behind the
+/// subscribed, and on desktop each candidate's extracted signals, first as
+/// they stand and then as they change. Nothing is dropped however far behind the
 /// subscriber falls: notices wait in order, and values are read where the
 /// runtime is when the subscriber looks.
 pub struct UiEvents {
@@ -53,12 +53,8 @@ fn playback_notice(progress: crate::playback::PlaybackProgress) -> Option<UiEven
 
 #[cfg(desktop)]
 fn import_value(value: crate::import::candidate_runtime::RuntimeValue) -> UiEvent {
-    use crate::import::candidate_runtime::RuntimeValue;
-    match value {
-        RuntimeValue::Signals { key, signals } => UiEvent::CandidateSignalsUpdated { key, signals },
-        RuntimeValue::IdentificationProgress { identified, total } => {
-            UiEvent::ImportIdentificationProgress { identified, total }
-        }
-        RuntimeValue::ImportsInFlight { count } => UiEvent::ImportsInFlight { count },
+    UiEvent::CandidateSignalsUpdated {
+        key: value.key,
+        signals: value.signals,
     }
 }

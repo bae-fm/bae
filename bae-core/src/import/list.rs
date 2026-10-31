@@ -211,6 +211,20 @@ pub struct NarrowedCount {
     pub total: u32,
 }
 
+/// How far the identifications and imports in flight have got, for the
+/// chrome around the list, whoever started them. Read apart from the list, by
+/// its own live query: each identification's ending moves the count and
+/// nothing the list shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ImportCounts {
+    /// How many identifications of the batch in flight have ended, of
+    /// `admitted`; both zero when no batch is in flight.
+    pub identified: u32,
+    pub admitted: u32,
+    /// How many candidates an import holds, waiting for the worker or running.
+    pub imports_in_flight: u32,
+}
+
 /// Where each watched folder's scan stands, for the chrome around the list.
 ///
 /// Read apart from the list, by its own live query, and sent on its own

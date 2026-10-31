@@ -25,6 +25,7 @@ use crate::import::candidate_runtime::{
 };
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::import::triage::{ImportStanding, TriageRuntimeFacts};
+use crate::import::ImportCounts;
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads
 /// them.
@@ -276,18 +277,12 @@ fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
     )?)
 }
 
-/// Every candidate's standing and the two counts, read together.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct StandingsRead {
-    pub(crate) standings: HashMap<CandidateKey, StoredStanding>,
-    pub(crate) identification_progress: (u32, u32),
-    pub(crate) imports_in_flight: u32,
-}
-
-fn load_standings_read_on(sql: &SqlReadContext<'_>) -> Result<StandingsRead, DbError> {
-    Ok(StandingsRead {
-        standings: load_standings_on(sql)?,
-        identification_progress: load_identification_progress_on(sql)?,
+/// The identification batch's count and the imports in flight, read together.
+fn load_import_counts_on(sql: &SqlReadContext<'_>) -> Result<ImportCounts, DbError> {
+    let (identified, admitted) = load_identification_progress_on(sql)?;
+    Ok(ImportCounts {
+        identified,
+        admitted,
         imports_in_flight: load_imports_in_flight_on(sql)?,
     })
 }
@@ -552,11 +547,21 @@ impl Database {
         self.read(|sql| load_identification_progress_on(&sql)).await
     }
 
-    /// Every candidate's standing and the two counts, live.
-    pub(crate) fn subscribe_candidate_standings(&self) -> coven::LiveQuery<StandingsRead> {
+    /// Every candidate's standing, live.
+    pub(crate) fn subscribe_candidate_standings(
+        &self,
+    ) -> coven::LiveQuery<HashMap<CandidateKey, StoredStanding>> {
         self.inner
             .handle
-            .subscribe(|sql| load_standings_read_on(&sql).map_err(CovenError::from))
+            .subscribe(|sql| load_standings_on(&sql).map_err(CovenError::from))
+    }
+
+    /// How far the identification batch has got and how many imports are in
+    /// flight, live.
+    pub(crate) fn subscribe_import_counts(&self) -> coven::LiveQuery<ImportCounts> {
+        self.inner
+            .handle
+            .subscribe(|sql| load_import_counts_on(&sql).map_err(CovenError::from))
     }
 
     /// Apply each change to its candidate's identification, in one write.

@@ -221,6 +221,7 @@ final class DesktopSubscriptions {
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
     private var subscriptions: [LiveSubscription] = []
+    private var importCounts: ScreenSubscription<ImportCountsSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -357,6 +358,13 @@ final class DesktopSubscriptions {
                 )
             ),
         ]
+        importCounts = ScreenSubscription(
+            appHandle.subscribeImportCounts(),
+            onValue: { [importStore] counts in
+                importStore.applyImportCounts(counts)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
         importList.startLoad()
     }
 }

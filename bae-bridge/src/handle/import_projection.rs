@@ -583,6 +583,12 @@ mirror_struct! {
 }
 
 mirror_struct! {
+    crate::types::BridgeImportCounts = bae_core::import::ImportCounts,
+    from_core: pub(crate) fn,
+    fields: { identified, admitted, imports_in_flight },
+}
+
+mirror_struct! {
     crate::types::BridgeFolderScans = bae_core::import::FolderScanProgress,
     from_core: pub(super) fn,
     fields: {

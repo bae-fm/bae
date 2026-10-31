@@ -20,7 +20,7 @@
 //! beside it.
 //!
 //! A key has an entry only while something is held for it. Readers of the
-//! snapshots and the count wake on [`RuntimeView`], which a read of the table
+//! snapshots wake on [`RuntimeView`], which a read of the table
 //! and a change to what is held each move key by key, naming the keys they
 //! moved; readers of the signals wake on [`Revisions`], which names the keys
 //! whose signals moved.
@@ -184,8 +184,8 @@ pub struct CandidateRuntime {
     database: Database,
     /// Where a bug the runtime finds with no caller to fail is reported.
     diagnostics: crate::diagnostics::Diagnostics,
-    /// Every key's snapshot and the identification count, kept key by key
-    /// from the live read of the table and what `inner` holds.
+    /// Every key's snapshot, kept key by key from the live read of the table
+    /// and what `inner` holds.
     view: Arc<watch::Sender<snapshots::RuntimeView>>,
     /// The percent of each key's running import, composed beside its
     /// snapshot: it moves many times a second, and the snapshot only as the

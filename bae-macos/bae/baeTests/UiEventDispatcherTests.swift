@@ -191,8 +191,12 @@ struct UiEventDispatcherOutcomeTests {
 // MARK: - Shared fixtures
 
 private let unhandledEvents: [BridgeUiEvent] = [
-    .importIdentificationProgress(identified: 0, total: 1),
-    .importsInFlight(count: 1),
+    .candidateSignalsUpdated(
+        key: Data("/watch/a/rel1".utf8),
+        signals: BridgeSignals(
+            text: .scanning(catalogs: [], freeText: [])
+        )
+    )
 ]
 
 private let handledEvents: [BridgeUiEvent] = [

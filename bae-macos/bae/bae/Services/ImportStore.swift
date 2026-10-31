@@ -161,8 +161,8 @@ class ImportStore {
 
     /// How far the identifications running right now have got — how many
     /// have ended, out of how many there are, whoever started them — for the
-    /// filter row's ring and the progress line it opens. `nil` before core
-    /// has said anything this session; `(0, 0)` once nothing is running.
+    /// filter row's ring and the progress line it opens. `nil` before the
+    /// counts' live query has delivered; `(0, 0)` once nothing is running.
     var identificationProgress: (identified: UInt32, total: UInt32)?
 
     /// How many imports are waiting or running, whoever started them, for the
@@ -616,4 +616,18 @@ private struct PendingSelectionClick {
     let id: UInt64
     let keys: Set<Data>
     var revision: UInt64?
+}
+
+extension ImportStore {
+    /// Take delivered import counts, writing each only when it moved so its
+    /// readers redraw only then.
+    func applyImportCounts(_ counts: BridgeImportCounts) {
+        let progress = (identified: counts.identified, total: counts.admitted)
+        if identificationProgress.map({ $0 != progress }) ?? true {
+            identificationProgress = progress
+        }
+        if importsInFlight != counts.importsInFlight {
+            importsInFlight = counts.importsInFlight
+        }
+    }
 }

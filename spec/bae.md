@@ -3056,7 +3056,9 @@ and positions are worked out in core, and a surface only renders them. A
 detail embeds its summary, so a surface holding a detail can treat it as one.
 
 `subscribe_ui_events` carries what isn't a value: a playback error, tracks
-added to the queue, import progress.
+added to the queue, a candidate's extracted signals. How far the
+identifications and imports in flight have got is a live query of its own,
+`subscribe_import_counts`, which the app pulls.
 
 ### 9.3 Importing
 
@@ -3227,7 +3229,7 @@ release's or track's id as UTF-8, or a candidate's key.
   view drawing a key reads the key's latest value once per display frame
   while it holds one; nothing the UI framework observes holds a fast value.
 - **Pulled subscriptions** — the browse and download lists, the searches,
-  the import list, and the reads of which selected albums are gone and which
+  the import list and its counts, and the reads of which selected albums are gone and which
   offered releases the library holds — are objects the app asks for each
   next value and points at new windows or a new query in place. Closing or
   removing the library cancels every one before the store closes: a read
@@ -3521,8 +3523,8 @@ Beside them, keyed by the candidate's key as the import list names it:
 
 | Table | Holds |
 |---|---|
-| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it, for the files it names; its import queued, running or writing its release. Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, the import's steps — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list draws is its rows an import holds, counted in the runtime's read. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far a run or an import has got is not stored. No row outlives the process: the table is emptied as the library opens |
-| `import_identification_batch` | the identifications counted as one batch for the count the list draws: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
+| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it, for the files it names; its import queued, running or writing its release. Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, the import's steps — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far a run or an import has got is not stored. No row outlives the process: the table is emptied as the library opens |
+| `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws, read by the import counts' own live query: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
 
 ### A.6 Identification
 
