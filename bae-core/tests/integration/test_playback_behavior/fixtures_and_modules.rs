@@ -467,3 +467,4 @@ include!("high_rate_and_restore.rs");
 include!("local_sparse_buffer.rs");
 include!("remote_sparse_buffer.rs");
 include!("now_playing_edits.rs");
+include!("non_utf8_names.rs");

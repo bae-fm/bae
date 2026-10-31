@@ -164,6 +164,9 @@ fn produced_keys() -> Vec<String> {
 
     // bridge_invalid_reason_key — every variant carries a key.
     for r in [
+        BridgeInvalidReason::SameName {
+            name: "Track.flac".to_string(),
+        },
         BridgeInvalidReason::DamagedAudio { count: 2 },
         BridgeInvalidReason::NoValidAudio,
     ] {

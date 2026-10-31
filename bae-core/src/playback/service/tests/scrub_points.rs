@@ -156,8 +156,8 @@ fn a_scrub_inside_a_track_of_a_single_file_album_jumps_to_its_scrub_point() {
     let path = dir.path().join("album.flac");
     std::fs::write(&path, &flac).unwrap();
     let start_sample = 12 * u64::from(SAMPLE_RATE) + 1_234;
-    let start_byte = bae_audio::seek_landing_bytes(path.to_str().unwrap(), &[start_sample])
-        .expect("the track's landing byte")[0];
+    let start_byte =
+        bae_audio::seek_landing_bytes(&path, &[start_sample]).expect("the track's landing byte")[0];
     let track = SegmentSpan {
         start_sample,
         end_sample: None,

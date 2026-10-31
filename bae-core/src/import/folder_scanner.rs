@@ -119,9 +119,9 @@ fn resolve_cue_audio_path<'a>(
             let same_stem = audio_files.iter().filter(|path| {
                 path.parent()
                     .is_some_and(|dir| spelled_path(dir) == reference_dir)
-                    && path
-                        .file_stem()
-                        .is_some_and(|stem| spelled(&stem.to_string_lossy()) == file_stem)
+                    && path.file_stem().is_some_and(|stem| {
+                        spelled(&coven::path_text(Path::new(stem))) == file_stem
+                    })
             });
             for mut matches in [
                 Box::new(same_name) as Box<dyn Iterator<Item = &'a PathBuf>>,
@@ -154,7 +154,7 @@ fn spelled(name: &str) -> String {
 /// joined with `\` and a path read from elsewhere may carry `/`.
 fn spelled_path(path: &Path) -> Vec<String> {
     path.components()
-        .map(|component| spelled(&component.as_os_str().to_string_lossy()))
+        .map(|component| spelled(&coven::path_text(Path::new(component.as_os_str()))))
         .collect()
 }
 

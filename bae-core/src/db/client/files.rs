@@ -120,7 +120,7 @@ impl Database {
                     [id],
                     |row| {
                         Ok((
-                            row.get::<_, String>(0)?,
+                            row.get::<_, Vec<u8>>(0)?,
                             row.get::<_, String>(1)?,
                             row.get::<_, i64>(2)?,
                         ))
@@ -137,7 +137,7 @@ impl Database {
             DbError::Message(format!("invalid original modification time: {error}"))
         })?;
         Ok(Some(coven::UserFile {
-            path: path.into(),
+            path: path_column::decode(path)?,
             size: u64::try_from(size).map_err(|error| DbError::Message(error.to_string()))?,
             modified_at: modified_at.into(),
         }))

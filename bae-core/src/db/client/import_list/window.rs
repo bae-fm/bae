@@ -28,7 +28,6 @@ use crate::import::triage::{
 };
 use crate::import::{CoverSelection, FolderReleaseDecisionKey, PressingLink, ReleaseLink};
 use crate::library::UploadProgress;
-use std::path::PathBuf;
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
 /// each release with the position of the header `header_positions` lists it
@@ -482,7 +481,7 @@ fn scanned_file_version(
             params![watched_folder_path, candidate_path, file_id],
             |row| {
                 Ok((
-                    row.get::<_, String>(0)?,
+                    row.get::<_, Vec<u8>>(0)?,
                     row.get::<_, i64>(1)?,
                     row.get::<_, i64>(2)?,
                 ))
@@ -495,7 +494,7 @@ fn scanned_file_version(
             ))
         })?;
     Ok(FileVersion {
-        path: PathBuf::from(path),
+        path: path_column::decode(path)?,
         size: to_u64(size, "a scanned file's size")?,
         modified_at_ns,
     })
@@ -515,7 +514,7 @@ pub(super) fn stored_embedded_cover(
         Option<Vec<u8>>,
         Option<i64>,
         Option<i64>,
-        Option<String>,
+        Option<Vec<u8>>,
     );
     let (stored_source, data, size, modified_at_ns, path): CoverColumns = sql
         .query_row(
@@ -574,7 +573,7 @@ pub(super) fn stored_embedded_cover(
     })?;
     Ok((
         FileVersion {
-            path: PathBuf::from(path),
+            path: path_column::decode(path)?,
             size: to_u64(size, "a file-tag reading's size")?,
             modified_at_ns,
         },

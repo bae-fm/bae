@@ -297,7 +297,8 @@ fn byte_seek_to_landing_is_sample_exact() {
     // the silent track 1. Track 3's landing (20s) is the deliberately wrong byte,
     // well past track 2's target.
     let start = 10 * sample_rate;
-    let landings = seek_landing_bytes(path, &[start, 20 * sample_rate]).expect("landings");
+    let landings = seek_landing_bytes(std::path::Path::new(path), &[start, 20 * sample_rate])
+        .expect("landings");
     let landing = landings[0];
     let wrong_landing = landings[1];
 
@@ -709,7 +710,7 @@ fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
     init();
     let frames = 4_608 * 1_000;
     let (file, flac) = stereo_flac_file(frames);
-    let path = file.path().to_str().unwrap();
+    let path = file.path();
     let target = frames as u64 / 2 + 123;
 
     let landing = seek_landing_bytes(path, &[target]).expect("landing")[0];
@@ -737,7 +738,7 @@ fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
     init();
     let frames = 4_608 * 30 + 1_000;
     let (file, flac) = stereo_flac_file(frames);
-    let path = file.path().to_str().unwrap();
+    let path = file.path();
     // STREAMINFO follows the 4-byte marker and its 4-byte block header; its
     // maximum block size is bytes 2..4, and this encoder's blocks are all that
     // size but the last.

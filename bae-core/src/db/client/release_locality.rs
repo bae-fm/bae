@@ -195,14 +195,14 @@ fn detach_release_files_on(
     validate_file_set(sql, release, files.iter().map(|(id, _, _)| id.as_str()))?;
     for (id, coven_file, source) in files {
         clear_coven_file_on(sql, &id, &coven_file)?;
-        let path = source
-            .path
-            .to_str()
-            .ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?;
         sql.execute(
             "INSERT INTO local_release_files (file_id,path,modified_at) VALUES (?1,?2,?3) \
              ON CONFLICT(file_id) DO UPDATE SET path=excluded.path,modified_at=excluded.modified_at",
-            params![id, path, DateTime::<Utc>::from(source.modified_at).to_rfc3339()],
+            params![
+                id,
+                coven::path_bytes(&source.path),
+                DateTime::<Utc>::from(source.modified_at).to_rfc3339()
+            ],
         )?;
     }
     Ok(())
@@ -233,19 +233,15 @@ fn require_recorded_original(
     id: &str,
     source: &coven::UserFile,
 ) -> Result<(), DbError> {
-    let recorded: Option<(String, String)> = sql
+    let recorded: Option<(Vec<u8>, String)> = sql
         .query_row(
             "SELECT path, modified_at FROM local_release_files WHERE file_id=?",
             [id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()?;
-    let path = source
-        .path
-        .to_str()
-        .ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?;
     let modified = DateTime::<Utc>::from(source.modified_at).to_rfc3339();
-    if recorded != Some((path.to_string(), modified)) {
+    if recorded != Some((coven::path_bytes(&source.path), modified)) {
         return Err(DbError::Message(format!(
             "the original of {id} changed during the operation"
         )));

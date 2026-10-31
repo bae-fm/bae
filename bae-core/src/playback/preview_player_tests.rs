@@ -8,7 +8,7 @@ use std::sync::Arc;
 /// `start_streaming` test drives.
 fn preview_source(buffer: SharedSparseBuffer) -> PreviewSource {
     PreviewSource {
-        target: PreviewTarget::whole_file("preview.wav".to_string()),
+        target: PreviewTarget::whole_file("preview.wav".into()),
         duration: Duration::from_secs(1),
         sample_rate: 44_100,
         channels: 2,
@@ -27,10 +27,7 @@ async fn preview_play_rejects_unprobeable_file() {
     let (device, _capture_rx) = CaptureAudioDevice::new();
 
     let started = player
-        .play(
-            PreviewTarget::whole_file(path.display().to_string()),
-            &device,
-        )
+        .play(PreviewTarget::whole_file(path.clone()), &device)
         .await
         .started();
     if started {
@@ -50,9 +47,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
     let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
     let (device, _capture_rx) = CaptureAudioDevice::new();
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/cue_flac/Test Album.flac")
-        .display()
-        .to_string();
+        .join("tests/fixtures/cue_flac/Test Album.flac");
     let sample_rate = u64::from(
         bae_audio::probe_audio_from_path(&path)
             .expect("probe fixture")
@@ -79,14 +74,10 @@ async fn preview_plays_only_the_requested_sample_window() {
     let fixture_dir =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
-        .expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
-    let target = PreviewTarget::sample_range(
-        path.display().to_string(),
-        10 * sample_rate,
-        Some(11 * sample_rate),
-    );
+    let target =
+        PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
 
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = tokio_mpsc::unbounded_channel();
@@ -147,14 +138,10 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let fixture_dir =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
-        .expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
-    let target = PreviewTarget::sample_range(
-        path.display().to_string(),
-        10 * sample_rate,
-        Some(11 * sample_rate),
-    );
+    let target =
+        PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
     let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
@@ -258,14 +245,10 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let fixture_dir =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
-        .expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
-    let target = PreviewTarget::sample_range(
-        path.display().to_string(),
-        10 * sample_rate,
-        Some(11 * sample_rate),
-    );
+    let target =
+        PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
     let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
@@ -382,7 +365,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
     assert!(started);
     assert_eq!(
         player.current_target(),
-        Some(&PreviewTarget::whole_file("preview.wav".to_string()))
+        Some(&PreviewTarget::whole_file("preview.wav".into()))
     );
     assert_eq!(player.stop(), AfterPreview::LeaveMain);
 }
@@ -478,12 +461,12 @@ async fn failed_preview_seek_surfaces_idle() {
 #[tokio::test]
 async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
     let unprobeable: Result<Option<bae_audio::ProbeResult>, tokio::task::JoinError> = Ok(None);
-    assert!(resolve_preview_probe("path", unprobeable).is_none());
+    assert!(resolve_preview_probe(std::path::Path::new("path"), unprobeable).is_none());
 
     let join_failed = tokio::spawn(async { panic!("preview probe panic") })
         .await
         .map(|()| Option::<bae_audio::ProbeResult>::None);
-    assert!(resolve_preview_probe("path", join_failed).is_none());
+    assert!(resolve_preview_probe(std::path::Path::new("path"), join_failed).is_none());
 }
 
 fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
@@ -501,7 +484,8 @@ fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
 #[test]
 fn resolve_preview_probe_accepts_usable_format() {
     let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 2)));
-    let resolved = resolve_preview_probe("path", result).expect("a usable format passes");
+    let resolved = resolve_preview_probe(std::path::Path::new("path"), result)
+        .expect("a usable format passes");
     assert_eq!(resolved.sample_rate, 44100);
     assert_eq!(resolved.channels, 2);
 }
@@ -511,14 +495,14 @@ fn resolve_preview_probe_accepts_usable_format() {
 #[test]
 fn resolve_preview_probe_rejects_zero_sample_rate() {
     let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(0, 2)));
-    assert!(resolve_preview_probe("path", result).is_none());
+    assert!(resolve_preview_probe(std::path::Path::new("path"), result).is_none());
 }
 
 /// A probe reporting zero channels is likewise unusable.
 #[test]
 fn resolve_preview_probe_rejects_zero_channels() {
     let result: Result<_, tokio::task::JoinError> = Ok(Some(probe(44100, 0)));
-    assert!(resolve_preview_probe("path", result).is_none());
+    assert!(resolve_preview_probe(std::path::Path::new("path"), result).is_none());
 }
 
 /// A preview holds its file open while it plays; stopping it, or switching
@@ -559,7 +543,7 @@ async fn ending_a_preview_closes_its_file() {
         }
     };
 
-    let whole = |path: &std::path::Path| PreviewTarget::whole_file(path.display().to_string());
+    let whole = |path: &std::path::Path| PreviewTarget::whole_file(path.to_path_buf());
     assert!(player.play(whole(&first), &device).await.started());
     wait_open(first.clone(), 1).await;
 

@@ -70,13 +70,6 @@ fn moved_original_on(
     sql: &SqlReadContext<'_>,
     path: &std::path::Path,
 ) -> Result<Option<FileRow>, DbError> {
-    // coven observes and reads only originals whose path is valid Unicode.
-    let path = path.to_str().ok_or_else(|| {
-        DbError::Message(format!(
-            "a move's original path is not UTF-8: {}",
-            path.display()
-        ))
-    })?;
     let named = sql
         .query_row(
             "SELECT f.release_id, f.original_filename, album.title \
@@ -85,7 +78,7 @@ fn moved_original_on(
              JOIN releases AS r ON r.id = f.release_id \
              JOIN albums AS album ON album.id = r.album_id \
              WHERE l.path = ?1",
-            [path],
+            [coven::path_bytes(path)],
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,

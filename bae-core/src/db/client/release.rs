@@ -402,10 +402,7 @@ impl Database {
         {
             return Err(DbError::LocalFileChanged(path.into()));
         }
-        let path = path
-            .to_str()
-            .ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?
-            .to_string();
+        let path = coven::path_bytes(path);
         let modified = DateTime::<Utc>::from(metadata.modified()?).to_rfc3339();
         let file = file.clone();
         self.call_sql(move |sql| {
@@ -428,7 +425,7 @@ impl Database {
     ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |sql| {
-            Ok(sql.query(
+            sql.query(
                 concat!(
                     "SELECT ",
                     release_file_columns!(),
@@ -441,11 +438,13 @@ impl Database {
                 |row| {
                     Ok((
                         row_to_file(row)?,
-                        row.get::<_, Option<String>>("original_path")?
-                            .map(Into::into),
+                        row.get::<_, Option<Vec<u8>>>("original_path")?,
                     ))
                 },
-            )?)
+            )?
+            .into_iter()
+            .map(|(file, original)| Ok((file, original.map(path_column::decode).transpose()?)))
+            .collect()
         })
         .await
     }

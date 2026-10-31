@@ -98,7 +98,7 @@ fn seek_landing_bytes_track_sample_positions() {
     let mut file = tempfile::NamedTempFile::new().unwrap();
     std::io::Write::write_all(&mut file, &flac).unwrap();
     std::io::Write::flush(&mut file).unwrap();
-    let path = file.path().to_str().unwrap();
+    let path = file.path();
     let file_size = flac.len() as u64;
 
     // Probe at second boundaries (0, 1s, 2s, 3s).
@@ -139,10 +139,10 @@ fn seek_landing_bytes_track_sample_positions() {
 #[test]
 fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
     init();
-    let path = concat!(
+    let path = std::path::Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
-    );
+    ));
     let probe = probe_audio_from_path(path).expect("probe fixture");
     let sr = probe.sample_rate as u64;
     let total_samples = (probe.duration.as_secs_f64() * sr as f64) as u64;
@@ -258,6 +258,46 @@ fn content_type_from_codec_id_unknown_falls_into_other() {
     }
 }
 
+/// One second of 16-bit stereo silence at 44.1 kHz, as a WAV file in `dir`
+/// under `name`.
+fn silent_wav_in(dir: &std::path::Path, name: &std::ffi::OsStr) -> std::path::PathBuf {
+    let path = dir.join(name);
+    std::fs::write(&path, wav_with_fmt(1, 16, 2, 44_100, &vec![0; 44_100 * 4])).unwrap();
+    path
+}
+
+/// The probe reads the file through the handle Rust opens at the path, and
+/// a path nothing can be opened at gives nothing.
+#[test]
+fn probe_reads_the_file_through_its_handle() {
+    init();
+    let dir = tempfile::tempdir().unwrap();
+    let path = silent_wav_in(dir.path(), std::ffi::OsStr::new("Track.wav"));
+
+    let probe = probe_audio_from_path(&path).expect("probe");
+
+    assert_eq!(probe.content_type, ContentType::Pcm);
+    assert_eq!((probe.sample_rate, probe.channels), (44_100, 2));
+    assert_eq!(probe.duration, std::time::Duration::from_secs(1));
+    assert!(probe_audio_from_path(&dir.path().join("Absent.wav")).is_none());
+}
+
+/// A file whose name isn't UTF-8 probes like any other: FFmpeg is handed the
+/// file, never its name.
+#[cfg(target_os = "linux")]
+#[test]
+fn probe_reads_a_file_whose_name_is_not_utf8() {
+    use std::os::unix::ffi::OsStrExt;
+
+    init();
+    let dir = tempfile::tempdir().unwrap();
+    let path = silent_wav_in(dir.path(), std::ffi::OsStr::from_bytes(b"Caf\xE9.wav"));
+
+    let probe = probe_audio_from_path(&path).expect("probe");
+
+    assert_eq!(probe.duration, std::time::Duration::from_secs(1));
+}
+
 #[test]
 fn probe_audio_from_path_maps_audio_format_fixtures() {
     init();
@@ -277,7 +317,8 @@ fn probe_audio_from_path_maps_audio_format_fixtures() {
         ("placeholder-dsd.dff", ContentType::Dsd),
     ] {
         let path = fixture(name);
-        let probe = probe_audio_from_path(&path).unwrap_or_else(|| panic!("probe {name}"));
+        let probe = probe_audio_from_path(std::path::Path::new(&path))
+            .unwrap_or_else(|| panic!("probe {name}"));
         assert_eq!(probe.content_type, expected, "{name}");
     }
 }

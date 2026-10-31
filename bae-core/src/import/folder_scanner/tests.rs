@@ -242,3 +242,4 @@ include!("tests/sidecars.rs");
 include!("tests/track_order.rs");
 include!("tests/file_reads.rs");
 include!("tests/folders_at_once.rs");
+include!("tests/non_utf8_names.rs");

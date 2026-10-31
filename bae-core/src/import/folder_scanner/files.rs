@@ -10,7 +10,12 @@ pub struct ScannedFile {
     /// The file's identity within the release (e.g. `CD1/CDImage.ape`) — used
     /// as the HashMap key throughout the import pipeline and as
     /// `DbFile.original_filename`. Two files may share a bare filename; they
-    /// never share a relative_path within one release.
+    /// never share a relative_path within one release
+    /// ([`InvalidReason::SameName`] refuses a release where they would).
+    ///
+    /// Each component is its name as `coven::path_text` shows it, so a name
+    /// that isn't UTF-8 is its escaped text (`Caf\xE9.flac`): what the library
+    /// syncs and shows. `path` is what opens the file.
     ///
     /// Always `/`-separated, on every platform: it is stored, synced, and joined
     /// back onto a local directory by whichever device exports or unmanages the
@@ -524,10 +529,7 @@ pub struct ReleasePart {
 impl ReleasePart {
     /// The folder's own name, as the release's source list shows it.
     pub fn name(&self) -> String {
-        self.folder.file_name().map_or_else(
-            || self.folder.to_string_lossy().into_owned(),
-            |name| name.to_string_lossy().into_owned(),
-        )
+        coven::path_text(self.folder.file_name().map_or(&self.folder, Path::new))
     }
 }
 

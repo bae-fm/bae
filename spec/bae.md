@@ -436,12 +436,13 @@ import replace the first, and with it the tracks that ratings, history and
 playlists point at. What another device imported refuses nothing here.
 
 **The folder's hash.** A hash of a folder's contents covers every file of the
-release: each one's path relative to the release folder, its size and its
-modification time, sorted, so moving or renaming the folder doesn't change its
-hash. Each device records, for itself alone, the hash of the files each of its
-imports read (`local_release_origin`); the record never syncs, and the release
-carries no hash. It does one job: a folder whose hash it holds is Done in this
-device's import list (§3.2), wherever the folder sits now.
+release: each one's path relative to the release folder, as the release names
+it (§3.1), its size and its modification time, sorted, so moving or renaming
+the folder doesn't change its hash. Each device records, for itself alone, the
+hash of the files each of its imports read (`local_release_origin`); the record
+never syncs, and the release carries no hash. It does one job: a folder whose
+hash it holds is Done in this device's import list (§3.2), wherever the folder
+sits now.
 
 One hash is one release on a device. An import of files this device already
 imported is refused when it is asked for, and nothing runs; the person is told
@@ -546,14 +547,15 @@ another machine, and the import list says so.
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
 damaged image, document, other), the parsed CUE sheets, the tags each audio file carried, and
-when each folder was first seen. A scan writes as it finds: what it found
-while its last write ran, up to eight entries, goes in one transaction, so an
-interrupted scan loses at most those and the next scan finds them again.
-Completing removes what it didn't see, in the same transaction that marks it
-complete. A failed or interrupted scan keeps both old and new entries. Each
-entry's write reads only that entry and the entries reading the same files,
-which it finds by their folders, so it costs the same however much else the
-watched folder holds.
+when each folder was first seen. A file is stored by its name in the release
+and by its path, as the system's own bytes for it, which is what opens it
+again. A scan writes as it finds: what it found while its last write ran, up to
+eight entries, goes in one transaction, so an interrupted scan loses at most
+those and the next scan finds them again. Completing removes what it didn't
+see, in the same transaction that marks it complete. A failed or interrupted
+scan keeps both old and new entries. Each entry's write reads only that entry
+and the entries reading the same files, which it finds by their folders, so it
+costs the same however much else the watched folder holds.
 
 **What a scan reads.** A scan reads each file once. It opens a track twice:
 FFmpeg's probe, which says whether it plays, and one read of its tags, which
@@ -580,6 +582,20 @@ two different things about one file fails the scan.
   folder with what it made of it — each damaged track with why: it is empty,
   or holds no audio bae can read — and the album title and artist its first
   playable track's tags state.
+- **A file whose name isn't valid UTF-8**, which Linux allows (a Latin-1
+  `Café.flac` from an old rip), is read and imported like any other. Its name
+  in the release, which the library syncs and every surface shows, is its
+  text with each byte that isn't UTF-8 written as `\x` and two hex digits:
+  `Caf\xE9.flac`. Its path is kept as the system's bytes wherever bae opens
+  the file again: the scan's rows, and the original a local release plays
+  from (§4.2). A folder whose own name isn't valid UTF-8 fails the scan of
+  the watched folder it is in. Windows allows a name with an unpaired UTF-16
+  surrogate, which escapes the same way; its import fails there, since a
+  backslash separates folders on Windows (§4.4).
+- **Two files that show one name**, such as a Latin-1 `Café.flac` and one
+  spelled `Caf\xE9.flac`, can't both be in a release, which names each file
+  once. A release that would hold both, including the files of a folder it
+  takes in, is listed as skipped, its reason naming the name.
 - **A damaged image** — zero bytes, or bytes that don't decode as the picture
   its name says — doesn't skip the folder: the release is its audio. The image
   is never artwork, so it is never the cover, and it imports as plain bytes the
@@ -688,10 +704,11 @@ such as a copy whose modification times changed.
 **Skipped.** A broken folder's row looks like a Found row: the folder's own
 cover when an image in it decodes, the album title and artist its tags state
 or else the folder's name, and under them why it can't be imported, such as
-"2 audio files are damaged". Selecting it opens it the way a Found release
-opens, read-only: its images, then every other file with each damaged one
-marked and why. Where a release's Import would be, the pane states the reason.
-A playable track in it can still be auditioned.
+"2 audio files are damaged" or "More than one file is named Caf\xE9.flac".
+Selecting it opens it the way a Found release opens, read-only: its images,
+then every other file with each damaged one marked and why. Where a release's
+Import would be, the pane states the reason. A playable track in it can still
+be auditioned.
 
 The person can select any number of rows. Each list a surface opens holds
 its own selection beside its view and its folds, in core, not in the surface,
@@ -1388,9 +1405,9 @@ id of a coven file
 ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)),
 or by none while its release is local. Each device records the originals it
 holds in the device-local table `local_release_files`, one row per file with
-its path and modification time: the person's file it imported, or the copy a
-detach made (§4.4). These paths never leave the device. So a device reads each
-release file by one rule:
+its path, as the system's own bytes for it, and its modification time: the
+person's file it imported, or the copy a detach made (§4.4). These paths never
+leave the device. So a device reads each release file by one rule:
 
 - the row references a coven file: through coven, which reads the original on
   the device moving it to the cloud, and the cache or storage once it is
@@ -1602,7 +1619,11 @@ it is bae's own, and every device shows it.
 The file names come from the release's rows, which another device may have
 written. Each is checked to be a plain relative path before it is joined to
 Carol's folder, so no row can make a device write outside the folder chosen.
-One bad name copies out nothing at all.
+One bad name copies out nothing at all. A name that held bytes that aren't
+UTF-8 is stored as its escaped text (§3.1), whose `\x` is a backslash: Linux
+and macOS write it as the one name it is, and Windows, where a backslash
+separates folders, refuses it, so the copy fails there with the name it
+couldn't write.
 
 ### 4.5 How files sit in storage
 
@@ -1624,7 +1645,9 @@ Two ways put a release back on disk, from desktop:
 
 - **Export** copies a release's files byte for byte into a folder named after
   its source folder. The copy is staged and moved into place only once every
-  file is written.
+  file is written. Each file takes its name in the release, checked as a
+  copy-out checks it (§4.4): on Windows a release holding an escaped name
+  fails to export.
 - **Save** writes new files with a *preset*: a codec, a filename pattern, where
   pregaps go, and whether to embed the cover. Each file's track number is the
   track's number on its side, and its disc number the track's medium's
@@ -3154,9 +3177,9 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name, album loudness and peak |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type, size in pixels and source |
-| `release_files` | file of a release: name, size, type, the audio facts the scan read, and the coven file it references (`file`), none while its release is local here or on another device, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by size and by content type, name and id breaking a tie, the other orders a release's file table sorts by, each read from its index forward or backward |
+| `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), size, type, the audio facts the scan read, and the coven file it references (`file`), none while its release is local here or on another device, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by size and by content type, name and id breaking a tie, the other orders a release's file table sorts by, each read from its index forward or backward |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
@@ -3172,7 +3195,7 @@ Beside them, device-local tables:
 
 | Table | One row per |
 |---|---|
-| `local_release_files` | the original this device holds of a release file: its path and modification time (§4.2), with an index by path. Importing writes it; making the release local again rewrites it to the copy; moving to the cloud leaves it |
+| `local_release_files` | the original this device holds of a release file: its path, a BLOB of coven's bytes for it (`coven::path_bytes`), and its modification time (§4.2), with an index by path. Importing writes it; making the release local again rewrites it to the copy; moving to the cloud leaves it |
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `composer_work` | work and artist shown credited on it |
@@ -3234,10 +3257,10 @@ All sync (§5), except `local_history`.
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan and the directories it saw; the scans' progress reads the roots in their watched folders' order, by the index of their positions |
-| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, with an index on the folder each candidate reads its files from |
+| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, with an index on the folder each candidate reads its files from; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio, and its embedded cover |
-| `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it |
-| `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns |
+| `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
+| `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |
 
 ### A.5 Import candidates
@@ -3311,7 +3334,7 @@ under it.
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
-| `output_queue` | release queued to export or save, in the order queued: its folder, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
+| `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 No transfer outlives the process that ran it, so the library opens with every
 queue empty and running.

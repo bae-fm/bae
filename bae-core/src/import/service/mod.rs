@@ -345,11 +345,15 @@ fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> R
         let Ok(relative) = path.strip_prefix(root) else {
             continue;
         };
-        let names: Vec<String> = relative
+        let names: Vec<&std::ffi::OsStr> = relative
             .components()
-            .map(|component| component.as_os_str().to_string_lossy().into_owned())
+            .map(|component| component.as_os_str())
             .collect();
-        if names.iter().any(|name| name.starts_with('.')) {
+        // The encoded bytes are documented as safe to inspect for ASCII.
+        if names
+            .iter()
+            .any(|name| name.as_encoded_bytes().first() == Some(&b'.'))
+        {
             continue;
         }
         let Some(first) = names.first() else {
@@ -359,9 +363,10 @@ fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> R
             return RootChange::WholeRoot;
         }
         let entry = root.join(first);
+        let folder = || coven::path_text(Path::new(first));
         match std::fs::symlink_metadata(&entry).map(|_| entry.is_dir()) {
             Ok(true) => {
-                folders.insert(first.clone());
+                folders.insert(folder());
             }
             Ok(false) => {
                 if crate::import::folder_scanner::is_audio_file(&entry) {
@@ -372,7 +377,7 @@ fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> R
                 if names.len() == 1 && crate::import::folder_scanner::is_audio_file(&entry) {
                     return RootChange::WholeRoot;
                 }
-                folders.insert(first.clone());
+                folders.insert(folder());
             }
         }
     }

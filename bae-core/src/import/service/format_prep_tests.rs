@@ -210,9 +210,7 @@ INDEX 01 01:00:00
     .expect("write cue");
 
     let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe =
-        bae_audio::probe_audio_from_path(audio_path.to_str().expect("fixture path is UTF-8"))
-            .expect("analyze ape");
+    let probe = bae_audio::probe_audio_from_path(&audio_path).expect("analyze ape");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
@@ -539,10 +537,7 @@ INDEX 01 11:01:30
         audio_files: vec![CueAnalyzedAudioFile {
             file_reference: "test.wav".to_string(),
             path: audio_path.clone(),
-            probe: bae_audio::probe_audio_from_path(
-                audio_path.to_str().expect("a temporary path is UTF-8"),
-            )
-            .expect("probe the image"),
+            probe: bae_audio::probe_audio_from_path(&audio_path).expect("probe the image"),
         }],
     });
 
@@ -719,9 +714,7 @@ FILE "second.flac" WAVE
     )
     .expect("write cue");
 
-    let probe = |path: &std::path::Path| {
-        bae_audio::probe_audio_from_path(path.to_str().expect("UTF-8 path")).expect("probe")
-    };
+    let probe = |path: &std::path::Path| bae_audio::probe_audio_from_path(path).expect("probe");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet: crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue"),
         audio_files: vec![

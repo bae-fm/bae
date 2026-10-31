@@ -78,13 +78,14 @@ pub(super) fn inspector_files_on(
         .into_iter()
         .filter(|record| matches!(record.subject, coven::PendingSubject::Move { .. }))
         .collect();
-    // The record of the move whose upload found the original at `path`.
-    let move_record = |path: &str| {
+    // The record of the move whose upload found the original whose path's
+    // bytes are `path`.
+    let move_record = |path: &[u8]| {
         moves
             .iter()
             .find(|record| {
                 matches!(&record.reason, coven::PendingReason::Original { path: original, .. }
-                    if original.to_str() == Some(path))
+                    if coven::path_bytes(original) == path)
             })
             .cloned()
     };
@@ -104,7 +105,7 @@ pub(super) fn inspector_files_on(
                 pending: match row.get::<_, Option<coven::PendingRecord>>("upload_pending")? {
                     Some(record) => Some(record),
                     None => row
-                        .get::<_, Option<String>>("original_path")?
+                        .get::<_, Option<Vec<u8>>>("original_path")?
                         .and_then(|path| move_record(&path)),
                 },
             }),

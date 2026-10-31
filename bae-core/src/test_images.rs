@@ -28,8 +28,7 @@ pub(crate) fn cue_image(
         ),
     )
     .expect("write the cue");
-    let probe =
-        bae_audio::probe_audio_from_path(path.to_str().expect("UTF-8 path")).expect("probe");
+    let probe = bae_audio::probe_audio_from_path(&path).expect("probe");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet: crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue"),
         audio_files: vec![CueAnalyzedAudioFile {

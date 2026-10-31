@@ -1,12 +1,12 @@
 //! Custom FFmpeg AVIO contexts and their callbacks.
 //!
 //! `StreamingAvioContext` reads from a sparse buffer whose reads block until
-//! the bytes arrive, and `WriteAvioContext` accumulates encoded output. Each
-//! pairs with the `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes
-//! directly.
+//! the bytes arrive, `FileAvioContext` reads a file Rust opened, and
+//! `WriteAvioContext` accumulates encoded output. Each pairs with the
+//! `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes directly.
 
 use crate::sparse_buffer::{BufferStop, SharedSparseBuffer, SourceReadError};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
 use std::sync::{Arc, OnceLock};
 use tracing::warn;
@@ -134,6 +134,77 @@ pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
         new_pos as i64
     } else {
         -1
+    }
+}
+
+// --- Reading AVIO over a file ---
+
+/// A file FFmpeg reads through the handle Rust opened it with, so FFmpeg
+/// opens nothing by name: a name that isn't UTF-8, or one FFmpeg's own file
+/// protocol can't spell on Windows, opens like any other.
+pub(super) struct FileAvioContext {
+    file: std::fs::File,
+}
+
+impl FileAvioContext {
+    pub(super) fn new(file: std::fs::File) -> Self {
+        Self { file }
+    }
+}
+
+pub(super) unsafe extern "C" fn file_avio_read_callback(
+    opaque: *mut c_void,
+    buf: *mut u8,
+    buf_size: c_int,
+) -> c_int {
+    let ctx = &mut *(opaque as *mut FileAvioContext);
+    let output = std::slice::from_raw_parts_mut(buf, buf_size as usize);
+    loop {
+        match ctx.file.read(output) {
+            Ok(0) => return ffmpeg_sys_next::AVERROR_EOF,
+            Ok(n) => return n as c_int,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(e) => {
+                warn!("AVIO file read failed: {e}");
+                return ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO);
+            }
+        }
+    }
+}
+
+pub(super) unsafe extern "C" fn file_avio_seek_callback(
+    opaque: *mut c_void,
+    offset: i64,
+    whence: c_int,
+) -> i64 {
+    let ctx = &mut *(opaque as *mut FileAvioContext);
+    let position = if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
+        ctx.file.metadata().map(|metadata| metadata.len())
+    } else {
+        let seek_from = match whence {
+            0 => match u64::try_from(offset) {
+                Ok(offset) => SeekFrom::Start(offset),
+                Err(e) => {
+                    warn!("AVIO file seek rejected negative SEEK_SET offset {offset}: {e}");
+                    return -1;
+                }
+            },
+            1 => SeekFrom::Current(offset),
+            2 => SeekFrom::End(offset),
+            _ => return -1,
+        };
+        ctx.file.seek(seek_from)
+    };
+    match position.map(i64::try_from) {
+        Ok(Ok(position)) => position,
+        Ok(Err(e)) => {
+            warn!("AVIO file seek position exceeds i64: {e}");
+            -1
+        }
+        Err(e) => {
+            warn!("AVIO file seek failed for offset {offset}, whence {whence}: {e}");
+            -1
+        }
     }
 }
 

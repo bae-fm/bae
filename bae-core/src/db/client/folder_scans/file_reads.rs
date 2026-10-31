@@ -110,14 +110,14 @@ fn load_root_file_tags(
              WHERE tags.watched_folder_path = ? AND candidate.source_kind = 'folder'"
         ),
         [watched_folder_path],
-        |row| Ok((row.get::<_, String>(0)?, StoredFileTags::of_row(row, 1)?)),
+        |row| Ok((row.get::<_, Vec<u8>>(0)?, StoredFileTags::of_row(row, 1)?)),
     )?;
     rows.into_iter()
         .map(|(absolute_path, stored)| {
             let fact = stored.fact()?;
             Ok((
                 FileVersion {
-                    path: PathBuf::from(absolute_path),
+                    path: path_column::decode(absolute_path)?,
                     size: fact.observation.size,
                     modified_at_ns: fact.observation.modified_at_ns,
                 },

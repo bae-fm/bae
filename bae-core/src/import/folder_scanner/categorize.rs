@@ -31,9 +31,8 @@ pub(super) enum CueCodecLabel {
 /// answer comes from FFmpeg's probe, never from the extension, because containers
 /// such as MP4, Ogg, WAV, and AIFF don't prove the codec by filename.
 ///
-/// `Err` is reserved for a non-UTF-8 path (which FFmpeg can't open at all). A
-/// readable file whose codec bae can't play (`Ok(Unsupported)`) costs the sheet
-/// its binding; one FFmpeg can't probe (`Ok(Unprobeable)`) is corrupt audio and
+/// A readable file whose codec bae can't play (`Unsupported`) costs the sheet
+/// its binding; one FFmpeg can't probe (`Unprobeable`) is corrupt audio and
 /// surfaces its folder as invalid, without aborting the watched-root walk.
 pub(super) fn cue_pair_codec_label(audio: &ScannedFile) -> CueCodecLabel {
     let Some(probe) = &audio.source_audio else {
@@ -117,9 +116,9 @@ pub(super) fn is_partial_marker_file(path: &Path) -> bool {
 // ── File categorization ─────────────────────────────────────────────────────
 
 /// The result of categorizing a leaf folder's files: a valid release, or the
-/// folder read file by file when it fails validation (audio bae can't play, or
-/// no audio at all). `Err` is reserved for genuine I/O faults, which are not
-/// the same as a failed-validation leaf.
+/// folder read file by file when it fails validation (two files showing one
+/// name, audio bae can't play, or no audio at all). `Err` is reserved for
+/// genuine I/O faults, which are not the same as a failed-validation leaf.
 #[derive(Debug)]
 pub(super) enum CategorizeOutcome {
     Valid(CategorizedFiles),
@@ -496,12 +495,10 @@ fn propose_file(
     // Joined from the path's components rather than displayed, so the result is
     // `/`-separated on Windows too. A displayed `Path` uses the host's
     // separator, and this string is stored on the row and joined back onto a
-    // directory by every other device in the library.
-    let relative_path = relative_from_release
-        .components()
-        .map(|component| component.as_os_str().to_string_lossy())
-        .collect::<Vec<_>>()
-        .join("/");
+    // directory by every other device in the library. A name that isn't UTF-8
+    // is its escaped text, so two files can show one name (see
+    // `InvalidReason::SameName`).
+    let relative_path = relative_path_string(&relative_from_release);
 
     // The absolute path is fs_root + entry.path.
     let absolute_path = fs_root.join(&entry.path);
@@ -616,7 +613,7 @@ fn skipped_tags(
 /// The files under `folder` that no release read there owns, each given its
 /// role the way a release's are — `folder` holds no audio, so every one is an
 /// artwork, a document, or another file — or, when a zero-byte track sits
-/// among them, every one as the scan read it.
+/// among them or two of them show one name, every one as the scan read it.
 pub(super) fn categorize_sidecar(
     tree: &CandidateFileIndex,
     folder: &Path,
@@ -661,7 +658,9 @@ pub(super) fn categorize_sidecar(
         }
         proposed.push((file, role));
     }
-    let Some(mut files) = files else {
+    let named_once =
+        shared_name(proposed.iter().map(|(file, _)| file.relative_path.as_str())).is_none();
+    let Some(mut files) = files.filter(|_| named_once) else {
         return Ok(SidecarFiles::Invalid(skipped_files(&proposed)));
     };
     // The release file order (see `categorize_files_from_tree`).
@@ -675,8 +674,9 @@ pub(super) fn categorize_sidecar(
 /// Every file gets exactly one role, and the roles are *proposals*: a sheet
 /// whose `FILE` directive names audio that is not here simply stays unbound,
 /// and a `.cue` that will not parse is a document. Only a real defect —
-/// audio bae cannot read — returns `Invalid(reason)`; an image that will not
-/// decode is carried as a damaged image.
+/// audio bae cannot read, or two files showing one name — returns
+/// `Invalid(reason)`; an image that will not decode is carried as a damaged
+/// image.
 ///
 /// A sheet's binding and disc are what the user also writes, so `stored` is
 /// applied over the proposals before anything downstream reads them: the
@@ -707,9 +707,10 @@ pub(super) fn categorize_files_from_tree(
         proposed.push((file, role));
     }
     let releasable = |proposed: &[(ScannedFile, ProposedRole)]| {
-        !proposed
-            .iter()
-            .any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }))
+        shared_name(proposed.iter().map(|(file, _)| file.relative_path.as_str())).is_none()
+            && !proposed
+                .iter()
+                .any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }))
             && proposed
                 .iter()
                 .any(|(_, role)| *role == ProposedRole::Audio)
@@ -731,7 +732,7 @@ pub(super) fn categorize_files_from_tree(
     // Every file is read before the folder is judged, so a folder that fails
     // is listed with each of its damaged files, not only the first.
     if !releasable(&proposed) {
-        info!("Invalid candidate: its audio is damaged, or it has none");
+        info!("Invalid candidate: two of its files show one name, its audio is damaged, or it has none");
         return Ok(CategorizeOutcome::Invalid {
             tags: skipped_tags(&proposed, reads)?,
             files: skipped_files(&proposed),

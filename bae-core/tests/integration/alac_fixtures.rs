@@ -68,7 +68,7 @@ async fn import_single_m4a_fixture(
 #[test]
 fn probe_alac_returns_content_type_alac() {
     let path = fixture_dir().join("silence-alac.m4a");
-    let probe = probe_audio_from_path(path.to_str().unwrap()).expect("probe ALAC fixture");
+    let probe = probe_audio_from_path(&path).expect("probe ALAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Alac);
     assert_eq!(probe.sample_rate, 44100);
@@ -86,7 +86,7 @@ fn probe_alac_returns_content_type_alac() {
 #[test]
 fn probe_aac_returns_content_type_aac() {
     let path = fixture_dir().join("silence-aac.m4a");
-    let probe = probe_audio_from_path(path.to_str().unwrap()).expect("probe AAC fixture");
+    let probe = probe_audio_from_path(&path).expect("probe AAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Aac);
     assert_eq!(probe.sample_rate, 44100);

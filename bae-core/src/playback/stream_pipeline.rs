@@ -758,10 +758,10 @@ mod tests {
     /// the frames it decoded.
     fn verified_window_reads() -> (Vec<u64>, u64, u64) {
         bae_audio::init();
-        let path = concat!(
+        let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/tests/fixtures/cue_flac/Test Album.flac"
-        );
+        ));
         let bytes = std::fs::read(path).unwrap();
         let start_sample = 20 * 44_100;
         let landing =

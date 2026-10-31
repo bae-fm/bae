@@ -479,7 +479,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         .database
         .execute_for_test(
             "INSERT INTO output_queue (release_id, created_at, state, target_dir, kind) \
-             VALUES (?1, 0, 'queued', '/exports', 'export')",
+             VALUES (?1, 0, 'queued', CAST('/exports' AS BLOB), 'export')",
             vec![pinning.clone()],
         )
         .await

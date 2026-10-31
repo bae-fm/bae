@@ -4,12 +4,19 @@ use super::*;
 /// as its skipped files say. The UI localizes the typed variant for the
 /// Skipped tab.
 ///
-/// Only real defects invalidate. A sheet that disagrees with what is on disk —
+/// Only real defects invalidate: a name two files show, and audio bae can't
+/// play. A sheet that disagrees with what is on disk —
 /// naming absent audio, failing to parse, or naming a codec bae can't play from
 /// a single-file CUE — leaves the sheet unbound and the folder importable, and
 /// an image that will not decode is carried as a damaged one.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum InvalidReason {
+    /// Two or more of its files show as `name`, its path within the folder. A
+    /// name that isn't UTF-8 shows escaped (`Caf\xE9.flac`), the same as a
+    /// name spelled that way, and a release holds each name once: it is the
+    /// file's name in the library and on export.
+    #[error("more than one file is named {name}")]
+    SameName { name: String },
     /// `count` of its audio files can't be played: never zero.
     #[error("{count} damaged audio files")]
     DamagedAudio { count: u32 },
@@ -17,10 +24,23 @@ pub enum InvalidReason {
     NoValidAudio,
 }
 
+/// The first of `names` that an earlier one already is: what makes a release
+/// holding files by these names unimportable (see [`InvalidReason::SameName`]).
+pub(crate) fn shared_name<'a>(names: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
+    let mut seen = std::collections::HashSet::new();
+    names.into_iter().find(|name| !seen.insert(*name))
+}
+
 impl InvalidReason {
-    /// The reason `files` give: the audio among them bae can't play, or, with
-    /// none of that, that they hold no audio at all.
+    /// The reason `files` give: a name two of them show, else the audio among
+    /// them bae can't play, or, with none of that, that they hold no audio at
+    /// all.
     pub fn of(files: &[SkippedFile]) -> Self {
+        if let Some(name) = shared_name(files.iter().map(|file| file.relative_path.as_str())) {
+            return Self::SameName {
+                name: name.to_string(),
+            };
+        }
         let damaged = files
             .iter()
             .filter(|file| matches!(file.role, ProposedRole::DamagedAudio { .. }))
@@ -258,8 +278,9 @@ pub enum SidecarFiles {
     /// another file. A track sheet with no audio beside it describes nothing
     /// here to play, so it is carried as the document it is.
     Valid(Vec<CandidateFile>),
-    /// A file among them is broken — a zero-byte track — so a release that
-    /// takes them in cannot be imported. Every file, as the scan read it.
+    /// A file among them is broken — a zero-byte track — or two of them show
+    /// one name, so a release that takes them in cannot be imported. Every
+    /// file, as the scan read it.
     Invalid(Vec<SkippedFile>),
     /// A download into the folder is still running, so what it will hold is
     /// not known yet; a release that takes them in waits for it, as a

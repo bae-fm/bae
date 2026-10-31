@@ -19,7 +19,7 @@ use crate::import::folder_scanner::{
 /// files riding on it as a JSON array in their order.
 const SIDECAR_COLUMNS: &str = "sidecar.folder, sidecar.watched_folder_path, sidecar.state, \
      (SELECT json_group_array(json_object( \
-          'relative_path', file.relative_path, 'absolute_path', file.absolute_path, \
+          'relative_path', file.relative_path, 'absolute_path', hex(file.absolute_path), \
           'size', file.size, 'modified_at_ns', file.modified_at_ns, 'role', file.role, \
           'audio_damage', file.audio_damage) ORDER BY file.position) \
       FROM scan_sidecar_file AS file WHERE file.folder = sidecar.folder) AS files";
@@ -45,7 +45,8 @@ fn read_stored_sidecar(row: &Row<'_>) -> rusqlite::Result<StoredSidecar> {
 #[derive(serde::Deserialize)]
 struct SidecarFileRow {
     relative_path: String,
-    absolute_path: String,
+    #[serde(deserialize_with = "path_column::from_hex")]
+    absolute_path: PathBuf,
     size: i64,
     modified_at_ns: i64,
     role: String,
@@ -74,7 +75,7 @@ impl StoredSidecar {
                     .map(|row| {
                         Ok(CandidateFile {
                             file: ScannedFile::new(
-                                PathBuf::from(row.absolute_path),
+                                row.absolute_path,
                                 row.relative_path,
                                 to_u64(row.size, "a sidecar file's size")?,
                                 row.modified_at_ns,
@@ -98,7 +99,7 @@ impl StoredSidecar {
                         Ok(SkippedFile {
                             relative_path: row.relative_path,
                             file: FileVersion {
-                                path: PathBuf::from(row.absolute_path),
+                                path: row.absolute_path,
                                 size: to_u64(row.size, "a sidecar file's size")?,
                                 modified_at_ns: row.modified_at_ns,
                             },
@@ -179,9 +180,9 @@ pub(super) fn write_sidecar(
         return Ok(ScanItemWrite::Unchanged);
     }
     // Every file the sidecar holds, with the role and damage columns it is
-    // stored under. A sidecar holding a damaged track holds every one of its
-    // files as the scan read them, and they replace a release holding them
-    // as the valid ones do.
+    // stored under. A sidecar holding a damaged track, or two files showing
+    // one name, holds every one of its files as the scan read them, and they
+    // replace a release holding them as the valid ones do.
     let files: Vec<StoredSidecarFile<'_>> = match &sidecar.files {
         SidecarFiles::Valid(files) => files
             .iter()
@@ -229,13 +230,13 @@ pub(super) fn write_sidecar(
             .collect::<Result<_, DbError>>()?,
         SidecarFiles::Downloading => Vec::new(),
     };
-    let paths = json_paths(files.iter().map(|entry| entry.path));
+    let paths = path_column::hex_list(files.iter().map(|entry| entry.path));
     let superseded_keys: Vec<String> = sql.query(
         "SELECT DISTINCT file.candidate_path FROM scan_candidate_file AS file \
          JOIN scan_candidate AS candidate \
            ON candidate.watched_folder_path = file.watched_folder_path \
           AND candidate.path = file.candidate_path \
-         WHERE file.absolute_path IN (SELECT value FROM json_each(?)) \
+         WHERE file.absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
            AND candidate.source_kind = 'folder' \
          ORDER BY file.candidate_path",
         [&paths],
@@ -249,7 +250,7 @@ pub(super) fn write_sidecar(
     // it — is replaced the same way.
     let touched: Vec<String> = sql.query(
         "SELECT ? UNION SELECT folder FROM scan_sidecar_file \
-         WHERE absolute_path IN (SELECT value FROM json_each(?)) \
+         WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY 1",
         params![folder_text, paths],
         |row| row.get(0),
@@ -275,7 +276,7 @@ pub(super) fn write_sidecar(
                 folder_text,
                 to_i64(position as u64, "a sidecar file's position")?,
                 entry.relative_path,
-                entry.path.to_string_lossy(),
+                coven::path_bytes(entry.path),
                 to_i64(entry.size, "a sidecar file's size")?,
                 entry.modified_at_ns,
                 entry.role,
@@ -302,12 +303,6 @@ struct StoredSidecarFile<'a> {
     damage: Option<&'static str>,
 }
 
-/// `paths` as a JSON array of their text, for `json_each`.
-fn json_paths<'a>(paths: impl Iterator<Item = &'a Path>) -> String {
-    serde_json::to_string(&paths.map(Path::to_string_lossy).collect::<Vec<_>>())
-        .expect("path text serializes as JSON")
-}
-
 /// Delete the sidecars stored for `folders`.
 fn delete_sidecars_at(sql: &SqlContext<'_, '_>, folders: &[String]) -> Result<(), DbError> {
     sql.execute(
@@ -328,9 +323,9 @@ pub(super) fn delete_sidecars_holding(
     };
     let held: Vec<String> = sql.query(
         "SELECT DISTINCT folder FROM scan_sidecar_file \
-         WHERE absolute_path IN (SELECT value FROM json_each(?)) \
+         WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY folder",
-        [json_paths(
+        [path_column::hex_list(
             candidate
                 .files
                 .files

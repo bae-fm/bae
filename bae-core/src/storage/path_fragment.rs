@@ -9,9 +9,15 @@
 //! that directory is an arbitrary local write on every device that pulls the row.
 //!
 //! A fragment is a **relative, `/`-separated path of ordinary components**. It is
-//! validated where it enters the database (so a library never holds a name it
-//! cannot materialize) and again at each join (so a row from another device, or
-//! from an older build, is refused rather than followed).
+//! validated where it enters the database and again at each join (so a row from
+//! another device, or from an older build, is refused rather than followed).
+//!
+//! A backslash is the one character whose meaning depends on the device: a
+//! separator on Windows, an ordinary character elsewhere. A file name that
+//! isn't UTF-8 is stored as its escaped text (`Caf\xE9.flac`, from
+//! `coven::path_text`), so a library can hold names with one. Linux and macOS
+//! join such a name as the one component it is; Windows refuses it, so its
+//! export or copy fails rather than writing into a folder the name never named.
 
 use std::path::{Component, Path};
 
@@ -34,9 +40,10 @@ pub struct PathFragmentError {
 /// That one condition subsumes an absolute path (`RootDir`), a Windows drive/UNC
 /// prefix (`Prefix` — on Windows `Path::join` onto a drive-absolute path like
 /// `C:/evil` *replaces* the base entirely), a `..` (`ParentDir`), and a `.`
-/// (`CurDir`). Empty, NUL, and backslash are rejected up front: a backslash is a
-/// separator on Windows and a literal character elsewhere, so one stored name
-/// would mean two different things on two devices sharing the library.
+/// (`CurDir`). Empty and NUL are rejected up front, and on Windows so is a
+/// backslash: a separator there, where it would split the stored name into
+/// folders it never named. Elsewhere a backslash is an ordinary character of
+/// the component holding it, as in an escaped name that isn't UTF-8.
 pub fn validate_path_fragment(
     release_id: &str,
     label: &str,
@@ -56,8 +63,8 @@ pub fn validate_path_fragment(
     if value.contains('\0') {
         return reject("path contains a NUL byte");
     }
-    if value.contains('\\') {
-        return reject("path contains a backslash");
+    if cfg!(windows) && value.contains('\\') {
+        return reject("path contains a backslash, a separator on Windows");
     }
     if Path::new(value)
         .components()
@@ -81,12 +88,39 @@ mod tests {
     }
 
     #[test]
-    fn rejects_empty_nul_and_backslash() {
-        // `C:\evil` and any other backslash fragment is refused on every
-        // platform — a separator on Windows, a stray literal elsewhere.
-        for bad in ["", "a\0b", "CD1\\track.flac", r"C:\evil", r"..\evil"] {
+    fn rejects_empty_and_nul() {
+        for bad in ["", "a\0b"] {
             validate_path_fragment("af63ef4c-8602-4cd5-82c0-3d334b916305", "l", bad)
                 .expect_err(bad);
+        }
+    }
+
+    /// A backslash is a separator on Windows, so a fragment holding one is
+    /// refused there.
+    #[cfg(windows)]
+    #[test]
+    fn rejects_a_backslash_on_windows() {
+        for bad in [r"CD1\track.flac", r"C:\evil", r"..\evil", r"Caf\xE9.flac"] {
+            validate_path_fragment("af63ef4c-8602-4cd5-82c0-3d334b916305", "l", bad)
+                .expect_err(bad);
+        }
+    }
+
+    /// Elsewhere a backslash is an ordinary character of its component, as
+    /// in the escaped text of a name that isn't UTF-8, and joining the
+    /// fragment stays inside the folder.
+    #[cfg(not(windows))]
+    #[test]
+    fn accepts_a_backslash_as_a_character_elsewhere() {
+        for ok in [r"Caf\xE9.flac", r"CD1/Caf\xE9.flac", r"..\evil", r"C:\evil"] {
+            validate_path_fragment("af63ef4c-8602-4cd5-82c0-3d334b916305", "l", ok)
+                .unwrap_or_else(|e| panic!("{ok:?}: {e}"));
+            let joined = Path::new("/target").join(ok);
+            assert!(joined.starts_with("/target"), "{ok:?} joins to {joined:?}");
+            assert_eq!(
+                joined.components().count(),
+                Path::new("/target").components().count() + Path::new(ok).components().count()
+            );
         }
     }
 

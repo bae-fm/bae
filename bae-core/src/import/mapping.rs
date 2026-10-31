@@ -433,7 +433,7 @@ impl RowBuilder<'_> {
                 let sample_rate = u64::try_from(format.sample_rate_hz)
                     .expect("a scanned audio file has a non-negative sample rate");
                 let preview_target = crate::playback::PreviewTarget::sample_range(
-                    audio.path.to_string_lossy().into_owned(),
+                    audio.path.clone(),
                     crate::cue_flac::cue_frames_to_samples(track.start_cue_frames, sample_rate),
                     track
                         .end_cue_frames
@@ -600,11 +600,8 @@ impl InvalidCandidateDetail {
                     file_id: scanned.relative_path.clone(),
                     name: scanned.relative_path.clone(),
                     size: scanned.size,
-                    preview_target: (role == MappingRole::Audio).then(|| {
-                        crate::playback::PreviewTarget::whole_file(
-                            scanned.path.to_string_lossy().into_owned(),
-                        )
-                    }),
+                    preview_target: (role == MappingRole::Audio)
+                        .then(|| crate::playback::PreviewTarget::whole_file(scanned.path.clone())),
                     path: scanned.path,
                     duration_ms: None,
                     audio_format: None,
@@ -694,9 +691,8 @@ fn bound_sheet(sheet: &BoundTrackSheet<'_>) -> SheetBound {
 
 /// The left half of a file's row: what the folder holds.
 fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u64>) -> MappingFile {
-    let preview_target = (role == MappingRole::Audio).then(|| {
-        crate::playback::PreviewTarget::whole_file(entry.file.path.to_string_lossy().into_owned())
-    });
+    let preview_target = (role == MappingRole::Audio)
+        .then(|| crate::playback::PreviewTarget::whole_file(entry.file.path.clone()));
     MappingFile {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.relative_path.clone(),

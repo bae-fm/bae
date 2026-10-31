@@ -21,8 +21,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         .tempfile()
         .expect("temp file");
     std::fs::write(temp.path(), damaged).expect("damaged MP3 fixture");
-    let probe = bae_audio::probe_audio_from_path(temp.path().to_str().expect("UTF-8 temp path"))
-        .expect("damaged MP3 probe");
+    let probe = bae_audio::probe_audio_from_path(temp.path()).expect("damaged MP3 probe");
     let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);

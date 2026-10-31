@@ -527,12 +527,6 @@ fn record_original_on(
     file: &DbFile,
     original: &coven::UserFile,
 ) -> Result<(), DbError> {
-    let path = original.path.to_str().ok_or_else(|| {
-        DbError::Message(format!(
-            "original path is not UTF-8: {}",
-            original.path.display()
-        ))
-    })?;
     if original.size != file.file_size as u64 {
         return Err(DbError::Message(format!(
             "original size changed for {}",
@@ -543,7 +537,7 @@ fn record_original_on(
         "INSERT INTO local_release_files (file_id, path, modified_at) VALUES (?, ?, ?)",
         params![
             file.id,
-            path,
+            coven::path_bytes(&original.path),
             chrono::DateTime::<chrono::Utc>::from(original.modified_at).to_rfc3339()
         ],
     )?;

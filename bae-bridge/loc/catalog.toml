@@ -497,6 +497,40 @@ da = "Arkets sportider ligger uden for denne lyd"
 nb = "Sportidene i arket ligger utenfor denne lyden"
 fi = "Arkin raita-ajat ovat tämän äänen ulkopuolella"
 
+[messages."core.import.invalid.same_name"]
+comment = "Import list, Skipped tab: why a folder can't be imported — two or more of its files show the same name. {name} is that name, the file's path within the folder; a name whose bytes aren't valid text shows each such byte as \\x and two hex digits, so it can look the same as a name spelled that way. Shown on the folder's row and where its Import button would be."
+args = { name = "Str" }
+value = "More than one file is named {name}"
+
+[messages."core.import.invalid.same_name".translations]
+es = "Más de un archivo se llama {name}"
+fr = "Plusieurs fichiers sont nommés {name}"
+de = "Mehrere Dateien heißen {name}"
+pt-BR = "Mais de um arquivo se chama {name}"
+ja = "{name} という名前のファイルが複数あります"
+ko = "{name} 이름의 파일이 여러 개 있습니다"
+zh-Hans = "有多个文件名为 {name}"
+ar = "يوجد أكثر من ملف باسم {name}"
+he = "יותר מקובץ אחד נקרא {name}"
+uk = "Кілька файлів мають назву {name}"
+bg = "Повече от един файл се казва {name}"
+pl = "Więcej niż jeden plik ma nazwę {name}"
+cs = "Více souborů se jmenuje {name}"
+hr = "Više datoteka zove se {name}"
+zh-Hant = "有多個檔案名為 {name}"
+it = "Più di un file si chiama {name}"
+tr = "Birden fazla dosyanın adı {name}"
+nl = "Meer dan één bestand heet {name}"
+sk = "Viac súborov sa volá {name}"
+hu = "Több fájl neve {name}"
+ro = "Mai multe fișiere se numesc {name}"
+el = "Περισσότερα από ένα αρχεία ονομάζονται {name}"
+pt-PT = "Mais do que um ficheiro chama-se {name}"
+sv = "Flera filer heter {name}"
+da = "Flere filer hedder {name}"
+nb = "Flere filer heter {name}"
+fi = "Useamman tiedoston nimi on {name}"
+
 [messages."core.import.invalid.damaged_audio"]
 comment = "Import list, Skipped tab: why a folder can't be imported — this many of its audio files are empty or hold nothing playable. Shown on the folder's row and where its Import button would be."
 args = { count = "Int" }

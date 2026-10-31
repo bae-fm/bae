@@ -13,7 +13,7 @@ impl BridgePreviewTarget {
     pub(crate) fn from_core(target: bae_core::playback::PreviewTarget) -> Self {
         let (path, start_sample, end_sample) = target.into_sample_range();
         Self {
-            path,
+            path: path.to_string_lossy().into_owned(),
             start_sample,
             end_sample,
         }
@@ -21,7 +21,7 @@ impl BridgePreviewTarget {
 
     pub(crate) fn into_core(self) -> bae_core::playback::PreviewTarget {
         bae_core::playback::PreviewTarget::sample_range(
-            self.path,
+            self.path.into(),
             self.start_sample,
             self.end_sample,
         )

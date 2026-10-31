@@ -151,3 +151,69 @@ async fn the_skipped_pane_reads_nothing_for_a_valid_folder() {
         .unwrap();
     assert!(read.is_none(), "{read:?}");
 }
+
+/// A folder two of whose files show one name — one spelled `Caf\xE9.flac`, one
+/// whose name holds the Latin-1 byte — is stored with both, each by the bytes
+/// of its own path, and listed under Skipped naming the name they share. A
+/// Unix path holds any bytes; Windows can't spell the second name.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
+    use crate::import::folder_scanner::{
+        InvalidCandidate, InvalidReason, ProposedRole, SkippedFile,
+    };
+    use std::os::unix::ffi::OsStrExt;
+
+    let (db, _tmp, root) = watched_root().await;
+    db.add_watched_import_folder(&root).await.unwrap();
+    let folder = PathBuf::from(&root).join("Album");
+    let file = |name: &[u8]| SkippedFile {
+        relative_path: r"Caf\xE9.flac".to_string(),
+        file: FileVersion {
+            path: folder.join(std::ffi::OsStr::from_bytes(name)),
+            size: 1_000,
+            modified_at_ns: 1,
+        },
+        role: ProposedRole::Audio,
+    };
+    let invalid = InvalidCandidate {
+        path: folder.clone(),
+        name: "Album".to_string(),
+        watched_folder_path: root.clone(),
+        display_path: "Album".to_string(),
+        grouping: None,
+        files: vec![file(br"Caf\xE9.flac"), file(b"Caf\xE9.flac")],
+        tags: None,
+    };
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone()))
+        .await
+        .unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+
+    let list = db
+        .load_import_list_read(request(TriageTab::Skipped).await)
+        .await
+        .unwrap();
+    let listed: Vec<&InvalidCandidate> = list
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            ImportListItem::Invalid { candidate, .. } => Some(candidate),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(listed, [&invalid]);
+    assert_eq!(
+        listed[0].reason(),
+        InvalidReason::SameName {
+            name: r"Caf\xE9.flac".to_string()
+        }
+    );
+}

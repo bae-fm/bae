@@ -137,11 +137,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
 async fn test_preview_seek_while_paused_emits_position_update() {
     let mut fixture = PlaybackTestFixture::new().await;
 
-    let preview_path = fixture
-        .album_dir
-        .join("01 Test Track 1.flac")
-        .to_string_lossy()
-        .into_owned();
+    let preview_path = fixture.album_dir.join("01 Test Track 1.flac");
 
     // Start preview — wait for it to reach Playing state.
     fixture

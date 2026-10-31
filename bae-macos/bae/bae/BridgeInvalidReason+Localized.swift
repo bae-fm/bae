@@ -3,11 +3,13 @@ import Foundation
 
 extension BridgeInvalidReason {
     /// The localized failure reason, resolved from the generated `Core` string
-    /// table via the key bae-core owns, with the count of damaged files where
-    /// the reason carries one.
+    /// table via the key bae-core owns, with the name or the count of damaged
+    /// files where the reason carries one.
     var localizedText: String {
         let key = bridgeInvalidReasonKey(reason: self)
         switch self {
+        case .sameName(let name):
+            return coreString(key, name)
         case .damagedAudio(let count):
             return coreString(key, Int(count))
         case .noValidAudio:

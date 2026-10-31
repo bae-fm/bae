@@ -163,6 +163,7 @@ mod track;
 mod tests;
 
 mod list_windows;
+mod path_column;
 mod pressing_columns;
 mod query;
 mod read;

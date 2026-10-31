@@ -353,7 +353,8 @@ pub enum BridgeOutputKind {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutputOp {
     pub release_id: String,
-    /// The chosen destination; the release's folder is rebuilt under it.
+    /// The chosen destination, as `coven::path_text` shows its path; the
+    /// release's folder is rebuilt under it.
     pub target_dir: String,
     /// The release as the library holds it now; `None` once the library no
     /// longer has it.

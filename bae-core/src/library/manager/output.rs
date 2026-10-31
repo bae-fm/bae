@@ -69,17 +69,6 @@ impl LibraryManager {
         target_dir: std::path::PathBuf,
         kind: crate::library::OutputKind,
     ) -> Result<(), LibraryError> {
-        // The target dir crosses to the apps as a string (the snapshot carries
-        // `target_dir` for each row), so it must be valid UTF-8.
-        // Fail loud here rather than let a non-UTF-8 path be lossily rewritten into
-        // a different directory the output would then write to.
-        target_dir.to_str().ok_or_else(|| {
-            LibraryError::Export(format!(
-                "export target directory is not valid UTF-8: {}",
-                target_dir.display()
-            ))
-        })?;
-
         if self.outputs.contains(release_id).await? {
             debug!("enqueue_output: {release_id} already queued, skipping");
             return Ok(());

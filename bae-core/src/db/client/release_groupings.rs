@@ -360,8 +360,8 @@ enum ParentFiles {
     /// It sits in no one folder, or that folder has no sidecar.
     None,
     Files(Vec<CandidateFile>),
-    /// One of the folder's files is broken, so the release cannot be imported:
-    /// every one of them, as the scan read it.
+    /// One of the folder's files is broken, or two of them show one name, so
+    /// the release cannot be imported: every one of them, as the scan read it.
     Invalid(Vec<SkippedFile>),
 }
 

@@ -763,11 +763,8 @@ fn probe(
     file: &ScannedFile,
     reader: Option<&dyn FileTagReader>,
 ) -> Result<(Playability, Option<Result<FileTagRead, ImportError>>), FolderScanError> {
-    let path = file.path.to_str().ok_or_else(|| {
-        FolderScanError::Other(format!("audio path is not UTF-8: {}", file.path.display()))
-    })?;
     unchanged(file, "changed before its audio facts could be read")?;
-    let stream = match bae_audio::probe_audio_from_path(path) {
+    let stream = match bae_audio::probe_audio_from_path(&file.path) {
         None => Playability::Unplayable,
         Some(probe) => match scanned_audio(&probe) {
             Some(audio) => Playability::Measured(audio),

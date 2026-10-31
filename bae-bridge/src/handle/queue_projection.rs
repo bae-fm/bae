@@ -128,7 +128,7 @@ impl crate::types::BridgeOutputOp {
         let bae_core::library::output_snapshot::OutputRequest { target_dir, kind } = payload;
         crate::types::BridgeOutputOp {
             release_id,
-            target_dir: target_dir.to_string_lossy().to_string(),
+            target_dir: coven::path_text(&target_dir),
             release: release.map(crate::types::BridgeQueuedRelease::from_core),
             created_at,
             state: crate::types::BridgeOutputState::from_core(state),

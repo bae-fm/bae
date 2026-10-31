@@ -62,13 +62,10 @@ impl DirectoryReader for OsDirectoryReader {
             cancellation.check()?;
             let entry = entry.map_err(|source| FolderScanError::io(&absolute, source))?;
             let path = entry.path();
-            let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-                return Err(FolderScanError::Other(format!(
-                    "directory entry is not UTF-8: {}",
-                    path.display()
-                )));
-            };
-            if name.starts_with('.') {
+            let name = entry.file_name();
+            // The encoded bytes are documented as safe to inspect for ASCII,
+            // which a leading `.` is, whatever the rest of the name holds.
+            if name.as_encoded_bytes().first() == Some(&b'.') {
                 debug!("ignoring hidden folder-scan entry {}", path.display());
                 continue;
             }
@@ -79,16 +76,28 @@ impl DirectoryReader for OsDirectoryReader {
             let file_type = entry
                 .file_type()
                 .map_err(|source| FolderScanError::io(&path, source))?;
-            if file_type.is_dir() {
+            // The entry's metadata, or `None` for a folder.
+            let metadata = if file_type.is_dir() {
+                None
+            } else {
+                let metadata = entry
+                    .metadata()
+                    .map_err(|source| FolderScanError::io(&path, source))?;
+                (!metadata.is_dir() || file_type.is_symlink()).then_some(metadata)
+            };
+            let Some(metadata) = metadata else {
+                // A folder is known by its path's text: its key, and the
+                // relative paths the import list stores.
+                if name.to_str().is_none() {
+                    return Err(FolderScanError::Other(format!(
+                        "folder name is not UTF-8: {}",
+                        path.display()
+                    )));
+                }
                 directories.push(relative);
                 continue;
-            }
-            let metadata = entry
-                .metadata()
-                .map_err(|source| FolderScanError::io(&path, source))?;
-            if metadata.is_dir() && !file_type.is_symlink() {
-                directories.push(relative);
-            } else if metadata.is_file() && !is_noise_file(&path) {
+            };
+            if metadata.is_file() && !is_noise_file(&path) {
                 files.push(FileEntry {
                     path: relative,
                     size: metadata.len(),
@@ -97,16 +106,13 @@ impl DirectoryReader for OsDirectoryReader {
             }
         }
         let compare = |left: &PathBuf, right: &PathBuf| {
-            natord::compare_ignore_case(
-                &left
-                    .file_name()
-                    .expect("a directory entry path has a file name")
-                    .to_string_lossy(),
-                &right
-                    .file_name()
-                    .expect("a directory entry path has a file name")
-                    .to_string_lossy(),
-            )
+            let shown = |path: &PathBuf| {
+                coven::path_text(Path::new(
+                    path.file_name()
+                        .expect("a directory entry path has a file name"),
+                ))
+            };
+            natord::compare_ignore_case(&shown(left), &shown(right))
         };
         files.sort_by(|left, right| compare(&left.path, &right.path));
         directories.sort_by(compare);
@@ -288,9 +294,12 @@ impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
     }
 }
 
+/// `path`, relative, as the text a release and the import list show it by:
+/// each component as `coven::path_text` shows it, joined with `/` on every
+/// platform.
 pub(crate) fn relative_path_string(path: &Path) -> String {
     path.components()
-        .map(|component| component.as_os_str().to_string_lossy())
+        .map(|component| coven::path_text(Path::new(component.as_os_str())))
         .collect::<Vec<_>>()
         .join("/")
 }
@@ -301,10 +310,7 @@ pub(super) fn directory_name(root: &Path, relative: &Path) -> String {
     } else {
         relative
     };
-    path.file_name().map_or_else(
-        || path.to_string_lossy().into_owned(),
-        |name| name.to_string_lossy().into_owned(),
-    )
+    coven::path_text(path.file_name().map_or(path, Path::new))
 }
 
 pub(super) fn categorize_selected_files(

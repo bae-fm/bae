@@ -248,7 +248,7 @@ async fn preview_completed_tears_down_and_emits_idle() {
     let pipeline = test_pipeline(&prepared, Box::new(TestAudioStream));
     service
         .preview
-        .set_active_for_test("preview-file".to_string(), pipeline, buffer.clone());
+        .set_active_for_test("preview-file".into(), pipeline, buffer.clone());
     assert!(service.preview.is_active());
 
     service.preview_completed();
@@ -295,7 +295,7 @@ async fn an_invalidated_preview_that_cant_restart_ends_and_resumes_main() {
     );
     service
         .preview
-        .set_active_for_test("preview-file".to_string(), pipeline, buffer.clone());
+        .set_active_for_test("preview-file".into(), pipeline, buffer.clone());
     service.preview.main_player_paused();
 
     service.follow_preview_output_device().await;

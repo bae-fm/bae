@@ -72,7 +72,7 @@ pub(crate) fn read_file_tags(
                 .map_err(|error| ImportError::file_tags("stat", path, error))?;
             let relative_path = path
                 .file_name()
-                .map(|name| name.to_string_lossy().into_owned())
+                .map(|name| coven::path_text(Path::new(name)))
                 .ok_or_else(|| ImportError::FileTags {
                     detail: format!("audio file path {} has no filename", path.display()),
                 })?;

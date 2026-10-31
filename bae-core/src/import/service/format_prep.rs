@@ -279,8 +279,8 @@ fn standalone_audio_format(
 /// byte. The last track has no next start and runs to EOF, and the first starts
 /// at byte 0 with nothing to prefetch, so the caller stores `None` for both.
 ///
-/// The scan opened and probed every image a sheet names, from a UTF-8 path, and
-/// admitted only audio of a usable format, so these offsets can always be read.
+/// The scan opened and probed every image a sheet names, and admitted only
+/// audio of a usable format, so these offsets can always be read.
 /// An error saying why they couldn't is a bug, which the caller reports.
 fn cue_file_landing_bytes(
     file: &crate::import::types::CueAnalyzedAudioFile,
@@ -295,11 +295,7 @@ fn cue_file_landing_bytes(
         .filter(|index| matches!(index.number, 0 | 1))
         .map(|index| crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate as u64))
         .collect();
-    let path = file
-        .path
-        .to_str()
-        .ok_or_else(|| "the path is not UTF-8".to_string())?;
-    let landings = bae_audio::seek_landing_bytes(path, &start_samples)?;
+    let landings = bae_audio::seek_landing_bytes(&file.path, &start_samples)?;
     Ok(start_samples.into_iter().zip(landings).collect())
 }
 

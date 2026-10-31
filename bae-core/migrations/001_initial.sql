@@ -208,6 +208,8 @@ CREATE TABLE IF NOT EXISTS releases (
     -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
     discogs_details    TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
+    -- The name of the folder the release was imported from, as
+    -- `coven::path_text` shows it: the folder an export recreates.
     source_folder_name TEXT,
     -- EBU R128 integrated loudness over all tracks, in LUFS, measured at import;
     -- NULL when measuring failed. Playback derives the gain from it.
@@ -320,15 +322,15 @@ CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
     ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
 
 -- The original of each release file this device imported, or the copy a
--- detach made: its path and the modification time recorded then. These paths
--- never leave this device. While the file's row names no coven file, this
--- device plays the file from here; a row stays through a move to the cloud,
--- so cancelling one makes the release local here again. Sentinel: bae commit
--- 3 stages a local release's files with coven, which records the originals,
--- and drops this table.
+-- detach made: its path, as coven's bytes for it (`coven::path_bytes`), and
+-- the modification time recorded then. These paths never leave this device.
+-- While the file's row names no coven file, this device plays the file from
+-- here; a row stays through a move to the cloud, so cancelling one makes the
+-- release local here again. Sentinel: bae commit 3 stages a local release's
+-- files with coven, which records the originals, and drops this table.
 CREATE TABLE IF NOT EXISTS local_release_files (
     file_id TEXT NOT NULL PRIMARY KEY REFERENCES release_files(id) ON DELETE CASCADE,
-    path TEXT NOT NULL,
+    path BLOB NOT NULL,
     modified_at TEXT NOT NULL
 ) STRICT;
 
@@ -2005,7 +2007,8 @@ CREATE TABLE IF NOT EXISTS output_queue (
     created_at INTEGER NOT NULL,
     state      TEXT NOT NULL CHECK (state IN ('queued', 'active', 'failed')),
     error      TEXT,
-    target_dir TEXT NOT NULL,
+    -- coven's bytes for the folder's path (`coven::path_bytes`).
+    target_dir BLOB NOT NULL,
     kind       TEXT NOT NULL CHECK (kind IN ('export', 'save')),
     -- A save's preset, captured whole as JSON when it was queued, so a later
     -- edit to the preset changes nothing already queued.
@@ -2231,13 +2234,15 @@ END;
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_file_root ON scan_candidate (file_root);
 
 -- Every file of a candidate folder, the role the scan read it as, and the audio
--- facts probing found in it.
+-- facts probing found in it. `relative_path` is the file's name in the release,
+-- each component as `coven::path_text` shows it; `absolute_path` is coven's
+-- bytes for its path (`coven::path_bytes`), which open it.
 CREATE TABLE IF NOT EXISTS scan_candidate_file (
     watched_folder_path   TEXT NOT NULL,
     candidate_path        TEXT NOT NULL,
     relative_path         TEXT NOT NULL,
     position              INTEGER NOT NULL CHECK (position >= 0),
-    absolute_path         TEXT NOT NULL,
+    absolute_path         BLOB NOT NULL,
     size                  INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns        INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     audio_content_type    TEXT,
@@ -2357,21 +2362,23 @@ CREATE TABLE IF NOT EXISTS scan_candidate_part (
 ) STRICT;
 
 -- Every file of a release that failed validation, in name order, as the scan
--- read it: by its name, and for audio and images by its bytes. Its damaged
--- audio is why it failed, and how many is the reason the Skipped tab gives.
+-- read it: by its name, and for audio and images by its bytes. A name two of
+-- its files show, else its damaged audio, is why it failed, and is the reason
+-- the Skipped tab gives. Names and paths are as in `scan_candidate_file`; two
+-- files can show one name, and only the path is one file's.
 CREATE TABLE IF NOT EXISTS scan_skipped_file (
     watched_folder_path TEXT NOT NULL,
     candidate_path      TEXT NOT NULL,
     position            INTEGER NOT NULL CHECK (position >= 0),
     relative_path       TEXT NOT NULL,
-    absolute_path       TEXT NOT NULL,
+    absolute_path       BLOB NOT NULL,
     size                INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     role                TEXT NOT NULL CHECK (role IN ('audio', 'damaged_audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
     -- Why a damaged track can't be played: it holds no bytes, or no stream bae plays.
     audio_damage        TEXT CHECK (audio_damage IS NULL OR audio_damage IN ('empty', 'unreadable')),
     PRIMARY KEY (watched_folder_path, candidate_path, position),
-    UNIQUE (watched_folder_path, candidate_path, relative_path),
+    UNIQUE (watched_folder_path, candidate_path, absolute_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
     CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL))
@@ -2399,9 +2406,9 @@ CREATE TABLE IF NOT EXISTS scan_sidecar (
     folder              TEXT PRIMARY KEY,
     watched_folder_path TEXT NOT NULL,
     generation          INTEGER NOT NULL CHECK (generation >= 0),
-    -- 'invalid' when a zero-byte track is among its files, so a release taking
-    -- them in cannot be imported; 'downloading' while a download into the
-    -- folder runs, when none of its files is stored.
+    -- 'invalid' when a zero-byte track is among its files or two of them show
+    -- one name, so a release taking them in cannot be imported; 'downloading'
+    -- while a download into the folder runs, when none of its files is stored.
     state               TEXT NOT NULL CHECK (state IN ('valid', 'invalid', 'downloading')),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
 ) STRICT;
@@ -2409,18 +2416,18 @@ CREATE TABLE IF NOT EXISTS scan_sidecar (
 CREATE INDEX IF NOT EXISTS idx_scan_sidecar_root ON scan_sidecar (watched_folder_path);
 
 -- One file of a sidecar, in release file order, with its role. Only an
--- invalid sidecar holds a damaged track.
+-- invalid sidecar holds a damaged track, or two files showing one name. Names
+-- and paths are as in `scan_candidate_file`.
 CREATE TABLE IF NOT EXISTS scan_sidecar_file (
     folder              TEXT NOT NULL REFERENCES scan_sidecar (folder) ON DELETE CASCADE,
     position            INTEGER NOT NULL CHECK (position >= 0),
     relative_path       TEXT NOT NULL,
-    absolute_path       TEXT NOT NULL UNIQUE,
+    absolute_path       BLOB NOT NULL UNIQUE,
     size                INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     role                TEXT NOT NULL CHECK (role IN ('artwork', 'damaged_image', 'document', 'other', 'damaged_audio')),
     audio_damage        TEXT CHECK (audio_damage IS NULL OR audio_damage IN ('empty', 'unreadable')),
     PRIMARY KEY (folder, position),
-    UNIQUE (folder, relative_path),
     CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL))
 ) STRICT;
 

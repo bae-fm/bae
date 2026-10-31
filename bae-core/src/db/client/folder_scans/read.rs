@@ -506,7 +506,7 @@ pub(crate) fn entries_reading(
 fn files_json_sql() -> String {
     format!(
         "(SELECT json_group_array(json_object( \
-             'relative_path', file.relative_path, 'absolute_path', file.absolute_path, \
+             'relative_path', file.relative_path, 'absolute_path', hex(file.absolute_path), \
              'size', file.size, 'modified_at_ns', file.modified_at_ns, \
              'audio_content_type', file.audio_content_type, \
              'audio_duration_ms', file.audio_duration_ms, \
@@ -537,7 +537,8 @@ const PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
 /// The files of the release joined as `candidate` that failed validation, as
 /// a JSON array in name order.
 const SKIPPED_FILES_JSON: &str = "(SELECT json_group_array(json_object( \
-         'relative_path', skipped.relative_path, 'absolute_path', skipped.absolute_path, \
+         'relative_path', skipped.relative_path, \
+         'absolute_path', hex(skipped.absolute_path), \
          'size', skipped.size, 'modified_at_ns', skipped.modified_at_ns, \
          'role', skipped.role, 'audio_damage', skipped.audio_damage) ORDER BY skipped.position) \
      FROM scan_skipped_file AS skipped \
@@ -682,7 +683,8 @@ fn listed<T: serde::de::DeserializeOwned>(
 #[derive(serde::Deserialize)]
 struct FileRow {
     relative_path: String,
-    absolute_path: String,
+    #[serde(deserialize_with = "path_column::from_hex")]
+    absolute_path: PathBuf,
     size: i64,
     modified_at_ns: i64,
     audio_content_type: Option<String>,
@@ -741,7 +743,7 @@ fn files_of(candidate_path: &str, json: &str) -> Result<Vec<CandidateFile>, DbEr
             };
             Ok(CandidateFile {
                 file: ScannedFile {
-                    path: PathBuf::from(row.absolute_path),
+                    path: row.absolute_path,
                     relative_path: row.relative_path,
                     size: to_u64(row.size, "a file's size")?,
                     modified_at_ns: row.modified_at_ns,
@@ -843,7 +845,8 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
 #[derive(serde::Deserialize)]
 struct SkippedFileRow {
     relative_path: String,
-    absolute_path: String,
+    #[serde(deserialize_with = "path_column::from_hex")]
+    absolute_path: PathBuf,
     size: i64,
     modified_at_ns: i64,
     role: String,
@@ -858,7 +861,7 @@ fn skipped_files_of(candidate_path: &str, json: &str) -> Result<Vec<SkippedFile>
             Ok(SkippedFile {
                 relative_path: row.relative_path,
                 file: FileVersion {
-                    path: PathBuf::from(row.absolute_path),
+                    path: row.absolute_path,
                     size: to_u64(row.size, "a skipped file's size")?,
                     modified_at_ns: row.modified_at_ns,
                 },

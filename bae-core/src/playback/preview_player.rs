@@ -28,6 +28,7 @@ use crate::playback::stream_pipeline::{
 };
 use crate::playback::timeline::{StreamPosition, TrackTimeline};
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
@@ -38,19 +39,19 @@ use tracing::{error, info, warn};
 /// recorded them yet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreviewTarget {
-    path: String,
+    path: PathBuf,
     span: crate::db::SegmentSpan,
 }
 
 impl PreviewTarget {
-    pub fn whole_file(path: String) -> Self {
+    pub fn whole_file(path: PathBuf) -> Self {
         Self {
             path,
             span: crate::db::SegmentSpan::whole_file(),
         }
     }
 
-    pub fn sample_range(path: String, start_sample: u64, end_sample: Option<u64>) -> Self {
+    pub fn sample_range(path: PathBuf, start_sample: u64, end_sample: Option<u64>) -> Self {
         Self {
             path,
             span: crate::db::SegmentSpan {
@@ -62,7 +63,7 @@ impl PreviewTarget {
         }
     }
 
-    pub fn into_sample_range(self) -> (String, u64, Option<u64>) {
+    pub fn into_sample_range(self) -> (PathBuf, u64, Option<u64>) {
         (self.path, self.span.start_sample, self.span.end_sample)
     }
 
@@ -230,7 +231,11 @@ impl PreviewPlayer {
         let source_size = match tokio::fs::metadata(&target.path).await {
             Ok(metadata) => metadata.len(),
             Err(e) => {
-                error!("Failed to stat preview file {}: {}", target.path, e);
+                error!(
+                    "Failed to stat preview file {}: {}",
+                    target.path.display(),
+                    e
+                );
                 return PreviewPlayOutcome::SetupFailed;
             }
         };
@@ -240,7 +245,7 @@ impl PreviewPlayer {
         };
         let Some(duration) = target.duration(probe.duration, probe.sample_rate) else {
             error!(
-                path = target.path,
+                path = %target.path.display(),
                 start_sample = target.span.start_sample,
                 end_sample = target.span.end_sample,
                 "Preview target has an empty or reversed sample window"
@@ -270,7 +275,7 @@ impl PreviewPlayer {
             )
             .await;
         if started {
-            info!("Preview started: {}", target.path);
+            info!("Preview started: {}", target.path.display());
             PreviewPlayOutcome::Started
         } else {
             PreviewPlayOutcome::StreamStartFailed
@@ -502,7 +507,7 @@ impl PreviewPlayer {
         // measurements) at unity gain. The listener reads position off this fmt,
         // carried on the event stream.
         let fmt = TrackFmt {
-            track_id: source.target.path.clone(),
+            track_id: coven::path_text(&source.target.path),
             timeline: source.timeline(),
             starts_at: seek_to.unwrap_or(StreamPosition::START),
             replay_gain_linear: 1.0,
@@ -647,17 +652,18 @@ fn spawn_preview_listener(
     })
 }
 
-async fn probe_preview_audio(path: &str) -> Option<bae_audio::ProbeResult> {
-    let probe_path = path.to_string();
+async fn probe_preview_audio(path: &Path) -> Option<bae_audio::ProbeResult> {
+    let probe_path = path.to_path_buf();
     let result =
         tokio::task::spawn_blocking(move || bae_audio::probe_audio_from_path(&probe_path)).await;
     resolve_preview_probe(path, result)
 }
 
 fn resolve_preview_probe(
-    path: &str,
+    path: &Path,
     result: Result<Option<bae_audio::ProbeResult>, tokio::task::JoinError>,
 ) -> Option<bae_audio::ProbeResult> {
+    let path = path.display();
     match result {
         Ok(Some(probe)) if probe.sample_rate > 0 && probe.channels > 0 => Some(probe),
         Ok(Some(probe)) => {
@@ -684,7 +690,7 @@ impl PreviewPlayer {
     /// tests can exercise the completion/stop teardown seam without real audio.
     pub(crate) fn set_active_for_test(
         &mut self,
-        path: String,
+        path: PathBuf,
         pipeline: StreamPipeline,
         buffer: SharedSparseBuffer,
     ) {

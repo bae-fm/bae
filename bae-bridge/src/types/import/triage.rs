@@ -28,6 +28,11 @@ pub struct BridgeFolderReleaseDecisionKey {
 /// `bridge_invalid_reason_key`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeInvalidReason {
+    /// More than one of its files shows as `name`, its path within the
+    /// folder.
+    SameName {
+        name: String,
+    },
     /// `count` of its audio files can't be played.
     DamagedAudio {
         count: u32,
@@ -38,6 +43,7 @@ pub enum BridgeInvalidReason {
 impl BridgeInvalidReason {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
+            Self::SameName { .. } => "core.import.invalid.same_name",
             Self::DamagedAudio { .. } => "core.import.invalid.damaged_audio",
             Self::NoValidAudio => "core.import.invalid.no_valid_audio",
         }
@@ -49,6 +55,7 @@ mirror_enum! {
     BridgeInvalidReason = bae_core::import::InvalidReason,
     from_core: pub(crate) fn,
     variants: {
+        SameName { name },
         DamagedAudio { count },
         NoValidAudio,
     },

@@ -58,12 +58,6 @@ impl QueuedPayload for OutputRequest {
 
     #[cfg(desktop)]
     fn values(&self) -> Result<Vec<Value>, DbError> {
-        let target_dir = self.target_dir.to_str().ok_or_else(|| {
-            DbError::Message(format!(
-                "export target directory is not valid UTF-8: {}",
-                self.target_dir.display()
-            ))
-        })?;
         let (kind, preset) = match &self.kind {
             OutputKind::Export => ("export", None),
             OutputKind::Save { preset } => (
@@ -74,14 +68,16 @@ impl QueuedPayload for OutputRequest {
             ),
         };
         Ok(vec![
-            Value::Text(target_dir.to_string()),
+            Value::Blob(coven::path_bytes(&self.target_dir)),
             Value::Text(kind.to_string()),
             preset.map_or(Value::Null, Value::Text),
         ])
     }
 
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
-        let target_dir: String = row.get(at)?;
+        let target_dir = coven::path_from_bytes(row.get(at)?).map_err(|error| {
+            rusqlite::Error::FromSqlConversionFailure(at, Type::Blob, Box::new(error))
+        })?;
         let kind: String = row.get(at + 1)?;
         let preset: Option<String> = row.get(at + 2)?;
         let kind = match (kind.as_str(), preset) {
@@ -99,10 +95,7 @@ impl QueuedPayload for OutputRequest {
                 ))
             }
         };
-        Ok(OutputRequest {
-            target_dir: target_dir.into(),
-            kind,
-        })
+        Ok(OutputRequest { target_dir, kind })
     }
 }
 

@@ -206,7 +206,10 @@ pub(super) fn unstored_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
-    let rows: Vec<(String, i64, Option<String>, Option<String>)> = sql.query(
+    // Each file's content type and size, and the bytes of its original's path
+    // and the modification time recorded with it.
+    type UnstoredRow = (String, i64, Option<Vec<u8>>, Option<String>);
+    let rows: Vec<UnstoredRow> = sql.query(
         "SELECT f.content_type, f.file_size, l.path, l.modified_at \
          FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
          LEFT JOIN coven_files coven ON coven.id = f.file \
@@ -224,7 +227,7 @@ pub(super) fn unstored_audio_on(
                 DbError::Message(format!("invalid original modification time: {error}"))
             })?;
             Ok(DbUnstoredAudio::Original(RecordedOriginal {
-                path: path.into(),
+                path: path_column::decode(path)?,
                 size,
                 modified_at: modified_at.into(),
             }))

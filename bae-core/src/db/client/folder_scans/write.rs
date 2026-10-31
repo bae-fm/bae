@@ -469,7 +469,7 @@ fn insert_invalid(
                 key,
                 to_i64(position as u64, "a skipped file's position")?,
                 file.relative_path,
-                file.file.path.to_string_lossy(),
+                coven::path_bytes(&file.file.path),
                 to_i64(file.file.size, "a skipped file's size")?,
                 file.file.modified_at_ns,
                 role,
@@ -546,7 +546,7 @@ fn insert_file(
             candidate_path,
             file.file.relative_path,
             to_i64(position as u64, "a candidate file's position")?,
-            file.file.path.to_string_lossy(),
+            coven::path_bytes(&file.file.path),
             to_i64(file.file.size, "a file's size")?,
             file.file.modified_at_ns,
             file.file
