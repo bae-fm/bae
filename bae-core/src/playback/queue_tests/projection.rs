@@ -155,3 +155,58 @@ async fn test_reorder_context_to_end() {
     assert_eq!(f.upcoming().await, names(&["t3", "t4", "t2"]));
     assert_eq!(f.current(), "t1");
 }
+
+/// The queue screens follow a play's fill, Clear Up Next and Clear playing
+/// from, which are bulk writes, as they follow every other change: each
+/// reaches the live queries reading the lanes.
+#[tokio::test]
+async fn test_the_queue_screens_follow_a_play_and_the_clears() {
+    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1"]).await;
+    let mut value = f.db.subscribe_queue_value();
+    let mut upcoming = f.db.subscribe_queue_upcoming(crate::library::LibraryPageWindows::from([
+        crate::library::LibraryPageWindow { offset: 0, limit: 10 },
+    ]));
+    let wait = std::time::Duration::from_secs(10);
+    macro_rules! value_until {
+        ($check:expr) => {
+            tokio::time::timeout(wait, async {
+                loop {
+                    let read = value.next().await.expect("the query stays open").unwrap();
+                    if $check(&read) {
+                        break;
+                    }
+                }
+            })
+            .await
+            .expect("the queue value follows the write")
+        };
+    }
+    macro_rules! upcoming_until {
+        ($total:expr) => {
+            tokio::time::timeout(wait, async {
+                loop {
+                    let read = upcoming.next().await.expect("the query stays open").result.unwrap();
+                    if read.upcoming_total == $total {
+                        break;
+                    }
+                }
+            })
+            .await
+            .expect("the upcoming windows follow the write")
+        };
+    }
+    upcoming_until!(0);
+
+    f.play_from("t1").await;
+    upcoming_until!(2);
+    f.add(&["m1"]).await;
+    value_until!(|read: &crate::queue::ResolvedQueueSnapshot| read.manual.len() == 1);
+
+    f.queue.clear_up_next().await.unwrap();
+    value_until!(|read: &crate::queue::ResolvedQueueSnapshot| read.manual.is_empty()
+        && read.context.is_some());
+
+    f.queue.clear_playing_from().await.unwrap();
+    upcoming_until!(0);
+    value_until!(|read: &crate::queue::ResolvedQueueSnapshot| read.context.is_none());
+}

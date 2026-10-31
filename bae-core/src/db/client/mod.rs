@@ -284,6 +284,24 @@ impl Database {
             .map_err(Self::coven_error)
     }
 
+    /// Run a bulk write: SQL that changes device-local tables alone, run
+    /// without coven's pre-update hook, so SQLite empties a table in one step
+    /// and fills one at its own speed. After it commits, every live query
+    /// reading a table it changed runs again once, whichever rows it read.
+    async fn call_bulk<R>(
+        &self,
+        f: impl for<'conn> FnOnce(&coven::BulkSqlContext<'conn>) -> Result<R, DbError> + Send + 'static,
+    ) -> Result<R, DbError>
+    where
+        R: Send + 'static,
+    {
+        self.inner
+            .handle
+            .write_bulk(move |sql| f(&sql).map_err(CovenError::from))
+            .await
+            .map_err(Self::coven_error)
+    }
+
     /// Keep coven's file-staging buffers off the caller's async stack, including
     /// the import worker's stack. Row-only writes use this same boundary.
     fn write_with_files<T, R>(

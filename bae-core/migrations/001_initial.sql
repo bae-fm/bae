@@ -1887,13 +1887,14 @@ CREATE TABLE IF NOT EXISTS playback_manual (
 CREATE INDEX IF NOT EXISTS playback_manual_track ON playback_manual(track_id);
 
 -- The context lane a play fills, in position order. Each row is an entry of
--- its own, as in Up Next, so a track named twice is two rows; a play numbers
--- its entries in play order, so the lane is stored the way it plays and grows
--- at its end as a play fills it. Positions are only an order, with gaps where
--- rows left. No trigger runs on its rows: a play takes out and puts in up to
--- the whole library's, so a trigger would run once for each, and SQLite
--- empties a table with a trigger row by row. Each write that leaves the lane
--- empty clears what it played from itself. Never synced.
+-- its own, as in Up Next, so a track named twice is two rows. A play numbers
+-- its entries in track order and puts them in in that order, so the table and
+-- its track index grow at their end and only the position index takes rows
+-- out of order. Positions are only an order, with gaps where rows left. No
+-- trigger runs on its rows: a play takes out and puts in up to the whole
+-- library's, so a trigger would run once for each, and SQLite empties a table
+-- with a trigger row by row. Each write that leaves the lane empty clears
+-- what it played from itself. Never synced.
 CREATE TABLE IF NOT EXISTS playback_context (
     entry      INTEGER PRIMARY KEY,
     position   INTEGER NOT NULL UNIQUE,

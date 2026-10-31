@@ -1,6 +1,8 @@
 //! What a library-sized play costs the playback queue tables: filling,
 //! replacing and emptying a context lane of `TRACKS` tracks through bae's
-//! own writes, then the same statements in plain SQLite on the same file.
+//! own writes, then the same statements in plain SQLite on the same file: the
+//! fill in track order and in play order, with SQLite's default page cache
+//! and larger ones, and the emptying, with and without a pre-update hook.
 //! Ignored by default; run with
 //! `scripts/cargo.sh test -p bae-core --features test-utils --lib -- playback_queue_bench --ignored --nocapture`.
 //! Each line it prints is one measurement over `RUNS` runs: the fastest,
@@ -15,15 +17,34 @@ use std::time::Instant;
 const TRACKS: i64 = 1_000_000;
 const RUNS: usize = 5;
 
-/// The statement a library play fills the lane with
-/// (`ContextFill::LibraryShuffled`), into `{table}`.
+/// The rows a library play (`ContextFill::LibraryShuffled`) fills the lane
+/// with: each track, its place in play order and in the source's order.
+const LIBRARY_ROWS: &str = "SELECT track_id, unshuffled, \
+            row_number() OVER (ORDER BY random()) AS position \
+     FROM (SELECT t.id AS track_id, \
+                  row_number() OVER (ORDER BY t.release_id, t.position, t.id) AS unshuffled \
+           FROM tracks t)";
+
+/// The statement a library play fills the lane with, into `{table}`: the
+/// entries numbered and inserted in track order, so the table and its track
+/// index grow at their end and only the position index takes its rows out of
+/// order.
 const LIBRARY_FILL: &str = "INSERT INTO {table} (entry, position, track_id, unshuffled) \
-     SELECT position, position, track_id, unshuffled FROM ( \
-         SELECT track_id, unshuffled, row_number() OVER (ORDER BY random()) AS position \
-         FROM (SELECT t.id AS track_id, \
-                      row_number() OVER (ORDER BY t.release_id, t.position, t.id) AS unshuffled \
-               FROM tracks t)) \
-     ORDER BY position";
+     SELECT row_number() OVER (ORDER BY track_id), position, track_id, unshuffled \
+     FROM ({rows}) ORDER BY track_id";
+
+/// The same rows numbered and inserted in play order instead, so the table
+/// and its position index grow at their end and the track index takes its
+/// rows out of order.
+const LIBRARY_FILL_IN_PLAY_ORDER: &str =
+    "INSERT INTO {table} (entry, position, track_id, unshuffled) \
+     SELECT position, position, track_id, unshuffled FROM ({rows}) ORDER BY position";
+
+/// `fill` with its rows and table named.
+fn fill_into(fill: &str, table: &str) -> String {
+    fill.replace("{rows}", LIBRARY_ROWS)
+        .replace("{table}", table)
+}
 
 /// `playback_context`'s columns without its `track_id` index.
 const UNINDEXED_LANE: &str = "CREATE TABLE bench_unindexed_lane \
@@ -208,6 +229,39 @@ fn plain_statement(
     report(&format!("plain SQLite, {label}, {hook}"), times);
 }
 
+/// Time `fill` into the empty lane on `plain` and its commit, as a play's
+/// write commits, after `pragmas`; the lane is emptied again after each run
+/// and the pragmas set back to SQLite's defaults.
+fn plain_fill(plain: &rusqlite::Connection, label: &str, pragmas: &str, fill: &str) {
+    plain.execute_batch(pragmas).unwrap();
+    let mut times = Vec::new();
+    for _ in 0..RUNS {
+        let start = Instant::now();
+        plain.execute_batch("BEGIN").unwrap();
+        plain.execute(fill, []).unwrap();
+        plain.execute_batch("COMMIT").unwrap();
+        times.push(seconds_since(start));
+        plain.execute_batch("DELETE FROM playback_context").unwrap();
+    }
+    plain
+        .execute_batch("PRAGMA cache_size = -2000; PRAGMA cache_spill = ON")
+        .unwrap();
+    report(&format!("plain SQLite, {label}, committed"), times);
+}
+
+/// Time reading every row `rows` names, as `plain_statement` times a write.
+fn plain_query(plain: &rusqlite::Connection, label: &str, rows: &str) {
+    let count = format!("SELECT count(*) FROM ({rows})");
+    let mut times = Vec::new();
+    for _ in 0..RUNS {
+        let start = Instant::now();
+        let counted: i64 = plain.query_row(&count, [], |row| row.get(0)).unwrap();
+        times.push(seconds_since(start));
+        assert_eq!(counted, TRACKS);
+    }
+    report(&format!("plain SQLite, {label}"), times);
+}
+
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "benchmark: fills a 1,000,000-track library"]
 async fn playback_queue_bench_library_play() {
@@ -236,13 +290,48 @@ async fn playback_queue_bench_library_play() {
 
     // The same statements in plain SQLite, the lane empty and then full.
     let plain = plain_connection(&path);
-    let into_lane = LIBRARY_FILL.replace("{table}", "playback_context");
-    let into_unindexed = LIBRARY_FILL.replace("{table}", "bench_unindexed_lane");
+    let into_lane = fill_into(LIBRARY_FILL, "playback_context");
+    let into_unindexed = fill_into(LIBRARY_FILL_IN_PLAY_ORDER, "bench_unindexed_lane");
+    plain_query(
+        &plain,
+        "the fill's rows alone, read and counted",
+        LIBRARY_ROWS,
+    );
     plain_statement(&plain, "fill", "", &into_lane, false);
     plain_statement(&plain, "fill", "", &into_lane, true);
+    let in_play_order = fill_into(LIBRARY_FILL_IN_PLAY_ORDER, "playback_context");
+    plain_fill(&plain, "fill", "", &into_lane);
+    plain_fill(&plain, "fill in play order", "", &in_play_order);
+    // Changed pages past the cache are written out mid-statement, then read
+    // back and written again as the fill keeps changing them.
+    for (label, fill) in [("fill", &into_lane), ("fill in play order", &in_play_order)] {
+        plain_fill(
+            &plain,
+            &format!("{label}, changed pages kept in memory"),
+            "PRAGMA cache_spill = OFF",
+            fill,
+        );
+    }
+    // SQLite's default page cache is 2 MiB; a larger one holds more of the
+    // indexes a fill writes out of order.
+    for mebibytes in [16, 64, 256] {
+        let pragma = format!("PRAGMA cache_size = -{}", mebibytes * 1024);
+        plain_fill(
+            &plain,
+            &format!("fill, {mebibytes} MiB page cache"),
+            &pragma,
+            &into_lane,
+        );
+        plain_fill(
+            &plain,
+            &format!("fill in play order, {mebibytes} MiB page cache"),
+            &pragma,
+            &in_play_order,
+        );
+    }
     plain_statement(
         &plain,
-        "fill without the track_id index",
+        "fill in play order without the track_id index",
         UNINDEXED_LANE,
         &into_unindexed,
         false,

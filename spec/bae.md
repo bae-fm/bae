@@ -3257,6 +3257,12 @@ All sync (§5), except `local_history`.
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 
+A play's fill, Clear Up Next, Clear playing from and the emptying as a library
+opens without resuming are bulk writes: plain SQLite on these device-local
+tables, with no record kept of each row changed, so emptying a lane of a whole
+library takes one step. After each, every screen following a table it changed
+reads it again once.
+
 ### A.4 Watched folders and scans
 
 | Table | Holds |

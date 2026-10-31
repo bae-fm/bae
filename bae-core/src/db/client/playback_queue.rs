@@ -116,9 +116,10 @@ impl Database {
     /// Empty the queue and the resume row unless the resume row is kept: what
     /// opening a library does when it will not resume what it played. A
     /// library with nothing to resume opens with an empty queue, and one
-    /// opened with "restore on launch" off forgets what it played.
+    /// opened with "restore on launch" off forgets what it played. A bulk
+    /// write, so emptying a library-sized lane takes one step.
     pub async fn settle_playback_queue(&self, resume: bool) -> Result<(), DbError> {
-        self.call(move |sql| {
+        self.call_bulk(move |sql| {
             let stored = sql
                 .query_row("SELECT 1 FROM playback_state", [], |_| Ok(()))
                 .optional()?
@@ -162,9 +163,10 @@ impl PlaybackQueueTables {
     }
 
     /// Replace the whole queue with what `fill` names: Up Next empties, and the
-    /// context lane holds the tracks in play order, playing the first.
+    /// context lane holds the tracks in play order, playing the first. A bulk
+    /// write: a play takes out and puts in up to a library's worth of rows.
     pub async fn fill(&self, fill: ContextFill) -> Result<ContextFilled, DbError> {
-        self.db.call(move |sql| fill_on(sql, fill)).await
+        self.db.call_bulk(move |sql| fill_on(sql, fill)).await
     }
 
     /// Add tracks to Up Next where `place` says, leaving out any the library
@@ -179,20 +181,20 @@ impl PlaybackQueueTables {
             .await
     }
 
-    /// Empty Up Next.
+    /// Empty Up Next, as a bulk write.
     pub async fn clear_manual(&self) -> Result<(), DbError> {
         self.db
-            .call(|sql| {
+            .call_bulk(|sql| {
                 sql.execute("DELETE FROM playback_manual", [])?;
                 Ok(())
             })
             .await
     }
 
-    /// Empty the context lane; `false` when there was none.
+    /// Empty the context lane, as a bulk write; `false` when there was none.
     pub async fn clear_context(&self) -> Result<bool, DbError> {
         self.db
-            .call(|sql| {
+            .call_bulk(|sql| {
                 if queue_row_on(sql)?.cursor.is_none() {
                     return Ok(false);
                 }
@@ -383,7 +385,7 @@ struct QueueRow {
     next_entry: i64,
 }
 
-fn queue_row_on(sql: &SqlContext<'_, '_>) -> rusqlite::Result<QueueRow> {
+fn queue_row_on(sql: &impl coven::SqlRead) -> rusqlite::Result<QueueRow> {
     sql.query_row(
         "SELECT cursor, shuffled, next_entry FROM playback_queue",
         [],
@@ -403,7 +405,7 @@ fn set_cursor_on(sql: &SqlContext<'_, '_>, position: i64) -> rusqlite::Result<()
 }
 
 /// Empty the context lane and clear what it played from, in the same write.
-fn clear_context_on(sql: &SqlContext<'_, '_>) -> rusqlite::Result<()> {
+fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
     sql.execute("DELETE FROM playback_context", [])?;
     sql.execute(
         "UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL",
@@ -531,7 +533,7 @@ struct FillSource {
     source: Option<String>,
 }
 
-fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled, DbError> {
+fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<ContextFilled, DbError> {
     let release_source = |release_id: String| FillSource {
         from: "tracks t WHERE t.release_id = :source",
         source_order: "t.position, t.id",
@@ -638,24 +640,26 @@ fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled,
     sql.execute("DELETE FROM playback_context", [])?;
     let play_order = if shuffled { "random()" } else { "unshuffled" };
     // The lane's entries are numbered on from the next free entry number, in
-    // position order.
+    // track order, and inserted in that order: the table and its track index
+    // then grow at their end, and only the position index takes its rows out
+    // of order. Each index a library-sized fill writes out of order rereads
+    // and rewrites pages past the page cache for most of its rows.
     let base = queue_row_on(sql)?.next_entry;
     let mut bound: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":base", &base)];
     if let Some(source) = &rows.source {
         bound.push((":source", source));
     }
-    // Inserted in position order, so the table and its position index grow at
-    // their end.
     let track_count = sql.execute(
         &format!(
             "INSERT INTO playback_context (entry, position, track_id, unshuffled) \
-             SELECT :base + position - 1, position, track_id, unshuffled FROM ( \
+             SELECT :base + row_number() OVER (ORDER BY track_id) - 1, \
+                    position, track_id, unshuffled FROM ( \
                  SELECT track_id, unshuffled, \
                         row_number() OVER (ORDER BY {play_order}) AS position \
                  FROM (SELECT t.id AS track_id, \
                               row_number() OVER (ORDER BY {source_order}) AS unshuffled \
                        FROM {from})) \
-             ORDER BY position",
+             ORDER BY track_id",
             source_order = rows.source_order,
             from = rows.from,
         ),
