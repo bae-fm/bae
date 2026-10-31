@@ -528,6 +528,7 @@ async fn transition_completions_deliver_storage_values() {
     expect_storage_state(&values, &release_id, ReleaseStorageState::Remote).await;
 
     let dest = tmp.path().join("brought-back");
+    std::fs::create_dir(&dest).unwrap();
     mgr.detach_release_audio_into(&release_id, &dest, &CancellationToken::new())
         .await
         .unwrap();

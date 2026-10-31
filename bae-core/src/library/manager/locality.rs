@@ -25,60 +25,80 @@ impl LibraryManager {
         .await
     }
 
-    /// Copy and verify the files before atomically returning the release to local paths.
+    /// Make an uploaded release local again into `new_path`, a folder the
+    /// person picked: coven downloads each file there, at the path its names
+    /// give, and switches every file to this device only in one write, each
+    /// copy becoming the original it records. A failure or a cancel before
+    /// that write removes every copy and folder the call made, and the
+    /// release stays in the cloud.
     pub async fn detach_release_audio_into(
         &self,
         release_id: &str,
         new_path: &std::path::Path,
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
-        let destinations = self
-            .detached_audio_destinations(release_id, new_path)
-            .await?;
+        let files = self.local_copy_paths(release_id).await?;
         let operation = cancel.child_token();
         let cancel_on_drop = operation.clone().drop_guard();
         let manager = self.clone();
-        let release_id = release_id.to_string();
-        let root = new_path.to_path_buf();
+        let folder = new_path.to_path_buf();
         let result = self
             .run_file_operation("make release local", move |closing| async move {
-                let copy =
-                    manager.copy_release_to_local(&release_id, root, destinations, &operation);
-                tokio::pin!(copy);
-                tokio::select! {
-                    result = &mut copy => result,
-                    _ = closing.cancelled() => {
-                        operation.cancel();
-                        copy.await
+                let (stop, stopped) = tokio::sync::watch::channel(false);
+                let call = manager.database.make_device_only(&folder, files, &stopped);
+                tokio::pin!(call);
+                // A cancel that came first stops the call before it starts.
+                let result = tokio::select! {
+                    biased;
+                    _ = operation.cancelled() => {
+                        stop.send_replace(true);
+                        call.await
                     }
-                }
+                    _ = closing.cancelled() => {
+                        stop.send_replace(true);
+                        call.await
+                    }
+                    result = &mut call => result,
+                };
+                result.map_err(|error| LibraryError::MakeLocal(Box::new(error)))
             })
             .await;
         cancel_on_drop.disarm();
         result
     }
 
-    /// Each release file's destination. Covers remain attached and shared.
+    /// Each release file's coven file with the path below the person's folder
+    /// its copy goes to. Covers keep their coven files: they are bae's own,
+    /// and every device shows them.
     ///
-    /// `original_filename` is a synced column another device may have written,
-    /// and copying writes wherever this map points, so each file's path is the
-    /// one its names give, written as coven writes them (see
+    /// `original_filename` is a synced column another device may have
+    /// written, so each path is its names, split at `/`, and coven writes
+    /// each name through the rule it uses for its own copies (see
     /// [`crate::storage::stored_name`]): every name is one name inside the
-    /// user's folder. A release carrying a name that names no file copies out
-    /// no files at all.
-    pub(super) async fn detached_audio_destinations(
+    /// person's folder. A release carrying a name that names no file makes
+    /// no file local.
+    async fn local_copy_paths(
         &self,
         release_id: &str,
-        new_path: &std::path::Path,
-    ) -> Result<HashMap<String, PathBuf>, LibraryError> {
+    ) -> Result<Vec<(coven::FileId, coven::RelativePath)>, LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
-        let mut dest = HashMap::with_capacity(files.len());
-        for f in &files {
-            let relative =
-                crate::storage::stored_name::file_path(release_id, &f.id, &f.original_filename)?;
-            dest.insert(f.id.clone(), new_path.join(relative.local_path()));
-        }
-        Ok(dest)
+        files
+            .iter()
+            .map(|f| {
+                let file = f.file.ok_or_else(|| {
+                    LibraryError::Storage(format!(
+                        "release file {} has no coven file to make local",
+                        f.id
+                    ))
+                })?;
+                let path = crate::storage::stored_name::file_path(
+                    release_id,
+                    &f.id,
+                    &f.original_filename,
+                )?;
+                Ok((file, path))
+            })
+            .collect()
     }
 
     // ── Download (pin) queue ─────────────────────────────────────────
@@ -286,8 +306,9 @@ impl LibraryManager {
         })
     }
 
-    /// Make an attached release Local: verify every file at `new_path` before
-    /// one write clears its attachments and records this device's paths.
+    /// Make an uploaded release Local again into the folder `new_path`, as
+    /// a transfer the storage views show and `cancel_release_transition` can
+    /// stop until its files switch.
     pub async fn detach_release_audio(
         &self,
         release_id: &str,

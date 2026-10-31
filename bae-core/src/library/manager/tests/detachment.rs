@@ -90,7 +90,13 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
             .unwrap();
     }
 
-    assert_eq!(attached_file_count(manager, &release.id).await, 0);
+    // Cancelling takes the files off their coven files; making them local
+    // again keeps every row on its file, now on this device only.
+    let expected_attached = if uploaded { files.len() } else { 0 };
+    assert_eq!(
+        attached_file_count(manager, &release.id).await,
+        expected_attached
+    );
     for file in &files {
         assert!(
             !manager
@@ -141,10 +147,23 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
             .await
             .unwrap()
             .is_none());
-        assert!(matches!(
-            devices.b().database().read_release_file(&file.id).await,
-            Err(crate::db::DbError::FileNotUploaded(_))
-        ));
+        let read = devices.b().database().read_release_file(&file.id).await;
+        if uploaded {
+            assert!(
+                matches!(
+                    read,
+                    Err(crate::db::DbError::FileRead(
+                        coven::FileReadError::DeviceOnly { .. }
+                    ))
+                ),
+                "{read:?}"
+            );
+        } else {
+            assert!(
+                matches!(read, Err(crate::db::DbError::FileNotUploaded(_))),
+                "{read:?}"
+            );
+        }
         assert!(matches!(
             playback_error_reason_for_file(devices.b().manager(), file).await,
             crate::ui::PlaybackErrorReason::NotUploaded

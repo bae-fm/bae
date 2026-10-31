@@ -112,9 +112,9 @@ impl TransferService {
         rx
     }
 
-    /// Make a Remote release Local: copy its files to `new_path` and drop the
-    /// cloud copies (coven owns the durability-first ordering). Returns a receiver
-    /// for progress updates.
+    /// Make a Remote release Local: coven downloads its files into
+    /// `new_path` and switches them to this device only in one write.
+    /// Returns a receiver for progress updates.
     pub fn detach_release_audio(
         &self,
         release_id: String,
@@ -130,8 +130,8 @@ impl TransferService {
                 ReleaseStorageAction::DetachAudio,
             ),
             move |_tx| async move {
-                // The copy operation owns every created file and directory;
-                // it removes them if verification or the final write fails.
+                // coven removes every copy and folder it made if the call
+                // fails or is cancelled before its write.
                 library_manager
                     .detach_release_audio_into(&localized_release_id, &new_path, &cancel)
                     .await?;

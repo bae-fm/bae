@@ -1411,15 +1411,17 @@ play it. Ana's files stay where they are, untouched.
 **Where a file plays from.** A `release_files` row references its file by the
 id of a coven file
 ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-files-and-references)),
-or by none while its release is local. Each device records the originals it
-holds in the device-local table `local_release_files`, one row per file with
-its path, as the system's own bytes for it, and its modification time: the
-person's file it imported, or the copy a detach made (§4.4). These paths never
-leave the device. So a device reads each release file by one rule:
+or by none while its release is local after import. Each device records the
+originals of the local imports it holds in the device-local table
+`local_release_files`, one row per file with its path, as the system's own
+bytes for it, and its modification time. coven records the original of every
+file it has on a device only, the copy making a release local again wrote
+(§4.4) among them, in its own `coven_user_files`. These paths never leave the
+device. So a device reads each release file by one rule:
 
 - the row references a coven file: through coven, which reads the original on
-  the device moving it to the cloud, and the cache or storage once it is
-  stored;
+  the device the file is on, moving to the cloud or made local again, and the
+  cache or storage once it is stored;
 - otherwise, this device holds an original: from that original;
 - otherwise the file isn't here. Another device holds it, keeping it local or
   still moving it to the cloud, and this device can't tell which.
@@ -1463,18 +1465,18 @@ If an original changes after the write and before its upload, the move fails:
 none of its files switches, and the pending list names the file and offers
 Cancel Upload, which ends the move and makes the release local here again.
 
-**Making a release local.** Two actions take a release's audio back off its
-coven files. Each takes every file of the release off its coven file in one
-write, so the release plays from this device's disk the moment the write
-lands, and coven forgets each file with its last reference:
+**Making a release local.** Two actions bring a release's audio back to this
+device alone, every file of the release in one write, so the release plays
+from this device's disk the moment the write lands:
 
 - **Cancelling an upload** while any of its files is still queued, or after
-  its move failed. coven retires each upload. The release plays from its
-  originals again, which must still be unchanged, unless its move failed
-  because one changed.
-- **Making a release local again** (§4.4) copies its files into a folder the
-  person picks, then, in the same write that takes them off their coven files,
-  records the copies in `local_release_files`.
+  its move failed, takes every file of the release off its coven file, and
+  coven forgets each file with its last reference and retires each upload.
+  The release plays from its originals again, which must still be unchanged,
+  unless its move failed because one changed.
+- **Making a release local again** (§4.4): coven copies its files into a
+  folder the person picks and switches every one to this device only, each
+  copy becoming the original it records. No row of bae's changes.
 
 Other devices again show the release but can't play it. What already reached
 storage stays until nothing refers to it; coven then deletes it
@@ -1614,15 +1616,25 @@ queued; the person sees the error and the failure is reported as a bug.
 
 ### 4.4 Making a release local again
 
-Making an uploaded release local again copies its files into a folder the
-person picks.
+Making an uploaded release local again brings its files into a folder the
+person picks, and leaves them on this device only.
 
-Carol wants her box set off the cloud. She picks a folder on her drive. Every
-file is copied there from the cache or storage, and each copy's SHA-256 is
-checked against its coven file's content hash. Then one write takes every file
-off its coven file and records its new path (§4.2). A cancel or failure before that write removes the
-partial copies and leaves the release uploaded. The cover keeps its coven file:
-it is bae's own, and every device shows it.
+Carol wants her box set off the cloud. She picks a folder on her drive. bae
+hands coven the folder and each file's path below it, in one call
+([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
+coven downloads every file, checking its content hash as every download does,
+writes it under a temporary name in its final folder, and renames it once it
+is whole and synced. Then one write of coven's switches every file to Carol's
+device only, and coven records each copy as the file's original there; the
+release's rows don't change. Other devices see the files on Carol's device,
+drop their pins and cached bytes of them, and can't play the release. The
+stored bytes go once nothing names them. A cancel or failure before that write
+removes every copy and every folder the call made, and leaves the release
+uploaded. The cover keeps its coven file: it is bae's own, and every device
+shows it. If two devices make one release local at once, the later write wins
+on both; coven deletes the losing device's copies it left as it wrote them,
+with the folders it made for them once empty, and a copy the person changed
+meanwhile stays as their own file.
 
 The file names come from the release's rows, which another device may have
 written. A name in the release is a label: it may hold any character, since
@@ -1630,8 +1642,8 @@ each device took it from whatever its own drive holds. A name that held bytes
 that aren't UTF-8 is stored as its escaped text (§3.1), whose `\x` holds a
 backslash, which separates folders on Windows, and Linux takes `:` and `?`,
 which Windows and FAT drives refuse. So each copy's path is its names, split at
-`/`, each written as coven writes the names of its own local copies, the same
-rule on every device
+`/`, and coven writes each name through the rule it uses for its own local
+copies, the same on every device
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)):
 `\ : ? * " < > |` and `/` within a name become their full-width lookalikes,
 control characters their pictures, a last `.` or space its lookalike, a
@@ -1639,9 +1651,13 @@ Windows device name its letters in full width, and a name too long for a drive
 is cut before its extension. Every name is then one name inside Carol's folder
 on every device, so no row can make a device write outside the folder chosen:
 `Caf\xE9.flac` is written as `Caf＼xE9.flac`, and `..` as `.．`. A name that
-names no file, empty or holding an empty name, copies out nothing at all. Each
-copy is made new; a file already at its path fails the copy, so two names
-written as one fail it rather than one copy replacing the other.
+names no file, empty or holding an empty name, copies out nothing at all.
+Before anything downloads, coven refuses the whole call when a copy's path
+already holds something, passes through a symbolic link below the folder, or
+is one path with another of the call's once written, or differs from one only
+in case or Unicode form (`Why?.flac` and `Why？.flac`), so no copy ever
+replaces another or a file already there. The folder's own path must be valid
+Unicode.
 
 ### 4.5 How files sit in storage
 
@@ -2578,7 +2594,8 @@ The default is off.
 Playback plays files on this device, or streams them from storage.
 
 A track's file is read from the person's own path for a local release, through
-coven from that path while the release moves to the cloud, from the cache or a
+coven from that path while the release moves to the cloud or once it is made
+local again (§4.4), from the cache or a
 pin for an uploaded one, and otherwise fetched from storage a range at a time
 ([coven §17.6](https://github.com/bae-fm/coven/blob/main/spec/coven.md#176-reading-a-file)).
 Reading ahead keeps playback from waiting on the network, and a seek fetches
@@ -3272,7 +3289,7 @@ Beside them, device-local tables:
 
 | Table | One row per |
 |---|---|
-| `local_release_files` | the original this device holds of a release file: its path, a BLOB of coven's bytes for it (`coven::path_bytes`), and its modification time (§4.2), with an index by path. Importing writes it; making the release local again rewrites it to the copy; moving to the cloud leaves it |
+| `local_release_files` | the original this device holds of a release file: its path, a BLOB of coven's bytes for it (`coven::path_bytes`), and its modification time (§4.2), with an index by path. Importing writes it; moving to the cloud leaves it |
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `composer_work` | work and artist shown credited on it |

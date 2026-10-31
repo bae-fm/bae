@@ -2,7 +2,7 @@
 //! byte-for-byte. The output queue, staging, marker, and replace logic live in
 //! [`super::output`]; the save (rendered-output) arm in [`super::save`].
 
-use super::local_files::blocking_io;
+use super::blocking::blocking_io;
 use super::*;
 use tracing::info;
 

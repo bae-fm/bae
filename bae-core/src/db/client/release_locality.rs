@@ -1,5 +1,5 @@
-//! A release's files move to the cloud, back to this device, or stop moving,
-//! every file of the release together.
+//! A release's files move to the cloud, or stop moving, every file of the
+//! release together.
 use super::*;
 
 impl Database {
@@ -74,16 +74,6 @@ impl Database {
         )
         .await
         .map_err(Self::coven_error)
-    }
-
-    pub(crate) async fn detach_release_files(
-        &self,
-        release_id: &str,
-        files: Vec<(String, coven::FileId, coven::UserFile)>,
-    ) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        self.call_sql(move |sql| detach_release_files_on(&sql, &release_id, files))
-            .await
     }
 
     /// Stop moving each release this device is still moving to the cloud, so
@@ -183,27 +173,6 @@ fn make_local_again_on(
     for (id, coven_file, source) in files {
         require_recorded_original(sql, id, source)?;
         clear_coven_file_on(sql, id, coven_file)?;
-    }
-    Ok(())
-}
-
-fn detach_release_files_on(
-    sql: &SqlContext<'_, '_>,
-    release: &str,
-    files: Vec<(String, coven::FileId, coven::UserFile)>,
-) -> Result<(), DbError> {
-    validate_file_set(sql, release, files.iter().map(|(id, _, _)| id.as_str()))?;
-    for (id, coven_file, source) in files {
-        clear_coven_file_on(sql, &id, &coven_file)?;
-        sql.execute(
-            "INSERT INTO local_release_files (file_id,path,modified_at) VALUES (?1,?2,?3) \
-             ON CONFLICT(file_id) DO UPDATE SET path=excluded.path,modified_at=excluded.modified_at",
-            params![
-                id,
-                coven::path_bytes(&source.path),
-                DateTime::<Utc>::from(source.modified_at).to_rfc3339()
-            ],
-        )?;
     }
     Ok(())
 }

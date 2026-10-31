@@ -22,7 +22,7 @@ impl LibraryManager {
         }
         #[cfg(test)]
         let disk = self.disk_hold.clone();
-        local_files::blocking_io(move || {
+        blocking::blocking_io(move || {
             #[cfg(test)]
             disk.wait();
             originals
@@ -45,13 +45,14 @@ impl LibraryManager {
     }
 }
 
-/// Whether `original` is still the file recorded at import: the same size and
-/// modification time.
+/// Whether `original` is still the file recorded for it: the same size and
+/// modification time, to the nanosecond the record holds.
 fn on_disk(original: &RecordedOriginal) -> Result<OriginalOnDisk, LibraryError> {
     match std::fs::metadata(&original.path) {
         Ok(metadata) => {
             let unchanged = i64::try_from(metadata.len()) == Ok(original.size)
-                && metadata.modified()? == original.modified_at;
+                && coven::unix_seconds_and_nanos(metadata.modified()?)
+                    == (original.modified_seconds, original.modified_nanos);
             Ok(if unchanged {
                 OriginalOnDisk::Unchanged
             } else {
@@ -98,3 +99,7 @@ impl Drop for DiskHeld {
         self.0.released.notify_all();
     }
 }
+
+#[cfg(test)]
+#[path = "originals_tests.rs"]
+mod tests;

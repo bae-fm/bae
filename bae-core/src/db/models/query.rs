@@ -377,13 +377,17 @@ pub enum DbUnstoredAudio {
     Original(RecordedOriginal),
 }
 
-/// Where one of a release's original audio files sat on this device when it
-/// was imported, and the size and modification time it had then.
+/// Where one of a release's original audio files sits on this device, and
+/// the size and modification time recorded for it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordedOriginal {
     pub path: std::path::PathBuf,
     pub size: i64,
-    pub modified_at: std::time::SystemTime,
+    /// The modification time as `coven_user_files` lists it: whole seconds
+    /// since the Unix epoch, rounded down, and the nanoseconds past that
+    /// second (`coven::unix_seconds_and_nanos`).
+    pub modified_seconds: i64,
+    pub modified_nanos: u32,
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).

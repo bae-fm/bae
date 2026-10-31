@@ -417,8 +417,9 @@ impl Database {
     }
 
     /// The release's files in their order, each with the path of the original
-    /// this device holds for it (`None` when it holds none), joined by the
-    /// file's key.
+    /// this device holds for it (`None` when it holds none): the one coven
+    /// records for a row naming a coven file, else the one
+    /// `local_release_files` records.
     pub async fn get_files_with_originals_for_release(
         &self,
         release_id: &str,
@@ -429,8 +430,10 @@ impl Database {
                 concat!(
                     "SELECT ",
                     release_file_columns!(),
-                    ", l.path AS original_path FROM release_files AS f \
+                    ", CASE WHEN f.file IS NULL THEN l.path ELSE u.path END AS original_path \
+                     FROM release_files AS f \
                      LEFT JOIN local_release_files AS l ON l.file_id = f.id \
+                     LEFT JOIN coven_user_files AS u ON u.file = f.file \
                      WHERE f.release_id = ?1 \
                      ORDER BY f.original_filename COLLATE natural_order, f.id"
                 ),

@@ -70,6 +70,7 @@ pub use fixture::{
     FixtureAlbum, FixtureCandidate, FixtureCandidateState, FixturePlaying, FixtureWatchedFolder,
     LibraryFixture, LibraryFixtureError, FIXTURE_IMPORT_FAILURE, FIXTURE_LOOKUP_FAILURE,
 };
+mod blocking;
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree
 /// next to the user's chosen folder — a hidden staging sibling, a marker file, a
@@ -84,7 +85,6 @@ mod image;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
 mod lifecycle;
-mod local_files;
 mod locality;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod output;
@@ -111,8 +111,8 @@ mod sync;
 mod sync_status;
 pub(crate) use error_category::{bootstrap_category, creation_category, deletion_category};
 use error_category::{
-    cloud_home_category, cloud_setup_category, cloud_unlock_category, file_read_category,
-    key_category, sync_category,
+    cloud_home_category, cloud_setup_category, cloud_unlock_category, device_only_category,
+    file_read_category, key_category, sync_category,
 };
 mod track;
 
@@ -183,6 +183,10 @@ pub enum LibraryError {
         #[source]
         error: Box<coven::FileReadError>,
     },
+    /// Making a release local again failed; coven removed what the call
+    /// made, so the release stays in the cloud.
+    #[error("make release local: {0}")]
+    MakeLocal(#[source] Box<coven::DeviceOnlyError>),
     #[error("Playback error: {0}")]
     Playback(String),
     /// Work asked of a library after it closed; nothing of it started.
@@ -332,6 +336,7 @@ impl LibraryError {
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),
+            LibraryError::MakeLocal(error) => device_only_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)

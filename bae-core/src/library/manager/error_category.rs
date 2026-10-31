@@ -196,6 +196,16 @@ pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
     }
 }
 
+pub(super) fn device_only_category(error: &coven::DeviceOnlyError) -> C {
+    use coven::DeviceOnlyError as E;
+    match error {
+        E::Download { error, .. } => file_read_category(error),
+        E::Database(_) => C::Database,
+        E::Cleanup { error, .. } => device_only_category(error),
+        E::RepeatedFile { .. } | E::Path(_) | E::Disk(_) | E::Cancelled => C::Internal,
+    }
+}
+
 pub(super) fn file_read_category(error: &coven::FileReadError) -> C {
     use coven::FileReadError as E;
     match error {

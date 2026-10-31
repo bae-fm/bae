@@ -198,38 +198,76 @@ pub(super) fn build_release_detail_on(
 /// What the library records this device holding for each of a release's audio
 /// files that isn't stored: one whose row names no coven file, or one coven
 /// records on a device only. Each is no original (another device imported
-/// it), or the original's path with the size and modification time recorded at
-/// import, moving to the cloud or not. The disk is not read here: a read holds
-/// one of the database's readers, and the disk an original sits on can be slow
-/// to answer.
+/// it, or holds it), or the original's path with the size and modification
+/// time recorded for it: by `local_release_files` for a row naming no coven
+/// file, by coven's `coven_user_files` for one naming a coven file this
+/// device holds. The disk is not read here: a read holds one of the
+/// database's readers, and the disk an original sits on can be slow to
+/// answer.
 pub(super) fn unstored_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
-    // Each file's content type and size, and the bytes of its original's path
-    // and the modification time recorded with it.
-    type UnstoredRow = (String, i64, Option<Vec<u8>>, Option<String>);
+    // Each file's content type, and its original's path bytes, size and
+    // modification time, whichever records it: `local_release_files` as
+    // RFC 3339 text, coven as seconds and nanoseconds.
+    type UnstoredRow = (
+        String,
+        Option<Vec<u8>>,
+        Option<i64>,
+        Option<String>,
+        Option<(i64, u32)>,
+    );
     let rows: Vec<UnstoredRow> = sql.query(
-        "SELECT f.content_type, f.file_size, l.path, l.modified_at \
+        "SELECT f.content_type, \
+                CASE WHEN f.file IS NULL THEN l.path ELSE u.path END, \
+                CASE WHEN f.file IS NULL THEN f.file_size ELSE u.size END, \
+                CASE WHEN f.file IS NULL THEN l.modified_at END, \
+                CASE WHEN f.file IS NOT NULL THEN u.modified_seconds END, \
+                CASE WHEN f.file IS NOT NULL THEN u.modified_nanos END \
          FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
          LEFT JOIN coven_files coven ON coven.id = f.file \
+         LEFT JOIN coven_user_files u ON u.file = f.file \
          WHERE f.release_id = ? AND coven.hash IS NULL",
         params![release_id],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        |row| {
+            let seconds: Option<i64> = row.get(4)?;
+            let nanos: Option<u32> = row.get(5)?;
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                seconds.zip(nanos),
+            ))
+        },
     )?;
     rows.into_iter()
         .filter(|(content_type, ..)| ContentType::from_mime(content_type).is_audio())
-        .map(|(_, size, path, modified_at)| {
-            let (Some(path), Some(modified_at)) = (path, modified_at) else {
+        .map(|(_, path, size, local_modified, coven_modified)| {
+            let (Some(path), Some(size)) = (path, size) else {
                 return Ok(DbUnstoredAudio::Elsewhere);
             };
-            let modified_at = DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
-                DbError::Message(format!("invalid original modification time: {error}"))
-            })?;
+            let (modified_seconds, modified_nanos) = match (local_modified, coven_modified) {
+                (Some(text), None) => coven::unix_seconds_and_nanos(
+                    DateTime::parse_from_rfc3339(&text)
+                        .map_err(|error| {
+                            DbError::Message(format!("invalid original modification time: {error}"))
+                        })?
+                        .into(),
+                ),
+                (None, Some(modified)) => modified,
+                recorded => {
+                    return Err(DbError::Message(format!(
+                        "an original's modification time is recorded as {recorded:?}"
+                    )))
+                }
+            };
             Ok(DbUnstoredAudio::Original(RecordedOriginal {
                 path: path_column::decode(path)?,
                 size,
-                modified_at: modified_at.into(),
+                modified_seconds,
+                modified_nanos,
             }))
         })
         .collect()

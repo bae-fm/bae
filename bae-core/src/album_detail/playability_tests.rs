@@ -5,7 +5,8 @@ fn original(name: &str) -> RecordedOriginal {
     RecordedOriginal {
         path: std::path::PathBuf::from("/music/Album").join(name),
         size: 1_000,
-        modified_at: std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000),
+        modified_seconds: 1_700_000_000,
+        modified_nanos: 0,
     }
 }
 

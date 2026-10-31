@@ -105,24 +105,27 @@ impl Database {
             .await
     }
 
-    /// The original this device holds for a release file: the person's file it
-    /// was imported from, or the copy a detach made, as `local_release_files`
-    /// records it. `None` when this device holds none, as for a release
-    /// another device imported.
+    /// The original this device holds for a release file, `None` when it
+    /// holds none, as for a release another device imported. A row naming a
+    /// coven file has the original coven records for that file here: the
+    /// person's file it was imported from, or the copy making the release
+    /// local again wrote. A row naming none is a local import's, whose
+    /// original `local_release_files` records.
     pub async fn external_file(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
         let id = file_id.to_string();
-        let local = self
+        let row = self
             .read(move |sql| {
                 sql.query_row(
-                    "SELECT l.path, l.modified_at, f.file_size \
-                     FROM release_files f JOIN local_release_files l ON l.file_id = f.id \
+                    "SELECT f.file, l.path, l.modified_at, f.file_size \
+                     FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
                      WHERE f.id = ?",
                     [id],
                     |row| {
                         Ok((
-                            row.get::<_, Vec<u8>>(0)?,
-                            row.get::<_, String>(1)?,
-                            row.get::<_, i64>(2)?,
+                            row.get::<_, Option<coven::FileId>>(0)?,
+                            row.get::<_, Option<Vec<u8>>>(1)?,
+                            row.get::<_, Option<String>>(2)?,
+                            row.get::<_, i64>(3)?,
                         ))
                     },
                 )
@@ -130,8 +133,11 @@ impl Database {
                 .map_err(DbError::from)
             })
             .await?;
-        let Some((path, modified_at, size)) = local else {
-            return Ok(None);
+        let (path, modified_at, size) = match row {
+            None => return Ok(None),
+            Some((Some(file), ..)) => return Ok(self.inner.handle.user_file(file).await?),
+            Some((None, Some(path), Some(modified_at), size)) => (path, modified_at, size),
+            Some((None, ..)) => return Ok(None),
         };
         let modified_at = chrono::DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
             DbError::Message(format!("invalid original modification time: {error}"))

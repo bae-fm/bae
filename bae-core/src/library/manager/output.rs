@@ -211,7 +211,7 @@ impl LibraryManager {
             .target_dir
             .join(output_sibling(&folder, "export", release_id));
         let staging =
-            super::local_files::blocking_io(move || Ok(StagingDir::create(staging_path)?)).await?;
+            super::blocking::blocking_io(move || Ok(StagingDir::create(staging_path)?)).await?;
 
         match request.kind {
             crate::library::OutputKind::Export => {
@@ -233,7 +233,7 @@ impl LibraryManager {
 
         let staging_path = staging.path().to_path_buf();
         let marker_release_id = release_id.to_string();
-        super::local_files::blocking_io(move || {
+        super::blocking::blocking_io(move || {
             write_output_marker(&staging_path, &marker_release_id)?;
             replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
         })

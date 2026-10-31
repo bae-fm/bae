@@ -173,19 +173,20 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     )
     .await;
 
-    // A token cancelled before the materialize loop runs: coven aborts at the
-    // first check, before reading or writing a file, and reports cancellation.
+    // A token cancelled before coven downloads anything: the call stops
+    // before its write and removes whatever it made.
     let token = crate::library::CancellationToken::new();
     token.cancel();
     let dest = temp_dir.path().join("out");
+    std::fs::create_dir(&dest).unwrap();
     manager
         .detach_release_audio_into(&release_id, &dest, &token)
         .await
         .expect_err("a cancelled audio detachment must not report completion");
 
     assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored),
-        "cancellation preserves every attachment");
-    assert!(!dest.exists());
+        "cancellation leaves every file in the cloud");
+    assert_eq!(std::fs::read_dir(&dest).unwrap().count(), 0, "no copy is left");
 }
 
 /// A missing original cannot become a playable local release; cancellation

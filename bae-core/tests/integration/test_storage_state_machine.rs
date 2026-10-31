@@ -397,6 +397,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     .await;
 
     let new_path = tmp.path().join("exported");
+    std::fs::create_dir(&new_path).unwrap();
     mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
         .await
         .unwrap();
@@ -416,9 +417,9 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     }
 }
 
-/// A failed audio detachment (a missing cloud file 404s on the cache-miss read) leaves
+/// A failed audio detachment (a missing cloud file 404s on its download) leaves
 /// bae's state consistent: the manager surfaces the error and the summary stays
-/// Remote. Coven reports the missing file; bae rolls back the local copies.
+/// Remote. Coven reports the missing file and removes the copies it made.
 #[tokio::test]
 async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();
@@ -437,6 +438,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     support::remove_uploaded_file(&mgr, &cloud, &files[1].0).await;
 
     let new_path = tmp.path().join("exported");
+    std::fs::create_dir(&new_path).unwrap();
     let result = mgr
         .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
         .await;
@@ -445,6 +447,53 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     assert_eq!(
         support::release_storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
+    );
+    assert_eq!(
+        std::fs::read_dir(&new_path).unwrap().count(),
+        0,
+        "no copy is left"
+    );
+}
+
+/// Two names of a release that coven writes as one name (`?` becomes its
+/// full-width lookalike) can't both be placed in the folder: making the
+/// release local is refused before anything downloads, and it stays in the
+/// cloud with no copy left behind.
+#[tokio::test]
+async fn detaching_audio_whose_names_write_as_one_is_refused() {
+    let tmp = TempDir::new().unwrap();
+    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let (release_id, _files) = create_remote_cloud_only_release(
+        &db,
+        &mgr,
+        &tmp.path().join("originals"),
+        &[("Why?.flac", b"first"), ("Why\u{FF1F}.flac", b"second")],
+    )
+    .await;
+
+    let new_path = tmp.path().join("exported");
+    std::fs::create_dir(&new_path).unwrap();
+    let error = mgr
+        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
+        .await
+        .expect_err("two copies at one path can't both be made");
+
+    assert!(
+        matches!(
+            &error,
+            bae_core::library::LibraryError::MakeLocal(error)
+                if matches!(**error, coven::DeviceOnlyError::Path(coven::CopyPathError::Clash { .. }))
+        ),
+        "{error:?}"
+    );
+    assert_eq!(
+        support::release_storage(&mgr, &release_id).await,
+        (ReleaseStorageState::Remote, false)
+    );
+    assert_eq!(
+        std::fs::read_dir(&new_path).unwrap().count(),
+        0,
+        "no copy is made"
     );
 }
 

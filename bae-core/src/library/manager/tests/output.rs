@@ -284,33 +284,6 @@ async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
     assert!(!temp_dir.path().join("escape-folder").exists());
 }
 
-/// Audio detachment reads through coven and writes each file under the
-/// chosen folder, at the path its names give as coven writes them: a synced
-/// `..` is an ordinary name there, so no destination is outside the folder.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn detached_audio_destinations_keep_a_parent_name_inside_the_folder() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let target = temp_dir.path().join("detached-audio-out");
-    let release_id = insert_local_export_release_named(
-        &manager,
-        &temp_dir.path().join("source"),
-        b"escape-bytes",
-        PeerName::OriginalFilename("../escape.flac"),
-    )
-    .await;
-
-    let destinations = manager
-        .detached_audio_destinations(&release_id, &target)
-        .await
-        .expect("a parent name has a destination");
-
-    assert_eq!(
-        destinations.into_values().collect::<Vec<_>>(),
-        [target.join(".．").join("escape.flac")]
-    );
-}
-
 /// A write error (an unwritable target) marks the export `Failed` with a message
 /// and keeps it in the queue until it is cancelled.
 #[cfg(feature = "test-utils")]
