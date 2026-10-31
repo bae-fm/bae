@@ -18,8 +18,10 @@ class PlaybackSystem(
     val context: Context,
     /** The process's audio focus, whose changes playback follows. */
     val audioFocus: AudioFocus,
-    /** Whether the app has a started Activity; Android refuses to start a service
-     *  from the background, so [PlaybackSystemHooks] starts one only then. */
+    /** Whether the app has a started Activity; Android refuses most service
+     *  starts from the background (Android 12 and later exempt a few, such as a
+     *  tap on a widget or a notification), so [PlaybackSystemHooks] starts one
+     *  only then. */
     val isAppForeground: () -> Boolean,
 )
 
@@ -153,9 +155,10 @@ internal class PlaybackSystemHooks(
      * buffering/ready transport, so the gate left to check is whether there is a
      * current track and the app is on screen. Skip when there is no current track
      * (the bare loading event before metadata resolves — nothing to host yet) or
-     * when the app is off screen: Android refuses a background service start, and
-     * a play that begins off screen (auto-advance, a lock-screen control) is
-     * already covered by the service started when this session began on screen.
+     * when the app is off screen: Android refuses most background service
+     * starts, and a play that begins off screen (auto-advance, a lock-screen
+     * control) is already covered by the service started when this session
+     * began on screen.
      */
     private fun ensurePlaybackService() {
         val foreground = system.isAppForeground()

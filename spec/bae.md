@@ -536,10 +536,12 @@ again only the folder directly under the watched root that it reached, and
 only after that folder has been quiet for a second, so a download writing into
 one album for an hour holds back only that album.
 
-A watched folder on a network volume is watched like any other, but a network
-mount reports only the changes this machine makes. bae also checks such a
-folder every 15 minutes, which is what notices a change made on the server or
-from another machine, and the import list says so.
+A watched folder on a network volume is watched like any other, but on macOS
+and Linux a network mount reports only the changes this machine makes (Windows
+does report a server's changes on an SMB share, through
+`ReadDirectoryChangesW`). bae also checks such a folder every 15 minutes, on
+every platform, which is what notices a change made on the server or from
+another machine, and the import list says so.
 
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
@@ -769,7 +771,8 @@ of:
   title.
 
 Reading the artwork means reading text off images. On macOS this uses the
-system's Vision framework; a platform with no image reader reads no artwork.
+system's Vision framework. bae reads no artwork on other platforms, though
+Windows has a text reader of its own (`Windows.Media.Ocr`).
 
 Ana's folder yields a Disc ID from her CUE sheet, the barcode from her scan of
 the case, LBL-1001 from the folder's text, and eleven ISRCs. The fast clues
@@ -1156,16 +1159,17 @@ Ana clicks Import. bae:
    or start or stop more than 10 seconds from the file's start or end. For
    each segment of a track, the frame it starts in, then the first frame
    each 10 seconds of audio on, or sooner where the bytes from the last point would outgrow the window a
-   scrub fetches (§7.6). A segment's last frame is never a point: a decode
-   that jumps to a FLAC's last frame can't tell which sample it holds, so the
-   frame before it stands in. Each point is a frame's first sample and the
-   byte it starts at, read from a decode that began on a frame. Every MP3 gets
-   scrub points too: its frames state no position, and each depends on the
-   frames before it. For the first frame each 10 seconds of audio past the
-   file's first, its point is the latest earlier frame a decode can start at
-   and still play it exactly, with the first sample such a decode plays
-   exactly; the decode read the whole file from its first frame. Any other
-   file gets none.
+   scrub fetches (§7.6). A segment's last frame is never a point: FFmpeg's
+   FLAC parser gives a FLAC's last frame no timestamp, though the frame's
+   header carries its number, so a decode that jumps there can't tell which
+   sample it holds, and the frame before it stands in. Each point is a
+   frame's first sample and the byte it starts at, read from a decode that
+   began on a frame. Every MP3 gets scrub points too: its frames state no
+   position, and each depends on the frames before it. For the first frame
+   each 10 seconds of audio past the file's first, its point is the latest
+   earlier frame a decode can start at and still play it exactly, with the
+   first sample such a decode plays exactly; the decode read the whole file
+   from its first frame. Any other file gets none.
 5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
@@ -2237,8 +2241,9 @@ rather than claim the library is synced.
   unconnected, and the status line says so. *Reconnect* connects again, or
   runs the next cycle now when already connected.
 - **The network coming back.** Each attempt that finds no network backs off
-  longer, up to five minutes. While Ana's phone is locked, Android blocks
-  bae's network, so every pass and upload fails that way; once she unlocks it
+  longer, up to five minutes. While Ana's phone is locked and idle, Android's
+  Doze mode blocks bae's network (App Standby does the same to an app left
+  unused), so every pass and upload fails that way; once she unlocks it
   the network is back, but the next attempt would still be minutes away. So
   the apps tell sync when the network may be back: when the platform reports
   the network became usable or changed, when bae comes to the foreground, and
@@ -2515,8 +2520,10 @@ its target, so the seek jumps to the last point at or before the new
 position and decodes forward to it: one window fetched from the point,
 instead of a search across the file with one fetch per step, or a decode of
 everything from a seektable point minutes earlier.
-An MP3 has no index FFmpeg seeks exactly (it would place the seek from the
-file's bitrate or its table of contents, an estimate), so the seek decodes
+An MP3 has no index FFmpeg seeks by both exactly and directly: with fast seek
+or `usetoc` it places the seek from the file's bitrate or its table of
+contents, an estimate, and without them, as bae opens an MP3, it reads forward
+from the frames it has indexed. So the seek decodes
 from the last scrub point (§3.7) that plays the new position exactly, or from
 the file's start before the first, and plays the samples a play from the
 start plays there. In each case the first sample played is the one asked for.
@@ -2547,7 +2554,8 @@ plays is served as its own bytes. Anything else — a slice of a disc image, a
 track whose pregap is in another file or generated, a codec it doesn't play —
 is converted on the way: to MP3 at 320 kbps, or to WAV at its stored depth, as
 the person chose. A UPnP renderer is never counted on to play WAV or Opus, so
-it gets MP3.
+it gets MP3. (DLNA's required audio format is uncompressed PCM sent as
+`audio/L16`, not a WAV file; bae doesn't serve L16.)
 
 **AirPlay** receivers of both generations play. A receiver that demands a PIN,
 or offers only an encryption bae doesn't implement, is refused with that
@@ -2558,9 +2566,11 @@ reports when the connection is set up, or two seconds when it reports none.
 The position shown, the play recorded in history, and the end of each track
 follow what the receiver is playing: each is held back by that same delay.
 
-A receiver takes 44.1 kHz stereo, so bae converts every other track on the way
-out. A track bae can't set up a conversion for doesn't play on the speaker,
-which says it can't play the track's sample rate; it is never sent
+The stream bae opens to a receiver, AirPlay's realtime one, carries 44.1 kHz
+stereo, so bae converts every other track on the way out. (AirPlay's buffered
+streams can carry 48 kHz 24-bit ALAC; bae doesn't open one.) A track bae
+can't set up a conversion for doesn't play on the speaker, which says it can't
+play the track's sample rate; it is never sent
 unconverted. A conversion that fails partway stops playback with an error and
 is reported as a bug; no audio is skipped silently.
 

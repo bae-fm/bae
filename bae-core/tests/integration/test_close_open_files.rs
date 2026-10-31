@@ -1,7 +1,8 @@
 //! Closing a library leaves none of its files open, whatever its services
-//! were doing. Windows refuses to delete a file a process holds open, so a
-//! handle left behind fails removing the library there, and elsewhere passes
-//! unseen; listing this process's open files catches it on every platform.
+//! were doing. Windows refuses to delete a file a process holds open without
+//! sharing deletion: std's handles share it, FFmpeg's don't. So a handle left
+//! behind can fail removing the library there, and elsewhere passes unseen;
+//! listing this process's open files catches it on every platform.
 
 use bae_test_support as support;
 use std::time::Duration;

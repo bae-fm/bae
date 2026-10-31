@@ -77,7 +77,9 @@ impl RendererFlavor {
     /// stream whose RIFF sizes say "unknown", since its length isn't known
     /// until it ends. Cast receivers list WAV among the formats they play.
     /// UPnP renderers aren't required to play WAV at all (it is not a DLNA
-    /// media format), so a UPnP renderer is sent MP3 whatever the setting.
+    /// media format; DLNA's required audio format is uncompressed PCM sent as
+    /// `audio/L16`, which bae doesn't serve), so a UPnP renderer is sent MP3
+    /// whatever the setting.
     pub fn takes_wav(self) -> bool {
         match self {
             RendererFlavor::Cast => true,

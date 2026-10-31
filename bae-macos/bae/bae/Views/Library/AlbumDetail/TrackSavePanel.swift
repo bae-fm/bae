@@ -86,8 +86,9 @@ enum TrackSavePanel {
 /// format change it swaps the filename extension and content type, and
 /// re-suggests the stem from the newly selected preset's pattern — but only when
 /// the user hasn't edited the stem away from the last suggestion. Each choice
-/// carries its pre-rendered stem (async work can't run during `runModal`), so
-/// the suggestion is always present.
+/// carries its pre-rendered stem (`runModal` runs inside a main-actor task, so
+/// no other main-actor work runs until it returns), so the suggestion is always
+/// present.
 @MainActor
 class SaveFormatDelegate: NSObject {
     weak var panel: NSSavePanel?

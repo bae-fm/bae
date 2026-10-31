@@ -1,9 +1,9 @@
 //! Pulls a playback source through an [`AudioDrain`] at the track's rate and
 //! hands out samples at the rate and channel count an output's device takes,
 //! converting with FFmpeg's resampler when the two differ. The AirPlay output
-//! converts to the 44.1 kHz stereo a receiver takes; the cpal output converts on
-//! a Mac whose output device can't run at the track's rate, and passes the
-//! samples through everywhere else.
+//! converts to the 44.1 kHz stereo of the realtime stream bae opens to a
+//! receiver; the cpal output converts on a Mac whose output device can't run
+//! at the track's rate, and passes the samples through everywhere else.
 
 use crate::playback::audio_output::{
     AudioDrain, AudioLockMissLog, AudioOutputControls, AudioState, DrainStatus,

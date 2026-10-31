@@ -192,12 +192,12 @@ impl AudioStream for AirPlayAudioStream {
 }
 
 /// Pulls f32 from the ring buffer through a [`ResamplingDrain`], which converts
-/// it to the 44.1 kHz stereo a receiver expects (the decode pipeline fills the
-/// ring at the track's native rate), and converts that to the interleaved
-/// 16-bit PCM the send path packetizes. A paused or drained drain yields no
-/// frames — the stream stays up (the session's lifetime ends it), so pause and
-/// gapless track swaps don't tear it down; the resampler's tail is flushed when
-/// the source drains.
+/// it to the 44.1 kHz stereo of the realtime stream bae opens to a receiver
+/// (the decode pipeline fills the ring at the track's native rate), and
+/// converts that to the interleaved 16-bit PCM the send path packetizes. A
+/// paused or drained drain yields no frames — the stream stays up (the
+/// session's lifetime ends it), so pause and gapless track swaps don't tear it
+/// down; the resampler's tail is flushed when the source drains.
 ///
 /// A conversion that fails partway stops sending: the failure goes to playback
 /// as an [`AudioEvent::OutputFailed`], which stops playback and reports it,

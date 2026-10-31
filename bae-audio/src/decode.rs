@@ -452,6 +452,8 @@ unsafe fn open_buffer_input(
         return Err(BufferInputError::Alloc("Failed to allocate AVIO buffer"));
     }
 
+    // Given a seek callback, FFmpeg marks the context `AVIO_SEEKABLE_NORMAL`
+    // itself, so `avformat_seek_file` seeks through it.
     let avio = avio_alloc_context(
         avio_buffer,
         AVIO_BUFFER_SIZE as c_int,
@@ -466,9 +468,6 @@ unsafe fn open_buffer_input(
         drop(Box::from_raw(avio_ctx_ptr));
         return Err(BufferInputError::Alloc("Failed to create AVIO context"));
     }
-
-    // Without this, `avformat_seek_file` refuses to seek the stream at all.
-    (*avio).seekable = AVIO_SEEKABLE_NORMAL as c_int;
 
     let Ok(mut fmt_ctx) = allocate_input_format_context(avio) else {
         drop(Box::from_raw(avio_ctx_ptr));

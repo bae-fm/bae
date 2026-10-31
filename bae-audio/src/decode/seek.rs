@@ -113,7 +113,8 @@ unsafe fn seek_preroll(codec_ctx: *const ffmpeg_sys_next::AVCodecContext) -> u64
 /// Jump straight to a recorded frame's byte offset: no seektable consulted, no
 /// binary search reading the file's end. The landed frame states its own first
 /// sample, so the caller's `start_at_sample` trim still reaches the exact
-/// sample -- except a FLAC's last frame, which states none. Import never
+/// sample -- except a FLAC's last frame, which FFmpeg's FLAC parser gives no
+/// timestamp, though its header carries its frame number. Import never
 /// records a track start or a scrub point there. A failure is not fatal — the
 /// caller decodes from the start instead, which is correct but reads more of
 /// the file than it needs.

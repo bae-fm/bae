@@ -46,11 +46,13 @@ roxmltree = "0.20"
 reqwest = { workspace = true, features = ["blocking"] }
 # AirPlay 2 HomeKit pairing (src/airplay/pairing.rs). The password-less
 # "transient" pair-setup is SRP6a with the 3072-bit group + SHA-512. The
-# RustCrypto `srp` crate can't be used: its M1 proof is `H(A|B|K)` (its own
+# RustCrypto `srp` crate 0.6 can't be used: its M1 proof is `H(A|B|K)` (its own
 # source calls this non-spec), whereas HomeKit receivers require the full
 # `H(H(N)^H(g) | H(I) | s | A | B | K)` and PAD(A)|PAD(B) for u — the semantics
-# pyatv pairs real HomePods with via `srptools`. So the SRP math is written
-# directly over `num-bigint` (bignum modexp) to those reference semantics.
+# pyatv pairs real HomePods with via `srptools`. `srp` 0.7.0-rc adds the RFC
+# 5054 proof, but whether it pairs with a HomeKit receiver is unchecked. So the
+# SRP math is written directly over `num-bigint` (bignum modexp) to those
+# reference semantics.
 num-bigint = "0.4"
 sha2 = "0.10"
 # RAOP (AirPlay 1) audio encryption (src/airplay/crypto.rs). Legacy `et=1`

@@ -24,10 +24,11 @@ internal fun mainActivityIntent(context: Context): Intent =
     }
 
 class MainActivity : ComponentActivity() {
-    // Android 13+ requires this runtime permission for the media playback
-    // notification to show. Playback works without it, but lock-screen /
-    // Bluetooth / Android Auto controls only appear once it's granted. Launching
-    // is a no-op after the first decision, so it's safe to fire on every launch.
+    // Android 13+ asks for this runtime permission before an app's
+    // notifications show. Media-session notifications are exempt, so playback
+    // and its lock-screen, Bluetooth and Android Auto controls work without it.
+    // Launching is a no-op after the first decision, so it's safe to fire on
+    // every launch.
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             logger.info("POST_NOTIFICATIONS granted=$granted")

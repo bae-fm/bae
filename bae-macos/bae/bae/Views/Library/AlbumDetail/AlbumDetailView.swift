@@ -495,8 +495,9 @@ extension AlbumDetailView {
     /// Core renders each preset's suggested stem from its own token pattern;
     /// a failure surfaces rather than falling back to a raw title. Every
     /// preset pre-renders up front, paired with its choice, so the format
-    /// popup can swap the stem synchronously during the modal panel (async
-    /// work can't run during `runModal`). Nil means the export stops — the
+    /// popup can swap the stem synchronously during the modal panel (the panel's
+    /// `runModal` runs inside a main-actor task, so no other main-actor work
+    /// runs until it returns). Nil means the export stops — the
     /// failure already surfaced (or was a cancellation).
     private func renderedSaveChoices(
         trackId: String,

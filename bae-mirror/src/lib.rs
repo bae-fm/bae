@@ -181,8 +181,9 @@ macro_rules! mirror_struct {
 ///
 /// A variant is written as bae-core spells it: a bare name for a unit variant,
 /// `Name { field, … }` for a struct variant, and `Name(field: …)` where
-/// bae-core carries one unnamed payload — uniffi has no tuple variants, so the
-/// bridge side names it.
+/// bae-core carries one unnamed payload and the bridge variant names it.
+/// (uniffi does take tuple variants, such as `Str(String)`; the bridge's
+/// variants name their fields.)
 #[macro_export]
 macro_rules! mirror_enum {
     (

@@ -12,8 +12,9 @@ import androidx.lifecycle.LifecycleOwner
 /**
  * Tells the open library when its network may be back, so sync work that
  * failed for want of a network runs now instead of sitting out a backoff of up
- * to five minutes. While the phone is locked Android blocks bae's network, and
- * nothing in bae's own requests can tell when it returns.
+ * to five minutes. While the phone is locked and idle, Android's Doze mode (or
+ * App Standby, for an app left unused) blocks bae's network, and nothing in
+ * bae's own requests can tell when it returns.
  *
  * It reports when the default network becomes usable — validated, and not
  * blocked for bae — or a different network becomes usable, and each time bae

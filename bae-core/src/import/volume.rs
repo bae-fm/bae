@@ -1,11 +1,13 @@
 //! Which kind of volume a watched folder lives on.
 //!
 //! It decides how the folder is watched. A folder on this machine's own disk
-//! has a filesystem watch that reports every change to it, whoever made it. A
-//! folder on a network volume does not: the events a client mount produces are
-//! the ones this machine causes, so a change made on the server or by another
-//! client arrives nowhere. Watching such a folder would be claiming a
-//! reliability the mount cannot give, so it is checked instead.
+//! has a filesystem watch that reports every change to it, whoever made it. On
+//! macOS and Linux a folder on a network volume does not: the events a client
+//! mount produces there are the ones this machine causes, so a change made on
+//! the server or by another client arrives nowhere. Watching such a folder
+//! would be claiming a reliability the mount cannot give, so it is checked
+//! instead. Windows' `ReadDirectoryChangesW` does report a server's changes on
+//! an SMB share, but a Windows network drive is checked the same way.
 
 use std::path::Path;
 
@@ -27,9 +29,10 @@ pub enum VolumeKind {
     /// A disk attached to this machine. Its filesystem watch reports every
     /// change to it, so the watch is the change source.
     Local,
-    /// A volume served over the network. Its filesystem watch reports only what
-    /// this machine does to it, so the folder is checked on a schedule instead
-    /// — cheaply, by asking each directory whether it has been touched.
+    /// A volume served over the network. On macOS and Linux its filesystem
+    /// watch reports only what this machine does to it, so the folder is
+    /// checked on a schedule instead — cheaply, by asking each directory
+    /// whether it has been touched. Windows is checked the same way.
     Network,
 }
 

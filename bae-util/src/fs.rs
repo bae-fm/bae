@@ -7,9 +7,10 @@ pub fn hash_bytes(bytes: &[u8]) -> String {
 
 /// Make the entries just created in `directory` durable. Unix makes a new
 /// entry durable only once its directory is synced, which std does by opening
-/// the directory as a file. std cannot open a directory on Windows (access is
-/// denied), so there the synced file is all there is to sync; coven syncs
-/// directories on Unix only as well.
+/// the directory as a file. std's `File::open` can't open a directory on
+/// Windows (access is denied); `OpenOptionsExt::custom_flags` with
+/// `FILE_FLAG_BACKUP_SEMANTICS` can, which bae doesn't do, so there the synced
+/// file is all bae syncs; coven syncs directories on Unix only as well.
 pub fn sync_directory(directory: &std::path::Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {

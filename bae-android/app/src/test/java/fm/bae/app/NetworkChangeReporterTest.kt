@@ -20,9 +20,10 @@ import org.robolectric.shadows.ShadowNetwork
 import org.robolectric.shadows.ShadowNetworkCapabilities
 
 /**
- * Android blocks bae's network while the phone is locked. The reporter tells
- * the open library once the default network is usable again, or bae comes to
- * the foreground — on the transition only, never per update.
+ * Android's Doze mode blocks bae's network while the phone is locked and idle.
+ * The reporter tells the open library once the default network is usable
+ * again, or bae comes to the foreground — on the transition only, never per
+ * update.
  */
 class UsableNetworkTransitionsTest {
     @Test
