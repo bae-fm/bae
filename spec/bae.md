@@ -3239,7 +3239,10 @@ release's or track's id as UTF-8, or a candidate's key.
   `AppServices` and, on desktop, the MCP and Subsonic servers and the cast
   controller.
 - **Async calls** run on the library's own runtime. A Swift task cancelled
-  mid-call cancels the Rust work it started.
+  mid-call cancels the Rust work it started. A call that panics fails with an
+  internal error and is reported as a bug; one that must finish after its
+  caller leaves (remove, create, restore, reset) is reported even with no
+  caller left to hear it.
 - **Closing a library** ends it before its runtime: playback saves where it
   was and stops, the desktop servers, identification, import and sync stop,
   the library's tasks, its live subscriptions among them, end and its store
@@ -3249,7 +3252,9 @@ release's or track's id as UTF-8, or a candidate's key.
   reported as one and fails the close, and the steps after it still run, the
   store's close among them. A handle released on the library's own runtime
   closes it on a thread of its own, and opening, resetting, restoring or
-  removing that library waits for the close first. After a removal deleted
+  removing that library waits for the close first. A close that panics is
+  reported as a bug, as a failed one is, and never fails the open or removal
+  that waited for it. After a removal deleted
   the store, only the runtime is left to end. An open that fails after the
   library started closes it the same way before its runtime ends.
 - **`release_memory`** gives back the pages the library's store keeps cached
@@ -3269,7 +3274,9 @@ release's or track's id as UTF-8, or a candidate's key.
   before the store closes, and none hears from a closed store. One opened on
   a closed library delivers nothing and is reported as a bug. A task of one
   that breaks on a bug is reported as one, and its subscription ends with the
-  failure as its last value, never as if it were cancelled.
+  failure as its last value, never as if it were cancelled. A delivery that
+  panics, or whose callback throws, ends that one subscription and is
+  reported as a bug; the library's others go on.
 - **Fast values** — transfer bytes and rates, file shares, export
   percents, playback and preview positions, import percents, and how far a
   bulk action has got, which core sends many times a second — reach an app
@@ -3280,7 +3287,8 @@ release's or track's id as UTF-8, or a candidate's key.
   the library, stops it, and it then holds nothing, whatever still runs that
   wrote it — a bulk action's stream included. A read that fails empties
   it until the next read fills it whole. Its one callback names the keys that
-  started or stopped holding a value, never a value that moved. The native
+  started or stopped holding a value, never a value that moved; a throw from
+  it is reported as a bug, and while a panic unwinds it is not called. The native
   view drawing a key reads the key's latest value once per display frame
   while it holds one; nothing the UI framework observes holds a fast value.
 - **Pulled subscriptions** — the browse and download lists, the searches,
@@ -3296,7 +3304,10 @@ release's or track's id as UTF-8, or a candidate's key.
 - **Callbacks the app provides**: UI events, the artwork reader, and on phones
   the sign-in presenter, which shows the provider's page and returns where it
   redirected. Desktops sign in through coven's own browser flow; iCloud runs in
-  coven.
+  coven. A callback that throws what it doesn't declare is reported as the
+  app's bug and answered as that call fails: a UI event it throws on is
+  skipped and the next one delivered, a request for audio focus is refused, a
+  sign-in fails. A throw from the crash reporter itself is logged.
 
 ### 10.3 Generated bindings
 

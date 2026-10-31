@@ -62,7 +62,11 @@ struct BootstrapCodeFormTests {
             entry: .restore(nil),
             decodeCode: { _ in info },
             makeBootstrap: {
-                LibraryBootstrap(host: host, deviceName: "Test Mac")
+                LibraryBootstrap(
+                    host: host,
+                    diagnostics: BaeDiagnostics.disabled(),
+                    deviceName: "Test Mac"
+                )
             },
             unfinishedJoins: { [] },
             onLibraryReady: { _, _ in

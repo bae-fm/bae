@@ -14,7 +14,7 @@ pub struct BridgeAlbumSelectionSnapshot {
 #[derive(uniffi::Object)]
 pub struct AlbumSelectionSubscription {
     inner: bae_core::library::AlbumSelectionSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -38,26 +38,28 @@ impl AlbumSelectionSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeAlbumSelectionSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(|snapshot| BridgeAlbumSelectionSnapshot {
-                    requested: snapshot.requested.into_iter().collect(),
-                    gone: snapshot.gone,
-                })
-                .map_err(selection_error)
-        })
-        .await
+        runtime
+            .run("AlbumSelectionSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(|snapshot| BridgeAlbumSelectionSnapshot {
+                        requested: snapshot.requested.into_iter().collect(),
+                        gone: snapshot.gone,
+                    })
+                    .map_err(selection_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel().await;
-            Ok(())
-        })
-        .await
+        runtime
+            .run("AlbumSelectionSubscription.cancel", move || async move {
+                self.inner.cancel().await;
+                Ok(())
+            })
+            .await
     }
 }
 

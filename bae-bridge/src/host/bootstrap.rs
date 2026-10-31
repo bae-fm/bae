@@ -56,13 +56,9 @@ impl BridgeHost {
     pub async fn saved_restore_codes(
         self: Arc<Self>,
     ) -> Result<Vec<BridgeSavedRestoreEntry>, BridgeError> {
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.saved_restore_codes", move || async move {
                 self.keychain
                     .saved_restore_codes(&self.app_dir)
                     .await
@@ -78,9 +74,8 @@ impl BridgeHost {
                             error,
                         )
                     })
-            },
-        )
-        .await
+            })
+            .await
     }
     /// Delete the library's saved restore code, readable or not, and the S3
     /// key saved beside it: from iCloud Keychain on all the person's Apple
@@ -91,13 +86,9 @@ impl BridgeHost {
         library_id: String,
     ) -> Result<(), BridgeError> {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.forget_saved_restore_code", move || async move {
                 self.keychain
                     .forget_saved_restore_code(store)
                     .await
@@ -107,9 +98,8 @@ impl BridgeHost {
                             error,
                         )
                     })
-            },
-        )
-        .await
+            })
+            .await
     }
     pub async fn restore_from_code(
         self: Arc<Self>,
@@ -121,15 +111,9 @@ impl BridgeHost {
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelOnDrop(cancellation);
-        crate::operation_runtime::run_to_completion(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            self.clone(),
-            "restore library",
-            move || async move {
+        self.operations
+            .clone()
+            .run_to_completion(self.clone(), "restore library", move || async move {
                 match bae_core::library::restore_from_code(
                     self.builder(),
                     &self.app_dir,
@@ -144,9 +128,8 @@ impl BridgeHost {
                     Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self)),
                     Err(error) => BridgeBootstrapResult::failure(error, self),
                 }
-            },
-        )
-        .await
+            })
+            .await
     }
     /// Restore a library this device holds with the person's current restore
     /// code, after another of their devices replaced their keys. The caller
@@ -170,35 +153,32 @@ impl BridgeHost {
         let report = opening.report();
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelOnDrop(cancellation);
-        crate::operation_runtime::run_to_completion(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            self.clone(),
-            "restore library over this device",
-            move || async move {
-                self.closed(store).await?;
-                match bae_core::library::restore_replacing_device(
-                    self.builder(),
-                    &self.app_dir,
-                    store,
-                    &code,
-                    credentials.map(BridgeS3Credentials::into_core),
-                    &device_name,
-                    |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
-                    report,
-                    &cancel,
-                )
-                .await
-                {
-                    Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self)),
-                    Err(error) => BridgeBootstrapResult::failure(error, self),
-                }
-            },
-        )
-        .await
+        self.operations
+            .clone()
+            .run_to_completion(
+                self.clone(),
+                "restore library over this device",
+                move || async move {
+                    self.closed(store).await?;
+                    match bae_core::library::restore_replacing_device(
+                        self.builder(),
+                        &self.app_dir,
+                        store,
+                        &code,
+                        credentials.map(BridgeS3Credentials::into_core),
+                        &device_name,
+                        |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                        report,
+                        &cancel,
+                    )
+                    .await
+                    {
+                        Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self)),
+                        Err(error) => BridgeBootstrapResult::failure(error, self),
+                    }
+                },
+            )
+            .await
     }
     pub async fn restore_from_saved_code(
         self: Arc<Self>,
@@ -210,15 +190,9 @@ impl BridgeHost {
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelOnDrop(cancellation);
-        crate::operation_runtime::run_to_completion(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            self.clone(),
-            "restore saved library",
-            move || async move {
+        self.operations
+            .clone()
+            .run_to_completion(self.clone(), "restore saved library", move || async move {
                 match bae_core::library::restore_from_saved_code(
                     self.builder(),
                     &self.app_dir,
@@ -234,9 +208,8 @@ impl BridgeHost {
                     Ok(None) => Ok(BridgeBootstrapResult::SavedCodeRemoved),
                     Err(error) => BridgeBootstrapResult::failure(error, self),
                 }
-            },
-        )
-        .await
+            })
+            .await
     }
     /// Join a library from an invite. The profile takes the invite's name.
     /// Dropping the call, as leaving the screen does, keeps the join for
@@ -249,13 +222,9 @@ impl BridgeHost {
         callback: Box<dyn BootstrapCallback>,
         control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.join_with_invite", move || async move {
                 let joined = bae_core::library::join_with_invite(
                     self.builder(),
                     &self.app_dir,
@@ -267,22 +236,17 @@ impl BridgeHost {
                 )
                 .await;
                 BridgeBootstrapResult::joined(joined, self)
-            },
-        )
-        .await
+            })
+            .await
     }
 
     /// The joins this device has under way, to resume after bae restarts.
     pub async fn unfinished_joins(
         self: Arc<Self>,
     ) -> Result<Vec<Arc<BridgeUnfinishedJoin>>, BridgeError> {
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.unfinished_joins", move || async move {
                 bae_core::library::unfinished_joins(&self.builder())
                     .await
                     .map(|joins| {
@@ -297,9 +261,8 @@ impl BridgeHost {
                             error,
                         )
                     })
-            },
-        )
-        .await
+            })
+            .await
     }
 
     /// Continue a join from `unfinished_joins` with the provider sign-in coven
@@ -311,13 +274,9 @@ impl BridgeHost {
         callback: Box<dyn BootstrapCallback>,
         control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.resume_join", move || async move {
                 let joined = bae_core::library::resume_join(
                     || self.builder(),
                     &self.app_dir,
@@ -328,9 +287,8 @@ impl BridgeHost {
                 )
                 .await;
                 BridgeBootstrapResult::joined(joined, self)
-            },
-        )
-        .await
+            })
+            .await
     }
 
     /// The caller closes the active library and shows the reset warning before
@@ -360,16 +318,10 @@ impl BridgeDeviceReset {
         "core.sync.reset_device.warning".into()
     }
     pub async fn confirm(self: Arc<Self>) -> Result<BridgeBootstrapResult, BridgeError> {
-        crate::operation_runtime::run_to_completion(
-            self.host
-                .runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            self.clone(),
-            "reset device",
-            move || async move {
+        self.host
+            .operations
+            .clone()
+            .run_to_completion(self.clone(), "reset device", move || async move {
                 self.host.closed(self.store).await?;
                 match bae_core::library::reset_device(
                     self.host.builder(),
@@ -382,8 +334,7 @@ impl BridgeDeviceReset {
                     Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self.host.clone())),
                     Err(error) => BridgeBootstrapResult::failure(error, self.host.clone()),
                 }
-            },
-        )
-        .await
+            })
+            .await
     }
 }

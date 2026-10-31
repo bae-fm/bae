@@ -15,7 +15,7 @@ impl KeyActivityCallback for Activity {
 /// A stream, the writer its feed holds, and what its activity heard.
 fn fed_stream() -> (KeyedValueStream, StreamWriter, Arc<HeardKeys>) {
     let heard = Arc::new(HeardKeys::default());
-    let values = StreamValues::new(Box::new(Activity(heard.clone())));
+    let values = StreamValues::new(Box::new(Activity(heard.clone())), Diagnostics::noop());
     let stream = KeyedValueStream::new(values.clone(), CancellationToken::new());
     (stream, StreamWriter::new(values), heard)
 }
@@ -110,4 +110,62 @@ fn a_cancelled_stream_holds_nothing_and_takes_no_write() {
     drop(writer);
     assert_eq!(stream.latest(b"b".to_vec()), None);
     assert!(heard(&keys).is_empty());
+}
+
+/// Tells the host nothing: its callback throws, which uniffi raises in Rust
+/// as a panic.
+struct ThrowingActivity;
+
+impl KeyActivityCallback for ThrowingActivity {
+    fn on_keys_changed(&self, _keys: Vec<Vec<u8>>) {
+        panic!("Callback interface failure: the host threw");
+    }
+}
+
+/// A host whose callback throws is reported, and the stream goes on holding
+/// what its feed writes.
+#[test]
+fn a_host_callback_that_throws_is_reported_and_the_stream_keeps_its_values() {
+    let bugs = Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+    let values = StreamValues::new(
+        Box::new(ThrowingActivity),
+        Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+    );
+    let stream = KeyedValueStream::new(values.clone(), CancellationToken::new());
+    let writer = StreamWriter::new(values);
+
+    writer.set("a", share(0.5));
+
+    assert_eq!(stream.latest(b"a".to_vec()), Some(share(0.5)));
+    let reports = bugs.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert_eq!(reports[0].0, "tell the host which keys changed");
+    drop(writer);
+    assert_eq!(stream.latest(b"a".to_vec()), None);
+    assert_eq!(
+        bugs.reports().len(),
+        2,
+        "the writer's drop's throw is reported too"
+    );
+}
+
+/// A writer dropped while a panic unwinds empties the stream without
+/// calling the host, whose throw there would abort the process.
+#[test]
+fn a_writer_dropped_while_a_panic_unwinds_does_not_call_the_host() {
+    let (stream, writer, keys) = fed_stream();
+    writer.set("a", share(0.5));
+    heard(&keys);
+
+    let unwound = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+        let _writer = writer;
+        panic!("the feed broke while it held its writer");
+    }));
+
+    assert!(unwound.is_err());
+    assert_eq!(stream.latest(b"a".to_vec()), None);
+    assert!(
+        heard(&keys).is_empty(),
+        "the host heard nothing during the unwind"
+    );
 }

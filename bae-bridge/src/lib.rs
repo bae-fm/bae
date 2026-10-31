@@ -13,6 +13,7 @@ mod bridge_utils;
 mod dev_reset;
 mod handle;
 mod host;
+mod host_calls;
 mod init;
 mod keyed_values;
 mod library_opening;

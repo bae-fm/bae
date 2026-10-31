@@ -10,6 +10,8 @@ pub struct BridgeHost {
     app_dir: bae_core::config::AppDir,
     keychain: bae_core::library::Keychain,
     runtime: Option<tokio::runtime::Runtime>,
+    /// Where the host's own calls run, on `runtime`.
+    operations: crate::operation_runtime::OperationRuntime,
     oauth_clients: Mutex<coven::OAuthClients>,
     #[cfg(not(desktop))]
     presenter: Mutex<Option<Arc<dyn coven::OAuthPresenter>>>,
@@ -68,13 +70,11 @@ impl BridgeHost {
     /// [`Self::wait_for_closing`] from an async call on the host's runtime.
     pub(crate) async fn closed(self: &Arc<Self>, store: coven::StoreId) -> Result<(), BridgeError> {
         let host = Arc::clone(self);
-        match tokio::task::spawn_blocking(move || host.wait_for_closing(store)).await {
-            Ok(()) => Ok(()),
-            Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
-            Err(error) => Err(BridgeError::internal(format!(
-                "waiting for a library to close was cancelled: {error}"
-            ))),
-        }
+        bae_util::task_failure::blocking("wait for a library to close", move || {
+            host.wait_for_closing(store)
+        })
+        .await
+        .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))
     }
 
     fn builder(&self) -> coven::CovenBuilder {
@@ -107,8 +107,10 @@ impl BridgeHost {
             .enable_all()
             .build()
             .map_err(BridgeError::internal)?;
+        let operations = diagnostics.operations(runtime.handle().clone());
         Ok(Arc::new(Self {
             diagnostics,
+            operations,
             app_dir: app_dir.core().clone(),
             keychain,
             runtime: Some(runtime),
@@ -174,13 +176,12 @@ impl BridgeHost {
         app_dir: Arc<BridgeAppDir>,
         audio_focus: Box<dyn crate::BridgeAudioFocus>,
     ) -> Result<Arc<Self>, BridgeError> {
+        let audio_focus = crate::PlatformAudioFocus::new(audio_focus, diagnostics.clone());
         Self::start(
             diagnostics,
             app_dir,
             bae_core::library::Keychain::System,
-            bae_core::playback::AudioFocus::Shared(Arc::new(crate::PlatformAudioFocus(
-                audio_focus,
-            ))),
+            bae_core::playback::AudioFocus::Shared(Arc::new(audio_focus)),
         )
     }
 }
@@ -188,33 +189,25 @@ impl BridgeHost {
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl BridgeHost {
     pub async fn flush_diagnostics(self: Arc<Self>) -> Result<(), BridgeError> {
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move { self.diagnostics.flush().await },
-        )
-        .await
+        self.operations
+            .clone()
+            .run("BridgeHost.flush_diagnostics", move || async move {
+                self.diagnostics.flush().await
+            })
+            .await
     }
 
     pub async fn list_libraries(self: Arc<Self>) -> Result<Vec<BridgeLibrary>, BridgeError> {
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.list_libraries", move || async move {
                 bae_core::config::Config::discover_libraries(&self.app_dir)
                     .await?
                     .into_iter()
                     .map(BridgeLibrary::from_core_info)
                     .collect()
-            },
-        )
-        .await
+            })
+            .await
     }
 
     /// A recorded removal that never finished, read from its record so it
@@ -222,13 +215,9 @@ impl BridgeHost {
     pub async fn unfinished_removal(
         self: Arc<Self>,
     ) -> Result<Option<crate::BridgeUnfinishedRemoval>, BridgeError> {
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.unfinished_removal", move || async move {
                 Ok(self
                     .diagnostics
                     .unfinished_removal(&self.app_dir)
@@ -240,9 +229,8 @@ impl BridgeHost {
                             removal.files_remain(),
                         )
                     }))
-            },
-        )
-        .await
+            })
+            .await
     }
 
     /// What removing the library `library_id`, which isn't open, would lose,
@@ -256,20 +244,15 @@ impl BridgeHost {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
         let builder = self.builder();
         let report = opening.report();
-        crate::operation_runtime::run(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            move || async move {
+        self.operations
+            .clone()
+            .run("BridgeHost.unsent_before_removal", move || async move {
                 self.closed(store).await?;
                 Ok(crate::BridgeUnsentWork::from_core(
                     bae_core::library::unsent_before_removal(builder, store, report).await?,
                 ))
-            },
-        )
-        .await
+            })
+            .await
     }
 
     /// Remove the library `library_id`, which can't open, without opening it,
@@ -279,39 +262,33 @@ impl BridgeHost {
         library_id: String,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
-        crate::operation_runtime::run_to_completion(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            self.clone(),
-            "remove a library that can't open",
-            move || async move {
-                self.closed(store).await?;
-                crate::BridgeLibraryRemoval::from_core(
-                    self.diagnostics
-                        .remove_unopenable_library(&self.app_dir, &self.keychain, store)
-                        .await,
-                )
-            },
-        )
-        .await
+        self.operations
+            .clone()
+            .run_to_completion(
+                self.clone(),
+                "remove a library that can't open",
+                move || async move {
+                    self.closed(store).await?;
+                    crate::BridgeLibraryRemoval::from_core(
+                        self.diagnostics
+                            .remove_unopenable_library(&self.app_dir, &self.keychain, store)
+                            .await,
+                    )
+                },
+            )
+            .await
     }
 
     /// Complete every recorded removal. Safe to retry after any failure.
     pub async fn finish_removals(self: Arc<Self>) -> Result<(), BridgeError> {
-        crate::operation_runtime::run_to_completion(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            self.clone(),
-            "finish library removals",
-            move || async move { Ok(self.diagnostics.finish_removals(&self.app_dir).await?) },
-        )
-        .await
+        self.operations
+            .clone()
+            .run_to_completion(
+                self.clone(),
+                "finish library removals",
+                move || async move { Ok(self.diagnostics.finish_removals(&self.app_dir).await?) },
+            )
+            .await
     }
 
     pub async fn create_library(
@@ -325,20 +302,13 @@ impl BridgeHost {
             }
             None => bae_core::library_name::generate_library_name(),
         };
-        crate::operation_runtime::run_to_completion(
-            self.runtime
-                .as_ref()
-                .expect("host runtime exists until drop")
-                .handle()
-                .clone(),
-            self.clone(),
-            "create library",
-            move || async move {
+        self.operations
+            .clone()
+            .run_to_completion(self.clone(), "create library", move || async move {
                 let handle = bae_core::library::create_library(builder, name).await?;
                 Ok(Arc::new(crate::OpenedLibrary::new(handle, self)))
-            },
-        )
-        .await
+            })
+            .await
     }
 }
 
@@ -368,6 +338,7 @@ impl BridgeHost {
             Some(Arc::new(crate::oauth::NativeOAuthPresenter {
                 redirects,
                 callback,
+                diagnostics: self.diagnostics.clone(),
             }));
     }
 }

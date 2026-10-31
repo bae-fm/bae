@@ -34,7 +34,13 @@ class OnboardingStepsTest {
             val scope = rememberCoroutineScope()
             val flow =
                 remember {
-                    OnboardingFlow(scope, context, OnboardingCore(NoJoinsHost(), ::FakeBootstrapCancellation), null, restoreOver) {}
+                    OnboardingFlow(
+                        scope,
+                        context,
+                        OnboardingCore(NoJoinsHost(), ::FakeBootstrapCancellation, ::unfakedOpenProgress),
+                        null,
+                        restoreOver,
+                    ) {}
                 }
             BaeTheme { OnboardingSteps(flow) }
         }

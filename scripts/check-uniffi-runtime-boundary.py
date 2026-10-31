@@ -46,6 +46,13 @@ def reject_detached_async_bridge_calls(violations: list[str]) -> None:
                 )
 
 
+# An `OperationRuntime` run: the AppHandle's or a subscription's `runtime`, or
+# the host's `operations`.
+OWNED_RUNTIME_CALL = re.compile(
+    r"\b(?:runtime|operations)\s*(?:\.clone\(\)\s*)?\.(?:run|run_to_completion)\("
+)
+
+
 def lower_camel(name: str) -> str:
     first, *rest = name.split("_")
     return first + "".join(part.title() for part in rest)
@@ -196,7 +203,7 @@ def main() -> int:
             if is_async:
                 async_count += 1
                 async_exports.add(lower_camel(name))
-            if is_async and "operation_runtime::run" not in body and "run_exported" not in body:
+            if is_async and not OWNED_RUNTIME_CALL.search(body) and "run_exported" not in body:
                 violations.append(f"{path.relative_to(ROOT)}::{name}")
             if ".spawn(" in body or "spawn(" in body:
                 spawned_count += 1

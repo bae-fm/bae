@@ -11,16 +11,23 @@
 //! start and stop drawing; a value moving tells nothing.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
+use bae_core::diagnostics::Diagnostics;
 use bae_core::library::CancellationToken;
 
 use crate::types::{BridgeFastValue, KeyActivityCallback};
 
 /// The latest value of each key, and who hears keys come and go.
 pub(crate) struct StreamValues {
+    /// Each change to what the stream holds is one insert, remove or whole
+    /// replace of the map, none of which panics partway, so a poisoned lock
+    /// says nothing about it; and both `Drop`s below take it, where a panic
+    /// must not start.
     held: Mutex<Held>,
     activity: Box<dyn KeyActivityCallback>,
+    /// Where a throw from `activity` is reported.
+    diagnostics: Diagnostics,
 }
 
 /// What a stream holds: each key's value until the stream is cancelled,
@@ -31,15 +38,19 @@ enum Held {
 }
 
 impl StreamValues {
-    pub(crate) fn new(activity: Box<dyn KeyActivityCallback>) -> Arc<Self> {
+    pub(crate) fn new(
+        activity: Box<dyn KeyActivityCallback>,
+        diagnostics: Diagnostics,
+    ) -> Arc<Self> {
         Arc::new(Self {
             held: Mutex::new(Held::Open(HashMap::new())),
             activity,
+            diagnostics,
         })
     }
 
     fn latest(&self, key: &[u8]) -> Option<BridgeFastValue> {
-        match &*self.held.lock().unwrap() {
+        match &*self.held.lock().unwrap_or_else(PoisonError::into_inner) {
             Held::Open(values) => values.get(key).cloned(),
             Held::Cancelled => None,
         }
@@ -48,19 +59,21 @@ impl StreamValues {
     /// Change the values, then tell the keys `change` says started or
     /// stopped holding one. A cancelled stream takes no change.
     fn write(&self, change: impl FnOnce(&mut HashMap<Vec<u8>, BridgeFastValue>) -> Vec<Vec<u8>>) {
-        let started_or_stopped = match &mut *self.held.lock().unwrap() {
-            Held::Open(values) => change(values),
-            Held::Cancelled => Vec::new(),
-        };
-        if !started_or_stopped.is_empty() {
-            self.activity.on_keys_changed(started_or_stopped);
-        }
+        let started_or_stopped =
+            match &mut *self.held.lock().unwrap_or_else(PoisonError::into_inner) {
+                Held::Open(values) => change(values),
+                Held::Cancelled => Vec::new(),
+            };
+        self.tell(started_or_stopped);
     }
 
     /// Hold nothing from now on, whatever writes it, and tell the keys that
     /// held a value.
     fn cancel(&self) {
-        let stopped = match std::mem::replace(&mut *self.held.lock().unwrap(), Held::Cancelled) {
+        let stopped = match std::mem::replace(
+            &mut *self.held.lock().unwrap_or_else(PoisonError::into_inner),
+            Held::Cancelled,
+        ) {
             Held::Open(values) => {
                 let mut keys: Vec<Vec<u8>> = values.into_keys().collect();
                 keys.sort();
@@ -68,8 +81,30 @@ impl StreamValues {
             }
             Held::Cancelled => Vec::new(),
         };
-        if !stopped.is_empty() {
-            self.activity.on_keys_changed(stopped);
+        self.tell(stopped);
+    }
+
+    /// Tell the host the keys that started or stopped holding a value. Both
+    /// `Drop`s below tell it, and a drop can run while a panic unwinds, where
+    /// a host throw would be a second panic and abort the process: then the
+    /// stream holds its new values and the host is not told.
+    fn tell(&self, started_or_stopped: Vec<Vec<u8>>) {
+        if started_or_stopped.is_empty() {
+            return;
+        }
+        if std::thread::panicking() {
+            tracing::warn!(
+                keys = started_or_stopped.len(),
+                "not telling the host which keys changed while a panic unwinds"
+            );
+            return;
+        }
+        if let Err(failed) = crate::host_calls::host_call(
+            |failed| self.diagnostics.bug(failed),
+            "tell the host which keys changed",
+            || self.activity.on_keys_changed(started_or_stopped),
+        ) {
+            tracing::debug!("the host's keys stay as it last heard them: {failed}");
         }
     }
 }

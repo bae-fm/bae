@@ -41,7 +41,7 @@ macro_rules! detail_subscription {
                 <$bridge_value as DetailValue>::Core,
                 $core_id,
             >,
-            runtime: tokio::runtime::Handle,
+            runtime: crate::operation_runtime::OperationRuntime,
         }
 
         #[uniffi::export]
@@ -66,26 +66,31 @@ macro_rules! detail_subscription {
 
             pub async fn next(self: std::sync::Arc<Self>) -> Result<$snapshot, BridgeError> {
                 let runtime = self.runtime.clone();
-                crate::operation_runtime::run(runtime, move || async move {
-                    self.inner
-                        .next()
-                        .await
-                        .map(|snapshot| $snapshot {
-                            id: snapshot.id.map(<$id>::from),
-                            value: snapshot.value.map(<$bridge_value>::from_core),
-                        })
-                        .map_err(live_read_error)
-                })
-                .await
+                runtime
+                    .run(concat!(stringify!($object), ".next"), move || async move {
+                        self.inner
+                            .next()
+                            .await
+                            .map(|snapshot| $snapshot {
+                                id: snapshot.id.map(<$id>::from),
+                                value: snapshot.value.map(<$bridge_value>::from_core),
+                            })
+                            .map_err(live_read_error)
+                    })
+                    .await
             }
 
             pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
                 let runtime = self.runtime.clone();
-                crate::operation_runtime::run(runtime, move || async move {
-                    self.inner.cancel();
-                    Ok(())
-                })
-                .await
+                runtime
+                    .run(
+                        concat!(stringify!($object), ".cancel"),
+                        move || async move {
+                            self.inner.cancel();
+                            Ok(())
+                        },
+                    )
+                    .await
             }
         }
     };

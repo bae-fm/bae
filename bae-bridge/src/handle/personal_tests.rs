@@ -22,7 +22,6 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         AppHandle::start(
             services,
             runtime,
-            #[cfg(feature = "cast")]
             bae_core::diagnostics::Diagnostics::noop(),
         )
         .unwrap(),

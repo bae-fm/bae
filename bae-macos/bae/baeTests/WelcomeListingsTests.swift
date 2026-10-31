@@ -49,6 +49,7 @@ struct WelcomeListingsTests {
     private var removals: LibraryRemovals {
         let bridge = bridge
         return LibraryRemovals(
+            diagnostics: BaeDiagnostics.disabled(),
             unsentOfClosed: { _, _ in throw WelcomeTestError.notUsed },
             removeClosed: { libraryId, _ in await bridge.remove(libraryId) },
             removeUnopenable: { _ in throw WelcomeTestError.notUsed },

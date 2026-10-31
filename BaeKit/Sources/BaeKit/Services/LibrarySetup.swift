@@ -45,9 +45,10 @@ public final class LibrarySetup: Sendable, Observable {
         self.makeBootstrap = makeBootstrap
     }
 
-    /// The production wiring over the process's host.
+    /// The production wiring over the process's host and sink.
     public static func live(
         host: BridgeHost,
+        diagnostics: BridgeDiagnostics,
         deviceName: String
     ) -> LibrarySetup {
         LibrarySetup(
@@ -59,7 +60,11 @@ public final class LibrarySetup: Sendable, Observable {
             },
             unfinishedJoins: { try await host.unfinishedJoins() },
             makeBootstrap: {
-                LibraryBootstrap(host: host, deviceName: deviceName)
+                LibraryBootstrap(
+                    host: host,
+                    diagnostics: diagnostics,
+                    deviceName: deviceName
+                )
             }
         )
     }
@@ -97,14 +102,13 @@ public final class LibrarySetup: Sendable, Observable {
                 },
                 unfinishedJoins: { [] },
                 makeBootstrap: {
-                    LibraryBootstrap(
+                    let diagnostics = BaeDiagnostics.disabled()
+                    return LibraryBootstrap(
                         host: BaeHost.make(
-                            diagnostics: configureDiagnostics(
-                                config: .disabled,
-                                bugReporter: CoreBugReporter()
-                            ),
+                            diagnostics: diagnostics,
                             appDir: previewAppDir()
                         ),
+                        diagnostics: diagnostics,
                         deviceName: "Preview Device"
                     )
                 }

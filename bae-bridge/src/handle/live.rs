@@ -23,7 +23,9 @@ impl AppHandle {
     }
 
     /// Run `body` as the library's own work until `stop` is cancelled or the
-    /// library closes.
+    /// library closes. A panic in it — the host's callback throwing, which
+    /// uniffi raises as a panic, or the bridge's own bug — ends that one
+    /// delivery and is reported; the library's other work goes on.
     pub(super) fn deliver_until<Fut>(
         &self,
         stop: bae_core::library::CancellationToken,
@@ -32,7 +34,14 @@ impl AppHandle {
         Fut: std::future::Future<Output = ()> + Send + 'static,
     {
         let services = self.services.clone();
-        let delivery = async move { body(services).await };
+        let diagnostics = self.diagnostics.clone();
+        let delivery = async move {
+            if let Err(failed) =
+                bae_util::task_failure::caught("deliver a live subscription", body(services)).await
+            {
+                diagnostics.bug(failed);
+            }
+        };
         // A host subscribes only while the library is open.
         if let Err(error) = self
             .services

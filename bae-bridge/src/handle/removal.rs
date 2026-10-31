@@ -77,7 +77,7 @@ impl AppHandle {
     pub async fn unsent_before_removal(
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeUnsentWork, BridgeError> {
-        self.run_exported(|this| async move {
+        self.run_exported("AppHandle.unsent_before_removal", |this| async move {
             Ok(BridgeUnsentWork::from_core(
                 this.services.unsent_before_removal().await?,
             ))
@@ -90,11 +90,9 @@ impl AppHandle {
     pub async fn remove_library(
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeLibraryRemoval, BridgeError> {
-        crate::operation_runtime::run_to_completion(
-            self.runtime.clone(),
-            self.clone(),
-            "remove library",
-            move || async move {
+        self.runtime
+            .clone()
+            .run_to_completion(self.clone(), "remove library", move || async move {
                 #[cfg(feature = "desktop")]
                 self.desktop.shutdown().await;
                 let removal = self.services.remove_library().await;
@@ -105,9 +103,8 @@ impl AppHandle {
                     self.session.removed();
                 }
                 BridgeLibraryRemoval::from_core(removal)
-            },
-        )
-        .await
+            })
+            .await
     }
 }
 
@@ -135,7 +132,6 @@ mod tests {
             AppHandle::start(
                 services,
                 runtime,
-                #[cfg(feature = "cast")]
                 bae_core::diagnostics::Diagnostics::noop(),
             )
             .unwrap(),

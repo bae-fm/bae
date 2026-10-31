@@ -77,7 +77,7 @@ class OnboardingFlowTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(host, ::FakeBootstrapCancellation),
+                OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress),
                 null,
                 null,
             ) {}

@@ -26,7 +26,7 @@ pub struct BridgeArtistSearchSnapshot {
 #[derive(uniffi::Object)]
 pub struct ArtistSearchSubscription {
     inner: bae_core::library::ArtistSearchSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -65,38 +65,42 @@ impl ArtistSearchSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeArtistSearchSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(|snapshot| BridgeArtistSearchSnapshot {
-                    windows: snapshot
-                        .windows
-                        .into_iter()
-                        .map(|window| BridgeArtistSearchWindow {
-                            window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                            rows: window
-                                .rows
-                                .into_iter()
-                                .map(BridgeArtistSearchResult::from_core)
-                                .collect(),
-                        })
-                        .collect(),
-                    total_count: snapshot.total_count,
-                    request_revision: snapshot.request_revision,
-                })
-                .map_err(search_error)
-        })
-        .await
+        runtime
+            .run("ArtistSearchSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(|snapshot| BridgeArtistSearchSnapshot {
+                        windows: snapshot
+                            .windows
+                            .into_iter()
+                            .map(|window| BridgeArtistSearchWindow {
+                                window: crate::types::BridgeLibraryPageWindow::from_core(
+                                    window.window,
+                                ),
+                                rows: window
+                                    .rows
+                                    .into_iter()
+                                    .map(BridgeArtistSearchResult::from_core)
+                                    .collect(),
+                            })
+                            .collect(),
+                        total_count: snapshot.total_count,
+                        request_revision: snapshot.request_revision,
+                    })
+                    .map_err(search_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel().await;
-            Ok(())
-        })
-        .await
+        runtime
+            .run("ArtistSearchSubscription.cancel", move || async move {
+                self.inner.cancel().await;
+                Ok(())
+            })
+            .await
     }
 }
 

@@ -50,6 +50,8 @@ pub struct BridgeOAuthRedirects {
 pub(crate) struct NativeOAuthPresenter {
     pub(crate) redirects: BridgeOAuthRedirects,
     pub(crate) callback: Box<dyn OAuthPresenterCallback>,
+    /// Where a throw the callback doesn't declare is reported.
+    pub(crate) diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
 }
 
 #[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
@@ -68,16 +70,20 @@ impl coven::OAuthPresenter for NativeOAuthPresenter {
         &self,
         authorization_url: &str,
     ) -> Result<coven::SecretText, coven::OAuthError> {
-        self.callback
-            .present(authorization_url.to_owned())
-            .await
-            .map(coven::SecretText::new)
-            .map_err(|error| match error {
-                BridgeOAuthPresentationError::Cancelled => coven::OAuthError::Cancelled,
-                error @ BridgeOAuthPresentationError::Failed { .. } => {
-                    coven::OAuthError::Presentation(Box::new(error))
-                }
-            })
+        crate::host_calls::host_call_async(
+            |failed| self.diagnostics.bug(failed),
+            "present a native sign-in",
+            self.callback.present(authorization_url.to_owned()),
+        )
+        .await
+        .map_err(|failed| coven::OAuthError::Presentation(Box::new(failed)))?
+        .map(coven::SecretText::new)
+        .map_err(|error| match error {
+            BridgeOAuthPresentationError::Cancelled => coven::OAuthError::Cancelled,
+            error @ BridgeOAuthPresentationError::Failed { .. } => {
+                coven::OAuthError::Presentation(Box::new(error))
+            }
+        })
     }
 }
 
@@ -108,6 +114,7 @@ mod tests {
                 onedrive: "bae://onedrive".into(),
             },
             callback: Box::new(Cancelled),
+            diagnostics: crate::BridgeDiagnostics::noop(),
         };
         assert_eq!(
             presenter.redirect_uri(coven::CloudProvider::Dropbox),
@@ -137,6 +144,7 @@ mod tests {
                 onedrive: "bae://onedrive".into(),
             },
             callback: Box::new(Redirect),
+            diagnostics: crate::BridgeDiagnostics::noop(),
         };
         let redirect = presenter
             .present("https://example.test/authorize")
@@ -146,5 +154,36 @@ mod tests {
             redirect.as_str(),
             "bae://dropbox?code=authorization-code&state=request-state"
         );
+    }
+
+    /// A sign-in sheet whose host throws something its callback doesn't
+    /// declare, which uniffi raises in Rust as a panic.
+    struct Throwing;
+    #[async_trait::async_trait]
+    impl OAuthPresenterCallback for Throwing {
+        async fn present(&self, _: String) -> Result<String, BridgeOAuthPresentationError> {
+            panic!("Callback interface failure: the host threw");
+        }
+    }
+    /// The throw fails the sign-in with a presentation error and is
+    /// reported, instead of unwinding through coven.
+    #[tokio::test]
+    async fn a_sign_in_sheet_that_throws_fails_the_sign_in_and_is_reported() {
+        let bugs = std::sync::Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let presenter = NativeOAuthPresenter {
+            redirects: BridgeOAuthRedirects {
+                dropbox: "bae://dropbox".into(),
+                onedrive: "bae://onedrive".into(),
+            },
+            callback: Box::new(Throwing),
+            diagnostics: crate::BridgeDiagnostics::reporting_bugs_to(bugs.clone()),
+        };
+        assert!(matches!(
+            presenter.present("https://example.test/authorize").await,
+            Err(coven::OAuthError::Presentation(_))
+        ));
+        let reports = bugs.reports();
+        assert_eq!(reports.len(), 1, "{reports:?}");
+        assert_eq!(reports[0].0, "present a native sign-in");
     }
 }

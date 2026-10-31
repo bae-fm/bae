@@ -20,21 +20,46 @@ pub trait BridgeAudioFocus: Send + Sync {
     fn release(&self);
 }
 
-/// Core's view of the platform's [`BridgeAudioFocus`].
-pub(crate) struct PlatformAudioFocus(pub(crate) Box<dyn BridgeAudioFocus>);
+/// Core's view of the platform's [`BridgeAudioFocus`]. A throw from the
+/// platform is reported; a request it threw on is refused, so playback stays
+/// paused.
+pub(crate) struct PlatformAudioFocus {
+    focus: Box<dyn BridgeAudioFocus>,
+    diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+}
+
+impl PlatformAudioFocus {
+    pub(crate) fn new(
+        focus: Box<dyn BridgeAudioFocus>,
+        diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+    ) -> Self {
+        Self { focus, diagnostics }
+    }
+}
 
 impl bae_core::playback::AudioFocusSystem for PlatformAudioFocus {
     fn request(&self) -> Result<(), bae_core::playback::AudioFocusRefused> {
-        match self.0.request() {
-            BridgeAudioFocusAnswer::Granted => Ok(()),
-            BridgeAudioFocusAnswer::Refused { reason } => {
+        match crate::host_calls::host_call(
+            |failed| self.diagnostics.bug(failed),
+            "request audio focus",
+            || self.focus.request(),
+        ) {
+            Ok(BridgeAudioFocusAnswer::Granted) => Ok(()),
+            Ok(BridgeAudioFocusAnswer::Refused { reason }) => {
                 Err(bae_core::playback::AudioFocusRefused(reason))
             }
+            Err(failed) => Err(bae_core::playback::AudioFocusRefused(failed.to_string())),
         }
     }
 
     fn release(&self) {
-        self.0.release();
+        if let Err(failed) = crate::host_calls::host_call(
+            |failed| self.diagnostics.bug(failed),
+            "release audio focus",
+            || self.focus.release(),
+        ) {
+            tracing::warn!("the system may still hold audio focus for bae: {failed}");
+        }
     }
 }
 
@@ -52,18 +77,52 @@ mod tests {
         fn release(&self) {}
     }
 
+    fn platform(focus: impl BridgeAudioFocus + 'static) -> PlatformAudioFocus {
+        PlatformAudioFocus::new(Box::new(focus), crate::BridgeDiagnostics::noop())
+    }
+
     #[test]
     fn a_refusal_reaches_core_with_the_systems_reason() {
-        let refusing = PlatformAudioFocus(Box::new(Answering(BridgeAudioFocusAnswer::Refused {
+        let refusing = platform(Answering(BridgeAudioFocusAnswer::Refused {
             reason: "audio mode IN_CALL".to_string(),
-        })));
+        }));
         assert_eq!(
             refusing.request(),
             Err(bae_core::playback::AudioFocusRefused(
                 "audio mode IN_CALL".to_string()
             ))
         );
-        let granting = PlatformAudioFocus(Box::new(Answering(BridgeAudioFocusAnswer::Granted)));
+        let granting = platform(Answering(BridgeAudioFocusAnswer::Granted));
         assert_eq!(granting.request(), Ok(()));
+    }
+
+    /// The platform's audio focus, throwing on every call as uniffi raises a
+    /// host throw: a panic.
+    struct Throwing;
+
+    impl BridgeAudioFocus for Throwing {
+        fn request(&self) -> BridgeAudioFocusAnswer {
+            panic!("Callback interface failure: the host threw");
+        }
+        fn release(&self) {
+            panic!("Callback interface failure: the host threw");
+        }
+    }
+
+    /// A throw is reported and refuses the request, so playback stays
+    /// paused instead of the playback service unwinding.
+    #[test]
+    fn a_platform_that_throws_is_reported_and_refuses() {
+        let bugs = std::sync::Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let throwing = PlatformAudioFocus::new(
+            Box::new(Throwing),
+            crate::BridgeDiagnostics::reporting_bugs_to(bugs.clone()),
+        );
+
+        assert!(throwing.request().is_err());
+        throwing.release();
+
+        let operations: Vec<String> = bugs.reports().into_iter().map(|(op, _)| op).collect();
+        assert_eq!(operations, ["request audio focus", "release audio focus"]);
     }
 }

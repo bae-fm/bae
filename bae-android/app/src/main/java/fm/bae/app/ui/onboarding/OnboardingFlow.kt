@@ -175,12 +175,15 @@ internal fun codeReadStep(
     }
 
 /**
- * The core onboarding runs against: the [host] that restores and joins, and
- * [newCancellation], which makes the stop each restore is handed.
+ * The core onboarding runs against: the [host] that restores and joins,
+ * [newCancellation], which makes the stop each restore is handed, and
+ * [newOpenProgress], which makes the open a restore over this device's copy
+ * reports its steps in.
  */
 internal class OnboardingCore(
     val host: BridgeHostInterface,
     val newCancellation: () -> BootstrapCancellation,
+    val newOpenProgress: () -> LibraryOpenProgress,
 )
 
 /**
@@ -323,7 +326,7 @@ internal class OnboardingFlow(
         val running = core.newCancellation()
         when (val entry = from.entry) {
             is RestoreOver -> {
-                val opening = LibraryOpenProgress()
+                val opening = core.newOpenProgress()
                 run(from, running::cancel, opening) { callback ->
                     core.host.restoreReplacingDevice(
                         entry.libraryId,

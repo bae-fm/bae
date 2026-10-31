@@ -197,7 +197,6 @@ pub(super) fn start_test_handle(
         super::AppHandle::start(
             services,
             runtime,
-            #[cfg(feature = "cast")]
             bae_core::diagnostics::Diagnostics::noop(),
         )
         .expect("the bridge handle starts"),
@@ -248,15 +247,18 @@ fn cancelling_album_browse_finishes_pending_next() {
         .block_on(subscription.clone().next())
         .expect("initial album browse snapshot");
 
-    let pending = handle.runtime.spawn({
-        let subscription = subscription.clone();
-        async move { subscription.next().await }
+    let result = handle.runtime.block_on(async {
+        let pending = tokio::spawn({
+            let subscription = subscription.clone();
+            async move { subscription.next().await }
+        });
+        subscription
+            .clone()
+            .cancel()
+            .await
+            .expect("cancel album browse subscription");
+        pending.await.expect("next task joins")
     });
-    handle
-        .runtime
-        .block_on(subscription.clone().cancel())
-        .expect("cancel album browse subscription");
-    let result = handle.runtime.block_on(pending).expect("next task joins");
 
     assert!(matches!(result, Err(crate::types::BridgeError::Cancelled)));
     assert!(matches!(
@@ -883,7 +885,6 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     let app = super::AppHandle::start(
         services,
         runtime,
-        #[cfg(feature = "cast")]
         bae_core::diagnostics::Diagnostics::noop(),
     )
     .expect("the bridge handle starts");
@@ -928,11 +929,17 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     let services = app.services.clone();
 
     let runtime = app.runtime.clone();
-    caller
-        .block_on(runtime.spawn(async move { drop(app) }))
+    runtime
+        .block_on(async move { tokio::spawn(async move { drop(app) }).await })
         .expect("the handle is released on its runtime");
-    let reopened = crate::init_app(id, 50, false, host, crate::BridgeLibraryOpening::new())
-        .expect("the library opens again");
+    let reopened = crate::init_app(
+        id,
+        50,
+        false,
+        host,
+        crate::BridgeLibraryOpening::new(crate::BridgeDiagnostics::noop()),
+    )
+    .expect("the library opens again");
 
     let read = caller.block_on(services.library_name());
     assert!(

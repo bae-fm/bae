@@ -36,7 +36,7 @@ impl crate::types::BridgeReleaseFilesRequest {
 #[derive(uniffi::Object)]
 pub struct ReleaseFilesSubscription {
     inner: bae_core::library::ReleaseFilesSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -66,29 +66,31 @@ impl ReleaseFilesSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<crate::types::BridgeReleaseFilesSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(|snapshot| crate::types::BridgeReleaseFilesSnapshot {
-                    request: snapshot
-                        .request
-                        .map(crate::types::BridgeReleaseFilesRequest::from_core),
-                    files: snapshot
-                        .files
-                        .map(|files| files.into_iter().map(BridgeFile::from_core).collect()),
-                })
-                .map_err(live_read_error)
-        })
-        .await
+        runtime
+            .run("ReleaseFilesSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(|snapshot| crate::types::BridgeReleaseFilesSnapshot {
+                        request: snapshot
+                            .request
+                            .map(crate::types::BridgeReleaseFilesRequest::from_core),
+                        files: snapshot
+                            .files
+                            .map(|files| files.into_iter().map(BridgeFile::from_core).collect()),
+                    })
+                    .map_err(live_read_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel();
-            Ok(())
-        })
-        .await
+        runtime
+            .run("ReleaseFilesSubscription.cancel", move || async move {
+                self.inner.cancel();
+                Ok(())
+            })
+            .await
     }
 }

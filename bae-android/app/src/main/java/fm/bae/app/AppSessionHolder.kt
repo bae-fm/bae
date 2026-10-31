@@ -356,7 +356,7 @@ object AppSessionHolder {
         val app = context.applicationContext as BaeApp
         try {
             val handle =
-                LibraryOpenProgress().use { progress ->
+                LibraryOpenProgress(app.diagnostics).use { progress ->
                     onScreen(AppScreen.Opening(progress.steps))
                     withContext(Dispatchers.IO) {
                         // The "Restore on launch" preference (default on): off

@@ -24,7 +24,7 @@ pub struct BridgeDownloadBrowseSnapshot {
 #[derive(uniffi::Object)]
 pub struct DownloadBrowseSubscription {
     inner: bae_core::library::DownloadBrowseSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -61,23 +61,25 @@ impl DownloadBrowseSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeDownloadBrowseSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(BridgeDownloadBrowseSnapshot::from_core)
-                .map_err(super::collection_subscription::browse_error)
-        })
-        .await
+        runtime
+            .run("DownloadBrowseSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(BridgeDownloadBrowseSnapshot::from_core)
+                    .map_err(super::collection_subscription::browse_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel().await;
-            Ok(())
-        })
-        .await
+        runtime
+            .run("DownloadBrowseSubscription.cancel", move || async move {
+                self.inner.cancel().await;
+                Ok(())
+            })
+            .await
     }
 }
 

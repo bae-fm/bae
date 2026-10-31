@@ -51,6 +51,7 @@ struct LibraryRemovalsClosedLibraryTests {
     private var removals: LibraryRemovals {
         let bridge = bridge
         return LibraryRemovals(
+            diagnostics: BaeDiagnostics.disabled(),
             unsentOfClosed: { libraryId, _ in await bridge.unsent(libraryId) },
             removeClosed: { libraryId, _ in await bridge.remove(libraryId) },
             removeUnopenable: { await bridge.removeUnopenable($0) },
@@ -127,6 +128,7 @@ struct LibraryRemovalsClosedLibraryTests {
     @Test("a refused removal of a library that can't open shows why")
     func refusedUnopenableRemovalShowsError() async {
         let removals = LibraryRemovals(
+            diagnostics: BaeDiagnostics.disabled(),
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
                 return BridgeUnsentWork(writes: 0, files: 0)
@@ -152,6 +154,7 @@ struct LibraryRemovalsClosedLibraryTests {
     @Test("a count that can't be read shows why and asks nothing")
     func unreadableCountShowsError() async {
         let removals = LibraryRemovals(
+            diagnostics: BaeDiagnostics.disabled(),
             unsentOfClosed: { _, _ in
                 throw BridgeError.Diagnostic(category: .database, detail: "x")
             },
@@ -268,6 +271,7 @@ struct LibraryRemovalsUnfinishedTests {
     func retryFinishesAnEarlierRemoval() async {
         let bridge = UnfinishedRemovalBridge(failures: 1)
         let removals = LibraryRemovals(
+            diagnostics: BaeDiagnostics.disabled(),
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _ in .removed },
             removeUnopenable: { _ in .removed },
@@ -294,6 +298,7 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("a removal that stopped before the delete shows without Retry")
     func stoppedBeforeTheDelete() async {
         let removals = LibraryRemovals(
+            diagnostics: BaeDiagnostics.disabled(),
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _ in .removed },
             removeUnopenable: { _ in .removed },
@@ -316,6 +321,7 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("nothing shows when no removal was left unfinished")
     func nothingLeft() async {
         let removals = LibraryRemovals(
+            diagnostics: BaeDiagnostics.disabled(),
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _ in .removed },
             removeUnopenable: { _ in .removed },

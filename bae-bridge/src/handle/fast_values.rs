@@ -24,7 +24,7 @@ impl AppHandle {
     where
         Fut: std::future::Future<Output = ()> + Send + 'static,
     {
-        let values = StreamValues::new(activity);
+        let values = StreamValues::new(activity, self.diagnostics.clone());
         let stop = bae_core::library::CancellationToken::new();
         let writer = StreamWriter::new(values.clone());
         self.deliver_until(stop.clone(), move |services| feed(services, writer));

@@ -1,5 +1,6 @@
 use bae_core::library::AppServices;
 use bae_core::playback::QueueEntryId;
+use std::sync::PoisonError;
 use tracing::info;
 
 #[cfg(feature = "desktop")]
@@ -29,7 +30,10 @@ pub struct AppHandle {
     desktop: std::sync::Arc<bae_desktop::DesktopServices>,
     #[cfg(feature = "cast")]
     cast: std::sync::Arc<bae_cast::CastController>,
-    runtime: tokio::runtime::Handle,
+    /// Where the handle's calls run, on the library's runtime.
+    runtime: crate::operation_runtime::OperationRuntime,
+    /// Where a bug in the handle's work with no caller to fail is reported.
+    diagnostics: bae_core::diagnostics::Diagnostics,
     /// Retains the runtime that prepared coven and its session custody.
     _host: Option<std::sync::Arc<crate::BridgeHost>>,
     session: Session,
@@ -63,7 +67,7 @@ macro_rules! forward {
                     self: std::sync::Arc<Self>,
                     $($arg: $arg_type),*
                 ) -> Result<$ret, BridgeError> {
-                    self.run_exported(move |$this| async move $body).await
+                    self.run_exported(concat!("AppHandle.", stringify!($name)), move |$this| async move $body).await
                 }
             )*
         }
@@ -154,6 +158,10 @@ mod ui_events;
 /// handle, or releasing it, closes an open library on the runtime and only then
 /// shuts the runtime down, so nothing of the library is left running for the
 /// shutdown to cancel under it.
+///
+/// Every change to the state is one `mem::replace`, which can't panic
+/// partway, so a poisoned lock leaves it whole and says nothing about it; a
+/// released handle's `Drop` takes it, where a panic must not start.
 struct Session(std::sync::Mutex<SessionState>);
 
 enum SessionState {
@@ -174,50 +182,80 @@ impl Session {
     /// session already ended.
     fn end(&self, closing: impl std::future::Future<Output = Closing>) -> Option<Closing> {
         let state = std::mem::replace(
-            &mut *self.0.lock().expect("library session lock"),
+            &mut *self.0.lock().unwrap_or_else(PoisonError::into_inner),
             SessionState::Ended,
         );
         end(state, closing)
     }
 
     /// [`Self::end`] for a released handle, with no caller to hear a failure,
-    /// which `failed` is told of. Released on a thread of a runtime — the last
-    /// call on the handle ending on the app runtime — it can't wait there for
-    /// work only a runtime can do, so a thread of its own ends the session,
-    /// and `ending_on` is handed the thread to wait on.
+    /// which `failed` is told of: the close's error, or its panic. Released
+    /// on a thread of a runtime — the last call on the handle ending on the
+    /// app runtime — it can't wait there for work only a runtime can do, so a
+    /// thread of its own ends the session, and `ending_on` is handed the
+    /// thread to wait on.
     fn end_released(
         &self,
         closing: impl std::future::Future<Output = Closing> + Send + 'static,
-        failed: impl FnOnce(bae_core::library::LibraryError) + Send + 'static,
+        failed: impl Fn(&dyn std::fmt::Display) + Send + Sync + 'static,
         ending_on: impl FnOnce(std::thread::JoinHandle<()>),
     ) {
         let state = std::mem::replace(
-            &mut *self.0.lock().expect("library session lock"),
+            &mut *self.0.lock().unwrap_or_else(PoisonError::into_inner),
             SessionState::Ended,
         );
         if matches!(state, SessionState::Ended) {
             return;
         }
-        let ending = move || {
-            if let Some(Err(error)) = end(state, closing) {
-                failed(error);
+        let failed = std::sync::Arc::new(failed);
+        let closing_failed = failed.clone();
+        let ending: Box<dyn FnOnce() + Send> = Box::new(move || {
+            match bae_util::task_failure::caught_sync("close a released library", || {
+                end(state, closing)
+            }) {
+                Ok(None | Some(Ok(()))) => {}
+                Ok(Some(Err(error))) => closing_failed(&error),
+                Err(panicked) => closing_failed(&panicked),
             }
-        };
-        if tokio::runtime::Handle::try_current().is_ok() {
-            ending_on(
-                std::thread::Builder::new()
-                    .name("bae-library-close".to_string())
-                    .spawn(ending)
-                    .expect("spawn the thread that closes a released library"),
-            );
-        } else {
+        });
+        if tokio::runtime::Handle::try_current().is_err() {
             ending();
+            return;
         }
+        // The thread is handed the close once it has started, so a close
+        // whose thread can't start is still here, not dropped with the
+        // spawn's error.
+        let (work_tx, work) = std::sync::mpsc::channel::<Box<dyn FnOnce() + Send>>();
+        let started = std::thread::Builder::new()
+            .name("bae-library-close".to_string())
+            .spawn(move || {
+                if let Ok(ending) = work.recv() {
+                    ending();
+                }
+            });
+        let (unstarted, why) = match started {
+            Ok(thread) => {
+                ending_on(thread);
+                match work_tx.send(ending) {
+                    Ok(()) => return,
+                    Err(unsent) => (
+                        unsent.0,
+                        "its thread ended before it was handed the close".to_string(),
+                    ),
+                }
+            }
+            Err(error) => (ending, format!("its thread could not start: {error}")),
+        };
+        // A runtime thread can neither run the close nor drop the runtime, so
+        // the library stays open, owned by nothing, until the process exits;
+        // opening it again finds its store held and says so.
+        failed(&format!("the library was left open: {why}"));
+        std::mem::forget(unstarted);
     }
 
     /// Record that removing the open library deleted its store.
     fn removed(&self) {
-        let mut state = self.0.lock().expect("library session lock");
+        let mut state = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         *state = match std::mem::replace(&mut *state, SessionState::Ended) {
             SessionState::Open(runtime) => SessionState::Removed(runtime),
             ended @ (SessionState::Removed(_) | SessionState::Ended) => ended,
@@ -251,31 +289,35 @@ fn end(
 pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
 
 impl AppHandle {
-    /// Start the handle over an open library. `diagnostics` is where casting
-    /// reports a panic in its background work.
+    /// Start the handle over an open library. `diagnostics` is where a panic
+    /// in the handle's operations, its deliveries to the host, and casting's
+    /// background work is reported.
     pub(crate) fn start(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
-        #[cfg(feature = "cast")] diagnostics: bae_core::diagnostics::Diagnostics,
+        diagnostics: bae_core::diagnostics::Diagnostics,
     ) -> Result<Self, bae_core::app::BootstrapError> {
         #[cfg(feature = "desktop")]
         let desktop = {
             let runtime_handle = runtime.handle().clone();
             let starting = services.clone();
-            let started = runtime.block_on(crate::operation_runtime::spawn(
-                runtime_handle.clone(),
-                move || bae_desktop::DesktopServices::start(starting, runtime_handle),
+            let started = runtime.block_on(bae_util::task_failure::joined(
+                "start the desktop services",
+                crate::operation_runtime::spawn(runtime.handle(), move || {
+                    bae_desktop::DesktopServices::start(starting, runtime_handle)
+                }),
             ));
             match started {
                 Ok(desktop) => std::sync::Arc::new(desktop),
                 // The library is open on the runtime, so it closes before the
                 // runtime ends.
-                Err(error) => {
+                Err(failed) => {
+                    let failed = diagnostics.bug(failed);
                     if let Err(closing) = runtime.block_on(services.close()) {
                         services.report_bug("close the library a failed open left open", &closing);
                     }
                     return Err(bae_core::app::BootstrapError::Internal(format!(
-                        "desktop services failed to start: {error}"
+                        "desktop services failed to start: {failed}"
                     )));
                 }
             }
@@ -285,7 +327,7 @@ impl AppHandle {
             services.clone(),
             runtime.handle().clone(),
             bae_cast::renderer::RendererDiscovery::for_host(),
-            diagnostics,
+            diagnostics.clone(),
         );
 
         Ok(Self {
@@ -294,7 +336,11 @@ impl AppHandle {
             desktop,
             #[cfg(feature = "cast")]
             cast,
-            runtime: runtime.handle().clone(),
+            runtime: crate::operation_runtime::OperationRuntime::new(
+                runtime.handle().clone(),
+                diagnostics.clone(),
+            ),
+            diagnostics,
             session: Session(std::sync::Mutex::new(SessionState::Open(runtime))),
             _host: None,
         })
@@ -303,21 +349,17 @@ impl AppHandle {
     pub(crate) fn start_for_host(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
+        diagnostics: bae_core::diagnostics::Diagnostics,
         host: std::sync::Arc<crate::BridgeHost>,
-        #[cfg(feature = "cast")] diagnostics: bae_core::diagnostics::Diagnostics,
     ) -> Result<Self, bae_core::app::BootstrapError> {
-        let mut app = Self::start(
-            services,
-            runtime,
-            #[cfg(feature = "cast")]
-            diagnostics,
-        )?;
+        let mut app = Self::start(services, runtime, diagnostics)?;
         app._host = Some(host);
         Ok(app)
     }
 
     async fn run_exported<T, Build, Fut>(
         self: std::sync::Arc<Self>,
+        operation: &'static str,
         build: Build,
     ) -> Result<T, BridgeError>
     where
@@ -326,7 +368,7 @@ impl AppHandle {
         Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
     {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || build(self)).await
+        runtime.run(operation, move || build(self)).await
     }
 
     /// Closing the library, as its runtime runs it: the desktop services, then
@@ -357,7 +399,9 @@ impl Drop for AppHandle {
         let services = self.services.clone();
         self.session.end_released(
             self.closing(),
-            move |error| services.report_bug("close the library its handle released", &error),
+            move |error: &dyn std::fmt::Display| {
+                services.report_bug("close the library its handle released", error)
+            },
             |thread| {
                 if let Some(host) = &self._host {
                     host.library_closing(self.services.get_config().store_id, thread);
@@ -393,6 +437,9 @@ impl AppHandle {
 #[cfg(test)]
 #[path = "handle_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod session_tests;
 
 mod personal;
 

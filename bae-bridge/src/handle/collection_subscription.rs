@@ -36,7 +36,7 @@ macro_rules! browse_subscription {
         #[derive(uniffi::Object)]
         pub struct $object {
             inner: $inner,
-            runtime: tokio::runtime::Handle,
+            runtime: crate::operation_runtime::OperationRuntime,
         }
 
         #[uniffi::export]
@@ -66,7 +66,7 @@ macro_rules! browse_subscription {
 
             pub async fn next(self: std::sync::Arc<Self>) -> Result<$snapshot, BridgeError> {
                 let runtime = self.runtime.clone();
-                crate::operation_runtime::run(runtime, move || async move {
+                runtime.run(concat!(stringify!($object), ".next"), move || async move {
                     self.inner
                         .next()
                         .await
@@ -78,7 +78,7 @@ macro_rules! browse_subscription {
 
             pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
                 let runtime = self.runtime.clone();
-                crate::operation_runtime::run(runtime, move || async move {
+                runtime.run(concat!(stringify!($object), ".cancel"), move || async move {
                     self.inner.cancel().await;
                     Ok(())
                 })

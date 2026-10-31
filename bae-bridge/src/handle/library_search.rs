@@ -16,7 +16,7 @@ pub struct BridgeLibrarySearchSnapshot {
 #[derive(uniffi::Object)]
 pub struct LibrarySearchSubscription {
     inner: bae_core::library::LibrarySearchSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -41,30 +41,32 @@ impl LibrarySearchSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeLibrarySearchSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(|snapshot| BridgeLibrarySearchSnapshot {
-                    query: snapshot
-                        .query
-                        .map(|query| query.as_str().to_string())
-                        .unwrap_or_default(),
-                    results: BridgeSearchResults::from_core(snapshot.results),
-                    request_revision: snapshot.request_revision,
-                })
-                .map_err(search_error)
-        })
-        .await
+        runtime
+            .run("LibrarySearchSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(|snapshot| BridgeLibrarySearchSnapshot {
+                        query: snapshot
+                            .query
+                            .map(|query| query.as_str().to_string())
+                            .unwrap_or_default(),
+                        results: BridgeSearchResults::from_core(snapshot.results),
+                        request_revision: snapshot.request_revision,
+                    })
+                    .map_err(search_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel().await;
-            Ok(())
-        })
-        .await
+        runtime
+            .run("LibrarySearchSubscription.cancel", move || async move {
+                self.inner.cancel().await;
+                Ok(())
+            })
+            .await
     }
 }
 

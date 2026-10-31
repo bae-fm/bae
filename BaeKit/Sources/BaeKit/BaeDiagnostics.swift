@@ -19,6 +19,17 @@ public enum BaeDiagnostics {
         )
     }
 
+    #if DEBUG
+        /// A sink that ships no telemetry, for previews and tests. The bugs
+        /// core finds still go to the crash reporter.
+        public static func disabled() -> BridgeDiagnostics {
+            configureDiagnostics(
+                config: .disabled,
+                bugReporter: CoreBugReporter()
+            )
+        }
+    #endif
+
     static func bridgeConfig(
         source: String,
         edition: AppEdition

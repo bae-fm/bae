@@ -75,7 +75,7 @@ impl BridgeStorageQueues {
 #[derive(uniffi::Object)]
 pub struct StorageBrowseSubscription {
     inner: bae_core::library::StorageBrowseSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -133,52 +133,56 @@ impl StorageBrowseSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeStorageBrowseSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(|snapshot| BridgeStorageBrowseSnapshot {
-                    sort: BridgeStorageSort::from_core(snapshot.sort),
-                    filter: BridgeStorageFilter::from_core(snapshot.filter),
-                    search: snapshot.search,
-                    searching: snapshot.searching,
-                    windows: snapshot
-                        .windows
-                        .into_iter()
-                        .map(|window| BridgeStorageBrowseWindow {
-                            window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                            rows: window
-                                .rows
-                                .into_iter()
-                                .map(BridgeStorageRow::from_core)
-                                .collect(),
-                        })
-                        .collect(),
-                    total_count: snapshot.total_count,
-                    total_size: snapshot.total_size,
-                    selected: snapshot
-                        .selected
-                        .into_iter()
-                        .map(BridgeStorageRow::from_core)
-                        .collect(),
-                    selection_actions: snapshot
-                        .selection_actions
-                        .into_iter()
-                        .map(crate::types::BridgeReleaseStorageAction::from_core)
-                        .collect(),
-                    queues: BridgeStorageQueues::from_core(snapshot.queues),
-                })
-                .map_err(live_read_error)
-        })
-        .await
+        runtime
+            .run("StorageBrowseSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(|snapshot| BridgeStorageBrowseSnapshot {
+                        sort: BridgeStorageSort::from_core(snapshot.sort),
+                        filter: BridgeStorageFilter::from_core(snapshot.filter),
+                        search: snapshot.search,
+                        searching: snapshot.searching,
+                        windows: snapshot
+                            .windows
+                            .into_iter()
+                            .map(|window| BridgeStorageBrowseWindow {
+                                window: crate::types::BridgeLibraryPageWindow::from_core(
+                                    window.window,
+                                ),
+                                rows: window
+                                    .rows
+                                    .into_iter()
+                                    .map(BridgeStorageRow::from_core)
+                                    .collect(),
+                            })
+                            .collect(),
+                        total_count: snapshot.total_count,
+                        total_size: snapshot.total_size,
+                        selected: snapshot
+                            .selected
+                            .into_iter()
+                            .map(BridgeStorageRow::from_core)
+                            .collect(),
+                        selection_actions: snapshot
+                            .selection_actions
+                            .into_iter()
+                            .map(crate::types::BridgeReleaseStorageAction::from_core)
+                            .collect(),
+                        queues: BridgeStorageQueues::from_core(snapshot.queues),
+                    })
+                    .map_err(live_read_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel();
-            Ok(())
-        })
-        .await
+        runtime
+            .run("StorageBrowseSubscription.cancel", move || async move {
+                self.inner.cancel();
+                Ok(())
+            })
+            .await
     }
 }

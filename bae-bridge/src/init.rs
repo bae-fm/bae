@@ -7,6 +7,7 @@ use bae_core::diagnostics::{
     DiagnosticsConfig, DiagnosticsError, Screen, TelemetryEvent,
 };
 use bae_core::logging::LogSink;
+use bae_util::task_failure::TaskFailed;
 
 use crate::handle::AppHandle;
 use crate::types::BridgeError;
@@ -24,9 +25,19 @@ pub trait BridgeBugReporter: Send + Sync {
 /// Core's view of the platform's [`BridgeBugReporter`].
 struct PlatformBugReporter(Box<dyn BridgeBugReporter>);
 
+/// A throw from the platform's reporter, which uniffi raises in Rust as a
+/// panic, is logged: there is nowhere else to report it, and a report made
+/// from a `Drop` or a teardown must not panic.
 impl bae_core::diagnostics::BugReporter for PlatformBugReporter {
     fn report(&self, operation: &str, detail: &str) {
-        self.0.report(operation.to_string(), detail.to_string());
+        if let Err(failed) = bae_util::task_failure::caught_sync("report a bug", || {
+            self.0.report(operation.to_string(), detail.to_string())
+        }) {
+            tracing::error!(
+                operation,
+                "the platform's crash reporter threw on a bug: {failed}"
+            );
+        }
     }
 }
 
@@ -118,11 +129,7 @@ impl BridgeDiagnostics {
             self.inner.clone(),
             builder,
             opening.report(),
-            start_handle(
-                host,
-                #[cfg(feature = "cast")]
-                self.inner.clone(),
-            ),
+            start_handle(host, self.inner.clone()),
         ))
     }
 
@@ -150,11 +157,7 @@ impl BridgeDiagnostics {
             self.inner.clone(),
             builder,
             opening.report(),
-            start_handle(
-                host,
-                #[cfg(feature = "cast")]
-                self.inner.clone(),
-            ),
+            start_handle(host, self.inner.clone()),
         ))
     }
 
@@ -173,11 +176,7 @@ impl BridgeDiagnostics {
             restore_playback,
             host.audio_focus(),
             self.inner.clone(),
-            start_handle(
-                host,
-                #[cfg(feature = "cast")]
-                self.inner.clone(),
-            ),
+            start_handle(host, self.inner.clone()),
         ))
     }
 
@@ -222,6 +221,30 @@ impl BridgeDiagnostics {
         })
     }
 
+    /// Report `failed` when it is a panic, and hand it back for the caller's
+    /// own error.
+    pub(crate) fn bug(&self, failed: TaskFailed) -> TaskFailed {
+        self.inner.bug(failed)
+    }
+
+    /// Where the bridge's calls run on `runtime`, reporting their panics to
+    /// this sink.
+    pub(crate) fn operations(
+        &self,
+        runtime: tokio::runtime::Handle,
+    ) -> crate::operation_runtime::OperationRuntime {
+        crate::operation_runtime::OperationRuntime::new(runtime, self.inner.clone())
+    }
+
+    /// A stream's values, a throw from the host's `activity` callback
+    /// reported to this sink.
+    pub(crate) fn stream_values(
+        &self,
+        activity: Box<dyn crate::types::KeyActivityCallback>,
+    ) -> Arc<crate::keyed_values::StreamValues> {
+        crate::keyed_values::StreamValues::new(activity, self.inner.clone())
+    }
+
     fn emit_app_start_failed(&self, error: &BootstrapError) {
         self.inner.event(TelemetryEvent::AppStartFailed {
             kind: app_start_failure_kind(error),
@@ -232,6 +255,16 @@ impl BridgeDiagnostics {
     pub(crate) fn noop() -> Arc<Self> {
         Arc::new(Self {
             inner: Diagnostics::noop(),
+        })
+    }
+
+    /// A sink that sends nothing and reports each bug to `bugs`.
+    #[cfg(test)]
+    pub(crate) fn reporting_bugs_to(
+        bugs: Arc<dyn bae_core::diagnostics::BugReporter>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            inner: Diagnostics::noop().reporting_bugs_to(bugs),
         })
     }
 }
@@ -529,25 +562,17 @@ fn configure_logging() {
 }
 
 /// What a bootstrap runs once the library is open: start the handle for
-/// `host` over it, casting reporting through `diagnostics`.
+/// `host` over it, reporting a panic in its work through `diagnostics`.
 fn start_handle(
     host: Arc<crate::BridgeHost>,
-    #[cfg(feature = "cast")] diagnostics: Diagnostics,
+    diagnostics: Diagnostics,
 ) -> impl FnOnce(
     bae_core::library::AppServices,
     tokio::runtime::Runtime,
 ) -> Result<AppHandle, bae_core::app::BootstrapError>
        + Send
        + 'static {
-    move |services, runtime| {
-        AppHandle::start_for_host(
-            services,
-            runtime,
-            host,
-            #[cfg(feature = "cast")]
-            diagnostics,
-        )
-    }
+    move |services, runtime| AppHandle::start_for_host(services, runtime, diagnostics, host)
 }
 
 #[cfg(test)]

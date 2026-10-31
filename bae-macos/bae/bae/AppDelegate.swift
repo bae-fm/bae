@@ -265,7 +265,9 @@ extension AppDelegate {
     func openLocalLibrary(id libraryId: String) {
         loadError = nil
         screen = .loading
-        let progress = LibraryOpenProgress()
+        let progress = LibraryOpenProgress(
+            diagnostics: requiredApplicationServices.diagnostics
+        )
         openProgress = progress
         opener.open(libraryId: libraryId, progress: progress) {
             [weak self] outcome in

@@ -5,8 +5,16 @@ use std::time::Duration;
 
 /// A library created in `root` and opened, as a host opens one.
 fn open_library(root: &tempfile::TempDir) -> Arc<AppHandle> {
+    open_library_reporting(root, crate::BridgeDiagnostics::noop())
+}
+
+/// [`open_library`], reporting its bugs to `diagnostics`.
+fn open_library_reporting(
+    root: &tempfile::TempDir,
+    diagnostics: Arc<crate::BridgeDiagnostics>,
+) -> Arc<AppHandle> {
     let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
+        diagnostics,
         crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
     )
     .unwrap();
@@ -146,4 +154,47 @@ fn closing_a_library_ends_its_live_subscriptions_before_its_store_closes() {
         "the subscription heard nothing from the closed store"
     );
     drop(members);
+}
+
+/// Sends the operation of each bug reported, for a test to wait on.
+struct HeardBugs(Mutex<mpsc::Sender<String>>);
+
+impl bae_core::diagnostics::BugReporter for HeardBugs {
+    fn report(&self, operation: &str, _detail: &str) {
+        self.0
+            .lock()
+            .unwrap()
+            .send(operation.to_string())
+            .expect("the test hears the report");
+    }
+}
+
+/// A delivery that panics — as a host callback that throws does, through
+/// uniffi — ends with its panic reported, and the library's other
+/// subscriptions go on.
+#[test]
+fn a_delivery_that_panics_is_reported_and_others_go_on() {
+    let root = tempfile::tempdir().unwrap();
+    let (reported, reports) = mpsc::channel();
+    let app = open_library_reporting(
+        &root,
+        crate::BridgeDiagnostics::reporting_bugs_to(Arc::new(HeardBugs(Mutex::new(reported)))),
+    );
+
+    let _panicked = app.live_subscription(|_| async {
+        panic!("Callback interface failure: the host threw");
+    });
+    assert_eq!(
+        reports
+            .recv_timeout(Duration::from_secs(10))
+            .expect("the panic is reported"),
+        "deliver a live subscription"
+    );
+
+    let (_subscription, started, _ended) = waiting_delivery(&app);
+    started
+        .recv_timeout(Duration::from_secs(10))
+        .expect("another delivery still starts");
+    app.close_library().unwrap();
+    assert!(reports.try_recv().is_err(), "the panic is reported once");
 }

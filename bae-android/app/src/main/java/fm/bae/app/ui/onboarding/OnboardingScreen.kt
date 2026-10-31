@@ -36,6 +36,7 @@ import fm.bae.app.BaeApp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -89,14 +90,15 @@ internal fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
-    // The process-lifetime host built at app launch; restore and join run over it.
-    val host = (context.applicationContext as BaeApp).host
+    // The process-lifetime host and sink built at app launch; restore and
+    // join run over them.
+    val app = context.applicationContext as BaeApp
     val flow =
         remember(restoreOver?.libraryId) {
             OnboardingFlow(
                 scope,
                 context,
-                OnboardingCore(host, ::BootstrapCancellation),
+                OnboardingCore(app.host, ::BootstrapCancellation) { LibraryOpenProgress(app.diagnostics) },
                 oauthProvidersError,
                 restoreOver,
                 onBootstrapped,

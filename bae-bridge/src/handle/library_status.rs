@@ -25,7 +25,7 @@ pub struct BridgeLibraryStatusSnapshot {
 #[derive(uniffi::Object)]
 pub struct LibraryStatusSubscription {
     inner: bae_core::library::LibraryStatusSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -56,35 +56,37 @@ impl LibraryStatusSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeLibraryStatusSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(|snapshot| BridgeLibraryStatusSnapshot {
-                    statuses: snapshot
-                        .statuses
-                        .into_iter()
-                        .map(|status| {
-                            (
-                                status.release_id.clone(),
-                                crate::types::BridgeLibraryStatus::from_core(status),
-                            )
-                        })
-                        .collect(),
-                    request_revision: snapshot.request_revision,
-                })
-                .map_err(status_error)
-        })
-        .await
+        runtime
+            .run("LibraryStatusSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(|snapshot| BridgeLibraryStatusSnapshot {
+                        statuses: snapshot
+                            .statuses
+                            .into_iter()
+                            .map(|status| {
+                                (
+                                    status.release_id.clone(),
+                                    crate::types::BridgeLibraryStatus::from_core(status),
+                                )
+                            })
+                            .collect(),
+                        request_revision: snapshot.request_revision,
+                    })
+                    .map_err(status_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel().await;
-            Ok(())
-        })
-        .await
+        runtime
+            .run("LibraryStatusSubscription.cancel", move || async move {
+                self.inner.cancel().await;
+                Ok(())
+            })
+            .await
     }
 }
 

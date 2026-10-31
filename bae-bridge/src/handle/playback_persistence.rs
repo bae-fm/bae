@@ -11,7 +11,7 @@ impl AppHandle {
     /// position survive a later cold launch — closing the library would stop
     /// the background audio.
     pub async fn save_playback_state(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        self.run_exported(move |this| async move {
+        self.run_exported("AppHandle.save_playback_state", move |this| async move {
             this.services.playback_save_state().await;
             Ok(())
         })

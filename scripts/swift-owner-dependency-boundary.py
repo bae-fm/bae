@@ -58,6 +58,10 @@ ALLOWED_OUTPUTS = {
         "BaeKit/Sources/BaeKit/BaeDiagnostics.swift",
         "public static func configure",
     ),
+    (
+        "BaeKit/Sources/BaeKit/BaeDiagnostics.swift",
+        "public static func disabled",
+    ),
     ("BaeKit/Sources/BaeKit/Services/Cast.swift", "public static func stub"),
     (
         "BaeKit/Sources/BaeKit/Services/Downloads.swift",

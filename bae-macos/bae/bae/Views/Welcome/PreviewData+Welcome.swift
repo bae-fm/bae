@@ -71,6 +71,7 @@
         @MainActor
         static func welcomeRemovals() -> LibraryRemovals {
             LibraryRemovals(
+                diagnostics: BaeDiagnostics.disabled(),
                 unsentOfClosed: { _, _ in throw StubError.notImplemented },
                 removeClosed: { _, _ in throw StubError.notImplemented },
                 removeUnopenable: { _ in throw StubError.notImplemented },

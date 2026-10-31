@@ -25,7 +25,7 @@ pub struct BridgeQueueUpcomingSnapshot {
 #[derive(uniffi::Object)]
 pub struct QueueUpcomingSubscription {
     inner: bae_core::library::QueueUpcomingSubscription,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 #[uniffi::export]
@@ -61,23 +61,25 @@ impl QueueUpcomingSubscription {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeQueueUpcomingSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(BridgeQueueUpcomingSnapshot::from_core)
-                .map_err(live_read_error)
-        })
-        .await
+        runtime
+            .run("QueueUpcomingSubscription.next", move || async move {
+                self.inner
+                    .next()
+                    .await
+                    .map(BridgeQueueUpcomingSnapshot::from_core)
+                    .map_err(live_read_error)
+            })
+            .await
     }
 
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.inner.cancel();
-            Ok(())
-        })
-        .await
+        runtime
+            .run("QueueUpcomingSubscription.cancel", move || async move {
+                self.inner.cancel();
+                Ok(())
+            })
+            .await
     }
 }
 

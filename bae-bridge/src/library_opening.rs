@@ -5,11 +5,14 @@ use std::sync::{Arc, Mutex};
 
 use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
 use crate::types::{BridgeFastValue, BridgeOpenProgress, KeyActivityCallback};
+use crate::BridgeDiagnostics;
 
 /// The app makes one for each call that opens a library, starts reading its
 /// steps with [`Self::feed_open_steps`], then hands it to that call.
 #[derive(uniffi::Object)]
 pub struct BridgeLibraryOpening {
+    /// Where a throw from the app's activity callback is reported.
+    diagnostics: Arc<BridgeDiagnostics>,
     /// Where the open reports its steps: the stream
     /// [`Self::feed_open_steps`] last handed out.
     steps: Mutex<Option<Arc<StreamValues>>>,
@@ -17,9 +20,12 @@ pub struct BridgeLibraryOpening {
 
 #[uniffi::export]
 impl BridgeLibraryOpening {
+    /// An opening whose stream reports a throw from the app's activity
+    /// callback to `diagnostics`, the process's sink.
     #[uniffi::constructor]
-    pub fn new() -> Arc<Self> {
+    pub fn new(diagnostics: Arc<BridgeDiagnostics>) -> Arc<Self> {
         Arc::new(Self {
+            diagnostics,
             steps: Mutex::new(None),
         })
     }
@@ -28,7 +34,7 @@ impl BridgeLibraryOpening {
     /// the open runs a step, and nothing once the open ends. A cancelled
     /// stream holds nothing from then on.
     pub fn feed_open_steps(&self, activity: Box<dyn KeyActivityCallback>) -> Arc<KeyedValueStream> {
-        let values = StreamValues::new(activity);
+        let values = self.diagnostics.stream_values(activity);
         *self.steps.lock().unwrap() = Some(values.clone());
         Arc::new(KeyedValueStream::new(
             values,

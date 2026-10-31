@@ -8,7 +8,7 @@ use super::*;
 pub struct ReleaseEditSession {
     inner: bae_core::library::ReleaseEditSession,
     services: AppServices,
-    runtime: tokio::runtime::Handle,
+    runtime: crate::operation_runtime::OperationRuntime,
 }
 
 forward! {
@@ -46,14 +46,15 @@ impl ReleaseEditSession {
         link: crate::types::BridgePressingLink,
     ) -> Result<crate::types::BridgeReleaseEditSeed, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            let seed = self
-                .services
-                .apply_release_edit_catalog(&self.inner, &link.into_core())
-                .await?;
-            Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
-        })
-        .await
+        runtime
+            .run("ReleaseEditSession.apply_catalog", move || async move {
+                let seed = self
+                    .services
+                    .apply_release_edit_catalog(&self.inner, &link.into_core())
+                    .await?;
+                Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
+            })
+            .await
     }
 
     /// Pick the library album this session files the release under, over the
@@ -64,14 +65,15 @@ impl ReleaseEditSession {
         album_id: Option<String>,
     ) -> Result<crate::types::BridgeDraftAlbum, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            let album = self
-                .services
-                .set_release_edit_album(&self.inner, album_id)
-                .await?;
-            Ok(crate::types::BridgeDraftAlbum::from_core(album))
-        })
-        .await
+        runtime
+            .run("ReleaseEditSession.set_album", move || async move {
+                let album = self
+                    .services
+                    .set_release_edit_album(&self.inner, album_id)
+                    .await?;
+                Ok(crate::types::BridgeDraftAlbum::from_core(album))
+            })
+            .await
     }
 
     /// Save this session with the form the person left, into the album the
@@ -84,15 +86,16 @@ impl ReleaseEditSession {
         edit: crate::types::BridgeRawReleaseEdit,
     ) -> Result<String, BridgeError> {
         let runtime = self.runtime.clone();
-        crate::operation_runtime::run(runtime, move || async move {
-            self.services
-                .save_release_edit(&self.inner, &edit.into_core())
-                .await?;
-            self.services
-                .get_album_id_for_release(self.inner.release_id())
-                .await
-                .map_err(BridgeError::database)
-        })
-        .await
+        runtime
+            .run("ReleaseEditSession.save", move || async move {
+                self.services
+                    .save_release_edit(&self.inner, &edit.into_core())
+                    .await?;
+                self.services
+                    .get_album_id_for_release(self.inner.release_id())
+                    .await
+                    .map_err(BridgeError::database)
+            })
+            .await
     }
 }

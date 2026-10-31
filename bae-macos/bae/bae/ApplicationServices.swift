@@ -72,8 +72,15 @@ final class ApplicationServices {
         )
         mediaControlService = MediaControlService()
         deviceName = currentDeviceName()
-        librarySetup = LibrarySetup.live(host: host, deviceName: deviceName)
-        libraryRemovals = LibraryRemovals.live(host: host)
+        librarySetup = LibrarySetup.live(
+            host: host,
+            diagnostics: diagnostics,
+            deviceName: deviceName
+        )
+        libraryRemovals = LibraryRemovals.live(
+            host: host,
+            diagnostics: diagnostics
+        )
         #if DEBUG
             let updaterController = SPUStandardUpdaterController(
                 startingUpdater: false,

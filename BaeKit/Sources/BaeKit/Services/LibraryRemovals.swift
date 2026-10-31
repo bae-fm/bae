@@ -25,6 +25,9 @@ public final class LibraryRemovals {
     public private(set) var error: DisplayError?
     public private(set) var isRetrying = false
 
+    /// The process's sink, which a closed library's open reports a throw to.
+    @ObservationIgnored
+    private let diagnostics: BridgeDiagnostics
     @ObservationIgnored
     private let unsentOfClosed:
         @Sendable (String, BridgeLibraryOpening) async throws
@@ -47,6 +50,7 @@ public final class LibraryRemovals {
     /// `unsentOfClosed` and `removeClosed` open the library, writing the
     /// open's steps into the opening's stream.
     public init(
+        diagnostics: BridgeDiagnostics,
         unsentOfClosed:
             @escaping @Sendable (String, BridgeLibraryOpening) async throws
             -> BridgeUnsentWork,
@@ -59,6 +63,7 @@ public final class LibraryRemovals {
             @escaping @Sendable () async throws -> BridgeUnfinishedRemoval?,
         finishUnfinished: @escaping @Sendable () async throws -> Void
     ) {
+        self.diagnostics = diagnostics
         self.unsentOfClosed = unsentOfClosed
         self.removeClosed = removeClosed
         self.removeUnopenable = removeUnopenable
@@ -66,9 +71,13 @@ public final class LibraryRemovals {
         self.finishUnfinished = finishUnfinished
     }
 
-    /// The production wiring over the process's host.
-    public static func live(host: BridgeHost) -> LibraryRemovals {
+    /// The production wiring over the process's host and sink.
+    public static func live(
+        host: BridgeHost,
+        diagnostics: BridgeDiagnostics
+    ) -> LibraryRemovals {
         LibraryRemovals(
+            diagnostics: diagnostics,
             unsentOfClosed: { libraryId, opening in
                 try await host.unsentBeforeRemoval(
                     libraryId: libraryId,
@@ -157,7 +166,7 @@ public final class LibraryRemovals {
             )
             return .uncounted
         }
-        let progress = LibraryOpenProgress()
+        let progress = LibraryOpenProgress(diagnostics: diagnostics)
         opening = ClosedLibraryOpening(
             libraryId: library.id,
             progress: progress
@@ -196,7 +205,7 @@ public final class LibraryRemovals {
             do {
                 switch loss {
                 case .unsent:
-                    let progress = LibraryOpenProgress()
+                    let progress = LibraryOpenProgress(diagnostics: diagnostics)
                     opening = ClosedLibraryOpening(
                         libraryId: libraryId,
                         progress: progress
