@@ -300,4 +300,18 @@
     <string name="restore_code_carries_s3_key">QR-koodi sisältää myös S3-käyttöavaimesi, joten sen skannaava laite ei kysy avainta.</string>
     <string name="onboarding_s3_key_scanned">S3-käyttöavaimesi tuli skannatun koodin mukana.</string>
     <string name="voice_play_not_found">”%1$s” ei löytynyt kirjastostasi.</string>
+    <string name="onboarding_saved_codes_title">Tallennettu tähän puhelimeen</string>
+    <string name="onboarding_saved_codes_explanation">Palautuskoodit, jotka bae on tallentanut tähän puhelimeen, mukaan lukien ne, jotka kopioitiin puhelimesta, josta otit tämän käyttöön. Palauta kirjasto napauttamalla sitä.</string>
+    <string name="onboarding_saved_codes_failed">Tähän puhelimeen tallennettuja palautuskoodeja ei voitu lukea</string>
+    <string name="onboarding_saved_code_unusable">Palautuskoodia ei voi käyttää</string>
+    <string name="onboarding_saved_code_reason_format">Tallennettu muodossa, jota bae ei osaa lukea</string>
+    <string name="onboarding_saved_code_reason_other_library">Tallennettu toiselle kirjastolle</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Tallennettu useammin kuin kerran</string>
+    <string name="onboarding_saved_code_delete">Poista</string>
+    <string name="onboarding_saved_code_delete_title">Poistetaanko tämä palautuskoodi?</string>
+    <string name="onboarding_saved_code_delete_body">Tämä poistaa kirjaston ”%1$s” palautuskoodin vain tästä puhelimesta. Kirjasto ja tallennustilasi sisältö säilyvät.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Tämä poistaa palautuskoodin vain tästä puhelimesta. Kirjasto ja tallennustilasi sisältö säilyvät.</string>
+    <string name="onboarding_saved_code_delete_failed">Palautuskoodia ei voitu poistaa</string>
+    <string name="onboarding_saved_code_removed">Tätä palautuskoodia ei ole enää tallennettu tähän puhelimeen.</string>
+    <string name="onboarding_saved_library">Kirjasto</string>
 </resources>

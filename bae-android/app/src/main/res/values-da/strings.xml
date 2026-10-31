@@ -300,4 +300,18 @@
     <string name="restore_code_carries_s3_key">QR-koden indeholder også din S3-adgangsnøgle, så en enhed, der scanner den, ikke beder om nøglen.</string>
     <string name="onboarding_s3_key_scanned">Din S3-adgangsnøgle fulgte med den scannede kode.</string>
     <string name="voice_play_not_found">Kunne ikke finde “%1$s” i dit bibliotek.</string>
+    <string name="onboarding_saved_codes_title">Gemt på denne telefon</string>
+    <string name="onboarding_saved_codes_explanation">Gendannelseskoder, som bae har gemt på denne telefon, også dem, der blev kopieret fra den telefon, du konfigurerede den fra. Tryk på et bibliotek for at gendanne det.</string>
+    <string name="onboarding_saved_codes_failed">Kunne ikke læse de gendannelseskoder, der er gemt på denne telefon</string>
+    <string name="onboarding_saved_code_unusable">Gendannelseskoden kan ikke bruges</string>
+    <string name="onboarding_saved_code_reason_format">Gemt i et format, bae ikke kan læse</string>
+    <string name="onboarding_saved_code_reason_other_library">Gemt til et andet bibliotek</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Gemt mere end én gang</string>
+    <string name="onboarding_saved_code_delete">Slet</string>
+    <string name="onboarding_saved_code_delete_title">Vil du slette denne gendannelseskode?</string>
+    <string name="onboarding_saved_code_delete_body">Dette fjerner gendannelseskoden til “%1$s” kun fra denne telefon. Det sletter ikke biblioteket eller noget i dit lager.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Dette fjerner gendannelseskoden kun fra denne telefon. Det sletter ikke biblioteket eller noget i dit lager.</string>
+    <string name="onboarding_saved_code_delete_failed">Kunne ikke slette gendannelseskoden</string>
+    <string name="onboarding_saved_code_removed">Denne gendannelseskode er ikke længere gemt på denne telefon.</string>
+    <string name="onboarding_saved_library">Bibliotek</string>
 </resources>

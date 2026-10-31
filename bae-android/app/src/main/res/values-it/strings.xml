@@ -303,4 +303,18 @@
     <string name="restore_code_carries_s3_key">Il codice QR contiene anche la tua chiave di accesso S3, quindi il dispositivo che lo scansiona non ti chiederà la chiave.</string>
     <string name="onboarding_s3_key_scanned">La tua chiave di accesso S3 è arrivata con il codice scansionato.</string>
     <string name="voice_play_not_found">Impossibile trovare «%1$s» nella tua libreria.</string>
+    <string name="onboarding_saved_codes_title">Salvati su questo telefono</string>
+    <string name="onboarding_saved_codes_explanation">Codici di recupero salvati da bae su questo telefono, compresi quelli copiati dal telefono da cui lo hai configurato. Tocca una libreria per ripristinarla.</string>
+    <string name="onboarding_saved_codes_failed">Impossibile leggere i codici di recupero salvati su questo telefono</string>
+    <string name="onboarding_saved_code_unusable">Il codice di recupero non può essere usato</string>
+    <string name="onboarding_saved_code_reason_format">Salvato in un formato che bae non sa leggere</string>
+    <string name="onboarding_saved_code_reason_other_library">Salvato per un’altra libreria</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Salvato più di una volta</string>
+    <string name="onboarding_saved_code_delete">Elimina</string>
+    <string name="onboarding_saved_code_delete_title">Eliminare questo codice di recupero?</string>
+    <string name="onboarding_saved_code_delete_body">Il codice di recupero di «%1$s» verrà rimosso solo da questo telefono. La libreria e il contenuto del tuo spazio di archiviazione non verranno eliminati.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Il codice di recupero verrà rimosso solo da questo telefono. La libreria e il contenuto del tuo spazio di archiviazione non verranno eliminati.</string>
+    <string name="onboarding_saved_code_delete_failed">Impossibile eliminare il codice di recupero</string>
+    <string name="onboarding_saved_code_removed">Questo codice di recupero non è più salvato su questo telefono.</string>
+    <string name="onboarding_saved_library">Libreria</string>
 </resources>

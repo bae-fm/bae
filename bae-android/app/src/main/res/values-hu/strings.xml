@@ -300,4 +300,18 @@
     <string name="restore_code_carries_s3_key">A QR-kód az S3-hozzáférési kulcsodat is tartalmazza, így az azt beolvasó eszköz nem kéri a kulcsot.</string>
     <string name="onboarding_s3_key_scanned">Az S3-hozzáférési kulcsod a beolvasott kóddal együtt érkezett.</string>
     <string name="voice_play_not_found">„%1$s” nem található a könyvtáradban.</string>
+    <string name="onboarding_saved_codes_title">Ezen a telefonon mentve</string>
+    <string name="onboarding_saved_codes_explanation">A bae által ezen a telefonon mentett helyreállítási kódok, beleértve azokat is, amelyeket arról a telefonról másolt át, amelyről beállítottad. Koppints egy könyvtárra a visszaállításához.</string>
+    <string name="onboarding_saved_codes_failed">Nem sikerült beolvasni az ezen a telefonon mentett helyreállítási kódokat</string>
+    <string name="onboarding_saved_code_unusable">A helyreállítási kód nem használható</string>
+    <string name="onboarding_saved_code_reason_format">Olyan formátumban mentve, amelyet a bae nem tud beolvasni</string>
+    <string name="onboarding_saved_code_reason_other_library">Egy másik könyvtárhoz mentve</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Többször mentve</string>
+    <string name="onboarding_saved_code_delete">Törlés</string>
+    <string name="onboarding_saved_code_delete_title">Törlöd ezt a helyreállítási kódot?</string>
+    <string name="onboarding_saved_code_delete_body">Ez csak erről a telefonról távolítja el a(z) „%1$s” könyvtár helyreállítási kódját. Nem törli a könyvtárat, sem a tárhelyeden lévő tartalmat.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Ez csak erről a telefonról távolítja el a helyreállítási kódot. Nem törli a könyvtárat, sem a tárhelyeden lévő tartalmat.</string>
+    <string name="onboarding_saved_code_delete_failed">Nem sikerült törölni a helyreállítási kódot</string>
+    <string name="onboarding_saved_code_removed">Ez a helyreállítási kód már nincs mentve ezen a telefonon.</string>
+    <string name="onboarding_saved_library">Könyvtár</string>
 </resources>

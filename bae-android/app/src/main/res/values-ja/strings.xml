@@ -299,4 +299,18 @@
     <string name="restore_code_carries_s3_key">QR コードには S3 のアクセスキーも含まれているため、読み取ったデバイスはキーを尋ねません。</string>
     <string name="onboarding_s3_key_scanned">S3 のアクセスキーは読み取ったコードと一緒に届きました。</string>
     <string name="voice_play_not_found">ライブラリに「%1$s」が見つかりませんでした。</string>
+    <string name="onboarding_saved_codes_title">このスマートフォンに保存済み</string>
+    <string name="onboarding_saved_codes_explanation">bae がこのスマートフォンに保存した復旧コードです。設定元のスマートフォンからコピーされたものも含みます。ライブラリをタップすると復元します。</string>
+    <string name="onboarding_saved_codes_failed">このスマートフォンに保存された復旧コードを読み取れませんでした</string>
+    <string name="onboarding_saved_code_unusable">復旧コードを使用できません</string>
+    <string name="onboarding_saved_code_reason_format">bae が読み取れない形式で保存されています</string>
+    <string name="onboarding_saved_code_reason_other_library">別のライブラリ用に保存されています</string>
+    <string name="onboarding_saved_code_reason_ambiguous">複数回保存されています</string>
+    <string name="onboarding_saved_code_delete">削除</string>
+    <string name="onboarding_saved_code_delete_title">この復旧コードを削除しますか？</string>
+    <string name="onboarding_saved_code_delete_body">「%1$s」の復旧コードをこのスマートフォンからのみ削除します。ライブラリやストレージ内のデータは削除されません。</string>
+    <string name="onboarding_saved_code_delete_body_unusable">復旧コードをこのスマートフォンからのみ削除します。ライブラリやストレージ内のデータは削除されません。</string>
+    <string name="onboarding_saved_code_delete_failed">復旧コードを削除できませんでした</string>
+    <string name="onboarding_saved_code_removed">この復旧コードはこのスマートフォンに保存されていません。</string>
+    <string name="onboarding_saved_library">ライブラリ</string>
 </resources>

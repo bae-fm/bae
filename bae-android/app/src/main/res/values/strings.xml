@@ -357,4 +357,20 @@
     <string name="restore_code_carries_s3_key">The QR code also carries your S3 access key, so a device that scans it won\'t ask for the key.</string>
     <string name="onboarding_s3_key_scanned">Your S3 access key came with the scanned code.</string>
     <string name="voice_play_not_found">Couldn\'t find “%1$s” in your library.</string>
+    <!-- Restore codes saved on this phone, on the welcome screen -->
+    <string name="onboarding_saved_codes_title">Saved on this phone</string>
+    <string name="onboarding_saved_codes_explanation">Recovery codes bae saved on this phone, including ones copied from the phone you set it up from. Tap a library to restore it.</string>
+    <string name="onboarding_saved_codes_failed">Couldn’t read the recovery codes saved on this phone</string>
+    <string name="onboarding_saved_code_unusable">Recovery code can’t be used</string>
+    <string name="onboarding_saved_code_reason_format">Saved in a format bae can’t read</string>
+    <string name="onboarding_saved_code_reason_other_library">Saved for a different library</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Saved more than once</string>
+    <string name="onboarding_saved_code_delete">Delete</string>
+    <string name="onboarding_saved_code_delete_title">Delete this recovery code?</string>
+    <!-- %1$s = the library's name, saved with the code -->
+    <string name="onboarding_saved_code_delete_body">This removes the recovery code for “%1$s” from this phone only. It doesn’t delete the library, or anything in your storage.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">This removes the recovery code from this phone only. It doesn’t delete the library, or anything in your storage.</string>
+    <string name="onboarding_saved_code_delete_failed">Couldn’t delete the recovery code</string>
+    <string name="onboarding_saved_code_removed">This recovery code is no longer saved on this phone.</string>
+    <string name="onboarding_saved_library">Library</string>
 </resources>

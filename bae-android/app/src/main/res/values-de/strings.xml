@@ -302,4 +302,18 @@
     <string name="restore_code_carries_s3_key">Der QR-Code enthält auch deinen S3-Zugriffsschlüssel, daher fragt ein Gerät, das ihn scannt, nicht nach dem Schlüssel.</string>
     <string name="onboarding_s3_key_scanned">Dein S3-Zugriffsschlüssel kam mit dem gescannten Code.</string>
     <string name="voice_play_not_found">„%1$s“ wurde in deiner Mediathek nicht gefunden.</string>
+    <string name="onboarding_saved_codes_title">Auf diesem Smartphone gespeichert</string>
+    <string name="onboarding_saved_codes_explanation">Wiederherstellungscodes, die bae auf diesem Smartphone gespeichert hat, auch solche, die von dem Smartphone übertragen wurden, von dem aus du es eingerichtet hast. Tippe auf eine Bibliothek, um sie wiederherzustellen.</string>
+    <string name="onboarding_saved_codes_failed">Die auf diesem Smartphone gespeicherten Wiederherstellungscodes konnten nicht gelesen werden</string>
+    <string name="onboarding_saved_code_unusable">Wiederherstellungscode kann nicht verwendet werden</string>
+    <string name="onboarding_saved_code_reason_format">In einem Format gespeichert, das bae nicht lesen kann</string>
+    <string name="onboarding_saved_code_reason_other_library">Für eine andere Bibliothek gespeichert</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Mehr als einmal gespeichert</string>
+    <string name="onboarding_saved_code_delete">Löschen</string>
+    <string name="onboarding_saved_code_delete_title">Diesen Wiederherstellungscode löschen?</string>
+    <string name="onboarding_saved_code_delete_body">Damit wird der Wiederherstellungscode für „%1$s“ nur von diesem Smartphone entfernt. Die Bibliothek und alles in deinem Speicher bleiben erhalten.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Damit wird der Wiederherstellungscode nur von diesem Smartphone entfernt. Die Bibliothek und alles in deinem Speicher bleiben erhalten.</string>
+    <string name="onboarding_saved_code_delete_failed">Der Wiederherstellungscode konnte nicht gelöscht werden</string>
+    <string name="onboarding_saved_code_removed">Dieser Wiederherstellungscode ist nicht mehr auf diesem Smartphone gespeichert.</string>
+    <string name="onboarding_saved_library">Bibliothek</string>
 </resources>

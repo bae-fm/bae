@@ -300,4 +300,18 @@
     <string name="restore_code_carries_s3_key">Ο κωδικός QR περιέχει επίσης το κλειδί πρόσβασης S3, οπότε μια συσκευή που τον σαρώνει δεν θα ζητήσει το κλειδί.</string>
     <string name="onboarding_s3_key_scanned">Το κλειδί πρόσβασης S3 ήρθε μαζί με τον σαρωμένο κωδικό.</string>
     <string name="voice_play_not_found">Δεν βρέθηκε το «%1$s» στη βιβλιοθήκη σας.</string>
+    <string name="onboarding_saved_codes_title">Αποθηκευμένοι σε αυτό το τηλέφωνο</string>
+    <string name="onboarding_saved_codes_explanation">Κωδικοί ανάκτησης που αποθήκευσε το bae σε αυτό το τηλέφωνο, μαζί με όσους αντιγράφηκαν από το τηλέφωνο από το οποίο το ρυθμίσατε. Πατήστε μια βιβλιοθήκη για να την επαναφέρετε.</string>
+    <string name="onboarding_saved_codes_failed">Δεν ήταν δυνατή η ανάγνωση των κωδικών ανάκτησης που είναι αποθηκευμένοι σε αυτό το τηλέφωνο</string>
+    <string name="onboarding_saved_code_unusable">Ο κωδικός ανάκτησης δεν μπορεί να χρησιμοποιηθεί</string>
+    <string name="onboarding_saved_code_reason_format">Αποθηκεύτηκε σε μορφή που το bae δεν μπορεί να διαβάσει</string>
+    <string name="onboarding_saved_code_reason_other_library">Αποθηκεύτηκε για άλλη βιβλιοθήκη</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Αποθηκεύτηκε περισσότερες από μία φορές</string>
+    <string name="onboarding_saved_code_delete">Διαγραφή</string>
+    <string name="onboarding_saved_code_delete_title">Διαγραφή αυτού του κωδικού ανάκτησης;</string>
+    <string name="onboarding_saved_code_delete_body">Αυτό αφαιρεί τον κωδικό ανάκτησης για «%1$s» μόνο από αυτό το τηλέφωνο. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στον αποθηκευτικό σας χώρο.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Αυτό αφαιρεί τον κωδικό ανάκτησης μόνο από αυτό το τηλέφωνο. Δεν διαγράφει τη βιβλιοθήκη ούτε τίποτα στον αποθηκευτικό σας χώρο.</string>
+    <string name="onboarding_saved_code_delete_failed">Δεν ήταν δυνατή η διαγραφή του κωδικού ανάκτησης</string>
+    <string name="onboarding_saved_code_removed">Αυτός ο κωδικός ανάκτησης δεν είναι πλέον αποθηκευμένος σε αυτό το τηλέφωνο.</string>
+    <string name="onboarding_saved_library">Βιβλιοθήκη</string>
 </resources>

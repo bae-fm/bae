@@ -92,6 +92,8 @@ pub use upload_progress::{UploadActivity, UploadBar, UploadProgress, UploadState
 mod creation_tests;
 #[cfg(test)]
 mod local_lifecycle_tests;
+#[cfg(test)]
+mod saved_codes_tests;
 
 use crate::config::AppDir;
 use tokio::sync::watch;
@@ -225,13 +227,22 @@ impl Keychain {
     /// this phone's Block Store on Android) for libraries not already on this device: a library this device has
     /// is opened, not restored. An entry coven can't restore from is listed
     /// as unreadable, with its library's id and why, so the person can
-    /// delete it.
+    /// delete it. A phone without Google Play services has no Block Store
+    /// and keeps no saved codes, so it lists none.
     pub async fn saved_restore_codes(
         &self,
         app_dir: &AppDir,
     ) -> Result<Vec<coven::SavedRestoreEntry>, SavedRestoreCodesError> {
         let codes = match self {
-            Self::System => coven::saved_restore_codes().await?,
+            Self::System => match coven::saved_restore_codes().await {
+                Err(error) if keeps_no_saved_codes(&error) => {
+                    tracing::info!(
+                        "this device keeps no saved restore codes: it has no Block Store"
+                    );
+                    Vec::new()
+                }
+                listed => listed?,
+            },
             #[cfg(any(test, feature = "test-utils"))]
             Self::InMemory(installation) => installation.saved_restore_codes().await?,
         };
@@ -755,6 +766,16 @@ impl ForgetSavedRestoreCodeError {
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         manager::bootstrap_category(&self.0)
     }
+}
+
+/// Whether listing the saved codes failed only because this device has
+/// nowhere to keep them: coven answers `Unsupported` there, which says the
+/// device keeps no saved codes, not that reading them failed.
+fn keeps_no_saved_codes(error: &coven::BootstrapError) -> bool {
+    matches!(
+        error,
+        coven::BootstrapError::SecureStorage(coven::KeyError::Unsupported)
+    )
 }
 
 async fn restorable_codes(

@@ -90,9 +90,13 @@ internal fun CodeScreen(
 ) {
     var showCodeDialog by remember { mutableStateOf(false) }
     var codeInput by remember { mutableStateOf("") }
+    val savedCodes = flow.savedCodes
     CodeScreenContent(
         text = text,
         error = flow.error,
+        savedCodes = {
+            if (savedCodes != null) SavedCodesSection(codes = savedCodes, onOpen = flow::openSaved)
+        },
         showCodeDialog = showCodeDialog,
         codeInput = codeInput,
         callbacks =
@@ -118,18 +122,21 @@ internal fun CodeScreen(
 
 /**
  * A code screen: scan a code or type it. A restore over this device's copy
- * says what it does first and offers Back; a new device's welcome says
- * nothing more.
+ * says what it does first and offers Back; a new device's welcome lists the
+ * restore codes saved on this phone above, in [savedCodes], and says nothing
+ * more.
  */
 @Composable
 private fun CodeScreenContent(
     text: CodeScreenText?,
     error: DisplayError?,
+    savedCodes: @Composable () -> Unit,
     showCodeDialog: Boolean,
     codeInput: String,
     callbacks: CodeScreenCallbacks,
 ) {
     OnboardingStartColumn(title = text?.title, message = text?.message) {
+        savedCodes()
         PrimaryButton(onClick = callbacks.onScan, modifier = Modifier.width(actionWidth)) {
             Text(stringResource(R.string.onboarding_scan_code))
         }
@@ -165,13 +172,17 @@ private fun CodeScreenContent(
     }
 }
 
-/** The first-run welcome screen in the app chrome with inert callbacks, for the `welcome` screenshot scene. */
+/**
+ * The first-run welcome screen, on a phone with no saved restore codes, in
+ * the app chrome with inert callbacks, for the `welcome` screenshot scene.
+ */
 @Composable
 internal fun WelcomeScene() {
     BaeAppChrome {
         CodeScreenContent(
             text = null,
             error = null,
+            savedCodes = {},
             showCodeDialog = false,
             codeInput = "",
             callbacks =

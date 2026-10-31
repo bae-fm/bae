@@ -303,4 +303,18 @@
     <string name="restore_code_carries_s3_key">Codul QR conține și cheia ta de acces S3, așa că dispozitivul care îl scanează nu va cere cheia.</string>
     <string name="onboarding_s3_key_scanned">Cheia ta de acces S3 a venit odată cu codul scanat.</string>
     <string name="voice_play_not_found">„%1$s” nu a fost găsit în biblioteca ta.</string>
+    <string name="onboarding_saved_codes_title">Salvate pe acest telefon</string>
+    <string name="onboarding_saved_codes_explanation">Coduri de recuperare salvate de bae pe acest telefon, inclusiv cele copiate de pe telefonul de pe care l-ai configurat. Atinge o bibliotecă pentru a o restaura.</string>
+    <string name="onboarding_saved_codes_failed">Codurile de recuperare salvate pe acest telefon nu au putut fi citite</string>
+    <string name="onboarding_saved_code_unusable">Codul de recuperare nu poate fi folosit</string>
+    <string name="onboarding_saved_code_reason_format">Salvat într-un format pe care bae nu îl poate citi</string>
+    <string name="onboarding_saved_code_reason_other_library">Salvat pentru altă bibliotecă</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Salvat de mai multe ori</string>
+    <string name="onboarding_saved_code_delete">Șterge</string>
+    <string name="onboarding_saved_code_delete_title">Ștergi acest cod de recuperare?</string>
+    <string name="onboarding_saved_code_delete_body">Astfel elimini codul de recuperare pentru „%1$s” doar de pe acest telefon. Biblioteca și conținutul spațiului tău de stocare nu sunt șterse.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Astfel elimini codul de recuperare doar de pe acest telefon. Biblioteca și conținutul spațiului tău de stocare nu sunt șterse.</string>
+    <string name="onboarding_saved_code_delete_failed">Codul de recuperare nu a putut fi șters</string>
+    <string name="onboarding_saved_code_removed">Acest cod de recuperare nu mai este salvat pe acest telefon.</string>
+    <string name="onboarding_saved_library">Bibliotecă</string>
 </resources>

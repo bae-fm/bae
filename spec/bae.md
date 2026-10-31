@@ -1701,9 +1701,10 @@ can do it: the name is the household's, not one person's.
 The name lives in the store. A restore code carries no name: it is kept for
 years, written down, and a name inside it would go stale with the first
 rename. An invite carries the current name, since it expires within a week.
-The iCloud Keychain entry coven keeps a restore code in also saves the name,
-as one of the person's devices last saw it, so a new device's list can say
-which library each code is for (§5.6). It is only a label there: a rename made
+The entry coven keeps a restore code in, in iCloud Keychain on Apple devices
+and in the phone's Block Store on Android, also saves the name, as one of the
+person's devices last saw it, so a new device's list can say which library
+each code is for (§5.6). It is only a label there: a rename made
 while none of the person's devices had the library open leaves the old name
 until one opens it, and the restore finds the library by its id, never its
 name. Once a device has loaded the library, it shows the store's name.
@@ -1850,12 +1851,13 @@ editable by every member.
 A new phone's first screen is bae's sheep and name over **Scan code** and
 **Enter code**, with no other words: the code says what it is for. An invite
 joins someone's library, and the person's own restore code adds this device to
-theirs. A Mac's first screen offers **Join library** and **Add device**, which
+theirs. An Android phone that has restore codes saved on it lists them above
+the two buttons (below). A Mac's first screen offers **Join library** and **Add device**, which
 both lead to the same scan-or-type screen where the code decides the same way,
 and **Create new library**. A restore code's screens call that adding this
 device: the button is **Add**, and the running restore says it is adding this
-device. A code saved in iCloud Keychain, and a restore over this device's copy
-(§6.4), say **Restore**. A scanned code starts at once, as an invite does, with
+device. A saved code, in iCloud Keychain or on an Android phone, and a restore
+over this device's copy (§6.4), say **Restore**. A scanned code starts at once, as an invite does, with
 no screen to confirm it: the person scanned it to add this device, so the
 running restore shows next. Only an S3 code without the key stops first, to ask
 for it. A typed restore code shows where its library is stored and waits for
@@ -1931,7 +1933,7 @@ other device approves it. The code holds Carol's keys, so it already proves the
 tablet is hers
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)),
 and an approval would strand a person whose other devices are all lost. The
-tablet gets the code one of three ways:
+tablet gets the code one of these ways:
 
 - **scanning** the QR code another of her devices shows, drawn large enough
   for a phone's camera to read from a Mac's screen at 25 to 45 cm, and for a
@@ -1943,30 +1945,42 @@ tablet gets the code one of three ways:
   code there is Carol's, not one device's: it stays while she is a member, so
   removing the library from one of her devices leaves it offered there (§6.4),
   and it goes when she leaves the library or deletes it from the list;
+- **saved on an Android phone**: coven keeps each phone's codes in Google's
+  Block Store, which doesn't sync. The phone's first screen lists the codes
+  saved on it for libraries it doesn't hold: those it saved itself, and those
+  a new phone received when Carol set it up from her old one, directly or
+  from the old phone's cloud backup. Tapping one restores it
+  ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code));
 - **typing** it in.
 
-The iCloud Keychain list shows each code under its library's name as Carol's
+The saved-code list shows each code under its library's name as Carol's
 devices last saw it (§5.1), over where the library is stored: the provider and
 account. Dropbox and OneDrive show the account's email; S3 shows the bucket and
 endpoint; iCloud shows iCloud. Two libraries can share a name, and a rename
 none of her devices has seen yet leaves the old one, so the location is what
-tells them apart. The restore screen for a saved code shows both. A typed or
+tells them apart. On a Mac the restore screen for a saved code shows both. On
+an Android phone a tap restores at once, as a scanned code does; only an S3
+code with no key saved beside it stops first, on a screen that shows both and
+asks for the key, and a failed restore returns to that screen, to try again. A
+code deleted since the list was read returns to the first screen, saying it is
+no longer saved on this phone. A typed or
 scanned code carries no name, so its screens show only where the library is
 stored until the tablet has loaded it, then the library's current name.
 
 **Deleting a saved code.** Carol once tried a library on S3, then deleted its
-bucket, and her new tablet still offers it. Each code in the iCloud Keychain
-list has **Delete**. It asks first, saying that it removes the saved code from
-iCloud Keychain on all her Apple devices and doesn't delete the library, or
-anything on this device or in her storage; then the code leaves the list. The
-S3 key saved beside it goes with it. A delete that fails says so, keeps the
+bucket, and her new tablet still offers it. Each code in the saved-code list
+has **Delete**. It asks first, saying that it removes the saved code from
+iCloud Keychain on all her Apple devices, or on Android from this phone only,
+and doesn't delete the library, or anything on this device or in her storage;
+then the list is read again, without the code. Her other Android phones keep
+their own. The S3 key saved beside it goes with it. A delete that fails says so, keeps the
 code listed, and deleting again finishes it. A later join, restore or reset on
 one of her devices saves the code again
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 
-**A saved code bae can't read.** An entry in iCloud Keychain can be one bae
-can't restore from: saved in an older format or damaged, holding a different
-library's code than the one it's saved under, or saved more than once. The list
+**A saved code bae can't read.** A saved entry can be one bae can't restore
+from: saved in an older format or damaged, holding a different library's code
+than the one it's saved under, or, in iCloud Keychain, saved more than once. The list
 still shows it, as a row saying the code can't be used and why, with the
 library's id beneath, since the entry has no name to show. It has **Delete**
 only, which asks and deletes as for any saved code; there is nothing to
@@ -1976,6 +1990,12 @@ entry with the library's current name and its own current code, so the row
 becomes an ordinary one; a device whose keys another device replaced has no
 current code to save, and leaves the entry for her to delete
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
+
+The list is read from coven each time the first screen shows, and bae keeps
+no copy of it. A list that can't be read says so in place of the list, rather
+than looking like a device with no saved codes. An Android phone without
+Google Play services has no Block Store and keeps no saved codes, so its first
+screen lists none.
 
 **The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
 also needs Carol's S3 access key. The QR code one of her own devices shows is
@@ -2398,6 +2418,10 @@ deleted at once.
   devices as it applies his removal, whether an admin removed him or he removed
   himself, or when he deletes the code from the iCloud Keychain list (§5.6)
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
+  On an Android phone the code coven saved in Block Store is that phone's
+  own, and removing a library from the phone keeps it too: the phone's first
+  screen offers restoring it. It goes when Dan deletes it from that list, or
+  when the phone applies his removal from the library.
 
 ---
 ## 7. Playback
@@ -2755,9 +2779,9 @@ library is registered there by id.
 | Call | What it does |
 |---|---|
 | `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
-| `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
-| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device, each with its library's saved name; an entry coven can't restore from is listed with its library id and why, for deleting only |
-| `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
+| `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
+| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain, or in this phone's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
+| `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this phone's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |

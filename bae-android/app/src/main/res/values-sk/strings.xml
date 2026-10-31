@@ -306,4 +306,18 @@
     <string name="restore_code_carries_s3_key">QR kód obsahuje aj tvoj prístupový kľúč S3, takže zariadenie, ktoré ho naskenuje, sa na kľúč nespýta.</string>
     <string name="onboarding_s3_key_scanned">Tvoj prístupový kľúč S3 prišiel spolu s naskenovaným kódom.</string>
     <string name="voice_play_not_found">„%1$s“ sa vo vašej knižnici nenašlo.</string>
+    <string name="onboarding_saved_codes_title">Uložené v tomto telefóne</string>
+    <string name="onboarding_saved_codes_explanation">Kódy na obnovenie, ktoré bae uložil v tomto telefóne, vrátane tých skopírovaných z telefónu, z ktorého bol nastavený. Ťuknutím na knižnicu ju obnovíš.</string>
+    <string name="onboarding_saved_codes_failed">Kódy na obnovenie uložené v tomto telefóne sa nepodarilo prečítať</string>
+    <string name="onboarding_saved_code_unusable">Kód na obnovenie sa nedá použiť</string>
+    <string name="onboarding_saved_code_reason_format">Uložený vo formáte, ktorý bae nedokáže prečítať</string>
+    <string name="onboarding_saved_code_reason_other_library">Uložený pre inú knižnicu</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Uložený viackrát</string>
+    <string name="onboarding_saved_code_delete">Odstrániť</string>
+    <string name="onboarding_saved_code_delete_title">Odstrániť tento kód na obnovenie?</string>
+    <string name="onboarding_saved_code_delete_body">Týmto odstrániš kód na obnovenie knižnice „%1$s“ iba z tohto telefónu. Knižnica ani nič v tvojom úložisku sa neodstráni.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Týmto odstrániš kód na obnovenie iba z tohto telefónu. Knižnica ani nič v tvojom úložisku sa neodstráni.</string>
+    <string name="onboarding_saved_code_delete_failed">Kód na obnovenie sa nepodarilo odstrániť</string>
+    <string name="onboarding_saved_code_removed">Tento kód na obnovenie už v tomto telefóne nie je uložený.</string>
+    <string name="onboarding_saved_library">Knižnica</string>
 </resources>

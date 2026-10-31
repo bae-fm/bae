@@ -300,4 +300,18 @@
     <string name="restore_code_carries_s3_key">O código QR também contém a sua chave de acesso S3, por isso o dispositivo que o ler não vai pedir a chave.</string>
     <string name="onboarding_s3_key_scanned">A sua chave de acesso S3 veio com o código lido.</string>
     <string name="voice_play_not_found">Não foi possível encontrar «%1$s» na sua biblioteca.</string>
+    <string name="onboarding_saved_codes_title">Guardados neste telemóvel</string>
+    <string name="onboarding_saved_codes_explanation">Códigos de recuperação que o bae guardou neste telemóvel, incluindo os copiados do telemóvel a partir do qual o configurou. Toque numa biblioteca para a restaurar.</string>
+    <string name="onboarding_saved_codes_failed">Não foi possível ler os códigos de recuperação guardados neste telemóvel</string>
+    <string name="onboarding_saved_code_unusable">O código de recuperação não pode ser utilizado</string>
+    <string name="onboarding_saved_code_reason_format">Guardado num formato que o bae não consegue ler</string>
+    <string name="onboarding_saved_code_reason_other_library">Guardado para outra biblioteca</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Guardado mais de uma vez</string>
+    <string name="onboarding_saved_code_delete">Eliminar</string>
+    <string name="onboarding_saved_code_delete_title">Eliminar este código de recuperação?</string>
+    <string name="onboarding_saved_code_delete_body">Isto remove o código de recuperação de «%1$s» apenas deste telemóvel. Não elimina a biblioteca nem nada no seu armazenamento.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de recuperação apenas deste telemóvel. Não elimina a biblioteca nem nada no seu armazenamento.</string>
+    <string name="onboarding_saved_code_delete_failed">Não foi possível eliminar o código de recuperação</string>
+    <string name="onboarding_saved_code_removed">Este código de recuperação já não está guardado neste telemóvel.</string>
+    <string name="onboarding_saved_library">Biblioteca</string>
 </resources>

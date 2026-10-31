@@ -314,4 +314,18 @@
     <string name="restore_code_carries_s3_key">يحمل رمز QR أيضًا مفتاح الوصول إلى S3 الخاص بك، فلن يطلب الجهاز الذي يمسحه المفتاح.</string>
     <string name="onboarding_s3_key_scanned">وصل مفتاح الوصول إلى S3 الخاص بك مع الرمز الممسوح.</string>
     <string name="voice_play_not_found">تعذّر العثور على «%1$s» في مكتبتك.</string>
+    <string name="onboarding_saved_codes_title">محفوظة على هذا الهاتف</string>
+    <string name="onboarding_saved_codes_explanation">رموز استرداد حفظها bae على هذا الهاتف، بما فيها رموز نُسخت من الهاتف الذي أعددته منه. انقر على مكتبة لاستعادتها.</string>
+    <string name="onboarding_saved_codes_failed">تعذّرت قراءة رموز الاسترداد المحفوظة على هذا الهاتف</string>
+    <string name="onboarding_saved_code_unusable">لا يمكن استخدام رمز الاسترداد</string>
+    <string name="onboarding_saved_code_reason_format">محفوظ بتنسيق لا يستطيع bae قراءته</string>
+    <string name="onboarding_saved_code_reason_other_library">محفوظ لمكتبة أخرى</string>
+    <string name="onboarding_saved_code_reason_ambiguous">محفوظ أكثر من مرة</string>
+    <string name="onboarding_saved_code_delete">حذف</string>
+    <string name="onboarding_saved_code_delete_title">حذف رمز الاسترداد هذا؟</string>
+    <string name="onboarding_saved_code_delete_body">يؤدي هذا إلى إزالة رمز الاسترداد الخاص بـ«%1$s» من هذا الهاتف فقط. لا يحذف المكتبة، ولا أي شيء في مساحة التخزين لديك.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">يؤدي هذا إلى إزالة رمز الاسترداد من هذا الهاتف فقط. لا يحذف المكتبة، ولا أي شيء في مساحة التخزين لديك.</string>
+    <string name="onboarding_saved_code_delete_failed">تعذّر حذف رمز الاسترداد</string>
+    <string name="onboarding_saved_code_removed">لم يعد رمز الاسترداد هذا محفوظًا على هذا الهاتف.</string>
+    <string name="onboarding_saved_library">المكتبة</string>
 </resources>

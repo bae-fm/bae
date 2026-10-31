@@ -302,4 +302,18 @@
     <string name="restore_code_carries_s3_key">QR kod S3 erişim anahtarınızı da taşır; bu yüzden onu tarayan cihaz anahtarı sormaz.</string>
     <string name="onboarding_s3_key_scanned">S3 erişim anahtarınız taranan kodla birlikte geldi.</string>
     <string name="voice_play_not_found">Kitaplığınızda “%1$s” bulunamadı.</string>
+    <string name="onboarding_saved_codes_title">Bu telefonda kayıtlı</string>
+    <string name="onboarding_saved_codes_explanation">bae’nin bu telefona kaydettiği kurtarma kodları; bu telefonu kurarken kullandığınız telefondan kopyalananlar da dahil. Geri yüklemek için bir kitaplığa dokunun.</string>
+    <string name="onboarding_saved_codes_failed">Bu telefonda kayıtlı kurtarma kodları okunamadı</string>
+    <string name="onboarding_saved_code_unusable">Kurtarma kodu kullanılamıyor</string>
+    <string name="onboarding_saved_code_reason_format">bae’nin okuyamadığı bir biçimde kaydedilmiş</string>
+    <string name="onboarding_saved_code_reason_other_library">Başka bir kitaplık için kaydedilmiş</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Birden fazla kez kaydedilmiş</string>
+    <string name="onboarding_saved_code_delete">Sil</string>
+    <string name="onboarding_saved_code_delete_title">Bu kurtarma kodu silinsin mi?</string>
+    <string name="onboarding_saved_code_delete_body">Bu işlem “%1$s” kurtarma kodunu yalnızca bu telefondan kaldırır. Kitaplığı veya depolama alanınızdaki hiçbir şeyi silmez.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Bu işlem kurtarma kodunu yalnızca bu telefondan kaldırır. Kitaplığı veya depolama alanınızdaki hiçbir şeyi silmez.</string>
+    <string name="onboarding_saved_code_delete_failed">Kurtarma kodu silinemedi</string>
+    <string name="onboarding_saved_code_removed">Bu kurtarma kodu artık bu telefonda kayıtlı değil.</string>
+    <string name="onboarding_saved_library">Kitaplık</string>
 </resources>

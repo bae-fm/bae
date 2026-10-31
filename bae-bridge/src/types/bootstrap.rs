@@ -221,6 +221,8 @@ pub struct BridgeSavedRestoreCodeInfo {
     pub name: String,
     pub library_id: String,
     pub location: BridgeStorageLocation,
+    /// The provider sign-in restoring needs first; none on S3 and iCloud.
+    pub oauth_access: Option<crate::BridgeOAuthAccess>,
     pub has_s3_credentials: bool,
 }
 #[uniffi::export]
@@ -230,6 +232,11 @@ impl BridgeSavedRestoreCode {
             name: self.saved.name.clone(),
             library_id: self.saved.store_id.to_string(),
             location: BridgeStorageLocation::from_core(self.saved.location.clone()),
+            oauth_access: self
+                .saved
+                .location
+                .oauth_access()
+                .map(crate::BridgeOAuthAccess::from_core),
             has_s3_credentials: self.saved.has_s3_credentials,
         }
     }

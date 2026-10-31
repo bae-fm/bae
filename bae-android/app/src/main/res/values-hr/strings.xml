@@ -305,4 +305,18 @@
     <string name="restore_code_carries_s3_key">QR kôd sadrži i vaš pristupni ključ za S3, pa uređaj koji ga skenira neće tražiti ključ.</string>
     <string name="onboarding_s3_key_scanned">Vaš pristupni ključ za S3 stigao je uz skenirani kôd.</string>
     <string name="voice_play_not_found">„%1$s” nije pronađeno u vašoj biblioteci.</string>
+    <string name="onboarding_saved_codes_title">Spremljeno na ovom telefonu</string>
+    <string name="onboarding_saved_codes_explanation">Kodovi za oporavak koje je bae spremio na ovaj telefon, uključujući one kopirane s telefona s kojeg ste ga postavili. Dodirnite fonoteku da biste je vratili.</string>
+    <string name="onboarding_saved_codes_failed">Nije moguće pročitati kodove za oporavak spremljene na ovom telefonu</string>
+    <string name="onboarding_saved_code_unusable">Kod za oporavak ne može se upotrijebiti</string>
+    <string name="onboarding_saved_code_reason_format">Spremljeno u formatu koji bae ne može pročitati</string>
+    <string name="onboarding_saved_code_reason_other_library">Spremljeno za drugu fonoteku</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Spremljeno više puta</string>
+    <string name="onboarding_saved_code_delete">Izbriši</string>
+    <string name="onboarding_saved_code_delete_title">Izbrisati ovaj kod za oporavak?</string>
+    <string name="onboarding_saved_code_delete_body">Time se kod za oporavak za „%1$s” uklanja samo s ovog telefona. Ne briše se fonoteka ni išta u vašoj pohrani.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Time se kod za oporavak uklanja samo s ovog telefona. Ne briše se fonoteka ni išta u vašoj pohrani.</string>
+    <string name="onboarding_saved_code_delete_failed">Nije moguće izbrisati kod za oporavak</string>
+    <string name="onboarding_saved_code_removed">Ovaj kod za oporavak više nije spremljen na ovom telefonu.</string>
+    <string name="onboarding_saved_library">Fonoteka</string>
 </resources>

@@ -303,4 +303,18 @@
     <string name="restore_code_carries_s3_key">O código QR também leva sua chave de acesso do S3, então o dispositivo que o escanear não vai pedir a chave.</string>
     <string name="onboarding_s3_key_scanned">Sua chave de acesso do S3 veio com o código escaneado.</string>
     <string name="voice_play_not_found">Não foi possível encontrar “%1$s” na sua biblioteca.</string>
+    <string name="onboarding_saved_codes_title">Salvos neste telefone</string>
+    <string name="onboarding_saved_codes_explanation">Códigos de recuperação que o bae salvou neste telefone, incluindo os copiados do telefone a partir do qual você o configurou. Toque em uma biblioteca para restaurá-la.</string>
+    <string name="onboarding_saved_codes_failed">Não foi possível ler os códigos de recuperação salvos neste telefone</string>
+    <string name="onboarding_saved_code_unusable">O código de recuperação não pode ser usado</string>
+    <string name="onboarding_saved_code_reason_format">Salvo em um formato que o bae não consegue ler</string>
+    <string name="onboarding_saved_code_reason_other_library">Salvo para outra biblioteca</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Salvo mais de uma vez</string>
+    <string name="onboarding_saved_code_delete">Excluir</string>
+    <string name="onboarding_saved_code_delete_title">Excluir este código de recuperação?</string>
+    <string name="onboarding_saved_code_delete_body">Isto remove o código de recuperação de “%1$s” somente deste telefone. Não exclui a biblioteca nem nada no seu armazenamento.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Isto remove o código de recuperação somente deste telefone. Não exclui a biblioteca nem nada no seu armazenamento.</string>
+    <string name="onboarding_saved_code_delete_failed">Não foi possível excluir o código de recuperação</string>
+    <string name="onboarding_saved_code_removed">Este código de recuperação não está mais salvo neste telefone.</string>
+    <string name="onboarding_saved_library">Biblioteca</string>
 </resources>

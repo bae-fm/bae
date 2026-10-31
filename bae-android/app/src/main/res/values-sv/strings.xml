@@ -300,4 +300,18 @@
     <string name="restore_code_carries_s3_key">QR-koden innehåller också din S3-åtkomstnyckel, så en enhet som skannar den frågar inte efter nyckeln.</string>
     <string name="onboarding_s3_key_scanned">Din S3-åtkomstnyckel följde med den skannade koden.</string>
     <string name="voice_play_not_found">Hittade inte ”%1$s” i ditt bibliotek.</string>
+    <string name="onboarding_saved_codes_title">Sparade på den här telefonen</string>
+    <string name="onboarding_saved_codes_explanation">Återställningskoder som bae har sparat på den här telefonen, även de som kopierades från telefonen du konfigurerade den från. Tryck på ett bibliotek för att återställa det.</string>
+    <string name="onboarding_saved_codes_failed">Det gick inte att läsa återställningskoderna som sparats på den här telefonen</string>
+    <string name="onboarding_saved_code_unusable">Återställningskoden kan inte användas</string>
+    <string name="onboarding_saved_code_reason_format">Sparad i ett format som bae inte kan läsa</string>
+    <string name="onboarding_saved_code_reason_other_library">Sparad för ett annat bibliotek</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Sparad mer än en gång</string>
+    <string name="onboarding_saved_code_delete">Radera</string>
+    <string name="onboarding_saved_code_delete_title">Radera den här återställningskoden?</string>
+    <string name="onboarding_saved_code_delete_body">Det här tar bara bort återställningskoden för ”%1$s” från den här telefonen. Biblioteket och allt i din lagring finns kvar.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Det här tar bara bort återställningskoden från den här telefonen. Biblioteket och allt i din lagring finns kvar.</string>
+    <string name="onboarding_saved_code_delete_failed">Det gick inte att radera återställningskoden</string>
+    <string name="onboarding_saved_code_removed">Den här återställningskoden är inte längre sparad på den här telefonen.</string>
+    <string name="onboarding_saved_library">Bibliotek</string>
 </resources>

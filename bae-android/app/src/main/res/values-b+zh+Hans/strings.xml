@@ -299,4 +299,18 @@
     <string name="restore_code_carries_s3_key">此二维码还包含你的 S3 访问密钥，扫描它的设备不会再要求输入密钥。</string>
     <string name="onboarding_s3_key_scanned">你的 S3 访问密钥已随扫描的代码一同传来。</string>
     <string name="voice_play_not_found">在你的音乐库中找不到“%1$s”。</string>
+    <string name="onboarding_saved_codes_title">保存在此手机上</string>
+    <string name="onboarding_saved_codes_explanation">bae 保存在此手机上的恢复码，包括从你用来设置此手机的旧手机复制过来的恢复码。轻点一个库即可恢复。</string>
+    <string name="onboarding_saved_codes_failed">无法读取保存在此手机上的恢复码</string>
+    <string name="onboarding_saved_code_unusable">恢复码无法使用</string>
+    <string name="onboarding_saved_code_reason_format">以 bae 无法读取的格式保存</string>
+    <string name="onboarding_saved_code_reason_other_library">为另一个库保存</string>
+    <string name="onboarding_saved_code_reason_ambiguous">保存了不止一次</string>
+    <string name="onboarding_saved_code_delete">删除</string>
+    <string name="onboarding_saved_code_delete_title">删除此恢复码？</string>
+    <string name="onboarding_saved_code_delete_body">这只会从此手机上移除“%1$s”的恢复码。不会删除该库，也不会删除你存储中的任何内容。</string>
+    <string name="onboarding_saved_code_delete_body_unusable">这只会从此手机上移除该恢复码。不会删除该库，也不会删除你存储中的任何内容。</string>
+    <string name="onboarding_saved_code_delete_failed">无法删除恢复码</string>
+    <string name="onboarding_saved_code_removed">此恢复码已不再保存在此手机上。</string>
+    <string name="onboarding_saved_library">库</string>
 </resources>

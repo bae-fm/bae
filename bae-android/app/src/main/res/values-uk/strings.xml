@@ -308,4 +308,18 @@
     <string name="restore_code_carries_s3_key">QR-код також містить ваш ключ доступу до S3, тож пристрій, який його відсканує, не питатиме ключ.</string>
     <string name="onboarding_s3_key_scanned">Ваш ключ доступу до S3 надійшов разом із відсканованим кодом.</string>
     <string name="voice_play_not_found">«%1$s» не знайдено у вашій фонотеці.</string>
+    <string name="onboarding_saved_codes_title">Збережено на цьому телефоні</string>
+    <string name="onboarding_saved_codes_explanation">Коди відновлення, які bae зберіг на цьому телефоні, зокрема скопійовані з телефона, з якого ви його налаштували. Торкніться бібліотеки, щоб відновити її.</string>
+    <string name="onboarding_saved_codes_failed">Не вдалося прочитати коди відновлення, збережені на цьому телефоні</string>
+    <string name="onboarding_saved_code_unusable">Код відновлення не можна використати</string>
+    <string name="onboarding_saved_code_reason_format">Збережено у форматі, який bae не може прочитати</string>
+    <string name="onboarding_saved_code_reason_other_library">Збережено для іншої бібліотеки</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Збережено більше одного разу</string>
+    <string name="onboarding_saved_code_delete">Видалити</string>
+    <string name="onboarding_saved_code_delete_title">Видалити цей код відновлення?</string>
+    <string name="onboarding_saved_code_delete_body">Код відновлення для «%1$s» буде видалено лише з цього телефона. Бібліотеку й усе у вашому сховищі не буде видалено.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Код відновлення буде видалено лише з цього телефона. Бібліотеку й усе у вашому сховищі не буде видалено.</string>
+    <string name="onboarding_saved_code_delete_failed">Не вдалося видалити код відновлення</string>
+    <string name="onboarding_saved_code_removed">Цей код відновлення більше не збережено на цьому телефоні.</string>
+    <string name="onboarding_saved_library">Бібліотека</string>
 </resources>

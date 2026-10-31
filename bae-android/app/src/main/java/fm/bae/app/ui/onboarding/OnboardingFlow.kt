@@ -25,6 +25,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHostInterface
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeJoinControl
+import uniffi.bae_bridge.BridgeOAuthAccess
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.decodeCodeInfo
@@ -44,8 +45,9 @@ internal sealed interface CodeEntry {
 }
 
 /**
- * Where onboarding stands: a code to scan or type, a code read and waiting on
- * the person, or a restore or join running.
+ * Where onboarding stands: a code to scan, type or pick from those saved on
+ * this phone, a code read and waiting on the person, or a restore or join
+ * running.
  */
 internal sealed interface OnboardingStep {
     /** No code yet: the person scans or types one for [entry]. */
@@ -54,12 +56,19 @@ internal sealed interface OnboardingStep {
     ) : OnboardingStep
 
     /**
-     * A code read for [entry]: a restore, whose form waits on the person when
-     * the code was typed or lacks its S3 key, or an invite, which joins at once.
+     * A code read for [entry]: one the person scanned or typed, or one saved
+     * on this phone.
      */
     sealed interface CodeRead {
         val entry: CodeEntry
     }
+
+    /**
+     * A code the person scanned or typed for [entry]: a restore, whose form
+     * waits on the person when the code was typed or lacks its S3 key, or an
+     * invite, which joins at once.
+     */
+    sealed interface EnteredCode : CodeRead
 
     /**
      * The person's own restore code, read; S3 asks for its access key before
@@ -70,11 +79,25 @@ internal sealed interface OnboardingStep {
         val code: String,
         val metadata: BridgeCodeMetadata,
         override val entry: CodeEntry,
-    ) : CodeRead,
+    ) : EnteredCode,
         OnboardingStep {
         /** Whether restoring needs the S3 access key typed in: an S3 code that doesn't hold it. */
         val needsS3Key: Boolean
             get() = metadata.provider == BridgeCloudProvider.S3 && !metadata.carriesS3Key
+    }
+
+    /**
+     * A restore code coven saved on this phone, chosen in the welcome's list.
+     * It restores at once unless its S3 library has no key saved beside it,
+     * which the person types in first.
+     */
+    data class RestoreSaved(
+        val saved: SavedRestoreCode,
+    ) : CodeRead,
+        OnboardingStep {
+        /** Saved codes are listed on a new device's welcome only. */
+        override val entry: CodeEntry
+            get() = CodeEntry.NewDevice
     }
 
     /**
@@ -85,7 +108,7 @@ internal sealed interface OnboardingStep {
         val start: JoinStart,
         val invite: BridgeInviteInfo,
         override val entry: CodeEntry,
-    ) : CodeRead
+    ) : EnteredCode
 
     /**
      * A restore with [from], or a join when [from] is an invite, running;
@@ -125,7 +148,7 @@ internal fun codeReadStep(
     code: String,
     info: BridgeCodeInfo,
     entry: CodeEntry,
-): OnboardingStep.CodeRead =
+): OnboardingStep.EnteredCode =
     when (info) {
         is BridgeCodeInfo.Restore -> {
             OnboardingStep.Restore(code, info.metadata, entry)
@@ -155,7 +178,8 @@ internal class OnboardingCore(
 
 /**
  * Onboarding's one flow: a code, scanned or typed, is either the person's own
- * restore code or an invite, and this device restores or joins with it. With
+ * restore code or an invite, and this device restores or joins with it; a
+ * restore code saved on this phone restores from the welcome's list. With
  * [restoreOver], the code restores over this device's copy of that library. What either produced goes to
  * [onBootstrapped]; an invite declined or expired returns to the code screen
  * with that said.
@@ -171,6 +195,13 @@ internal class OnboardingFlow(
     var step by mutableStateOf<OnboardingStep>(OnboardingStep.EnterCode(restoreOver ?: CodeEntry.NewDevice))
         private set
     var error by mutableStateOf<DisplayError?>(null)
+
+    /**
+     * The restore codes saved on this phone, which the welcome lists; null for
+     * a restore over this device's copy, which takes the person's current code.
+     */
+    val savedCodes: SavedRestoreCodes? =
+        if (restoreOver == null) SavedRestoreCodes(scope, core.host) { context.displayError(it) } else null
 
     private var cancellation: (() -> Unit)? = null
 
@@ -235,12 +266,7 @@ internal class OnboardingFlow(
                 is BridgeCodeInfo.Restore -> info.metadata
                 is BridgeCodeInfo.Invite -> info.invite.metadata
             }
-        // A provider that needs a sign-in can't be reached when the app's
-        // registrations failed to load; say why rather than starting.
-        if (metadata.oauthAccess != null && oauthProvidersError != null) {
-            error = DisplayError(context.coreString("ui.load_error.sign_in_settings.advice"), oauthProvidersError)
-            return
-        }
+        if (signInUnavailable(metadata.oauthAccess)) return
         error = null
         when (val read = codeReadStep(code, info, from.entry)) {
             // An invite joins at once: it carries the person's name.
@@ -252,6 +278,29 @@ internal class OnboardingFlow(
                 if (source == CodeSource.SCANNED && !read.needsS3Key) restore(read, credentials = null) else step = read
             }
         }
+    }
+
+    /**
+     * Restore from [saved], chosen in the welcome's list: at once when it holds
+     * all it needs, as a scanned code does; an S3 library with no key saved
+     * beside the code asks for the key first.
+     */
+    fun openSaved(saved: SavedRestoreCode) {
+        if (signInUnavailable(saved.info.oauthAccess)) return
+        error = null
+        val read = OnboardingStep.RestoreSaved(saved)
+        if (saved.needsS3Key) step = read else restore(read, credentials = null)
+    }
+
+    /**
+     * Whether a restore or join needing [oauthAccess] can't start: a provider
+     * that needs a sign-in can't be reached when the app's registrations
+     * failed to load, which [error] then says, rather than starting.
+     */
+    private fun signInUnavailable(oauthAccess: BridgeOAuthAccess?): Boolean {
+        if (oauthAccess == null || oauthProvidersError == null) return false
+        error = DisplayError(context.coreString("ui.load_error.sign_in_settings.advice"), oauthProvidersError)
+        return true
     }
 
     /** Back to the code screen from a code waiting on the person. */
@@ -282,6 +331,17 @@ internal class OnboardingFlow(
                     core.host.restoreFromCode(from.code, credentials, deviceName(context), callback, running)
                 }
             }
+        }
+    }
+
+    /** Restore from a code saved on this phone, with the S3 key typed in when it needs one. */
+    fun restore(
+        from: OnboardingStep.RestoreSaved,
+        credentials: BridgeS3Credentials?,
+    ) {
+        val running = core.newCancellation()
+        run(from, running::cancel) { callback ->
+            core.host.restoreFromSavedCode(from.saved.code, credentials, deviceName(context), callback, running)
         }
     }
 
@@ -349,6 +409,13 @@ internal class OnboardingFlow(
                         resumeUnfinished()
                     }
 
+                    // Deleted since the welcome listed it; the welcome reads
+                    // the list again, without it.
+                    BridgeBootstrapResult.SavedCodeRemoved -> {
+                        step = OnboardingStep.EnterCode(from.entry)
+                        error = DisplayError(context.getString(R.string.onboarding_saved_code_removed))
+                    }
+
                     else -> {
                         onBootstrapped(result)
                     }
@@ -379,5 +446,6 @@ internal class OnboardingFlow(
 private fun OnboardingStep.CodeRead.formStep(): OnboardingStep =
     when (this) {
         is OnboardingStep.Restore -> this
+        is OnboardingStep.RestoreSaved -> this
         is OnboardingStep.Invite -> OnboardingStep.EnterCode(entry)
     }

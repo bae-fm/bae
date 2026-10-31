@@ -299,4 +299,18 @@
     <string name="restore_code_carries_s3_key">此 QR 碼也包含你的 S3 存取金鑰，掃描它的裝置不會再要求輸入金鑰。</string>
     <string name="onboarding_s3_key_scanned">你的 S3 存取金鑰已隨掃描的代碼一併傳來。</string>
     <string name="voice_play_not_found">在你的資料庫中找不到「%1$s」。</string>
+    <string name="onboarding_saved_codes_title">儲存在這支手機上</string>
+    <string name="onboarding_saved_codes_explanation">bae 儲存在這支手機上的復原碼，包括從你用來設定這支手機的舊手機複製過來的復原碼。點一下資料庫即可還原。</string>
+    <string name="onboarding_saved_codes_failed">無法讀取儲存在這支手機上的復原碼</string>
+    <string name="onboarding_saved_code_unusable">無法使用復原碼</string>
+    <string name="onboarding_saved_code_reason_format">以 bae 無法讀取的格式儲存</string>
+    <string name="onboarding_saved_code_reason_other_library">為其他資料庫儲存</string>
+    <string name="onboarding_saved_code_reason_ambiguous">儲存了不只一次</string>
+    <string name="onboarding_saved_code_delete">刪除</string>
+    <string name="onboarding_saved_code_delete_title">要刪除這個復原碼嗎？</string>
+    <string name="onboarding_saved_code_delete_body">這只會從這支手機移除「%1$s」的復原碼。不會刪除資料庫，也不會刪除你儲存空間中的任何內容。</string>
+    <string name="onboarding_saved_code_delete_body_unusable">這只會從這支手機移除復原碼。不會刪除資料庫，也不會刪除你儲存空間中的任何內容。</string>
+    <string name="onboarding_saved_code_delete_failed">無法刪除復原碼</string>
+    <string name="onboarding_saved_code_removed">這個復原碼已不再儲存在這支手機上。</string>
+    <string name="onboarding_saved_library">資料庫</string>
 </resources>

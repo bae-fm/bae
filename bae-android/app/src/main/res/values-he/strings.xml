@@ -305,4 +305,18 @@
     <string name="restore_code_carries_s3_key">קוד ה-QR נושא גם את מפתח הגישה שלך ל-S3, כך שמכשיר שסורק אותו לא יבקש את המפתח.</string>
     <string name="onboarding_s3_key_scanned">מפתח הגישה שלך ל-S3 הגיע עם הקוד שנסרק.</string>
     <string name="voice_play_not_found">לא נמצא ”%1$s” בספרייה שלכם.</string>
+    <string name="onboarding_saved_codes_title">שמורים בטלפון הזה</string>
+    <string name="onboarding_saved_codes_explanation">קודי שחזור ש-bae שמר בטלפון הזה, כולל קודים שהועתקו מהטלפון שממנו הגדרתם אותו. הקישו על ספרייה כדי לשחזר אותה.</string>
+    <string name="onboarding_saved_codes_failed">לא ניתן היה לקרוא את קודי השחזור השמורים בטלפון הזה</string>
+    <string name="onboarding_saved_code_unusable">לא ניתן להשתמש בקוד השחזור</string>
+    <string name="onboarding_saved_code_reason_format">נשמר בפורמט ש-bae לא יכול לקרוא</string>
+    <string name="onboarding_saved_code_reason_other_library">נשמר עבור ספרייה אחרת</string>
+    <string name="onboarding_saved_code_reason_ambiguous">נשמר יותר מפעם אחת</string>
+    <string name="onboarding_saved_code_delete">מחיקה</string>
+    <string name="onboarding_saved_code_delete_title">למחוק את קוד השחזור הזה?</string>
+    <string name="onboarding_saved_code_delete_body">פעולה זו מסירה את קוד השחזור של ”%1$s” מהטלפון הזה בלבד. היא לא מוחקת את הספרייה או משהו באחסון שלכם.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">פעולה זו מסירה את קוד השחזור מהטלפון הזה בלבד. היא לא מוחקת את הספרייה או משהו באחסון שלכם.</string>
+    <string name="onboarding_saved_code_delete_failed">לא ניתן היה למחוק את קוד השחזור</string>
+    <string name="onboarding_saved_code_removed">קוד השחזור הזה כבר לא שמור בטלפון הזה.</string>
+    <string name="onboarding_saved_library">ספרייה</string>
 </resources>

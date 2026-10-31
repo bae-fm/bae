@@ -302,4 +302,18 @@
     <string name="restore_code_carries_s3_key">De QR-code bevat ook je S3-toegangssleutel, dus een apparaat dat hem scant, vraagt niet om de sleutel.</string>
     <string name="onboarding_s3_key_scanned">Je S3-toegangssleutel kwam mee met de gescande code.</string>
     <string name="voice_play_not_found">‘%1$s’ is niet gevonden in je bibliotheek.</string>
+    <string name="onboarding_saved_codes_title">Bewaard op deze telefoon</string>
+    <string name="onboarding_saved_codes_explanation">Herstelcodes die bae op deze telefoon heeft bewaard, inclusief codes die zijn gekopieerd van de telefoon waarmee je deze hebt ingesteld. Tik op een bibliotheek om die te herstellen.</string>
+    <string name="onboarding_saved_codes_failed">Kan de herstelcodes op deze telefoon niet lezen</string>
+    <string name="onboarding_saved_code_unusable">Herstelcode kan niet worden gebruikt</string>
+    <string name="onboarding_saved_code_reason_format">Bewaard in een indeling die bae niet kan lezen</string>
+    <string name="onboarding_saved_code_reason_other_library">Bewaard voor een andere bibliotheek</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Meer dan eens bewaard</string>
+    <string name="onboarding_saved_code_delete">Verwijderen</string>
+    <string name="onboarding_saved_code_delete_title">Deze herstelcode verwijderen?</string>
+    <string name="onboarding_saved_code_delete_body">Hiermee verwijder je de herstelcode voor ‘%1$s’ alleen van deze telefoon. De bibliotheek en alles in je opslag blijven bestaan.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Hiermee verwijder je de herstelcode alleen van deze telefoon. De bibliotheek en alles in je opslag blijven bestaan.</string>
+    <string name="onboarding_saved_code_delete_failed">Kan de herstelcode niet verwijderen</string>
+    <string name="onboarding_saved_code_removed">Deze herstelcode is niet meer bewaard op deze telefoon.</string>
+    <string name="onboarding_saved_library">Bibliotheek</string>
 </resources>

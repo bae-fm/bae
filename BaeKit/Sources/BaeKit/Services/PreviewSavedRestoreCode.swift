@@ -35,6 +35,7 @@
                     profile: nil,
                     prefix: ""
                 ),
+                oauthAccess: nil,
                 hasS3Credentials: true
             ),
             BridgeSavedRestoreCodeInfo(
@@ -44,6 +45,7 @@
                     location: .appFolder,
                     accountLabel: "ana@example.com"
                 ),
+                oauthAccess: .dropbox(access: .appFolder),
                 hasS3Credentials: false
             ),
             BridgeSavedRestoreCodeInfo(
@@ -54,6 +56,7 @@
                     owner: "owner",
                     zone: "zone"
                 ),
+                oauthAccess: nil,
                 hasS3Credentials: false
             ),
         ]

@@ -303,4 +303,18 @@
     <string name="restore_code_carries_s3_key">Le code QR contient aussi votre clé d’accès S3 : l’appareil qui le scanne ne vous la demandera pas.</string>
     <string name="onboarding_s3_key_scanned">Votre clé d’accès S3 est arrivée avec le code scanné.</string>
     <string name="voice_play_not_found">« %1$s » est introuvable dans votre bibliothèque.</string>
+    <string name="onboarding_saved_codes_title">Enregistrés sur ce téléphone</string>
+    <string name="onboarding_saved_codes_explanation">Codes de récupération enregistrés par bae sur ce téléphone, y compris ceux copiés depuis le téléphone à partir duquel vous l’avez configuré. Touchez une bibliothèque pour la restaurer.</string>
+    <string name="onboarding_saved_codes_failed">Impossible de lire les codes de récupération enregistrés sur ce téléphone</string>
+    <string name="onboarding_saved_code_unusable">Code de récupération inutilisable</string>
+    <string name="onboarding_saved_code_reason_format">Enregistré dans un format que bae ne sait pas lire</string>
+    <string name="onboarding_saved_code_reason_other_library">Enregistré pour une autre bibliothèque</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Enregistré plusieurs fois</string>
+    <string name="onboarding_saved_code_delete">Supprimer</string>
+    <string name="onboarding_saved_code_delete_title">Supprimer ce code de récupération ?</string>
+    <string name="onboarding_saved_code_delete_body">Le code de récupération de « %1$s » sera supprimé de ce téléphone uniquement. La bibliothèque et le contenu de votre stockage ne seront pas supprimés.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Le code de récupération sera supprimé de ce téléphone uniquement. La bibliothèque et le contenu de votre stockage ne seront pas supprimés.</string>
+    <string name="onboarding_saved_code_delete_failed">Impossible de supprimer le code de récupération</string>
+    <string name="onboarding_saved_code_removed">Ce code de récupération n’est plus enregistré sur ce téléphone.</string>
+    <string name="onboarding_saved_library">Bibliothèque</string>
 </resources>

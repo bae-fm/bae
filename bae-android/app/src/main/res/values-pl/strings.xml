@@ -308,4 +308,18 @@
     <string name="restore_code_carries_s3_key">Kod QR zawiera też Twój klucz dostępu S3, więc urządzenie, które go zeskanuje, nie zapyta o klucz.</string>
     <string name="onboarding_s3_key_scanned">Twój klucz dostępu S3 przyszedł razem z zeskanowanym kodem.</string>
     <string name="voice_play_not_found">Nie znaleziono „%1$s” w Twojej bibliotece.</string>
+    <string name="onboarding_saved_codes_title">Zapisane na tym telefonie</string>
+    <string name="onboarding_saved_codes_explanation">Kody odzyskiwania zapisane przez bae na tym telefonie, w tym skopiowane z telefonu, z którego go skonfigurowano. Dotknij biblioteki, aby ją przywrócić.</string>
+    <string name="onboarding_saved_codes_failed">Nie udało się odczytać kodów odzyskiwania zapisanych na tym telefonie</string>
+    <string name="onboarding_saved_code_unusable">Nie można użyć kodu odzyskiwania</string>
+    <string name="onboarding_saved_code_reason_format">Zapisany w formacie, którego bae nie potrafi odczytać</string>
+    <string name="onboarding_saved_code_reason_other_library">Zapisany dla innej biblioteki</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Zapisany więcej niż raz</string>
+    <string name="onboarding_saved_code_delete">Usuń</string>
+    <string name="onboarding_saved_code_delete_title">Usunąć ten kod odzyskiwania?</string>
+    <string name="onboarding_saved_code_delete_body">Spowoduje to usunięcie kodu odzyskiwania biblioteki „%1$s” tylko z tego telefonu. Nie usunie to biblioteki ani niczego w Twoim magazynie danych.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Spowoduje to usunięcie kodu odzyskiwania tylko z tego telefonu. Nie usunie to biblioteki ani niczego w Twoim magazynie danych.</string>
+    <string name="onboarding_saved_code_delete_failed">Nie udało się usunąć kodu odzyskiwania</string>
+    <string name="onboarding_saved_code_removed">Ten kod odzyskiwania nie jest już zapisany na tym telefonie.</string>
+    <string name="onboarding_saved_library">Biblioteka</string>
 </resources>

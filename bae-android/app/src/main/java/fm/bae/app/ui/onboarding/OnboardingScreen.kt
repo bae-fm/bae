@@ -2,7 +2,6 @@ package fm.bae.app.ui.onboarding
 
 import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,14 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,13 +38,8 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.LabeledValueRow
-import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
-import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
@@ -58,7 +50,6 @@ import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeInviteDeliveryKind
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeNextCheck
-import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.time.Duration
 import java.time.Instant
@@ -146,6 +137,16 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
             )
         }
 
+        is OnboardingStep.RestoreSaved -> {
+            BackHandler { flow.back(step) }
+            SavedRestoreForm(
+                step = step,
+                error = flow.error,
+                onRestore = { flow.restore(step, it) },
+                onBack = { flow.back(step) },
+            )
+        }
+
         is OnboardingStep.Running -> {
             // Once a join's request may have been sent there is no cancel:
             // Back leaves the screen, and the join goes on at the next launch.
@@ -208,113 +209,12 @@ internal fun OnboardingStartColumn(
 }
 
 /**
- * What a restore says on its form and while it runs: on a new device it adds
- * this device to the person's own library; over this device's copy it
- * restores that library.
- */
-private class RestoreText(
-    @StringRes val title: Int,
-    @StringRes val action: Int,
-    @StringRes val running: Int,
-) {
-    companion object {
-        fun of(entry: CodeEntry): RestoreText =
-            when (entry) {
-                CodeEntry.NewDevice -> {
-                    RestoreText(
-                        title = R.string.onboarding_add_device,
-                        action = R.string.onboarding_add_action,
-                        running = R.string.onboarding_adding_device,
-                    )
-                }
-
-                is RestoreOver -> {
-                    RestoreText(
-                        title = R.string.onboarding_restore_title,
-                        action = R.string.onboarding_restore_action,
-                        running = R.string.onboarding_restoring_title,
-                    )
-                }
-            }
-    }
-}
-
-/**
- * The person's own restore code, read: S3 asks for the bucket's access key;
- * the account providers sign in as the restore runs.
- */
-@Composable
-internal fun RestoreForm(
-    step: OnboardingStep.Restore,
-    error: DisplayError?,
-    onRestore: (BridgeS3Credentials?) -> Unit,
-    onBack: () -> Unit,
-) {
-    var accessKeyId by remember { mutableStateOf("") }
-    var secretAccessKey by remember { mutableStateOf("") }
-    val s3 = step.metadata.provider == BridgeCloudProvider.S3
-    val needsKey = step.needsS3Key
-    val text = RestoreText.of(step.entry)
-    OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
-        LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))
-        if (s3 && step.metadata.carriesS3Key) {
-            Text(
-                text = stringResource(R.string.onboarding_s3_key_scanned),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (needsKey) {
-            Text(
-                text = stringResource(R.string.onboarding_s3_key_explanation),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            S3KeyFields(
-                accessKeyId = accessKeyId,
-                secretAccessKey = secretAccessKey,
-                onAccessKeyIdChange = { accessKeyId = it.trim() },
-                onSecretAccessKeyChange = { secretAccessKey = it.trim() },
-            )
-        }
-        PrimaryButton(
-            onClick = {
-                onRestore(if (needsKey) BridgeS3Credentials(accessKeyId, secretAccessKey) else null)
-            },
-            enabled = !needsKey || (accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty()),
-            modifier = Modifier.width(actionWidth),
-        ) {
-            Text(stringResource(text.action))
-        }
-    }
-}
-
-@Composable
-private fun OnboardingForm(
-    title: String,
-    error: DisplayError?,
-    onBack: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page).verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
-    ) {
-        Text(text = title, style = ThemeText.title.style, textAlign = TextAlign.Center)
-        content()
-        error?.let { ErrorDetailDisclosure(it) }
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
-    }
-}
-
-/**
  * A restore can be cancelled until it ends; a join only until its request
  * may have been sent, which coven reports as waiting for approval.
  */
 internal fun OnboardingStep.Running.cancellable(): Boolean =
     when (from) {
-        is OnboardingStep.Restore -> true
+        is OnboardingStep.Restore, is OnboardingStep.RestoreSaved -> true
         is OnboardingStep.Invite -> status == null || status is BridgeBootstrapStatus.Connecting
     }
 
@@ -334,6 +234,7 @@ internal fun OnboardingProgress(
         when (val from = step.from) {
             is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
             is OnboardingStep.Restore -> stringResource(RestoreText.of(from.entry).running)
+            is OnboardingStep.RestoreSaved -> stringResource(RestoreText.RESTORE.running)
         }
     OnboardingContainer {
         val status = step.status

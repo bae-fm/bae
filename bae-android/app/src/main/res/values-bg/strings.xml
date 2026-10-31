@@ -302,4 +302,18 @@
     <string name="restore_code_carries_s3_key">QR кодът съдържа и вашия ключ за достъп до S3, така че устройството, което го сканира, няма да поиска ключа.</string>
     <string name="onboarding_s3_key_scanned">Ключът ви за достъп до S3 дойде заедно със сканирания код.</string>
     <string name="voice_play_not_found">„%1$s“ не е намерено във вашата библиотека.</string>
+    <string name="onboarding_saved_codes_title">Запазени на този телефон</string>
+    <string name="onboarding_saved_codes_explanation">Кодове за възстановяване, които bae е запазил на този телефон, включително копираните от телефона, от който сте го настроили. Докоснете библиотека, за да я възстановите.</string>
+    <string name="onboarding_saved_codes_failed">Кодовете за възстановяване, запазени на този телефон, не можаха да бъдат прочетени</string>
+    <string name="onboarding_saved_code_unusable">Кодът за възстановяване не може да се използва</string>
+    <string name="onboarding_saved_code_reason_format">Запазен във формат, който bae не може да прочете</string>
+    <string name="onboarding_saved_code_reason_other_library">Запазен за друга библиотека</string>
+    <string name="onboarding_saved_code_reason_ambiguous">Запазен повече от веднъж</string>
+    <string name="onboarding_saved_code_delete">Изтриване</string>
+    <string name="onboarding_saved_code_delete_title">Изтриване на този код за възстановяване?</string>
+    <string name="onboarding_saved_code_delete_body">Това премахва кода за възстановяване за „%1$s“ само от този телефон. Не изтрива библиотеката, нито нещо в хранилището ви.</string>
+    <string name="onboarding_saved_code_delete_body_unusable">Това премахва кода за възстановяване само от този телефон. Не изтрива библиотеката, нито нещо в хранилището ви.</string>
+    <string name="onboarding_saved_code_delete_failed">Кодът за възстановяване не можа да бъде изтрит</string>
+    <string name="onboarding_saved_code_removed">Този код за възстановяване вече не е запазен на този телефон.</string>
+    <string name="onboarding_saved_library">Библиотека</string>
 </resources>
