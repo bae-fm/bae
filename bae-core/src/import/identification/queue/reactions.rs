@@ -170,14 +170,21 @@ async fn advance(
     };
     let context = context.clone();
     settling.spawn(async move {
-        settle_answer(
-            context,
-            identity,
-            candidate,
+        let representative_key = candidate.key();
+        settled_or_failed(
+            &context,
+            identity.clone(),
+            representative_key,
             run,
-            state,
-            priority,
-            settle_token,
+            settle_answer(
+                context.clone(),
+                identity,
+                candidate,
+                run,
+                state,
+                priority,
+                settle_token,
+            ),
         )
         .await
     });

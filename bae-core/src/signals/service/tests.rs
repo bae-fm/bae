@@ -136,6 +136,13 @@ async fn collect_snapshots(
 
 /// A throwaway `LibraryManager` over a temp dir, which must outlive it.
 async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
+    make_library_manager_reporting_to(crate::diagnostics::Diagnostics::noop()).await
+}
+
+/// A library manager reporting its bugs to `diagnostics`.
+async fn make_library_manager_reporting_to(
+    diagnostics: crate::diagnostics::Diagnostics,
+) -> (crate::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let database =
@@ -155,7 +162,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
         config_handle,
         clock,
         Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
+        diagnostics,
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),

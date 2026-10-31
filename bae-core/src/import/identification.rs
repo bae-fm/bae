@@ -123,16 +123,28 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
     let runtime_handle = runtime.handle().clone();
     let loop_token = token.clone();
     let loop_context = context.clone();
+    let loop_tasks = tasks.clone();
     tasks.spawn_on(
         async move {
-            queue::run(
-                &loop_context,
-                &loop_token,
-                &mut bus,
-                &mut command_rx,
-                &config,
+            let ran = bae_util::task_failure::caught(
+                "run the identification queue",
+                queue::run(
+                    &loop_context,
+                    &loop_token,
+                    &mut bus,
+                    &mut command_rx,
+                    &config,
+                ),
             )
             .await;
+            // A queue that panicked is reported and stopped as a shutdown
+            // stops it, so its executor ends and what asks it after hears it
+            // has stopped.
+            if let Err(failed) = ran {
+                loop_context.library_manager.bug(failed);
+                loop_token.cancel();
+                loop_tasks.close();
+            }
         },
         &runtime_handle,
     );

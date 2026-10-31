@@ -33,6 +33,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         tokio::runtime::Handle::current(),
         event_tx,
         candidates,
+        crate::diagnostics::Diagnostics::noop(),
     );
     (handle.inner, temp_dir)
 }
@@ -459,19 +460,64 @@ async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
     let (dropped_tx, dropped_rx) = tokio::sync::oneshot::channel();
     let (started_tx, started_rx) = tokio::sync::oneshot::channel();
     let token = CancellationToken::new();
-    spawn_until_cancelled(&tokio::runtime::Handle::current(), &token, async move {
-        let _guard = Dropped(Some(dropped_tx));
-        #[expect(
-            clippy::let_underscore_must_use,
-            reason = "the test is waiting on the start; a gone receiver has already failed it"
-        )]
-        let _ = started_tx.send(());
-        std::future::pending::<()>().await;
-    });
+    let (event_tx, _event_rx) = mpsc::unbounded_channel();
+    spawn_until_cancelled(
+        &tokio::runtime::Handle::current(),
+        &crate::diagnostics::Diagnostics::noop(),
+        &token,
+        &event_tx,
+        async move {
+            let _guard = Dropped(Some(dropped_tx));
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "the test is waiting on the start; a gone receiver has already failed it"
+            )]
+            let _ = started_tx.send(());
+            std::future::pending::<()>().await;
+        },
+    );
     started_rx.await.expect("the lookup starts");
     token.cancel();
     tokio::time::timeout(Duration::from_secs(2), dropped_rx)
         .await
         .expect("the lookup is dropped once its run is cancelled")
         .expect("the guard reports its drop");
+}
+
+/// A lookup that panics is reported, and ends its run as broken: the driver
+/// waiting on its answer hears the run broke, and ends it there.
+#[tokio::test]
+async fn a_lookup_that_panics_ends_its_run_as_broken() {
+    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let (event_tx, mut event_rx) = mpsc::unbounded_channel();
+    spawn_until_cancelled(
+        &tokio::runtime::Handle::current(),
+        &diagnostics,
+        &CancellationToken::new(),
+        &event_tx,
+        async {
+            tokio::task::yield_now().await;
+            panic!("the lookup broke");
+        },
+    );
+
+    let event = tokio::time::timeout(Duration::from_secs(5), event_rx.recv())
+        .await
+        .expect("the run hears the lookup end")
+        .expect("the driver's channel is open");
+    let IdentifyEvent::Broke { failure } = event else {
+        panic!("a panicked lookup breaks its run, got {event:?}");
+    };
+    assert_eq!(
+        failure.detail,
+        "run an identify lookup panicked: the lookup broke"
+    );
+    assert_eq!(
+        bugs.reports(),
+        vec![(
+            "run an identify lookup".to_string(),
+            "run an identify lookup panicked: the lookup broke".to_string()
+        )]
+    );
 }

@@ -51,6 +51,32 @@ enum SettledLead {
     },
 }
 
+/// One settle of an answer, as its failure names it.
+pub(super) const SETTLE_ANSWER: &str = "settle an identification answer";
+
+/// What `settle` says became of the answer of `run` for the job `identity`,
+/// whose representative is `representative_key`. A settle that panics is
+/// reported, and fails the job's identification as a write that did not land
+/// does.
+pub(super) async fn settled_or_failed(
+    context: &Context,
+    identity: CandidateFiles,
+    representative_key: crate::import::CandidateKey,
+    run: IdentifyRunId,
+    settle: impl std::future::Future<Output = Finished>,
+) -> Finished {
+    bae_util::task_failure::caught(SETTLE_ANSWER, settle)
+        .await
+        .unwrap_or_else(|failed| Finished {
+            identity,
+            representative_key,
+            run,
+            settled: Settled::WriteFailed {
+                error: context.library_manager.bug(failed).to_string(),
+            },
+        })
+}
+
 /// Settle one run's terminal answer and say what became of it, ending the
 /// runtime's pending save for an answer that never reached a write.
 pub(super) async fn settle_answer(

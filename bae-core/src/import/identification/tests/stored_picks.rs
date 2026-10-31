@@ -422,6 +422,35 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     assert!(fixture.stored().await.is_empty());
 }
 
+/// A settle that panics fails its job's identification as a write that did
+/// not land does, with the panic's message, so the job ends rather than
+/// staying "being written".
+#[tokio::test(flavor = "multi_thread")]
+async fn a_settle_that_panics_fails_as_an_answer_not_written() {
+    let fixture = Fixture::new("settle-panics").await;
+    let candidate: crate::import::folder_scanner::FolderCandidate =
+        synthetic_candidate("/settle-panics", 321);
+
+    let finished = settled_or_failed(
+        &fixture.context(),
+        crate::import::CandidateFiles::of(&candidate),
+        candidate.key(),
+        IdentifyRunId::for_test(1),
+        async { panic!("the settle broke") },
+    )
+    .await;
+
+    assert_eq!(finished.representative_key, candidate.key());
+    assert!(
+        matches!(
+            &finished.settled,
+            Settled::WriteFailed { error }
+                if error == "settle an identification answer panicked: the settle broke"
+        ),
+        "a panicked settle fails as an unwritten answer"
+    );
+}
+
 /// Coven commits a write on its writer thread whether or not the future that
 /// asked for it survives, and the candidate runtime holds a run's answer until
 /// its write says the answer has landed. So the write has to end that wait

@@ -1,12 +1,17 @@
-//! An extraction that cannot finish: a blocking task that died. What it says,
-//! and that it says something.
+//! An extraction that cannot finish: a blocking task that panicked. What it
+//! says, and that it says something.
 
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
-async fn fast_pass_join_error_reports_why_there_is_no_pass() {
+async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
+    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let (library_manager, _lib_tmp) = make_library_manager_reporting_to(
+        crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+    )
+    .await;
     let fast_pass = run_fast_pass_blocking(
-        &tokio::runtime::Handle::current(),
+        &library_manager,
         || -> Result<FastPass, crate::import::ImportError> {
             panic!("fast-pass blocking task panicked")
         },
@@ -14,11 +19,15 @@ async fn fast_pass_join_error_reports_why_there_is_no_pass() {
     .await;
 
     let Err(detail) = fast_pass else {
-        panic!("a fast-pass JoinError is reported, not swallowed");
+        panic!("a fast pass that panics fails, not swallowed");
     };
-    assert!(
-        detail.contains("fast-pass spawn_blocking failed"),
-        "the detail names what died, got {detail:?}",
+    assert_eq!(
+        detail,
+        "read a folder's signals panicked: fast-pass blocking task panicked"
+    );
+    assert_eq!(
+        bugs.reports(),
+        vec![("read a folder's signals".to_string(), detail)]
     );
 }
 
@@ -55,7 +64,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     };
 
     let failure = crate::signals::InternalFailure {
-        detail: "fast-pass spawn_blocking failed: task panicked".to_string(),
+        detail: "read a folder's signals panicked: the reader broke".to_string(),
     };
     emit_aborted_signals(
         &inner,
@@ -98,7 +107,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn ocr_join_error_aborts_without_settled_snapshot() {
+async fn an_image_read_that_panics_fails_the_text_and_barcode_signals() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
 
@@ -111,19 +120,19 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
     match &signals[1].text {
         TextSignal::Failed { failure, .. } => {
             assert!(
-                failure.detail.contains("OCR worker failed"),
-                "OCR JoinError must name the worker that died, got {failure:?}",
+                failure.detail.contains("read an image's text panicked"),
+                "a panicked image read names what panicked, got {failure:?}",
             );
         }
-        other => panic!("OCR JoinError must emit a failed text signal, got {other:?}"),
+        other => panic!("a panicked image read fails the text signal, got {other:?}"),
     }
     match &signals[1].barcode {
         BarcodeSignal::Failed { failure, .. } => {
             assert!(
-                failure.detail.contains("OCR worker failed"),
-                "OCR JoinError must name the worker that died, got {failure:?}",
+                failure.detail.contains("read an image's text panicked"),
+                "a panicked image read names what panicked, got {failure:?}",
             );
         }
-        other => panic!("OCR JoinError must emit a failed barcode signal, got {other:?}"),
+        other => panic!("a panicked image read fails the barcode signal, got {other:?}"),
     }
 }

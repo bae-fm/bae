@@ -494,6 +494,7 @@ impl ImportServiceHandle {
             runtime_handle.clone(),
             event_tx.clone(),
             runtime.clone(),
+            diagnostics.clone(),
         );
         let extraction = crate::signals::ExtractionService::start(
             runtime_handle.clone(),

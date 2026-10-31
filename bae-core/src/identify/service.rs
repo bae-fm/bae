@@ -77,6 +77,9 @@ struct IdentifyServiceInner {
     /// Source of [`IdentifyRunId`]s: every run this service starts is told
     /// apart from every other, including earlier runs of the same candidate.
     next_run: std::sync::atomic::AtomicU64,
+    /// Where a run, a lookup or a write of what a run keeps that panics is
+    /// reported.
+    diagnostics: crate::diagnostics::Diagnostics,
     /// Every driver task, and every write of what a run keeps, for a test to
     /// wait until they have all returned.
     #[cfg(test)]
@@ -119,6 +122,7 @@ impl IdentifyServiceHandle {
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
+        diagnostics: crate::diagnostics::Diagnostics,
     ) -> IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
             library_manager,
@@ -126,6 +130,7 @@ impl IdentifyServiceHandle {
             event_tx,
             candidates,
             next_run: std::sync::atomic::AtomicU64::new(1),
+            diagnostics,
             #[cfg(test)]
             driver_tasks: tokio_util::task::TaskTracker::new(),
         });
@@ -193,6 +198,8 @@ impl IdentifyServiceHandle {
         }
 
         let inner = self.inner.clone();
+        let panicked = self.inner.clone();
+        let panicked_key = key.clone();
         self.inner.candidates.start_work(
             CandidateWork::Identify,
             key.clone(),
@@ -214,7 +221,28 @@ impl IdentifyServiceHandle {
                 };
                 #[cfg(test)]
                 let driver = self.inner.driver_tasks.track_future(driver);
-                self.inner.runtime_handle.spawn(driver);
+                // A driver ends a step that panics as broken (see
+                // `run_driver`); one that panics past that ends here: its
+                // work is let go, and the run is said to have ended, so what
+                // waits on it stops waiting.
+                self.inner.diagnostics.spawn_reported(
+                    &self.inner.runtime_handle,
+                    "identify a candidate",
+                    driver,
+                    move |_| {
+                        panicked.candidates.release_work(
+                            CandidateWork::Identify,
+                            &panicked_key,
+                            generation,
+                        );
+                        panicked.event_tx.send(ImportEvent::IdentifyStateChanged {
+                            candidate_key: panicked_key,
+                            run,
+                            state: IdentifyState::Idle,
+                            priority,
+                        });
+                    },
+                );
             },
         );
         true
@@ -330,7 +358,23 @@ async fn run_driver(
             },
         };
 
-        state = driver.advance(state, event, &mut standing).await;
+        // A step that panics ends the run as bae's own error, as a step that
+        // breaks does: from the state before it.
+        let before = state.clone();
+        state = match bae_util::task_failure::caught(
+            "take an identify step",
+            driver.advance(state, event, &mut standing),
+        )
+        .await
+        {
+            Ok(state) => state,
+            Err(failed) => {
+                let failure = driver.inner.diagnostics.bug(failed).into();
+                driver
+                    .advance(before, IdentifyEvent::Broke { failure }, &mut standing)
+                    .await
+            }
+        };
 
         // The run is over the moment the reducer stops moving: a terminal state
         // is its answer, `Idle` is its cancellation. The driver deregisters and
@@ -513,15 +557,33 @@ impl Driver {
 /// between a provider's retries while it waits out a busy server — so it
 /// neither keeps asking a provider nobody is waiting on nor takes the
 /// rate-limit slots the next run's requests need.
+///
+/// Work that panics is reported, and ends the run as broken on `event_tx`,
+/// so the driver waiting on its answer goes on.
 fn spawn_until_cancelled(
     runtime: &tokio::runtime::Handle,
+    diagnostics: &crate::diagnostics::Diagnostics,
     token: &CancellationToken,
+    event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
     work: impl std::future::Future<Output = ()> + Send + 'static,
 ) {
     let token = token.clone();
-    runtime.spawn(async move {
-        token.run_until_cancelled(work).await;
-    });
+    let event_tx = event_tx.clone();
+    diagnostics.spawn_reported(
+        runtime,
+        "run an identify lookup",
+        async move {
+            token.run_until_cancelled(work).await;
+        },
+        move |failed| {
+            emit_step(
+                &event_tx,
+                IdentifyEvent::Broke {
+                    failure: failed.into(),
+                },
+            );
+        },
+    );
 }
 
 fn dispatch_effect(
@@ -532,56 +594,77 @@ fn dispatch_effect(
     token: CancellationToken,
 ) {
     let runtime = inner.runtime_handle.clone();
+    // Where an effect that panics says the run broke.
+    let broke_tx = event_tx.clone();
     match effect {
         Effect::LookupDiscid { disc_id } => {
             let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let event = match lookup_and_resolve(&disc_id, &library_manager, priority).await {
-                    Ok(answer) => IdentifyEvent::DiscidLookupAnswered {
-                        disc_id,
-                        outcome: Ok(answer),
-                    },
-                    Err(Failure::Lookup(failure)) => IdentifyEvent::DiscidLookupAnswered {
-                        disc_id,
-                        outcome: Err(failure),
-                    },
-                    Err(Failure::Internal(failure)) => IdentifyEvent::Broke { failure },
-                };
-                emit_step(&event_tx, event);
-            });
+            spawn_until_cancelled(
+                &runtime,
+                &inner.diagnostics,
+                &token,
+                &broke_tx,
+                async move {
+                    let event = match lookup_and_resolve(&disc_id, &library_manager, priority).await
+                    {
+                        Ok(answer) => IdentifyEvent::DiscidLookupAnswered {
+                            disc_id,
+                            outcome: Ok(answer),
+                        },
+                        Err(Failure::Lookup(failure)) => IdentifyEvent::DiscidLookupAnswered {
+                            disc_id,
+                            outcome: Err(failure),
+                        },
+                        Err(Failure::Internal(failure)) => IdentifyEvent::Broke { failure },
+                    };
+                    emit_step(&event_tx, event);
+                },
+            );
         }
 
         Effect::LookupIsrcs { isrcs } => {
             let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let lookup = library_manager
-                    .lookup_musicbrainz_isrcs(&isrcs, priority)
-                    .await;
-                let answer = outcome_of(lookup);
-                emit_answer(&event_tx, answer, |outcome| {
-                    IdentifyEvent::IsrcLookupAnswered { outcome }
-                });
-            });
+            spawn_until_cancelled(
+                &runtime,
+                &inner.diagnostics,
+                &token,
+                &broke_tx,
+                async move {
+                    let lookup = library_manager
+                        .lookup_musicbrainz_isrcs(&isrcs, priority)
+                        .await;
+                    let answer = outcome_of(lookup);
+                    emit_answer(&event_tx, answer, |outcome| {
+                        IdentifyEvent::IsrcLookupAnswered { outcome }
+                    });
+                },
+            );
         }
 
         // Each provider is asked on its own task and answers for itself, so
         // one landing never waits on the other.
         Effect::LookupBarcode { source, barcode } => {
             let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let query = SearchQuery::Barcode {
-                    barcode: barcode.clone(),
-                };
-                let lookup = search_source(&library_manager, source, &query, priority).await;
-                let answer = outcome_of(lookup);
-                emit_answer(&event_tx, answer, |outcome| {
-                    IdentifyEvent::BarcodeLookupAnswered {
-                        source,
-                        for_barcode: barcode,
-                        outcome,
-                    }
-                });
-            });
+            spawn_until_cancelled(
+                &runtime,
+                &inner.diagnostics,
+                &token,
+                &broke_tx,
+                async move {
+                    let query = SearchQuery::Barcode {
+                        barcode: barcode.clone(),
+                    };
+                    let lookup = search_source(&library_manager, source, &query, priority).await;
+                    let answer = outcome_of(lookup);
+                    emit_answer(&event_tx, answer, |outcome| {
+                        IdentifyEvent::BarcodeLookupAnswered {
+                            source,
+                            for_barcode: barcode,
+                            outcome,
+                        }
+                    });
+                },
+            );
         }
 
         // The one query every provider is asked, once the identifiers have
@@ -589,42 +672,54 @@ fn dispatch_effect(
         // tab sends.
         Effect::SearchTitle { source, query } => {
             let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let search = SearchQuery::General {
-                    artist: query.artist.clone(),
-                    album: query.album.clone(),
-                };
-                let lookup = search_source(&library_manager, source, &search, priority).await;
-                let answer = outcome_of(lookup);
-                emit_answer(&event_tx, answer, |outcome| IdentifyEvent::SearchAnswered {
-                    source,
-                    outcome,
-                });
-            });
+            spawn_until_cancelled(
+                &runtime,
+                &inner.diagnostics,
+                &token,
+                &broke_tx,
+                async move {
+                    let search = SearchQuery::General {
+                        artist: query.artist.clone(),
+                        album: query.album.clone(),
+                    };
+                    let lookup = search_source(&library_manager, source, &search, priority).await;
+                    let answer = outcome_of(lookup);
+                    emit_answer(&event_tx, answer, |outcome| IdentifyEvent::SearchAnswered {
+                        source,
+                        outcome,
+                    });
+                },
+            );
         }
 
         // Each record is read through the one place a pick reads it from, as
         // far as ranking it needs; picking an offered row reads the rest.
         Effect::ReadReleases { releases, audio } => {
             let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let mut read = Vec::with_capacity(releases.len());
-                for release in releases {
-                    let Some(stored) =
-                        read_release(&library_manager, &release, priority, &event_tx).await
-                    else {
-                        return;
-                    };
-                    let document = stored.map(|stored| {
-                        crate::identify::documents::ReleaseDocument::of(&stored, &audio)
-                    });
-                    read.push(crate::identify::documents::ReleaseReading {
-                        release: release.release().clone(),
-                        document,
-                    });
-                }
-                emit_step(&event_tx, IdentifyEvent::ReleasesRead { read });
-            });
+            spawn_until_cancelled(
+                &runtime,
+                &inner.diagnostics,
+                &token,
+                &broke_tx,
+                async move {
+                    let mut read = Vec::with_capacity(releases.len());
+                    for release in releases {
+                        let Some(stored) =
+                            read_release(&library_manager, &release, priority, &event_tx).await
+                        else {
+                            return;
+                        };
+                        let document = stored.map(|stored| {
+                            crate::identify::documents::ReleaseDocument::of(&stored, &audio)
+                        });
+                        read.push(crate::identify::documents::ReleaseReading {
+                            release: release.release().clone(),
+                            document,
+                        });
+                    }
+                    emit_step(&event_tx, IdentifyEvent::ReleasesRead { read });
+                },
+            );
         }
 
         // A link is read the way an offered record is, and what it reads is
@@ -632,49 +727,55 @@ fn dispatch_effect(
         // catalog number is searched on the one catalog.
         Effect::LookupPressing { source, key } => {
             let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let lookup = match &key {
-                    PressingKey::Link { release } => {
-                        let read = ReleaseToRead::ReleaseLookup(release.clone());
-                        let Some(stored) =
-                            read_release(&library_manager, &read, priority, &event_tx).await
-                        else {
-                            return;
-                        };
-                        stored
-                            .map(|stored| {
-                                vec![crate::import::search::MetadataResult::of_release(&stored)]
-                            })
-                            .map_err(Failure::Lookup)
-                    }
-                    PressingKey::Barcode { barcode } => {
-                        let query = SearchQuery::Barcode {
-                            barcode: barcode.clone(),
-                        };
-                        search_source(&library_manager, source, &query, priority).await
-                    }
-                    PressingKey::CatalogNumber {
-                        number,
-                        label,
-                        artist,
-                    } => {
-                        let query = CatalogNumberSearch {
-                            number: number.clone(),
-                            artist: artist.clone(),
-                            label: Some(label.clone()),
-                        };
-                        search_source(&library_manager, source, &query, priority).await
-                    }
-                };
-                let answer = outcome_of(lookup);
-                emit_answer(&event_tx, answer, |outcome| {
-                    IdentifyEvent::PressingLookupAnswered {
-                        source,
-                        key,
-                        outcome,
-                    }
-                });
-            });
+            spawn_until_cancelled(
+                &runtime,
+                &inner.diagnostics,
+                &token,
+                &broke_tx,
+                async move {
+                    let lookup = match &key {
+                        PressingKey::Link { release } => {
+                            let read = ReleaseToRead::ReleaseLookup(release.clone());
+                            let Some(stored) =
+                                read_release(&library_manager, &read, priority, &event_tx).await
+                            else {
+                                return;
+                            };
+                            stored
+                                .map(|stored| {
+                                    vec![crate::import::search::MetadataResult::of_release(&stored)]
+                                })
+                                .map_err(Failure::Lookup)
+                        }
+                        PressingKey::Barcode { barcode } => {
+                            let query = SearchQuery::Barcode {
+                                barcode: barcode.clone(),
+                            };
+                            search_source(&library_manager, source, &query, priority).await
+                        }
+                        PressingKey::CatalogNumber {
+                            number,
+                            label,
+                            artist,
+                        } => {
+                            let query = CatalogNumberSearch {
+                                number: number.clone(),
+                                artist: artist.clone(),
+                                label: Some(label.clone()),
+                            };
+                            search_source(&library_manager, source, &query, priority).await
+                        }
+                    };
+                    let answer = outcome_of(lookup);
+                    emit_answer(&event_tx, answer, |outcome| {
+                        IdentifyEvent::PressingLookupAnswered {
+                            source,
+                            key,
+                            outcome,
+                        }
+                    });
+                },
+            );
         }
 
         // What was read stays true whether or not the run stays current, so
@@ -686,7 +787,13 @@ fn dispatch_effect(
             };
             #[cfg(test)]
             let keep = inner.driver_tasks.track_future(keep);
-            runtime.spawn(keep);
+            // Nothing waits on it; a panic is reported and keeps nothing.
+            inner.diagnostics.spawn_reported(
+                &runtime,
+                "keep what a run read of albums",
+                keep,
+                |_| {},
+            );
         }
 
         // A number in effect is searched under the artist it is narrowed to,
@@ -698,23 +805,29 @@ fn dispatch_effect(
             artist,
         } => {
             let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let query = CatalogNumberSearch {
-                    number: catalog.clone(),
-                    artist: artist.clone(),
-                    label: None,
-                };
-                let lookup = search_source(&library_manager, source, &query, priority).await;
-                let answer = outcome_of(lookup);
-                emit_answer(&event_tx, answer, |outcome| {
-                    IdentifyEvent::CatalogLookupAnswered {
-                        source,
-                        for_catalog: catalog,
-                        artist,
-                        outcome,
-                    }
-                });
-            });
+            spawn_until_cancelled(
+                &runtime,
+                &inner.diagnostics,
+                &token,
+                &broke_tx,
+                async move {
+                    let query = CatalogNumberSearch {
+                        number: catalog.clone(),
+                        artist: artist.clone(),
+                        label: None,
+                    };
+                    let lookup = search_source(&library_manager, source, &query, priority).await;
+                    let answer = outcome_of(lookup);
+                    emit_answer(&event_tx, answer, |outcome| {
+                        IdentifyEvent::CatalogLookupAnswered {
+                            source,
+                            for_catalog: catalog,
+                            artist,
+                            outcome,
+                        }
+                    });
+                },
+            );
         }
     }
 }

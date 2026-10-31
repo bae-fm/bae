@@ -1308,6 +1308,13 @@ import does, with the setting on or off. The row then no longer offers Import.
 A read that stores no pick, because it failed or was cancelled, imports
 nothing.
 
+A run whose step or lookup panics ends as bae's own error (§3.2),
+and is reported as a bug; the queue's place it held goes to the next run. A
+reading of the folder's signals that panics fails every signal, so its run
+ends the same way. Writing a run's answer that panics fails as an answer that
+could not be stored (§3.2), reported as a bug. A queue that panics is
+reported and stops for the session, as it does when the library closes.
+
 **Edge cases.**
 
 - **Two ids, two artists.** Carol imports a release crediting *Artist Name*

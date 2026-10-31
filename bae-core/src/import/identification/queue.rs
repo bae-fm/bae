@@ -7,6 +7,7 @@ use tokio::task::JoinSet;
 
 mod reactions;
 
+use bae_util::task_failure::TaskFailed;
 use reactions::{finish, handle_events};
 
 /// One candidate on the queue, and which admission put it there.
@@ -505,7 +506,7 @@ pub(super) async fn run(
                 queue.cancel_every_run(context).await;
                 while let Some(result) = settling.join_next().await {
                     if let Err(error) = result {
-                        warn!("identification: a settle task failed: {error}");
+                        context.library_manager.bug(TaskFailed::of_join(SETTLE_ANSWER, error));
                     }
                 }
                 return;
@@ -553,9 +554,13 @@ pub(super) async fn run(
                     }
                 }
             }
+            // A settle catches its own panic, so only its runtime ending can
+            // fail its join.
             Some(result) = settling.join_next() => match result {
                 Ok(done) => finish(context, &mut queue, config, done).await,
-                Err(error) => warn!("identification: a settle task failed: {error}"),
+                Err(error) => {
+                    context.library_manager.bug(TaskFailed::of_join(SETTLE_ANSWER, error));
+                }
             },
             event = bus.recv() => {
                 let Some(event) = event else {

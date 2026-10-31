@@ -7,9 +7,9 @@
 //! in their order, a snapshot per image, and the barcode and text signals
 //! settle at the end.
 //!
-//! An extraction that cannot gather its inputs sends one snapshot that fails
-//! every signal, so its run ends as bae's own error instead of waiting. A
-//! replaced extraction sends nothing more.
+//! An extraction that cannot gather its inputs, or that panics, sends one
+//! snapshot that fails every signal, so its run ends as bae's own error
+//! instead of waiting. A replaced extraction sends nothing more.
 
 use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 use super::candidate_text::{Source, SourcedLine};
@@ -29,7 +29,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
 use tokio::sync::{watch, OwnedSemaphorePermit, Semaphore, TryAcquireError};
-use tokio::task::{JoinError, JoinHandle};
+use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 
@@ -199,7 +199,9 @@ impl ExtractionServiceHandle {
     }
 }
 
-/// Drive extraction for one candidate from its source.
+/// Drive extraction for one candidate from its source. One that panics is
+/// reported, and fails every signal, as one that cannot gather its inputs
+/// does.
 async fn run_extraction(
     inner: Arc<ExtractionServiceInner>,
     extraction: RunningExtraction,
@@ -211,7 +213,31 @@ async fn run_extraction(
         key: extraction.key.clone(),
         generation: extraction.generation,
     };
+    let extracted = bae_util::task_failure::caught(
+        "extract a candidate's signals",
+        extract(&inner, &extraction, source, &token),
+    )
+    .await;
+    if let Err(failed) = extracted {
+        let failure = InternalFailure::from(inner.library_manager.bug(failed));
+        emit_aborted_signals(
+            &inner,
+            &extraction,
+            DiscIdSignal::Failed {
+                failure: failure.clone(),
+            },
+            failure,
+        );
+    }
+}
 
+/// [`run_extraction`]'s work.
+async fn extract(
+    inner: &Arc<ExtractionServiceInner>,
+    extraction: &RunningExtraction,
+    source: ExtractionSource,
+    token: &CancellationToken,
+) {
     if token.is_cancelled() {
         return;
     }
@@ -224,10 +250,10 @@ async fn run_extraction(
                     "signals: {} was read before with these files; reusing that reading",
                     extraction.key
                 );
-                emit_signals(&inner, &extraction, settled);
+                emit_signals(inner, extraction, settled);
                 return;
             }
-            let fast = match run_fast_pass_blocking(&inner.runtime_handle, move || {
+            let fast = match run_fast_pass_blocking(&inner.library_manager, move || {
                 gather_non_ocr_sources(&candidate.source_folders(), &candidate.files)
             })
             .await
@@ -236,8 +262,8 @@ async fn run_extraction(
                 Err(detail) => {
                     let failure = InternalFailure { detail };
                     emit_aborted_signals(
-                        &inner,
-                        &extraction,
+                        inner,
+                        extraction,
                         DiscIdSignal::Failed {
                             failure: failure.clone(),
                         },
@@ -259,7 +285,7 @@ async fn run_extraction(
                 None => Artwork::Absent,
             };
             stream_extraction(
-                inner.clone(),
+                inner,
                 extraction,
                 token,
                 Some(settled_key),
@@ -327,8 +353,8 @@ async fn run_extraction(
                     Err(e) => {
                         error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
                         emit_aborted_signals(
-                            &inner,
-                            &extraction,
+                            inner,
+                            extraction,
                             disc_id,
                             InternalFailure {
                                 detail: e.to_string(),
@@ -363,43 +389,26 @@ async fn run_extraction(
     }
 }
 
-/// The fast pass, or why the task died or the folder's timing does not read.
-async fn run_fast_pass_blocking<F>(runtime_handle: &Handle, task: F) -> Result<FastPass, String>
+/// The fast pass, or why it panicked or the folder's timing does not read. A
+/// panic is reported through `library_manager`.
+async fn run_fast_pass_blocking<F>(
+    library_manager: &LibraryManager,
+    task: F,
+) -> Result<FastPass, String>
 where
     F: FnOnce() -> Result<FastPass, crate::import::ImportError> + Send + 'static,
 {
-    match run_blocking(runtime_handle, "fast-pass spawn_blocking failed", task).await? {
-        Ok(pass) => Ok(pass),
-        Err(error) => {
-            error!("signals: folder timing is invalid: {error}; aborting extraction");
-            Err(format!("folder timing is invalid: {error}"))
-        }
-    }
+    let pass = bae_util::task_failure::blocking("read a folder's signals", task)
+        .await
+        .map_err(|failed| library_manager.bug(failed).to_string())?;
+    pass.map_err(|error| {
+        error!("signals: folder timing is invalid: {error}; aborting extraction");
+        format!("folder timing is invalid: {error}")
+    })
 }
 
-/// The blocking task's value, or why it panicked or was cancelled.
-async fn run_blocking<T, F>(
-    runtime_handle: &Handle,
-    failure_context: &str,
-    task: F,
-) -> Result<T, String>
-where
-    T: Send + 'static,
-    F: FnOnce() -> T + Send + 'static,
-{
-    joined(failure_context, runtime_handle.spawn_blocking(task).await)
-}
-
-/// A joined blocking task's value, or why it panicked or was cancelled.
-fn joined<T>(failure_context: &str, result: Result<T, JoinError>) -> Result<T, String> {
-    match result {
-        Ok(value) => Ok(value),
-        Err(e) => {
-            error!("signals: {failure_context}: {e}; aborting extraction");
-            Err(format!("{failure_context}: {e}"))
-        }
-    }
-}
+/// One image's reading, as its failure names it.
+const READ_IMAGE: &str = "read an image's text";
 
 /// What the pass has gathered so far, which every snapshot is built from.
 /// Barcodes are the CUE's first, then each image's.
@@ -470,23 +479,28 @@ impl<'a> ImageRead<'a> {
         }
     }
 
-    /// What the analyzer read off the image, or why its worker died.
-    async fn finish(self) -> Result<ArtworkAnalysis, InternalFailure> {
-        let failure_context = format!("OCR worker failed for {:?}", self.image.path);
-        joined(&failure_context, self.task.await).map_err(|detail| InternalFailure { detail })
+    /// What the analyzer read off the image, or why it panicked, reported
+    /// through `library_manager`.
+    async fn finish(
+        self,
+        library_manager: &LibraryManager,
+    ) -> Result<ArtworkAnalysis, InternalFailure> {
+        bae_util::task_failure::joined(READ_IMAGE, self.task)
+            .await
+            .map_err(|failed| InternalFailure {
+                detail: format!("{:?}: {}", self.image.path, library_manager.bug(failed)),
+            })
     }
 }
 
 /// Wait out the reads a pass that is stopping no longer wants, so none
 /// outlives it: the files a pass reads (a library release's staged cover)
-/// last only until it returns.
-async fn abandon(reads: VecDeque<ImageRead<'_>>) {
+/// last only until it returns. A read that panicked is reported through
+/// `library_manager`.
+async fn abandon(reads: VecDeque<ImageRead<'_>>, library_manager: &LibraryManager) {
     for read in reads {
-        if let Err(e) = read.task.await {
-            error!(
-                "signals: OCR worker failed for {:?} after its pass stopped: {e}",
-                read.image.path
-            );
+        if let Err(failed) = bae_util::task_failure::joined(READ_IMAGE, read.task).await {
+            library_manager.bug(failed);
         }
     }
 }
@@ -495,9 +509,9 @@ async fn abandon(reads: VecDeque<ImageRead<'_>>) {
 /// one after each image but the last — then send the settled one, kept first
 /// under `settled_key` so a run started by anything that heard it reuses it.
 async fn stream_extraction(
-    inner: Arc<ExtractionServiceInner>,
-    extraction: RunningExtraction,
-    token: CancellationToken,
+    inner: &Arc<ExtractionServiceInner>,
+    extraction: &RunningExtraction,
+    token: &CancellationToken,
     settled_key: Option<String>,
     inputs: ExtractionInputs,
 ) {
@@ -532,8 +546,8 @@ async fn stream_extraction(
     if let Some(pass) = &artwork {
         let classification = gathered.pool.classify();
         emit_signals(
-            &inner,
-            &extraction,
+            inner,
+            extraction,
             SignalsSnapshot {
                 signals: scanning_signals(
                     &gathered,
@@ -561,7 +575,7 @@ async fn stream_extraction(
             // same moment it is cancelled.
             while let Some(&image) = unstarted.peek() {
                 if token.is_cancelled() {
-                    abandon(in_flight).await;
+                    abandon(in_flight, &inner.library_manager).await;
                     return;
                 }
                 let permit = if in_flight.is_empty() {
@@ -593,17 +607,17 @@ async fn stream_extraction(
                 break;
             };
             let ArtworkImage { path, file_id } = read.image;
-            let analysis = read.finish().await;
+            let analysis = read.finish(&inner.library_manager).await;
             if token.is_cancelled() {
-                abandon(in_flight).await;
+                abandon(in_flight, &inner.library_manager).await;
                 return;
             }
             let analysis = match analysis {
                 Ok(analysis) => analysis,
                 Err(failure) => {
                     emit_failed_ocr_signals(
-                        &inner,
-                        &extraction,
+                        inner,
+                        extraction,
                         gathered,
                         ArtworkScan::Failed {
                             failure: failure.clone(),
@@ -612,7 +626,7 @@ async fn stream_extraction(
                         },
                         failure,
                     );
-                    abandon(in_flight).await;
+                    abandon(in_flight, &inner.library_manager).await;
                     return;
                 }
             };
@@ -643,8 +657,8 @@ async fn stream_extraction(
             if index < images.len() {
                 let classification = gathered.pool.classify();
                 emit_signals(
-                    &inner,
-                    &extraction,
+                    inner,
+                    extraction,
                     SignalsSnapshot {
                         signals: scanning_signals(
                             &gathered,
@@ -690,7 +704,7 @@ async fn stream_extraction(
     if let Some(key) = settled_key {
         inner.settled.put(key, settled.clone());
     }
-    emit_signals(&inner, &extraction, settled);
+    emit_signals(inner, extraction, settled);
 }
 
 fn emit_failed_ocr_signals(

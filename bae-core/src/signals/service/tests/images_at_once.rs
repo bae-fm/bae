@@ -321,8 +321,9 @@ async fn a_failed_read_fails_the_pass_with_the_images_before_it() {
     };
     assert_eq!((*read, *total), (1, images.len() as u32));
     assert!(
-        failure.detail.contains("OCR worker failed") && failure.detail.contains("p2.jpg"),
-        "the failure names the worker that died and its image, got {failure:?}"
+        failure.detail.contains("read an image's text panicked")
+            && failure.detail.contains("p2.jpg"),
+        "the failure names what panicked and its image, got {failure:?}"
     );
     assert_eq!(
         failed.text,

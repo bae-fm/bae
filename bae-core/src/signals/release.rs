@@ -92,13 +92,11 @@ pub(crate) async fn resolve_release_identity(
         track_lengths_ms,
         audio_files.iter().map(|file| &file.format),
     );
-    let rip = tokio::task::spawn_blocking(move || {
+    let rip = bae_util::task_failure::blocking("read a release's rip files", move || {
         crate::import::discid::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
     })
     .await
-    .map_err(|e| {
-        crate::library::LibraryError::Internal(format!("rip artifact read task failed: {e}"))
-    })?;
+    .map_err(|failed| library_manager.bug(failed))?;
 
     Ok(ReleaseIdentity { rip, audio })
 }
@@ -128,7 +126,7 @@ pub(crate) async fn resolve_release_artwork_paths(
             match library_manager.read_image_bytes(&image).await {
                 Ok(Some(bytes)) => {
                     let staging_release = release_id.to_string();
-                    match tokio::task::spawn_blocking(move || {
+                    match bae_util::task_failure::blocking("stage a cover for reading", move || {
                         stage_cover_for_ocr(&staging_release, &bytes)
                     })
                     .await
@@ -138,7 +136,12 @@ pub(crate) async fn resolve_release_artwork_paths(
                             Some(dir)
                         }
                         Ok(None) => None,
-                        Err(error) => std::panic::resume_unwind(error.into_panic()),
+                        // A staging that panicked skips the cover, as one
+                        // that failed does, reported as the bug it is.
+                        Err(failed) => {
+                            library_manager.bug(failed);
+                            None
+                        }
                     }
                 }
                 Ok(None) => {
