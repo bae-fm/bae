@@ -936,16 +936,19 @@ impl ImportServiceHandle {
     /// it, so dropping the caller's future ends the wait and nothing else.
     /// Coven commits a write whether or not the future that asked survives, so
     /// the bookkeeping and lock release after it must run too. Fails through
-    /// `From<JoinError>` only when the task panicked or the runtime is gone.
+    /// `From<TaskFailed>` only when the task panicked, which is reported as a
+    /// bug, or the runtime is gone.
     pub(crate) async fn committed<V, E>(
         &self,
         write: impl std::future::Future<Output = Result<V, E>> + Send + 'static,
     ) -> Result<V, E>
     where
         V: Send + 'static,
-        E: From<tokio::task::JoinError> + Send + 'static,
+        E: From<bae_util::task_failure::TaskFailed> + Send + 'static,
     {
-        self.runtime_handle.spawn(write).await?
+        bae_util::task_failure::joined("a candidate write", self.runtime_handle.spawn(write))
+            .await
+            .map_err(|failed| self.library_manager.bug(failed))?
     }
 }
 

@@ -382,6 +382,16 @@ impl LibraryManager {
         self.diagnostics.report_bug(operation, error);
     }
 
+    /// Report work that panicked apart from its caller as a bug, and hand the
+    /// failure back for the caller's own error.
+    #[cfg(desktop)]
+    pub(crate) fn bug(
+        &self,
+        failed: bae_util::task_failure::TaskFailed,
+    ) -> bae_util::task_failure::TaskFailed {
+        self.diagnostics.bug(failed)
+    }
+
     #[cfg(desktop)]
     pub(crate) async fn search_musicbrainz(
         &self,

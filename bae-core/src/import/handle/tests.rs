@@ -18,6 +18,20 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
 
 /// A manager whose providers and image downloads send requests through `http`.
 async fn setup_test_manager_with(http: bae_util::http::Http) -> (LibraryManager, TempDir) {
+    setup_test_manager_over(http, crate::diagnostics::Diagnostics::noop()).await
+}
+
+/// A manager reporting its bugs to `diagnostics`.
+async fn setup_test_manager_reporting_to(
+    diagnostics: crate::diagnostics::Diagnostics,
+) -> (LibraryManager, TempDir) {
+    setup_test_manager_over(bae_util::http::Http::for_test(), diagnostics).await
+}
+
+async fn setup_test_manager_over(
+    http: bae_util::http::Http,
+    diagnostics: crate::diagnostics::Diagnostics,
+) -> (LibraryManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database = Database::new_test(
@@ -38,7 +52,7 @@ async fn setup_test_manager_with(http: bae_util::http::Http) -> (LibraryManager,
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
+        diagnostics,
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
         crate::providers::Providers::for_test(http),
@@ -202,4 +216,5 @@ include!("tests/pane.rs");
 include!("tests/draft_values.rs");
 include!("tests/album_pick.rs");
 mod combinations;
+mod committed;
 mod parent_files;

@@ -353,11 +353,11 @@ impl LibraryError {
     }
 }
 
-/// A write the import handle ran to completion on its own task did not report
-/// back: the task panicked, or the runtime is shutting down under it.
-impl From<tokio::task::JoinError> for LibraryError {
-    fn from(error: tokio::task::JoinError) -> Self {
-        Self::Internal(format!("a candidate write did not complete: {error}"))
+/// Work run apart from its caller gave no result: it panicked (a bug the
+/// caller has reported), or its runtime is shutting down under it.
+impl From<bae_util::task_failure::TaskFailed> for LibraryError {
+    fn from(failed: bae_util::task_failure::TaskFailed) -> Self {
+        Self::Internal(failed.to_string())
     }
 }
 

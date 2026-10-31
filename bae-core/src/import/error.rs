@@ -247,19 +247,19 @@ pub enum ImportError {
     Config { detail: String },
 
     /// A broken invariant, not a user condition: artist-id remap miss,
-    /// non-UTF-8 path, spawn_blocking join failure, closed command channel,
+    /// non-UTF-8 path, work that panicked apart from its caller, closed command channel,
     /// missing library-status row.
     #[error("internal import error: {detail}")]
     Internal { detail: String },
 }
 
-/// A write the import handle ran to completion on its own task did not report
-/// back: the task panicked, or the runtime is shutting down under it.
+/// Work run apart from its caller gave no result: it panicked (a bug the
+/// caller has reported), or its runtime is shutting down under it.
 #[cfg(desktop)]
-impl From<tokio::task::JoinError> for ImportError {
-    fn from(error: tokio::task::JoinError) -> Self {
+impl From<bae_util::task_failure::TaskFailed> for ImportError {
+    fn from(failed: bae_util::task_failure::TaskFailed) -> Self {
         Self::Internal {
-            detail: format!("a candidate write did not complete: {error}"),
+            detail: failed.to_string(),
         }
     }
 }
