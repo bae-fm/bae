@@ -635,7 +635,7 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
 }
 
 /// Each device says whether it can play a release: the importing device plays
-/// its own originals, another device says the audio isn't uploaded, and an
+/// its own originals, another device names the device the audio is on, and an
 /// original removed on the importing device reads as missing, at play time
 /// as well.
 #[test]
@@ -679,7 +679,9 @@ async fn check_playability(
 
     assert_eq!(
         playability(elsewhere.id.clone()).await,
-        ReleasePlayability::NotUploaded
+        ReleasePlayability::OnOtherDevice(crate::album_detail::OtherDevice::Active {
+            name: "Device A".to_string()
+        })
     );
 
     std::fs::remove_file(originals.join("track.flac")).unwrap();

@@ -491,11 +491,9 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
         BridgePlaybackErrorReason::UploadPending => {
             Some("core.playback.error.upload_pending".to_string())
         }
-        BridgePlaybackErrorReason::NotUploaded => {
-            bridge_release_playability_key(BridgeReleasePlayability::NotUploaded)
-        }
+        BridgePlaybackErrorReason::NotUploaded => Some("core.release.not_uploaded".to_string()),
         BridgePlaybackErrorReason::OriginalMissing => {
-            bridge_release_playability_key(BridgeReleasePlayability::OriginalMissing)
+            Some("core.release.original_missing".to_string())
         }
         BridgePlaybackErrorReason::AudioOutput { problem } => Some(
             match problem {

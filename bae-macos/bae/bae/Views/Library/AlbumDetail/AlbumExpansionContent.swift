@@ -76,8 +76,8 @@ struct AlbumExpansionContent: View {
                         labelsLine: selectedRelease.labelsLine,
                         records: selectedRelease.records
                     )
-                    // Why this Mac can't play the release; playing it says
-                    // the same.
+                    // Why this Mac can't play the release: the device its
+                    // audio is on, or its originals missing here.
                     if let unplayable = selectedRelease.unplayableLine {
                         Text(unplayable)
                             .themeText(.detail)
@@ -351,6 +351,24 @@ struct ReleaseFactsLine: View {
     #Preview("Vinyl — Two Sides") {
         // The album-detail gallery scene renders this exact composition.
         PreviewScenes.albumDetail()
+    }
+
+    #Preview("On Another Device") {
+        PreviewData.albumExpansionScene(
+            albumId: "a-01",
+            primaryPlayability: .onOtherDevice(
+                device: .active(name: "Ana's Mac")
+            )
+        )
+    }
+
+    #Preview("On a Removed Device") {
+        PreviewData.albumExpansionScene(
+            albumId: "a-01",
+            primaryPlayability: .onOtherDevice(
+                device: .former(name: "Ana's Mac", state: .removed)
+            )
+        )
     }
 
     #Preview("CD — Two Discs") {

@@ -46,10 +46,10 @@ pub use album::*;
 pub use artist::*;
 pub use composer::*;
 pub use file_kind::{FileKind, FilePlace};
-pub use playability::ReleasePlayability;
 pub(crate) use playability::{
     recorded_originals, release_playability, OriginalOnDisk, OriginalsSeen,
 };
+pub use playability::{OtherDevice, ReleasePlayability};
 pub use release::*;
 pub use search::*;
 pub use source_audio::*;
@@ -146,7 +146,7 @@ pub enum ReleaseStorageAction {
 /// while its files wait to upload or a transfer runs.
 pub fn available_storage_actions(
     state: ReleaseStorageState,
-    playability: ReleasePlayability,
+    playability: &ReleasePlayability,
     pinned: bool,
     has_cloud_home: bool,
 ) -> Vec<ReleaseStorageAction> {
@@ -155,7 +155,7 @@ pub fn available_storage_actions(
         return Vec::new();
     }
     match state {
-        ReleaseStorageState::Local if playability == ReleasePlayability::Playable => {
+        ReleaseStorageState::Local if *playability == ReleasePlayability::Playable => {
             vec![Upload]
         }
         ReleaseStorageState::Local => Vec::new(),
@@ -400,7 +400,7 @@ mod tests {
         for state in [Local, Remote] {
             for pinned in [false, true] {
                 assert_eq!(
-                    available_storage_actions(state, Playable, pinned, false),
+                    available_storage_actions(state, &Playable, pinned, false),
                     Vec::<ReleaseStorageAction>::new(),
                     "no cloud home blocks all actions for {state:?} (pinned={pinned})"
                 );
@@ -412,11 +412,11 @@ mod tests {
     fn local_with_cloud_offers_upload() {
         // `pinned` is irrelevant for a local release.
         assert_eq!(
-            available_storage_actions(Local, Playable, false, true),
+            available_storage_actions(Local, &Playable, false, true),
             vec![Upload]
         );
         assert_eq!(
-            available_storage_actions(Local, Playable, true, true),
+            available_storage_actions(Local, &Playable, true, true),
             vec![Upload]
         );
     }
@@ -425,9 +425,12 @@ mod tests {
     /// imported, or one whose originals are gone, offers nothing to upload.
     #[test]
     fn local_without_its_originals_here_offers_nothing() {
-        for playability in [NotUploaded, OriginalMissing] {
+        let elsewhere = OnOtherDevice(OtherDevice::Active {
+            name: "Device A".to_string(),
+        });
+        for playability in [elsewhere, OriginalMissing] {
             assert_eq!(
-                available_storage_actions(Local, playability, false, true),
+                available_storage_actions(Local, &playability, false, true),
                 Vec::<ReleaseStorageAction>::new(),
                 "{playability:?} offers no upload"
             );
@@ -441,7 +444,7 @@ mod tests {
     fn local_without_a_running_loop_still_offers_upload() {
         for pinned in [false, true] {
             assert_eq!(
-                available_storage_actions(Local, Playable, pinned, true),
+                available_storage_actions(Local, &Playable, pinned, true),
                 vec![Upload],
                 "Upload queues durably even with the sync loop stopped (pinned={pinned})"
             );
@@ -453,11 +456,11 @@ mod tests {
     #[test]
     fn remote_actions_do_not_need_a_running_loop() {
         assert_eq!(
-            available_storage_actions(Remote, Playable, true, true),
+            available_storage_actions(Remote, &Playable, true, true),
             vec![Unpin, DetachAudio]
         );
         assert_eq!(
-            available_storage_actions(Remote, Playable, false, true),
+            available_storage_actions(Remote, &Playable, false, true),
             vec![Pin, DetachAudio]
         );
     }
@@ -465,7 +468,7 @@ mod tests {
     #[test]
     fn remote_pinned_offers_unpin_and_detach_audio() {
         assert_eq!(
-            available_storage_actions(Remote, Playable, true, true),
+            available_storage_actions(Remote, &Playable, true, true),
             vec![Unpin, DetachAudio]
         );
     }
@@ -473,7 +476,7 @@ mod tests {
     #[test]
     fn remote_unpinned_offers_pin_and_detach_audio() {
         assert_eq!(
-            available_storage_actions(Remote, Playable, false, true),
+            available_storage_actions(Remote, &Playable, false, true),
             vec![Pin, DetachAudio]
         );
     }

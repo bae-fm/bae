@@ -104,7 +104,45 @@
             loadingTrackId: String? = nil,
             isPlaying: Bool = false
         ) -> some View {
-            let detail = albumDetail(albumId: albumId)
+            albumExpansionScene(
+                detail: albumDetail(albumId: albumId),
+                currentTrackId: currentTrackId,
+                loadingTrackId: loadingTrackId,
+                isPlaying: isPlaying
+            )
+        }
+
+        /// The expanded album detail for one seeded fixture album whose
+        /// primary release reads as `primaryPlayability`, for the line a
+        /// release this Mac can't play shows under its facts.
+        @MainActor
+        static func albumExpansionScene(
+            albumId: String,
+            primaryPlayability: BridgeReleasePlayability
+        ) -> some View {
+            guard var bridge = albumDetails[albumId],
+                let primary = bridge.releases.firstIndex(where: {
+                    $0.id == bridge.album.primaryReleaseId
+                })
+            else {
+                fatalError("no preview album for id: \(albumId)")
+            }
+            bridge.releases[primary].playability = primaryPlayability
+            return albumExpansionScene(
+                detail: AlbumDetail(bridge: bridge),
+                currentTrackId: nil,
+                loadingTrackId: nil,
+                isPlaying: false
+            )
+        }
+
+        @MainActor
+        private static func albumExpansionScene(
+            detail: AlbumDetail,
+            currentTrackId: String?,
+            loadingTrackId: String?,
+            isPlaying: Bool
+        ) -> some View {
             let primary = detail.primaryRelease
             let cursor = releaseCursor(detail: detail, preferring: primary.id)
             return
@@ -210,13 +248,15 @@
         static func storageRelease(
             storageState: BridgeReleaseStorageState,
             pinned: Bool,
-            storageActions: [BridgeReleaseStorageAction]
+            storageActions: [BridgeReleaseStorageAction],
+            playability: BridgeReleasePlayability
         ) -> ReleaseDetail {
             ReleaseDetail(
                 bridge: storageBridgeRelease(
                     storageState: storageState,
                     pinned: pinned,
-                    storageActions: storageActions
+                    storageActions: storageActions,
+                    playability: playability
                 )
             )
         }
@@ -225,7 +265,8 @@
         static func storageBridgeRelease(
             storageState: BridgeReleaseStorageState,
             pinned: Bool,
-            storageActions: [BridgeReleaseStorageAction]
+            storageActions: [BridgeReleaseStorageAction],
+            playability: BridgeReleasePlayability
         ) -> BridgeRelease {
             let files = previewReleaseFiles
             let facts = PreviewData.pressingFacts(
@@ -267,7 +308,7 @@
                 imageFiles: [previewReleaseCoverFile],
                 coverFiles: [previewReleaseCoverFile],
                 galleryItems: [],
-                playability: .playable,
+                playability: playability,
                 downloadStatus: nil,
                 // Every catalog, so the expansion's facts-line popover shows
                 // what a release a MusicBrainz pick linked all the way out

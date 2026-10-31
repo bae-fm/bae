@@ -45,7 +45,7 @@ impl ReleaseStorageSummary {
         } else {
             available_storage_actions(
                 storage_state,
-                release_playability(&raw.unstored_audio, originals),
+                &release_playability(&raw.unstored_audio, originals),
                 raw.pinned,
                 has_cloud_home,
             )

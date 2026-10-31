@@ -1,6 +1,12 @@
 use super::*;
 use DbUnstoredAudio::*;
 
+fn device_a() -> OtherDevice {
+    OtherDevice::Active {
+        name: "Device A".to_string(),
+    }
+}
+
 fn original(name: &str) -> RecordedOriginal {
     RecordedOriginal {
         path: std::path::PathBuf::from("/music/Album").join(name),
@@ -40,10 +46,10 @@ fn a_local_release_plays_where_its_originals_are() {
 }
 
 #[test]
-fn a_local_release_from_another_device_is_not_uploaded_yet() {
+fn a_local_release_from_another_device_names_that_device() {
     assert_eq!(
-        release_playability(&[Elsewhere], &OriginalsSeen::default()),
-        ReleasePlayability::NotUploaded
+        release_playability(&[Elsewhere(device_a())], &OriginalsSeen::default()),
+        ReleasePlayability::OnOtherDevice(device_a())
     );
 }
 
@@ -65,10 +71,10 @@ fn a_missing_or_changed_original_is_reported_as_missing() {
 fn another_device_outranks_a_changed_original() {
     assert_eq!(
         release_playability(
-            &[Original(original("1.flac")), Elsewhere],
+            &[Original(original("1.flac")), Elsewhere(device_a())],
             &seen(&[("1.flac", OriginalOnDisk::Changed)]),
         ),
-        ReleasePlayability::NotUploaded
+        ReleasePlayability::OnOtherDevice(device_a())
     );
 }
 

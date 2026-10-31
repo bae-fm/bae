@@ -1445,6 +1445,17 @@ never leave the device. Every device reads every release file through coven:
 - the file is on another device only: it isn't here. Another device has it,
   keeping it local or still moving it to the cloud.
 
+A release whose audio is on another device only names that device in the
+album and release views: "On Ana's Mac". The name is the device's
+registration in coven's `coven_devices`, joined to coven's record of each file
+in the query that reads the release, so the line goes as soon as the switch
+to the cloud arrives, and changes when the device is removed. A device removed
+from the library, or whose person was, reads "On Ana's Mac, a removed device",
+and one replaced when it was reset reads "On Ana's Mac, a replaced device":
+its files stay on it, and no device can move them to the cloud any more. Such
+a release offers nothing here, neither moving it to the cloud, which reads
+the originals, nor pinning it (§4.3). Playing it says it isn't uploaded yet.
+
 A release is *uploaded* once every one of its files is stored in the cloud.
 Until then it is local, on every device. The rows sync anyway, so every
 device knows what the household owns, and a rating or playlist entry pointing
@@ -1591,6 +1602,12 @@ rows; how fast and how far arrive apart, keyed by that release.
 
 An uploaded release can be pinned to stay on a device; otherwise its files are
 cached as they play.
+
+Pin shows only for a release whose files are all in the cloud. coven refuses
+to pin a file on one device only, on every device, the one it is on included
+([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
+so a local release offers no pin anywhere, and one moving to the cloud offers
+it once its last file is stored.
 
 Ben's phone holds little. When he plays Ana's album, the chunks he plays are
 fetched and kept in the cache. Before a flight he pins it: the phone downloads
@@ -2312,8 +2329,8 @@ hour; her phone shows the album at once, each row referencing its file, which
 coven records on the Mac only until the last of the album's files is stored
 and one write switches them all to the cloud. Until then the phone can't read
 the files, and can't tell an upload still running on the Mac from a release
-the Mac keeps local: either way the release reads as not uploaded, and a
-picture whose file isn't readable here shows a plain tile in its place. No
+the Mac keeps local: either way the release reads as on Ana's Mac (§4.2), and
+a picture whose file isn't readable here shows a plain tile in its place. No
 album or track is marked as on its way. No device waits for another's upload,
 and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.

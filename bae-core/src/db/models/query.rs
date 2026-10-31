@@ -371,8 +371,9 @@ pub struct DbSendingUploads {
 /// the disk's to say, not the database's.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DbUnstoredAudio {
-    /// No original here: the file is on another device.
-    Elsewhere,
+    /// No original here: the file is on another device, as coven's
+    /// registration of that device reads.
+    Elsewhere(crate::album_detail::OtherDevice),
     /// This device's original, as coven recorded it.
     Original(RecordedOriginal),
 }

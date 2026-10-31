@@ -196,60 +196,145 @@ pub(super) fn build_release_detail_on(
 }
 
 /// What coven records this device holding for each of a release's audio
-/// files on one device only: no original, when the file is on another
-/// device, or the original's path with the size and modification time coven
-/// recorded for it, from `coven_user_files`, which lists exactly this
-/// device's originals. The disk is not read here: a read holds one of the
-/// database's readers, and the disk an original sits on can be slow to
-/// answer.
+/// files on one device only: the original's path with the size and
+/// modification time coven recorded for it, from `coven_user_files`, which
+/// lists exactly this device's originals, when the file is on this device;
+/// otherwise the device it is on, from `coven_devices`, and whether that
+/// device or its person was removed from the library. The disk is not read
+/// here: a read holds one of the database's readers, and the disk an original
+/// sits on can be slow to answer.
 pub(super) fn unstored_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
-    // Each file's content type, and its original's path bytes, size and
-    // modification time when this device has it.
-    type UnstoredRow = (
-        String,
-        Option<Vec<u8>>,
-        Option<i64>,
-        Option<i64>,
-        Option<u32>,
-    );
     let rows: Vec<UnstoredRow> = sql.query(
-        "SELECT f.content_type, u.path, u.size, u.modified_seconds, u.modified_nanos \
+        "SELECT f.content_type, f.file, u.path, u.size, u.modified_seconds, u.modified_nanos, \
+                d.is_self, d.name, d.state, m.removed \
          FROM release_files f JOIN coven_files coven ON coven.id = f.file \
          LEFT JOIN coven_user_files u ON u.file = f.file \
-         WHERE f.release_id = ? AND coven_file_device(coven.coordinates) IS NOT NULL",
+         LEFT JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates) \
+         LEFT JOIN coven_members m ON m.member = d.member \
+         WHERE f.release_id = ? AND coven_file_device(coven.coordinates) IS NOT NULL \
+         ORDER BY f.id",
         params![release_id],
         |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-            ))
+            Ok(UnstoredRow {
+                content_type: row.get(0)?,
+                file: row.get(1)?,
+                original: (row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?),
+                is_self: row.get(6)?,
+                name: row.get(7)?,
+                state: row.get(8)?,
+                member_removed: row.get(9)?,
+            })
         },
     )?;
     rows.into_iter()
-        .filter(|(content_type, ..)| ContentType::from_mime(content_type).is_audio())
-        .map(|(_, path, size, modified_seconds, modified_nanos)| {
-            match (path, size, modified_seconds, modified_nanos) {
-                (None, None, None, None) => Ok(DbUnstoredAudio::Elsewhere),
-                (Some(path), Some(size), Some(modified_seconds), Some(modified_nanos)) => {
-                    Ok(DbUnstoredAudio::Original(RecordedOriginal {
-                        path: path_column::decode(path)?,
-                        size,
-                        modified_seconds,
-                        modified_nanos,
-                    }))
-                }
-                recorded => Err(DbError::Message(format!(
-                    "coven_user_files lists an original as {recorded:?}"
-                ))),
+        .filter(|row| ContentType::from_mime(&row.content_type).is_audio())
+        .map(UnstoredRow::into_unstored_audio)
+        .collect()
+}
+
+/// One release file on one device only, as [`unstored_audio_on`] reads it.
+struct UnstoredRow {
+    content_type: String,
+    file: String,
+    /// The original's path bytes, size and modification time, when
+    /// `coven_user_files` lists it.
+    original: (Option<Vec<u8>>, Option<i64>, Option<i64>, Option<u32>),
+    /// Whether the device the file is on is this one; `None` when
+    /// `coven_devices` lists no such device, as for this device until the
+    /// library connects to storage.
+    is_self: Option<bool>,
+    name: Option<String>,
+    state: Option<String>,
+    member_removed: Option<bool>,
+}
+
+impl UnstoredRow {
+    /// Coven lists this device's own originals, keeps every device's
+    /// registration for good, and a file is on another device only once that
+    /// device, registered, wrote it: a file on this device with no original,
+    /// an original for a file on another device, or another device with no
+    /// registration is coven's own state broken, and the read fails naming
+    /// the file.
+    fn into_unstored_audio(self) -> Result<DbUnstoredAudio, DbError> {
+        let broken = |what: &str| {
+            DbError::Message(format!(
+                "coven lists release file {} on one device only, {what}",
+                self.file
+            ))
+        };
+        let recorded = match self.original.clone() {
+            (Some(path), Some(size), Some(modified_seconds), Some(modified_nanos)) => {
+                Some(RecordedOriginal {
+                    path: path_column::decode(path)?,
+                    size,
+                    modified_seconds,
+                    modified_nanos,
+                })
+            }
+            (None, None, None, None) => None,
+            partial => {
+                return Err(DbError::Message(format!(
+                    "coven_user_files lists the original of release file {} as {partial:?}",
+                    self.file
+                )))
+            }
+        };
+        // This device has no registration until the library connects to
+        // storage, so its own file can be on a device `coven_devices` doesn't
+        // list; another device's never is.
+        match (recorded, self.is_self) {
+            (Some(_), Some(false)) => {
+                Err(broken("on another device, with an original recorded here"))
+            }
+            (Some(original), None | Some(true)) => Ok(DbUnstoredAudio::Original(original)),
+            (None, Some(false)) => Ok(DbUnstoredAudio::Elsewhere(self.other_device()?)),
+            (None, Some(true)) => Err(broken("on this device, with no original recorded")),
+            (None, None) => Err(broken(
+                "on another device it has no registration of, or on this device with no original recorded",
+            )),
+        }
+    }
+
+    /// The device the file is on, which is not this one: removed when its
+    /// registration says so or its person was removed from the library.
+    fn other_device(&self) -> Result<crate::album_detail::OtherDevice, DbError> {
+        use crate::album_detail::OtherDevice;
+        use crate::sync::membership::FormerDeviceState;
+        let (Some(name), Some(state), Some(member_removed)) = (
+            self.name.clone(),
+            self.state.as_deref(),
+            self.member_removed,
+        ) else {
+            return Err(DbError::Message(format!(
+                "coven_devices lists the device of release file {} as {:?}, {:?}, {:?}",
+                self.file, self.name, self.state, self.member_removed
+            )));
+        };
+        Ok(match state {
+            "replaced" => OtherDevice::Former {
+                name,
+                state: FormerDeviceState::Replaced,
+            },
+            "removed" => OtherDevice::Former {
+                name,
+                state: FormerDeviceState::Removed,
+            },
+            "active" if member_removed => OtherDevice::Former {
+                name,
+                state: FormerDeviceState::Removed,
+            },
+            "active" => OtherDevice::Active { name },
+            other => {
+                return Err(DbError::Message(format!(
+                    "coven_devices lists the device of release file {} as {other}",
+                    self.file
+                )))
             }
         })
-        .collect()
+    }
 }
 
 /// [`unstored_audio_on`] for a row mapper reading a release's summary, its

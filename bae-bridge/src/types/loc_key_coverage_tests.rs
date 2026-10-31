@@ -523,14 +523,11 @@ fn produced_keys() -> Vec<String> {
         .is_none()
     );
 
-    for playability in [
-        BridgeReleasePlayability::Playable,
-        BridgeReleasePlayability::NotUploaded,
-        BridgeReleasePlayability::OriginalMissing,
-        BridgeReleasePlayability::CheckingOriginals,
-    ] {
-        keys.extend(bridge_release_playability_key(playability));
-    }
+    keys.extend(
+        playability_messages()
+            .into_iter()
+            .map(|message| message.key),
+    );
 
     for boundary in [BridgePauseBoundary::Side, BridgePauseBoundary::Disc] {
         keys.push(bridge_pause_boundary_title_key(boundary));
@@ -630,6 +627,35 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
     .collect()
 }
 
+/// Every playability's line: none for a release this device can play, or
+/// whose originals the disk hasn't answered for.
+fn playability_messages() -> Vec<BridgeMessage> {
+    let name = || "Device Name".to_string();
+    [
+        BridgeReleasePlayability::Playable,
+        BridgeReleasePlayability::OnOtherDevice {
+            device: BridgeOtherDevice::Active { name: name() },
+        },
+        BridgeReleasePlayability::OnOtherDevice {
+            device: BridgeOtherDevice::Former {
+                name: name(),
+                state: BridgeFormerDeviceState::Removed,
+            },
+        },
+        BridgeReleasePlayability::OnOtherDevice {
+            device: BridgeOtherDevice::Former {
+                name: name(),
+                state: BridgeFormerDeviceState::Replaced,
+            },
+        },
+        BridgeReleasePlayability::OriginalMissing,
+        BridgeReleasePlayability::CheckingOriginals,
+    ]
+    .iter()
+    .filter_map(bridge_release_playability_line)
+    .collect()
+}
+
 fn catalog() -> bae_loc::Catalog {
     bae_loc::Catalog::from_toml(include_str!("../../loc/catalog.toml")).expect("catalog parses")
 }
@@ -670,12 +696,16 @@ fn no_orphan_core_keys() {
     );
 }
 
-/// A subject message names its arguments as its source message does and in
-/// the same order, since Apple's catalog takes them by position.
+/// A subject or playability message names its arguments as its source
+/// message does and in the same order, since Apple's catalog takes them by
+/// position.
 #[test]
-fn pending_subject_arguments_follow_the_source_message() {
+fn message_arguments_follow_the_source_message() {
     let cat = catalog();
-    for message in pending_subject_messages() {
+    for message in pending_subject_messages()
+        .into_iter()
+        .chain(playability_messages())
+    {
         let source = &cat.messages[&message.key].value;
         let expected = bae_loc::mf1::referenced_args(
             &bae_loc::mf1::parse(source).expect("source message parses"),

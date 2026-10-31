@@ -223,7 +223,8 @@ struct ReleaseStorageSheet: View {
         let release = PreviewData.storageBridgeRelease(
             storageState: .remote,
             pinned: false,
-            storageActions: [.pin, .detachAudio]
+            storageActions: [.pin, .detachAudio],
+            playability: .playable
         )
         ReleaseStorageSheet(
             release: ReleaseDetail(bridge: release),

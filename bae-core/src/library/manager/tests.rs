@@ -274,6 +274,7 @@ include!("tests/transfers.rs");
 mod added_device;
 mod bound_images;
 mod detachment;
+mod other_device;
 mod primary_release;
 mod scrub_points_sync;
 #[cfg(feature = "oauth-providers")]

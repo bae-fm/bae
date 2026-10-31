@@ -50,35 +50,42 @@ import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
-import uniffi.bae_bridge.bridgeReleasePlayabilityKey
+import uniffi.bae_bridge.bridgeReleasePlayabilityLine
 
 private val logger = BaeLogger("bae.ReleaseDownloadControl")
 
 /**
  * The shown release's download control; nothing when core offers none for the
  * release. A release this device can't play says why instead, as core words
- * it: its audio is on the device that imported it, or its originals are gone.
+ * it: the device its audio is on ("On Ana's Mac"), or its originals gone.
  */
 @Composable
 internal fun ReleaseDownloadControl(
     session: OpenLibrary,
     release: BridgeRelease,
 ) {
-    val context = LocalContext.current
-    val unplayable = bridgeReleasePlayabilityKey(release.playability)
+    val unplayable = bridgeReleasePlayabilityLine(release.playability)
     if (unplayable != null) {
-        Text(
-            text = context.coreString(unplayable),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        UnplayableLine(unplayable)
         return
     }
     // Core reads the release's place in the download queue into the release itself.
     val status = release.downloadStatus ?: return
     PlayableReleaseDownloadControl(session = session, release = release, status = status)
+}
+
+/** Why this device can't play the release, as core's [message] words it. */
+@Composable
+private fun UnplayableLine(message: BridgeMessage) {
+    Text(
+        text = LocalContext.current.coreString(message),
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /** The control for a release this device can play, in the download [status] core read for it. */
@@ -283,5 +290,22 @@ private fun DownloadControlDownloadedPreview() {
 private fun DownloadControlFailedPreview() {
     BaeTheme {
         DownloadControlBodyStub(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
+    }
+}
+
+/** A release on another device names it; the line is core's message, built here as core builds it. */
+@Preview(showBackground = true)
+@Composable
+private fun UnplayableOnAnotherDevicePreview() {
+    BaeTheme {
+        UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana's Mac"))))
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UnplayableOnARemovedDevicePreview() {
+    BaeTheme {
+        UnplayableLine(BridgeMessage("core.release.on_removed_device", listOf(BridgeMessageArg("device", "Ana's Mac"))))
     }
 }

@@ -31,6 +31,13 @@ struct StorageStatusBand: View {
             else {
                 storageStatus
             }
+            // Why this Mac can't play the release: the device its audio is
+            // on, or its originals missing here.
+            if let unplayable = release.unplayableLine {
+                Text(unplayable)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+            }
             // Read off the identity-stable summary so the bar updates in place.
             if let transfer = release.summary.transfer {
                 ProgressLine(transfer.label, progress: nil)
@@ -105,13 +112,15 @@ struct StorageStatusBand: View {
     private func previewStorageBand(
         storageState: BridgeReleaseStorageState,
         pinned: Bool,
-        storageActions: [BridgeReleaseStorageAction]
+        storageActions: [BridgeReleaseStorageAction],
+        playability: BridgeReleasePlayability
     ) -> some View {
         StorageStatusBand(
             release: PreviewData.storageRelease(
                 storageState: storageState,
                 pinned: pinned,
-                storageActions: storageActions
+                storageActions: storageActions,
+                playability: playability
             ),
             onAction: { _ in },
             onExport: {},
@@ -127,7 +136,33 @@ struct StorageStatusBand: View {
         previewStorageBand(
             storageState: .local,
             pinned: false,
-            storageActions: [.upload]
+            storageActions: [.upload],
+            playability: .playable
+        )
+        .preferredColorScheme(.dark)
+    }
+
+    // On another device only: nothing to move or pin from here, and the
+    // band names the device.
+    #Preview("Storage Band — On Another Device") {
+        previewStorageBand(
+            storageState: .local,
+            pinned: false,
+            storageActions: [],
+            playability: .onOtherDevice(device: .active(name: "Ana's Mac"))
+        )
+        .preferredColorScheme(.dark)
+    }
+
+    // On a device that was removed from the library.
+    #Preview("Storage Band — On a Removed Device") {
+        previewStorageBand(
+            storageState: .local,
+            pinned: false,
+            storageActions: [],
+            playability: .onOtherDevice(
+                device: .former(name: "Ana's Mac", state: .removed)
+            )
         )
         .preferredColorScheme(.dark)
     }
@@ -137,7 +172,8 @@ struct StorageStatusBand: View {
         previewStorageBand(
             storageState: .remote,
             pinned: false,
-            storageActions: [.pin, .detachAudio]
+            storageActions: [.pin, .detachAudio],
+            playability: .playable
         )
         .preferredColorScheme(.dark)
     }
@@ -147,7 +183,8 @@ struct StorageStatusBand: View {
         previewStorageBand(
             storageState: .remote,
             pinned: true,
-            storageActions: [.unpin, .detachAudio]
+            storageActions: [.unpin, .detachAudio],
+            playability: .playable
         )
         .preferredColorScheme(.dark)
     }

@@ -82,7 +82,7 @@ impl ReleaseSummary {
             } else {
                 available_storage_actions(
                     storage_state,
-                    release_playability(&raw.unstored_audio, ctx.originals),
+                    &release_playability(&raw.unstored_audio, ctx.originals),
                     raw.pinned,
                     ctx.has_cloud_home,
                 )

@@ -171,7 +171,7 @@ object PreviewData {
             imageFiles = emptyList(),
             coverFiles = emptyList(),
             galleryItems = emptyList(),
-            playability = BridgeReleasePlayability.PLAYABLE,
+            playability = BridgeReleasePlayability.Playable,
             downloadStatus = null,
             records = emptyList(),
             totalDuration = null,

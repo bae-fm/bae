@@ -15,7 +15,7 @@ pub enum BridgeFormerDeviceState {
     Replaced,
 }
 mirror_enum! { BridgeFormerDeviceState = bae_core::sync::membership::FormerDeviceState,
-    from_core: fn, variants: { Removed, Replaced },
+    from_core: pub(crate) fn, variants: { Removed, Replaced },
 }
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMemberPublicKeys {
