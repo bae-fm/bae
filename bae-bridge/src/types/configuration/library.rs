@@ -291,8 +291,8 @@ pub struct BridgeQueueSnapshot {
 /// Which kind of source the context plays from, so the UI labels the section
 /// (a release's "Playing From" vs the whole library). A single- or multi-release
 /// source is both `Release` here — the queue pane's "Playing From" title is the
-/// same for one album or several. The release ids stay in core (the UI labels by
-/// kind, not by id here).
+/// same for one album or several. A single release's id stays in core (the UI
+/// labels by kind, not by id here).
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackSourceKind {
     Release,
@@ -303,7 +303,7 @@ impl BridgePlaybackSourceKind {
     pub(crate) fn from_core(source: &bae_core::playback::ContextSource) -> Self {
         match source {
             bae_core::playback::ContextSource::Release(_)
-            | bae_core::playback::ContextSource::Releases(_) => Self::Release,
+            | bae_core::playback::ContextSource::Releases => Self::Release,
             bae_core::playback::ContextSource::Library => Self::Library,
         }
     }

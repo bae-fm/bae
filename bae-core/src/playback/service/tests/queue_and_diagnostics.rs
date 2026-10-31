@@ -43,10 +43,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
     assert_eq!(
         context_lane(&service).await,
         (
-            ContextSource::Releases(vec![
-                RELEASE_ONE_TRACK.to_string(),
-                RELEASE_TWO_TRACKS.to_string()
-            ]),
+            ContextSource::Releases,
             vec![
                 "5630a919-43ba-4766-842e-6f5badd886f6".to_string(),
                 "5634d119-43be-4435-8432-575baddc4705".to_string(),
@@ -57,7 +54,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
 }
 
 /// A release with no tracks (deleted, or never existed) is skipped; the remaining
-/// releases still play in order, and only they name the source.
+/// releases still play in order.
 #[tokio::test]
 async fn play_releases_skips_a_release_without_tracks() {
     let (_home, mut service, _rx) = seeded_playback_service(&[
@@ -85,10 +82,7 @@ async fn play_releases_skips_a_release_without_tracks() {
     assert_eq!(
         context_lane(&service).await,
         (
-            ContextSource::Releases(vec![
-                RELEASE_TWO_TRACKS.to_string(),
-                RELEASE_ONE_TRACK.to_string()
-            ]),
+            ContextSource::Releases,
             vec![
                 "5634d119-43be-4435-8432-575baddc4705".to_string(),
                 "5630a919-43ba-4766-842e-6f5badd886f6".to_string(),

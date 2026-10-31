@@ -349,8 +349,8 @@ async fn current_release_id(handle: &bae_core::playback::PlaybackHandle) -> Stri
     let proj = handle.queue_value().await.expect("queue value");
     match proj.context.expect("a playing context").source {
         bae_core::playback::ContextSource::Release(id) => id,
-        bae_core::playback::ContextSource::Releases(ids) => {
-            panic!("expected a single-release context, got a multi-release one: {ids:?}")
+        bae_core::playback::ContextSource::Releases => {
+            panic!("expected a single-release context, got a multi-release one")
         }
         bae_core::playback::ContextSource::Library => {
             panic!("expected a release context, got the whole-library context")

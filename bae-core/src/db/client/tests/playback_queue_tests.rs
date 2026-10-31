@@ -69,15 +69,38 @@ async fn rejects(db: &Database, sql: &str) -> bool {
 }
 
 /// What the context lane plays from, whether it is shuffled and where it
-/// stands are NULL together; a position is never negative.
+/// stands are NULL together; a release is named exactly when the lane plays
+/// one; a position is never negative.
 #[tokio::test]
 async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
     let (db, _tmp, _tracks) = release_db(1).await;
-    assert!(rejects(&db, "UPDATE playback_queue SET source = 'library'").await);
+    assert!(rejects(&db, "UPDATE playback_queue SET source_kind = 'library'").await);
     assert!(
         rejects(
             &db,
-            "UPDATE playback_queue SET source = 'library', shuffled = 1"
+            "UPDATE playback_queue SET source_kind = 'library', shuffled = 1"
+        )
+        .await
+    );
+    assert!(
+        rejects(
+            &db,
+            "UPDATE playback_queue SET source_kind = 'release', shuffled = 0, cursor = 1"
+        )
+        .await
+    );
+    assert!(
+        rejects(
+            &db,
+            "UPDATE playback_queue \
+             SET source_kind = 'releases', source_release_id = 'release', shuffled = 0, cursor = 1"
+        )
+        .await
+    );
+    assert!(
+        rejects(
+            &db,
+            "UPDATE playback_queue SET source_release_id = 'release'"
         )
         .await
     );
@@ -172,13 +195,15 @@ async fn deleting_the_playing_track_keeps_the_lane_s_place() {
 }
 
 /// What the `playback_queue` row says the context lane plays from: its
-/// source, whether it is shuffled, and its cursor.
-async fn context_head(db: &Database) -> (Option<String>, Option<bool>, Option<i64>) {
+/// source's kind and release, whether it is shuffled, and its cursor.
+async fn context_head(
+    db: &Database,
+) -> (Option<String>, Option<String>, Option<bool>, Option<i64>) {
     db.read(|sql| {
         Ok(sql.query_row(
-            "SELECT source, shuffled, cursor FROM playback_queue",
+            "SELECT source_kind, source_release_id, shuffled, cursor FROM playback_queue",
             [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )?)
     })
     .await
@@ -195,7 +220,48 @@ async fn the_lane_s_last_track_deleted_clears_the_context() {
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
 
     assert!(db.queue_value().await.unwrap().context.is_none());
-    assert_eq!(context_head(&db).await, (None, None, None));
+    assert_eq!(context_head(&db).await, (None, None, None, None));
+}
+
+/// A play of several releases stores that it plays several, not which: its
+/// tracks say which. One that finds a single release with tracks plays that
+/// release, named.
+#[tokio::test]
+async fn a_play_of_releases_stores_its_kind_and_a_lone_release_its_id() {
+    let (db, _tmp, _tracks) = release_db(1).await;
+    let fill = |release_ids: Vec<String>| {
+        let db = db.clone();
+        async move {
+            db.playback_queue_tables()
+                .fill(ContextFill::Releases(release_ids))
+                .await
+                .unwrap()
+        }
+    };
+
+    fill(vec![RELEASE_A.to_string(), RELEASE_A.to_string()]).await;
+    assert_eq!(
+        context_head(&db).await,
+        (Some("releases".to_string()), None, Some(false), Some(1))
+    );
+    let context = db.queue_value().await.unwrap().context.unwrap();
+    assert_eq!(context.source, crate::playback::ContextSource::Releases);
+    assert_eq!(context.source_title, None);
+
+    fill(vec![RELEASE_B.to_string(), RELEASE_A.to_string()]).await;
+    assert_eq!(
+        context_head(&db).await,
+        (
+            Some("release".to_string()),
+            Some(RELEASE_A.to_string()),
+            Some(false),
+            Some(1)
+        )
+    );
+    assert_eq!(
+        db.queue_value().await.unwrap().context.unwrap().source,
+        crate::playback::ContextSource::Release(RELEASE_A.to_string())
+    );
 }
 
 /// Deleting every track of the lane in one write takes what it played from
@@ -207,7 +273,7 @@ async fn the_lane_s_tracks_deleted_together_clear_the_context() {
 
     exec(&db, "DELETE FROM tracks WHERE release_id = ?", &[RELEASE_A]).await;
 
-    assert_eq!(context_head(&db).await, (None, None, None));
+    assert_eq!(context_head(&db).await, (None, None, None, None));
 }
 
 /// Removing the lane's last row takes what it played from with it; removing
@@ -226,7 +292,12 @@ async fn removing_the_lane_s_last_row_clears_the_context() {
         .expect("the lane holds it");
     assert_eq!(
         context_head(&db).await,
-        (Some(RELEASE_A.to_string()), Some(false), Some(1))
+        (
+            Some("release".to_string()),
+            Some(RELEASE_A.to_string()),
+            Some(false),
+            Some(1)
+        )
     );
 
     tables
@@ -234,7 +305,7 @@ async fn removing_the_lane_s_last_row_clears_the_context() {
         .await
         .unwrap()
         .expect("the lane holds it");
-    assert_eq!(context_head(&db).await, (None, None, None));
+    assert_eq!(context_head(&db).await, (None, None, None, None));
 }
 
 /// No trigger runs on the context lane's rows: a play takes out and puts in

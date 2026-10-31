@@ -94,15 +94,30 @@ struct QueueHead {
 }
 
 fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    let (repeat, source, shuffled, cursor): (String, Option<String>, Option<bool>, Option<i64>) =
-        sql.query_row(
-            "SELECT repeat, source, shuffled, cursor FROM playback_queue",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )?;
-    let context = match (source, shuffled, cursor) {
-        (Some(source), Some(shuffled), Some(cursor)) => Some((
-            ContextSource::from_column(&source).map_err(DbError::Message)?,
+    type Head = (
+        String,
+        Option<String>,
+        Option<String>,
+        Option<bool>,
+        Option<i64>,
+    );
+    let (repeat, source_kind, source_release_id, shuffled, cursor): Head = sql.query_row(
+        "SELECT repeat, source_kind, source_release_id, shuffled, cursor FROM playback_queue",
+        [],
+        |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+            ))
+        },
+    )?;
+    let context = match (source_kind, shuffled, cursor) {
+        (Some(source_kind), Some(shuffled), Some(cursor)) => Some((
+            ContextSource::from_columns(&source_kind, source_release_id)
+                .map_err(DbError::Message)?,
             shuffled,
             cursor,
         )),
@@ -145,7 +160,7 @@ fn queue_value_on(
                         |row| row.get(0),
                     )
                     .optional()?,
-                ContextSource::Releases(_) | ContextSource::Library => None,
+                ContextSource::Releases | ContextSource::Library => None,
             };
             (
                 Some(crate::queue::ResolvedContext {

@@ -508,7 +508,7 @@ async fn test_a_release_named_twice_plays_twice() {
     assert_eq!(f.context_order().await, names(&["a1", "a2", "b1", "a1", "a2"]));
     assert_eq!(
         f.value().await.context.unwrap().source,
-        ContextSource::Releases(vec![f.id("r1"), f.id("r2"), f.id("r1")])
+        ContextSource::Releases
     );
     let mut played = vec![f.current()];
     while let Some(next) = f.next().await {

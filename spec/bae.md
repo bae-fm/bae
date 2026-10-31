@@ -2610,7 +2610,9 @@ When track 3 ends, Up Next drains first, then the release continues at track
 4.
 
 What's playing from is a release, several releases in the order chosen, or the
-whole library. Albums picked together in the album grid, played, queued or
+whole library. The queue keeps which of the three it is, and the release when
+it is one; which releases several were is the tracks they filled. A play of
+several of which only one has tracks plays that release. Albums picked together in the album grid, played, queued or
 dragged to the queue, go in the grid's order under its sort and grouping,
 which core reads for the ids it is handed, whatever order they were picked
 in. Its rows are filled once, when playing starts; after that they
@@ -2894,8 +2896,9 @@ ends or the session closes.
 ### 7.8 What a device remembers
 
 The queue and position are per device. The queue is stored as it changes: Up
-Next, what's playing from in its play order — shuffled or not, with the
-session's removals and reorders — which track of it is playing, and repeat.
+Next, what's playing from (a release, several, or the library) and its tracks
+in play order — shuffled or not, with the session's removals and reorders —
+which track of it is playing, and repeat.
 Beside it a device saves the entry playing and its position, volume and mute,
 while a track is loaded.
 
@@ -3551,7 +3554,7 @@ All sync (§5), except `local_history`.
 
 | Table | Holds |
 |---|---|
-| `playback_queue` | the one row of this device's queue: repeat, what's playing from, whether it's shuffled, which of its rows is playing, and the number the next entry of either part gets, never given twice (§7.1) |
+| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether it's shuffled, which of its rows is playing, and the number the next entry of either part gets, never given twice (§7.1) |
 | `playback_manual` | Up Next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |

@@ -69,7 +69,7 @@ fn seed_sql(start: u64, end: u64) -> String {
              SELECT i, {release}, i, 'queued' FROM k;
          {rows} INSERT INTO playback_context (entry, position, track_id, unshuffled) \
              SELECT i, i, {track}, i FROM k;
-         UPDATE playback_queue SET source = 'library', shuffled = 0, cursor = -1;"
+         UPDATE playback_queue SET source_kind = 'library', shuffled = 0, cursor = -1;"
     )
 }
 

@@ -245,7 +245,9 @@ impl PlaybackQueueTables {
                     // The lane's last row takes what it played from with it,
                     // as a deleted track does (`tracks_leave_playback_queue`).
                     sql.execute(
-                        "UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL \
+                        "UPDATE playback_queue \
+                         SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, \
+                             cursor = NULL \
                          WHERE NOT EXISTS (SELECT 1 FROM playback_context)",
                         [],
                     )?;
@@ -408,7 +410,8 @@ fn set_cursor_on(sql: &SqlContext<'_, '_>, position: i64) -> rusqlite::Result<()
 fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
     sql.execute("DELETE FROM playback_context", [])?;
     sql.execute(
-        "UPDATE playback_queue SET source = NULL, shuffled = NULL, cursor = NULL",
+        "UPDATE playback_queue \
+         SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, cursor = NULL",
         [],
     )?;
     Ok(())
@@ -675,10 +678,13 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
         )?,
         None => 1,
     };
+    let (source_kind, source_release_id) = source.to_columns();
     sql.execute(
-        "UPDATE playback_queue SET source = ?, shuffled = ?, cursor = ?, next_entry = ?",
+        "UPDATE playback_queue \
+         SET source_kind = ?, source_release_id = ?, shuffled = ?, cursor = ?, next_entry = ?",
         params![
-            source.to_column(),
+            source_kind,
+            source_release_id,
             shuffled,
             cursor,
             base + track_count as i64
