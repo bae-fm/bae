@@ -60,10 +60,12 @@ impl LibraryManager {
 
     /// Each release file's destination. Covers remain attached and shared.
     ///
-    /// `original_filename` is a synced column another device wrote, and copying writes
-    /// wherever this map points, so each fragment is validated before it is joined
-    /// onto the user's folder: a release carrying one bad name copies out no files
-    /// at all, rather than one of them landing outside the folder the user chose.
+    /// `original_filename` is a synced column another device may have written,
+    /// and copying writes wherever this map points, so each file's path is the
+    /// one its names give, written as coven writes them (see
+    /// [`crate::storage::stored_name`]): every name is one name inside the
+    /// user's folder. A release carrying a name that names no file copies out
+    /// no files at all.
     pub(super) async fn detached_audio_destinations(
         &self,
         release_id: &str,
@@ -72,12 +74,9 @@ impl LibraryManager {
         let files = self.database.get_files_for_release(release_id).await?;
         let mut dest = HashMap::with_capacity(files.len());
         for f in &files {
-            crate::storage::path_fragment::validate_path_fragment(
-                release_id,
-                &format!("original_filename for file {}", f.id),
-                &f.original_filename,
-            )?;
-            dest.insert(f.id.clone(), new_path.join(&f.original_filename));
+            let relative =
+                crate::storage::stored_name::file_path(release_id, &f.id, &f.original_filename)?;
+            dest.insert(f.id.clone(), new_path.join(relative.local_path()));
         }
         Ok(dest)
     }

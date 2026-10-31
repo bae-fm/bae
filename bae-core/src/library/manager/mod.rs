@@ -300,10 +300,10 @@ pub enum UploadReleasesOutcome {
     },
 }
 
-/// A stored fragment we refuse to join onto a local path surfaces as an import
-/// failure: the row it came from is unusable, and the copy it was for does not run.
-impl From<crate::storage::path_fragment::PathFragmentError> for LibraryError {
-    fn from(error: crate::storage::path_fragment::PathFragmentError) -> Self {
+/// A stored name that names no file refuses the write it was for: the row it
+/// came from is unusable, and the copy does not run.
+impl From<crate::storage::stored_name::StoredNameError> for LibraryError {
+    fn from(error: crate::storage::stored_name::StoredNameError) -> Self {
         LibraryError::Refused(error.to_string())
     }
 }

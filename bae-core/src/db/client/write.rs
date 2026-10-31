@@ -117,21 +117,17 @@ pub(super) fn insert_album_artist_row(
     .map_err(DbError::from)
 }
 
-/// `source_folder_name` is the folder an export reconstructs under the user's
-/// target directory, so it is held to the same fragment policy as a file's name
-/// (see [`with_file_row_params`]). The release is ordered after its album's
-/// others, so an album's first release stays its primary one.
+/// `source_folder_name` names the folder an export writes under the user's
+/// target directory, so, like a file's name (see [`with_file_row_params`]),
+/// it must name one. The release is ordered after its album's others, so an
+/// album's first release stays its primary one.
 pub(super) fn insert_release_row(
     conn: &SqlContext<'_, '_>,
     release: &DbRelease,
 ) -> Result<(), DbError> {
     if let Some(folder) = &release.source_folder_name {
-        crate::storage::path_fragment::validate_path_fragment(
-            &release.id,
-            "source_folder_name",
-            folder,
-        )
-        .map_err(|e| DbError::Message(e.to_string()))?;
+        crate::storage::stored_name::folder_path(&release.id, folder)
+            .map_err(|e| DbError::Message(e.to_string()))?;
     }
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     conn.execute(
@@ -422,8 +418,9 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
     )
 "#;
 
-/// Validate the file name and bind the row's columns, `file` the coven file
-/// it references, or `None` for a file this device keeps local.
+/// Check the file's name names a file and bind the row's columns, `file`
+/// the coven file it references, or `None` for a file this device keeps
+/// local.
 #[cfg(any(
     test,
     feature = "test-utils",
@@ -434,12 +431,8 @@ fn with_file_row_params<T>(
     coven_file: Option<coven::FileId>,
     write: impl FnOnce(&[(&str, &dyn rusqlite::ToSql)]) -> Result<T, DbError>,
 ) -> Result<T, DbError> {
-    crate::storage::path_fragment::validate_path_fragment(
-        &file.release_id,
-        &format!("original_filename for file {}", file.id),
-        &file.original_filename,
-    )
-    .map_err(|e| DbError::Message(e.to_string()))?;
+    crate::storage::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)
+        .map_err(|e| DbError::Message(e.to_string()))?;
     let source_audio_layout = file
         .source_audio
         .as_ref()

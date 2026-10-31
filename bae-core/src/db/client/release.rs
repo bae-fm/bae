@@ -797,11 +797,11 @@ impl Database {
             .await
     }
 
-    /// Test-only: write a path fragment onto an existing row directly, the way a
+    /// Test-only: write a stored name onto an existing row directly, the way a
     /// changeset from another device does. coven applies a pulled row straight into
-    /// SQLite, so the validation on the row-write never sees it — which is why
-    /// export and audio detachment validate the fragment again before joining it onto a
-    /// local directory, and what these seams let a test exercise.
+    /// SQLite, so the check on the row-write never sees it — which is why export
+    /// and audio detachment build each path from the names as they read them, and
+    /// what these seams let a test exercise.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn set_original_filename_for_test(
         &self,

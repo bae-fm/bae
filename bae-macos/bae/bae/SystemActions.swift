@@ -10,13 +10,14 @@ enum SystemActions {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 
-    /// Open Finder at the folder whose path crosses the bridge as `folder`,
-    /// coven's bytes for it.
+    /// Reveal in Finder, selected, the folder whose path crosses the bridge as
+    /// `folder`, coven's bytes for it. The URL is made from the bytes
+    /// themselves, never from text, so a folder whose name isn't UTF-8 is
+    /// revealed too, and a folder that is a package is shown, not opened.
     static func revealInFinder(folder: Data) {
-        revealInFinder(
-            path: URL(filePathBytes: folder, isDirectory: true)
-                .path(percentEncoded: false)
-        )
+        NSWorkspace.shared.activateFileViewerSelecting([
+            URL(filePathBytes: folder, isDirectory: true)
+        ])
     }
 
     /// Replace the general pasteboard's contents with `value` as a string.

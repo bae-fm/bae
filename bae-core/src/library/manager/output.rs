@@ -1,7 +1,6 @@
 //! Export domain operations for [`LibraryManager`].
 
 use super::*;
-use crate::storage::path_fragment::validate_path_fragment;
 use tracing::info;
 
 /// A hidden file bae writes into every output folder — export or save — naming
@@ -177,8 +176,10 @@ impl LibraryManager {
     }
 
     /// Copy a release's files verbatim to `<target_dir>/<source_folder_name>/`,
-    /// reading each file through coven's locality-aware read (a Remote release
-    /// fetches from cloud/cache and decrypts). The export is all-or-nothing: every
+    /// the folder name written as coven writes a name (see
+    /// [`crate::storage::stored_name`]), reading each file through coven's
+    /// locality-aware read (a Remote release fetches from cloud/cache and
+    /// decrypts). The export is all-or-nothing: every
     /// file is written into a hidden staging directory alongside the final one, and
     /// only after all files succeed is the staging directory renamed into place. Any
     /// read/write error, cancel, or panic drops the [`StagingDir`] guard, which
@@ -200,15 +201,15 @@ impl LibraryManager {
                 "release {release_id} has no source folder name; cannot reconstruct its folder"
             ))
         })?;
-        validate_path_fragment(release_id, "source_folder_name", &folder)?;
-
-        let final_dir = request.target_dir.join(&folder);
+        let final_dir = request
+            .target_dir
+            .join(crate::storage::stored_name::folder_path(release_id, &folder)?.local_path());
         // Stage under the target dir (not a temp dir elsewhere) so the final rename
         // stays on one filesystem and is atomic. The name is hidden and carries the
         // release id so a concurrent export of a different release can't collide.
         let staging_path = request
             .target_dir
-            .join(format!(".{folder}.export-{release_id}"));
+            .join(output_sibling(&folder, "export", release_id));
         let staging =
             super::local_files::blocking_io(move || Ok(StagingDir::create(staging_path)?)).await?;
 
@@ -266,8 +267,25 @@ impl LibraryManager {
     }
 }
 
+/// The hidden folder beside a release's output folder that an output uses
+/// for `purpose`, named after the release's folder name and id, written as
+/// coven writes a name (see [`crate::storage::stored_name`]).
+fn output_sibling(folder: &str, purpose: &str, release_id: &str) -> std::path::PathBuf {
+    coven::RelativePath::new([format!(".{folder}.{purpose}-{release_id}")])
+        .expect("a name holding the release id is not empty")
+        .local_path()
+}
+
+/// Write the marker as a new file: when one of the release's own files is
+/// named `.bae-output`, it is already there, and the output fails rather than
+/// write over it.
 fn write_output_marker(staging_dir: &std::path::Path, release_id: &str) -> std::io::Result<()> {
-    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), release_id)
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(staging_dir.join(OUTPUT_MARKER_FILE))?
+        .write_all(release_id.as_bytes())
 }
 
 fn replace_output_dir(
@@ -284,7 +302,7 @@ fn replace_output_dir(
         )));
     }
 
-    let backup_dir = final_dir.with_file_name(format!(".{folder}.replace-{release_id}"));
+    let backup_dir = final_dir.with_file_name(output_sibling(folder, "replace", release_id));
     if backup_dir.exists() {
         return Err(LibraryError::Export(format!(
             "export replacement backup already exists: {}",

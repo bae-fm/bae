@@ -4,7 +4,6 @@
 
 use super::local_files::blocking_io;
 use super::*;
-use crate::storage::path_fragment::validate_path_fragment;
 use tracing::info;
 
 impl LibraryManager {
@@ -34,11 +33,15 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Copy one release file's verbatim bytes to `<staging_dir>/<original_filename>`.
-    /// `original_filename` may name a subfolder (e.g. `CD1/CDImage.ape`), so its
-    /// parent is created first. No per-file temp is needed: the whole staging
-    /// directory is the atomic unit, renamed into place only once every file is
-    /// written.
+    /// Copy one release file's verbatim bytes to the path its name in the
+    /// release gives below `staging_dir`, each name written as coven writes it
+    /// (see [`crate::storage::stored_name`]). The name may name a subfolder
+    /// (e.g. `CD1/CDImage.ape`), so its parent is created first. No per-file
+    /// temp is needed: the whole staging directory is the atomic unit, renamed
+    /// into place only once every file is written.
+    ///
+    /// The file is created new, never over one already there
+    /// ([`crate::storage::stored_name::create_new_file`]).
     ///
     /// The bytes stream a window at a time from coven's stream over the file
     /// (the user's own file, the local store, the cache, or the cloud), so a
@@ -49,20 +52,29 @@ impl LibraryManager {
         file: &DbFile,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
-        validate_path_fragment(
+        let relative = crate::storage::stored_name::file_path(
             &file.release_id,
-            &format!("original_filename for file {}", file.id),
+            &file.id,
             &file.original_filename,
-        )?;
+        )?
+        .local_path();
         let stream = self.database.open_release_file(&file.id).await?;
         let size = stream.plaintext_size();
 
-        let file_path = staging_dir.join(&file.original_filename);
+        let file_path = staging_dir.join(&relative);
+        let file_id = file.id.clone();
         let mut output = blocking_io(move || {
             if let Some(parent) = file_path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            Ok(std::fs::File::create(&file_path)?)
+            use crate::storage::stored_name::{create_new_file, CreateFileError};
+            match create_new_file(&file_path, &relative, &format!("file {file_id}")) {
+                Ok(output) => Ok(output),
+                Err(clash @ CreateFileError::Clash { .. }) => {
+                    Err(LibraryError::Export(clash.to_string()))
+                }
+                Err(CreateFileError::Io(error)) => Err(error.into()),
+            }
         })
         .await?;
         let mut offset = 0;

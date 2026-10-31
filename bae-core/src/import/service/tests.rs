@@ -668,4 +668,5 @@ include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");
 include!("tests/failed_import_retry.rs");
 include!("tests/scan_reads.rs");
+include!("tests/stored_names.rs");
 include!("tests/takeover.rs");

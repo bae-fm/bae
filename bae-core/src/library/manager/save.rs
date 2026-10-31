@@ -138,8 +138,10 @@ impl LibraryManager {
     /// The default filename (stem, no extension) a single-track "Save As…"
     /// suggests for `track_id` under the preset named by `preset_id` (must exist
     /// and apply to track saves), rendered from that preset's token pattern and
-    /// the track's tag data. Reads no audio and no cover — only the database — so
-    /// seeding a save panel never touches a whole file or the cloud.
+    /// the track's tag data, and written as a release save writes it
+    /// (`save_file_name`). Reads no audio and no cover —
+    /// only the database — so seeding a save panel never touches a whole file or
+    /// the cloud.
     pub async fn save_track_suggested_name(
         &self,
         track_id: &str,
@@ -156,10 +158,14 @@ impl LibraryManager {
             })?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
-        Ok(crate::library::save::render_save_filename(
-            &preset.filename_tokens,
-            &resolved,
-        ))
+        let stem = crate::library::save::render_save_filename(&preset.filename_tokens, &resolved);
+        let extension = preset.codec.extension();
+        let name = crate::library::save::save_file_name(&stem, extension);
+        Ok(name
+            .to_str()
+            .and_then(|name| name.strip_suffix(&format!(".{extension}")))
+            .expect("coven writes a name made of text as text, keeping its extension")
+            .to_string())
     }
 
     /// Save one track to `output_path` under the preset named by `preset_id`
@@ -215,6 +221,7 @@ impl LibraryManager {
             cover,
             preset.codec,
             NonZeroUsize::MIN,
+            crate::library::save::ExistingOutput::Replace,
             |file_id: &String| self.open_save_source(&sources[file_id]),
             Arc::new(|| {}),
         )
@@ -299,6 +306,7 @@ impl LibraryManager {
             cover,
             preset.codec,
             parallelism,
+            crate::library::save::ExistingOutput::Refuse,
             |file_id: &String| self.open_save_source(&sources[file_id]),
             on_saved,
         )
@@ -337,8 +345,11 @@ impl LibraryManager {
                 "release {release_id} source folder name has no usable filename characters"
             )));
         }
-        let output_audio_path = staging_dir.join(format!("{stem}.{}", preset.codec.extension()));
-        let output_cue_path = staging_dir.join(format!("{stem}.cue"));
+        let output_audio_path = staging_dir.join(crate::library::save::save_file_name(
+            &stem,
+            preset.codec.extension(),
+        ));
+        let output_cue_path = staging_dir.join(crate::library::save::save_file_name(&stem, "cue"));
 
         let sources = Self::save_source_files(&plans);
         SaveService::save_release_image_with_cue(
@@ -509,7 +520,10 @@ fn unique_output_path(
         } else {
             format!("{stem} ({index})")
         };
-        let path = dir.join(format!("{candidate_stem}.{extension}"));
+        let path = dir.join(crate::library::save::save_file_name(
+            &candidate_stem,
+            extension,
+        ));
         if used_paths.insert(path.clone()) {
             return path;
         }

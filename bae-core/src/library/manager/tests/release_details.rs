@@ -26,12 +26,11 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    // An image file whose stored filename is a traversal token. bae's own write
-    // path validates the fragment and refuses it, which is why the value has to
-    // be written straight onto the row the way coven applies a peer's changeset
-    // — the seam `set_original_filename_for_test` exists for. It drives the
-    // gallery's file resolution and, as the release's representative file, the
-    // pinned-cache check; both must reject the bad fragment, not panic.
+    // An image file whose stored filename is a traversal token, written
+    // straight onto the row the way coven applies a peer's changeset — the seam
+    // `set_original_filename_for_test` exists for. It drives the gallery's file
+    // resolution and, as the release's representative file, the pinned-cache
+    // check; neither may follow it or panic.
     let file = DbFile::new(
         &release.id,
         "cover.jpg",
@@ -48,8 +47,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         .unwrap();
 
     // The resolver that fires when a synced release surfaces in the UI. The
-    // bad fragment must resolve to "no cover" / "no local gallery path", not a
-    // panic.
+    // name must resolve to "no cover" / "no local gallery path", not a panic.
     let detail = manager
         .find_release_detail(&release.id)
         .await

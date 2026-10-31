@@ -59,6 +59,20 @@ async fn scanned_releases(
     releases
 }
 
+/// Import the release the scan listed for `album`, from its files' tags, and
+/// return its id once the import completes.
+#[cfg(target_os = "linux")]
+async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
+    let key = bae_core::import::CandidateKey::folder(album);
+    f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
+    let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::try_wait_for_import_complete(&mut progress_rx)
+        .await
+        .expect("the import completes");
+    release_id
+}
+
 /// A track whose name isn't UTF-8 doesn't fail its folder's scan: the release
 /// is listed with the track under its escaped name, imports under that name,
 /// and the library records the track's own path, which opens it.
@@ -84,13 +98,7 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
     assert_eq!(shown, [(r"Caf\xE9.flac", r"Caf\xE9.flac")]);
     assert_eq!(release.files.files[0].file.path, track);
 
-    let key = bae_core::import::CandidateKey::folder(&album);
-    f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::try_wait_for_import_complete(&mut progress_rx)
-        .await
-        .expect("the import completes");
+    let release_id = import_scanned(&f, &album).await;
 
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
     let [file] = files.as_slice() else {
@@ -106,6 +114,41 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
     assert_eq!(original.path, track);
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.source_folder_name.as_deref(), Some("Album"));
+}
+
+/// A track whose name isn't UTF-8 exports under the name coven writes for its
+/// escaped name, `Caf＼xE9.flac`: a stored name is a label, written the same
+/// way on every platform, so the export doesn't recreate the Latin-1 bytes.
+#[cfg(target_os = "linux")]
+#[tokio::test]
+async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let collection = f.temp_path().join("Collection");
+    let (album, track) = album_with_a_latin1_name(&collection);
+    let releases = scanned_releases(&f, &collection).await;
+    assert_eq!(releases.len(), 1, "the scan lists the album: {releases:?}");
+    let release_id = import_scanned(&f, &album).await;
+
+    let target = f.temp_path().join("Export");
+    fs::create_dir_all(&target).unwrap();
+    f.library_manager
+        .export_release(
+            &release_id,
+            &target,
+            bae_core::library::OutputKind::Export,
+        )
+        .await
+        .expect("the release exports");
+
+    let exported = target.join("Album").join("Caf＼xE9.flac");
+    assert_eq!(fs::read(&exported).unwrap(), fs::read(&track).unwrap());
+    let mut names: Vec<std::ffi::OsString> = fs::read_dir(target.join("Album"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    names.sort();
+    assert_eq!(names, [".bae-output", "Caf＼xE9.flac"]);
 }
 
 /// A track whose name isn't UTF-8 uploads: coven reads it by its own path.

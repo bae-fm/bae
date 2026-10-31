@@ -337,6 +337,104 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     );
 }
 
+/// `Track?.flac` and `Track？.flac` are two names, and coven writes both as
+/// `Track？.flac`: the export fails rather than write one file over the
+/// other, and leaves nothing behind. Windows refuses `?` in a name, so the
+/// album can't be made there.
+#[cfg(not(windows))]
+#[tokio::test]
+async fn two_names_written_as_one_fail_the_export() {
+    support::tracing_init();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    support::write_tagged_flac(&album_dir, "Track?.flac", "Track One");
+    support::write_tagged_flac(&album_dir, "Track？.flac", "Track Two");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let mut names: Vec<String> = f
+        .mgr
+        .get_files_for_release(&release_id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|file| file.original_filename)
+        .collect();
+    names.sort();
+    assert_eq!(names, ["Track?.flac", "Track？.flac"]);
+
+    let target = f.temp_path().join("export-target");
+    fs::create_dir_all(&target).unwrap();
+    let error = f
+        .mgr
+        .export_release(&release_id, &target, OutputKind::Export)
+        .await
+        .expect_err("two files written at one path fail the export");
+
+    assert!(
+        error.to_string().contains("Track？.flac"),
+        "the error names the path: {error}"
+    );
+    assert!(
+        fs::read_dir(&target).unwrap().next().is_none(),
+        "the failed export leaves no release folder or staging folder"
+    );
+}
+
+/// Whether `dir`'s drive holds names that differ only in case as one, as the
+/// default macOS and Windows volumes do.
+fn folds_case(dir: &Path) -> bool {
+    let probe = dir.join("case-probe");
+    fs::write(&probe, b"").unwrap();
+    let folds = dir.join("CASE-PROBE").exists();
+    fs::remove_file(&probe).unwrap();
+    folds
+}
+
+/// Tracks titled `Track Title` and `track title` save as two names, which a
+/// drive that folds case holds as one: the release save fails rather than
+/// write one track over the other, and leaves nothing behind.
+#[tokio::test]
+async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
+    support::tracing_init();
+    let f = ExportFixture::new().await;
+    // Only a drive that folds case can hold the two names as one; on a
+    // case-sensitive one (Linux's usual drives) both files are written and
+    // there is nothing to refuse.
+    if !folds_case(f.temp_path()) {
+        eprintln!("skipped: the temporary directory's drive tells case apart");
+        return;
+    }
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    support::write_tagged_flac(&album_dir, "01.flac", "Track Title");
+    support::write_tagged_flac(&album_dir, "02.flac", "track title");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let mut preset = flac_save_preset("titles", SavePregapPlacement::AppendToPreviousExceptHtoa);
+    preset.filename_tokens = vec![SaveFilenameToken::Title];
+    let mut presets = f.mgr.save_presets();
+    presets.push(preset.clone());
+    f.mgr.set_save_presets(presets).await.unwrap();
+
+    let target = f.temp_path().join("export-target");
+    fs::create_dir_all(&target).unwrap();
+    let error = f
+        .mgr
+        .export_release(&release_id, &target, OutputKind::Save { preset })
+        .await
+        .expect_err("two tracks written at one path fail the save");
+
+    assert!(
+        error
+            .to_string()
+            .contains("where another file of the release already is"),
+        "the error names the clash: {error}"
+    );
+    assert!(
+        fs::read_dir(&target).unwrap().next().is_none(),
+        "the failed save leaves no release folder or staging folder"
+    );
+}
+
 /// A cloud-only release whose file is missing exports nothing and errors —
 /// no partial silent success.
 #[tokio::test]

@@ -1,4 +1,4 @@
-//! Release transfers and validation of paths chosen for local copies.
+//! Release transfers and the paths bae writes a release's files at.
 //! Coven owns attached files, their storage locations and their cache.
-pub mod path_fragment;
+pub mod stored_name;
 pub mod transfer;

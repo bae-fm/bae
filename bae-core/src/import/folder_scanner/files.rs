@@ -17,10 +17,10 @@ pub struct ScannedFile {
     /// that isn't UTF-8 is its escaped text (`Caf\xE9.flac`): what the library
     /// syncs and shows. `path` is what opens the file.
     ///
-    /// Always `/`-separated, on every platform: it is stored, synced, and joined
-    /// back onto a local directory by whichever device exports or unmanages the
-    /// release, so it cannot carry the writing platform's separator (see
-    /// [`crate::storage::path_fragment`], which refuses one that does).
+    /// Always `/`-separated, on every platform: it is stored and synced, and
+    /// whichever device exports the release or makes it local writes the file
+    /// under these names (see [`crate::storage::stored_name`]), so it cannot
+    /// carry the writing platform's separator.
     pub relative_path: String,
     /// File size in bytes
     pub size: u64,

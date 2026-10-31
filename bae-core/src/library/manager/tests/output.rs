@@ -71,18 +71,17 @@ async fn insert_export_release_rows(
     (release, inserted_files)
 }
 
-/// A Local release with one readable source file, whose stored path fragments are
-/// then overwritten with `poison` — the shape a row pulled from another device can
-/// have. bae's own row-write refuses these values, but coven applies a pulled
-/// changeset straight into SQLite, so the guard that matters is the one at the
-/// join: the export copy-out and audio detachment both validate the fragment before they
-/// join it onto the user's folder.
+/// A Local release with one readable source file, whose stored name is then
+/// overwritten with `name` — the shape a row pulled from another device can
+/// have. coven applies a pulled changeset straight into SQLite, so bae's own
+/// row-write never sees it: the export copy-out and audio detachment build each
+/// path from the names as they read them.
 #[cfg(feature = "test-utils")]
-async fn insert_local_export_release_with_poisoned_fragment(
+async fn insert_local_export_release_named(
     manager: &LibraryManager,
     source_dir: &std::path::Path,
     bytes: &[u8],
-    poison: PoisonedFragment<'_>,
+    name: PeerName<'_>,
 ) -> String {
     let (release, db_files) = insert_export_release_rows(
         manager,
@@ -91,13 +90,13 @@ async fn insert_local_export_release_with_poisoned_fragment(
         &[("track.flac", bytes)],
     )
     .await;
-    match poison {
-        PoisonedFragment::OriginalFilename(value) => manager
+    match name {
+        PeerName::OriginalFilename(value) => manager
             .database
             .set_original_filename_for_test(&db_files[0].id, value)
             .await
             .unwrap(),
-        PoisonedFragment::SourceFolderName(value) => manager
+        PeerName::SourceFolderName(value) => manager
             .database
             .set_source_folder_name_for_test(&release.id, value)
             .await
@@ -107,7 +106,7 @@ async fn insert_local_export_release_with_poisoned_fragment(
 }
 
 #[cfg(feature = "test-utils")]
-enum PoisonedFragment<'a> {
+enum PeerName<'a> {
     OriginalFilename(&'a str),
     SourceFolderName(&'a str),
 }
@@ -203,128 +202,113 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     );
 }
 
+/// A file named `..` is an ordinary name: coven writes it as `.．`, so the
+/// export writes the file inside its folder and nothing outside the target.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn export_rejects_parent_component_original_filename() {
+async fn export_writes_a_parent_name_inside_its_folder() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let release_id = insert_local_export_release_with_poisoned_fragment(
+    let release_id = insert_local_export_release_named(
         &manager,
         &temp_dir.path().join("source"),
         b"escape-bytes",
-        PoisonedFragment::OriginalFilename("../escape.flac"),
+        PeerName::OriginalFilename("../escape.flac"),
     )
     .await;
 
-    assert_export_rejects_invalid_path(
-        &manager,
-        &release_id,
-        temp_dir.path(),
-        "parent component in original_filename is rejected",
-        &["export-out/escape.flac", "export-out/Album Title"],
-    )
-    .await;
+    let target = temp_dir.path().join("export-out");
+    manager
+        .export_release(&release_id, &target, crate::library::OutputKind::Export)
+        .await
+        .expect("a parent name exports");
+
+    assert_eq!(
+        std::fs::read(target.join("Album Title").join(".．").join("escape.flac")).unwrap(),
+        b"escape-bytes"
+    );
+    assert!(!target.join("escape.flac").exists());
+    assert!(!temp_dir.path().join("escape.flac").exists());
 }
 
+/// An absolute path's leading `/` gives an empty name, which names no file:
+/// the export writes nothing.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn export_rejects_absolute_original_filename() {
+async fn export_refuses_an_absolute_original_filename() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let absolute_escape = temp_dir.path().join("absolute-escape.flac");
-    let release_id = insert_local_export_release_with_poisoned_fragment(
+    let release_id = insert_local_export_release_named(
         &manager,
         &temp_dir.path().join("source"),
         b"escape-bytes",
-        PoisonedFragment::OriginalFilename(absolute_escape.to_str().unwrap()),
+        PeerName::OriginalFilename("/absolute-escape.flac"),
     )
     .await;
 
-    assert_export_rejects_invalid_path(
-        &manager,
-        &release_id,
-        temp_dir.path(),
-        "absolute original_filename is rejected",
-        &["absolute-escape.flac", "export-out/Album Title"],
-    )
-    .await;
+    let target = temp_dir.path().join("export-out");
+    let error = manager
+        .export_release(&release_id, &target, crate::library::OutputKind::Export)
+        .await
+        .expect_err("an absolute original_filename is refused");
+
+    assert!(
+        error.to_string().contains("names no file"),
+        "unexpected error: {error}"
+    );
+    assert!(!target.join("Album Title").exists());
 }
 
+/// A folder name is one name, `/` included: coven writes `../escape-folder`
+/// as `..／escape-folder`, one folder inside the target.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn export_rejects_parent_component_source_folder_name() {
+async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let release_id = insert_local_export_release_with_poisoned_fragment(
+    let release_id = insert_local_export_release_named(
         &manager,
         &temp_dir.path().join("source"),
         b"track-bytes",
-        PoisonedFragment::SourceFolderName("../escape-folder"),
+        PeerName::SourceFolderName("../escape-folder"),
     )
     .await;
 
-    assert_export_rejects_invalid_path(
-        &manager,
-        &release_id,
-        temp_dir.path(),
-        "parent component in source_folder_name is rejected",
-        &["escape-folder", "export-out"],
-    )
-    .await;
+    let target = temp_dir.path().join("export-out");
+    manager
+        .export_release(&release_id, &target, crate::library::OutputKind::Export)
+        .await
+        .expect("a folder name holding a slash exports");
+
+    assert_eq!(
+        std::fs::read(target.join("..／escape-folder").join("track.flac")).unwrap(),
+        b"track-bytes"
+    );
+    assert!(!temp_dir.path().join("escape-folder").exists());
 }
 
-/// audio detachment reads through coven and writes each file under the chosen folder.
-/// A synced filename must not redirect any destination outside that folder.
-/// One invalid destination refuses the release before any files are copied.
+/// Audio detachment reads through coven and writes each file under the
+/// chosen folder, at the path its names give as coven writes them: a synced
+/// `..` is an ordinary name there, so no destination is outside the folder.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn detached_audio_destinations_reject_a_traversing_original_filename() {
+async fn detached_audio_destinations_keep_a_parent_name_inside_the_folder() {
     let (manager, temp_dir) = setup_test_manager().await;
     let target = temp_dir.path().join("detached-audio-out");
-    let release_id = insert_local_export_release_with_poisoned_fragment(
+    let release_id = insert_local_export_release_named(
         &manager,
         &temp_dir.path().join("source"),
         b"escape-bytes",
-        PoisonedFragment::OriginalFilename("../escape.flac"),
+        PeerName::OriginalFilename("../escape.flac"),
     )
     .await;
 
-    let error = manager
+    let destinations = manager
         .detached_audio_destinations(&release_id, &target)
         .await
-        .expect_err("a traversing original_filename must not produce a destination");
-    assert!(
-        error.to_string().contains("invalid path fragment"),
-        "unexpected error: {error}",
-    );
-    assert!(
-        !temp_dir.path().join("escape.flac").exists(),
-        "nothing is written outside the target folder",
-    );
-}
+        .expect("a parent name has a destination");
 
-#[cfg(feature = "test-utils")]
-async fn assert_export_rejects_invalid_path(
-    manager: &LibraryManager,
-    release_id: &str,
-    temp_dir: &std::path::Path,
-    message: &str,
-    absent_paths: &[&str],
-) {
-    let target = temp_dir.join("export-out");
-    let error = manager
-        .export_release(release_id, &target, crate::library::OutputKind::Export)
-        .await
-        .expect_err(message);
-
-    assert!(
-        error.to_string().contains("invalid path fragment"),
-        "unexpected error: {error}"
+    assert_eq!(
+        destinations.into_values().collect::<Vec<_>>(),
+        [target.join(".．").join("escape.flac")]
     );
-    for path in absent_paths {
-        assert!(
-            !temp_dir.join(path).exists(),
-            "invalid export wrote {}",
-            temp_dir.join(path).display()
-        );
-    }
 }
 
 /// A write error (an unwritable target) marks the export `Failed` with a message

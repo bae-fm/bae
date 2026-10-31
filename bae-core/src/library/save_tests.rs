@@ -51,18 +51,31 @@ fn full_pattern_substitutes_every_token() {
     );
 }
 
+/// The stem is the title's text; its file takes the name coven writes, where
+/// `/` and `:` are their full-width lookalikes on every platform.
 #[test]
-fn slash_and_colon_become_dashes() {
+fn slash_and_colon_are_written_as_coven_writes_them() {
     let r = resolved("Some/Weird:Title", 1, 1, None, None);
-    assert_eq!(render_save_filename(&[Title], &r), "Some-Weird-Title");
+    let stem = render_save_filename(&[Title], &r);
+    assert_eq!(stem, "Some/Weird:Title");
+    assert_eq!(
+        save_file_name(&stem, "flac"),
+        Path::new("Some／Weird：Title.flac")
+    );
 }
 
 #[test]
-fn path_escape_leaves_no_separator() {
+fn path_escape_leaves_one_name() {
     let r = resolved("../secret", 1, 1, None, None);
-    let name = render_save_filename(&[Title], &r);
-    assert!(!name.contains('/'), "no forward slash in {name}");
-    assert!(!name.contains('\\'), "no backslash in {name}");
+    let name = save_file_name(&render_save_filename(&[Title], &r), "flac");
+    assert_eq!(name, Path::new("／secret.flac"));
+    assert_eq!(name.components().count(), 1, "one name: {name:?}");
+}
+
+#[test]
+fn a_stem_is_tidied_and_never_hidden() {
+    let r = resolved("  ..  Track   Title  ", 1, 1, None, None);
+    assert_eq!(render_save_filename(&[Title], &r), "Track Title");
 }
 
 #[test]

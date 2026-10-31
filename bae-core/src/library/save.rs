@@ -9,11 +9,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
-/// Render a single-track export's suggested filename stem (no extension) from
-/// the ordered token list and the track's tag data. Each token substitutes its
-/// value; an absent value (no year, say) drops out, and the non-empty values
-/// join with single spaces. The result goes through `sanitize_filename_stem`;
-/// if that leaves it empty, fall back to the sanitized title, then to "track".
+/// Render a saved track's filename stem (no extension) from the ordered token
+/// list and the track's tag data. Each token substitutes its value; an absent
+/// value (no year, say) drops out, and the non-empty values join with single
+/// spaces. The result goes through `sanitize_filename_stem`; if that leaves it
+/// empty, fall back to the sanitized title, then to "track". The stem is text:
+/// a file takes it through `save_file_name`.
 pub fn render_save_filename(
     tokens: &[crate::config::SaveFilenameToken],
     resolved: &crate::library::manager::ResolvedSaveTags,
@@ -61,30 +62,43 @@ pub fn render_save_filename(
     "track".to_string()
 }
 
-/// Sanitize a rendered filename stem: control characters and the ones illegal on
-/// macOS/Windows become '-', whitespace runs collapse to one space, leading and
-/// trailing spaces and dashes are trimmed, and a leading '.' is stripped so the
-/// file isn't hidden. Replacing the separators is also what makes a `../` escape
-/// impossible.
+/// Tidy a rendered filename stem: whitespace runs collapse to one space,
+/// leading and trailing spaces are trimmed, and a leading '.' is stripped so
+/// the file isn't hidden. What a name may hold on a volume is coven's rule,
+/// which [`save_file_name`] applies.
 pub(crate) fn sanitize_filename_stem(input: &str) -> String {
-    let replaced: String = input
-        .chars()
-        .map(|c| {
-            if c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') {
-                '-'
-            } else {
-                c
-            }
-        })
-        .collect();
-    let collapsed = replaced.split_whitespace().collect::<Vec<_>>().join(" ");
-    collapsed
-        .trim_matches(|c: char| c == ' ' || c == '-')
+    input
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
         .trim_start_matches('.')
+        .trim_start()
         .to_string()
 }
 
+/// The name a save writes for a file of `stem` and `extension`: coven's name
+/// for it ([`coven::RelativePath::local_path`]), as coven names its own local
+/// copies, so it is one valid name on every platform. `Some/Weird:Title` is
+/// written as `Some／Weird：Title.flac`.
+pub(crate) fn save_file_name(stem: &str, extension: &str) -> PathBuf {
+    coven::RelativePath::new([format!("{stem}.{extension}")])
+        .expect("a name with an extension is not empty")
+        .local_path()
+}
+
 pub(crate) struct SaveService;
+
+/// What saving a track does with a file already at its output path.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ExistingOutput {
+    /// Replace it: the person picked the path and confirmed replacing what is
+    /// there.
+    Replace,
+    /// Fail the save: the path is in a release save's own folder, so a file
+    /// there is another of its tracks, whose name coven writes as this one's
+    /// or the drive holds as one.
+    Refuse,
+}
 
 struct CancelOnDrop(Arc<AtomicBool>);
 
@@ -150,7 +164,8 @@ impl SaveService {
     /// Embeds metadata (title, artist, album, year, track number, cover art).
     /// A source file is open only while a track reading it is being saved
     /// (see [`run_tracks_over_sources`]); `open` opens one by release file id.
-    /// `on_saved` runs as each track's file is written.
+    /// `on_saved` runs as each track's file is written. `existing` says what a
+    /// file already at a track's output path does.
     ///
     /// On future-drop the cancel flag flips, the encoder loop exits between
     /// frames, and any partially-written output file is removed.
@@ -159,6 +174,7 @@ impl SaveService {
         cover_image_bytes: Option<Vec<u8>>,
         codec: crate::config::SaveCodec,
         parallelism: NonZeroUsize,
+        existing: ExistingOutput,
         open: impl Fn(&String) -> SourceStream,
         on_saved: Arc<dyn Fn() + Send + Sync>,
     ) -> Result<(), String> {
@@ -179,6 +195,7 @@ impl SaveService {
                         cover_image_bytes,
                         output_path,
                         codec,
+                        existing,
                     )
                     .await?;
                     on_saved();
@@ -376,6 +393,7 @@ impl SaveService {
         cover_image_bytes: Arc<Option<Vec<u8>>>,
         output_path: PathBuf,
         codec: crate::config::SaveCodec,
+        existing: ExistingOutput,
     ) -> Result<(), String> {
         let track_id = plan.audio_meta.track.id.clone();
         debug!("Exporting track {} to {}", track_id, output_path.display());
@@ -391,11 +409,29 @@ impl SaveService {
         drop(streams);
 
         let cancel_for_blocking = Arc::clone(&cancel);
+        let subject = format!("track {track_id}");
         tokio::task::spawn_blocking(move || -> Result<(), String> {
+            let file = match existing {
+                ExistingOutput::Replace => std::fs::File::create(&output_path)
+                    .map_err(|e| format!("Failed to create track file: {e}"))?,
+                ExistingOutput::Refuse => {
+                    use crate::storage::stored_name::{create_new_file, CreateFileError};
+                    let name = Path::new(
+                        output_path
+                            .file_name()
+                            .expect("a track's output path names its file"),
+                    );
+                    create_new_file(&output_path, name, &subject).map_err(|error| match error {
+                        CreateFileError::Clash { .. } => error.to_string(),
+                        CreateFileError::Io(error) => {
+                            format!("Failed to create track file: {error}")
+                        }
+                    })?
+                }
+            };
+            // Made once the file is this save's: a refused path holds another
+            // track's file, which this save must not remove.
             let mut output_guard = OutputPathsGuard::new(vec![output_path.clone()]);
-
-            let file = std::fs::File::create(&output_path)
-                .map_err(|e| format!("Failed to create track file: {e}"))?;
             let mut encoder =
                 StreamingEncoder::seekable(format, Box::new(file), cancel_for_blocking.clone());
             decode.run_to_sink(

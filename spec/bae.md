@@ -589,8 +589,9 @@ two different things about one file fails the scan.
   `Caf\xE9.flac`. Its path is kept as the system's bytes wherever bae opens
   the file again: the scan's rows, and the original a local release plays
   from (§4.2). Windows allows a name with an unpaired UTF-16
-  surrogate, which escapes the same way; its import fails there, since a
-  backslash separates folders on Windows (§4.4).
+  surrogate, which escapes the same way and imports there too: a name in the
+  release is a label, never read back as a path, so the backslash that
+  separates folders on Windows is one of its characters (§4.4).
 - **A folder whose name isn't valid UTF-8** is read like any other. It is
   known by its path as the system's bytes everywhere bae keys a folder: the
   release it holds, the watched folder, its place below the watched folder,
@@ -1624,13 +1625,23 @@ partial copies and leaves the release uploaded. The cover keeps its coven file:
 it is bae's own, and every device shows it.
 
 The file names come from the release's rows, which another device may have
-written. Each is checked to be a plain relative path before it is joined to
-Carol's folder, so no row can make a device write outside the folder chosen.
-One bad name copies out nothing at all. A name that held bytes that aren't
-UTF-8 is stored as its escaped text (§3.1), whose `\x` is a backslash: Linux
-and macOS write it as the one name it is, and Windows, where a backslash
-separates folders, refuses it, so the copy fails there with the name it
-couldn't write.
+written. A name in the release is a label: it may hold any character, since
+each device took it from whatever its own drive holds. A name that held bytes
+that aren't UTF-8 is stored as its escaped text (§3.1), whose `\x` holds a
+backslash, which separates folders on Windows, and Linux takes `:` and `?`,
+which Windows and FAT drives refuse. So each copy's path is its names, split at
+`/`, each written as coven writes the names of its own local copies, the same
+rule on every device
+([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)):
+`\ : ? * " < > |` and `/` within a name become their full-width lookalikes,
+control characters their pictures, a last `.` or space its lookalike, a
+Windows device name its letters in full width, and a name too long for a drive
+is cut before its extension. Every name is then one name inside Carol's folder
+on every device, so no row can make a device write outside the folder chosen:
+`Caf\xE9.flac` is written as `Caf＼xE9.flac`, and `..` as `.．`. A name that
+names no file, empty or holding an empty name, copies out nothing at all. Each
+copy is made new; a file already at its path fails the copy, so two names
+written as one fail it rather than one copy replacing the other.
 
 ### 4.5 How files sit in storage
 
@@ -1652,14 +1663,25 @@ Two ways put a release back on disk, from desktop:
 
 - **Export** copies a release's files byte for byte into a folder named after
   its source folder. The copy is staged and moved into place only once every
-  file is written. Each file takes its name in the release, checked as a
-  copy-out checks it (§4.4): on Windows a release holding an escaped name
-  fails to export.
+  file is written. The folder and each file take their names in the release,
+  written as a copy-out writes them (§4.4): `Caf\xE9.flac` exports as
+  `Caf＼xE9.flac` on every platform. Each file is created new, so two names
+  written as one (`Track?.flac` and `Track？.flac`, or two that differ only in
+  case on a drive that holds them as one) fail the export, which leaves
+  nothing behind, rather than one file replacing the other.
 - **Save** writes new files with a *preset*: a codec, a filename pattern, where
-  pregaps go, and whether to embed the cover. Each file's track number is the
-  track's number on its side, and its disc number the track's medium's
-  position, written only for a release of several mediums. A lossless preset writes the
-  16, 24 or 32 bits it names, whatever depth the source has. A preset can
+  pregaps go, and whether to embed the cover. A file's name is its pattern's
+  text, with runs of spaces made one and no leading `.`, written as a
+  copy-out writes a name (§4.4), so a title `Some/Weird:Title` saves as
+  `Some／Weird：Title.flac`; a single track's Save As suggests the same name.
+  A release save creates each track's file new, like export, so two names a
+  drive holds as one (`Track Title` and `track title` on a drive that folds
+  case) fail the save rather than one track replacing the other; a single
+  track's Save As replaces a file only when the person confirms it.
+  Each file's track number is the track's number on its side, and its disc
+  number the track's medium's position, written only for a release of several
+  mediums. A lossless preset writes the 16, 24 or 32 bits it names, whatever
+  depth the source has. A preset can
   write a release as one image with a CUE sheet. FLAC and MP3 presets come
   built in (Appendix C).
 
