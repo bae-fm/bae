@@ -9,6 +9,7 @@ use crate::playback::audio_output::{
     AudioDrain, AudioLockMissLog, AudioOutputControls, AudioState, DrainStatus,
 };
 use bae_audio::Resampler;
+#[cfg(not(target_os = "android"))]
 use bae_util::task_failure::TaskFailed;
 
 /// The most source frames pulled at once. An output asks for one device
