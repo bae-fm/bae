@@ -8,6 +8,10 @@ index_exclude:
   - "**/BaeKit/Sources/BaeBridge/**"
   # The generated theme, which holds roles only another platform draws with.
   - "**/BaeKit/Sources/BaeKit/Generated/**"
+# Types held only for their lifetime: the property keeps the object alive and
+# nothing reads it. Periphery matches the declared type as written. Dropping a
+# LatestFeed stops the stream it fills.
 retain_assign_only_property_types:
   - SPUStandardUpdaterController
+  - "[LatestFeed]"
 disable_update_check: true
