@@ -1,10 +1,10 @@
-//! The playback queue's tables. Up Next is `playback_manual`, one row per
-//! entry, so a track queued twice is two rows; the context lane a play fills is
-//! `playback_context`, keyed by its position in play order, one row per track.
-//! The one `playback_queue` row says what the context lane plays from, which of
-//! its rows is playing, and how the queue repeats. The playback service is the
-//! only writer, each change one transaction; the queue screens read the same
-//! tables through live queries.
+//! The playback queue's tables. Up Next is `playback_manual`, the context lane
+//! a play fills is `playback_context`; in both each row is an entry of its own,
+//! named by its entry number and ordered by its position, so a track queued
+//! twice is two rows. The one `playback_queue` row says what the context lane
+//! plays from, which of its rows is playing, and how the queue repeats. The
+//! playback service is the only writer, each change one transaction; the queue
+//! screens read the same tables through live queries.
 
 use super::*;
 use crate::playback::{ContextSource, QueueEntry, QueueEntryId, RepeatMode};
@@ -23,14 +23,20 @@ impl Lane {
             Lane::Context => "playback_context",
         }
     }
+
+    fn entry_id(self, entry: i64) -> QueueEntryId {
+        match self {
+            Lane::Manual => QueueEntryId::Manual(entry),
+            Lane::Context => QueueEntryId::Context(entry),
+        }
+    }
 }
 
-/// The lane an entry id names, the column naming the row in it, and the
-/// value there.
-fn row_key(id: &QueueEntryId) -> (Lane, &'static str, rusqlite::types::Value) {
+/// The lane an entry id names and the entry number of its row there.
+fn row_key(id: &QueueEntryId) -> (Lane, i64) {
     match id {
-        QueueEntryId::Manual(entry) => (Lane::Manual, "entry", (*entry).into()),
-        QueueEntryId::Context(track_id) => (Lane::Context, "track_id", track_id.clone().into()),
+        QueueEntryId::Manual(entry) => (Lane::Manual, *entry),
+        QueueEntryId::Context(entry) => (Lane::Context, *entry),
     }
 }
 
@@ -46,8 +52,7 @@ pub enum ContextFill {
     },
     /// Releases one after another in the order given, each in its own order,
     /// from the first track. A release with no tracks is left out, of the lane
-    /// and of the source the queue names; a release named twice plays once,
-    /// where it is first named.
+    /// and of the source the queue names; a release named twice plays twice.
     Releases(Vec<String>),
     /// Every library track, shuffled.
     LibraryShuffled,
@@ -220,14 +225,14 @@ impl PlaybackQueueTables {
     pub async fn remove(&self, id: QueueEntryId) -> Result<Option<QueueEntry>, DbError> {
         self.db
             .call(move |sql| {
-                let (lane, column, key) = row_key(&id);
+                let (lane, entry) = row_key(&id);
                 let removed = sql
                     .query_row(
                         &format!(
-                            "DELETE FROM {table} WHERE {column} = ? RETURNING track_id",
+                            "DELETE FROM {table} WHERE entry = ? RETURNING track_id",
                             table = lane.table()
                         ),
-                        [key],
+                        [entry],
                         |row| row.get::<_, String>(0),
                     )
                     .optional()?;
@@ -415,13 +420,13 @@ struct Located {
 }
 
 fn locate_on(sql: &SqlContext<'_, '_>, id: QueueEntryId) -> rusqlite::Result<Option<Located>> {
-    let (lane, column, key) = row_key(&id);
+    let (lane, entry) = row_key(&id);
     sql.query_row(
         &format!(
-            "SELECT position, track_id FROM {table} WHERE {column} = ?",
+            "SELECT position, track_id FROM {table} WHERE entry = ?",
             table = lane.table()
         ),
-        [key],
+        [entry],
         |row| {
             Ok(Located {
                 lane,
@@ -436,27 +441,20 @@ fn locate_on(sql: &SqlContext<'_, '_>, id: QueueEntryId) -> rusqlite::Result<Opt
     .optional()
 }
 
-/// An Up Next row read with its `entry`, `track_id` and `position`.
-fn manual_from_row(row: &Row<'_>) -> rusqlite::Result<(QueueEntry, i64)> {
+/// A row of `lane` read with its `entry`, `track_id` and `position`.
+fn entry_from_row(lane: Lane, row: &Row<'_>) -> rusqlite::Result<(QueueEntry, i64)> {
     Ok((
         QueueEntry {
-            id: QueueEntryId::Manual(row.get("entry")?),
+            id: lane.entry_id(row.get("entry")?),
             track_id: row.get("track_id")?,
         },
         row.get("position")?,
     ))
 }
 
-/// A context row read with its `track_id` and `position`.
+/// A context row read with its `entry`, `track_id` and `position`.
 fn context_from_row(row: &Row<'_>) -> rusqlite::Result<(QueueEntry, i64)> {
-    let track_id: String = row.get("track_id")?;
-    Ok((
-        QueueEntry {
-            id: QueueEntryId::Context(track_id.clone()),
-            track_id,
-        },
-        row.get("position")?,
-    ))
+    entry_from_row(Lane::Context, row)
 }
 
 /// The highest position in `lane`, `None` when it is empty.
@@ -516,9 +514,9 @@ fn reorder_context_after_on(
     sql.execute(
         &format!(
             "UPDATE playback_context SET position = ?1 + placed.k \
-             FROM (SELECT track_id, row_number() OVER (ORDER BY {order}) AS k \
+             FROM (SELECT entry, row_number() OVER (ORDER BY {order}) AS k \
                    FROM playback_context WHERE position > ?2) AS placed \
-             WHERE playback_context.track_id = placed.track_id"
+             WHERE playback_context.entry = placed.entry"
         ),
         params![top, after],
     )?;
@@ -592,11 +590,10 @@ fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled,
         ContextFill::Releases(release_ids) => {
             let release_ids = serde_json::to_string(&release_ids)
                 .expect("serializing a Vec<String> to JSON cannot fail");
-            // A release named twice plays once, where it is first named.
             let playable: Vec<String> = sql.query(
                 "SELECT j.value FROM json_each(?) j \
                  WHERE EXISTS (SELECT 1 FROM tracks WHERE release_id = j.value) \
-                 GROUP BY j.value ORDER BY min(j.key)",
+                 ORDER BY j.key",
                 [&release_ids],
                 |row| row.get(0),
             )?;
@@ -640,15 +637,19 @@ fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled,
     sql.execute("DELETE FROM playback_manual", [])?;
     sql.execute("DELETE FROM playback_context", [])?;
     let play_order = if shuffled { "random()" } else { "unshuffled" };
-    let bound: Vec<(&str, &dyn rusqlite::ToSql)> = match &rows.source {
-        Some(source) => vec![(":source", source)],
-        None => Vec::new(),
-    };
-    // Inserted in position order, so the table grows at its end.
+    // The lane's entries are numbered on from the next free entry number, in
+    // position order.
+    let base = queue_row_on(sql)?.next_entry;
+    let mut bound: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":base", &base)];
+    if let Some(source) = &rows.source {
+        bound.push((":source", source));
+    }
+    // Inserted in position order, so the table and its position index grow at
+    // their end.
     let track_count = sql.execute(
         &format!(
-            "INSERT INTO playback_context (position, track_id, unshuffled) \
-             SELECT position, track_id, unshuffled FROM ( \
+            "INSERT INTO playback_context (entry, position, track_id, unshuffled) \
+             SELECT :base + position - 1, position, track_id, unshuffled FROM ( \
                  SELECT track_id, unshuffled, \
                         row_number() OVER (ORDER BY {play_order}) AS position \
                  FROM (SELECT t.id AS track_id, \
@@ -660,6 +661,7 @@ fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled,
         ),
         bound.as_slice(),
     )?;
+    // The start track is on the one release played, which holds it once.
     let cursor: i64 = match start_track {
         Some(track_id) => sql.query_row(
             "SELECT position FROM playback_context WHERE track_id = ?",
@@ -669,11 +671,16 @@ fn fill_on(sql: &SqlContext<'_, '_>, fill: ContextFill) -> Result<ContextFilled,
         None => 1,
     };
     sql.execute(
-        "UPDATE playback_queue SET source = ?, shuffled = ?, cursor = ?",
-        params![source.to_column(), shuffled, cursor],
+        "UPDATE playback_queue SET source = ?, shuffled = ?, cursor = ?, next_entry = ?",
+        params![
+            source.to_column(),
+            shuffled,
+            cursor,
+            base + track_count as i64
+        ],
     )?;
     let (current, _) = sql.query_row(
-        "SELECT track_id, position FROM playback_context WHERE position = ?",
+        "SELECT entry, track_id, position FROM playback_context WHERE position = ?",
         [cursor],
         context_from_row,
     )?;
@@ -783,14 +790,14 @@ fn reorder_on(
     let lane = moving.lane;
     let from = moving.position;
     let top = lane_top_on(sql, lane)?.expect("the lane holds the entry being moved");
-    let (_, column, key) = row_key(&id);
+    let (_, entry) = row_key(&id);
     let park = |position: i64| {
         sql.execute(
             &format!(
-                "UPDATE {table} SET position = ? WHERE {column} = ?",
+                "UPDATE {table} SET position = ? WHERE entry = ?",
                 table = lane.table()
             ),
-            params![position, key],
+            params![position, entry],
         )
     };
     // Where the entry lands, and how a context cursor between the two places
@@ -838,7 +845,7 @@ fn advance_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
         .query_row(
             "SELECT entry, track_id, position FROM playback_manual ORDER BY position LIMIT 1",
             [],
-            manual_from_row,
+            |row| entry_from_row(Lane::Manual, row),
         )
         .optional()?;
     if let Some((entry, position)) = manual_front {
@@ -847,7 +854,7 @@ fn advance_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
     }
     let next = sql
         .query_row(
-            "SELECT track_id, position FROM playback_context \
+            "SELECT entry, track_id, position FROM playback_context \
              WHERE position > (SELECT cursor FROM playback_queue) \
              ORDER BY position LIMIT 1",
             [],
@@ -873,7 +880,7 @@ fn wrap_on(sql: &SqlContext<'_, '_>) -> Result<Option<QueueEntry>, DbError> {
         reorder_context_after_on(sql, i64::MIN, "random()")?;
     }
     let (first, position) = sql.query_row(
-        "SELECT track_id, position FROM playback_context ORDER BY position LIMIT 1",
+        "SELECT entry, track_id, position FROM playback_context ORDER BY position LIMIT 1",
         [],
         context_from_row,
     )?;
@@ -888,9 +895,9 @@ fn step_back_on(
     let Some(cursor) = queue_row_on(sql)?.cursor else {
         return Ok(None);
     };
-    let at_cursor: Option<String> = sql
+    let at_cursor: Option<i64> = sql
         .query_row(
-            "SELECT track_id FROM playback_context WHERE position = ?",
+            "SELECT entry FROM playback_context WHERE position = ?",
             [cursor],
             |row| row.get(0),
         )
@@ -903,7 +910,7 @@ fn step_back_on(
     let target = sql
         .query_row(
             &format!(
-                "SELECT track_id, position FROM playback_context \
+                "SELECT entry, track_id, position FROM playback_context \
                  WHERE position {comparison} ? ORDER BY position DESC LIMIT 1"
             ),
             [cursor],

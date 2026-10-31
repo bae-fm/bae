@@ -71,6 +71,16 @@ class BaeCorePlayer(
         val entryId: String?,
         val trackId: String,
         val display: BridgeTrackDisplay,
+    ) {
+        /** The playlist item's id, which Media3 requires unique in a playlist: a
+         *  queue entry's id, or the current track's. A track queued twice is two
+         *  entries, so the track alone can't name an item. */
+        val uid: Any get() = entryId ?: CurrentItem(trackId)
+    }
+
+    /** The current track's playlist item id, never equal to an entry's. */
+    private data class CurrentItem(
+        val trackId: String,
     )
 
     /** The release or library the queue plays from; its tracks come from [upcoming]. */
@@ -82,20 +92,13 @@ class BaeCorePlayer(
     internal companion object {
         /**
          * The MediaSession playlist: the current track, then [entries], which
-         * exclude it. A queue entry with the current track's id is replaced by
-         * [current] instead.
+         * exclude it. A queued entry of the current track is an entry of its
+         * own, which plays it again, so it stays where it is queued.
          */
         fun orderedMetas(
             entries: List<Meta>,
             current: Meta?,
-        ): List<Meta> {
-            val mapped = entries.map { if (it.trackId == current?.trackId) current else it }
-            return if (current != null && mapped.none { it.trackId == current.trackId }) {
-                listOf(current) + mapped
-            } else {
-                mapped
-            }
-        }
+        ): List<Meta> = listOfNotNull(current) + entries
 
         /**
          * An empty playlist is always [Player.STATE_IDLE]: [SimpleBasePlayer]
@@ -116,12 +119,12 @@ class BaeCorePlayer(
                 }
             }
 
+        /** The current track's [durationMs]; a queue entry's is unknown. */
         internal fun itemDurationMs(
             meta: Meta,
-            playingTrackId: String?,
             durationMs: Long,
         ): Long {
-            if (meta.trackId != playingTrackId) return C.TIME_UNSET
+            if (meta.entryId != null) return C.TIME_UNSET
             if (durationMs == C.TIME_UNSET) {
                 logger.warning("itemDurationMs missing duration for current track ${meta.trackId}")
             }
@@ -130,11 +133,10 @@ class BaeCorePlayer(
 
         private fun mediaItemData(
             meta: Meta,
-            playingTrackId: String?,
             durationMs: Long,
             artworkUri: Uri?,
         ): MediaItemData {
-            val currentDurationMs = itemDurationMs(meta, playingTrackId, durationMs)
+            val currentDurationMs = itemDurationMs(meta, durationMs)
             val metadata =
                 mediaMetadata(
                     meta,
@@ -142,7 +144,7 @@ class BaeCorePlayer(
                     artworkUri,
                 )
             return MediaItemData
-                .Builder(meta.trackId)
+                .Builder(meta.uid)
                 .setMediaItem(
                     MediaItem
                         .Builder()
@@ -572,7 +574,6 @@ class BaeCorePlayer(
 
     private fun playlistFor(source: PlaylistSource): Playlist {
         val metas = orderedMetas(source.entries, source.current)
-        val currentTrackId = source.current?.trackId
         // The notification and lock screen show only the current track's cover,
         // which Media3 reads through the artwork provider.
         val artworkUri =
@@ -582,32 +583,11 @@ class BaeCorePlayer(
                 ?.let { ArtworkContentProvider.uriFor(system.context, it) }
         val items =
             metas.map { meta ->
-                val itemArtworkUri = if (meta.trackId == currentTrackId) artworkUri else null
-                mediaItemData(meta, currentTrackId, source.durationMs, itemArtworkUri)
+                val itemArtworkUri = if (meta.entryId == null) artworkUri else null
+                mediaItemData(meta, source.durationMs, itemArtworkUri)
             }
-
-        val requestedIndex = currentTrackId?.let { id -> metas.indexOfFirst { it.trackId == id } }
-        val currentIndex =
-            when {
-                metas.isEmpty() -> {
-                    C.INDEX_UNSET
-                }
-
-                requestedIndex == null -> {
-                    C.INDEX_UNSET
-                }
-
-                requestedIndex >= 0 -> {
-                    requestedIndex
-                }
-
-                else -> {
-                    logger.warning(
-                        "playlist missing current track $currentTrackId in ${metas.map { it.trackId }}",
-                    )
-                    C.INDEX_UNSET
-                }
-            }
+        // The current track leads the playlist.
+        val currentIndex = if (source.current != null) 0 else C.INDEX_UNSET
 
         return Playlist(source, metas, currentIndex, State.Builder().setPlaylist(items).build())
     }

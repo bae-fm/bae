@@ -17,8 +17,8 @@ const RUNS: usize = 5;
 
 /// The statement a library play fills the lane with
 /// (`ContextFill::LibraryShuffled`), into `{table}`.
-const LIBRARY_FILL: &str = "INSERT INTO {table} (position, track_id, unshuffled) \
-     SELECT position, track_id, unshuffled FROM ( \
+const LIBRARY_FILL: &str = "INSERT INTO {table} (entry, position, track_id, unshuffled) \
+     SELECT position, position, track_id, unshuffled FROM ( \
          SELECT track_id, unshuffled, row_number() OVER (ORDER BY random()) AS position \
          FROM (SELECT t.id AS track_id, \
                       row_number() OVER (ORDER BY t.release_id, t.position, t.id) AS unshuffled \
@@ -27,7 +27,8 @@ const LIBRARY_FILL: &str = "INSERT INTO {table} (position, track_id, unshuffled)
 
 /// `playback_context`'s columns without its `track_id` index.
 const UNINDEXED_LANE: &str = "CREATE TABLE bench_unindexed_lane \
-     (position INTEGER PRIMARY KEY, track_id TEXT NOT NULL, unshuffled INTEGER NOT NULL) STRICT;";
+     (entry INTEGER PRIMARY KEY, position INTEGER NOT NULL UNIQUE, track_id TEXT NOT NULL, \
+      unshuffled INTEGER NOT NULL) STRICT;";
 
 fn report(label: &str, mut times: Vec<f64>) {
     times.sort_by(f64::total_cmp);
@@ -251,7 +252,7 @@ async fn playback_queue_bench_library_play() {
         .await
         .unwrap();
     let copy_lane = format!(
-        "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT position, track_id, unshuffled FROM playback_context;"
+        "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT entry, position, track_id, unshuffled FROM playback_context;"
     );
     let empty_lane = "DELETE FROM playback_context";
     let empty_unindexed = "DELETE FROM bench_unindexed_lane";

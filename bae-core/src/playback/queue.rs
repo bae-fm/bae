@@ -8,36 +8,35 @@ use crate::db::{
 };
 use crate::playback::timeline::TrackTime;
 
-/// What names a queued row to the screens and back. An Up Next entry is an
-/// instance of its own — the same track queued twice is two entries, each
+/// What names a queued row to the screens and back. Every row of either lane
+/// is an entry of its own — the same track queued twice is two entries, each
 /// removable, reorderable and skippable on its own — numbered by the queue
-/// tables, which never use a number twice. A context row is named by its
-/// track, since a context lane never holds a track twice.
+/// tables, which never use a number twice.
 ///
-/// Its text, the id the screens carry, is `m` and the entry number, or `c`
-/// and the track id.
+/// Its text, the id the screens carry, is `m` for Up Next or `c` for the
+/// context lane, then the entry number.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum QueueEntryId {
     Manual(i64),
-    Context(String),
+    Context(i64),
 }
 
 impl std::str::FromStr for QueueEntryId {
     type Err = String;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if let Some(entry) = value.strip_prefix('m') {
-            return entry
-                .parse()
-                .map(QueueEntryId::Manual)
-                .map_err(|e| format!("{value:?} names no Up Next entry: {e}"));
-        }
-        match value.strip_prefix('c') {
-            Some(track_id) if !track_id.is_empty() => {
-                Ok(QueueEntryId::Context(track_id.to_string()))
-            }
-            _ => Err(format!("{value:?} is not a queue entry id")),
-        }
+        let (lane, entry): (fn(i64) -> QueueEntryId, &str) =
+            if let Some(entry) = value.strip_prefix('m') {
+                (QueueEntryId::Manual, entry)
+            } else if let Some(entry) = value.strip_prefix('c') {
+                (QueueEntryId::Context, entry)
+            } else {
+                return Err(format!("{value:?} is not a queue entry id"));
+            };
+        entry
+            .parse()
+            .map(lane)
+            .map_err(|e| format!("{value:?} names no queue entry: {e}"))
     }
 }
 
@@ -45,7 +44,7 @@ impl std::fmt::Display for QueueEntryId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             QueueEntryId::Manual(entry) => write!(f, "m{entry}"),
-            QueueEntryId::Context(track_id) => write!(f, "c{track_id}"),
+            QueueEntryId::Context(entry) => write!(f, "c{entry}"),
         }
     }
 }

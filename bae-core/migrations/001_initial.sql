@@ -1859,8 +1859,8 @@ END;
 CREATE TABLE IF NOT EXISTS playback_queue (
     singleton  INTEGER PRIMARY KEY CHECK (singleton = 1),
     repeat     TEXT NOT NULL CHECK (repeat IN ('off', 'track', 'context')),
-    -- The entry number the next Up Next entry gets: no two entries ever share
-    -- one.
+    -- The entry number the next entry of either lane gets: no two entries
+    -- ever share one, so an id a screen still holds never names a later row.
     next_entry INTEGER NOT NULL,
     -- What the context lane plays from (a release id, a JSON array of release
     -- ids, or 'library'), whether it plays shuffled, and the position of its
@@ -1886,22 +1886,25 @@ CREATE TABLE IF NOT EXISTS playback_manual (
 -- A deleted track's entries are found by its id.
 CREATE INDEX IF NOT EXISTS playback_manual_track ON playback_manual(track_id);
 
--- The context lane a play fills, keyed by position in play order, so the lane
--- is stored the way it plays and grows at its end as a play fills it. A lane
--- never holds a track twice, so a row is named by its track. Positions are
--- only an order, with gaps where rows left. No trigger runs on its rows: a
--- play takes out and puts in up to the whole library's, so a trigger would
--- run once for each, and SQLite empties a table with a trigger row by row.
--- Each write that leaves the lane empty clears what it played from itself.
--- Never synced.
+-- The context lane a play fills, in position order. Each row is an entry of
+-- its own, as in Up Next, so a track named twice is two rows; a play numbers
+-- its entries in play order, so the lane is stored the way it plays and grows
+-- at its end as a play fills it. Positions are only an order, with gaps where
+-- rows left. No trigger runs on its rows: a play takes out and puts in up to
+-- the whole library's, so a trigger would run once for each, and SQLite
+-- empties a table with a trigger row by row. Each write that leaves the lane
+-- empty clears what it played from itself. Never synced.
 CREATE TABLE IF NOT EXISTS playback_context (
-    position   INTEGER PRIMARY KEY,
-    track_id   TEXT NOT NULL UNIQUE,
+    entry      INTEGER PRIMARY KEY,
+    position   INTEGER NOT NULL UNIQUE,
+    track_id   TEXT NOT NULL,
     -- The row's position in the order unshuffling puts the lane back in: its
     -- order when shuffle turned on, or the source's order for a shuffled play.
     -- Read only while the lane is shuffled.
     unshuffled INTEGER NOT NULL
 ) STRICT;
+-- A deleted track's rows are found by its id.
+CREATE INDEX IF NOT EXISTS playback_context_track ON playback_context(track_id);
 
 -- A deleted track leaves the queue in the same transaction. A trigger rather
 -- than a foreign key: the queue's rows are only ever made from tracks the

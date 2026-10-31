@@ -498,16 +498,51 @@ async fn test_shuffled_play_then_unshuffle_yields_source_order() {
     assert_eq!(f.upcoming().await, expected, "source order resumes");
 }
 
-/// A release named twice in a multi-release play plays once: a context lane
-/// never holds a track twice.
+/// A release named twice in a multi-release play plays twice: each of its
+/// tracks is two entries of the context lane, played in turn.
 #[tokio::test]
-async fn test_a_release_named_twice_plays_once() {
+async fn test_a_release_named_twice_plays_twice() {
     let mut f = fixture(&[("r1", &["a1", "a2"]), ("r2", &["b1"])]).await;
     f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r2"), f.id("r1")]))
         .await;
-    assert_eq!(f.context_order().await, names(&["a1", "a2", "b1"]));
+    assert_eq!(f.context_order().await, names(&["a1", "a2", "b1", "a1", "a2"]));
     assert_eq!(
         f.value().await.context.unwrap().source,
-        ContextSource::Releases(vec![f.id("r1"), f.id("r2")])
+        ContextSource::Releases(vec![f.id("r1"), f.id("r2"), f.id("r1")])
     );
+    let mut played = vec![f.current()];
+    while let Some(next) = f.next().await {
+        played.push(next);
+    }
+    assert_eq!(played, names(&["a1", "a2", "b1", "a1", "a2"]));
+}
+
+/// The same track queued twice in Up Next plays twice.
+#[tokio::test]
+async fn test_a_track_queued_twice_plays_twice() {
+    let mut f = release_and_manual(&["t1"], &["dup"]).await;
+    f.play_from("t1").await;
+    f.add(&["dup", "dup"]).await;
+    assert_eq!(f.next().await, Some("dup".into()));
+    assert_eq!(f.next().await, Some("dup".into()));
+    assert_eq!(f.next().await, None);
+}
+
+/// Removing one of a track's two context entries by its id leaves the other,
+/// with its id, where it was.
+#[tokio::test]
+async fn test_remove_one_context_duplicate_keeps_the_other() {
+    let mut f = release(&["a1", "a2"]).await;
+    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r1")]))
+        .await;
+    let upcoming = f.upcoming_entries().await;
+    assert_eq!(f.upcoming().await, names(&["a2", "a1", "a2"]));
+    let removed = f
+        .queue
+        .remove(upcoming[0].id.clone())
+        .await
+        .unwrap()
+        .expect("the first a2 removed");
+    assert_eq!(removed, upcoming[0]);
+    assert_eq!(f.upcoming_entries().await, upcoming[1..].to_vec());
 }

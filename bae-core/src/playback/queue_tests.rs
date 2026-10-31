@@ -190,7 +190,7 @@ impl Fixture {
             .collect()
     }
 
-    /// The upcoming entry playing the named track.
+    /// The first upcoming entry playing the named track.
     async fn entry(&self, track: &str) -> QueueEntryId {
         let id = self.id(track);
         self.upcoming_entries()

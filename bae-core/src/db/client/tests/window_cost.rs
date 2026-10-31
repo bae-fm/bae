@@ -81,8 +81,8 @@ pub(super) fn seed_sql(start: u64, end: u64) -> String {
              SELECT {work_artist}, {work}, {artist}, 0, 'musicbrainz', {created} FROM k;
          {rows} INSERT INTO download_queue (position, release_id, created_at, state) \
              SELECT i, {release}, i, 'queued' FROM k;
-         {rows} INSERT INTO playback_context (position, track_id, unshuffled) \
-             SELECT i, {track}, i FROM k;
+         {rows} INSERT INTO playback_context (entry, position, track_id, unshuffled) \
+             SELECT i, i, {track}, i FROM k;
          UPDATE playback_queue SET source = 'library', shuffled = 0, cursor = -1;"
     )
 }
@@ -405,7 +405,7 @@ async fn measure_queues(db: &Database, n: u64) {
     // offset steps over the lane's positions before any track is read.
     let lane = format!(
         "SELECT e.entry, {columns} \
-         FROM (SELECT 'c' || track_id AS entry, track_id, position FROM playback_context \
+         FROM (SELECT 'c' || entry AS entry, track_id, position FROM playback_context \
                WHERE position > -1 ORDER BY position LIMIT ?1 OFFSET ?2) e \
          JOIN tracks t ON t.id = e.track_id \
          {joins} \

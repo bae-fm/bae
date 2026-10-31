@@ -119,8 +119,8 @@ fn queue_value_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<crate::queue::ResolvedQueueSnapshot, DbError> {
     let head = queue_head_on(sql)?;
-    // The entry ids are `QueueEntryId`'s text: 'm' and the entry number for
-    // Up Next, 'c' and the track for the context lane.
+    // The entry ids are `QueueEntryId`'s text: 'm' for Up Next or 'c' for the
+    // context lane, then the entry number.
     let manual = queue_items_on(
         sql,
         "SELECT 'm' || entry AS entry, track_id, position FROM playback_manual \
@@ -179,7 +179,7 @@ fn queue_upcoming_on(
                 None => Vec::new(),
                 Some((_, _, cursor)) => queue_items_on(
                     sql,
-                    "SELECT 'c' || track_id AS entry, track_id, position FROM playback_context \
+                    "SELECT 'c' || entry AS entry, track_id, position FROM playback_context \
                      WHERE position > ?1 ORDER BY position LIMIT ?2 OFFSET ?3",
                     params![
                         cursor,

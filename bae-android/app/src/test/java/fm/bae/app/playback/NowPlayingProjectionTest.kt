@@ -60,14 +60,18 @@ class NowPlayingProjectionTest {
         assertEquals(listOf("cur"), result.map { it.trackId })
     }
 
+    /** The current track queued again is an entry of its own, which plays it
+     *  again where it is queued. */
     @Test
-    fun noDuplicateWhenCurrentAlreadyInQueue() {
+    fun aQueuedEntryOfTheCurrentTrackStaysWhereItIsQueued() {
+        val current = meta("cur").copy(entryId = null)
         val result =
             BaeCorePlayer.orderedMetas(
-                entries = listOf(meta("cur"), meta("up1")),
-                current = meta("cur"),
+                entries = listOf(meta("up1"), meta("cur"), meta("up2")),
+                current = current,
             )
-        assertEquals(listOf("cur", "up1"), result.map { it.trackId })
+        assertEquals(listOf("cur", "up1", "cur", "up2"), result.map { it.trackId })
+        assertEquals(listOf(null, "entry-up1", "entry-cur", "entry-up2"), result.map { it.entryId })
     }
 
     @Test

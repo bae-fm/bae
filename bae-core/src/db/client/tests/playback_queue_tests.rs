@@ -122,6 +122,40 @@ async fn deleting_a_queued_track_takes_its_rows() {
     );
 }
 
+/// A track queued twice in each lane leaves all four places when it is
+/// deleted, through each lane's plain index on its track.
+#[tokio::test]
+async fn deleting_a_track_queued_twice_takes_every_entry() {
+    let (db, _tmp, tracks) = release_db(2).await;
+    let filled = db
+        .playback_queue_tables()
+        .fill(ContextFill::Releases(vec![
+            RELEASE_A.to_string(),
+            RELEASE_A.to_string(),
+        ]))
+        .await
+        .unwrap();
+    assert!(matches!(
+        filled,
+        ContextFilled::Playing { track_count: 4, .. }
+    ));
+    super::queue_items(&db, &[&tracks[1], &tracks[1]]).await;
+    assert_eq!(
+        upcoming(&db).await,
+        vec![
+            tracks[1].clone(),
+            tracks[1].clone(),
+            tracks[1].clone(),
+            tracks[0].clone(),
+            tracks[1].clone(),
+        ]
+    );
+
+    exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[1]]).await;
+
+    assert_eq!(upcoming(&db).await, vec![tracks[0].clone()]);
+}
+
 /// Deleting the playing track keeps where the lane stands: the track after it
 /// still plays next and the one before it is still behind.
 #[tokio::test]
@@ -180,12 +214,13 @@ async fn the_lane_s_tracks_deleted_together_clear_the_context() {
 /// any other row leaves it.
 #[tokio::test]
 async fn removing_the_lane_s_last_row_clears_the_context() {
-    let (db, _tmp, tracks) = release_db(2).await;
-    play(&db, ReleaseStart::First).await;
+    let (db, _tmp, _tracks) = release_db(2).await;
+    let playing = play(&db, ReleaseStart::First).await;
+    let next = db.queue_upcoming().await.unwrap().remove(0);
     let tables = db.playback_queue_tables();
 
     tables
-        .remove(crate::playback::QueueEntryId::Context(tracks[1].clone()))
+        .remove(next.entry_id.parse().unwrap())
         .await
         .unwrap()
         .expect("the lane holds it");
@@ -195,7 +230,7 @@ async fn removing_the_lane_s_last_row_clears_the_context() {
     );
 
     tables
-        .remove(crate::playback::QueueEntryId::Context(tracks[0].clone()))
+        .remove(playing.id)
         .await
         .unwrap()
         .expect("the lane holds it");
@@ -316,23 +351,25 @@ async fn plan(db: &Database, sql: &str, args: Vec<rusqlite::types::Value>) -> St
     .unwrap()
 }
 
-/// The queue's reads walk the lane's index from the playing track rather than
-/// scanning the lane, and a deleted track's rows are found by its id.
+/// The queue's reads walk the lane's position index from the playing track
+/// rather than scanning the lane, and a deleted track's rows are found by its
+/// id.
 #[tokio::test]
 async fn the_queue_reads_are_planned_on_the_indexes() {
     let (db, _tmp, _tracks) = release_db(3).await;
     let int = |value: i64| rusqlite::types::Value::Integer(value);
     let window = plan(
         &db,
-        "SELECT e.entry, t.id FROM (SELECT 'c' || track_id AS entry, track_id, position \
+        "SELECT e.entry, t.id FROM (SELECT 'c' || entry AS entry, track_id, position \
          FROM playback_context WHERE position > ? ORDER BY position LIMIT 100 OFFSET 10000) e \
          JOIN tracks t ON t.id = e.track_id ORDER BY e.position",
         vec![int(1)],
     )
     .await;
     assert!(
-        window.contains("SEARCH playback_context USING INTEGER PRIMARY KEY (rowid>?)")
-            && window.contains("INDEX sqlite_autoindex_tracks_1 (id=?)")
+        window.contains(
+            "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_1 (position>?)"
+        ) && window.contains("INDEX sqlite_autoindex_tracks_1 (id=?)")
             && !window.contains("TEMP B-TREE"),
         "{window}"
     );
@@ -343,12 +380,12 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
     )
     .await;
     assert!(
-        count.contains("USING INTEGER PRIMARY KEY (rowid>?)"),
+        count.contains("USING COVERING INDEX sqlite_autoindex_playback_context_1 (position>?)"),
         "{count}"
     );
     let text = |value: &str| rusqlite::types::Value::Text(value.to_string());
     for (table, index) in [
-        ("playback_context", "sqlite_autoindex_playback_context_1"),
+        ("playback_context", "playback_context_track"),
         ("playback_manual", "playback_manual_track"),
     ] {
         let by_track = plan(
@@ -364,28 +401,46 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
     }
 }
 
-/// A context row is named by its track: a lane never holds a track twice, so
-/// the id the screens show and send back is the track's, and the track's own
-/// index finds it.
+/// A context row is named by its entry, as an Up Next row is, and no entry
+/// number names a row of either lane twice: a new play numbers its rows on
+/// from the ones before it, so an id a screen still holds from the last play
+/// names nothing.
 #[tokio::test]
-async fn a_context_row_is_named_by_its_track() {
+async fn a_context_row_is_named_by_its_entry() {
     let (db, _tmp, tracks) = release_db(3).await;
-    play(&db, ReleaseStart::First).await;
-
+    let queued = super::queue_items(&db, &[&tracks[0]]).await;
+    let first = play(&db, ReleaseStart::First).await;
+    let first_upcoming = db.queue_upcoming().await.unwrap();
+    let second = play(&db, ReleaseStart::First).await;
     let upcoming = db.queue_upcoming().await.unwrap();
-    let ids: Vec<&str> = upcoming.iter().map(|item| item.entry_id.as_str()).collect();
-    let expected: Vec<String> = tracks[1..]
-        .iter()
-        .map(|track| format!("c{track}"))
-        .collect();
-    assert_eq!(ids, expected);
 
-    let skipped = db
-        .playback_queue_tables()
+    let ids: Vec<String> = [queued[0].entry_id.clone(), first.id.to_string()]
+        .into_iter()
+        .chain(first_upcoming.iter().map(|item| item.entry_id.clone()))
+        .chain([second.id.to_string()])
+        .chain(upcoming.iter().map(|item| item.entry_id.clone()))
+        .collect();
+    assert!(ids[0].starts_with('m'), "{ids:?}");
+    assert!(ids[1..].iter().all(|id| id.starts_with('c')), "{ids:?}");
+    let mut numbers: Vec<&str> = ids.iter().map(|id| &id[1..]).collect();
+    numbers.sort();
+    numbers.dedup();
+    assert_eq!(numbers.len(), 7, "{ids:?}");
+
+    let tables = db.playback_queue_tables();
+    assert_eq!(
+        tables
+            .skip_to(first_upcoming[1].entry_id.parse().unwrap())
+            .await
+            .unwrap(),
+        None,
+        "an entry of the last play"
+    );
+    let skipped = tables
         .skip_to(upcoming[1].entry_id.parse().unwrap())
         .await
         .unwrap()
-        .expect("the row its track names");
+        .expect("the row its entry names");
     assert_eq!(skipped.track_id, tracks[2]);
     assert!(db.queue_upcoming().await.unwrap().is_empty());
 }

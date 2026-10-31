@@ -2432,12 +2432,12 @@ whole library. Albums picked together in the album grid, played, queued or
 dragged to the queue, go in the grid's order under its sort and grouping,
 which core reads for the ids it is handed, whatever order they were picked
 in. Its rows are filled once, when playing starts; after that they
-can be removed and reordered but never grow. It holds each track once: a
-release named twice among several plays once, where it is first named.
-Removing the playing row leaves the track after it next. Once its last row
-leaves, removed or its track deleted from the library, nothing is playing
-from. Up Next entries are each their own, so the same track queued twice
-there is two entries, each removable on its own.
+can be removed and reordered but never grow. A release named twice among
+several plays twice. Removing the playing row leaves the track after it
+next. Once its last row leaves, removed or its track deleted from the
+library, nothing is playing from. Every entry, in Up Next or what's playing
+from, is its own, so the same track queued twice is two entries, each
+removable, reorderable and skipped to on its own.
 
 | Command | Effect |
 |---|---|
@@ -3252,9 +3252,9 @@ All sync (§5), except `local_history`.
 
 | Table | Holds |
 |---|---|
-| `playback_queue` | the one row of this device's queue: repeat, what's playing from, whether it's shuffled and which of its rows is playing (§7.1) |
+| `playback_queue` | the one row of this device's queue: repeat, what's playing from, whether it's shuffled, which of its rows is playing, and the number the next entry of either part gets, never given twice (§7.1) |
 | `playback_manual` | Up Next entry, in order: the track it plays |
-| `playback_context` | row of what's playing from, in play order: its track, held once, and its place before shuffle |
+| `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 
 ### A.4 Watched folders and scans

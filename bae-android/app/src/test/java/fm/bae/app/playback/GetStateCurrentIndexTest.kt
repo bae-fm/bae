@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import android.os.Looper
+import androidx.media3.common.Timeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,29 +19,29 @@ import uniffi.bae_bridge.BridgeTrackDisplay
 /**
  * The current-item index the Media3 [State] carries ([BaeCorePlayer.getState]).
  * The playlist is the now-playing track followed by the up-next queue, so the
- * session's highlighted index must track the playing track's actual position:
- * index 0 when it is prepended, or its in-place slot when the queue already
- * holds it (that entry is substituted with the now-playing metadata, not
- * duplicated).
+ * session's highlighted index is 0. A queued entry of the playing track, or a
+ * track queued twice, is an entry of its own and keeps its slot.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class GetStateCurrentIndexTest {
-    private fun entry(trackId: String) =
-        BridgeQueueEntry(
-            entryId = "entry-$trackId",
-            trackId = trackId,
-            display =
-                BridgeTrackDisplay(
-                    title = "Title $trackId",
-                    artistNames = "Artist Name",
-                    albumId = "album-1",
-                    releaseId = "release-1",
-                    albumTitle = "Album Title",
-                    coverImage = null,
-                ),
-            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
-        )
+    private fun entry(
+        trackId: String,
+        entryId: String = "entry-$trackId",
+    ) = BridgeQueueEntry(
+        entryId = entryId,
+        trackId = trackId,
+        display =
+            BridgeTrackDisplay(
+                title = "Title $trackId",
+                artistNames = "Artist Name",
+                albumId = "album-1",
+                releaseId = "release-1",
+                albumTitle = "Album Title",
+                coverImage = null,
+            ),
+        durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
+    )
 
     @Test
     fun playingTrackAbsentFromQueueIsPrependedAtIndexZero() {
@@ -53,15 +54,35 @@ class GetStateCurrentIndexTest {
     }
 
     @Test
-    fun playingTrackAlreadyInQueueResolvesToItsInPlaceIndex() {
+    fun playingTrackQueuedAgainKeepsItsQueuedSlot() {
         val player = player()
-        // The playing track sits in the middle of the queue; orderedMetas
-        // substitutes it in place, so the highlighted index is 1, not 0.
         playing(player, manual = listOf(entry("track-a"), entry("cur"), entry("track-b")))
 
-        assertEquals(3, player.currentTimeline.windowCount)
-        assertEquals(1, player.currentMediaItemIndex)
+        assertEquals(4, player.currentTimeline.windowCount)
+        assertEquals(0, player.currentMediaItemIndex)
         assertEquals("cur", player.currentMediaItem?.mediaId)
+        assertEquals(
+            "cur",
+            player.currentTimeline
+                .getWindow(2, Timeline.Window())
+                .mediaItem.mediaId,
+        )
+    }
+
+    @Test
+    fun aTrackQueuedTwiceIsTwoItems() {
+        val player = player()
+        playing(player, manual = listOf(entry("track-a", "m1"), entry("track-a", "m2")))
+
+        assertEquals(3, player.currentTimeline.windowCount)
+        assertEquals(
+            listOf("cur", "track-a", "track-a"),
+            (0 until 3).map {
+                player.currentTimeline
+                    .getWindow(it, Timeline.Window())
+                    .mediaItem.mediaId
+            },
+        )
     }
 
     private fun playing(
