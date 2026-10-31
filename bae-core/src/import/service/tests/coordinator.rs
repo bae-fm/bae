@@ -765,3 +765,69 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
         )]
     );
 }
+
+/// A network folder whose check finds it as its last scan left it is checked
+/// again: the check answers whatever it finds, and its answer frees the
+/// folder for the next check.
+#[tokio::test]
+async fn a_network_folder_found_unchanged_is_checked_again() {
+    let TestService {
+        service,
+        temp: tmp,
+        ..
+    } = setup_import_service().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir(&root).unwrap();
+    let modified_at = directory_modified_at(&root).expect("the folder's mtime reads");
+    service
+        .library_manager
+        .add_watched_import_folder(&root)
+        .await
+        .unwrap();
+    service
+        .library_manager
+        .begin_folder_scan(&root)
+        .await
+        .unwrap();
+    service
+        .library_manager
+        .record_folder_scan_directories(&root, &[(root.clone(), modified_at)])
+        .await
+        .unwrap();
+    let (_scans, starter) = FakeScanStarter::new();
+    let (active_roots, _scan_completions, _removal_completions) = ActiveRoots::new(
+        starter,
+        Arc::new(FakeRemovalBackend::default()),
+        crate::import::FolderStateCommit::default(),
+        service.diagnostics.clone(),
+    );
+    let (mut coordinator, mut checks) = super::coordinator::Coordinator::new(
+        active_roots,
+        service.event_tx.clone(),
+        service.library_manager.clone(),
+        service.diagnostics.clone(),
+    );
+
+    for check in ["first", "second"] {
+        assert!(
+            coordinator.start_network_check(root.clone()),
+            "the {check} check starts"
+        );
+        assert!(
+            !coordinator.start_network_check(root.clone()),
+            "one check of the folder runs at a time"
+        );
+        let (checked, found) = tokio::time::timeout(HANG_GUARD, checks.recv())
+            .await
+            .expect("the check answers")
+            .expect("the coordinator still hears checks");
+        assert_eq!(checked, root);
+        assert_eq!(found, super::coordinator::NetworkCheck::Unchanged);
+        coordinator
+            .take(super::coordinator::CoordinatorEvent::NetworkChecked {
+                root: checked,
+                found,
+            })
+            .await;
+    }
+}

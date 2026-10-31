@@ -53,18 +53,8 @@ impl ImportService {
                         folder_state_commit.clone(),
                         diagnostics.clone(),
                     );
-                // The network check runs off the loop, since it can take
-                // seconds; `checking` keeps one per root at a time.
-                let (checked_tx, mut checked_rx) =
-                    mpsc::unbounded_channel::<(PathBuf, Option<Vec<PathBuf>>)>();
-                let mut coordinator = Coordinator {
-                    active_roots,
-                    checking: HashSet::new(),
-                    checked_tx,
-                    event_tx,
-                    library_manager,
-                    diagnostics,
-                };
+                let (mut coordinator, mut checked_rx) =
+                    Coordinator::new(active_roots, event_tx, library_manager, diagnostics);
                 let period = crate::import::volume::CHECK_PERIOD;
                 let mut periodic =
                     tokio::time::interval_at(tokio::time::Instant::now() + period, period);
@@ -103,8 +93,8 @@ impl ImportService {
                             CoordinatorEvent::ScanFinished(completion)
                         }
                         Some(report) = fs_rx.recv() => CoordinatorEvent::WatchReport(report),
-                        Some((root, changes)) = checked_rx.recv() => {
-                            CoordinatorEvent::NetworkChecked { root, changes }
+                        Some((root, found)) = checked_rx.recv() => {
+                            CoordinatorEvent::NetworkChecked { root, found }
                         }
                         _ = periodic.tick() => CoordinatorEvent::Tick,
                     };
@@ -125,17 +115,30 @@ impl ImportService {
 }
 
 /// One thing the coordinator's loop takes up, apart from stopping.
-enum CoordinatorEvent {
+pub(super) enum CoordinatorEvent {
     Command(WatcherCommand),
     RemovalFinished(active_roots::RootRemovalCompletion),
     ScanFinished(RootScanCompletion),
     WatchReport(WatchReport),
-    NetworkChecked {
-        root: PathBuf,
-        changes: Option<Vec<PathBuf>>,
-    },
+    NetworkChecked { root: PathBuf, found: NetworkCheck },
     Tick,
 }
+
+/// What the check of one network folder found. Every check answers with one,
+/// and the answer is what lets the folder be checked again.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum NetworkCheck {
+    /// The folder is as the last scan left it.
+    Unchanged,
+    /// What moved, in the form a filesystem event gives it, or `None` when
+    /// the whole folder has to be read.
+    Moved(Option<Vec<PathBuf>>),
+    /// The check ended unfinished: its runtime is shutting down under it.
+    Unfinished,
+}
+
+/// The answers of network folders' checks, by folder.
+pub(super) type NetworkChecks = mpsc::UnboundedReceiver<(PathBuf, NetworkCheck)>;
 
 impl CoordinatorEvent {
     /// What taking it up does, as its failure names it.
@@ -152,18 +155,42 @@ impl CoordinatorEvent {
 }
 
 /// What the coordinator's loop holds between events.
-struct Coordinator {
+pub(super) struct Coordinator {
     active_roots: ActiveRoots,
-    /// The network roots whose check is under way.
+    /// The network roots whose check is under way. The check runs off the
+    /// loop, since it can take seconds, and one runs per root at a time.
     checking: HashSet<PathBuf>,
-    checked_tx: mpsc::UnboundedSender<(PathBuf, Option<Vec<PathBuf>>)>,
+    checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
     event_tx: crate::import::handle::ImportEventBus,
     library_manager: LibraryManager,
     diagnostics: crate::diagnostics::Diagnostics,
 }
 
 impl Coordinator {
-    async fn take(&mut self, event: CoordinatorEvent) {
+    /// The coordinator over `active_roots`, and where the answers of the
+    /// network checks it starts arrive, which the loop hands back to
+    /// [`Self::take`].
+    pub(super) fn new(
+        active_roots: ActiveRoots,
+        event_tx: crate::import::handle::ImportEventBus,
+        library_manager: LibraryManager,
+        diagnostics: crate::diagnostics::Diagnostics,
+    ) -> (Self, NetworkChecks) {
+        let (checked_tx, checked_rx) = mpsc::unbounded_channel();
+        (
+            Self {
+                active_roots,
+                checking: HashSet::new(),
+                checked_tx,
+                event_tx,
+                library_manager,
+                diagnostics,
+            },
+            checked_rx,
+        )
+    }
+
+    pub(super) async fn take(&mut self, event: CoordinatorEvent) {
         match event {
             CoordinatorEvent::Command(command) => self.take_command(command).await,
             CoordinatorEvent::RemovalFinished(completion) => {
@@ -181,8 +208,12 @@ impl Coordinator {
                 )
                 .await;
             }
-            CoordinatorEvent::NetworkChecked { root, changes } => {
+            CoordinatorEvent::NetworkChecked { root, found } => {
                 self.checking.remove(&root);
+                let changes = match found {
+                    NetworkCheck::Moved(changes) => changes,
+                    NetworkCheck::Unchanged | NetworkCheck::Unfinished => return,
+                };
                 let change = match changes {
                     None => RootChange::WholeRoot,
                     Some(changes) => {
@@ -340,72 +371,85 @@ impl Coordinator {
             if volume_kind(&root, &self.diagnostics).await == VolumeKind::Local {
                 continue;
             }
-            if !self.checking.insert(root.clone()) {
-                continue;
-            }
-            let manager = self.library_manager.clone();
-            let diagnostics = self.diagnostics.clone();
-            let answer = self.checked_tx.clone();
-            let panicked_answer = self.checked_tx.clone();
-            let checked_root = root.clone();
-            // A check that panics answers "read the whole root", so the root
-            // leaves `checking` and is read.
-            self.diagnostics.spawn_reported(
-                &tokio::runtime::Handle::current(),
-                "check a network folder",
-                async move {
-                    let recorded = manager.load_folder_scan_directories(&checked_root).await;
-                    let recorded = match recorded {
-                        Ok(recorded) => recorded,
-                        Err(error) => {
-                            warn!(
-                                "could not read what the last scan of {} saw: {error}",
-                                checked_root.display()
-                            );
-                            Vec::new()
-                        }
-                    };
-                    let answer_root = checked_root.clone();
-                    let changes = match bae_util::task_failure::blocking(
-                        "check a network folder",
-                        move || network_changes(&answer_root, &recorded),
-                    )
-                    .await
-                    {
-                        Ok(changes) => changes,
-                        Err(failed @ bae_util::task_failure::TaskFailed::Panicked { .. }) => {
-                            diagnostics.bug(failed);
-                            None
-                        }
-                        // The runtime is shutting down under the check;
-                        // nothing is left to ask.
-                        Err(failed) => {
-                            debug!(
-                                "the check of {} ended unfinished: {failed}",
-                                checked_root.display()
-                            );
-                            return;
-                        }
-                    };
-                    if changes.as_ref().is_some_and(Vec::is_empty) {
-                        debug!(
-                            "network folder {} is as the last scan left it",
-                            checked_root.display()
-                        );
-                        return;
-                    }
-                    if answer.send((checked_root, changes)).is_err() {
-                        debug!("folder scan coordinator ended before a check landed");
-                    }
-                },
-                move |_| {
-                    if panicked_answer.send((root, None)).is_err() {
-                        debug!("folder scan coordinator ended before a panicked check landed");
-                    }
-                },
-            );
+            self.start_network_check(root);
         }
     }
+
+    /// Start checking the network folder `root` against what its last scan
+    /// saw, unless a check of it is under way. Whether one started.
+    pub(super) fn start_network_check(&mut self, root: PathBuf) -> bool {
+        if !self.checking.insert(root.clone()) {
+            return false;
+        }
+        let manager = self.library_manager.clone();
+        let diagnostics = self.diagnostics.clone();
+        let answer = self.checked_tx.clone();
+        let panicked_answer = self.checked_tx.clone();
+        let checked_root = root.clone();
+        // A check that panics answers "read the whole root", so the root
+        // leaves `checking` and is read.
+        self.diagnostics.spawn_reported(
+            &tokio::runtime::Handle::current(),
+            "check a network folder",
+            async move {
+                let found = check_network_folder(&manager, &checked_root, &diagnostics).await;
+                if answer.send((checked_root, found)).is_err() {
+                    debug!("folder scan coordinator ended before a check landed");
+                }
+            },
+            move |_| {
+                if panicked_answer
+                    .send((root, NetworkCheck::Moved(None)))
+                    .is_err()
+                {
+                    debug!("folder scan coordinator ended before a panicked check landed");
+                }
+            },
+        );
+        true
+    }
+}
+
+/// What the network folder `root` holds against what its last scan saw.
+async fn check_network_folder(
+    library_manager: &LibraryManager,
+    root: &Path,
+    diagnostics: &crate::diagnostics::Diagnostics,
+) -> NetworkCheck {
+    let recorded = match library_manager.load_folder_scan_directories(root).await {
+        Ok(recorded) => recorded,
+        Err(error) => {
+            warn!(
+                "could not read what the last scan of {} saw: {error}",
+                root.display()
+            );
+            Vec::new()
+        }
+    };
+    let checked_root = root.to_path_buf();
+    let changes = match bae_util::task_failure::blocking("check a network folder", move || {
+        network_changes(&checked_root, &recorded)
+    })
+    .await
+    {
+        Ok(changes) => changes,
+        Err(failed @ bae_util::task_failure::TaskFailed::Panicked { .. }) => {
+            diagnostics.bug(failed);
+            None
+        }
+        Err(failed) => {
+            debug!("the check of {} ended unfinished: {failed}", root.display());
+            return NetworkCheck::Unfinished;
+        }
+    };
+    if changes.as_ref().is_some_and(Vec::is_empty) {
+        debug!(
+            "network folder {} is as the last scan left it",
+            root.display()
+        );
+        return NetworkCheck::Unchanged;
+    }
+    NetworkCheck::Moved(changes)
 }
 
 /// Ask for the reads a filesystem watch's report calls for.
