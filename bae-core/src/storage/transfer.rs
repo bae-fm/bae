@@ -15,6 +15,7 @@ use crate::album_detail::ReleaseStorageAction;
 use crate::diagnostics::{LocalId, TelemetryEvent};
 use crate::library::queued_releases::RunningOp;
 use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
+use bae_util::task_failure::{caught, TaskFailed};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
@@ -78,14 +79,17 @@ impl TransferService {
             },
         );
         let abort = task.abort_handle();
+        let manager = self.library_manager.clone();
         let outcome = async move {
             let drained = drive(progress).await;
             match task.await {
                 Ok(()) => drained,
                 Err(join_error) if join_error.is_cancelled() => drained,
-                Err(join_error) => Err(LibraryError::Storage(format!(
-                    "pin task panicked: {join_error}"
-                ))),
+                // The transfer catches its own work's panic, so this is a
+                // panic in recording how it ended.
+                Err(join_error) => Err(manager
+                    .bug(TaskFailed::of_join("pin a release", join_error))
+                    .into()),
             }
         };
         RunningOp::new(abort, outcome)
@@ -266,9 +270,11 @@ impl ReleaseTransfer {
 }
 
 /// Drive one release transfer on its own task: guard its preconditions, announce
-/// its start, run `run`, and record whichever terminal state it reaches. Returns
-/// the progress channel to drain and the task, so a caller that needs to join or
-/// abort the transfer can.
+/// its start, run `run`, and record whichever terminal state it reaches. A
+/// panic in the transfer is reported as a bug and ends it as failed, on the
+/// progress channel like any failure, so a caller that drains the channel
+/// alone still hears how it ended. Returns the progress channel to drain and
+/// the task, so a caller that needs to join or abort the transfer can.
 fn spawn_transfer<Run, Fut>(
     transfer: ReleaseTransfer,
     run: Run,
@@ -282,7 +288,7 @@ where
 {
     let (tx, rx) = mpsc::unbounded_channel();
     let task = tokio::spawn(async move {
-        let result = async {
+        let result = caught(transfer_operation(transfer.action), async {
             let file_count = transfer.start().await?;
             send_progress(&tx, TransferProgress::Started);
             info!(
@@ -300,8 +306,9 @@ where
                 },
             );
             Ok::<_, LibraryError>(())
-        }
-        .await;
+        })
+        .await
+        .unwrap_or_else(|failed| Err(transfer.library_manager.bug(failed).into()));
         if let Err(error) = result {
             transfer.fail(&error);
             send_progress(
@@ -315,6 +322,16 @@ where
     });
 
     (rx, task)
+}
+
+/// What a transfer of `action` is called where its panic is reported.
+fn transfer_operation(action: ReleaseStorageAction) -> &'static str {
+    match action {
+        ReleaseStorageAction::Pin => "pin a release",
+        ReleaseStorageAction::Unpin => "unpin a release",
+        ReleaseStorageAction::Upload => "upload a release",
+        ReleaseStorageAction::DetachAudio => "make a release local",
+    }
 }
 
 fn wrong_state_error(action: ReleaseStorageAction) -> &'static str {

@@ -86,6 +86,7 @@ where
                     ))
                 },
                 |label, error| panic!("{label}: the queue's table failed: {error}"),
+                |failed| panic!("an entry's work panicked: {failed}"),
             )
             .await
     });
@@ -178,6 +179,65 @@ async fn a_panicking_operation_marks_the_release_failed_with_the_panic() {
         error.contains("panicked"),
         "the failure names the panic, got: {error}"
     );
+}
+
+/// An entry whose work panics in the worker itself fails, the panic is
+/// reported once, and the worker goes on to the next entry.
+#[tokio::test]
+async fn an_entry_that_panics_fails_and_the_next_one_runs() {
+    let (queue, _tmp) = queue().await;
+    queue
+        .enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)])
+        .await
+        .unwrap();
+    let bugs: Arc<Mutex<Vec<TaskFailed>>> = Arc::default();
+    let done: Outcomes = Arc::default();
+    let worker_queue = queue.clone();
+    let (recorded, reports) = (done.clone(), bugs.clone());
+    let task = tokio::spawn(async move {
+        worker_queue
+            .run_serial(
+                "Test",
+                |entry: ReleaseQueueEntry<()>| async move {
+                    let abort = tokio::spawn(async {}).abort_handle();
+                    let panics = entry.release_id == RELEASE_A;
+                    Ok((
+                        0,
+                        RunningOp::new(abort, async move {
+                            if panics {
+                                panic!("the entry's work broke");
+                            }
+                            Ok(())
+                        }),
+                    ))
+                },
+                move |release_id, result| {
+                    recorded.lock().unwrap().push((
+                        release_id.to_string(),
+                        result.map_err(|error| error.to_string()),
+                    ))
+                },
+                |label, error| panic!("{label}: the queue's table failed: {error}"),
+                move |failed| {
+                    reports.lock().unwrap().push(failed.clone());
+                    failed
+                },
+            )
+            .await
+    });
+
+    let outcomes = reported(&done, 2).await;
+    task.abort();
+    assert!(
+        matches!(&outcomes[0], (release, Err(error)) if release == RELEASE_A && error.contains("panicked")),
+        "{outcomes:?}"
+    );
+    assert_eq!(outcomes[1], (RELEASE_B.to_string(), Ok(())));
+    assert!(matches!(
+        phases(&queue).await.as_slice(),
+        [(release, ReleaseQueueState::Failed { .. })] if release == RELEASE_A
+    ));
+    assert_eq!(bugs.lock().unwrap().len(), 1, "{:?}", bugs.lock().unwrap());
 }
 
 /// A cancel landing between the worker picking a release and starting it

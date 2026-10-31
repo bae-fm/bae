@@ -63,8 +63,9 @@ impl LibraryManager {
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
         let task = self.run_file_operation("pin release", move |closing| async move {
             // Progress reads belong to the operation: if one fails, finish
-            // rolling back its pins before reporting the failure.
-            let result = async {
+            // rolling back its pins before reporting the failure. A panic in
+            // the pin is caught here, reported, and rolled back the same way.
+            let result = caught("pin a release", async {
                 // Says when the release's pins change. Its value can predate
                 // what the download watch has told since: joined with the
                 // watch, a file whose download just ended would count as
@@ -140,7 +141,9 @@ impl LibraryManager {
                         return Ok(());
                     }
                 }
-            }.await;
+            })
+            .await
+            .unwrap_or_else(|failed| Err(manager.bug(failed).into()));
             if let Err(operation) = result {
                 return match manager.database.unpin(&changed).await {
                     Ok(()) => Err(operation),

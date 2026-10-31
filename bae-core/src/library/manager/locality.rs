@@ -208,6 +208,7 @@ impl LibraryManager {
                 },
                 |_release_id, _result| {},
                 |label, error| self.report_queue_store_failure(label, error),
+                |failed| self.bug(failed),
             )
             .await
     }

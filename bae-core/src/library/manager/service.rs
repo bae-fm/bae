@@ -202,8 +202,10 @@ impl LibraryManager {
         Fut: Future<Output = ()> + Send + 'static,
     {
         let manager = self.clone();
-        // The panic is reported; the queue's entries then wait until the
-        // library opens again, which empties its table.
+        // Each entry's own panic fails that entry and the worker goes on, so
+        // what reaches here is a panic in the worker's reads and writes of
+        // its table: reported, and the queue then waits until the library
+        // opens again, which empties the table.
         self.spawn_supervised_task(task_name, worker(manager), |_| {})
     }
 
@@ -330,7 +332,10 @@ impl LibraryManager {
         crate::library::LiveValues::new(query, self.tasks.closing.child_token())
     }
 
-    /// A file operation owns its rollback even when its caller disappears.
+    /// A file operation owns its rollback even when its caller disappears. A
+    /// panic in it is reported as a bug and fails it as something that went
+    /// wrong; an operation whose rollback must run on a panic catches it
+    /// before the rollback, as a pin does.
     pub(super) async fn run_file_operation<T, F, Fut>(
         &self,
         name: &'static str,
@@ -347,9 +352,13 @@ impl LibraryManager {
                 return Err(LibraryError::Closed(name));
             }
             let work = operation(self.tasks.closing.clone());
+            let manager = self.clone();
             self.tasks.tracker.spawn_on(
                 async move {
-                    let result = work.await;
+                    let result = match caught(name, work).await {
+                        Ok(result) => result,
+                        Err(failed) => Err(manager.bug(failed).into()),
+                    };
                     if let Err(error) = &result {
                         tracing::error!(operation = name, %error, "file operation failed");
                     }
@@ -358,8 +367,9 @@ impl LibraryManager {
                 &self.runtime_handle,
             )
         };
-        task.await
-            .map_err(|error| LibraryError::Storage(format!("{name} task failed: {error}")))?
+        joined(name, task)
+            .await
+            .map_err(|failed| self.bug(failed))?
     }
 
     /// Close the library: stop the sync loop, end every background task the

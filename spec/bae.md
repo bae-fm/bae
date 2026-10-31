@@ -1655,8 +1655,10 @@ track as it plays. Over budget, the least recently used go first. Covers are
 never pinned; an evicted one is fetched again the next time it is shown.
 
 Pins download one release at a time from a queue that can be paused,
-cancelled and retried. A pin that fails stays in the queue with its error;
-retrying queues every failed pin again, each in its place, so a release's own
+cancelled and retried. A pin that fails stays in the queue with its error,
+its files' pins put back as they were; one that breaks on a bug fails the
+same way, reported as one, and the queue goes on to the next. Retrying
+queues every failed pin again, each in its place, so a release's own
 control retries them all, as the queue's does. coven's record of the failed
 download is listed among the pending records (§6.4), whose *Retry* queues the
 release's pin again; nothing retries it on its own. A read that fails, as a
@@ -1771,7 +1773,8 @@ Two ways put a release back on disk, from desktop:
 
 Both run from a queue that can be paused and cancelled, kept and emptied as
 the pin queue is (§4.3); a failed one stays in it, with its error, until it is
-cancelled. A save keeps the preset it was queued
+cancelled. One that breaks on a bug fails the same way, reported as one, and
+the queue goes on to the next. A save keeps the preset it was queued
 with, so editing the preset changes nothing already queued. Either reads files
 from wherever they are: the person's own path, the cache, or storage.
 

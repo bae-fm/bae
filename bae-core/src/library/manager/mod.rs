@@ -42,7 +42,7 @@ use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
 use crate::sync::S3ConfigData;
-use bae_util::task_failure::{blocking, TaskFailed};
+use bae_util::task_failure::{blocking, caught, joined, TaskFailed};
 use coven::ClockRef;
 use coven::IdSourceRef;
 

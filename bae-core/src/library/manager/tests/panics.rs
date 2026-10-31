@@ -82,3 +82,23 @@ async fn a_channel_subscription_whose_task_panics_sends_its_failure_last() {
     );
     assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
 }
+
+/// A file operation that panics fails as something that went wrong, is
+/// reported once, and leaves the library able to close.
+#[tokio::test]
+async fn a_file_operation_that_panics_fails_and_is_reported() {
+    let (manager, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
+
+    let error = manager
+        .run_file_operation("test operation", |_closing| async { broken_operation() })
+        .await
+        .expect_err("a panicked operation fails");
+
+    assert!(matches!(error, LibraryError::Internal(_)), "{error}");
+    assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
+    manager.close().await.expect("the library closes");
+}
+
+fn broken_operation() -> Result<(), LibraryError> {
+    panic!("the operation broke")
+}

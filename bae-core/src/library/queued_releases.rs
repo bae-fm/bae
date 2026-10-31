@@ -8,6 +8,7 @@ use crate::db::{Database, QueuedPayload};
 use crate::library::release_queue::ReleaseQueueSnapshot;
 use crate::library::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use crate::library::LibraryError;
+use bae_util::task_failure::{caught, caught_sync, TaskFailed};
 use std::collections::BTreeMap;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -296,8 +297,9 @@ where
     /// supplies only `start` — resolve the release's initial progress, spawn its
     /// work, and hand back the abort handle plus the future that yields its
     /// outcome — the hook that reports the outcome to diagnostics (`on_done`),
-    /// and the one that reports a failed write of the queue's own table
-    /// (`store_failed`), after which the worker waits to be woken again.
+    /// the one that reports a failed write of the queue's own table
+    /// (`store_failed`), after which the worker waits to be woken again, and
+    /// the one that reports a panic as a bug (`bug`).
     ///
     /// The protocol:
     ///
@@ -312,19 +314,30 @@ where
     /// - Success takes the entry out; failure marks it failed and leaves it for
     ///   retry. A `start` that fails marks it failed the same way — nothing was
     ///   spawned.
-    pub(crate) async fn run_serial<Start, StartFut, Fut, Done, StoreFailed>(
+    /// - An entry whose `start`, work or `on_done` panics is reported through
+    ///   `bug` and fails as any failure does; the worker goes on to the next
+    ///   entry.
+    pub(crate) async fn run_serial<Start, StartFut, Fut, Done, StoreFailed, Bug>(
         &self,
         label: &'static str,
         mut start: Start,
         mut on_done: Done,
         store_failed: StoreFailed,
+        bug: Bug,
     ) where
         Start: FnMut(ReleaseQueueEntry<Extra>) -> StartFut,
         StartFut: Future<Output = Result<(Progress, RunningOp<Fut>), LibraryError>>,
         Fut: Future<Output = Result<(), LibraryError>>,
         Done: FnMut(&str, Result<(), &LibraryError>),
         StoreFailed: Fn(&str, &LibraryError),
+        Bug: Fn(TaskFailed) -> TaskFailed,
     {
+        let failed = |failed: TaskFailed| -> LibraryError { bug(failed).into() };
+        let mut done = |release_id: &str, result: Result<(), &LibraryError>| {
+            if let Err(panic) = caught_sync(label, || on_done(release_id, result)) {
+                bug(panic);
+            }
+        };
         let database = &self.database;
         loop {
             let entry = match database.next_queued_release::<Extra>().await {
@@ -341,7 +354,10 @@ where
             };
             let release_id = entry.release_id.clone();
 
-            let (progress, running) = match start(entry).await {
+            let started = caught(label, async { start(entry).await })
+                .await
+                .unwrap_or_else(|panic| Err(failed(panic)));
+            let (progress, running) = match started {
                 Ok(started) => started,
                 Err(error) => {
                     error!("{label} failed for release {release_id}: {error}");
@@ -349,7 +365,7 @@ where
                         .fail_queued_release::<Extra>(&release_id, error.to_string())
                         .await
                     {
-                        Ok(true) => on_done(&release_id, Err(&error)),
+                        Ok(true) => done(&release_id, Err(&error)),
                         Ok(false) => debug!("{label} for {release_id} cancelled before it started"),
                         Err(store) => {
                             store_failed(label, &store.into());
@@ -379,7 +395,9 @@ where
                 }
             }
 
-            let result = outcome.await;
+            let result = caught(label, outcome)
+                .await
+                .unwrap_or_else(|panic| Err(failed(panic)));
             let left = match &result {
                 Ok(()) => database.finish_queued_release::<Extra>(&release_id).await,
                 Err(error) => {
@@ -394,7 +412,7 @@ where
                     if let Err(error) = &result {
                         error!("{label} failed for release {release_id}: {error}");
                     }
-                    on_done(&release_id, result.as_ref().map(|_| ()));
+                    done(&release_id, result.as_ref().map(|_| ()));
                 }
                 Ok(false) => {
                     debug!("{label} for {release_id} ended after cancel; leaving queue as-is")
