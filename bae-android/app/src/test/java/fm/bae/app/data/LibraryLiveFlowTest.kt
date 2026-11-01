@@ -5,15 +5,28 @@ import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeDetailRead
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class LibraryLiveFlowTest {
+    /** A detail pane's values reach it on the main thread, which here runs each at once. */
+    @Before
+    fun setUp() = Dispatchers.setMain(Dispatchers.Unconfined)
+
+    @After
+    fun tearDown() = Dispatchers.resetMain()
+
     @Test
     fun an_items_flow_reads_it_until_collection_stops() =
         runBlocking {

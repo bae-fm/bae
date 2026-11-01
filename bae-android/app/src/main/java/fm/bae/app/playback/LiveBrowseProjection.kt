@@ -5,6 +5,7 @@ import fm.bae.app.data.AlbumBrowseQuery
 import fm.bae.app.data.CollectionBrowseQuery
 import fm.bae.app.data.ComposerBrowseQuery
 import fm.bae.app.data.LiveQueryEvent
+import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -172,13 +173,13 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
         }
     }
 
+    /** Each value answers the windows it was read for; nothing reaches a projection once it is closed. */
     private suspend fun consume() {
-        while (true) {
-            try {
-                val snapshot = query.next()
+        query.pullEach(
+            onValue = { snapshot ->
                 val notify =
                     mutex.withLock {
-                        if (closed) return
+                        if (closed) return@pullEach
                         val value = snapshotReader.windows(snapshot)
                         val count = snapshotReader.totalCount(snapshot)
                         delivered = value
@@ -197,10 +198,11 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                         }
                     }
                 if (notify) onChanged(snapshotReader.totalCount(snapshot))
-            } catch (error: BridgeException) {
+            },
+            onError = { error ->
                 val count =
                     mutex.withLock {
-                        if (closed) return
+                        if (closed) return@pullEach
                         waiters.forEach { it.result.completeExceptionally(error) }
                         waiters.clear()
                         ready.complete(Unit)
@@ -209,8 +211,8 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                 onError(error)
                 count?.let(onChanged)
                 yield()
-            }
-        }
+            },
+        )
     }
 
     private fun checkOpen() {

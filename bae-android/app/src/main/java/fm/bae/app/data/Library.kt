@@ -1,12 +1,14 @@
 package fm.bae.app.data
 
+import fm.bae.screensubscription.PulledSubscription
+import fm.bae.screensubscription.map
+import fm.bae.screensubscription.pullEach
+import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistBrowseSnapshot
@@ -23,8 +25,6 @@ import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
-import uniffi.bae_bridge.ComposerBrowseSubscription
-import uniffi.bae_bridge.DownloadBrowseSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
 
 internal sealed interface LiveQueryEvent<out Value> {
@@ -53,15 +53,11 @@ internal data class DetailDelivery<Value>(
 )
 
 /**
- * A detail view's live read: the id it shows changes in place, and each value names the id it
- * answers.
+ * A detail view's live read: the id it shows changes in place, and each value it is pulled for
+ * names the id it answers.
  */
-internal interface DetailRead<Value> {
+internal interface DetailRead<Value> : PulledSubscription<DetailDelivery<Value>> {
     fun setId(id: String?)
-
-    suspend fun next(): DetailDelivery<Value>
-
-    suspend fun cancel()
 
     /** Free the read without waiting, from a scope that is already ending. */
     fun release()
@@ -69,15 +65,11 @@ internal interface DetailRead<Value> {
 
 private class BridgeDetailRead<Value>(
     private val set: (String?) -> Unit,
-    private val take: suspend () -> DetailDelivery<Value>,
-    private val end: suspend () -> Unit,
+    pulls: PulledSubscription<DetailDelivery<Value>>,
     private val free: () -> Unit,
-) : DetailRead<Value> {
+) : DetailRead<Value>,
+    PulledSubscription<DetailDelivery<Value>> by pulls {
     override fun setId(id: String?) = set(id)
-
-    override suspend fun next(): DetailDelivery<Value> = take()
-
-    override suspend fun cancel() = end()
 
     override fun release() = free()
 }
@@ -97,18 +89,10 @@ private fun <Value> detailFlow(
         val read = open()
         read.setId(id)
         launch {
-            var reading = true
-            while (reading) {
-                val delivered = runCatching { read.next() }
-                delivered.onSuccess { if (it.id == id) send(LiveQueryEvent.Value(it.value)) }
-                delivered.onFailure { error ->
-                    when (error) {
-                        is BridgeException.Cancelled -> reading = false
-                        is BridgeException -> send(LiveQueryEvent.Error(error))
-                        else -> throw error
-                    }
-                }
-            }
+            read.pullEach(
+                onValue = { if (it.id == id) send(LiveQueryEvent.Value(it.value)) },
+                onError = { send(LiveQueryEvent.Error(it)) },
+            )
         }
         // The reader's pending read is cancelled with this flow; releasing the
         // read then ends it in core.
@@ -129,15 +113,17 @@ class Library(
     internal fun albumBrowse(
         sortCriteria: List<BridgeSortCriterion>,
         groupByArtist: Boolean = false,
-    ): AlbumBrowseQuery = BridgeAlbumBrowseQuery(handle.subscribeAlbumBrowse(sortCriteria, groupByArtist))
+    ): AlbumBrowseQuery =
+        handle.subscribeAlbumBrowse(sortCriteria, groupByArtist).let {
+            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+        }
 
     /** A detail view's live reads, each moved to every item its view shows in place. */
     internal fun albumDetail(): DetailRead<BridgeAlbumDetail> =
         handle.subscribeAlbumDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
-                take = { read.next().let { DetailDelivery(it.id, it.value) } },
-                end = read::cancel,
+                pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
                 free = read::close,
             )
         }
@@ -146,8 +132,7 @@ class Library(
         handle.subscribeReleaseDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
-                take = { read.next().let { DetailDelivery(it.id, it.value) } },
-                end = read::cancel,
+                pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
                 free = read::close,
             )
         }
@@ -156,8 +141,7 @@ class Library(
         handle.subscribeArtistDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
-                take = { read.next().let { DetailDelivery(it.id, it.value) } },
-                end = read::cancel,
+                pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
                 free = read::close,
             )
         }
@@ -166,8 +150,7 @@ class Library(
         handle.subscribeComposerDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
-                take = { read.next().let { DetailDelivery(it.id, it.value) } },
-                end = read::cancel,
+                pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
                 free = read::close,
             )
         }
@@ -176,8 +159,7 @@ class Library(
         handle.subscribeWorkDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
-                take = { read.next().let { DetailDelivery(it.id, it.value) } },
-                end = read::cancel,
+                pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
                 free = read::close,
             )
         }
@@ -190,13 +172,20 @@ class Library(
     internal fun albumDetails(id: String): DetailEvents<BridgeAlbumDetail> = detailFlow(::albumDetail, id)
 
     internal fun composerBrowse(sortCriterion: BridgeComposerSortCriterion): ComposerBrowseQuery =
-        BridgeComposerBrowseQuery(handle.subscribeComposerBrowse(listOf(sortCriterion)))
+        handle.subscribeComposerBrowse(listOf(sortCriterion)).let {
+            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+        }
 
     internal fun artistBrowse(sortCriterion: BridgeArtistSortCriterion): ArtistBrowseQuery =
-        BridgeArtistBrowseQuery(handle.subscribeArtistBrowse(listOf(sortCriterion)))
+        handle.subscribeArtistBrowse(listOf(sortCriterion)).let {
+            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+        }
 
     /** The download queue as the Downloads screen draws it, in windows that move as it scrolls. */
-    internal fun downloadBrowse(): DownloadBrowseQuery = BridgeDownloadBrowseQuery(handle.subscribeDownloadBrowse())
+    internal fun downloadBrowse(): DownloadBrowseQuery =
+        handle.subscribeDownloadBrowse().let {
+            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+        }
 
     internal fun composerDetails(id: String): DetailEvents<BridgeComposerDetail> = detailFlow(::composerDetail, id)
 
@@ -218,18 +207,10 @@ class Library(
             search.setQuery(query)
             val wanted = query.trim()
             launch {
-                var reading = true
-                while (reading) {
-                    val delivered = runCatching { search.next() }
-                    delivered.onSuccess { if (it.query == wanted) send(LiveQueryEvent.Value(it.results)) }
-                    delivered.onFailure { error ->
-                        when (error) {
-                            is BridgeException.Cancelled -> reading = false
-                            is BridgeException -> send(LiveQueryEvent.Error(error))
-                            else -> throw error
-                        }
-                    }
-                }
+                search.pullEach(
+                    onValue = { if (it.query == wanted) send(LiveQueryEvent.Value(it.results)) },
+                    onError = { send(LiveQueryEvent.Error(it)) },
+                )
             }
             // The reader's pending read is cancelled with this flow; releasing
             // the search then ends it in core.
@@ -237,70 +218,31 @@ class Library(
         }
 }
 
-internal interface CollectionBrowseQuery<Snapshot> {
+/** A live browse over one library list whose windows change in place; each value answers them all. */
+internal interface CollectionBrowseQuery<Snapshot> : PulledSubscription<Snapshot> {
     fun setWindows(windows: List<BridgeLibraryPageWindow>)
-
-    suspend fun next(): Snapshot
-
-    suspend fun cancel()
 }
 
-internal interface AlbumBrowseQuery : CollectionBrowseQuery<BridgeAlbumBrowseSnapshot>
-
-internal interface ComposerBrowseQuery : CollectionBrowseQuery<BridgeComposerBrowseSnapshot>
-
-internal interface ArtistBrowseQuery : CollectionBrowseQuery<BridgeArtistBrowseSnapshot>
-
-internal interface DownloadBrowseQuery : CollectionBrowseQuery<BridgeDownloadBrowseSnapshot>
-
-private class BridgeAlbumBrowseQuery(
-    private val subscription: AlbumBrowseSubscription,
-) : AlbumBrowseQuery {
-    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
-
-    override suspend fun next(): BridgeAlbumBrowseSnapshot = subscription.next()
-
-    override suspend fun cancel() = subscription.cancel()
+private class BridgeBrowseQuery<Snapshot>(
+    private val set: (List<BridgeLibraryPageWindow>) -> Unit,
+    pulls: PulledSubscription<Snapshot>,
+) : CollectionBrowseQuery<Snapshot>,
+    PulledSubscription<Snapshot> by pulls {
+    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = set(windows)
 }
 
-private class BridgeComposerBrowseQuery(
-    private val subscription: ComposerBrowseSubscription,
-) : ComposerBrowseQuery {
-    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
+internal typealias AlbumBrowseQuery = CollectionBrowseQuery<BridgeAlbumBrowseSnapshot>
 
-    override suspend fun next(): BridgeComposerBrowseSnapshot = subscription.next()
+internal typealias ComposerBrowseQuery = CollectionBrowseQuery<BridgeComposerBrowseSnapshot>
 
-    override suspend fun cancel() = subscription.cancel()
-}
+internal typealias ArtistBrowseQuery = CollectionBrowseQuery<BridgeArtistBrowseSnapshot>
 
-private class BridgeDownloadBrowseQuery(
-    private val subscription: DownloadBrowseSubscription,
-) : DownloadBrowseQuery {
-    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
+internal typealias DownloadBrowseQuery = CollectionBrowseQuery<BridgeDownloadBrowseSnapshot>
 
-    override suspend fun next(): BridgeDownloadBrowseSnapshot = subscription.next()
-
-    override suspend fun cancel() = subscription.cancel()
-}
-
-private class BridgeArtistBrowseQuery(
-    private val subscription: ArtistBrowseSubscription,
-) : ArtistBrowseQuery {
-    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
-
-    override suspend fun next(): BridgeArtistBrowseSnapshot = subscription.next()
-
-    override suspend fun cancel() = subscription.cancel()
-}
-
-/** A live library search: point it at a query, take each value, which names the query it answers. */
-internal interface LibrarySearch {
+/** A live library search: point it at a query, and each value it is pulled for names the query it answers. */
+internal interface LibrarySearch : PulledSubscription<BridgeLibrarySearchSnapshot> {
     /** Search for [query] from now on; returns the request revision its answers will carry. */
     fun setQuery(query: String): ULong
-
-    suspend fun next(): BridgeLibrarySearchSnapshot
-
-    suspend fun cancel()
 
     /** Free the search without waiting, from a scope that is already ending. */
     fun release()
@@ -308,12 +250,9 @@ internal interface LibrarySearch {
 
 private class BridgeLibrarySearch(
     private val subscription: LibrarySearchSubscription,
-) : LibrarySearch {
+) : LibrarySearch,
+    PulledSubscription<BridgeLibrarySearchSnapshot> by pulled(subscription::next, subscription::cancel) {
     override fun setQuery(query: String): ULong = subscription.setQuery(query)
-
-    override suspend fun next(): BridgeLibrarySearchSnapshot = subscription.next()
-
-    override suspend fun cancel() = subscription.cancel()
 
     override fun release() = subscription.close()
 }

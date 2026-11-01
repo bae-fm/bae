@@ -1,6 +1,7 @@
 package fm.bae.app.data
 
 import fm.bae.app.BaeLogger
+import fm.bae.screensubscription.ScreenSubscription
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -12,6 +13,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeWorkDetail
 
@@ -38,7 +40,7 @@ internal class DetailQueryStore<Value>(
     val state: StateFlow<LiveQueryState<Value>> = mutableState.asStateFlow()
     private var parameter: String? = null
     private var read: DetailRead<Value>? = null
-    private var deliveries: Job? = null
+    private var deliveries: ScreenSubscription<DetailDelivery<Value>>? = null
 
     fun activate(value: String) {
         if (parameter == value && read != null) return
@@ -85,39 +87,31 @@ internal class DetailQueryStore<Value>(
     private fun openRead(): DetailRead<Value> {
         val opened = open()
         read = opened
-        deliveries = scope.launch { deliver(opened) }
+        deliveries = ScreenSubscription(opened, scope, ::deliver, ::report)
         return opened
     }
 
-    private suspend fun deliver(opened: DetailRead<Value>) {
-        var reading = true
-        while (reading) {
-            val delivered = runCatching { opened.next() }
-            delivered.getOrNull()?.let { delivery ->
-                val shown = parameter
-                if (shown != null && delivery.id == shown) {
-                    mutableState.value = LiveQueryState(value = delivery.value, delivered = true)
-                }
-            }
-            val error = delivered.exceptionOrNull() ?: continue
-            if (error !is BridgeException) throw error
-            if (error is BridgeException.Cancelled) {
-                reading = false
-            } else if (parameter != null) {
-                mutableState.value = mutableState.value.copy(error = error)
-            } else {
-                // Nothing is shown to report it on; the read goes on.
-                logger.warning("detail read failed while showing nothing", error)
-            }
+    /** Only a value answering the item shown now reaches [state]. */
+    private fun deliver(delivery: DetailDelivery<Value>) {
+        val shown = parameter
+        if (shown != null && delivery.id == shown) {
+            mutableState.value = LiveQueryState(value = delivery.value, delivered = true)
+        }
+    }
+
+    private fun report(error: BridgeException) {
+        if (parameter != null) {
+            mutableState.value = mutableState.value.copy(error = error)
+        } else {
+            // Nothing is shown to report it on; the read goes on.
+            logger.warning("detail read failed while showing nothing", error)
         }
     }
 
     private fun closeRead() {
-        deliveries?.cancel()
+        deliveries?.stop()
         deliveries = null
-        val closing = read ?: return
         read = null
-        scope.launch { closing.cancel() }
     }
 }
 
@@ -134,7 +128,7 @@ internal class SearchQueryStore(
     val state: StateFlow<LiveQueryState<BridgeSearchResults>> = mutableState.asStateFlow()
     private var query: String? = null
     private var search: LibrarySearch? = null
-    private var deliveries: Job? = null
+    private var deliveries: ScreenSubscription<BridgeLibrarySearchSnapshot>? = null
     private var debounce: Job? = null
 
     fun activate(value: String) {
@@ -158,12 +152,10 @@ internal class SearchQueryStore(
     fun deactivate() {
         debounce?.cancel()
         debounce = null
-        deliveries?.cancel()
+        deliveries?.stop()
         deliveries = null
         query = null
-        val closing = search ?: return
         search = null
-        scope.launch { closing.cancel() }
     }
 
     fun cancel() = deactivate()
@@ -172,27 +164,19 @@ internal class SearchQueryStore(
         search?.let { return it }
         val live = library.librarySearch()
         search = live
-        deliveries = scope.launch { deliver(live) }
+        deliveries =
+            ScreenSubscription(
+                live,
+                scope,
+                onValue = { snapshot ->
+                    // Only a value answering the query standing now is shown.
+                    if (snapshot.query.isNotEmpty() && snapshot.query == query) {
+                        mutableState.value = LiveQueryState(value = snapshot.results, delivered = true)
+                    }
+                },
+                onError = { error -> mutableState.value = mutableState.value.copy(error = error) },
+            )
         return live
-    }
-
-    private suspend fun deliver(live: LibrarySearch) {
-        var reading = true
-        while (reading) {
-            val delivered = runCatching { live.next() }
-            delivered.onSuccess { snapshot ->
-                if (snapshot.query.isNotEmpty() && snapshot.query == query) {
-                    mutableState.value = LiveQueryState(value = snapshot.results, delivered = true)
-                }
-            }
-            delivered.onFailure { error ->
-                when (error) {
-                    is BridgeException.Cancelled -> reading = false
-                    is BridgeException -> mutableState.value = mutableState.value.copy(error = error)
-                    else -> throw error
-                }
-            }
-        }
     }
 
     private fun setQuery(

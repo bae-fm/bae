@@ -172,10 +172,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
-    // The generated bindings, each edition its own, and the one module that
-    // reads the bridge's fast values.
+    // The generated bindings, each edition its own, the one module that
+    // reads the bridge's fast values, and the one module that pulls values
+    // from the bridge's subscriptions.
     implementation(project(":bridge"))
     implementation(project(":fastvalues"))
+    implementation(project(":screensubscription"))
     // The JVM half of the Rust TLS verifier, located through Cargo metadata by
     // settings.gradle.
     implementation(nativeDeps.rustls.platform.verifier)

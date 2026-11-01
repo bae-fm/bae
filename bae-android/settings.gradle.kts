@@ -63,4 +63,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "bae"
-include(":app", ":bridge", ":fastvalues")
+include(":app", ":bridge", ":fastvalues", ":screensubscription")

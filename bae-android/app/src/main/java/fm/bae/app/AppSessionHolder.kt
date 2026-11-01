@@ -19,6 +19,8 @@ import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackSystem
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.changes
+import fm.bae.screensubscription.firstValue
+import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -714,5 +716,6 @@ object AppSessionHolder {
         )
 }
 
-/** The library's preferences now: the first value a config pull answers; releasing the pull ends it. */
-private suspend fun AppHandle.currentConfig(): BridgeConfig = subscribeConfig().use { it.next() }
+/** The library's preferences now: the first value a config subscription answers, which then ends. */
+private suspend fun AppHandle.currentConfig(): BridgeConfig =
+    subscribeConfig().use { subscription -> pulled(subscription::next, subscription::cancel).firstValue() }

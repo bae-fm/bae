@@ -291,10 +291,10 @@ check "bridge build (Android full)" env BAE_BRIDGE_FEATURES=oauth-providers,cast
   ./bae-bridge/build-android.sh --abi "$ANDROID_LOCAL_ABI"
 check "Gradle unit tests (Android full)" bash -c \
   'cd bae-android && ./gradlew testFullDebugUnitTest --no-daemon'
-check "ktlint" ktlint "bae-android/app/src/**/*.kt" "bae-android/fastvalues/src/**/*.kt"
-check "detekt" detekt --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java \
+check "ktlint" ktlint "bae-android/app/src/**/*.kt" "bae-android/fastvalues/src/**/*.kt" "bae-android/screensubscription/src/**/*.kt"
+check "detekt" detekt --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java,bae-android/screensubscription/src/main/java \
   --config bae-android/detekt.yml --build-upon-default-config
-check "detekt (type-resolved rules)" detekt --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java \
+check "detekt (type-resolved rules)" detekt --input bae-android/app/src/main/java,bae-android/fastvalues/src/main/java,bae-android/screensubscription/src/main/java \
   --config bae-android/detekt-type-resolved.yml \
   --classpath "$ANDROID_PLATFORM_JAR" --jvm-target "$ANDROID_JAVA_VERSION"
 check "Android lint (full)" bash -c \

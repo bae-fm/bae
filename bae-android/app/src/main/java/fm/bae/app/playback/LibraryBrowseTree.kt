@@ -9,6 +9,7 @@ import fm.bae.app.data.Library
 import fm.bae.app.data.LibrarySearch
 import fm.bae.app.data.LiveQueryEvent
 import fm.bae.app.mainRelease
+import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -197,29 +198,27 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
 
         private suspend fun read() {
-            while (true) {
-                val notice =
-                    runCatching { search.next() }.fold(
-                        onSuccess = { value ->
-                            synchronized(lock) {
-                                delivered = value
-                                if (isCurrent(value.requestRevision)) accept(value) else null
-                            }
-                        },
-                        onFailure = { error ->
-                            if (error !is BridgeException) throw error
-                            if (error is BridgeException.Cancelled) return
-                            onQueryError(error)
-                            synchronized(lock) {
-                                if (!isCurrent(revision)) return@synchronized null
-                                latest = LiveQueryEvent.Error(error)
-                                answered.complete(Unit)
-                                lastCount?.let { SearchNotice(listener, it) }
-                            }
-                        },
-                    )
-                notice?.give()
-            }
+            search.pullEach(
+                onValue = { value ->
+                    val notice =
+                        synchronized(lock) {
+                            delivered = value
+                            if (isCurrent(value.requestRevision)) accept(value) else null
+                        }
+                    notice?.give()
+                },
+                onError = { error ->
+                    onQueryError(error)
+                    val notice =
+                        synchronized(lock) {
+                            if (!isCurrent(revision)) return@synchronized null
+                            latest = LiveQueryEvent.Error(error)
+                            answered.complete(Unit)
+                            lastCount?.let { SearchNotice(listener, it) }
+                        }
+                    notice?.give()
+                },
+            )
         }
     }
 

@@ -2,13 +2,13 @@ package fm.bae.app.playback
 
 import androidx.media3.common.Player
 import fm.bae.app.BaeLogger
+import fm.bae.screensubscription.PulledSubscription
+import fm.bae.screensubscription.ScreenSubscription
+import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
@@ -37,15 +37,11 @@ internal fun queuePageDistance(
 
 /**
  * The context's upcoming tail, read through one live subscription: which windows it reads changes
- * in place, and each value answers every window at once with the tail's length, and says whether
- * the queue changed or only the windows moved.
+ * in place, and each value it is pulled for answers every window at once with the tail's length,
+ * and says whether the queue changed or only the windows moved.
  */
-interface QueueUpcomingQuery {
+interface QueueUpcomingQuery : PulledSubscription<BridgeQueueUpcomingSnapshot> {
     fun setWindows(windows: List<BridgeLibraryPageWindow>)
-
-    suspend fun next(): BridgeQueueUpcomingSnapshot
-
-    suspend fun cancel()
 }
 
 /** Opens the player's one upcoming read. */
@@ -55,12 +51,10 @@ class QueueUpcomingSource(
     constructor(handle: AppHandleInterface) : this(
         open = {
             val subscription = handle.subscribeQueueUpcoming()
-            object : QueueUpcomingQuery {
+            object :
+                QueueUpcomingQuery,
+                PulledSubscription<BridgeQueueUpcomingSnapshot> by pulled(subscription::next, subscription::cancel) {
                 override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
-
-                override suspend fun next(): BridgeQueueUpcomingSnapshot = subscription.next()
-
-                override suspend fun cancel() = subscription.cancel()
             }
         },
     )
@@ -70,7 +64,7 @@ class QueueUpcomingSource(
  * The context tail's windows, read through one live query: a [pin]ned window, which stays read
  * while a context plays, and the windows the queue scrolls to. Its windows move in place; neither
  * opens another query. [onValue] hears each value it reads, and whether it answered a change to
- * the queue; a failure stops the read and is held in [failure] until [retry] opens it again.
+ * the queue; a failed pull ends the read and is held in [failure] until [retry] opens it again.
  */
 internal class QueueUpcomingWindows(
     private val source: QueueUpcomingSource,
@@ -83,7 +77,10 @@ internal class QueueUpcomingWindows(
     val failure: StateFlow<BridgeException?> = mutableFailure.asStateFlow()
 
     private var query: QueueUpcomingQuery? = null
-    private var deliveries: Job? = null
+    private var deliveries: ScreenSubscription<BridgeQueueUpcomingSnapshot>? = null
+
+    /** Whether a failed pull ended the read; nothing opens it again until [retry] or [close]. */
+    private var ended = false
 
     /** The window read for as long as the read is open, whatever the queue scrolls to. */
     private var pinned: IntRange? = null
@@ -141,17 +138,21 @@ internal class QueueUpcomingWindows(
     }
 
     fun close() {
-        deliveries?.cancel()
-        deliveries = null
+        endRead()
+        ended = false
         windows.clear()
         pinned = null
         latest = null
-        val closing = query ?: return
+    }
+
+    private fun endRead() {
+        deliveries?.stop()
+        deliveries = null
         query = null
-        scope.launch { closing.cancel() }
     }
 
     private fun request() {
+        if (ended) return
         val read = (listOfNotNull(pinned) + windows).filterNot { it.isEmpty() }
         try {
             (query ?: open()).setWindows(
@@ -168,27 +169,22 @@ internal class QueueUpcomingWindows(
     private fun open(): QueueUpcomingQuery {
         val opened = source.open()
         query = opened
-        deliveries = scope.launch(Dispatchers.Main.immediate) { deliver(opened) }
-        return opened
-    }
-
-    private suspend fun deliver(opened: QueueUpcomingQuery) {
-        var reading = true
-        while (reading) {
-            val delivered = runCatching { opened.next() }
-            delivered.onSuccess { value ->
-                latest = value
-                onValue(value.queueChanged)
-            }
-            delivered.onFailure { error ->
-                reading = false
-                if (error !is BridgeException) throw error
-                if (error !is BridgeException.Cancelled) {
+        deliveries =
+            ScreenSubscription(
+                opened,
+                scope,
+                onValue = { value ->
+                    latest = value
+                    onValue(value.queueChanged)
+                },
+                onError = { error ->
                     logger.error("upcoming queue read failed", error)
+                    endRead()
+                    ended = true
                     mutableFailure.value = error
-                }
-            }
-        }
+                },
+            )
+        return opened
     }
 }
 

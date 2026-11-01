@@ -10,10 +10,10 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.diagnosticDetail
+import fm.bae.screensubscription.PulledSubscription
+import fm.bae.screensubscription.ScreenSubscription
+import fm.bae.screensubscription.map
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSummary
@@ -41,13 +41,9 @@ internal class BrowseRows<Row>(
     val sections: List<BridgeLibraryBrowseSection> = emptyList(),
 )
 
-/** A live browse over one library list whose windows change in place. */
-internal interface BrowseRowsQuery<Row> {
+/** A live browse over one library list whose windows change in place, pulled as rows by window. */
+internal interface BrowseRowsQuery<Row> : PulledSubscription<BrowseRows<Row>> {
     fun setWindows(windows: List<BridgeLibraryPageWindow>)
-
-    suspend fun next(): BrowseRows<Row>
-
-    suspend fun cancel()
 }
 
 /**
@@ -77,7 +73,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     private var active = false
     private var generation = 0
     private var query: BrowseRowsQuery<Row>? = null
-    private var deliveries: Job? = null
+    private var deliveries: ScreenSubscription<BrowseRows<Row>>? = null
     private var windows = emptySet<Int>()
 
     fun activate(parameter: Parameter) {
@@ -93,8 +89,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
         generation++
         val opened = open(parameter)
         query = opened
-        val openedGeneration = generation
-        deliveries = scope.launch(Dispatchers.Main.immediate) { deliver(opened, openedGeneration) }
+        deliveries = deliver(opened, generation)
         requestWindows(setOf(0))
     }
 
@@ -146,24 +141,25 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
 
     /**
      * Apply each value the query delivers while it is still this store's query. A cancelled read
-     * ends the loop quietly; any other failure is shown, since the list can no longer update.
+     * ends the pulls quietly; any other failure closes the query and is shown, since the list can
+     * no longer update, until [retry] opens another.
      */
-    private suspend fun deliver(
+    private fun deliver(
         query: BrowseRowsQuery<Row>,
         openedGeneration: Int,
-    ) {
+    ): ScreenSubscription<BrowseRows<Row>> {
         val current = { active && openedGeneration == generation }
-        var reading = true
-        while (reading) {
-            val delivered = runCatching { query.next() }
-            delivered.onSuccess { if (current()) apply(it) }
-            delivered.onFailure { error ->
-                reading = false
-                if (error is BridgeException && error !is BridgeException.Cancelled && current()) fail(error)
-                if (error !is BridgeException) throw error
-            }
-            reading = reading && current()
-        }
+        return ScreenSubscription(
+            query,
+            scope,
+            onValue = { if (current()) apply(it) },
+            onError = { error ->
+                if (current()) {
+                    closeQuery()
+                    fail(error)
+                }
+            },
+        )
     }
 
     /** A value answers the windows it was read for; a window dropped since keeps nothing. */
@@ -202,12 +198,10 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     }
 
     private fun closeQuery() {
-        deliveries?.cancel()
+        deliveries?.stop()
         deliveries = null
-        windows = emptySet()
-        val closing = query ?: return
         query = null
-        scope.launch { closing.cancel() }
+        windows = emptySet()
     }
 }
 
@@ -288,13 +282,10 @@ internal class DownloadPageStore(
 /** A collection browse query read as rows by window, through [read]. */
 private class SnapshotRowsQuery<Snapshot, Row>(
     private val query: CollectionBrowseQuery<Snapshot>,
-    private val read: (Snapshot) -> BrowseRows<Row>,
-) : BrowseRowsQuery<Row> {
+    read: (Snapshot) -> BrowseRows<Row>,
+) : BrowseRowsQuery<Row>,
+    PulledSubscription<BrowseRows<Row>> by query.map(read) {
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) = query.setWindows(windows)
-
-    override suspend fun next(): BrowseRows<Row> = read(query.next())
-
-    override suspend fun cancel() = query.cancel()
 }
 
 internal class BrowserPageStores(

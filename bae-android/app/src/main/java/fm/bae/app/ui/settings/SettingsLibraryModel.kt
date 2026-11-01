@@ -6,8 +6,8 @@ import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
-import fm.bae.app.data.ScreenSubscription
-import fm.bae.app.data.pulled
+import fm.bae.screensubscription.ScreenSubscription
+import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.AppHandleInterface

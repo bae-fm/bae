@@ -33,8 +33,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.data.ScreenSubscription
-import fm.bae.app.data.pulled
 import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -43,6 +41,8 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.screensubscription.ScreenSubscription
+import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitCancellation
 import uniffi.bae_bridge.AppHandleInterface

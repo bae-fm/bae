@@ -44,8 +44,6 @@ import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ScreenSubscription
-import fm.bae.app.data.pulled
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -55,6 +53,8 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.screensubscription.ScreenSubscription
+import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
