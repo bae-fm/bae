@@ -6,10 +6,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueAddition
+import uniffi.bae_bridge.CastDevicesSubscription
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.QueueAdditionsSubscription
@@ -76,6 +78,13 @@ fun PlaybackTimelineSubscription.pulled(): PulledSubscription<BridgePlaybackTime
 fun QueueAdditionsSubscription.pulled(): PulledSubscription<BridgeQueueAddition> =
     object : PulledSubscription<BridgeQueueAddition> {
         override suspend fun next(): BridgeQueueAddition = this@pulled.next()
+
+        override suspend fun cancel() = this@pulled.cancel()
+    }
+
+fun CastDevicesSubscription.pulled(): PulledSubscription<List<BridgeCastDevice>> =
+    object : PulledSubscription<List<BridgeCastDevice>> {
+        override suspend fun next(): List<BridgeCastDevice> = this@pulled.next()
 
         override suspend fun cancel() = this@pulled.cancel()
     }

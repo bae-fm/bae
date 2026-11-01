@@ -93,22 +93,6 @@ private final class UploadsPausedSink: UploadsPausedCallback,
     }
 }
 
-private final class CastDevicesValueSink: CastDevicesCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable ([BridgeCastDevice]) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable ([BridgeCastDevice]) -> Void
-    ) {
-        self.apply = apply
-    }
-
-    func onValue(devices: [BridgeCastDevice]) {
-        Task { @MainActor in apply(devices) }
-    }
-}
-
 @MainActor
 final class CommonSubscriptions {
     private let appHandle: AppHandle
@@ -124,6 +108,7 @@ final class CommonSubscriptions {
     private var playbackTimeline:
         ScreenSubscription<PlaybackTimelineSubscription>?
     private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
+    private var castDevices: ScreenSubscription<CastDevicesSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
 
@@ -174,6 +159,11 @@ final class CommonSubscriptions {
             onValue: applyQueueAddition,
             onError: onError
         )
+        castDevices = ScreenSubscription(
+            appHandle.subscribeCastDevices(),
+            onValue: { [castStore] devices in castStore.devices = devices },
+            onError: onError
+        )
         feeds = [
             outboxStore.releaseProgress.feed(from: appHandle, onError: onError),
             outboxStore.filesBeingSent.feed(from: appHandle, onError: onError),
@@ -195,11 +185,6 @@ final class CommonSubscriptions {
                         },
                         fail: onError
                     )
-                ),
-                appHandle.subscribeCastDevices(
-                    callback: CastDevicesValueSink { [castStore] devices in
-                        castStore.devices = devices
-                    }
                 ),
             ]
     }

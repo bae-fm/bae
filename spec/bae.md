@@ -2921,6 +2921,10 @@ the log names the setting and the text it carried.
 **Finding receivers.** Casting is off by default: it browses the local network
 and serves audio from this machine. While on, devices are searched for only
 while the picker is open. Desktops and Android browse the network themselves.
+The picker lists what discovery found from a device-local table, by name:
+one task merges every source's list and writes it whole, in one write per
+change, in the order the changes came. No discovery outlives the process
+that ran it, so the table is emptied as the library opens.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
@@ -3705,6 +3709,7 @@ All sync (§5), except `local_history`.
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver, preview, last failure and the count of failures (§9.4) |
+| `cast_device` | receiver the cast picker lists, as discovery last found it: its id, name and kind (Cast, UPnP or AirPlay) |
 
 A play's fill, Clear Up Next, Clear playing from and the emptying as a library
 opens without resuming are bulk writes: plain SQLite on these device-local

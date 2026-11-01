@@ -258,9 +258,10 @@ pub struct CastController {
     runtime: Handle,
     services: AppServices,
     /// Where the picker's devices come from: bae's own browsing, or the services
-    /// a host's browser reports in. Chosen once, per host.
+    /// a host's browser reports in. Chosen once, per host. The picker reads
+    /// them from the library's `cast_device` table, which the device list
+    /// writer keeps.
     discovery: Mutex<RendererDiscovery>,
-    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
     /// The ephemeral server, once a cast has started one.
     server: Arc<Mutex<Option<EphemeralServer>>>,
     /// Where that server listens.
@@ -276,7 +277,7 @@ pub struct CastController {
 
 impl CastController {
     /// Build the controller over a host's device source and start the background
-    /// tasks it needs: the device-list forwarders that publish an open picker's value,
+    /// tasks it needs: the device-list writer that lists the devices for the picker,
     /// the follower that tracks the playback service's session status, and the
     /// watcher that applies the `cast_enabled` setting.
     pub fn start(
@@ -303,46 +304,69 @@ impl CastController {
         diagnostics: Diagnostics,
     ) -> Arc<Self> {
         let receivers = discovery.subscribe();
-        let (devices_tx, _) = tokio::sync::watch::channel(discovery.devices());
         let controller = Arc::new(Self {
             runtime: runtime.clone(),
             services,
             discovery: Mutex::new(discovery),
-            devices_tx,
             server: Arc::new(Mutex::new(None)),
             serving,
             diagnostics,
             #[cfg(test)]
             setting_applied: tokio::sync::watch::Sender::new(None),
         });
-        for devices in receivers {
-            controller.spawn_device_list_forwarder(devices);
-        }
+        controller.spawn_device_list_writer(receivers);
         controller.spawn_status_follower();
         controller.spawn_setting_watcher();
         controller
     }
 
-    fn spawn_device_list_forwarder(
+    /// List the devices for the picker: the merged list as it stands, then
+    /// again after each change to any source's list, each a write of the
+    /// whole list. One task writes them all, in order, so an older merge never
+    /// lands after a newer one; changes that arrive while a write runs are
+    /// merged into the next. A panic merging the lists is reported, and so is
+    /// a write that fails; the next change is merged and written again. The
+    /// writer ends once every source has.
+    fn spawn_device_list_writer(
         self: &Arc<Self>,
-        mut devices: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
+        sources: Vec<tokio::sync::watch::Receiver<Vec<RendererDevice>>>,
     ) {
+        let (changed, mut changes) = tokio::sync::mpsc::unbounded_channel();
+        for mut source in sources {
+            let changed = changed.clone();
+            self.runtime.spawn(async move {
+                while source.changed().await.is_ok() {
+                    if changed.send(()).is_err() {
+                        return;
+                    }
+                }
+            });
+        }
+        drop(changed);
         let controller = self.clone();
         self.runtime.spawn(async move {
-            while devices.changed().await.is_ok() {
-                // One change at a time: a panic merging the lists is reported,
-                // and the next change is merged again.
+            loop {
                 let merged = controller.with_discovery(|discovery| {
                     caught_sync("merge the cast device lists", || discovery.devices())
                 });
                 match merged {
                     Ok(merged) => {
-                        controller.devices_tx.send_replace(merged);
+                        let listed = merged.iter().map(RendererDevice::listed).collect();
+                        if let Err(error) = controller.services.show_cast_devices(listed).await {
+                            controller.diagnostics.report_bug(
+                                "list the cast receivers",
+                                &bae_util::error_text::CauseChain(&error),
+                            );
+                        }
                     }
                     Err(failed) => {
                         controller.diagnostics.bug(failed);
                     }
                 }
+                if changes.recv().await.is_none() {
+                    return;
+                }
+                while changes.try_recv().is_ok() {}
             }
         });
     }
@@ -475,10 +499,6 @@ impl CastController {
     /// list, sorted by name for a stable picker.
     pub fn devices(&self) -> Vec<RendererDevice> {
         self.with_discovery(|discovery| discovery.devices())
-    }
-
-    pub fn subscribe_devices(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
-        self.devices_tx.subscribe()
     }
 
     /// Play to the device named by `device_id`: build its control channel from

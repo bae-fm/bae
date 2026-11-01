@@ -74,23 +74,12 @@ impl AppHandle {
             .collect()
     }
 
+    /// The receivers the cast picker lists, by name: the first list at once,
+    /// then one after each change discovery finds.
     pub fn subscribe_cast_devices(
         &self,
-        callback: Box<dyn crate::types::CastDevicesCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        let cast = self.cast.clone();
-        self.subscribe_watch(
-            move |_| cast.subscribe_devices(),
-            move |devices| {
-                callback.on_value(
-                    devices
-                        .iter()
-                        .cloned()
-                        .map(crate::types::BridgeCastDevice::from_core)
-                        .collect(),
-                )
-            },
-        )
+    ) -> std::sync::Arc<crate::screens::CastDevicesSubscription> {
+        crate::screens::cast_devices(self.services.subscribe_cast_devices(), self.runtime.clone())
     }
 }
 

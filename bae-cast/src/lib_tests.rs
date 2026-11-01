@@ -171,6 +171,49 @@ fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
     assert!(matches!(cast, Err(CastError::Connect(_))), "{cast:?}");
 }
 
+/// The picker reads the devices from the library's `cast_device` table: a
+/// reported service is listed there, by name, and one the host's browser
+/// lost leaves it, each in a write of the whole list.
+#[test]
+fn the_picker_lists_the_devices_from_the_library() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    let listed = services.subscribe_cast_devices();
+    let until_listed = |names: &[&str]| {
+        runtime.block_on(async {
+            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                loop {
+                    let devices = listed.next().await.expect("the picker's list reads");
+                    let shown: Vec<_> = devices.iter().map(|device| device.name.as_str()).collect();
+                    if shown == names {
+                        return devices;
+                    }
+                }
+            })
+            .await
+            .unwrap_or_else(|_| panic!("the picker lists {names:?}"))
+        })
+    };
+    until_listed(&[]);
+
+    runtime.block_on(services.set_cast_enabled(true)).unwrap();
+    controller.start_discovery();
+    let port = refusing_loopback_port();
+    controller.renderer_found(reported_cast_service("Study", "cast-2", port));
+    controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
+    let devices = until_listed(&["Kitchen", "Study"]);
+    assert_eq!(
+        devices[0],
+        bae_core::renderer::CastDevice {
+            id: "cast-1".to_string(),
+            name: "Kitchen".to_string(),
+            kind: bae_core::renderer::RendererKind::Cast,
+        }
+    );
+
+    controller.renderer_lost(RendererServiceType::GoogleCast, "Kitchen");
+    until_listed(&["Study"]);
+}
+
 #[test]
 fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
     let (runtime, controller, _services, _tmp) = test_controller(RendererDiscovery::reported());

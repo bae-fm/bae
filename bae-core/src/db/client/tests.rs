@@ -244,6 +244,9 @@ mod release_queue_tests;
 mod release_storage_action_tests;
 
 #[cfg(test)]
+mod cast_devices_tests;
+
+#[cfg(test)]
 mod personal_order_tests;
 
 #[cfg(test)]

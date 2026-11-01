@@ -79,7 +79,7 @@ fn description_with_relative_control_urls_resolves_against_location() {
 
     assert_eq!(device.id, "uuid:11111111-2222-3333-4444-555555555555");
     assert_eq!(device.name, "Living Room Receiver");
-    assert_eq!(device.kind(), crate::renderer::RendererKind::Dlna);
+    assert_eq!(device.kind(), bae_core::renderer::RendererKind::Dlna);
     let (av, rc) = dlna_urls(&device);
     assert_eq!(av, "http://192.168.1.50:8080/desc/AVTransport/control");
     assert_eq!(

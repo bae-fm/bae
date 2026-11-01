@@ -89,6 +89,8 @@ impl LibraryManager {
         // with its transfer queues empty, before their workers start, and
         // with no release in a storage transition.
         database.clear_transfers().await?;
+        // Nor does discovery: the cast picker's list starts empty.
+        database.clear_cast_devices().await?;
         Ok(Self::assemble(
             database,
             app_dir,

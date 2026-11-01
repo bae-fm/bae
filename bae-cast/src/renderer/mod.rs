@@ -12,7 +12,7 @@ pub mod discovery;
 pub(crate) mod protocol_discovery;
 pub(crate) mod published_devices;
 
-pub use device::{RendererConnection, RendererDevice, RendererKind};
+pub use device::{RendererConnection, RendererDevice};
 pub use discovery::{
     RendererDiscovery, RendererServiceType, ReportedRenderer, RENDERER_SERVICE_TYPES,
 };

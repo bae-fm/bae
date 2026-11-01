@@ -51,6 +51,7 @@ pub use service::{LibraryOpening, OpenProgressReport};
 
 mod album;
 mod artist;
+mod cast_devices;
 mod collections;
 mod composer;
 mod config;

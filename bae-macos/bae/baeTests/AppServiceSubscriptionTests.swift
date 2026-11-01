@@ -344,10 +344,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopKeyedValueStream()
     }
 
-    override func subscribeCastDevices(
-        callback _: any CastDevicesCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
+    override func subscribeCastDevices() -> CastDevicesSubscription {
+        NoCastDevices()
     }
 
     override func subscribeLibraryName(
@@ -411,6 +409,25 @@ private final class NoopLiveSubscription: LiveSubscription,
     }
 
     override func cancel() {}
+}
+
+/// A cast device list that lists nothing: its one pull answers that it was
+/// cancelled, which ends the screen's pulls.
+private final class NoCastDevices: CastDevicesSubscription, @unchecked Sendable
+{
+    init() {
+        super.init(noHandle: CastDevicesSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> [BridgeCastDevice] {
+        throw BridgeError.Cancelled
+    }
+
+    override func cancel() async throws {}
 }
 
 /// Values a test hands the app one at a time, each answering the app's next

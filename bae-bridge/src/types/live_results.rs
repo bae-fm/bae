@@ -51,8 +51,6 @@ callbacks! {
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
     UploadsPausedCallback: on_value(paused: bool) + on_error;
 
-    #[cfg(feature = "cast")]
-    CastDevicesCallback: on_value(devices: Vec<super::BridgeCastDevice>);
     ConfigCallback: on_value(config: BridgeConfig);
     SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot);
     SyncActivityCallback: on_value(value: super::BridgeSyncActivity) + on_error;

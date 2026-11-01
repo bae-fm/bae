@@ -45,7 +45,6 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryRemoval
-import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.LiveSubscription
@@ -237,13 +236,13 @@ class OpenLibrary internal constructor(
             stores.transfers.outbox.filesBeingSent.feed(appHandle) { error ->
                 subscriptionFailed("upload transfer", error)
             }
-        valueSubscriptions +=
-            appHandle.subscribeCastDevices(
-                object : CastDevicesCallback {
-                    override fun onValue(devices: List<uniffi.bae_bridge.BridgeCastDevice>) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.cast.setDevices(devices) }
-                    }
-                },
+        screenSubscriptions +=
+            ScreenSubscription(
+                appHandle.subscribeCastDevices().pulled(),
+                scope,
+                onValue = stores.cast::setDevices,
+                // The picker keeps the list it has; the next read that succeeds replaces it.
+                onError = { error -> subscriptionFailed("cast devices", error) },
             )
         valueSubscriptions +=
             appHandle.subscribeQueue(

@@ -8,18 +8,9 @@
 
 use std::net::IpAddr;
 
-use crate::airplay::AirPlayCapabilities;
+use bae_core::renderer::{CastDevice, RendererKind};
 
-/// Which flavor of remote renderer a device is. Surfaced to the UI as a tag; the
-/// picker does not segregate the list by it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RendererKind {
-    Cast,
-    Dlna,
-    /// An AirPlay receiver (RAOP or AirPlay 2). Unlike Cast/DLNA it does not fetch
-    /// a URL — bae pushes decoded audio to it — but it shares the one device list.
-    AirPlay,
-}
+use crate::airplay::AirPlayCapabilities;
 
 /// A discovered remote renderer: enough to display it and to connect a channel.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +33,15 @@ impl RendererDevice {
             RendererConnection::Cast { .. } => RendererKind::Cast,
             RendererConnection::Dlna { .. } => RendererKind::Dlna,
             RendererConnection::AirPlay { .. } => RendererKind::AirPlay,
+        }
+    }
+
+    /// The device as the picker lists it.
+    pub fn listed(&self) -> CastDevice {
+        CastDevice {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            kind: self.kind(),
         }
     }
 }

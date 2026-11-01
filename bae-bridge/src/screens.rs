@@ -139,3 +139,14 @@ pulled_values! {
     },
     built by candidate_runtime
 }
+
+#[cfg(feature = "cast")]
+pulled_values! {
+    /// The receivers the cast picker lists, by name.
+    CastDevicesSubscription:
+        Vec<bae_core::renderer::CastDevice> => Vec<crate::types::BridgeCastDevice>,
+    converted by |devices: Vec<bae_core::renderer::CastDevice>| {
+        devices.into_iter().map(crate::types::BridgeCastDevice::from_core).collect::<Vec<_>>()
+    },
+    built by cast_devices
+}

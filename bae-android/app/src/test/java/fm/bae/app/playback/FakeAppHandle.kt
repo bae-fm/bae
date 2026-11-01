@@ -15,6 +15,7 @@ import uniffi.bae_bridge.BridgeAddedDeviceWatch
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
+import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerDetail
@@ -70,7 +71,7 @@ import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
-import uniffi.bae_bridge.CastDevicesCallback
+import uniffi.bae_bridge.CastDevicesSubscription
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigCallback
@@ -178,7 +179,7 @@ internal open class FakeAppHandle(
 
     override fun feedPinFileShares(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun subscribeCastDevices(callback: CastDevicesCallback): LiveSubscription = liveSubscription()
+    override fun subscribeCastDevices(): CastDevicesSubscription = FakeCastDevicesSubscription()
 
     override fun subscribeQueue(callback: QueueCallback): LiveSubscription = liveSubscription()
 
@@ -775,6 +776,21 @@ internal class FakeKeyedValueStream : KeyedValueStream(NoHandle) {
     override fun latest(key: ByteArray): BridgeFastValue? = null
 
     override fun cancel() = Unit
+}
+
+/** A cast device list nothing delivers: each pull waits until cancelled. */
+internal class FakeCastDevicesSubscription : CastDevicesSubscription(NoHandle) {
+    private val devices = Channel<List<BridgeCastDevice>>(Channel.UNLIMITED)
+
+    override suspend fun next(): List<BridgeCastDevice> = devices.receive()
+
+    override suspend fun cancel() {
+        devices.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        devices.close(BridgeException.Cancelled())
+    }
 }
 
 /** Playback values nothing delivers: each pull waits until cancelled. */

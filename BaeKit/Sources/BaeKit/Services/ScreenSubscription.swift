@@ -75,6 +75,7 @@ public final class ScreenSubscription<Source: PulledSubscription> {
 extension PlaybackValuesSubscription: PulledSubscription {}
 extension PlaybackTimelineSubscription: PulledSubscription {}
 extension QueueAdditionsSubscription: PulledSubscription {}
+extension CastDevicesSubscription: PulledSubscription {}
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}

@@ -381,7 +381,8 @@ impl RendererDiscovery {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::renderer::{RendererConnection, RendererKind};
+    use crate::renderer::RendererConnection;
+    use bae_core::renderer::RendererKind;
 
     fn cast_service(instance: &str, id: &str, addr: &str) -> ReportedRenderer {
         ReportedRenderer {

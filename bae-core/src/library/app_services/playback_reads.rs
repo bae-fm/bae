@@ -1,6 +1,6 @@
 //! The playback values on [`AppServices`], with the playing track's display
-//! read live from the library, the timeline, and the playback positions
-//! beside them.
+//! read live from the library, the timeline, the playback positions beside
+//! them, and the receivers the cast picker lists.
 
 use super::*;
 
@@ -36,5 +36,23 @@ impl AppServices {
     ) -> crate::library::LiveValues<crate::playback::PlaybackTimeline> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_playback_timeline())
+    }
+
+    /// The receivers the cast picker lists, by name: the first list at
+    /// once, then one after each write that changes it.
+    pub fn subscribe_cast_devices(
+        &self,
+    ) -> crate::library::LiveValues<Vec<crate::renderer::CastDevice>> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_cast_devices())
+    }
+
+    /// List `devices` as the cast picker's receivers in place of the last
+    /// list, in one write.
+    pub async fn show_cast_devices(
+        &self,
+        devices: Vec<crate::renderer::CastDevice>,
+    ) -> Result<(), crate::library::LibraryError> {
+        self.inner.manager.show_cast_devices(devices).await
     }
 }

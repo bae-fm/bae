@@ -155,6 +155,7 @@ pub use release_deletion::ReleaseDeletion;
 mod release_projection;
 mod release_queues;
 pub(crate) use release_queues::QueuedPayload;
+mod cast_devices;
 mod release_storage_action;
 pub(crate) use release_storage_action::StoredTransition;
 #[cfg(desktop)]

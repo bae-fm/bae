@@ -223,24 +223,16 @@ pub enum BridgeRendererKind {
 
 mirror_enum! {
     #[cfg(feature = "cast")]
-    BridgeRendererKind = bae_cast::renderer::RendererKind,
+    BridgeRendererKind = bae_core::renderer::RendererKind,
     from_core: fn,
     variants: { Cast, Dlna, AirPlay },
 }
 
-/// The conversion is only used by the cast-gated `get_cast_devices` handle fn.
-/// Not a `mirror_struct`: `kind` is bae-cast's own reading of the device rather
-/// than a field it carries.
-#[cfg(feature = "cast")]
-impl BridgeCastDevice {
-    pub(crate) fn from_core(device: bae_cast::renderer::RendererDevice) -> Self {
-        let kind = BridgeRendererKind::from_core(device.kind());
-        Self {
-            id: device.id,
-            name: device.name,
-            kind,
-        }
-    }
+mirror_struct! {
+    #[cfg(feature = "cast")]
+    BridgeCastDevice = bae_core::renderer::CastDevice,
+    from_core: pub(crate) fn,
+    fields: { id, name, kind: (BridgeRendererKind) },
 }
 
 /// A service type a renderer advertises itself on, tagging which mapping a
