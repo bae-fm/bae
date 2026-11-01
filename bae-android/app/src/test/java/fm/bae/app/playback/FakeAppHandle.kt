@@ -36,6 +36,7 @@ import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
+import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgePlaylist
 import uniffi.bae_bridge.BridgePlaylistEntry
@@ -83,7 +84,7 @@ import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.MembershipCallback
 import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.PlaybackTimelineCallback
+import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.PlaylistEntriesCallback
 import uniffi.bae_bridge.PlaylistsCallback
@@ -185,7 +186,7 @@ internal open class FakeAppHandle(
 
     override fun subscribeQueueAdditions(): QueueAdditionsSubscription = FakeQueueAdditionsSubscription()
 
-    override fun subscribePlaybackTimeline(callback: PlaybackTimelineCallback): LiveSubscription = liveSubscription()
+    override fun subscribePlaybackTimeline(): PlaybackTimelineSubscription = FakePlaybackTimelineSubscription()
 
     override fun feedPlaybackPositions(activity: KeyActivityCallback): KeyedValueStream = FakeKeyedValueStream()
 
@@ -803,5 +804,20 @@ internal class FakeQueueAdditionsSubscription : QueueAdditionsSubscription(NoHan
 
     override fun close() {
         additions.close(BridgeException.Cancelled())
+    }
+}
+
+/** Timelines nothing delivers: each pull waits until cancelled. */
+internal class FakePlaybackTimelineSubscription : PlaybackTimelineSubscription(NoHandle) {
+    private val timelines = Channel<BridgePlaybackTimeline>(Channel.UNLIMITED)
+
+    override suspend fun next(): BridgePlaybackTimeline = timelines.receive()
+
+    override suspend fun cancel() {
+        timelines.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        timelines.close(BridgeException.Cancelled())
     }
 }

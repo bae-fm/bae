@@ -53,16 +53,6 @@ pub struct PreviewTimelinePoint {
     pub moving: bool,
 }
 
-impl PlaybackTimeline {
-    pub(super) fn initial() -> Self {
-        Self {
-            library: None,
-            seek_revision: 0,
-            preview: None,
-        }
-    }
-}
-
 /// A line's identity and how fast it moves: a change to any of these is a
 /// new line whatever the position.
 trait Line {

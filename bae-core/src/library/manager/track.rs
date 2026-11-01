@@ -148,6 +148,20 @@ impl LibraryManager {
         self.database.playback_now_row()
     }
 
+    /// The row playback writes where it is into, for the surfaces that move
+    /// the position on themselves.
+    pub(crate) fn playback_timeline_row(&self) -> crate::db::PlaybackTimelineRow {
+        self.database.playback_timeline_row()
+    }
+
+    /// Follow where playback is, as the surfaces that move the position on
+    /// themselves read it.
+    pub(crate) fn subscribe_playback_timeline(
+        &self,
+    ) -> coven::LiveQuery<crate::playback::PlaybackTimeline> {
+        self.database.subscribe_playback_timeline()
+    }
+
     /// Follow what playback is doing as its screens show it; `None` while it
     /// names a track the library no longer holds.
     pub(crate) fn subscribe_now_playing(

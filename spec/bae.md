@@ -3277,14 +3277,18 @@ playback with the library zeroes the count, so no earlier addition is
 confirmed again. The app pulls a live query of that count, a value per
 addition, or the last one when several land before the app pulls again,
 and confirms it: the queue button's badge on macOS, a snackbar on Android.
-Its other values are live subscriptions: the timeline, the line of the playing
-track and of a preview, each a position and whether it moves on from it,
-sent only as playback leaves the line it holds (a seek, another track or
-clip, a pause or resume, a new length, the pregap ending, or a position more
-than a second off the line), for the operating system's media controls and
-Media3, which move the position on themselves; and the queue. Those surfaces
-show no time before a track's start, so a playing pregap is one line
-standing at the start, and the line that moves begins as the track does. The playing track's position and
+The timeline, for the operating system's media controls and Media3, which
+move the position on themselves, is another device-local row,
+`playback_timeline`: the line of the playing track and of a preview, each a
+position and whether it moves on from it, with how many seeks playback has
+applied. Playback writes it only as it leaves the line it holds (a seek,
+another track or clip, a pause or resume, a new length, the pregap ending, or
+a position more than a second off the line), before it tells anyone else,
+and starting playback with the library resets it to no line. The app pulls a
+live query of it, a value after each write. Those surfaces show no time
+before a track's start, so a playing pregap is one line standing at the
+start, and the line that moves begins as the track does. The queue is a live
+subscription of its own. The playing track's position and
 a preview's, which move as audio plays, reach an app only in a
 `KeyedValueStream` (§10.2): the track's under its id, with the seeks applied
 so far. A seek the person drops is held in front of the track's position

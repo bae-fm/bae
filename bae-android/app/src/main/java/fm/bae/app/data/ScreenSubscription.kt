@@ -7,8 +7,10 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueAddition
+import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.QueueAdditionsSubscription
 
@@ -60,6 +62,13 @@ class ScreenSubscription<Value>(
 fun PlaybackValuesSubscription.pulled(): PulledSubscription<BridgePlaybackValues> =
     object : PulledSubscription<BridgePlaybackValues> {
         override suspend fun next(): BridgePlaybackValues = this@pulled.next()
+
+        override suspend fun cancel() = this@pulled.cancel()
+    }
+
+fun PlaybackTimelineSubscription.pulled(): PulledSubscription<BridgePlaybackTimeline> =
+    object : PulledSubscription<BridgePlaybackTimeline> {
+        override suspend fun next(): BridgePlaybackTimeline = this@pulled.next()
 
         override suspend fun cancel() = this@pulled.cancel()
     }

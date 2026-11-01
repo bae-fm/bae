@@ -1,5 +1,6 @@
 //! The playback values on [`AppServices`], with the playing track's display
-//! read live from the library, and the playback positions beside them.
+//! read live from the library, the timeline, and the playback positions
+//! beside them.
 
 use super::*;
 
@@ -27,11 +28,13 @@ impl AppServices {
         self.inner.playback.subscribe_positions()
     }
 
-    /// Where playback is, for a surface that moves the position on itself:
-    /// a line it is told again only as playback leaves it.
+    /// Where playback is, for a surface that moves the position on itself,
+    /// read from the device's `playback_timeline` row: the first value at
+    /// once, then one each time playback leaves the line it holds.
     pub fn subscribe_playback_timeline(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::playback::PlaybackTimeline> {
-        self.inner.playback.subscribe_timeline()
+    ) -> crate::library::LiveValues<crate::playback::PlaybackTimeline> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_playback_timeline())
     }
 }

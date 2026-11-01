@@ -232,6 +232,9 @@ mod playback_now_tests;
 mod playback_queue_additions_tests;
 
 #[cfg(test)]
+mod playback_timeline_tests;
+
+#[cfg(test)]
 mod playback_queue_bench;
 
 #[cfg(test)]

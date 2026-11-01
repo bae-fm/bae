@@ -264,7 +264,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private var queueCallback: (any QueueCallback)?
     private let playbackValues = FakePlaybackValues()
     private let queueAdditions = FakeQueueAdditions()
-    private var timelineCallback: (any PlaybackTimelineCallback)?
+    private let timeline = FakePlaybackTimeline()
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -314,11 +314,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         queueAdditions
     }
 
-    override func subscribePlaybackTimeline(
-        callback: any PlaybackTimelineCallback
-    ) -> LiveSubscription {
-        timelineCallback = callback
-        return NoopLiveSubscription()
+    override func subscribePlaybackTimeline() -> PlaybackTimelineSubscription {
+        timeline
     }
 
     override func feedPlaybackPositions(
@@ -397,7 +394,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     }
 
     func deliverTimeline(_ timeline: BridgePlaybackTimeline) {
-        timelineCallback?.onValue(timeline: timeline)
+        self.timeline.deliver(timeline)
     }
 
 }
@@ -477,6 +474,31 @@ private final class FakePlaybackValues: PlaybackValuesSubscription,
     }
 
     override func cancel() async throws { values.cancel() }
+}
+
+/// Timelines a test hands the app one at a time.
+private final class FakePlaybackTimeline: PlaybackTimelineSubscription,
+    @unchecked Sendable
+{
+    private let timelines = PullQueue<BridgePlaybackTimeline>()
+
+    init() {
+        super.init(noHandle: PlaybackTimelineSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    func deliver(_ timeline: BridgePlaybackTimeline) {
+        timelines.deliver(timeline)
+    }
+
+    override func next() async throws -> BridgePlaybackTimeline {
+        try await timelines.next()
+    }
+
+    override func cancel() async throws { timelines.cancel() }
 }
 
 /// Queue additions a test hands the app one at a time.

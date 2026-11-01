@@ -49,7 +49,6 @@ import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCountsCallback
 import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.PlaybackTimelineCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
@@ -200,14 +199,7 @@ class OpenLibrary internal constructor(
             )
         screenSubscriptions += playbackValues(scope)
         screenSubscriptions += queueAdditions(scope)
-        valueSubscriptions +=
-            appHandle.subscribePlaybackTimeline(
-                object : PlaybackTimelineCallback {
-                    override fun onValue(timeline: uniffi.bae_bridge.BridgePlaybackTimeline) {
-                        scope.launch(Dispatchers.Main.immediate) { playback.applyTimeline(timeline) }
-                    }
-                },
-            )
+        screenSubscriptions += playbackTimeline(scope)
         streamFeeds += playback.trackPositions.feed(appHandle)
         valueSubscriptions +=
             appHandle.subscribeDownloadCounts(
@@ -292,6 +284,15 @@ class OpenLibrary internal constructor(
             onError = { error ->
                 subscriptionFailed("playback", error)?.let(playback.readFailures::failValues)
             },
+        )
+
+    /** Where playback is, for Media3, which moves the position on itself. */
+    private fun playbackTimeline(scope: CoroutineScope) =
+        ScreenSubscription(
+            appHandle.subscribePlaybackTimeline().pulled(),
+            scope,
+            onValue = playback::applyTimeline,
+            onError = { error -> subscriptionFailed("playback timeline", error)?.let(messages::show) },
         )
 
     /** Each time tracks go into Up Next, which the snackbar confirms. */

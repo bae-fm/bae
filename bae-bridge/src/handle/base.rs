@@ -49,15 +49,10 @@ impl AppHandle {
     /// the timeline now, then each time playback leaves the line it holds.
     pub fn subscribe_playback_timeline(
         &self,
-        callback: Box<dyn crate::types::PlaybackTimelineCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_playback_timeline(),
-            move |value| {
-                callback.on_value(crate::types::BridgePlaybackTimeline::from_core(
-                    value.clone(),
-                ))
-            },
+    ) -> std::sync::Arc<crate::PlaybackTimelineSubscription> {
+        crate::screens::playback_timeline(
+            self.services.subscribe_playback_timeline(),
+            self.runtime.clone(),
         )
     }
 
@@ -437,3 +432,7 @@ mod playback_values_tests;
 #[cfg(test)]
 #[path = "queue_additions_tests.rs"]
 mod queue_additions_tests;
+
+#[cfg(test)]
+#[path = "playback_timeline_tests.rs"]
+mod playback_timeline_tests;

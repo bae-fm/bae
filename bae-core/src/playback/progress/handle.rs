@@ -1,4 +1,4 @@
-use super::timeline::{PlaybackTimeline, TimelineFold};
+use super::timeline::TimelineFold;
 use super::{PlaybackPositions, PlaybackProgress, PlaybackValues};
 use bae_util::task_failure::caught_sync;
 use std::sync::{Arc, Mutex};
@@ -7,18 +7,19 @@ use tokio::sync::watch;
 use tracing::{error, info};
 /// Fans one progress stream out to every subscriber, writes what playback is
 /// doing into the device's `playback_now` row, and folds the stream into the
-/// positions and the timeline they make.
+/// positions and the timeline they make, which it writes into the device's
+/// `playback_timeline` row as it changes.
 #[derive(Clone)]
 pub struct PlaybackProgressHandle {
     subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>>,
     positions: watch::Receiver<PlaybackPositions>,
-    timeline: watch::Receiver<PlaybackTimeline>,
 }
 impl PlaybackProgressHandle {
     /// Spawn the fan-out task that takes each event from `progress_rx` in
     /// order: it writes the change the event makes to what playback is doing
     /// into `row`, folds the event into the positions and, read at `clock`'s
-    /// now, the timeline, then forwards it to every live subscriber. A panic
+    /// now, the timeline, writing a timeline that changed into
+    /// `timeline_row`, then forwards it to every live subscriber. A panic
     /// folding one event, or a failed write, is reported through
     /// `diagnostics`, and the fan-out forwards that event and serves the next.
     pub fn new(
@@ -26,13 +27,13 @@ impl PlaybackProgressHandle {
         runtime_handle: tokio::runtime::Handle,
         clock: crate::playback::PlaybackClockRef,
         row: crate::db::PlaybackNowRow,
+        timeline_row: crate::db::PlaybackTimelineRow,
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> Self {
         let subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>> =
             Arc::new(Mutex::new(Vec::new()));
         let subscriptions_clone = subscriptions.clone();
         let (positions_tx, positions) = watch::channel(PlaybackPositions::initial());
-        let (timeline_tx, timeline) = watch::channel(PlaybackTimeline::initial());
         runtime_handle.spawn(async move {
             // What the row holds, as starting playback left it and this
             // fan-out wrote it since: what each event is compared against.
@@ -46,23 +47,27 @@ impl PlaybackProgressHandle {
                             publish_change(&positions_tx, |positions| {
                                 positions.applying(&progress)
                             });
-                            if let Some(next) =
-                                fold.next(&positions_tx.borrow(), &values, clock.now())
-                            {
-                                timeline_tx.send_replace(next);
-                            }
-                            change
+                            let timeline =
+                                fold.next(&positions_tx.borrow(), &values, clock.now());
+                            (change, timeline)
                         });
                         match folded {
-                            Ok(Some(change)) => {
-                                if let Err(e) = row.apply(&change).await {
-                                    error!(
-                                        "couldn't write what playback is doing ({change:?}): {e}"
-                                    );
-                                    diagnostics.report_bug("write what playback is doing", &e);
+                            Ok((change, timeline)) => {
+                                if let Some(change) = change {
+                                    if let Err(e) = row.apply(&change).await {
+                                        error!(
+                                            "couldn't write what playback is doing ({change:?}): {e}"
+                                        );
+                                        diagnostics.report_bug("write what playback is doing", &e);
+                                    }
+                                }
+                                if let Some(timeline) = timeline {
+                                    if let Err(e) = timeline_row.write(&timeline).await {
+                                        error!("couldn't write where playback is ({timeline:?}): {e}");
+                                        diagnostics.report_bug("write where playback is", &e);
+                                    }
                                 }
                             }
-                            Ok(None) => {}
                             Err(failed) => {
                                 diagnostics.bug(failed);
                             }
@@ -80,7 +85,6 @@ impl PlaybackProgressHandle {
         Self {
             subscriptions,
             positions,
-            timeline,
         }
     }
     /// A receiver yielding every progress update. Dropping it unsubscribes (the
@@ -94,12 +98,6 @@ impl PlaybackProgressHandle {
     /// The playback positions, which change as audio plays.
     pub fn subscribe_positions(&self) -> watch::Receiver<PlaybackPositions> {
         self.positions.clone()
-    }
-
-    /// The timeline, which changes only as playback leaves the line it
-    /// holds.
-    pub fn subscribe_timeline(&self) -> watch::Receiver<PlaybackTimeline> {
-        self.timeline.clone()
     }
 }
 
@@ -141,6 +139,7 @@ mod tests {
             tokio::runtime::Handle::current(),
             Arc::new(crate::playback::ManualPlaybackClock::new(chrono::Utc::now())),
             db.playback_now_row(),
+            db.playback_timeline_row(),
             crate::diagnostics::Diagnostics::noop(),
         );
         (handle, progress_tx, db, tmp)
@@ -230,6 +229,47 @@ mod tests {
             Some(71)
         );
         assert_eq!(positions.seek_revision, 1);
+    }
+
+    /// A new line is in the timeline row by the time its event is
+    /// forwarded; a tick along the line it holds writes nothing.
+    #[tokio::test]
+    async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
+        let (handle, progress_tx, db, _tmp) = started().await;
+        let mut events = handle.subscribe_all();
+        let tick = |position_ms| PlaybackProgress::PositionUpdate {
+            track_id: "track-1".into(),
+            position_ms,
+            duration_ms: Some(100_000),
+            progress: position_ms as f64 / 100_000.0,
+        };
+        progress_tx
+            .send(PlaybackProgress::StateChanged {
+                state: crate::playback::PlaybackState::Playing {
+                    track: crate::playback::PlayingTrack {
+                        track_id: "track-1".into(),
+                        duration_ms: Some(100_000),
+                    },
+                },
+            })
+            .unwrap();
+        progress_tx.send(tick(10_000)).unwrap();
+        progress_tx.send(tick(10_200)).unwrap();
+        for _ in 0..3 {
+            next_event(&mut events).await;
+        }
+
+        let timeline = db.playback_timeline().await.unwrap();
+        assert_eq!(
+            timeline.library,
+            Some(crate::playback::TimelinePoint {
+                track_id: "track-1".into(),
+                position_ms: 10_000,
+                duration_ms: Some(100_000),
+                moving: true,
+            }),
+            "the tick along the line left the line as told"
+        );
     }
 
     /// The next event the fan-out forwards, which it writes and folds into

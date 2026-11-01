@@ -49,22 +49,6 @@ private final class SyncActivityValueSink: SyncActivityCallback,
     }
 }
 
-private final class PlaybackTimelineSink: PlaybackTimelineCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgePlaybackTimeline) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (BridgePlaybackTimeline) -> Void
-    ) {
-        self.apply = apply
-    }
-
-    func onValue(timeline: BridgePlaybackTimeline) {
-        Task { @MainActor in apply(timeline) }
-    }
-}
-
 private final class QueueValueSink: QueueCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeQueueSnapshot) -> Void
     private let fail: @MainActor @Sendable (any Error) -> Void
@@ -137,6 +121,8 @@ final class CommonSubscriptions {
     private let castStore: CastStore
     private var subscriptions: [LiveSubscription] = []
     private var playbackValues: ScreenSubscription<PlaybackValuesSubscription>?
+    private var playbackTimeline:
+        ScreenSubscription<PlaybackTimelineSubscription>?
     private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
@@ -178,6 +164,11 @@ final class CommonSubscriptions {
             onValue: applyPlayback,
             onError: onError
         )
+        playbackTimeline = ScreenSubscription(
+            appHandle.subscribePlaybackTimeline(),
+            onValue: applyTimeline,
+            onError: onError
+        )
         queueAdditions = ScreenSubscription(
             appHandle.subscribeQueueAdditions(),
             onValue: applyQueueAddition,
@@ -191,9 +182,6 @@ final class CommonSubscriptions {
         ]
         subscriptions =
             libraryStatusSubscriptions(onError: onError) + [
-                appHandle.subscribePlaybackTimeline(
-                    callback: PlaybackTimelineSink(apply: applyTimeline)
-                ),
                 appHandle.subscribeQueue(
                     callback: QueueValueSink(
                         apply: applyQueue,

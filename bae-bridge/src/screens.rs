@@ -99,6 +99,15 @@ pulled_values! {
 }
 
 pulled_values! {
+    /// Where playback is, for a surface that moves the position on itself:
+    /// the timeline now, then each time playback leaves the line it holds.
+    PlaybackTimelineSubscription:
+        bae_core::playback::PlaybackTimeline => crate::types::BridgePlaybackTimeline,
+    converted by crate::types::BridgePlaybackTimeline::from_core,
+    built by playback_timeline
+}
+
+pulled_values! {
     /// Each time tracks go into Up Next, with how many: one value per
     /// addition, none before the first since playback started with the
     /// library.
