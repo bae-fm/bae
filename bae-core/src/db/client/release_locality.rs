@@ -1,5 +1,6 @@
-//! A release's files move to the cloud, or stop moving, every file of the
-//! release together.
+//! A release's files move to the cloud, stop moving, give up their pins or
+//! become this device's own, every file of the release together, each in
+//! the write that ends the release's transition.
 use super::*;
 
 /// The moves this device is making of a release's files that can be
@@ -38,11 +39,54 @@ impl Database {
             .collect();
         self.call_sql(move |sql| {
             sql.move_to_cloud(moving)?;
-            sql.execute(
-                super::release_storage_action::END_RELEASE_STORAGE_ACTION,
-                [&release_id],
-            )?;
-            Ok(())
+            super::release_storage_action::end_transition_on(
+                &sql,
+                &release_id,
+                super::release_storage_action::StoredTransition::Upload,
+            )
+        })
+        .await
+    }
+
+    /// Release the pins on a release's files, `files`, and end its unpin
+    /// transition, in one write: the release shows Unpinning until its files
+    /// are evictable and never after. coven evicts each namespace down to its
+    /// budget in the same write.
+    pub(crate) async fn unpin_release(
+        &self,
+        release_id: &str,
+        files: Vec<coven::FileId>,
+    ) -> Result<(), DbError> {
+        let release_id = release_id.to_string();
+        self.call_sql(move |sql| {
+            sql.unpin(&files)?;
+            super::release_storage_action::end_transition_on(
+                &sql,
+                &release_id,
+                super::release_storage_action::StoredTransition::Unpin,
+            )
+        })
+        .await
+    }
+
+    /// Switch a release's files to this device only, each to the copy
+    /// `prepared` placed, which becomes the original coven records for it,
+    /// and end its make-local transition, in one write: the release shows
+    /// the transition until its files are here and never after. A write that
+    /// fails switches nothing, and coven removes the copies.
+    pub(crate) async fn make_release_local(
+        &self,
+        release_id: &str,
+        prepared: coven::PreparedDeviceOnly,
+    ) -> Result<(), DbError> {
+        let release_id = release_id.to_string();
+        self.call_sql(move |sql| {
+            sql.make_device_only(prepared)?;
+            super::release_storage_action::end_transition_on(
+                &sql,
+                &release_id,
+                super::release_storage_action::StoredTransition::DetachAudio,
+            )
         })
         .await
     }

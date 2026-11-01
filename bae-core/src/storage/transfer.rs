@@ -108,11 +108,7 @@ impl TransferService {
             ),
             move |_tx| async move {
                 library_manager
-                    .run_storage_action(
-                        &unpinned_release_id,
-                        crate::db::StoredTransition::Unpin,
-                        library_manager.unpin_release_files(&unpinned_release_id),
-                    )
+                    .unpin_release_files(&unpinned_release_id)
                     .await
             },
         );
@@ -144,15 +140,7 @@ impl TransferService {
                 // coven removes every copy and folder it made if the call
                 // fails or is cancelled before its write.
                 library_manager
-                    .run_storage_action(
-                        &localized_release_id,
-                        crate::db::StoredTransition::DetachAudio,
-                        library_manager.detach_release_audio_into(
-                            &localized_release_id,
-                            &new_path,
-                            &cancel,
-                        ),
-                    )
+                    .detach_release_audio_into(&localized_release_id, &new_path, &cancel)
                     .await
             },
         );

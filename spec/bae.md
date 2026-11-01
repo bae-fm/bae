@@ -1742,7 +1742,11 @@ are queued. Which transition a release is in is a device-local row: written
 in the write that admits a move to the cloud, an unpin or making the release
 local, which a release already in one refuses, and deleted as the transition
 ends, however it ends: a move's in the write that queues its files, an
-unpin's or a make-local's in a write after coven's own. A pin in flight is
+unpin's in the write that releases its pins, a make-local's in the write that
+switches its files, so the row and coven's change commit together and the
+release never shows a transition its files have finished; one whose work
+fails ends in a write of its own. That write refuses a release not in the
+transition it ends, and then changes no file. A pin in flight is
 the download queue's active entry. The storage rows and the album and
 release detail read the transition in their own query. No transition
 outlives the process that ran it, so the rows are emptied as the library
@@ -1836,9 +1840,9 @@ hands coven the folder and each file's path below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 coven downloads every file, checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
-is whole and synced. Then one write of coven's switches every file to Carol's
-device only, and coven records each copy as the file's original there; the
-release's rows don't change. Other devices see the files on Carol's device,
+is whole and synced. Then one write switches every file to Carol's device
+only, coven recording each copy as the file's original there, and ends the
+release's transition (§4.2); no synced row of the release changes. Other devices see the files on Carol's device,
 drop their pins and cached bytes of them, and can't play the release. The
 stored bytes go once nothing names them. A cancel or failure before that write
 removes every copy and every folder the call made, and leaves the release

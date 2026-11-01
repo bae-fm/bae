@@ -4,9 +4,30 @@
 use super::*;
 use crate::album_detail::ReleaseStorageAction;
 
-/// Ends the storage transition of the release `?1`.
-pub(super) const END_RELEASE_STORAGE_ACTION: &str =
-    "DELETE FROM release_storage_action WHERE release_id = ?1";
+/// Ends the storage transition of the release `?1`, whatever it is.
+const END_RELEASE_STORAGE_ACTION: &str = "DELETE FROM release_storage_action WHERE release_id = ?1";
+
+/// End `release_id`'s transition `action` in the write that finishes its
+/// work, so the release shows the transition until that work has committed
+/// and never after. A release not in `action` fails the write: the work
+/// would finish a transition nobody admitted.
+pub(super) fn end_transition_on(
+    sql: &CovenWrite<'_>,
+    release_id: &str,
+    action: StoredTransition,
+) -> Result<(), DbError> {
+    let ended = sql.execute(
+        "DELETE FROM release_storage_action WHERE release_id = ?1 AND action = ?2",
+        params![release_id, action.column()],
+    )?;
+    if ended == 0 {
+        return Err(DbError::Message(format!(
+            "release {release_id} is not in the {} transition its write ends",
+            action.column()
+        )));
+    }
+    Ok(())
+}
 
 /// The transition the release `release` (an SQL expression naming its id)
 /// is in, as [`transfer_action_column`] reads it: its row here, else `pin`
@@ -82,8 +103,8 @@ impl Database {
         .await
     }
 
-    /// End `release_id`'s transition, in one write. A release in none is
-    /// passed over.
+    /// End `release_id`'s transition, in one write of its own, after its work
+    /// failed. A release in none is passed over.
     pub(crate) async fn end_release_storage_action(&self, release_id: &str) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         self.call(move |sql| {

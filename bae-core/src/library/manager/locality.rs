@@ -16,27 +16,22 @@ impl LibraryManager {
         // coven keeps the files here once stored when `pin` asks it to.
         self.run_file_operation("attach release", move |_closing| async move {
             manager
-                .begin_storage_action(&release_id, crate::db::StoredTransition::Upload)
-                .await?;
-            let attached = caught("upload a release", async {
-                Ok(manager
-                    .database
-                    .attach_release_files(&release_id, pin)
-                    .await?)
-            })
-            .await
-            .unwrap_or_else(|failed| Err(manager.bug(failed).into()));
-            match attached {
-                Ok(()) => Ok(()),
-                failed => manager.end_storage_action(&release_id, failed).await,
-            }
+                .run_storage_action(&release_id, crate::db::StoredTransition::Upload, async {
+                    Ok(manager
+                        .database
+                        .attach_release_files(&release_id, pin)
+                        .await?)
+                })
+                .await
         })
         .await
     }
 
     /// Run `work` as `release_id`'s transition `action`: its row is written
-    /// before the work starts, refused while the release is in another, and
-    /// deleted once the work ends, whether it succeeds, fails or panics.
+    /// before the work starts, refused while the release is in another. The
+    /// write that finishes the work deletes the row, so the release shows the
+    /// transition exactly until its files have changed; a work that fails or
+    /// panics has its row deleted in a write of its own.
     pub(crate) async fn run_storage_action<T>(
         &self,
         release_id: &str,
@@ -47,7 +42,10 @@ impl LibraryManager {
         let outcome = caught("run a release's storage transition", work)
             .await
             .unwrap_or_else(|failed| Err(self.bug(failed).into()));
-        self.end_storage_action(release_id, outcome).await
+        match outcome {
+            Ok(done) => Ok(done),
+            Err(error) => Err(self.end_failed_storage_action(release_id, error).await),
+        }
     }
 
     async fn begin_storage_action(
@@ -67,37 +65,36 @@ impl LibraryManager {
         }
     }
 
-    /// End `release_id`'s transition, which ended in `outcome`. A write that
-    /// fails is reported as a bug and fails the call, beside the work's own
-    /// failure: the row stays until the library next opens.
-    async fn end_storage_action<T>(
+    /// End `release_id`'s transition, whose work failed with `operation`,
+    /// and return the failure the call reports. A write that fails is
+    /// reported as a bug and joins the work's own failure: the row stays
+    /// until the library next opens.
+    async fn end_failed_storage_action(
         &self,
         release_id: &str,
-        outcome: Result<T, LibraryError>,
-    ) -> Result<T, LibraryError> {
+        operation: LibraryError,
+    ) -> LibraryError {
         let Err(error) = self.database.end_release_storage_action(release_id).await else {
-            return outcome;
+            return operation;
         };
         let cleanup = LibraryError::from(error);
         self.report_bug(
             "end a release's storage transition",
             &bae_util::error_text::CauseChain(&cleanup),
         );
-        Err(match outcome {
-            Ok(_) => cleanup,
-            Err(operation) => LibraryError::Cleanup {
-                operation: Box::new(operation),
-                cleanup: Box::new(cleanup),
-            },
-        })
+        LibraryError::Cleanup {
+            operation: Box::new(operation),
+            cleanup: Box::new(cleanup),
+        }
     }
 
     /// Make an uploaded release local again into `new_path`, a folder the
-    /// person picked: coven downloads each file there, at the path its names
-    /// give, and switches every file to this device only in one write, each
-    /// copy becoming the original it records. A failure or a cancel before
-    /// that write removes every copy and folder the call made, and the
-    /// release stays in the cloud.
+    /// person picked, as the release's make-local transition: coven
+    /// downloads each file there, at the path its names give, then one write
+    /// switches every file to this device only, each copy becoming the
+    /// original it records, and ends the transition. A failure or a cancel
+    /// before that write removes every copy and folder the call made, and
+    /// the release stays in the cloud.
     pub async fn detach_release_audio_into(
         &self,
         release_id: &str,
@@ -109,25 +106,41 @@ impl LibraryManager {
         let cancel_on_drop = operation.clone().drop_guard();
         let manager = self.clone();
         let folder = new_path.to_path_buf();
+        let release_id = release_id.to_string();
         let result = self
             .run_file_operation("make release local", move |closing| async move {
-                let (stop, stopped) = tokio::sync::watch::channel(false);
-                let call = manager.database.make_device_only(&folder, files, &stopped);
-                tokio::pin!(call);
-                // A cancel that came first stops the call before it starts.
-                let result = tokio::select! {
-                    biased;
-                    _ = operation.cancelled() => {
-                        stop.send_replace(true);
-                        call.await
-                    }
-                    _ = closing.cancelled() => {
-                        stop.send_replace(true);
-                        call.await
-                    }
-                    result = &mut call => result,
-                };
-                result.map_err(|error| LibraryError::MakeLocal(Box::new(error)))
+                manager
+                    .run_storage_action(
+                        &release_id,
+                        crate::db::StoredTransition::DetachAudio,
+                        async {
+                            let (stop, stopped) = tokio::sync::watch::channel(false);
+                            let call = manager
+                                .database
+                                .prepare_device_only(&folder, files, &stopped);
+                            tokio::pin!(call);
+                            // A cancel that came first stops the call before
+                            // it starts.
+                            let prepared = tokio::select! {
+                                biased;
+                                _ = operation.cancelled() => {
+                                    stop.send_replace(true);
+                                    call.await
+                                }
+                                _ = closing.cancelled() => {
+                                    stop.send_replace(true);
+                                    call.await
+                                }
+                                result = &mut call => result,
+                            }
+                            .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
+                            Ok(manager
+                                .database
+                                .make_release_local(&release_id, prepared)
+                                .await?)
+                        },
+                    )
+                    .await
             })
             .await;
         cancel_on_drop.disarm();

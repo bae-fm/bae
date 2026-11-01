@@ -1,6 +1,6 @@
 //! A release's storage transition is its `release_storage_action` row: the
-//! storage and detail reads show it from the row, and the row goes however
-//! the transition's work ends.
+//! storage and detail reads show it from the row, and the row goes in the
+//! write that finishes the transition's work, or after a failure.
 
 use super::*;
 use crate::album_detail::{ReleaseStorageAction, StorageRowStatus};
@@ -154,10 +154,12 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         .expect("tear the application down");
 }
 
-/// A transition's row is there while its work runs and gone once the work
-/// ends, whether it succeeds, fails or panics.
+/// A transition's row is there while its work runs; a work that fails or
+/// panics has it deleted in a write of its own. A work that succeeds deletes
+/// it in the write that finishes it, as the unpin and make-local tests below
+/// show.
 #[tokio::test]
-async fn a_transition_ends_however_its_work_ends() {
+async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let shown = || async {
         manager
@@ -167,27 +169,20 @@ async fn a_transition_ends_however_its_work_ends() {
             .unwrap()
     };
 
-    let ran = manager
-        .run_storage_action(&release.id, StoredTransition::DetachAudio, async {
-            Ok(shown().await)
-        })
-        .await
-        .unwrap();
-    assert_eq!(
-        ran,
-        Some(ReleaseStorageAction::DetachAudio),
-        "the row is there while it runs"
-    );
-    assert_eq!(shown().await, None, "a success ends it");
-
     let failed = manager
         .run_storage_action(&release.id, StoredTransition::Unpin, async {
-            Err::<(), _>(LibraryError::Storage("the work failed".into()))
+            Err::<(), _>(LibraryError::Storage(format!(
+                "the work failed, showing {:?}",
+                shown().await
+            )))
         })
         .await;
+    let Err(LibraryError::Storage(failure)) = failed else {
+        panic!("{failed:?}");
+    };
     assert!(
-        matches!(failed, Err(LibraryError::Storage(_))),
-        "{failed:?}"
+        failure.ends_with("Some(Unpin)"),
+        "the row is there while it runs: {failure}"
     );
     assert_eq!(shown().await, None, "a failure ends it");
 
@@ -201,6 +196,139 @@ async fn a_transition_ends_however_its_work_ends() {
         .await;
     assert!(panicked.is_err());
     assert_eq!(shown().await, None, "a panic ends it");
+}
+
+/// Unpinning releases a release's pins in the write that ends its
+/// transition: a write that can't end it releases nothing, so the release
+/// never shows the unpin once its files are evictable.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("kept"),
+        "Kept",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    manager.upload_release(&release.id, true).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+    wait_for_kept_release(&manager, &release.id).await;
+    let file = release_files(&manager, &release.id).await.remove(0);
+    let pinned =
+        || async { file_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file.id).await };
+    assert!(pinned().await);
+
+    let refused = manager
+        .database
+        .unpin_release(&release.id, vec![file.file])
+        .await;
+    assert!(
+        refused.is_err(),
+        "no unpin was admitted for the write to end"
+    );
+    assert!(
+        pinned().await,
+        "a write that can't end the transition releases no pin"
+    );
+
+    manager.unpin_release(&release.id).await.unwrap();
+    assert!(!pinned().await, "the unpin released the pin");
+    assert_eq!(
+        manager
+            .database
+            .release_transfer_action(&release.id)
+            .await
+            .unwrap(),
+        None,
+        "and ended the transition"
+    );
+}
+
+/// Making a release local switches its files in the write that ends its
+/// transition: a write that can't end it switches nothing, so the release
+/// never shows the transition once its files are here.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("uploaded"),
+        "Uploaded",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    manager.upload_release(&release.id, false).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+    let files = release_files(&manager, &release.id).await;
+    assert!(files.iter().all(|file| file.stored));
+
+    let refused_folder = temp_dir.path().join("refused");
+    std::fs::create_dir(&refused_folder).unwrap();
+    let paths = files
+        .iter()
+        .map(|file| {
+            let path = crate::storage::stored_name::file_path(
+                &release.id,
+                &file.id,
+                &file.original_filename,
+            )
+            .unwrap();
+            (file.file, path)
+        })
+        .collect();
+    let (_stop, stopped) = tokio::sync::watch::channel(false);
+    let prepared = manager
+        .database
+        .prepare_device_only(&refused_folder, paths, &stopped)
+        .await
+        .unwrap();
+    let refused = manager
+        .database
+        .make_release_local(&release.id, prepared)
+        .await;
+    assert!(
+        refused.is_err(),
+        "no make-local was admitted for the write to end"
+    );
+    assert!(
+        release_files(&manager, &release.id)
+            .await
+            .iter()
+            .all(|file| file.stored),
+        "a write that can't end the transition switches no file"
+    );
+
+    let folder = temp_dir.path().join("local");
+    std::fs::create_dir(&folder).unwrap();
+    manager
+        .detach_release_audio_into(
+            &release.id,
+            &folder,
+            &crate::library::CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+    assert!(
+        release_files(&manager, &release.id)
+            .await
+            .iter()
+            .all(|file| !file.stored),
+        "making it local switched every file here"
+    );
+    assert_eq!(
+        manager
+            .database
+            .release_transfer_action(&release.id)
+            .await
+            .unwrap(),
+        None,
+        "and ended the transition"
+    );
 }
 
 /// A release in a transition refuses another, whose work never runs, and

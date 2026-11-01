@@ -266,19 +266,19 @@ impl Database {
         self.inner.handle.open_file_stream(file).await
     }
 
-    /// Download these cloud files to their paths under `folder` and switch
-    /// them all to this device only in one write, each copy becoming the
-    /// original coven records for its file. A failure or a cancel removes
-    /// every copy and folder the call made.
-    pub(crate) async fn make_device_only(
+    /// Download these cloud files to their paths under `folder`, for a write
+    /// to switch them all to this device only with
+    /// [`Self::make_release_local`]. A failure or a cancel removes every copy
+    /// and folder the call made.
+    pub(crate) async fn prepare_device_only(
         &self,
         folder: &std::path::Path,
         files: Vec<(coven::FileId, coven::RelativePath)>,
         cancel: &tokio::sync::watch::Receiver<bool>,
-    ) -> Result<(), coven::DeviceOnlyError> {
+    ) -> Result<coven::PreparedDeviceOnly, coven::DeviceOnlyError> {
         self.inner
             .handle
-            .make_device_only(folder, files, cancel, |_| {})
+            .prepare_device_only(folder, files, cancel, |_| {})
             .await
     }
 

@@ -179,18 +179,21 @@ impl LibraryManager {
         )
     }
 
-    /// Unpin a remote release's files: coven moves every file from
-    /// the pinned cache to the evictable cache (still readable, now
-    /// droppable). No cloud read, no bae flag. The low-level cache op behind the
-    /// "Unpin" transition.
+    /// Unpin a remote release's files, as the release's unpin transition:
+    /// coven moves every file from the pinned cache to the evictable cache
+    /// (still readable, now droppable) in the write that ends the
+    /// transition. No cloud read.
     pub(crate) async fn unpin_release_files(&self, release_id: &str) -> Result<(), LibraryError> {
-        let files: Vec<coven::FileId> = self
-            .release_pinnable_files(release_id)
-            .await?
-            .iter()
-            .map(|entry| entry.file.id())
-            .collect();
-        Ok(self.database.unpin(&files).await?)
+        self.run_storage_action(release_id, crate::db::StoredTransition::Unpin, async {
+            let files: Vec<coven::FileId> = self
+                .release_pinnable_files(release_id)
+                .await?
+                .iter()
+                .map(|entry| entry.file.id())
+                .collect();
+            Ok(self.database.unpin_release(release_id, files).await?)
+        })
+        .await
     }
 
     /// Store a bae-produced host-provided image and its row in one coven batch.
