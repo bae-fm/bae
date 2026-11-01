@@ -231,24 +231,17 @@ pub(super) fn replace_source_release_on(
                     ],
                 )?;
             }
-            for (ordinal, link) in album_links.read().iter().enumerate() {
-                let columns = super::album_link_rows::StatementColumns::of(&link.stated);
+            for (ordinal, album) in album_links.read().iter().enumerate() {
                 sql.execute(
                     "INSERT INTO source_release_album_link \
-                         (catalog, release_id, ordinal, album_catalog, album_key, stated, \
-                          wikidata_item, musicbrainz_release, release_catalog, release_key) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                         (catalog, release_id, ordinal, album_catalog, album_key) \
+                     VALUES (?, ?, ?, ?, ?)",
                     params![
                         catalog,
                         key,
                         ordinal as i64,
-                        link.album.catalog.as_str(),
-                        link.album.key,
-                        columns.stated,
-                        columns.wikidata_item,
-                        columns.musicbrainz_release,
-                        columns.release.map(|release| release.catalog.as_str()),
-                        columns.release.map(|release| release.key.as_str()),
+                        album.catalog.as_str(),
+                        album.key,
                     ],
                 )?;
             }
@@ -553,25 +546,18 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
             album_links: match album_links.as_deref() {
                 Some(ALBUM_LINKS_READ) => AlbumLinks::Read(
                     sql.query(
-                        "SELECT album_catalog, album_key, stated, wikidata_item, \
-                                musicbrainz_release, release_catalog, release_key \
-                         FROM source_release_album_link \
+                        "SELECT album_catalog, album_key FROM source_release_album_link \
                          WHERE catalog = ? AND release_id = ? ORDER BY ordinal",
                         params![catalog, key],
                         |row| {
                             Ok(super::album_link_rows::AlbumLinkRow {
                                 catalog: row.get(0)?,
                                 key: row.get(1)?,
-                                stated: row.get(2)?,
-                                wikidata_item: row.get(3)?,
-                                musicbrainz_release: row.get(4)?,
-                                release_catalog: row.get(5)?,
-                                release_key: row.get(6)?,
                             })
                         },
                     )?
                     .into_iter()
-                    .map(super::album_link_rows::AlbumLinkRow::link)
+                    .map(super::album_link_rows::AlbumLinkRow::album)
                     .collect::<Result<_, DbError>>()?,
                 ),
                 Some(ALBUM_LINKS_UNREAD) => AlbumLinks::Unread,

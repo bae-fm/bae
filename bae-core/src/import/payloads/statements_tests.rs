@@ -2,7 +2,7 @@
 //! Discogs, strongest first.
 
 use super::*;
-use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
+use crate::import::album_links::AlbumLinks;
 use crate::import::source_release::{UnfetchedDocument, UnfetchedReason};
 use serde_json::json;
 
@@ -61,18 +61,8 @@ fn discogs_release(id: u64, master: Option<u64>) -> SourcePayload {
     )
 }
 
-fn link(master: &str, stated: AlbumStatement) -> AlbumLink {
-    AlbumLink {
-        album: MetadataRef::new(Catalog::Discogs, master),
-        stated,
-    }
-}
-
-fn through(twin: &str) -> AlbumStatement {
-    AlbumStatement::Release {
-        musicbrainz_release: "mb-release".to_string(),
-        twin: MetadataRef::new(Catalog::Discogs, twin),
-    }
+fn master(key: &str) -> MetadataRef {
+    MetadataRef::new(Catalog::Discogs, key)
 }
 
 #[test]
@@ -91,7 +81,7 @@ fn the_group_page_is_taken_over_every_weaker_statement() {
     );
     assert_eq!(
         payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![link("201", AlbumStatement::Page)])
+        AlbumLinks::Read(vec![master("201")])
     );
 }
 
@@ -100,7 +90,7 @@ fn the_group_relations_the_release_embeds_are_its_page() {
     let payloads = release(&[], Some(&["https://www.discogs.com/master/201"]), vec![]);
     assert_eq!(
         payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![link("201", AlbumStatement::Page)])
+        AlbumLinks::Read(vec![master("201")])
     );
 }
 
@@ -117,12 +107,7 @@ fn a_wikidata_item_the_page_links_is_taken_over_a_release_link() {
     );
     assert_eq!(
         payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![link(
-            "202",
-            AlbumStatement::Wikidata {
-                item: "Q1".to_string()
-            }
-        )])
+        AlbumLinks::Read(vec![master("202")])
     );
 }
 
@@ -135,7 +120,7 @@ fn a_linked_release_names_its_master_when_nothing_stronger_does() {
     );
     assert_eq!(
         payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![link("101", through("11"))])
+        AlbumLinks::Read(vec![master("101")])
     );
 }
 
@@ -170,7 +155,7 @@ fn linked_releases_name_one_master_only_when_every_one_was_read() {
     );
     assert_eq!(
         both.album_statements().unwrap(),
-        AlbumLinks::Read(vec![link("101", through("11"))])
+        AlbumLinks::Read(vec![master("101")])
     );
 }
 

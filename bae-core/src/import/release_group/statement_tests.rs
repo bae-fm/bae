@@ -1,24 +1,17 @@
-//! How the statements that say what a MusicBrainz album is on Discogs put
-//! the two catalogs' albums on one card — whichever statement it is, through
-//! the same album link — how the release a release links sits on the row of
-//! the release that names it, and how a card names the album on a catalog it
-//! holds no record of.
+//! How the albums statements say a MusicBrainz album is on Discogs put the
+//! two catalogs' albums on one card, how the release a release links sits on
+//! the row of the release that names it, and how a card names the album on a
+//! catalog it holds no record of.
 
 use super::tests::*;
 use super::*;
-use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
+use crate::import::album_links::AlbumLinks;
 
 /// `release`'s group is `master` on Discogs because `release` links `twin`
 /// and `twin`'s own document files it under `master`.
 fn stated_through(mut release: MetadataResult, twin: &str, master: &str) -> MetadataResult {
     release.links = vec![MetadataRef::new(Catalog::Discogs, twin)];
-    release.album_links = AlbumLinks::Read(vec![AlbumLink {
-        album: MetadataRef::new(Catalog::Discogs, master),
-        stated: AlbumStatement::Release {
-            musicbrainz_release: release.release_id.clone(),
-            twin: MetadataRef::new(Catalog::Discogs, twin),
-        },
-    }]);
+    release.album_links = AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, master)]);
     release
 }
 
@@ -73,31 +66,12 @@ fn a_twin_under_another_master_joins_no_listed_album() {
     assert_eq!(rows(&groups[1..]), vec![vec!["dg-eu-1"]]);
 }
 
-/// A Wikidata item's statement joins through the same album link a page's
-/// does.
-#[test]
-fn a_wikidata_statement_joins_the_albums_as_a_page_does() {
-    let mut stated = mb("mb-1", Some("group-a"), Some(2006));
-    stated.album_links = AlbumLinks::Read(vec![AlbumLink {
-        album: MetadataRef::new(Catalog::Discogs, "master-7"),
-        stated: AlbumStatement::Wikidata {
-            item: "Q1".to_string(),
-        },
-    }]);
-    let groups = grouped(vec![stated, discogs("dg-1", Some("master-7"), Some(2007))]);
-    assert_eq!(groups.len(), 1);
-    assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
-}
-
 /// The album a record's page names on Discogs is on the card's header, with
 /// its page, though no Discogs release is on the list.
 #[test]
 fn a_card_names_the_album_its_links_state_on_a_catalog_it_has_no_row_of() {
     let mut stated = mb("mb-1", Some("group-a"), Some(1986));
-    stated.album_links = AlbumLinks::Read(vec![AlbumLink {
-        album: MetadataRef::new(Catalog::Discogs, "8522"),
-        stated: AlbumStatement::Page,
-    }]);
+    stated.album_links = AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "8522")]);
     let groups = grouped(vec![stated, mb("mb-2", Some("group-a"), None)]);
     assert_eq!(groups.len(), 1);
     assert_eq!(

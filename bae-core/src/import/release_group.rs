@@ -312,7 +312,7 @@ pub type Judged = (MetadataResult, Agreements);
 impl Bucket {
     /// Whether a statement read about this bucket's album names `other`'s
     /// album as the same: one of its releases carries it among its album
-    /// links, whichever statement read it.
+    /// links.
     fn links(&self, other: &Bucket, releases: &[MetadataResult]) -> bool {
         let Some(group_id) = &other.source_group_id else {
             return false;
@@ -637,12 +637,12 @@ fn build_group(
         .collect();
     // An album a record's statements name on a catalog the card holds no
     // record of is still the album's: the card names it with its page.
-    for link in members.iter().flat_map(|&at| read(at).album_links.read()) {
-        let catalog = link.album.catalog;
+    for album in members.iter().flat_map(|&at| read(at).album_links.read()) {
+        let catalog = album.catalog;
         if !sources.iter().any(|source| source.source == catalog) {
             sources.push(ReleaseGroupSource {
                 source: catalog,
-                group_url: catalog.group_url(&link.album.key),
+                group_url: catalog.group_url(&album.key),
                 album_links_unread: false,
             });
         }

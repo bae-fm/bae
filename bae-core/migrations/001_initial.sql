@@ -3472,33 +3472,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_link (
 
 -- Every other catalog's album a statement names as a matched record's album
 -- (the Discogs masters a MusicBrainz release group is), for a match whose
--- album_links is 'read'. `stated` says how: 'page', the group's page links it;
--- 'wikidata', the Wikidata item the group's page links states it; 'release',
--- a release of the group (`musicbrainz_release`) links a twin release
--- (`release_catalog`, `release_key`) whose own document files it under the
--- album. Where none of those names an album, the list the group was read with
--- may: 'barcode', a release of the group on the list and a release of the
--- album on the list (`release_catalog`, `release_key`) print one barcode;
--- 'catalog_number', they print one catalog number under one label.
+-- album_links is 'read', in the order the statements were read, strongest
+-- first. Which statement named it is not kept.
 CREATE TABLE IF NOT EXISTS import_candidate_match_album_link (
     content_hash        TEXT NOT NULL,
     position            INTEGER NOT NULL,
     ordinal             INTEGER NOT NULL CHECK (ordinal >= 0),
     catalog             TEXT NOT NULL CHECK (catalog <> ''),
     key                 TEXT NOT NULL CHECK (key <> ''),
-    stated              TEXT NOT NULL
-        CHECK (stated IN ('page', 'wikidata', 'release', 'barcode', 'catalog_number')),
-    wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
-    musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
-    release_catalog     TEXT CHECK (release_catalog IS NULL OR release_catalog <> ''),
-    release_key         TEXT CHECK (release_key IS NULL OR release_key <> ''),
     PRIMARY KEY (content_hash, position, ordinal),
     FOREIGN KEY (content_hash, position)
-        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE,
-    CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
-    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (musicbrainz_release IS NOT NULL)),
-    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_catalog IS NOT NULL)),
-    CHECK ((stated IN ('release', 'barcode', 'catalog_number')) = (release_key IS NOT NULL))
+        REFERENCES import_candidate_match (content_hash, position) ON DELETE CASCADE
 ) STRICT;
 
 -- A matched record's media, one row per medium or format entry as the match's
@@ -5190,30 +5174,20 @@ CREATE TABLE IF NOT EXISTS source_release_link (
 ) STRICT;
 
 -- Each album on another catalog a MusicBrainz release's documents name as its
--- album, for a release whose album_links is 'read', in statement order and in
--- the columns import_candidate_match_album_link uses. `stated` says how:
--- 'page', its release group's page or its own links it; 'wikidata', a
--- Wikidata item that page links states it; 'release', the release
--- (`musicbrainz_release`) links a twin release (`release_catalog`,
--- `release_key`) whose own document files it under the album.
+-- album, for a release whose album_links is 'read', in the order the
+-- statements were read, strongest first: its release group's page or its own
+-- links it; a Wikidata item that page links states it; or the release links a
+-- twin release whose own document files it under the album. Which statement
+-- named it is not kept.
 CREATE TABLE IF NOT EXISTS source_release_album_link (
     catalog             TEXT NOT NULL CHECK (catalog = 'musicbrainz'),
     release_id          TEXT NOT NULL,
     ordinal             INTEGER NOT NULL CHECK (ordinal >= 0),
     album_catalog       TEXT NOT NULL CHECK (album_catalog <> '' AND album_catalog <> 'musicbrainz'),
     album_key           TEXT NOT NULL CHECK (album_key <> ''),
-    stated              TEXT NOT NULL CHECK (stated IN ('page', 'wikidata', 'release')),
-    wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
-    musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
-    release_catalog     TEXT CHECK (release_catalog IS NULL OR release_catalog <> ''),
-    release_key         TEXT CHECK (release_key IS NULL OR release_key <> ''),
     PRIMARY KEY (catalog, release_id, ordinal),
     FOREIGN KEY (catalog, release_id)
-        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE,
-    CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
-    CHECK ((stated = 'release') = (musicbrainz_release IS NOT NULL)),
-    CHECK ((stated = 'release') = (release_catalog IS NOT NULL)),
-    CHECK ((stated = 'release') = (release_key IS NOT NULL))
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
 
 -- A Discogs release's format entries that are media, in order: the carrier (a

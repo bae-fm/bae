@@ -13,7 +13,7 @@
 //! pressing is what `pressing_evidence` weighs, and a year or country they
 //! disagree on keeps them two rows of the one album.
 
-use super::{names_other_album, AlbumLink, AlbumStatement, Found};
+use super::{names_other_album, Found};
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataRef;
 use bae_catalogs::catalog::Catalog;
@@ -73,11 +73,11 @@ impl Printed {
     }
 }
 
-/// The albums `group`'s releases on `list` are, as what they print says,
-/// each with the release pair that says it: the other catalogs' releases on
-/// the list printing a barcode one of the group's releases prints, and —
-/// where none does — printing one of its catalog numbers under the same label.
-pub(super) fn albums(group: &str, list: &[&MetadataResult]) -> Vec<AlbumLink> {
+/// The albums `group`'s releases on `list` are, as what they print says:
+/// those of the other catalogs' releases on the list printing a barcode one
+/// of the group's releases prints, and — where none does — printing one of
+/// its catalog numbers under the same label.
+pub(super) fn albums(group: &str, list: &[&MetadataResult]) -> Vec<MetadataRef> {
     let mut ours: Vec<(&MetadataResult, Printed)> = Vec::new();
     let mut theirs: Vec<(&MetadataResult, Printed)> = Vec::new();
     for &result in list {
@@ -100,27 +100,11 @@ pub(super) fn albums(group: &str, list: &[&MetadataResult]) -> Vec<AlbumLink> {
             side.push((result, Printed::of(result)));
         }
     }
-    let by_barcode = pairs(
-        &ours,
-        &theirs,
-        Printed::shares_barcode,
-        |musicbrainz_release, release| AlbumStatement::Barcode {
-            musicbrainz_release,
-            release,
-        },
-    );
+    let by_barcode = pairs(&ours, &theirs, Printed::shares_barcode);
     if !by_barcode.is_empty() {
         return by_barcode;
     }
-    pairs(
-        &ours,
-        &theirs,
-        Printed::shares_catalog_number,
-        |musicbrainz_release, release| AlbumStatement::CatalogNumber {
-            musicbrainz_release,
-            release,
-        },
-    )
+    pairs(&ours, &theirs, Printed::shares_catalog_number)
 }
 
 /// The albums of `theirs` that `shares` pairs with one of `ours`, and whose
@@ -129,26 +113,19 @@ fn pairs(
     ours: &[(&MetadataResult, Printed)],
     theirs: &[(&MetadataResult, Printed)],
     shares: fn(&Printed, &Printed) -> bool,
-    stated: fn(String, MetadataRef) -> AlbumStatement,
-) -> Vec<AlbumLink> {
+) -> Vec<MetadataRef> {
     let mut found = Found::default();
-    for (our, our_print) in ours {
+    for (_, our_print) in ours {
         for (their, their_print) in theirs {
             let Some(album) = &their.source_group_id else {
                 continue;
             };
             if shares(our_print, their_print) && our_print.shares_title_word(their_print) {
-                found.push(
-                    MetadataRef::new(their.source, album.clone()),
-                    stated(
-                        our.release_id.clone(),
-                        MetadataRef::new(their.source, their.release_id.clone()),
-                    ),
-                );
+                found.push(MetadataRef::new(their.source, album.clone()));
             }
         }
     }
-    found.links
+    found.albums
 }
 
 #[cfg(test)]

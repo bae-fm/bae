@@ -344,7 +344,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, SearchProgress,
         SignalsContext,
     };
-    use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
+    use crate::import::album_links::AlbumLinks;
     use crate::import::{MetadataRef, SourcePayload};
 
     let (inner, _tmp) = setup_inner().await;
@@ -400,10 +400,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         track_titles: Vec::new(),
         notes: Vec::new(),
         links: Vec::new(),
-        album_links: AlbumLinks::Read(vec![AlbumLink {
-            album: MetadataRef::new(Catalog::Discogs, "909"),
-            stated: AlbumStatement::Page,
-        }]),
+        album_links: AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "909")]),
     };
     let (event_tx, _event_rx) = mpsc::unbounded_channel();
     let driver = Driver {

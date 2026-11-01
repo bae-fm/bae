@@ -106,7 +106,7 @@ async fn a_stored_verdict_keeps_no_track_titles_or_notes() {
 /// groups as its run did.
 #[tokio::test]
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
-    use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
+    use crate::import::album_links::AlbumLinks;
     use crate::import::MetadataRef;
     use bae_catalogs::catalog::Catalog;
     use bae_types::pressing::{
@@ -133,37 +133,9 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         MetadataRef::new(Catalog::Discogs, "43"),
     ];
     let album = AlbumLinks::Read(vec![
-        AlbumLink {
-            album: MetadataRef::new(Catalog::Discogs, "7"),
-            stated: AlbumStatement::Page,
-        },
-        AlbumLink {
-            album: MetadataRef::new(Catalog::Discogs, "8"),
-            stated: AlbumStatement::Wikidata {
-                item: "Q1".to_string(),
-            },
-        },
-        AlbumLink {
-            album: MetadataRef::new(Catalog::Discogs, "9"),
-            stated: AlbumStatement::Release {
-                musicbrainz_release: "rel-1".to_string(),
-                twin: MetadataRef::new(Catalog::Discogs, "44"),
-            },
-        },
-        AlbumLink {
-            album: MetadataRef::new(Catalog::Discogs, "10"),
-            stated: AlbumStatement::Barcode {
-                musicbrainz_release: "rel-1".to_string(),
-                release: MetadataRef::new(Catalog::Discogs, "45"),
-            },
-        },
-        AlbumLink {
-            album: MetadataRef::new(Catalog::Discogs, "11"),
-            stated: AlbumStatement::CatalogNumber {
-                musicbrainz_release: "rel-1".to_string(),
-                release: MetadataRef::new(Catalog::Discogs, "46"),
-            },
-        },
+        MetadataRef::new(Catalog::Discogs, "9"),
+        MetadataRef::new(Catalog::Discogs, "7"),
+        MetadataRef::new(Catalog::Discogs, "8"),
     ]);
     musicbrainz.album_links = album.clone();
     let mut discogs = sample_match();

@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::album_links::{names_other_album, AlbumLinks, AlbumStatement, Found};
+use crate::import::album_links::{names_other_album, AlbumLinks, Found};
 use std::collections::{HashMap, HashSet};
 
 /// The strongest album claims encountered while following this release's links.
@@ -139,14 +139,11 @@ impl ReleasePayloads {
         for page in &pages {
             if let CatalogPage::Group { catalog, key } = page {
                 if names_other_album(*catalog) {
-                    found.push(
-                        MetadataRef::new(*catalog, key.clone()),
-                        AlbumStatement::Page,
-                    );
+                    found.push(MetadataRef::new(*catalog, key.clone()));
                 }
             }
         }
-        if !found.links.is_empty() {
+        if !found.albums.is_empty() {
             return Ok(found.settle());
         }
 
@@ -172,21 +169,16 @@ impl ReleasePayloads {
             for page in entity.catalog_pages() {
                 if let CatalogPage::Group { catalog, key } = page {
                     if names_other_album(catalog) {
-                        found.push(
-                            MetadataRef::new(catalog, key),
-                            AlbumStatement::Wikidata {
-                                item: item.to_string(),
-                            },
-                        );
+                        found.push(MetadataRef::new(catalog, key));
                     }
                 }
             }
         }
-        if !found.links.is_empty() {
+        if !found.albums.is_empty() {
             return Ok(found.settle());
         }
 
-        let mut filed: Vec<(String, String)> = Vec::new();
+        let mut filed: Vec<String> = Vec::new();
         let mut incomplete = false;
         for key in self.discogs_counterpart_keys()? {
             let Some(json) = self.document(PayloadSource::Discogs, &key) else {
@@ -195,20 +187,14 @@ impl ReleasePayloads {
                 continue;
             };
             match bae_catalogs::discogs::documents::parse_discogs_release_json(json)?.master_id {
-                Some(master) => filed.push((key, master)),
+                Some(master) => filed.push(master),
                 None => incomplete = true,
             }
         }
-        let masters: HashSet<&str> = filed.iter().map(|(_, master)| master.as_str()).collect();
+        let masters: HashSet<&str> = filed.iter().map(String::as_str).collect();
         if !incomplete || masters.len() > 1 {
-            for (twin, master) in &filed {
-                found.push(
-                    MetadataRef::new(Catalog::Discogs, master.clone()),
-                    AlbumStatement::Release {
-                        musicbrainz_release: self.release.key.clone(),
-                        twin: MetadataRef::new(Catalog::Discogs, twin.clone()),
-                    },
-                );
+            for master in &filed {
+                found.push(MetadataRef::new(Catalog::Discogs, master.clone()));
             }
         }
         Ok(found.settle())
@@ -238,12 +224,7 @@ impl ReleasePayloads {
         };
         match self.release.catalog {
             Catalog::MusicBrainz => {
-                links.admit(
-                    self.album_statements()?
-                        .read()
-                        .iter()
-                        .map(|link| link.album.clone()),
-                );
+                links.admit(self.album_statements()?.read().iter().cloned());
                 links.admit(
                     album_urls(&musicbrainz.as_ref().expect("selected MB release").relations)
                         .into_iter()

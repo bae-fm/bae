@@ -2,7 +2,6 @@
 
 use crate::identify::documents::{ReleaseDocument, ReleaseReading};
 use crate::identify::state::PressingKey;
-use crate::import::album_links::{AlbumLink, AlbumStatement};
 use crate::import::MetadataRef;
 
 /// A document stating five tracks, `notes`, and nothing else.
@@ -19,24 +18,12 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
     }
 }
 
-/// The Discogs master `master` a MusicBrainz release's documents state
-/// through its link to the Discogs release `linked`.
-fn through(release: &str, linked: &str, master: &str) -> AlbumLink {
-    AlbumLink {
-        album: MetadataRef::new(DG, master),
-        stated: AlbumStatement::Release {
-            musicbrainz_release: release.to_string(),
-            twin: MetadataRef::new(DG, linked),
-        },
-    }
-}
-
 /// A MusicBrainz release's document naming the Discogs release `linked` as
 /// itself, filed under `master`.
-fn linking_document(release: &str, linked: &str, master: &str) -> ReleaseDocument {
+fn linking_document(linked: &str, master: &str) -> ReleaseDocument {
     ReleaseDocument {
         links: vec![MetadataRef::new(DG, linked)],
-        album_links: AlbumLinks::Read(vec![through(release, linked, master)]),
+        album_links: AlbumLinks::Read(vec![MetadataRef::new(DG, master)]),
         ..plain_document(&[])
     }
 }
@@ -182,8 +169,8 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
     let (state, effects, asked) = answer_rounds(
         reading,
         |release| match release.key.as_str() {
-            "mb-1" => linking_document("mb-1", "dg-1", "7"),
-            "mb-2" => linking_document("mb-2", "dg-2", "7"),
+            "mb-1" => linking_document("dg-1", "7"),
+            "mb-2" => linking_document("dg-2", "7"),
             _ => plain_document(&[]),
         },
         |_, key| match key {
@@ -239,9 +226,9 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
         assert!(named_by_disc_id && !linked_by_disc_id);
         assert_eq!(
             named.album_links,
-            AlbumLinks::Read(vec![through("mb-1", "dg-1", "7")]),
+            AlbumLinks::Read(vec![MetadataRef::new(DG, "7")]),
             "the group is every album its read releases' documents name, each \
-             once, by the first statement naming it"
+             once"
         );
     }
     assert_ne!(of("mb-1").2, of("mb-2").2, "the two pressings are two rows");
@@ -272,8 +259,8 @@ fn a_linked_release_s_note_word_breaks_the_tie() {
     let (state, _, _) = answer_rounds(
         reading,
         |release| match release.key.as_str() {
-            "mb-1" => linking_document("mb-1", "dg-1", "7"),
-            "mb-2" => linking_document("mb-2", "dg-2", "7"),
+            "mb-1" => linking_document("dg-1", "7"),
+            "mb-2" => linking_document("dg-2", "7"),
             "dg-2" => plain_document(&["Pressed by Plantname"]),
             _ => plain_document(&["Pressed elsewhere"]),
         },
@@ -339,17 +326,11 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
         },
         |_, _| Vec::new(),
     );
-    let joined = AlbumLink {
-        album: MetadataRef::new(DG, "7"),
-        stated: AlbumStatement::CatalogNumber {
-            musicbrainz_release: "mb-1".to_string(),
-            release: MetadataRef::new(DG, "dg-1"),
-        },
-    };
+    let joined = MetadataRef::new(DG, "7");
     assert_eq!(
         effects,
         vec![Effect::KeepAlbumLinks {
-            kept: vec![("g-1".to_string(), vec![joined.album.clone()])],
+            kept: vec![("g-1".to_string(), vec![joined.clone()])],
         }]
     );
     let mb = rows_of(&state)

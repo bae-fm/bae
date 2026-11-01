@@ -627,13 +627,8 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
     let completed = complete.extract().unwrap();
     assert_eq!(identified.album_links(), completed.album_links());
     assert_eq!(
-        identified
-            .album_links()
-            .read()
-            .iter()
-            .map(|link| link.album.clone())
-            .collect::<Vec<_>>(),
-        vec![MetadataRef::new(Catalog::Discogs, "920002")]
+        identified.album_links().read(),
+        [MetadataRef::new(Catalog::Discogs, "920002")]
     );
     assert_eq!(identified.links(), completed.links());
     assert_eq!(identified.metadata, completed.metadata);

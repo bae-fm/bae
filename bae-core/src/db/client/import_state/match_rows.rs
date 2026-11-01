@@ -2,7 +2,7 @@
 //! lists it, what the record said and the rows hanging off it, written and
 //! read back.
 
-use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
+use super::super::album_link_rows::AlbumLinkRow;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::import::album_links::AlbumLinks;
@@ -201,29 +201,17 @@ pub(super) fn store_match(
             ],
         )?;
     }
-    for (ordinal, link) in result.album_links.read().iter().enumerate() {
-        let StatementColumns {
-            stated,
-            wikidata_item,
-            musicbrainz_release,
-            release,
-        } = StatementColumns::of(&link.stated);
+    for (ordinal, album) in result.album_links.read().iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_match_album_link \
-                 (content_hash, position, ordinal, catalog, key, stated, wikidata_item, \
-                  musicbrainz_release, release_catalog, release_key) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 (content_hash, position, ordinal, catalog, key) \
+             VALUES (?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position,
                 ordinal_column(ordinal)?,
-                link.album.catalog.as_str(),
-                link.album.key,
-                stated,
-                wikidata_item,
-                musicbrainz_release,
-                release.map(|release| release.catalog.as_str()),
-                release.map(|release| release.key.as_str()),
+                album.catalog.as_str(),
+                album.key,
             ],
         )?;
     }
@@ -404,7 +392,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         ALBUM_LINKS_READ => AlbumLinks::Read(
             album_links
                 .into_iter()
-                .map(AlbumLinkRow::link)
+                .map(AlbumLinkRow::album)
                 .collect::<Result<_, DbError>>()?,
         ),
         ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !album_links.is_empty() => {

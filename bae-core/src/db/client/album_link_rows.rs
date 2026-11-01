@@ -1,24 +1,17 @@
-//! Album links as rows: the statements that say what a MusicBrainz release
-//! group is on another catalog.
+//! Album links as rows: the albums on another catalog that statements say a
+//! MusicBrainz release group is.
 //!
-//! A catalog release's rows and a verdict's match rows carry the statements
-//! read about the release's album, each in the one shape, so a list read back
-//! from the store groups as it did. `release_group_album_link` keeps the
-//! albums any reading found a group to be, beyond the list that read it, so a
-//! release of either album carries the other among its records — a Discogs
-//! release whose own documents never reach the release group still names
-//! it.
+//! A catalog release's rows and a verdict's match rows carry the albums read
+//! about the release's album, so a list read back from the store groups as it
+//! did. Which statement named an album is not kept: nothing past the reading
+//! decides by it. `release_group_album_link` keeps the albums any reading
+//! found a group to be, beyond the list that read it, so a release of either
+//! album carries the other among its records — a Discogs release whose own
+//! documents never reach the release group still names it.
 
 use super::*;
-use crate::import::album_links::{AlbumLink, AlbumStatement, GroupAlbum};
+use crate::import::album_links::GroupAlbum;
 use crate::import::MetadataRef;
-
-/// The stored `stated` values, one per [`AlbumStatement`] shape.
-const STATED_PAGE: &str = "page";
-const STATED_WIKIDATA: &str = "wikidata";
-const STATED_RELEASE: &str = "release";
-const STATED_BARCODE: &str = "barcode";
-const STATED_CATALOG_NUMBER: &str = "catalog_number";
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored).map_err(DbError::Message)
@@ -29,113 +22,12 @@ fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
 pub(super) struct AlbumLinkRow {
     pub(super) catalog: String,
     pub(super) key: String,
-    pub(super) stated: String,
-    pub(super) wikidata_item: Option<String>,
-    pub(super) musicbrainz_release: Option<String>,
-    pub(super) release_catalog: Option<String>,
-    pub(super) release_key: Option<String>,
 }
 
 impl AlbumLinkRow {
-    /// The link the row states. The tables' checks hold each statement's
-    /// columns to its kind, so a row that breaks them is unreadable.
-    pub(super) fn link(self) -> Result<AlbumLink, DbError> {
-        let stated = match (
-            self.stated.as_str(),
-            self.wikidata_item,
-            self.musicbrainz_release,
-            self.release_catalog,
-            self.release_key,
-        ) {
-            (STATED_PAGE, None, None, None, None) => AlbumStatement::Page,
-            (STATED_WIKIDATA, Some(item), None, None, None) => AlbumStatement::Wikidata { item },
-            (
-                stated @ (STATED_RELEASE | STATED_BARCODE | STATED_CATALOG_NUMBER),
-                None,
-                Some(musicbrainz_release),
-                Some(catalog),
-                Some(key),
-            ) => {
-                let release = MetadataRef::new(catalog_of(&catalog)?, key);
-                match stated {
-                    STATED_RELEASE => AlbumStatement::Release {
-                        musicbrainz_release,
-                        twin: release,
-                    },
-                    STATED_BARCODE => AlbumStatement::Barcode {
-                        musicbrainz_release,
-                        release,
-                    },
-                    _ => AlbumStatement::CatalogNumber {
-                        musicbrainz_release,
-                        release,
-                    },
-                }
-            }
-            (other, ..) => {
-                return Err(DbError::Message(format!(
-                    "an album link row states {other:?} with columns that do not fit it"
-                )))
-            }
-        };
-        Ok(AlbumLink {
-            album: MetadataRef::new(catalog_of(&self.catalog)?, self.key),
-            stated,
-        })
-    }
-}
-
-/// The columns one statement is written as.
-pub(super) struct StatementColumns<'a> {
-    pub(super) stated: &'static str,
-    pub(super) wikidata_item: Option<&'a str>,
-    pub(super) musicbrainz_release: Option<&'a str>,
-    /// The other catalog's release the statement pairs `musicbrainz_release`
-    /// with.
-    pub(super) release: Option<&'a MetadataRef>,
-}
-
-impl<'a> StatementColumns<'a> {
-    pub(super) fn of(stated: &'a AlbumStatement) -> Self {
-        match stated {
-            AlbumStatement::Page => Self {
-                stated: STATED_PAGE,
-                wikidata_item: None,
-                musicbrainz_release: None,
-                release: None,
-            },
-            AlbumStatement::Wikidata { item } => Self {
-                stated: STATED_WIKIDATA,
-                wikidata_item: Some(item),
-                musicbrainz_release: None,
-                release: None,
-            },
-            AlbumStatement::Release {
-                musicbrainz_release,
-                twin,
-            } => Self::of_pair(STATED_RELEASE, musicbrainz_release, twin),
-            AlbumStatement::Barcode {
-                musicbrainz_release,
-                release,
-            } => Self::of_pair(STATED_BARCODE, musicbrainz_release, release),
-            AlbumStatement::CatalogNumber {
-                musicbrainz_release,
-                release,
-            } => Self::of_pair(STATED_CATALOG_NUMBER, musicbrainz_release, release),
-        }
-    }
-
-    fn of_pair(
-        stated: &'static str,
-        musicbrainz_release: &'a str,
-        release: &'a MetadataRef,
-    ) -> Self {
-        Self {
-            stated,
-            wikidata_item: None,
-            musicbrainz_release: Some(musicbrainz_release),
-            release: Some(release),
-        }
+    /// The album the row names.
+    pub(super) fn album(self) -> Result<MetadataRef, DbError> {
+        Ok(MetadataRef::new(catalog_of(&self.catalog)?, self.key))
     }
 }
 

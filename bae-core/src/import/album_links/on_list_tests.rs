@@ -39,28 +39,12 @@ fn theirs(
 }
 
 /// What the list says the group is.
-fn albums_on(list: &[MetadataResult]) -> Vec<AlbumLink> {
+fn albums_on(list: &[MetadataResult]) -> Vec<MetadataRef> {
     albums(GROUP, &list.iter().collect::<Vec<_>>())
 }
 
-fn by_barcode(release: &str, master: &str) -> AlbumLink {
-    AlbumLink {
-        album: MetadataRef::new(Catalog::Discogs, master),
-        stated: AlbumStatement::Barcode {
-            musicbrainz_release: "mb-1".to_string(),
-            release: MetadataRef::new(Catalog::Discogs, release),
-        },
-    }
-}
-
-fn by_catalog_number(release: &str, master: &str) -> AlbumLink {
-    AlbumLink {
-        album: MetadataRef::new(Catalog::Discogs, master),
-        stated: AlbumStatement::CatalogNumber {
-            musicbrainz_release: "mb-1".to_string(),
-            release: MetadataRef::new(Catalog::Discogs, release),
-        },
-    }
+fn master(key: &str) -> MetadataRef {
+    MetadataRef::new(Catalog::Discogs, key)
 }
 
 /// A MusicBrainz release and a Discogs release printing one barcode, however
@@ -72,7 +56,7 @@ fn one_barcode_joins_the_albums() {
         theirs("dg-1", "700", "Album", &["0 12345 67890 5"], &[]),
         theirs("dg-2", "701", "Album", &["5051961234567"], &[]),
     ]);
-    assert_eq!(joined, vec![by_barcode("dg-1", "700")]);
+    assert_eq!(joined, vec![master("700")]);
 }
 
 /// A barcode shared by two titles with no word in common is a code typed
@@ -100,7 +84,7 @@ fn a_title_s_bracketed_tail_and_spelling_do_not_keep_albums_apart() {
         ours("Album", &["012345678905"], &[]),
         theirs("dg-1", "700", "ALBÚM! (Remastered)", &["012345678905"], &[]),
     ]);
-    assert_eq!(joined, vec![by_barcode("dg-1", "700")]);
+    assert_eq!(joined, vec![master("700")]);
 }
 
 /// Stop words say nothing about which album a title is: two titles sharing
@@ -128,7 +112,7 @@ fn one_catalog_number_under_one_label_joins_the_albums() {
             &[("Imprint Records", "LB-100")],
         ),
     ]);
-    assert_eq!(joined, vec![by_catalog_number("dg-1", "700")]);
+    assert_eq!(joined, vec![master("700")]);
 }
 
 /// A label may be anywhere in a record's labels: each label is compared with
@@ -143,7 +127,7 @@ fn a_catalog_number_is_compared_with_every_label_a_release_states() {
         ),
         theirs("dg-1", "700", "Album", &[], &[("Second Press", "SP-5")]),
     ]);
-    assert_eq!(joined, vec![by_catalog_number("dg-1", "700")]);
+    assert_eq!(joined, vec![master("700")]);
 }
 
 /// A label written as its initials is the label they abbreviate.
@@ -153,7 +137,7 @@ fn a_catalog_number_under_a_label_s_initials_joins_the_albums() {
         ours("Album", &[], &[("Alpha Beta Corporation", "LB 100")]),
         theirs("dg-1", "700", "Album", &[], &[("ABC", "LB-100")]),
     ]);
-    assert_eq!(joined, vec![by_catalog_number("dg-1", "700")]);
+    assert_eq!(joined, vec![master("700")]);
 }
 
 /// The same number under another label is another label's numbering.
@@ -175,7 +159,7 @@ fn a_barcode_is_taken_over_a_catalog_number() {
         theirs("dg-1", "700", "Album", &[], &[("Imprint", "LB 100")]),
         theirs("dg-2", "701", "Album", &["012345678905"], &[]),
     ]);
-    assert_eq!(joined, vec![by_barcode("dg-2", "701")]);
+    assert_eq!(joined, vec![master("701")]);
 }
 
 /// Only the group's own releases speak for it, and a release its catalog

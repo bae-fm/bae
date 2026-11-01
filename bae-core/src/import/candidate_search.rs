@@ -338,7 +338,6 @@ impl CandidateSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::album_links::AlbumLink;
 
     /// A library that asks every source.
     fn all_on() -> Vec<CatalogAvailability> {
@@ -471,10 +470,7 @@ mod tests {
         );
         assert_eq!(search.groups.len(), 2, "nothing joins before a pick");
 
-        let link = AlbumLink {
-            album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
-            stated: crate::import::album_links::AlbumStatement::Page,
-        };
+        let link = crate::import::MetadataRef::new(Catalog::Discogs, "master-7");
         assert!(
             search
                 .record_picked(
@@ -494,7 +490,7 @@ mod tests {
 
         let kept = search.record_picked(&musicbrainz("mb-1"), AlbumLinks::Read(vec![link.clone()]));
         assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
-        assert_eq!(kept, vec![("group-x".to_string(), vec![link.album])]);
+        assert_eq!(kept, vec![("group-x".to_string(), vec![link])]);
     }
 
     /// A picked result whose documents link nothing is read against what the

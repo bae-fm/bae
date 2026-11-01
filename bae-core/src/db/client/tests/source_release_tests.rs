@@ -242,10 +242,10 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
 }
 
 /// A MusicBrainz release's album links read back as its documents stated
-/// them: the statement that named each album, or that one could not be read.
+/// them: each album named, in order, or that one could not be read.
 #[tokio::test]
 async fn a_stored_release_reads_back_its_album_links() {
-    use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
+    use crate::import::album_links::AlbumLinks;
     use crate::import::source_release::CatalogFacts;
     let (db, _tmp) = empty_db().await;
     let extracted = musicbrainz_documents().extract().unwrap();
@@ -254,27 +254,13 @@ async fn a_stored_release_reads_back_its_album_links() {
     };
     assert_eq!(
         *album_links,
-        AlbumLinks::Read(vec![AlbumLink {
-            album: MetadataRef::new(Catalog::Discogs, "909"),
-            stated: AlbumStatement::Page,
-        }]),
+        AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "909")]),
         "the group's page links the master"
     );
     for stated in [
         AlbumLinks::Read(vec![
-            AlbumLink {
-                album: MetadataRef::new(Catalog::Discogs, "909"),
-                stated: AlbumStatement::Release {
-                    musicbrainz_release: "mb-release".to_string(),
-                    twin: MetadataRef::new(Catalog::Discogs, "4242"),
-                },
-            },
-            AlbumLink {
-                album: MetadataRef::new(Catalog::Discogs, "910"),
-                stated: AlbumStatement::Wikidata {
-                    item: "Q1".to_string(),
-                },
-            },
+            MetadataRef::new(Catalog::Discogs, "910"),
+            MetadataRef::new(Catalog::Discogs, "909"),
         ]),
         AlbumLinks::Read(Vec::new()),
         AlbumLinks::Unread,

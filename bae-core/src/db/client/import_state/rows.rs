@@ -346,11 +346,7 @@ fn match_entries_columns() -> String {
         ),
         album_links = child(
             "import_candidate_match_album_link",
-            "json_object('catalog', entry.catalog, 'key', entry.key, 'stated', entry.stated, \
-                         'wikidata_item', entry.wikidata_item, \
-                         'musicbrainz_release', entry.musicbrainz_release, \
-                         'release_catalog', entry.release_catalog, \
-                         'release_key', entry.release_key)",
+            "json_object('catalog', entry.catalog, 'key', entry.key)",
             "entry.ordinal",
         ),
     )

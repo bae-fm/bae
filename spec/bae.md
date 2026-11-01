@@ -980,6 +980,11 @@ alike. Five statements count:
 5. They print the same catalog number under the same label, and their titles
    share a word.
 
+A stored catalog release, and each match a run keeps, holds the albums the
+statements about it named, in the order they were read, strongest first;
+which statement named each is not kept, since nothing past the reading
+decides by it.
+
 **A release's mediums.** A MusicBrainz release lists its media, each with its
 format, its own tracks, and the Disc IDs registered against it. Discogs lists one flat tracklist and states the
 media as format entries with quantities, so bae splits the tracklist by its

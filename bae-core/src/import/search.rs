@@ -62,8 +62,7 @@ pub struct MetadataResult {
     pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
     /// The albums on the other lookup catalog a statement names as this
-    /// record's album, each with the statement — what puts two catalogs'
-    /// albums on one card.
+    /// record's album — what puts two catalogs' albums on one card.
     pub album_links: AlbumLinks,
     /// What the source says about this release's own tracklist, read against
     /// the folder's audio: what rules out a row that holds other tracks than
